@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "MMD Delivery",
+    "slug": "mmd-delivery",
+    "scheme": "mmd",
+    "sdkVersion": "51.0.0"
+  }
+}
