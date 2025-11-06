@@ -1,0 +1,36 @@
+'use client';
+import { useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabaseBrowser';
+
+const ROLES_THAT_ALERT = new Set(['driver','restaurant','vendor','seller']);
+const IMPORTANT_STATUSES = new Set(['assigned','accepted','prepared','ready','dispatched','delivered']);
+
+function shouldAlertStatusChange(oldStatus?: string | null, nextStatus?: string | null) {
+  if (!nextStatus || oldStatus === nextStatus) return false;
+  return IMPORTANT_STATUSES.has(nextStatus);
+}
+
+export default function OrderAlerts({ orderId, role }: { orderId: string; role: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    audioRef.current = new Audio('/sounds/notify.mp3');
+    const channel = supabase.channel('orders:' + orderId)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: 'id=eq.' + orderId },
+        (payload) => {
+          const oldStatus = (payload.old as any)?.status as string | null;
+          const newStatus = (payload.new as any)?.status as string | null;
+          if (ROLES_THAT_ALERT.has(role) && shouldAlertStatusChange(oldStatus, newStatus)) {
+            audioRef.current?.play().catch(() => {});
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [orderId, role]);
+
+  return null;
+}

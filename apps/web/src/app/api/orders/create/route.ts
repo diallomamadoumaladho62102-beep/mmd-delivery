@@ -14,3 +14,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: session.id, url: session.url });
 }
+

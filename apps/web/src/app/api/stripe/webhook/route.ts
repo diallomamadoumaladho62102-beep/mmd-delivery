@@ -14,3 +14,4 @@ export async function POST(req: NextRequest) {
     return new NextResponse(`Webhook Error: ${e.message}`, { status: 400 });
   }
 }
+

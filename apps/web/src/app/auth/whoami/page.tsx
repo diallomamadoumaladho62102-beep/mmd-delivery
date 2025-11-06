@@ -8,3 +8,4 @@ export default function WhoAmI(){
   return (<div className="p-6 space-y-2"><div><b>User ID:</b> {u.id}</div><div><b>Email:</b> {u.email??"(aucun e-mail)"}</div></div>);
 }
 
+

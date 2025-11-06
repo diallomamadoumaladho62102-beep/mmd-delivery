@@ -1,16 +1,21 @@
-import "./globals.css";
+import CreateErrandButton from "@/components/CreateErrandButton";
+import './globals.css'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'MMD Delivery',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-white text-zinc-900">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <header className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-red-600">MMD Delivery</h1>
-            <span className="text-sm text-zinc-500">New York 2025</span>
-          </header>
-          {children}
-        </div>
+      <body>{children}
       </body>
     </html>
-  );
+  )
 }
+
+
+
+{/* Placez <CreateErrandButton/> dans votre navbar/header */}
+
