@@ -1,0 +1,143 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseBrowser';
+
+type Order = {
+  id: string;
+  status: 'pending'|'accepted'|'prepared'|'ready'|'dispatched'|'delivered'|'canceled';
+  subtotal: number;
+  currency: string;
+};
+
+type CommissionRow = {
+  order_id: string;
+  currency: string;
+  client_amount?: number | string | null;
+  driver_amount?: number | string | null;
+  restaurant_amount?: number | string | null;
+  platform_amount?: number | string | null;
+  updated_at?: string | null;
+
+  // fallback cents
+  client_cents?: number | null;
+  driver_cents?: number | null;
+  restaurant_cents?: number | null;
+  platform_cents?: number | null;
+};
+
+function to2(n: number | string | null | undefined) {
+  if (n === null || n === undefined) return '0.00';
+  const num = typeof n === 'number' ? n : parseFloat(String(n));
+  if (Number.isNaN(num)) return '0.00';
+  return num.toFixed(2);
+}
+
+export default function OrderPage({ params }: { params: { orderId: string } }) {
+  const orderId = params.orderId;
+  const [order, setOrder] = useState<Order | null>(null);
+  const [comm, setComm] = useState<CommissionRow | null>(null);
+
+  async function load() {
+    // 1) Order
+    const o = await supabase
+      .from('orders')
+      .select('id,status,subtotal,currency')
+      .eq('id', orderId)
+      .single();
+    if (!o.error) setOrder(o.data as Order);
+
+    // 2) Vue ($)
+    const v = await supabase
+      .from('v_order_commission_summary')
+      .select('*')
+      .eq('order_id', orderId)
+      .maybeSingle();
+
+    if (!v.error && v.data) {
+      setComm(v.data as CommissionRow);
+      return;
+    }
+
+    // 3) Fallback: table (cents)
+    const t = await supabase
+      .from('order_commissions')
+      .select('*')
+      .eq('order_id', orderId)
+      .maybeSingle();
+
+    if (!t.error && t.data) {
+      const d = t.data as CommissionRow;
+      setComm({
+        ...d,
+        client_amount: (d.client_cents ?? 0) / 100,
+        driver_amount: (d.driver_cents ?? 0) / 100,
+        restaurant_amount: (d.restaurant_cents ?? 0) / 100,
+        platform_amount: (d.platform_cents ?? 0) / 100,
+      });
+    } else {
+      setComm(null);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel(`order:${orderId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` }, () => load())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'order_commissions', filter: `order_id=eq.${orderId}` }, () => load())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_commissions', filter: `order_id=eq.${orderId}` }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [orderId]);
+
+  const updateStatus = async (status: Order['status']) => {
+    const { error } = await supabase.from('orders').update({ status }).eq('id', orderId);
+    if (error) alert(error.message);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-4 space-y-6">
+      <h1 className="text-2xl font-bold">Commande #{orderId}</h1>
+
+      <section className="grid md:grid-cols-3 gap-4">
+        <div className="p-4 rounded-2xl border">
+          <div className="text-sm text-gray-500">Statut</div>
+          <div className="text-xl font-semibold">{order?.status ?? '—'}</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {['pending','accepted','prepared','ready','dispatched','delivered','canceled'].map((s) => (
+              <button key={s} onClick={() => updateStatus(s as Order['status'])} className="px-3 py-1.5 rounded-xl border hover:bg-gray-50">
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl border">
+          <div className="text-sm text-gray-500">Montant</div>
+          <div className="text-xl font-semibold">
+            {order ? `${order.subtotal.toFixed(2)} ${order.currency}` : '—'}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl border">
+          <div className="text-sm text-gray-500">Commissions (plateforme = client + driver + restaurant)</div>
+          {comm ? (
+            <ul className="mt-2 text-sm">
+              <li>Client: {to2(comm.client_amount)} {comm.currency}</li>
+              <li>Driver: {to2(comm.driver_amount)} {comm.currency}</li>
+              <li>Restaurant: {to2(comm.restaurant_amount)} {comm.currency}</li>
+              <li className="font-semibold">Plateforme: {to2(comm.platform_amount)} {comm.currency}</li>
+              {comm.updated_at ? (
+                <li className="text-xs text-gray-500 mt-1">Maj: {new Date(comm.updated_at).toLocaleString()}</li>
+              ) : null}
+            </ul>
+          ) : (
+            <div className="text-sm text-gray-500">Pas de données.</div>
+          )}
+        </div>
+      </section>
+
+      {/* <ChatMessages orderId={orderId} /> */}
+    </div>
+  );
+}

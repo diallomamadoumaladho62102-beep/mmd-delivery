@@ -1,4 +1,15 @@
 {
+  "name": "mmd-delivery",
+  "private": true,
+  "scripts": {
+    "dev": "cd apps/web && pnpm dev",
+    "build": "cd apps/web && pnpm build",
+    "start": "cd apps/web && pnpm start"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.80.0",
+    "dotenv": "^17.2.3"
+  },
   "devDependencies": {
     "supabase": "^2.53.6"
   }

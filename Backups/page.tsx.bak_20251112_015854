@@ -1,0 +1,96 @@
+"use client";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+
+const ROLE = "restaurant";
+
+export default function SignupRestaurant() {
+  const [err, setErr] = useState<string | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
+
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+
+  // Champs restaurant
+  const [displayName, setDisplayName] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [ein, setEin] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [restaurantPhone, setRestaurantPhone] = useState("");
+  const [addr, setAddr] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
+  }, []);
+
+  async function sendLink() {
+    setErr(null);
+    const redirect = `${window.location.origin}/signup/restaurant`;
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirect },
+    });
+    if (error) setErr(error.message);
+    else setSent(true);
+  }
+
+  async function saveProfile() {
+    setErr(null);
+    if (!uid) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        role: ROLE,
+        restaurant_display_name: displayName || null,
+        restaurant_legal_name: legalName || null,
+        restaurant_ein: ein || null,
+        restaurant_contact_name: contactName || null,
+        restaurant_phone: restaurantPhone || null,
+        restaurant_address: addr || null,
+        restaurant_city: city || null,
+        restaurant_state: state || null,
+        restaurant_zip: zip || null,
+      })
+      .eq("id", uid);
+
+    if (error) { setErr(error.message); return; }
+    alert("Restaurant enregistré ✅");
+  }
+
+  if (!uid) {
+    return (
+      <div className="max-w-md mx-auto p-6 space-y-3">
+        <h1 className="text-xl font-semibold">Créer un compte — restaurant</h1>
+        <input className="w-full border rounded px-3 py-2" placeholder="restaurant@email"
+               value={email} onChange={(e)=>setEmail(e.target.value)} />
+        <button onClick={sendLink} className="px-3 py-2 rounded bg-black text-white" disabled={!email || sent}>
+          {sent ? "Lien envoyé ✅" : "Envoyer le lien magique"}
+        </button>
+        {err && <div className="text-red-600 text-sm">{err}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto p-6 space-y-3">
+      <h1 className="text-xl font-semibold">Ton profil — restaurant</h1>
+      <input className="w-full border rounded px-3 py-2" placeholder="Nom affiché" value={displayName} onChange={(e)=>setDisplayName(e.target.value)} />
+      <input className="w-full border rounded px-3 py-2" placeholder="Nom légal" value={legalName} onChange={(e)=>setLegalName(e.target.value)} />
+      <input className="w-full border rounded px-3 py-2" placeholder="EIN" value={ein} onChange={(e)=>setEin(e.target.value)} />
+      <input className="w-full border rounded px-3 py-2" placeholder="Contact (nom)" value={contactName} onChange={(e)=>setContactName(e.target.value)} />
+      <input className="w-full border rounded px-3 py-2" placeholder="Téléphone du restaurant" value={restaurantPhone} onChange={(e)=>setRestaurantPhone(e.target.value)} />
+      <input className="w-full border rounded px-3 py-2" placeholder="Adresse" value={addr} onChange={(e)=>setAddr(e.target.value)} />
+      <div className="grid grid-cols-3 gap-2">
+        <input className="border rounded px-3 py-2" placeholder="Ville" value={city} onChange={(e)=>setCity(e.target.value)} />
+        <input className="border rounded px-3 py-2" placeholder="État" value={state} onChange={(e)=>setState(e.target.value)} />
+        <input className="border rounded px-3 py-2" placeholder="ZIP" value={zip} onChange={(e)=>setZip(e.target.value)} />
+      </div>
+      <button onClick={saveProfile} className="px-3 py-2 rounded bg-black text-white">Enregistrer</button>
+      {err && <div className="text-red-600 text-sm">{err}</div>}
+    </div>
+  );
+}

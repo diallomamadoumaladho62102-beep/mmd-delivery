@@ -1,185 +1,87 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
-type Obj = { name: string; created_at?: string; metadata?: { size?: number; mimetype?: string } };
+type Obj = { name: string; id?: string; updated_at?: string; signed?: string | null };
 
-function formatBytes(b?: number) {
-  if (b === undefined || b === null) return "";
-  const u = ["B","KB","MB","GB","TB"];
-  let i = 0, n = b;
-  while (n >= 1024 && i < u.length-1) { n/=1024; i++; }
-  return `${n.toFixed(1)} ${u[i]}`;
-}
-
-export default function OrderFiles() {
-  const params = useParams<{ orderId: string }>();
-  const orderId = (params?.orderId ?? "") as string;
-
-  const [items, setItems] = useState<{ name: string; url: string; size?: number; createdAt?: string }[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function OrderFilesPage({ params }: { params: { orderId: string } }) {
+  const orderId = params.orderId;
+  const [items, setItems] = useState<Obj[]>([]);
+  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [debug, setDebug] = useState<string>("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Empêche l'exécution 2x en dev (StrictMode)
-  const didRun = useRef(false);
+  const list = async () => {
+    setLoading(true);
+    setErr(null);
 
-  const dedupeByName = (arr: { name: string }[]) => {
-    const seen = new Set<string>();
-    return arr.filter(x => {
-      if (!x.name) return false;
-      if (seen.has(x.name)) return false;
-      seen.add(x.name);
-      return true;
-    });
-  };
+    const { data, error } = await supabase
+      .storage.from("chat-uploads")
+      .list(orderId, { limit: 100, sortBy: { column: "updated_at", order: "desc" }});
 
-  const listAndSign = useCallback(async () => {
-    if (!orderId) throw new Error("orderId manquant");
+    if (error) { setErr(error.message); setItems([]); setLoading(false); return; }
 
-    // 1) Lister le dossier de la commande
-    const first = await supabase
-      .storage
-      .from("chat-images")
-      .list(orderId, { limit: 1000, sortBy: { column: "name", order: "desc" } });
-
-    let objs = (first.data || []) as Obj[];
-    let usedFallback = false;
-
-    if (!first.data || first.data.length === 0) {
-      // 2) Fallback: détecter le dossier à la racine
-      const root = await supabase
-        .storage
-        .from("chat-images")
-        .list("", { limit: 1000, sortBy: { column: "name", order: "desc" } });
-      const all = (root.data || []) as Obj[];
-      const folder = all.find((x) => x.name === orderId);
-      if (folder) {
-        const nested = await supabase
-          .storage
-          .from("chat-images")
-          .list(orderId, { limit: 1000, sortBy: { column: "name", order: "desc" } });
-        objs = (nested.data || []) as Obj[];
-      }
-      usedFallback = true;
-    }
-
-    // Garder uniquement les fichiers (metadata défini) et dédupliquer
-    objs = dedupeByName((objs || []).filter(o => !!o && o.metadata)) as Obj[];
-
-    setDebug(`count=${objs.length} fallback=${usedFallback}`);
-
-    // 3) Générer les signed URLs
-    const signed = await Promise.all(
-      objs.map(async (o) => {
+    const arr: Obj[] = await Promise.all(
+      (data ?? []).map(async (o) => {
         const path = `${orderId}/${o.name}`;
-        const { data, error } = await supabase
-          .storage
-          .from("chat-images")
-          .createSignedUrl(path, 60 * 5);
-        if (error) return { name: o.name, url: "", size: o.metadata?.size, createdAt: o.created_at };
-        return { name: o.name, url: data?.signedUrl ?? "", size: o.metadata?.size, createdAt: o.created_at };
+        const s = await supabase.storage.from("chat-uploads").createSignedUrl(path, 60*60);
+        return { name: o.name, updated_at: (o as any)?.updated_at, signed: s.data?.signedUrl ?? null };
       })
     );
+    setItems(arr);
+    setLoading(false);
+  };
 
-    const unique = dedupeByName(signed).filter(x => !!(x as any).url) as { name: string; url: string; size?: number; createdAt?: string }[];
+  useEffect(() => { list(); }, [orderId]);
 
-    setItems(unique);
-  }, [orderId]);
+  const upload = async () => {
+    const file = inputRef.current?.files?.[0];
+    if (!file) return;
+    setErr(null);
+    const path = `${orderId}/${Date.now()}_${file.name}`.replace(/\s+/g, "_");
+    const up = await supabase.storage.from("chat-uploads").upload(path, file);
+    if (up.error) { setErr(up.error.message); return; }
+    inputRef.current!.value = "";
+    list();
+  };
 
-  const refresh = useCallback(async () => {
-    try {
-      setLoading(true);
-      setErr(null);
-      await listAndSign();
-    } catch (e:any) {
-      setErr(e?.message || String(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [listAndSign]);
-
-  useEffect(() => {
-    if (didRun.current) return;
-    didRun.current = true;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setErr(null);
-        await listAndSign();
-      } catch (e:any) {
-        setErr(e?.message || String(e));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [listAndSign]);
-
-  async function handleDelete(name: string) {
-    if (!orderId) return;
-    const ok = window.confirm(`Supprimer le fichier "${name}" ?`);
-    if (!ok) return;
-
+  const remove = async (name: string) => {
+    setErr(null);
     const path = `${orderId}/${name}`;
-    const { error } = await supabase.storage.from("chat-images").remove([path]);
-    if (error) {
-      alert("Suppression impossible : " + error.message);
-      return;
-    }
-    await refresh();
-  }
+    const rm = await supabase.storage.from("chat-uploads").remove([path]);
+    if (rm.error) { setErr(rm.error.message); return; }
+    list();
+  };
 
   return (
-    <main className="p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Fichiers partagés</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={refresh}
-            className="px-3 py-1 rounded-lg border text-sm hover:bg-gray-50"
-            title="Rafraîchir la liste et les liens signés"
-          >
-            🔄 Rafraîchir
-          </button>
-        </div>
+    <div className="max-w-3xl mx-auto p-4 space-y-4">
+      <h1 className="text-xl font-semibold">Fichiers — commande #{orderId}</h1>
+
+      <div className="flex items-center gap-3">
+        <input type="file" ref={inputRef} accept="image/*" />
+        <button onClick={upload} className="border rounded px-3 py-1">Uploader</button>
+        <a className="text-blue-600 underline" href={`/orders/${orderId}/chat`}>Retour au chat</a>
       </div>
 
-      {err && <div className="text-red-600">Erreur : {err}</div>}
-      {loading && <div className="text-gray-500">Chargement…</div>}
+      {err ? <div className="text-sm text-red-600">{err}</div> : null}
+      {loading ? <div>Chargement…</div> : null}
 
-      {!loading && items.length === 0 && (
-        <div className="text-gray-500">
-          Aucun fichier pour le moment.
-          {debug && <div className="text-xs text-gray-400 mt-1">({debug})</div>}
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {items.map((it) => (
-          <div key={it.name} className="group rounded-lg border overflow-hidden">
-            <a href={it.url} target="_blank" className="block">
-              <img src={it.url} alt={it.name} className="w-full h-40 object-cover" />
-            </a>
-            <div className="p-2 flex items-center justify-between gap-2">
-              <div className="text-xs text-gray-700 truncate" title={it.name}>
-                <div className="truncate">{it.name}</div>
-                <div className="text-[11px] text-gray-500">
-                  {it.createdAt ? new Date(it.createdAt).toLocaleString() : ""} • {formatBytes(it.size)}
-                </div>
-              </div>
-              <button
-                onClick={() => handleDelete(it.name)}
-                className="text-xs px-2 py-1 rounded border hover:bg-red-50"
-                title="Supprimer ce fichier"
-              >
-                🗑️ Supprimer
-              </button>
-            </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {items.map((o) => (
+          <div key={o.name} className="border rounded p-2 space-y-2">
+            {o.signed ? (
+              <a href={o.signed} target="_blank" rel="noreferrer">
+                <img src={o.signed} alt={o.name} className="w-full h-32 object-cover rounded" />
+              </a>
+            ) : (
+              <div className="w-full h-32 bg-gray-100 rounded" />
+            )}
+            <div className="text-xs break-all">{o.name}</div>
+            <button onClick={() => remove(o.name)} className="text-sm text-red-600">Supprimer</button>
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }

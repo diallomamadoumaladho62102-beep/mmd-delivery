@@ -64,3 +64,4 @@ export default function AdminCommission({ orderId }: Props) {
     </div>
   );
 }
+

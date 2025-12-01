@@ -35,3 +35,4 @@ export default function Avatar({ name, src, size = 36 }: Props) {
   return <div style={style}>{initials(name)}</div>;
 }
 
+

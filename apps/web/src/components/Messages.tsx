@@ -30,7 +30,7 @@ function formatTs(ts: string) {
 
 function publicUrl(path?: string | null) {
   if (!path) return null;
-  const { data } = supabase.storage.from("chat-images").getPublicUrl(path);
+  const { data } = supabase.storage.from("chat-uploads").getPublicUrl(path);
   return data?.publicUrl ?? null;
 }
 
@@ -205,7 +205,7 @@ export default function Messages({ orderId }: { orderId: string }) {
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const key = `${orderId}/${user.id}/${Date.now()}_${safeName}`;
         const { error: upErr } = await supabase.storage
-          .from("chat-images")
+          .from("chat-uploads")
           .upload(key, file, { cacheControl: "3600", upsert: false, contentType: file.type });
 
         if (upErr) throw upErr;
@@ -359,4 +359,5 @@ export default function Messages({ orderId }: { orderId: string }) {
     </div>
   );
 }
+
 

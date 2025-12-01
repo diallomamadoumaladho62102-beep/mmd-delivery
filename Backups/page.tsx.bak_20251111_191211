@@ -1,0 +1,52 @@
+import AuthBanner from "@/components/AuthBanner";
+import JoinToolbar from "@/components/JoinToolbar";
+import MembersList from "@/components/MembersList";
+import OrderStatusControls from "@/components/OrderStatusControls";
+import CommissionSummary from "@/components/CommissionSummary";
+import ChatMessages from "@/components/ChatMessages";
+
+export default async function ChatPage(
+  { params }: { params: Promise<{ orderId?: string }> }
+) {
+  const { orderId } = await params;
+
+  const isUuid = (v?: string) =>
+    typeof v === "string" && /^[0-9a-fA-F-]{36}$/.test(v);
+
+  if (!isUuid(orderId)) {
+    return (
+      <div className="max-w-xl mx-auto p-4 space-y-4">
+        <h1 className="text-xl font-semibold">Chat — commande</h1>
+        <div className="border rounded p-3 space-y-2">
+          <div className="text-sm text-gray-700">ID de commande invalide</div>
+          <div className="text-sm">
+            Ouvre une URL du type{" "}
+            <code className="px-1 py-0.5 rounded bg-gray-100">
+              /orders/&lt;UUID&gt;/chat
+            </code>
+            .
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto p-4 space-y-6">
+      <h1 className="text-xl font-semibold">Chat — commande #{orderId.slice(0,8)}</h1>
+
+      <AuthBanner />
+      <JoinToolbar orderId={orderId} />
+
+      <MembersList orderId={orderId} />
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Statut (RPC sécurisé)</h2>
+        <OrderStatusControls orderId={orderId} />
+        <CommissionSummary orderId={orderId} />
+      </div>
+
+      <ChatMessages orderId={orderId} />
+    </div>
+  );
+}

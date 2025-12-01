@@ -4,3 +4,4 @@ export function formatCurrency(n?: number | null, currency = "USD", locale = "fr
   return new Intl.NumberFormat(locale, { style: "currency", currency }).format(v);
 }
 
+

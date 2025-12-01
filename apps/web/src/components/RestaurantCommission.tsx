@@ -37,3 +37,4 @@ export default function RestaurantCommission({ orderId }: { orderId: string }) {
     </div>
   );
 }
+

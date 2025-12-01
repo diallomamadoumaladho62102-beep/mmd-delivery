@@ -83,7 +83,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
 
         const { error: upErr } = await supabase
           .storage
-          .from("chat-images")
+          .from("chat-uploads")
           .upload(objectPath, file, { cacheControl: "3600", upsert: false });
 
         if (upErr) throw new Error(`Upload image: ${upErr.message}`);
@@ -115,7 +115,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
   };
 
   const publicUrl = (p?: string | null) =>
-    p ? supabase.storage.from("chat-images").getPublicUrl(p).data.publicUrl : null;
+    p ? supabase.storage.from("chat-uploads").getPublicUrl(p).data.publicUrl : null;
 
   return (
     <div className="flex items-center gap-3 mb-3">
@@ -201,5 +201,6 @@ export default function ChatBox({ orderId }: { orderId: string }) {
     </div>
   );
 }
+
 
 

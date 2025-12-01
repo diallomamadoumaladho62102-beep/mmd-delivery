@@ -28,3 +28,4 @@ export default function OrderStatusSimulator({ orderId }: { orderId: string }) {
     </div>
   );
 }
+

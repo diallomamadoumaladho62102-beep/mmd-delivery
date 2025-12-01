@@ -11,11 +11,11 @@ export default function ChatImageUploader({ orderId }: { orderId: string }) {
     if (!file) return;
     setUploading(true);
     const safeName = (file.name || "upload").replace(/[^\w.\-]+/g, "-"); const path = `${orderId}/${Date.now()}-${safeName}`;
-    const { data, error } = await supabase.storage.from("chat-images").upload(path, file);
+    const { data, error } = await supabase.storage.from("chat-uploads").upload(path, file);
     if (error) alert("Erreur upload: " + error.message);
     else {
       const { data: signed } = await supabase.storage
-        .from("chat-images")
+        .from("chat-uploads")
         .createSignedUrl(path, 300); // 5 min
       setUrl(signed?.signedUrl || null);
     }
@@ -32,4 +32,5 @@ export default function ChatImageUploader({ orderId }: { orderId: string }) {
     </div>
   );
 }
+
 

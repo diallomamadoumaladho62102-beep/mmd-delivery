@@ -50,3 +50,4 @@ export default function OrderStatusBadge({ orderId }: { orderId: string }) {
     </div>
   );
 }
+

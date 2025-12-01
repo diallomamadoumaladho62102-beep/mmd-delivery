@@ -1,9 +1,131 @@
-export default function Page(){ return (<main style={{padding:20}}>      <RoleSwitcher /><h1>/orders/demo/chat OK</h1>  <RestaurantCommission orderId={orderId} />
-</main>); }
+"use client";
 
+import { useMemo } from "react";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import { useParams } from "next/navigation";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
 
+import JoinButton from "@/components/JoinButton";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import LeaveButton from "@/components/LeaveButton";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import MembersList from "@/components/MembersList";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import OrderAlerts from "@/components/OrderAlerts";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import { useOrderRole } from "@/hooks/useOrderRole";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import CommissionBreakdown from "@/components/CommissionBreakdown";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import StatusTester from "@/components/StatusTester";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import RoleSwitch from "@/components/RoleSwitch";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import ChatMessages from "@/components/ChatMessages";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import ChatInput from "@/components/ChatInput";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import OrderStatusBadge from "@/components/OrderStatusBadge";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import OrderStatusTimeline from "@/components/OrderStatusTimeline";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import RestaurantCommission from "@/components/RestaurantCommission";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import MembersBadge from "@/components/MembersBadge";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import { useEnsureMember } from "@/hooks/useEnsureMember";
+import SignInPanel from "@/components/SignInPanel";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+import AdminOnlyCommission from "@/components/AdminOnlyCommission";
 
+export default function ChatPage(): JSX.Element {
+  const params = useParams();
+  const rawId = (params as Record<string, string | string[] | undefined>)?.orderId;
+  const orderId = Array.isArray(rawId) ? rawId[0] ?? "" : (rawId ?? "");
+  const shortId = useMemo(() => (orderId ? orderId.slice(0, 8) : "???"), [orderId]);
+  const role = useOrderRole(orderId || undefined);
+  
+  const [session, setSession] = useState<any>(null);
+  useEffect(() => { supabase.auth.getSession().then(({ data }) => setSession(data.session)); }, []);
+  if (!session) { return <main className="p-6 space-y-4"><SignInPanel /></main>; }
+useEnsureMember(orderId, role ?? "driver");
 
+  if (!orderId) {
+    return (
+      <main className="p-6">
+        <h1 className="text-xl font-semibold text-red-600">Order ID manquant</h1>
+      </main>
+    );
+  }
+
+  return (
+    <main className="p-6 space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-bold">Chat — commande #{shortId}</h1>
+        <MembersBadge orderId={orderId} />
+        <OrderAlerts orderId={orderId} role={role ?? "driver"} />
+        <OrderStatusBadge orderId={orderId} />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <JoinButton orderId={orderId} />
+            <LeaveButton orderId={orderId} />
+          </div>
+          <MembersList orderId={orderId} />
+          <div className="space-y-3">
+            <AdminOnlyCommission orderId={orderId} />
+      <ChatMessages orderId={orderId} />
+            <ChatInput orderId={orderId} />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <CommissionBreakdown orderId={orderId} />
+          <StatusTester orderId={orderId} />
+          <RoleSwitch orderId={orderId} />
+          <OrderStatusTimeline orderId={orderId} />
+        </div>
+      </div>
+
+      <RestaurantCommission orderId={orderId} />
+    </main>
+  );
+}
 
 
 

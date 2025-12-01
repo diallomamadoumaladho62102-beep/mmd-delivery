@@ -1,0 +1,116 @@
+"use client";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
+
+const ROLE = "client";
+
+export default function SignupClient() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
+
+  // Champs de formulaire
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUid(data.user?.id ?? null));
+  }, []);
+
+  async function sendLink() {
+  setErr(null);
+  const redirect = \\/auth/callback?next=/signup/client\;
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirect },
+  });
+  if (error) setErr(error.message);
+  else setSent(true);
+}/signup/client`; // revient ici
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirect },
+    });
+    if (error) setErr(error.message);
+    else setSent(true);
+  }
+
+  async function saveProfile() {
+    setErr(null);
+    if (!uid) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        role: ROLE,
+        full_name: fullName || null,
+        phone: phone || null,
+      })
+      .eq("id", uid);
+
+    if (error) { setErr(error.message); return; }
+    alert("Profil client enregistré ✅");
+  }
+
+  if (!uid) {
+    // Étape 1 : collecte d’email et lien magique
+    return (
+      <div className="max-w-md mx-auto p-6 space-y-3">
+        <h1 className="text-xl font-semibold">Créer un compte — {ROLE}</h1>
+        <input
+          className="w-full border rounded px-3 py-2"
+          placeholder="ton@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <button
+          onClick={sendLink}
+          className="px-3 py-2 rounded bg-black text-white"
+          disabled={!email || sent}
+        >
+          {sent ? "Lien envoyé ✅" : "Envoyer le lien magique"}
+        </button>
+      <button
+        type=""button""
+        onClick={async () => {
+          const { data } = await supabase.auth.getUser();
+          setUid(data.user?.id ?? null);
+        }}
+        className=""text-xs underline mt-1""
+      >
+        Je suis déjà connecté — recharger mon profil
+      </button>
+        {err && <div className="text-red-600 text-sm">{err}</div>}
+        <p className="text-xs text-gray-500">Ouvre l’email sur cet appareil.</p>
+      </div>
+    );
+  }
+
+  // Étape 2 : utilisateur connecté → formulaire profil
+  return (
+    <div className="max-w-md mx-auto p-6 space-y-3">
+      <h1 className="text-xl font-semibold">Ton profil — client</h1>
+      <input
+        className="w-full border rounded px-3 py-2"
+        placeholder="Nom complet"
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
+      />
+      <input
+        className="w-full border rounded px-3 py-2"
+        placeholder="Téléphone"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+      />
+      <button
+        onClick={saveProfile}
+        className="px-3 py-2 rounded bg-black text-white"
+      >
+        Enregistrer
+      </button>
+      {err && <div className="text-red-600 text-sm">{err}</div>}
+    </div>
+  );
+}
+

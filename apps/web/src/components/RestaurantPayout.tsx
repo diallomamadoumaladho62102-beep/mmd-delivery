@@ -42,3 +42,4 @@ export default function RestaurantPayout({ orderId }: { orderId: string }) {
     </div>
   );
 }
+

@@ -13,7 +13,7 @@ export async function deleteMessageAndImage(msgId: string) {
 
   // 2) si image, suppression Storage (côté client)
   if (image_path) {
-    const { error: delErr } = await supabase.storage.from(bucket || "chat-images").remove([image_path]);
+    const { error: delErr } = await supabase.storage.from(bucket || "chat-uploads").remove([image_path]);
     // on n'échoue pas la suppression du message si l'image manque déjà
     if (delErr && delErr.message?.includes("Object not found") === false) {
       console.warn("Storage remove warning:", delErr.message);
@@ -28,7 +28,7 @@ export async function sendChatMessage(orderId: string, text: string, file: File 
   const userId = userData?.user?.id;
 
   let imagePath: string | null = null;
-  const bucket = "chat-images";
+  const bucket = "chat-uploads";
 
   // 1) upload si fichier
   if (file) {
@@ -73,3 +73,4 @@ export async function sendChatMessage(orderId: string, text: string, file: File 
 
   return data;
 }
+

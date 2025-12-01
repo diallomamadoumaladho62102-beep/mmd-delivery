@@ -76,7 +76,7 @@ export default function MessagesList({ orderId }: Props) {
               _signedUrl = signedCache.get(key)!;
             } else {
               const { data: signed } = await supabase.storage
-                .from('chat-images')
+                .from('chat-uploads')
                 .createSignedUrl(m.image_path, 60 * 10);
               _signedUrl = signed?.signedUrl || null;
               if (_signedUrl) signedCache.set(key, _signedUrl);
@@ -122,7 +122,7 @@ export default function MessagesList({ orderId }: Props) {
               if (signedCache.has(key)) _signedUrl = signedCache.get(key)!;
               else {
                 const { data: signed } = await supabase.storage
-                  .from('chat-images')
+                  .from('chat-uploads')
                   .createSignedUrl(m.image_path, 60 * 10);
                 _signedUrl = signed?.signedUrl || null;
                 if (_signedUrl) signedCache.set(key, _signedUrl);
@@ -187,12 +187,9 @@ export default function MessagesList({ orderId }: Props) {
             {m.message && <div className="whitespace-pre-wrap">{m.message}</div>}
             {m._signedUrl && (
               <div className="mt-2">
-                <img
-                  src={m._signedUrl}
-                  alt="chat image"
-                  className="max-w-xs rounded-lg border"
-                />
-              </div>
+                {m.image_path -and m._signedUrl ? (<img src={m._signedUrl}
+              >) : null}
+                </div>
             )}
             <div className="text-[11px] text-gray-400 mt-1">{fmt(m.created_at)}</div>
           </div>
@@ -202,4 +199,11 @@ export default function MessagesList({ orderId }: Props) {
     </div>
   );
 }
+
+
+// 🧹 Après suppression de l’image, nettoyer cache + UI
+await supabase.storage.from('chat-uploads').remove([m.image_path]);
+signedCache.delete(m.image_path);
+setRows(prev => prev.map(r => r.id === m.id ? { ...r, image_path: null, _signedUrl: null } : r));
+
 

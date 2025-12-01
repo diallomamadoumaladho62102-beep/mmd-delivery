@@ -23,3 +23,4 @@ export async function getCommissions(orderId: string): Promise<Commission | null
   if (error) return null;
   return data as Commission;
 }
+

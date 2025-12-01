@@ -72,3 +72,4 @@ export default function RevenueChart({ from, to }: { from: string; to: string })
     </div>
   );
 }
+

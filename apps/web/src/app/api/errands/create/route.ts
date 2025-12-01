@@ -36,3 +36,4 @@ export async function POST(req: Request) {
   const order = Array.isArray(data) ? data[0] : data;
   return NextResponse.json({ id: order?.id });
 }
+

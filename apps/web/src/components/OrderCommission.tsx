@@ -29,3 +29,4 @@ export default function OrderCommission({ orderId }: { orderId: string }) {
     </div>
   );
 }
+
