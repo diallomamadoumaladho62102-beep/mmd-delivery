@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← ย้อนกลับ",
+    "account": "บัญชี",
+    "security": "ความปลอดภัย",
+    "notifications": "การแจ้งเตือน",
+    "language": "ภาษา",
+    "logout": "ออกจากระบบ",
+    "soon": "เร็ว ๆ นี้ ✅",
+    "ok": "ตกลง",
+    "toAdd": "ต้องเพิ่ม",
+    "ready": "พร้อม",
+    "notConfigured": "ยังไม่ตั้งค่า",
+    "notRequired": "ไม่จำเป็น"
+  },
+  "driver": {
+    "account": {
+      "title": "บัญชีคนขับ",
+      "subtitle": "ยานพาหนะ เอกสาร การจ่ายเงิน สถานะ (แบบมีขั้นตอน).",
+      "vehicle": "ยานพาหนะ",
+      "documents": "เอกสาร",
+      "payout": "การจ่ายเงิน",
+      "finalizeNow": "ทำให้เสร็จตอนนี้"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

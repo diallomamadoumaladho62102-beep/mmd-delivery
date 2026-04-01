@@ -1,32 +1,25 @@
 // apps/web/src/lib/supabaseServer.ts
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
-export const supabaseServer = () => {
-  const cookieStore = cookies();
+type CookieToSet = { name: string; value: string; options?: CookieOptions };
+
+export const supabaseServer = async () => {
+  // ✅ Next 16: cookies() est async
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // ✅ @supabase/ssr v0.7.x: utilise l’API "new" (CookieMethodsServer)
       cookies: {
-        // New API
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options?: CookieOptions) {
-          // Next's cookies().set accepts an object
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options?: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options });
-        },
-
-        // Back-compat (some ssr internals still expect these)
         getAll() {
-          return cookieStore.getAll().map((c) => ({ name: c.name, value: c.value }));
+          return cookieStore
+            .getAll()
+            .map((c) => ({ name: c.name, value: c.value }));
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
+        setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set({ name, value, ...options });
           });
@@ -35,5 +28,3 @@ export const supabaseServer = () => {
     }
   );
 };
-
-

@@ -9,37 +9,29 @@ export default function RestaurantPayout({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     (async () => {
-      const { data: order } = await supabase
-        .from("orders")
-        .select("subtotal, currency")
-        .eq("id", orderId)
-        .maybeSingle();
-
       const { data: comm } = await supabase
         .from("order_commissions")
-        .select("restaurant_fee")
+        .select("restaurant_amount, currency")
         .eq("order_id", orderId)
         .maybeSingle();
 
-      if (order && comm) {
-        const subtotal = Number(order.subtotal ?? 0);
-        const fee = Number((comm as any).restaurant_fee ?? 0);
-        const net = Math.round((subtotal - fee) * 100) / 100;
-        setRow({ net, currency: order.currency || "USD" });
+      if (comm) {
+        const net = Number((comm as any).restaurant_amount ?? 0);
+        setRow({ net, currency: (comm as any).currency || "USD" });
       } else {
-        setRow({ net: 0, currency: order?.currency || "USD" });
+        setRow({ net: 0, currency: "USD" });
       }
     })();
   }, [orderId]);
 
   if (!row) return null;
-  const fmt = (n:number,c="USD") => new Intl.NumberFormat(undefined,{style:"currency",currency:c}).format(n);
+  const fmt = (n: number, c = "USD") =>
+    new Intl.NumberFormat(undefined, { style: "currency", currency: c }).format(n);
 
   return (
     <div className="rounded-2xl p-4 border shadow-sm">
-      <div className="text-xs text-gray-500">Net restaurant (subtotal − 15%)</div>
+      <div className="text-xs text-gray-500">Net restaurant</div>
       <div className="text-xl font-semibold">{fmt(row.net, row.currency)}</div>
     </div>
   );
 }
-

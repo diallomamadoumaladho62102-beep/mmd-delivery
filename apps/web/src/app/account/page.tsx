@@ -355,6 +355,22 @@ export default function AccountPage() {
           </div>
         )}
 
+        {/* Bloc actions client : créer une nouvelle commande */}
+        {profile.role === "client" && (
+          <div className="border rounded-xl p-4 space-y-3">
+            <h2 className="text-sm font-semibold">Tes actions</h2>
+            <p className="text-xs text-gray-600">
+              Depuis cette page, tu peux créer une nouvelle commande de livraison.
+            </p>
+            <button
+              onClick={() => router.push("/orders/new")}
+              className="w-full px-3 py-2 rounded bg-black text-white text-sm"
+            >
+              Créer une nouvelle commande
+            </button>
+          </div>
+        )}
+
         {err && <div className="text-red-600 text-xs text-center">{err}</div>}
 
         <p className="text-[11px] text-gray-500 text-center">

@@ -1,31 +1,84 @@
-'use client';
-import { useState } from 'react';
+"use client";
+
+import { useState } from "react";
 
 export default function Checkout() {
   const [loading, setLoading] = useState(false);
+  const [orderId, setOrderId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
   const pay = async () => {
     setLoading(true);
-    const res = await fetch('/api/orders/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        lineItems: [{ price_data: { currency: 'usd', product_data: { name: 'Plat Démo' }, unit_amount: 1500 }, quantity: 1 }],
-        successUrl: window.location.origin + '/?success=1',
-        cancelUrl: window.location.origin + '/checkout?canceled=1'
-      })
-    });
-    const data = await res.json();
-    if (data.url) window.location.href = data.url;
-    setLoading(false);
+    setError(null);
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("sb-access-token")
+          : null;
+
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch("/api/stripe/client/checkout", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ order_id: orderId }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Checkout failed");
+      }
+
+      if (!data?.url) {
+        throw new Error("Checkout URL missing");
+      }
+
+      window.location.href = data.url;
+    } catch (e: any) {
+      setError(e?.message || "Error");
+      setLoading(false);
+    }
   };
+
   return (
-    <main>
-      <h2 className="text-xl font-semibold mb-4">Paiement démo</h2>
-      <button onClick={pay} className="px-4 py-2 bg-green-600 text-white rounded" disabled={loading}>
-        {loading ? 'Redirection…' : 'Payer $15.00'}
+    <main style={{ padding: 24, maxWidth: 500 }}>
+      <h2>Paiement test</h2>
+
+      <input
+        value={orderId}
+        onChange={(e) => setOrderId(e.target.value)}
+        placeholder="Order ID"
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 8,
+          border: "1px solid #ddd",
+          marginBottom: 12,
+        }}
+      />
+
+      <button
+        onClick={pay}
+        disabled={loading || !orderId}
+        style={{
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid #ddd",
+          cursor: "pointer",
+        }}
+      >
+        {loading ? "Redirection..." : "Payer"}
       </button>
+
+      {error && (
+        <div style={{ marginTop: 8, color: "crimson" }}>{error}</div>
+      )}
     </main>
   );
 }
-
-

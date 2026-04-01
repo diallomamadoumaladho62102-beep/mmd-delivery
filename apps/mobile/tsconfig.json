@@ -1,8 +1,17 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "noEmit": true
   },
-  "include": ["**/*.ts","**/*.tsx"]
+  "include": ["src", "App.tsx", "index.js"],
+  "exclude": [
+    "node_modules",
+    "**/*.OLD.tsx",
+    "**/*.backup.tsx",
+    "**/__backup_chatfix_*",
+    "**/__backup_*"
+  ]
 }

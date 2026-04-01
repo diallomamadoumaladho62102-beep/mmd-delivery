@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { computeDriverPay } from "@/lib/deliveryPricing";
@@ -23,7 +23,7 @@ type OrderRow = {
   distance_miles: number | null;
   eta_minutes: number | null;
   currency: string | null;
-  delivery_fee: number | null; // 👈 montant livraison utilisé pour calculer 80 % chauffeur
+  delivery_fee: number | null;
 };
 
 type MemberRow = {
@@ -54,12 +54,23 @@ function driverStatusLabel(s: OrderStatus): string {
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    return d.toLocaleString();
+    return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
 }
+
+const ORDER_SELECT = `
+  id,
+  status,
+  created_at,
+  pickup_address,
+  dropoff_address,
+  distance_miles,
+  eta_minutes,
+  currency,
+  delivery_fee
+`;
 
 export default function DriverOrderPage() {
   const params = useParams();
@@ -72,29 +83,26 @@ export default function DriverOrderPage() {
 
   const [code, setCode] = useState("");
   const [phase, setPhase] = useState<"pickup" | "dropoff" | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadOrder = useCallback(async () => {
     if (!orderId) return;
 
-    async function load() {
-      setLoading(true);
-      setErr(null);
+    setLoading(true);
+    setErr(null);
 
-      // 1) utilisateur connecté
-      const { data: userData, error: userError } =
-        await supabase.auth.getUser();
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+
       if (userError || !userData.user) {
-        setErr(
-          "Tu dois être connecté en tant que chauffeur pour voir cette page."
-        );
-        setLoading(false);
+        setErr("Tu dois être connecté en tant que chauffeur pour voir cette page.");
         return;
       }
+
       const uid = userData.user.id;
 
-      // 2) vérifier que ce user est bien driver sur la commande
       const { data: memberRow, error: memberError } = await supabase
         .from("order_members")
         .select("role")
@@ -103,143 +111,163 @@ export default function DriverOrderPage() {
         .maybeSingle();
 
       if (memberError) {
-        console.error(memberError);
+        console.error("order_members read error", memberError);
         setErr("Erreur lors de la vérification de ton rôle sur la commande.");
-        setLoading(false);
         return;
       }
 
       if (!memberRow || (memberRow as MemberRow).role !== "driver") {
-        setErr(
-          "Cette page est réservée au chauffeur assigné sur cette commande."
-        );
-        setLoading(false);
+        setErr("Cette page est réservée au chauffeur assigné sur cette commande.");
         return;
       }
 
-      // 3) charger les infos de la commande (vue chauffeur)
       const { data: orderRow, error: orderError } = await supabase
         .from("orders")
-        .select(
-          `
-          id,
-          status,
-          created_at,
-          pickup_address,
-          dropoff_address,
-          distance_miles,
-          eta_minutes,
-          currency,
-          delivery_fee
-        `
-        )
+        .select(ORDER_SELECT)
         .eq("id", orderId)
         .maybeSingle();
 
       if (orderError) {
-        console.error(orderError);
+        console.error("orders read error", orderError);
         setErr(orderError.message);
-        setLoading(false);
         return;
       }
 
       if (!orderRow) {
         setErr("Commande introuvable.");
-        setLoading(false);
         return;
       }
 
       setOrder(orderRow as OrderRow);
+    } catch (e: any) {
+      console.error("loadOrder unexpected error", e);
+      setErr(e?.message ?? "Impossible de charger la commande.");
+    } finally {
       setLoading(false);
     }
-
-    load();
   }, [orderId]);
 
+  useEffect(() => {
+    void loadOrder();
+  }, [loadOrder]);
+
   async function handleVerifyCode() {
-    if (!order || !phase) return;
+    if (!order || !phase || submitting) return;
+
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (!code.trim()) {
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
       setErrorMsg("Merci de saisir le code.");
       return;
     }
 
-    // 👇 on mappe bien la phase vers p_code_type
-    const codeType = phase === "pickup" ? "pickup" : "dropoff";
+    setSubmitting(true);
 
-    // 1️⃣ Vérifier le code via la fonction SQL
-    const { data, error } = await supabase.rpc("verify_order_code", {
-      p_order_id: order.id,
-      p_input_code: code.trim(),
-      p_code_type: codeType,
-    });
+    try {
+      const codeType = phase === "pickup" ? "pickup" : "dropoff";
 
-    if (error) {
-      console.error("verify_order_code error (driver web)", error);
+      const { data, error } = await supabase.rpc("verify_order_code", {
+        p_order_id: order.id,
+        p_input_code: trimmedCode,
+        p_code_type: codeType,
+      });
+
+      if (error) {
+        console.error("verify_order_code error (driver web)", error);
+        setErrorMsg(
+          error.message || "Erreur serveur pendant la vérification du code."
+        );
+        return;
+      }
+
+      const anyData = data as any;
+
+      if (!anyData || anyData.success !== true) {
+        const msg =
+          anyData?.message ?? "Code incorrect ou non défini pour cette commande.";
+        setErrorMsg(msg);
+        return;
+      }
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError) {
+        console.error("getSession error", sessionError);
+        setErrorMsg(
+          sessionError.message || "Impossible de récupérer la session."
+        );
+        return;
+      }
+
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        setErrorMsg("Token de session manquant.");
+        return;
+      }
+
+      const endpoint =
+        phase === "pickup"
+          ? "/api/orders/pickup-confirm"
+          : "/api/orders/delivered-confirm";
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ order_id: order.id }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        console.error("confirm route error", result);
+        setErrorMsg(
+          result?.error ||
+            `Échec de la confirmation ${
+              phase === "pickup" ? "pickup" : "delivery"
+            }.`
+        );
+        return;
+      }
+
+      const { data: refreshedOrder, error: refreshError } = await supabase
+        .from("orders")
+        .select(ORDER_SELECT)
+        .eq("id", order.id)
+        .maybeSingle();
+
+      if (refreshError || !refreshedOrder) {
+        console.error("refresh order error", refreshError);
+        setErrorMsg(
+          refreshError?.message ||
+            "Confirmation réussie, mais impossible de recharger la commande."
+        );
+        return;
+      }
+
+      setOrder(refreshedOrder as OrderRow);
+      setCode("");
+      setPhase(null);
+
+      const successText =
+        phase === "pickup"
+          ? "Code de ramassage validé. Pickup confirmé avec succès."
+          : "Code de livraison validé. Livraison confirmée avec succès.";
+
+      setSuccessMsg(successText);
+    } catch (e: any) {
+      console.error("handleVerifyCode unexpected error", e);
       setErrorMsg(
-        error.message || "Erreur serveur pendant la vérification du code."
+        e?.message || "Une erreur inattendue est survenue pendant la confirmation."
       );
-      return;
+    } finally {
+      setSubmitting(false);
     }
-
-    console.log("verify_order_code data (driver web)", data);
-
-    const anyData = data as any;
-
-    if (!anyData || anyData.success !== true) {
-      const msg =
-        anyData?.message ??
-        "Code incorrect ou non défini pour cette commande.";
-      setErrorMsg(msg);
-      return;
-    }
-
-    // 2️⃣ Code OK → on met à jour le statut dans la table orders
-    const nextStatus: OrderStatus =
-      phase === "pickup" ? "dispatched" : "delivered";
-
-    const { data: updatedOrder, error: updateError } = await supabase
-      .from("orders")
-      .update({ status: nextStatus })
-      .eq("id", order.id)
-      .select(
-        `
-        id,
-        status,
-        created_at,
-        pickup_address,
-        dropoff_address,
-        distance_miles,
-        eta_minutes,
-        currency,
-        delivery_fee
-      `
-      )
-      .maybeSingle();
-
-    if (updateError || !updatedOrder) {
-      console.error("update status after verify_code error", updateError);
-      setErrorMsg(
-        updateError?.message ||
-          "Code valide, mais échec de la mise à jour du statut."
-      );
-      return;
-    }
-
-    // 3️⃣ Met à jour le state + message succès
-    setOrder(updatedOrder as OrderRow);
-    setCode("");
-    setPhase(null);
-
-    const successText =
-      anyData.message ||
-      (phase === "pickup"
-        ? "Code de ramassage validé. La commande passe en livraison."
-        : "Code de livraison validé. La commande est livrée.");
-
-    setSuccessMsg(successText);
   }
 
   if (loading) {
@@ -282,27 +310,23 @@ export default function DriverOrderPage() {
 
   const shortId = order.id.slice(0, 8);
   const distanceLabel =
-    order.distance_miles != null
-      ? `${order.distance_miles.toFixed(1)} mi`
-      : "—";
-
+    order.distance_miles != null ? `${order.distance_miles.toFixed(1)} mi` : "—";
   const etaLabel =
     order.eta_minutes != null ? `${Math.round(order.eta_minutes)} min` : "—";
 
-  // 💰 Calcul unifié de la part chauffeur : 80 % du delivery_fee
   const currency = order.currency || "USD";
   const driverPay =
     order.delivery_fee != null ? computeDriverPay(order.delivery_fee) : null;
 
-  const canPickup = order.status === "ready"; // commande prête au restaurant
-  const canDropoff = order.status === "dispatched"; // en cours de livraison
+  const canPickup = order.status === "ready";
+  const canDropoff = order.status === "dispatched";
 
   const phaseHelpText =
     phase === "pickup"
       ? "Demande au restaurant de te montrer le code ou le QR de ramassage, puis tape-le exactement ici."
       : phase === "dropoff"
-      ? "Demande au client de te montrer le code ou le QR de livraison, puis tape-le exactement ici."
-      : "";
+        ? "Demande au client de te montrer le code ou le QR de livraison, puis tape-le exactement ici."
+        : "";
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
@@ -314,7 +338,6 @@ export default function DriverOrderPage() {
         ← Retour au tableau de bord chauffeur
       </button>
 
-      {/* HEADER */}
       <header className="space-y-1">
         <h1 className="text-xl font-bold">Course — commande #{shortId}</h1>
         <p className="text-sm text-gray-600">
@@ -326,7 +349,6 @@ export default function DriverOrderPage() {
         </div>
       </header>
 
-      {/* ADRESSES */}
       <section className="border rounded-xl bg-white p-4 space-y-3">
         <h2 className="text-sm font-semibold text-gray-800">
           Adresses de la course
@@ -351,7 +373,6 @@ export default function DriverOrderPage() {
         </div>
       </section>
 
-      {/* INFOS COURSE */}
       <section className="border rounded-xl bg-white p-4 space-y-2 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">Course</h2>
         <p>
@@ -365,7 +386,6 @@ export default function DriverOrderPage() {
         </p>
       </section>
 
-      {/* PART CHAUFFEUR */}
       <section className="border rounded-xl bg-white p-4 space-y-2 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">
           Ta rémunération chauffeur (estimation)
@@ -380,26 +400,26 @@ export default function DriverOrderPage() {
           </p>
         ) : (
           <p className="text-sm text-gray-700">
-            Le montant de la livraison n&apos;est pas encore renseigné pour
-            cette course. Ta rémunération estimée apparaîtra ici dès que cette
+            Le montant de la livraison n&apos;est pas encore renseigné pour cette
+            course. Ta rémunération estimée apparaîtra ici dès que cette
             information sera disponible.
           </p>
         )}
 
         <p className="text-xs text-gray-500">
-          Estimation basée sur la formule officielle MMD Delivery : 80 % du
-          prix de la livraison pour le chauffeur et 20 % pour la plateforme.
+          Estimation basée sur la formule officielle MMD Delivery : 80 % du prix
+          de la livraison pour le chauffeur et 20 % pour la plateforme.
         </p>
       </section>
 
-      {/* ACTIONS DRIVER + CODE */}
       <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">
           Actions chauffeur (code de ramassage / livraison)
         </h2>
 
         <button
-          disabled={!canPickup}
+          type="button"
+          disabled={!canPickup || submitting}
           onClick={() => {
             setPhase("pickup");
             setErrorMsg(null);
@@ -407,7 +427,7 @@ export default function DriverOrderPage() {
             setCode("");
           }}
           className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
-            canPickup
+            canPickup && !submitting
               ? "bg-blue-600 text-white hover:bg-blue-700"
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
@@ -416,7 +436,8 @@ export default function DriverOrderPage() {
         </button>
 
         <button
-          disabled={!canDropoff}
+          type="button"
+          disabled={!canDropoff || submitting}
           onClick={() => {
             setPhase("dropoff");
             setErrorMsg(null);
@@ -424,7 +445,7 @@ export default function DriverOrderPage() {
             setCode("");
           }}
           className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
-            canDropoff
+            canDropoff && !submitting
               ? "bg-green-600 text-white hover:bg-green-700"
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
@@ -443,14 +464,21 @@ export default function DriverOrderPage() {
               maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              disabled={submitting}
               className="w-full rounded-md border px-3 py-2 text-lg tracking-[0.3em]"
               placeholder="••••••"
             />
             <button
+              type="button"
               onClick={handleVerifyCode}
-              className="w-full rounded-md bg-black text-white px-3 py-2 text-xs font-medium hover:bg-gray-800"
+              disabled={submitting}
+              className={`w-full rounded-md px-3 py-2 text-xs font-medium ${
+                submitting
+                  ? "bg-gray-400 text-white cursor-not-allowed"
+                  : "bg-black text-white hover:bg-gray-800"
+              }`}
             >
-              Valider le code
+              {submitting ? "Validation..." : "Valider le code"}
             </button>
           </div>
         )}
@@ -465,7 +493,6 @@ export default function DriverOrderPage() {
         )}
       </section>
 
-      {/* CHAT */}
       <div className="flex flex-wrap gap-3 pt-2">
         <button
           type="button"

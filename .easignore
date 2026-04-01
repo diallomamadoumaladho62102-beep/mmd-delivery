@@ -1,0 +1,6 @@
+.tools
+.tools_backup
+backup
+.git
+.expo
+node_modules

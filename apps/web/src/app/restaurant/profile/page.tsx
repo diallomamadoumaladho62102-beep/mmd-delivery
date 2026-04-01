@@ -829,7 +829,7 @@ export default function RestaurantProfilePage() {
           <input
             type="file"
             accept="image/*,application/pdf"
-            onChange={(e: ChangeEvent<HTMLInputInputElement>) =>
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
               setOtherFile(e.target.files?.[0] ?? null)
             }
           />

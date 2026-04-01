@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type User = {
@@ -12,34 +13,53 @@ type User = {
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       const { data, error } = await supabase.auth.getUser();
-      if (!cancelled) {
-        if (!error && data?.user) {
-          setUser({
-            id: data.user.id,
-            email: data.user.email ?? undefined,
-          });
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
+
+      if (cancelled) return;
+
+      if (!error && data?.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email ?? undefined,
+        });
+      } else {
+        setUser(null);
       }
+
+      setLoading(false);
     }
 
     load();
+
+    // 🔥 écoute les changements de session (important)
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      if (!session?.user) {
+        setUser(null);
+      } else {
+        setUser({
+          id: session.user.id,
+          email: session.user.email ?? undefined,
+        });
+      }
+    });
+
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
   async function logout() {
     await supabase.auth.signOut();
-    window.location.href = "/";
+
+    // ✅ redirection propre (pas de flash, pas de reload)
+    router.replace("/signup");
   }
 
   return (

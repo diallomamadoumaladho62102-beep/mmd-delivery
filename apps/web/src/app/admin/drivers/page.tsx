@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseBrowser";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseBrowser";
+import { canReviewDrivers } from "@/lib/adminAccess";
 
-type VehicleType = "bike" | "ebike" | "scooter" | "motorbike" | "car" | "other";
+type VehicleType =
+  | "bike"
+  | "ebike"
+  | "scooter"
+  | "motorbike"
+  | "car"
+  | "other";
+
 type DocType = "profile_photo" | "driver_license" | "id_card";
 type DocStatus = "pending" | "approved" | "rejected";
+
+type ReviewDriverRole = Parameters<typeof canReviewDrivers>[0];
 
 type DriverProfileRow = {
   user_id: string;
@@ -50,465 +60,729 @@ type DriverAdminRow = {
   documents: DriverDocumentRow[];
 };
 
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+};
+
+type AdminRoleRow = {
+  id: string;
+  role: string | null;
+};
+
+type ReviewDriverApiResponse = {
+  ok: boolean;
+  userId?: string;
+  status?: "approved" | "rejected";
+  reviewedAt?: string;
+  reviewNotes?: string | null;
+  message?: string;
+  error?: string;
+};
+
+function isReviewDriverRole(value: string | null): value is ReviewDriverRole {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function isImagePath(path: string): boolean {
   return /\.(png|jpe?g|webp|gif)$/i.test(path);
 }
 
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function getTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function sortDocuments(documents: DriverDocumentRow[]): DriverDocumentRow[] {
+  return [...documents].sort(
+    (a, b) => getTimestamp(b.created_at) - getTimestamp(a.created_at)
+  );
+}
+
+function labelForDocType(docType: DocType): string {
+  switch (docType) {
+    case "profile_photo":
+      return "Photo de profil";
+    case "driver_license":
+      return "Permis";
+    case "id_card":
+      return "ID / Passeport";
+    default:
+      return docType;
+  }
+}
+
+function badgeClassForStatus(status: DocStatus): string {
+  switch (status) {
+    case "approved":
+      return "border-green-200 bg-green-100 text-green-800";
+    case "rejected":
+      return "border-red-200 bg-red-100 text-red-800";
+    case "pending":
+    default:
+      return "border-yellow-200 bg-yellow-100 text-yellow-800";
+  }
+}
+
+function getGlobalStatus(documents: DriverDocumentRow[]): DocStatus {
+  if (!documents.length) return "pending";
+  if (documents.some((d) => d.status === "rejected")) return "rejected";
+  if (documents.every((d) => d.status === "approved")) return "approved";
+  return "pending";
+}
+
+function statusLabel(status: DocStatus): string {
+  switch (status) {
+    case "approved":
+      return "Approuvé";
+    case "rejected":
+      return "Refusé";
+    case "pending":
+    default:
+      return "En attente";
+  }
+}
+
+function getLatestReviewNote(documents: DriverDocumentRow[]): string {
+  const withNotes = documents
+    .filter((d) => (d.review_notes?.trim() ?? "").length > 0)
+    .sort((a, b) => {
+      const aTime = getTimestamp(a.reviewed_at ?? a.created_at);
+      const bTime = getTimestamp(b.reviewed_at ?? b.created_at);
+      return bTime - aTime;
+    });
+
+  return withNotes[0]?.review_notes?.trim() ?? "";
+}
+
+async function buildSignedDocument(
+  row: Omit<DriverDocumentRow, "_signedUrl" | "_isImage">
+): Promise<DriverDocumentRow> {
+  const doc: DriverDocumentRow = {
+    ...row,
+    _signedUrl: null,
+    _isImage: isImagePath(row.file_path),
+  };
+
+  if (!row.file_path) {
+    return doc;
+  }
+
+  const { data, error } = await supabase.storage
+    .from("driver-docs")
+    .createSignedUrl(row.file_path, 60 * 60);
+
+  if (!error && data?.signedUrl) {
+    doc._signedUrl = data.signedUrl;
+  }
+
+  return doc;
+}
+
 export default function AdminDriversPage() {
   const router = useRouter();
-  const [adminId, setAdminId] = useState<string | null>(null);
+
   const [rows, setRows] = useState<DriverAdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadPage = useCallback(
+    async (cancelledRef?: { cancelled: boolean }) => {
+      try {
+        setLoading(true);
+        setErr(null);
+        setOk(null);
 
-    async function load() {
-      setLoading(true);
-      setErr(null);
-      setOk(null);
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      // 🔹 Vérifier utilisateur + rôle admin
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) {
-        if (!cancelled) setErr(userError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (!user) {
-        if (!cancelled) {
-          setErr("Tu dois te connecter en admin.");
-          router.push("/auth/login");
+        if (userError) {
+          throw new Error(userError.message);
         }
-        setLoading(false);
-        return;
-      }
 
-      const adminUid = user.id;
-      setAdminId(adminUid);
-
-      const { data: me, error: meError } = await supabase
-        .from("profiles")
-        .select("id, role")
-        .eq("id", adminUid)
-        .maybeSingle();
-
-      if (meError) {
-        if (!cancelled) setErr(meError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (!me || me.role !== "admin") {
-        if (!cancelled) {
-          setErr("Accès réservé aux administrateurs.");
+        if (!user) {
+          if (!cancelledRef?.cancelled) {
+            setAuthChecked(true);
+            setIsAdmin(false);
+            setErr("Tu dois te connecter en admin.");
+            router.push("/auth/login");
+          }
+          return;
         }
-        setLoading(false);
-        return;
-      }
 
-      // 🔹 Charger les profils chauffeur
-      const { data: driverProfiles, error: dpError } = await supabase
-        .from("driver_profiles")
-        .select(
-          "user_id, phone, date_of_birth, address, vehicle_type, vehicle_brand, vehicle_model, vehicle_year, vehicle_color, plate_number"
-        )
-        .order("created_at", { ascending: false });
+        const { data: me, error: meError } = await supabase
+          .from("profiles")
+          .select("id, role")
+          .eq("id", user.id)
+          .maybeSingle<AdminRoleRow>();
 
-      if (dpError) {
-        if (!cancelled) setErr(dpError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (!driverProfiles || driverProfiles.length === 0) {
-        if (!cancelled) {
-          setRows([]);
-          setLoading(false);
+        if (meError) {
+          throw new Error(meError.message);
         }
-        return;
-      }
 
-      const userIds = driverProfiles.map((d) => d.user_id);
+        if (!me || !isReviewDriverRole(me.role) || !canReviewDrivers(me.role)) {
+          if (!cancelledRef?.cancelled) {
+            setAuthChecked(true);
+            setIsAdmin(false);
+            setErr("Accès réservé aux administrateurs.");
+          }
+          return;
+        }
 
-      // 🔹 Charger noms / emails
-      const { data: profilesRows, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", userIds);
+        if (!cancelledRef?.cancelled) {
+          setAuthChecked(true);
+          setIsAdmin(true);
+        }
 
-      if (profilesError) {
-        if (!cancelled) setErr(profilesError.message);
-        setLoading(false);
-        return;
-      }
+        const { data: driverProfiles, error: dpError } = await supabase
+          .from("driver_profiles")
+          .select(
+            "user_id, phone, date_of_birth, address, vehicle_type, vehicle_brand, vehicle_model, vehicle_year, vehicle_color, plate_number"
+          )
+          .order("created_at", { ascending: false });
 
-      const profileById = new Map<
-        string,
-        { full_name: string | null; email: string | null }
-      >();
-      profilesRows?.forEach((p: any) => {
-        profileById.set(p.id, {
-          full_name: p.full_name ?? null,
-          email: p.email ?? null,
+        if (dpError) {
+          throw new Error(dpError.message);
+        }
+
+        const typedDriverProfiles = (driverProfiles ?? []) as DriverProfileRow[];
+
+        if (typedDriverProfiles.length === 0) {
+          if (!cancelledRef?.cancelled) {
+            setRows([]);
+            setNoteDrafts({});
+          }
+          return;
+        }
+
+        const userIds = typedDriverProfiles.map((d) => d.user_id);
+
+        const { data: profilesRows, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .in("id", userIds);
+
+        if (profilesError) {
+          throw new Error(profilesError.message);
+        }
+
+        const profileById = new Map<
+          string,
+          { full_name: string | null; email: string | null }
+        >();
+
+        ((profilesRows ?? []) as ProfileRow[]).forEach((p) => {
+          profileById.set(p.id, {
+            full_name: p.full_name ?? null,
+            email: p.email ?? null,
+          });
         });
-      });
 
-      // 🔹 Charger les documents
-      const { data: docsRowsRaw, error: docsError } = await supabase
-        .from("driver_documents")
-        .select(
-          "id, user_id, doc_type, status, file_path, created_at, reviewed_at, review_notes"
-        )
-        .in("user_id", userIds);
+        const { data: docsRowsRaw, error: docsError } = await supabase
+          .from("driver_documents")
+          .select(
+            "id, user_id, doc_type, status, file_path, created_at, reviewed_at, review_notes"
+          )
+          .in("user_id", userIds);
 
-      if (docsError) {
-        if (!cancelled) setErr(docsError.message);
-        setLoading(false);
-        return;
-      }
+        if (docsError) {
+          throw new Error(docsError.message);
+        }
 
-      // 🔹 Générer URL signée pour les images (photo, permis, ID)
-      const docsRows: DriverDocumentRow[] = await Promise.all(
-        (docsRowsRaw || []).map(async (row: any) => {
-          const doc: DriverDocumentRow = {
-            id: row.id,
-            user_id: row.user_id,
-            doc_type: row.doc_type,
-            status: row.status,
-            file_path: row.file_path,
-            created_at: row.created_at,
-            reviewed_at: row.reviewed_at,
-            review_notes: row.review_notes,
+        const docsRows = await Promise.all(
+          ((docsRowsRaw ?? []) as Omit<
+            DriverDocumentRow,
+            "_signedUrl" | "_isImage"
+          >[]).map((row) => buildSignedDocument(row))
+        );
+
+        const docsByUser = new Map<string, DriverDocumentRow[]>();
+
+        docsRows.forEach((row) => {
+          const existing = docsByUser.get(row.user_id) ?? [];
+          existing.push(row);
+          docsByUser.set(row.user_id, existing);
+        });
+
+        const merged: DriverAdminRow[] = typedDriverProfiles.map((d) => {
+          const profileInfo = profileById.get(d.user_id) ?? {
+            full_name: null,
+            email: null,
           };
 
-          const isImg = isImagePath(doc.file_path);
-          doc._isImage = isImg;
+          return {
+            user_id: d.user_id,
+            full_name: profileInfo.full_name,
+            email: profileInfo.email,
+            phone: d.phone,
+            date_of_birth: d.date_of_birth,
+            address: d.address,
+            vehicle_type: d.vehicle_type,
+            vehicle_brand: d.vehicle_brand,
+            vehicle_model: d.vehicle_model,
+            vehicle_year: d.vehicle_year,
+            vehicle_color: d.vehicle_color,
+            plate_number: d.plate_number,
+            documents: sortDocuments(docsByUser.get(d.user_id) ?? []),
+          };
+        });
 
-          if (isImg) {
-            const { data, error } = await supabase.storage
-              .from("driver-docs")
-              .createSignedUrl(doc.file_path, 60 * 60); // 1h
+        if (!cancelledRef?.cancelled) {
+          setRows(merged);
 
-            if (!error && data?.signedUrl) {
-              doc._signedUrl = data.signedUrl;
-            }
-          }
-
-          return doc;
-        })
-      );
-
-      const docsByUser = new Map<string, DriverDocumentRow[]>();
-      docsRows.forEach((row) => {
-        if (!docsByUser.has(row.user_id)) {
-          docsByUser.set(row.user_id, []);
+          const initialDrafts: Record<string, string> = {};
+          merged.forEach((row) => {
+            initialDrafts[row.user_id] = getLatestReviewNote(row.documents);
+          });
+          setNoteDrafts(initialDrafts);
         }
-        docsByUser.get(row.user_id)!.push(row);
-      });
-
-      const merged: DriverAdminRow[] = driverProfiles.map((d: any) => {
-        const profileInfo = profileById.get(d.user_id) ?? {
-          full_name: null,
-          email: null,
-        };
-        return {
-          user_id: d.user_id,
-          full_name: profileInfo.full_name,
-          email: profileInfo.email,
-          phone: d.phone,
-          date_of_birth: d.date_of_birth,
-          address: d.address,
-          vehicle_type: d.vehicle_type,
-          vehicle_brand: d.vehicle_brand,
-          vehicle_model: d.vehicle_model,
-          vehicle_year: d.vehicle_year,
-          vehicle_color: d.vehicle_color,
-          plate_number: d.plate_number,
-          documents: docsByUser.get(d.user_id) ?? [],
-        };
-      });
-
-      if (!cancelled) {
-        setRows(merged);
-        setLoading(false);
+      } catch (e: unknown) {
+        if (!cancelledRef?.cancelled) {
+          const message =
+            e instanceof Error ? e.message : "Erreur lors du chargement";
+          setErr(message);
+        }
+      } finally {
+        if (!cancelledRef?.cancelled) {
+          setLoading(false);
+        }
       }
-    }
+    },
+    [router]
+  );
 
-    load();
+  useEffect(() => {
+    const cancelledRef = { cancelled: false };
+    void loadPage(cancelledRef);
 
     return () => {
-      cancelled = true;
+      cancelledRef.cancelled = true;
     };
-  }, [router]);
+  }, [loadPage]);
 
   async function updateDriverStatus(
     targetUserId: string,
-    newStatus: DocStatus
+    newStatus: Extract<DocStatus, "approved" | "rejected">
   ) {
-    if (!adminId) return;
     setUpdatingUserId(targetUserId);
     setErr(null);
     setOk(null);
 
     try {
-      const { error } = await supabase
-        .from("driver_documents")
-        .update({
-          status: newStatus,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: adminId,
-        })
-        .eq("user_id", targetUserId);
+      const reviewNotes = (noteDrafts[targetUserId] ?? "").trim();
 
-      if (error) {
-        setErr(error.message);
-        setUpdatingUserId(null);
-        return;
+      const response = await fetch("/api/admin/drivers/review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: targetUserId,
+          status: newStatus,
+          reviewNotes,
+        }),
+      });
+
+      const json = (await response.json()) as ReviewDriverApiResponse;
+
+      if (!response.ok || !json.ok) {
+        throw new Error(
+          json.error || "Erreur lors de la mise à jour du chauffeur"
+        );
       }
 
+      const reviewedAt = json.reviewedAt ?? new Date().toISOString();
+      const returnedReviewNotes =
+        typeof json.reviewNotes === "string" ? json.reviewNotes : reviewNotes;
+      const normalizedReviewNotes =
+        returnedReviewNotes.trim().length > 0
+          ? returnedReviewNotes.trim()
+          : null;
+
       setOk(
-        newStatus === "approved"
-          ? "Chauffeur approuvé ✅"
-          : "Chauffeur refusé ❌"
+        json.message ||
+          (newStatus === "approved"
+            ? "Chauffeur approuvé ✅"
+            : "Chauffeur refusé ❌")
       );
 
-      // Mettre à jour localement
       setRows((prev) =>
         prev.map((r) =>
           r.user_id === targetUserId
             ? {
                 ...r,
-                documents: r.documents.map((d) => ({
-                  ...d,
-                  status: newStatus,
-                  reviewed_at: new Date().toISOString(),
-                })),
+                documents: sortDocuments(
+                  r.documents.map((d) => ({
+                    ...d,
+                    status: newStatus,
+                    reviewed_at: reviewedAt,
+                    review_notes: normalizedReviewNotes,
+                  }))
+                ),
               }
             : r
         )
       );
-    } catch (e: any) {
-      setErr(e.message || "Erreur lors de la mise à jour");
+
+      setNoteDrafts((prev) => ({
+        ...prev,
+        [targetUserId]: normalizedReviewNotes ?? "",
+      }));
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Erreur lors de la mise à jour";
+      setErr(message);
     } finally {
       setUpdatingUserId(null);
     }
   }
 
-  function getGlobalStatus(documents: DriverDocumentRow[]): DocStatus {
-    if (!documents.length) return "pending";
-    if (documents.some((d) => d.status === "rejected")) return "rejected";
-    if (documents.every((d) => d.status === "approved")) return "approved";
-    return "pending";
-  }
+  const totalDrivers = rows.length;
 
-  if (loading) {
+  const approvedCount = useMemo(
+    () => rows.filter((r) => getGlobalStatus(r.documents) === "approved").length,
+    [rows]
+  );
+
+  const pendingCount = useMemo(
+    () => rows.filter((r) => getGlobalStatus(r.documents) === "pending").length,
+    [rows]
+  );
+
+  const rejectedCount = useMemo(
+    () => rows.filter((r) => getGlobalStatus(r.documents) === "rejected").length,
+    [rows]
+  );
+
+  if (loading || !authChecked) {
     return (
-      <div className="max-w-4xl mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Chauffeurs — Admin</h1>
-        <p>Chargement…</p>
-      </div>
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-6xl p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h1 className="mb-4 text-2xl font-bold">Chauffeurs — Admin</h1>
+            <p className="text-sm text-slate-600">Chargement…</p>
+          </div>
+        </div>
+      </main>
     );
   }
 
-  if (err && !rows.length) {
+  if ((!isAdmin || err) && !rows.length) {
     return (
-      <div className="max-w-4xl mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Chauffeurs — Admin</h1>
-        <p className="text-red-600 text-sm">{err}</p>
-      </div>
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-6xl p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h1 className="mb-4 text-2xl font-bold">Chauffeurs — Admin</h1>
+            <p className="text-sm text-red-600">{err}</p>
+          </div>
+        </div>
+      </main>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Chauffeurs — vérification admin</h1>
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-6xl space-y-6 p-6">
+        <header className="space-y-3">
+          <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+            MMD Delivery · Admin Drivers
+          </div>
 
-      {err && <p className="text-red-600 text-sm">{err}</p>}
-      {ok && <p className="text-green-600 text-sm">{ok}</p>}
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+            Chauffeurs — vérification admin
+          </h1>
 
-      {rows.length === 0 ? (
-        <p className="text-sm text-gray-600">
-          Aucun profil chauffeur enregistré pour le moment.
-        </p>
-      ) : (
-        <div className="space-y-4">
-          {rows.map((r) => {
-            const status = getGlobalStatus(r.documents);
-            const isPending = status === "pending";
-            const isApproved = status === "approved";
-            const isRejected = status === "rejected";
+          <p className="text-sm text-slate-600">
+            Vérifie les profils chauffeurs, leurs documents et approuve ou refuse
+            les candidatures.
+          </p>
+        </header>
 
-            return (
-              <div
-                key={r.user_id}
-                className="border rounded-lg p-4 space-y-3 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold">
-                      {r.full_name || "Nom inconnu"}
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      {r.email || "Email inconnu"}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      📞 {r.phone || "Téléphone inconnu"}
-                    </p>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="text-sm text-slate-500">Total chauffeurs</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900">
+              {totalDrivers}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
+            <div className="text-sm text-slate-500">Approuvés</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900">
+              {approvedCount}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
+            <div className="text-sm text-slate-500">En attente</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900">
+              {pendingCount}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+            <div className="text-sm text-slate-500">Refusés</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900">
+              {rejectedCount}
+            </div>
+          </div>
+        </section>
+
+        {err && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+            {err}
+          </div>
+        )}
+
+        {ok && (
+          <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 shadow-sm">
+            {ok}
+          </div>
+        )}
+
+        {rows.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm text-slate-600">
+              Aucun profil chauffeur enregistré pour le moment.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {rows.map((r) => {
+              const status = getGlobalStatus(r.documents);
+              const isApproved = status === "approved";
+              const isRejected = status === "rejected";
+              const reviewNote = noteDrafts[r.user_id] ?? "";
+
+              return (
+                <section
+                  key={r.user_id}
+                  className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-900">
+                        {r.full_name || "Nom inconnu"}
+                      </h2>
+                      <p className="text-sm text-slate-600">
+                        {r.email || "Email inconnu"}
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        📞 {r.phone || "Téléphone inconnu"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+                          isApproved
+                            ? "border-green-200 bg-green-100 text-green-800"
+                            : isRejected
+                            ? "border-red-200 bg-red-100 text-red-800"
+                            : "border-yellow-200 bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {statusLabel(status)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                        isApproved
-                          ? "bg-green-100 text-green-800"
-                          : isRejected
-                          ? "bg-red-100 text-red-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}
-                    >
-                      {isApproved
-                        ? "Approuvé"
-                        : isRejected
-                        ? "Refusé"
-                        : "En attente"}
-                    </span>
+
+                  <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <p>
+                        <span className="font-medium">Date de naissance : </span>
+                        {r.date_of_birth || "—"}
+                      </p>
+                      <p>
+                        <span className="font-medium">Adresse : </span>
+                        {r.address || "—"}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p>
+                        <span className="font-medium">Véhicule : </span>
+                        {r.vehicle_type.toUpperCase()}
+                        {r.vehicle_brand ? ` • ${r.vehicle_brand}` : ""}
+                        {r.vehicle_model ? ` • ${r.vehicle_model}` : ""}
+                      </p>
+                      <p>
+                        <span className="font-medium">Année / couleur : </span>
+                        {r.vehicle_year || "—"} / {r.vehicle_color || "—"}
+                      </p>
+                      <p>
+                        <span className="font-medium">Plaque : </span>
+                        {r.plate_number || "—"}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                  <div className="space-y-1">
-                    <p>
-                      <span className="font-medium">Date de naissance : </span>
-                      {r.date_of_birth || "—"}
-                    </p>
-                    <p>
-                      <span className="font-medium">Adresse : </span>
-                      {r.address || "—"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p>
-                      <span className="font-medium">Véhicule : </span>
-                      {r.vehicle_type.toUpperCase()}{" "}
-                      {r.vehicle_brand ? `• ${r.vehicle_brand}` : ""}{" "}
-                      {r.vehicle_model ? `• ${r.vehicle_model}` : ""}
-                    </p>
-                    <p>
-                      <span className="font-medium">Année / couleur : </span>
-                      {r.vehicle_year || "—"} / {r.vehicle_color || "—"}
-                    </p>
-                    <p>
-                      <span className="font-medium">Plaque : </span>
-                      {r.plate_number || "—"}
-                    </p>
-                  </div>
-                </div>
+                  <div className="space-y-3 border-t border-slate-200 pt-4 text-sm">
+                    <p className="font-semibold text-slate-900">Documents</p>
 
-                <div className="border-t pt-3 space-y-2 text-sm">
-                  <p className="font-semibold">Documents :</p>
-                  {r.documents.length === 0 ? (
-                    <p className="text-gray-600">
-                      Aucun document envoyé pour l’instant.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {r.documents.map((d) => (
-                        <li
-                          key={d.id}
-                          className="flex flex-col sm:flex-row sm:items-center gap-2"
-                        >
-                          <div className="w-32 text-xs font-medium">
-                            {d.doc_type === "profile_photo"
-                              ? "Photo de profil"
-                              : d.doc_type === "driver_license"
-                              ? "Permis"
-                              : "ID / Passeport"}
-                          </div>
-
-                          {d._isImage && d._signedUrl ? (
-                            <div className="flex items-center gap-2">
-                              <img
-                                src={d._signedUrl}
-                                alt={d.doc_type}
-                                className="w-20 h-20 object-cover rounded border"
-                              />
-                              <a
-                                href={d._signedUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-xs text-blue-600 underline"
-                              >
-                                Ouvrir
-                              </a>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-600 truncate max-w-xs">
-                                {d.file_path}
-                              </span>
-                              {d._signedUrl && (
-                                <a
-                                  href={d._signedUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-xs text-blue-600 underline"
-                                >
-                                  Ouvrir
-                                </a>
-                              )}
-                            </div>
-                          )}
-
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${
-                              d.status === "approved"
-                                ? "bg-green-100 text-green-800"
-                                : d.status === "rejected"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
+                    {r.documents.length === 0 ? (
+                      <p className="text-slate-600">
+                        Aucun document envoyé pour l’instant.
+                      </p>
+                    ) : (
+                      <ul className="space-y-3">
+                        {r.documents.map((d) => (
+                          <li
+                            key={d.id}
+                            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
                           >
-                            {d.status}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="space-y-2">
+                                <div className="text-xs font-semibold text-slate-700">
+                                  {labelForDocType(d.doc_type)}
+                                </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    disabled={updatingUserId === r.user_id}
-                    onClick={() => updateDriverStatus(r.user_id, "approved")}
-                    className="px-3 py-1 rounded text-sm bg-green-600 text-white disabled:opacity-60"
-                  >
-                    {updatingUserId === r.user_id
-                      ? "Validation…"
-                      : "Approuver"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={updatingUserId === r.user_id}
-                    onClick={() => updateDriverStatus(r.user_id, "rejected")}
-                    className="px-3 py-1 rounded text-sm bg-red-600 text-white disabled:opacity-60"
-                  >
-                    {updatingUserId === r.user_id ? "Traitement…" : "Refuser"}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+                                {d._isImage && d._signedUrl ? (
+                                  <div className="flex items-center gap-3">
+                                    <img
+                                      src={d._signedUrl}
+                                      alt={d.doc_type}
+                                      className="h-20 w-20 rounded border bg-white object-cover"
+                                    />
+                                    <div className="space-y-1">
+                                      <a
+                                        href={d._signedUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-xs text-blue-600 underline"
+                                      >
+                                        Ouvrir
+                                      </a>
+                                      <div className="text-xs text-slate-500">
+                                        Créé : {formatDate(d.created_at)}
+                                      </div>
+                                      <div className="text-xs text-slate-500">
+                                        Revu : {formatDate(d.reviewed_at)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <div className="max-w-xl truncate text-xs text-slate-600">
+                                      {d.file_path}
+                                    </div>
+
+                                    {d._signedUrl && (
+                                      <a
+                                        href={d._signedUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-xs text-blue-600 underline"
+                                      >
+                                        Ouvrir
+                                      </a>
+                                    )}
+
+                                    <div className="text-xs text-slate-500">
+                                      Créé : {formatDate(d.created_at)}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      Revu : {formatDate(d.reviewed_at)}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {d.review_notes ? (
+                                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                                    {d.review_notes}
+                                  </div>
+                                ) : null}
+                              </div>
+
+                              <span
+                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
+                                  d.status
+                                )}`}
+                              >
+                                {d.status}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 border-t border-slate-200 pt-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Note admin
+                      </label>
+                      <textarea
+                        value={reviewNote}
+                        onChange={(e) =>
+                          setNoteDrafts((prev) => ({
+                            ...prev,
+                            [r.user_id]: e.target.value,
+                          }))
+                        }
+                        rows={3}
+                        placeholder="Ajouter une note interne pour cette review..."
+                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <button
+                        type="button"
+                        disabled={updatingUserId === r.user_id}
+                        onClick={() =>
+                          void updateDriverStatus(r.user_id, "approved")
+                        }
+                        className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-60"
+                      >
+                        {updatingUserId === r.user_id
+                          ? "Validation…"
+                          : "Approuver"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={updatingUserId === r.user_id}
+                        onClick={() =>
+                          void updateDriverStatus(r.user_id, "rejected")
+                        }
+                        className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60"
+                      >
+                        {updatingUserId === r.user_id
+                          ? "Traitement…"
+                          : "Refuser"}
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }

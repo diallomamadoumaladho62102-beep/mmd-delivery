@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { OrderTimeline } from "@/components/orders/OrderTimeline";
+import { canAccessAdminDashboard } from "@/lib/adminAccess";
 
 type OrderStatus =
   | "pending"
@@ -39,27 +41,42 @@ type OrderRow = {
   delivery_fee: number | null;
   driver_delivery_payout: number | null;
   platform_delivery_fee: number | null;
-
-  // 👇 champs pour la commission restaurant
   restaurant_commission_rate: number | null;
   restaurant_commission_amount: number | null;
   restaurant_net_amount: number | null;
-
   items_json: OrderItem[] | null;
 };
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
+
   try {
     const d = new Date(iso);
-    return d.toLocaleString();
+    if (Number.isNaN(d.getTime())) return "—";
+
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(d);
   } catch {
-    return iso;
+    return "—";
   }
 }
 
-function statusLabel(s: OrderStatus): string {
-  switch (s) {
+function formatMoney(
+  value: number | null | undefined,
+  currency = "USD"
+): string {
+  if (value == null) return "—";
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+  }).format(value);
+}
+
+function statusLabel(status: OrderStatus): string {
+  switch (status) {
     case "pending":
       return "En attente";
     case "accepted":
@@ -75,365 +92,439 @@ function statusLabel(s: OrderStatus): string {
     case "canceled":
       return "Annulée";
     default:
-      return s;
+      return status;
   }
+}
+
+function statusBadgeClass(status: OrderStatus): string {
+  switch (status) {
+    case "delivered":
+      return "border-green-200 bg-green-100 text-green-800";
+    case "canceled":
+      return "border-red-200 bg-red-100 text-red-800";
+    case "dispatched":
+      return "border-blue-200 bg-blue-100 text-blue-800";
+    case "ready":
+      return "border-amber-200 bg-amber-100 text-amber-800";
+    case "accepted":
+    case "prepared":
+      return "border-violet-200 bg-violet-100 text-violet-800";
+    case "pending":
+    default:
+      return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+}
+
+function SectionCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-3">
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        {subtitle ? (
+          <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-1 py-1.5 sm:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="text-sm font-medium text-slate-500">{label}</div>
+      <div className="text-sm text-slate-900">{value}</div>
+    </div>
+  );
 }
 
 export default function AdminOrderPage() {
   const params = useParams<{ orderId: string }>();
   const router = useRouter();
-  const orderId = params.orderId;
+  const orderId = typeof params?.orderId === "string" ? params.orderId : "";
+
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [order, setOrder] = useState<OrderRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const loadPage = useCallback(
+    async (mode: "initial" | "refresh" = "initial") => {
+      if (!orderId) return;
+
+      try {
+        if (mode === "initial") {
+          setLoading(true);
+        } else {
+          setRefreshing(true);
+        }
+
+        setErr(null);
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) {
+          throw new Error(userError.message);
+        }
+
+        if (!user) {
+          setIsAdmin(false);
+          setAuthChecked(true);
+          router.push("/auth/login");
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          throw new Error(profileError.message);
+        }
+
+        if (!profile || !canAccessAdminDashboard(profile.role)) {
+          setIsAdmin(false);
+          setAuthChecked(true);
+          setErr("Access restricted to administrators.");
+          return;
+        }
+
+        setIsAdmin(true);
+        setAuthChecked(true);
+
+        const { data, error } = await supabase
+          .from("orders")
+          .select(
+            `
+              id,
+              status,
+              kind,
+              user_id,
+              restaurant_id,
+              restaurant_name,
+              created_at,
+              subtotal,
+              tax,
+              total,
+              currency,
+              distance_miles,
+              eta_minutes,
+              delivery_fee,
+              driver_delivery_payout,
+              platform_delivery_fee,
+              restaurant_commission_rate,
+              restaurant_commission_amount,
+              restaurant_net_amount,
+              items_json
+            `
+          )
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (error) {
+          throw new Error(error.message || "Erreur lors du chargement de la commande.");
+        }
+
+        if (!data) {
+          throw new Error("Commande introuvable.");
+        }
+
+        setOrder(data as OrderRow);
+      } catch (error) {
+        setErr(error instanceof Error ? error.message : "Unknown error");
+        setOrder(null);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [orderId, router]
+  );
 
   useEffect(() => {
     if (!orderId) return;
+    void loadPage("initial");
+  }, [orderId, loadPage]);
 
-    async function load() {
-      setLoading(true);
-      setErr(null);
+  const currency = order?.currency || "USD";
+  const shortId = order?.id.slice(0, 8) || "—";
 
-      // 👉 Ici on suppose que RLS autorise les admins à lire toutes les commandes
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          `
-            id,
-            status,
-            kind,
-            user_id,
-            restaurant_id,
-            restaurant_name,
-            created_at,
-            subtotal,
-            tax,
-            total,
-            currency,
-            distance_miles,
-            eta_minutes,
-            delivery_fee,
-            driver_delivery_payout,
-            platform_delivery_fee,
-            restaurant_commission_rate,
-            restaurant_commission_amount,
-            restaurant_net_amount,
-            items_json
-          `
-        )
-        .eq("id", orderId)
-        .maybeSingle();
+  const distanceLabel = useMemo(() => {
+    if (order?.distance_miles == null) return "—";
+    return `${order.distance_miles.toFixed(2)} mi`;
+  }, [order?.distance_miles]);
 
-      if (error) {
-        console.error(error);
-        setErr("Erreur lors du chargement de la commande.");
-        setLoading(false);
-        return;
-      }
+  const etaLabel = useMemo(() => {
+    if (order?.eta_minutes == null) return "—";
+    return `${Math.round(order.eta_minutes)} min`;
+  }, [order?.eta_minutes]);
 
-      if (!data) {
-        setErr("Commande introuvable.");
-        setLoading(false);
-        return;
-      }
-
-      setOrder(data as OrderRow);
-      setLoading(false);
-    }
-
-    load();
-  }, [orderId]);
-
-  if (loading) {
-    return (
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <p className="text-sm text-gray-600">Chargement de la commande…</p>
-      </main>
-    );
-  }
-
-  if (err || !order) {
-    return (
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-3">
-        <button
-          type="button"
-          onClick={() => router.push("/admin/orders")}
-          className="text-xs text-blue-600 underline"
-        >
-          ← Retour aux commandes (admin)
-        </button>
-        <p className="text-sm text-red-600">
-          {err ?? "Commande introuvable."}
-        </p>
-      </main>
-    );
-  }
-
-  const currency = order.currency || "USD";
-  const shortId = order.id.slice(0, 8);
-
-  const distanceLabel =
-    order.distance_miles != null
-      ? `${order.distance_miles.toFixed(2)} mi`
-      : "—";
-
-  const etaLabel =
-    order.eta_minutes != null ? `${Math.round(order.eta_minutes)} min` : "—";
-
-  // 🧮 Résumé financier MMD
-  const restaurantCommission = order.restaurant_commission_amount ?? 0;
-  const deliveryPlatformFee = order.platform_delivery_fee ?? 0;
+  const restaurantCommission = order?.restaurant_commission_amount ?? 0;
+  const deliveryPlatformFee = order?.platform_delivery_fee ?? 0;
   const mmdTotalCommission = restaurantCommission + deliveryPlatformFee;
-  const driverPayout = order.driver_delivery_payout ?? 0;
+  const driverPayout = order?.driver_delivery_payout ?? 0;
   const mmdGrossMargin = mmdTotalCommission - driverPayout;
 
-  return (
-    <main className="max-w-5xl mx-auto px-4 py-6 space-y-5">
-      <button
-        type="button"
-        onClick={() => router.push("/admin/orders")}
-        className="text-xs text-blue-600 underline"
-      >
-        ← Retour aux commandes (admin)
-      </button>
-
-      {/* HEADER */}
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">
-          Commande #{shortId} (vue admin)
-        </h1>
-        <p className="text-sm text-gray-600">
-          Détail complet de la commande pour l&apos;administration MMD Delivery.
-        </p>
-        <div className="inline-flex items-center rounded-full border bg-blue-50 border-blue-200 px-3 py-1 text-xs font-medium text-blue-700 mt-2">
-          Statut : {statusLabel(order.status)}
+  if (loading || !authChecked) {
+    return (
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl px-4 py-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm text-slate-600">Chargement de la commande…</p>
+          </div>
         </div>
-        <p className="text-xs text-gray-500">
-          Créée le : {formatDate(order.created_at)}
-        </p>
-      </header>
+      </main>
+    );
+  }
 
-      {/* INFO GÉNÉRALES */}
-      <section className="border rounded-lg p-3 bg-white text-sm space-y-1">
-        <h2 className="text-sm font-semibold mb-1">Informations générales</h2>
-        <p>
-          <span className="font-medium">Type :</span>{" "}
-          {order.kind || "—"}
-        </p>
-        <p>
-          <span className="font-medium">Client (user_id) :</span>{" "}
-          {order.user_id || "—"}
-        </p>
-        <p>
-          <span className="font-medium">
-            Restaurant (restaurant_id) :
-          </span>{" "}
-          {order.restaurant_id || "—"}
-        </p>
-        <p>
-          <span className="font-medium">Nom du restaurant :</span>{" "}
-          {order.restaurant_name || "—"}
-        </p>
-      </section>
+  if (err || !order || !isAdmin) {
+    return (
+      <main className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-5xl space-y-4 px-4 py-6">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/orders")}
+            className="text-xs text-blue-600 underline"
+          >
+            ← Retour aux commandes (admin)
+          </button>
 
-      {/* RÉCAP COMMANDE */}
-      <section className="border rounded-lg p-3 bg-white text-sm space-y-3">
-        <h2 className="text-sm font-semibold mb-1">
-          Récapitulatif de la commande (plats)
-        </h2>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+            <p className="text-sm text-red-700">
+              {err ?? "Commande introuvable."}
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
-        {order.items_json && order.items_json.length > 0 ? (
-          <div className="space-y-2">
-            {order.items_json.map((item, idx) => (
-              <div
-                key={`${item.name}-${idx}`}
-                className="flex items-center justify-between gap-2"
-              >
-                <div>
-                  <p className="font-medium">{item.name}</p>
-                  {item.category && (
-                    <p className="text-[11px] text-gray-500">
-                      {item.category}
+  return (
+    <main className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/admin/orders")}
+            className="text-xs text-blue-600 underline"
+          >
+            ← Retour aux commandes (admin)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void loadPage("refresh")}
+            disabled={refreshing}
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
+
+        <header className="space-y-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+            MMD Delivery · Admin Order Detail
+          </div>
+
+          <h1 className="text-2xl font-bold text-slate-900">
+            Commande #{shortId} (vue admin)
+          </h1>
+
+          <p className="text-sm text-slate-600">
+            Détail complet de la commande pour l&apos;administration MMD Delivery.
+          </p>
+
+          <div className="pt-1">
+            <span
+              className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${statusBadgeClass(
+                order.status
+              )}`}
+            >
+              Statut : {statusLabel(order.status)}
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-500">
+            Créée le : {formatDate(order.created_at)}
+          </p>
+        </header>
+
+        <SectionCard title="Informations générales">
+          <InfoRow label="Type" value={order.kind || "—"} />
+          <InfoRow label="Client (user_id)" value={order.user_id || "—"} />
+          <InfoRow
+            label="Restaurant (restaurant_id)"
+            value={order.restaurant_id || "—"}
+          />
+          <InfoRow
+            label="Nom du restaurant"
+            value={order.restaurant_name || "—"}
+          />
+        </SectionCard>
+
+        <SectionCard title="Récapitulatif de la commande (plats)">
+          {order.items_json && order.items_json.length > 0 ? (
+            <div className="space-y-2">
+              {order.items_json.map((item, idx) => (
+                <div
+                  key={`${item.name}-${idx}`}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
+                >
+                  <div>
+                    <p className="font-medium text-slate-900">{item.name}</p>
+                    {item.category ? (
+                      <p className="text-[11px] text-slate-500">{item.category}</p>
+                    ) : null}
+                    <p className="text-[11px] text-slate-500">
+                      Qté {item.quantity} — {formatMoney(item.unit_price, currency)} / unité
                     </p>
-                  )}
-                  <p className="text-[11px] text-gray-500">
-                    Qté {item.quantity} —{" "}
-                    {item.unit_price.toFixed(2)} {currency} / unité
+                  </div>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {formatMoney(item.line_total, currency)}
                   </p>
                 </div>
-                <p className="text-xs font-semibold">
-                  {item.line_total.toFixed(2)} {currency}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-500">
+              Aucun détail de plats enregistré.
+            </p>
+          )}
+
+          <div className="mt-3 space-y-1 border-t border-slate-200 pt-3">
+            <InfoRow label="Montant (plats)" value={formatMoney(order.subtotal, currency)} />
+            <InfoRow label="Taxes" value={formatMoney(order.tax, currency)} />
+            <InfoRow label="Total client" value={formatMoney(order.total, currency)} />
           </div>
-        ) : (
-          <p className="text-xs text-gray-500">
-            Aucun détail de plats enregistré.
-          </p>
-        )}
+        </SectionCard>
 
-        <div className="pt-2 border-t mt-2 space-y-1">
-          <p>
-            <span className="font-medium">Montant (plats) :</span>{" "}
-            {order.subtotal != null
-              ? `${order.subtotal.toFixed(2)} ${currency}`
-              : "—"}
+        <SectionCard title="Livraison (distance / temps / frais)">
+          <InfoRow label="Distance estimée" value={distanceLabel} />
+          <InfoRow label="Temps estimé" value={etaLabel} />
+          <InfoRow
+            label="Frais de livraison facturés"
+            value={formatMoney(order.delivery_fee, currency)}
+          />
+        </SectionCard>
+
+        <SectionCard
+          title="Commission restaurant (plats)"
+          subtitle="Calcul basé sur le taux configuré sur la commande"
+        >
+          <InfoRow
+            label="Taux MMD (sur plats)"
+            value={
+              order.restaurant_commission_rate != null
+                ? `${(order.restaurant_commission_rate * 100).toFixed(2)} %`
+                : "—"
+            }
+          />
+          <InfoRow
+            label="Commission MMD"
+            value={formatMoney(order.restaurant_commission_amount, currency)}
+          />
+          <InfoRow
+            label="Montant net restaurant"
+            value={formatMoney(order.restaurant_net_amount, currency)}
+          />
+
+          <p className="mt-3 text-[11px] text-slate-500">
+            Calcul basé sur 15% MMD / 85% restaurant sur le montant des plats
+            (ou le taux configuré si différent).
           </p>
-          <p>
-            <span className="font-medium">Taxes :</span>{" "}
-            {order.tax != null
-              ? `${order.tax.toFixed(2)} ${currency}`
-              : "—"}
+        </SectionCard>
+
+        <SectionCard
+          title="Commission MMD & rémunération chauffeur"
+          subtitle="Répartition sur les frais de livraison"
+        >
+          <InfoRow
+            label="Frais de livraison (client)"
+            value={formatMoney(order.delivery_fee, currency)}
+          />
+          <InfoRow
+            label="Part chauffeur"
+            value={formatMoney(order.driver_delivery_payout, currency)}
+          />
+          <InfoRow
+            label="Part MMD (plateforme)"
+            value={formatMoney(order.platform_delivery_fee, currency)}
+          />
+
+          <p className="mt-3 text-[11px] text-slate-500">
+            Basé sur la répartition actuelle : 80% chauffeur / 20% plateforme
+            sur les frais de livraison. Ces règles pourront être ajustées dans
+            le panneau admin MMD Delivery.
           </p>
-          <p>
-            <span className="font-medium">Total client :</span>{" "}
-            {order.total != null
-              ? `${order.total.toFixed(2)} ${currency}`
-              : "—"}
+        </SectionCard>
+
+        <SectionCard
+          title="Résumé financier MMD (par commande)"
+          subtitle="Vue simplifiée de la marge brute"
+        >
+          <InfoRow
+            label="Commission MMD sur plats"
+            value={formatMoney(restaurantCommission, currency)}
+          />
+          <InfoRow
+            label="Commission MMD sur livraison"
+            value={formatMoney(deliveryPlatformFee, currency)}
+          />
+          <InfoRow
+            label="Commission totale MMD (plats + livraison)"
+            value={formatMoney(mmdTotalCommission, currency)}
+          />
+          <InfoRow
+            label="Rémunération chauffeur"
+            value={formatMoney(driverPayout, currency)}
+          />
+          <InfoRow
+            label="Marge brute MMD (approx.)"
+            value={formatMoney(mmdGrossMargin, currency)}
+          />
+
+          <p className="mt-3 text-[11px] text-slate-500">
+            Marge brute MMD ≈ (commission sur plats + commission sur livraison)
+            - rémunération chauffeur. Les frais de carte, taxes, marketing,
+            etc. viendront encore réduire cette marge.
           </p>
+        </SectionCard>
+
+        <SectionCard title="Timeline de commande">
+          <OrderTimeline orderId={order.id} />
+        </SectionCard>
+
+        <div className="pt-1">
+          <Link
+            href={`/admin/payouts/${order.id}`}
+            className="text-sm font-medium text-blue-600 underline underline-offset-2 hover:text-blue-800"
+          >
+            Ouvrir aussi la vue payout de cette commande
+          </Link>
         </div>
-      </section>
-
-      {/* LIVRAISON */}
-      <section className="border rounded-lg p-3 bg-white text-sm space-y-1">
-        <h2 className="text-sm font-semibold mb-1">
-          Livraison (distance / temps / frais)
-        </h2>
-        <p>
-          <span className="font-medium">Distance estimée :</span>{" "}
-          {distanceLabel}
-        </p>
-        <p>
-          <span className="font-medium">Temps estimé :</span>{" "}
-          {etaLabel}
-        </p>
-        <p>
-          <span className="font-medium">Frais de livraison facturés :</span>{" "}
-          {order.delivery_fee != null
-            ? `${order.delivery_fee.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-      </section>
-
-      {/* 💰 COMMISSION RESTAURANT */}
-      <section className="border rounded-lg p-3 bg-white text-sm space-y-1">
-        <h2 className="text-sm font-semibold">
-          Commission restaurant (plats)
-        </h2>
-
-        <p>
-          <span className="font-medium">Taux MMD (sur plats) :</span>{" "}
-          {order.restaurant_commission_rate != null
-            ? `${(order.restaurant_commission_rate * 100).toFixed(2)} %`
-            : "—"}
-        </p>
-
-        <p>
-          <span className="font-medium">Commission MMD :</span>{" "}
-          {order.restaurant_commission_amount != null
-            ? `${order.restaurant_commission_amount.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-
-        <p>
-          <span className="font-medium">Montant net restaurant :</span>{" "}
-          {order.restaurant_net_amount != null
-            ? `${order.restaurant_net_amount.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-
-        <p className="text-[11px] text-gray-500 mt-1">
-          Calcul basé sur 15% MMD / 85% restaurant sur le montant des plats
-          (ou le taux configuré si différent).
-        </p>
-      </section>
-
-      {/* 💸 COMMISSION MMD & CHAUFFEUR */}
-      <section className="border rounded-lg p-3 bg-white text-sm space-y-1">
-        <h2 className="text-sm font-semibold">
-          Commission MMD & rémunération chauffeur
-        </h2>
-
-        <p>
-          <span className="font-medium">Frais de livraison (client) :</span>{" "}
-          {order.delivery_fee != null
-            ? `${order.delivery_fee.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-        <p>
-          <span className="font-medium">Part chauffeur :</span>{" "}
-          {order.driver_delivery_payout != null
-            ? `${order.driver_delivery_payout.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-        <p>
-          <span className="font-medium">Part MMD (plateforme) :</span>{" "}
-          {order.platform_delivery_fee != null
-            ? `${order.platform_delivery_fee.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-
-        <p className="text-[11px] text-gray-500 mt-1">
-          Basé sur la répartition actuelle : 80% chauffeur / 20% plateforme
-          sur les frais de livraison. Ces règles pourront être ajustées
-          dans le panneau admin MMD Delivery.
-        </p>
-      </section>
-
-      {/* 📊 RÉSUMÉ FINANCIER MMD */}
-      <section className="border rounded-lg p-3 bg-white text-sm space-y-1">
-        <h2 className="text-sm font-semibold">
-          Résumé financier MMD (par commande)
-        </h2>
-
-        <p>
-          <span className="font-medium">Commission MMD sur plats :</span>{" "}
-          {restaurantCommission
-            ? `${restaurantCommission.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-        <p>
-          <span className="font-medium">
-            Commission MMD sur livraison :
-          </span>{" "}
-          {deliveryPlatformFee
-            ? `${deliveryPlatformFee.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-        <p>
-          <span className="font-medium">
-            Commission totale MMD (plats + livraison) :
-          </span>{" "}
-          {mmdTotalCommission
-            ? `${mmdTotalCommission.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-        <p>
-          <span className="font-medium">Rémunération chauffeur :</span>{" "}
-          {driverPayout
-            ? `${driverPayout.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-        <p>
-          <span className="font-medium">Marge brute MMD (approx.) :</span>{" "}
-          {mmdTotalCommission || driverPayout
-            ? `${mmdGrossMargin.toFixed(2)} ${currency}`
-            : "—"}
-        </p>
-
-        <p className="text-[11px] text-gray-500 mt-1">
-          Marge brute MMD ≈ (commission sur plats + commission sur
-          livraison) - rémunération chauffeur. Les frais de carte,
-          taxes, marketing, etc. viendront encore réduire cette marge.
-        </p>
-      </section>
-
-      {/* 🕒 HISTORIQUE DE LA COMMANDE */}
-      <section className="border rounded-lg p-3 bg-white text-sm space-y-1">
-        <OrderTimeline orderId={order.id} />
-      </section>
+      </div>
     </main>
   );
 }

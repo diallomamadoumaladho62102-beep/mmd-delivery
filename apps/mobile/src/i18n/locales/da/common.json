@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Tilbage",
+    "account": "Konto",
+    "security": "Sikkerhed",
+    "notifications": "Notifikationer",
+    "language": "Sprog",
+    "logout": "Log ud",
+    "soon": "Kommer snart ✅",
+    "ok": "OK",
+    "toAdd": "Skal tilføjes",
+    "ready": "Klar",
+    "notConfigured": "Ikke konfigureret",
+    "notRequired": "Ikke påkrævet"
+  },
+  "driver": {
+    "account": {
+      "title": "Chaufførkonto",
+      "subtitle": "Køretøj, dokumenter, udbetaling, status (guidet).",
+      "vehicle": "Køretøj",
+      "documents": "Dokumenter",
+      "payout": "Udbetaling",
+      "finalizeNow": "Færdiggør nu"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

@@ -1,7 +1,45 @@
 import React from "react";
 import { View, Text, TouchableOpacity, SafeAreaView } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+
+import { supabase } from "../lib/supabase";
+import { setSelectedRole } from "../lib/authRole";
 
 export function RoleSelectScreen() {
+  const navigation = useNavigation<any>();
+
+  async function go(role: "client" | "driver" | "restaurant") {
+    // 1) mémoriser le rôle
+    await setSelectedRole(role);
+
+    // 2) checker session
+    const { data } = await supabase.auth.getSession();
+    const hasSession = !!data.session;
+
+    if (!hasSession) {
+      // pas connecté -> vers Auth (si disponible)
+      if (role === "client") {
+        // ⚠️ nécessite que "ClientAuth" existe dans AppNavigator (on le fait juste après)
+        navigation.navigate("ClientAuth");
+        return;
+      }
+      if (role === "driver") {
+        navigation.navigate("DriverAuth");
+        return;
+      }
+      if (role === "restaurant") {
+        // si tu n'as pas RestaurantAuth, on envoie vers RestaurantHome (tu peux ensuite protéger)
+        navigation.navigate("RestaurantHome");
+        return;
+      }
+    }
+
+    // connecté -> vers Home correspondant
+    if (role === "client") navigation.navigate("ClientHome");
+    if (role === "driver") navigation.navigate("DriverHome");
+    if (role === "restaurant") navigation.navigate("RestaurantHome");
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
       <View
@@ -41,9 +79,7 @@ export function RoleSelectScreen() {
             alignItems: "center",
             marginBottom: 12,
           }}
-          onPress={() => {
-            console.log("Client choisi ✅");
-          }}
+          onPress={() => go("client")}
         >
           <Text style={{ color: "white", fontWeight: "600", fontSize: 16 }}>
             Je suis un client
@@ -60,9 +96,7 @@ export function RoleSelectScreen() {
             borderWidth: 1,
             borderColor: "#4B5563",
           }}
-          onPress={() => {
-            console.log("Chauffeur choisi ✅");
-          }}
+          onPress={() => go("driver")}
         >
           <Text style={{ color: "white", fontWeight: "600", fontSize: 16 }}>
             Je suis un chauffeur
@@ -78,9 +112,7 @@ export function RoleSelectScreen() {
             borderWidth: 1,
             borderColor: "#4B5563",
           }}
-          onPress={() => {
-            console.log("Restaurant choisi ✅");
-          }}
+          onPress={() => go("restaurant")}
         >
           <Text style={{ color: "white", fontWeight: "600", fontSize: 16 }}>
             Je suis un restaurant

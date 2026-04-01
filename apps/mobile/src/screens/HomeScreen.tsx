@@ -9,14 +9,13 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import { useTranslation } from "react-i18next";
 
-type HomeScreenNavigation = NativeStackNavigationProp<
-  RootStackParamList,
-  "Home"
->;
+type HomeScreenNavigation = NativeStackNavigationProp<RootStackParamList, "Home">;
 
 export function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigation>();
+  const { t } = useTranslation(); // ✅ re-render on language change
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }}>
@@ -31,7 +30,7 @@ export function HomeScreen() {
             marginBottom: 8,
           }}
         >
-          Choisis ton mode
+          {t("roleSelect.title", "Choose your mode")}
         </Text>
 
         <Text
@@ -41,12 +40,16 @@ export function HomeScreen() {
             marginBottom: 32,
           }}
         >
-          Choisis un rôle pour accéder à l'interface correspondante.
+          {t(
+            "roleSelect.subtitle",
+            "Choose a role to access the corresponding interface."
+          )}
         </Text>
 
         {/* BOUTON CLIENT */}
         <TouchableOpacity
           onPress={() => navigation.navigate("ClientHome")}
+          activeOpacity={0.85}
           style={{
             backgroundColor: "#EF4444",
             paddingVertical: 16,
@@ -62,13 +65,14 @@ export function HomeScreen() {
               fontWeight: "600",
             }}
           >
-            Client
+            {t("roleSelect.roles.client", "Client")}
           </Text>
         </TouchableOpacity>
 
         {/* BOUTON CHAUFFEUR */}
         <TouchableOpacity
-          onPress={() => navigation.navigate("DriverHome")}
+          onPress={() => navigation.navigate("DriverTabs")} // ✅ Driver home = DriverTabs
+          activeOpacity={0.85}
           style={{
             backgroundColor: "#3B82F6",
             paddingVertical: 16,
@@ -84,13 +88,14 @@ export function HomeScreen() {
               fontWeight: "600",
             }}
           >
-            Chauffeur
+            {t("roleSelect.roles.driver", "Driver")}
           </Text>
         </TouchableOpacity>
 
         {/* BOUTON RESTAURANT */}
         <TouchableOpacity
-          onPress={() => navigation.navigate("RestaurantHome")}
+          onPress={() => navigation.navigate("RestaurantGate")} // ✅ passe par gate
+          activeOpacity={0.85}
           style={{
             backgroundColor: "#22C55E",
             paddingVertical: 16,
@@ -105,7 +110,7 @@ export function HomeScreen() {
               fontWeight: "600",
             }}
           >
-            Restaurant
+            {t("roleSelect.roles.restaurant", "Restaurant")}
           </Text>
         </TouchableOpacity>
       </View>

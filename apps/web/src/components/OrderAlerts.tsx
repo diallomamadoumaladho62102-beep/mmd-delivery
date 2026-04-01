@@ -2,9 +2,17 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
-const IMPORTANT_STATUSES = new Set(["assigned","accepted","prepared","ready","dispatched","delivered"]);
+const IMPORTANT_STATUSES = new Set([
+  "assigned",
+  "accepted",
+  "prepared",
+  "ready",
+  "dispatched",
+  "delivered",
+]);
+
 const LS_ENABLED = "mmdAlertsEnabled";
-const LS_VOLUME  = "mmdAlertsVolume"; // 0..1
+const LS_VOLUME = "mmdAlertsVolume"; // 0..1
 
 // ---- Audio globals
 let ACtx: AudioContext | null = null;
@@ -13,25 +21,39 @@ let unlocked = false;
 
 function statusToFreq(status: string | null): number {
   switch (status) {
-    case "assigned":   return 440;     // A4
-    case "accepted":   return 523.25;  // C5
-    case "prepared":   return 659.25;  // E5
-    case "ready":      return 880;     // A5
-    case "dispatched": return 988;     // B5
-    case "delivered":  return 1174.66; // D6 (~)
-    default:           return 880;
+    case "assigned":
+      return 440; // A4
+    case "accepted":
+      return 523.25; // C5
+    case "prepared":
+      return 659.25; // E5
+    case "ready":
+      return 880; // A5
+    case "dispatched":
+      return 988; // B5
+    case "delivered":
+      return 1174.66; // D6 (~)
+    default:
+      return 880;
   }
 }
 
 function statusToToastClass(status: string | null): string {
   switch (status) {
-    case "assigned":   return "border-blue-200 bg-blue-50 text-blue-800";
-    case "accepted":   return "border-sky-200 bg-sky-50 text-sky-800";
-    case "prepared":   return "border-amber-200 bg-amber-50 text-amber-800";
-    case "ready":      return "border-indigo-200 bg-indigo-50 text-indigo-800";
-    case "dispatched": return "border-orange-200 bg-orange-50 text-orange-800";
-    case "delivered":  return "border-emerald-200 bg-emerald-50 text-emerald-800";
-    default:           return "border-gray-200 bg-white text-gray-800";
+    case "assigned":
+      return "border-blue-200 bg-blue-50 text-blue-800";
+    case "accepted":
+      return "border-sky-200 bg-sky-50 text-sky-800";
+    case "prepared":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    case "ready":
+      return "border-indigo-200 bg-indigo-50 text-indigo-800";
+    case "dispatched":
+      return "border-orange-200 bg-orange-50 text-orange-800";
+    case "delivered":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    default:
+      return "border-gray-200 bg-white text-gray-800";
   }
 }
 
@@ -40,7 +62,9 @@ async function ensureAudioUnlocked(volume = 0.6) {
     if (!ACtx) {
       ACtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
-    if (ACtx.state === "suspended") { await ACtx.resume(); }
+    if (ACtx.state === "suspended") {
+      await ACtx.resume();
+    }
     if (!MasterGain) {
       MasterGain = ACtx.createGain();
       MasterGain.gain.value = volume;
@@ -61,20 +85,31 @@ async function playBeepWebAudio(freq: number, volume: number) {
     o.frequency.value = freq;
     o.connect(g);
     g.connect(MasterGain);
+
     g.gain.setValueAtTime(0.0001, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + 0.02);
+
     o.start();
     g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
     o.stop(ctx.currentTime + 0.4);
+
     return true;
   } catch {
     return false;
   }
 }
 
-const BEEP_DATA_URI = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAACAgICAgP///wAAAP///wAAAAAA";
+const BEEP_DATA_URI =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAACAgICAgP///wAAAP///wAAAAAA";
 async function playBeepFallback(volume: number) {
-  try { const a = new Audio(BEEP_DATA_URI); a.volume = Math.max(0, Math.min(1, volume)); await a.play(); return true; } catch { return false; }
+  try {
+    const a = new Audio(BEEP_DATA_URI);
+    a.volume = Math.max(0, Math.min(1, volume));
+    await a.play();
+    return true;
+  } catch {
+    return false;
+  }
 }
 async function playBeepForStatus(status: string | null, volume: number) {
   const freq = statusToFreq(status);
@@ -82,29 +117,57 @@ async function playBeepForStatus(status: string | null, volume: number) {
   if (!ok) await playBeepFallback(volume);
 }
 
-type Props = { orderId: string; role?: "driver"|"restaurant"|"client"|"vendor"|"seller" };
+type Role =
+  | "driver"
+  | "restaurant"
+  | "client"
+  | "vendor"
+  | "seller";
+
+type Props = {
+  /**
+   * ✅ orderId OPTIONNEL:
+   * - Dashboard global: <OrderAlerts role="driver" />
+   * - Page commande: <OrderAlerts orderId="..." role="driver" />
+   */
+  orderId?: string;
+  role?: Role;
+};
 
 export default function OrderAlerts({ orderId, role = "driver" }: Props) {
   // Préférences (chargées après montage)
   const [enabled, setEnabled] = useState<boolean>(true);
   const [volume, setVolume] = useState<number>(0.6);
+
   useEffect(() => {
     try {
       const rawEn = localStorage.getItem(LS_ENABLED);
       if (rawEn !== null) setEnabled(rawEn === "true");
+
       const rawVol = localStorage.getItem(LS_VOLUME);
       const v = rawVol ? parseFloat(rawVol) : NaN;
       if (isFinite(v)) setVolume(Math.max(0, Math.min(1, v)));
     } catch {}
   }, []);
-  useEffect(() => { try { localStorage.setItem(LS_ENABLED, String(enabled)); } catch {} }, [enabled]);
-  useEffect(() => { try { localStorage.setItem(LS_VOLUME, String(volume)); if (MasterGain) MasterGain.gain.value = volume; } catch {} }, [volume]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_ENABLED, String(enabled));
+    } catch {}
+  }, [enabled]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_VOLUME, String(volume));
+      if (MasterGain) MasterGain.gain.value = volume;
+    } catch {}
+  }, [volume]);
 
   // Derniers états / anti-spam
   const [last, setLast] = useState<string | null>(null);
   const lastRef = useRef<string | null>(null);
   const lastUpdatedAtRef = useRef<string>("");
-  const lastBeepAtRef = useRef<number>(0);              // debounce global
+  const lastBeepAtRef = useRef<number>(0); // debounce global
   const statusCooldownRef = useRef<Record<string, number>>({}); // cooldown par statut
 
   function shouldBeep(now: number, status: string | null) {
@@ -117,23 +180,35 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
     }
     return true;
   }
+
   function markBeep(now: number, status: string | null) {
     lastBeepAtRef.current = now;
     if (status) statusCooldownRef.current[status] = now;
   }
 
   // Toasts
-  const [toast, setToast] = useState<{msg:string; visible:boolean; cls:string}>({ msg: "", visible: false, cls: "border-gray-200 bg-white text-gray-800" });
+  const [toast, setToast] = useState<{
+    msg: string;
+    visible: boolean;
+    cls: string;
+  }>({
+    msg: "",
+    visible: false,
+    cls: "border-gray-200 bg-white text-gray-800",
+  });
+
   function showToastForStatus(status: string | null) {
     const cls = statusToToastClass(status);
     const msg = `Statut → ${String(status ?? "").toUpperCase()}`;
     setToast({ msg, visible: true, cls });
-    setTimeout(() => setToast(t => ({ ...t, visible: false })), 2500);
+    setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2500);
   }
 
   // Déverrouiller audio au premier geste
   useEffect(() => {
-    const unlock = async () => { await ensureAudioUnlocked(volume); };
+    const unlock = async () => {
+      await ensureAudioUnlocked(volume);
+    };
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     return () => {
@@ -143,8 +218,10 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Charger statut initial
+  // Charger statut initial (uniquement si orderId)
   useEffect(() => {
+    if (!orderId) return;
+
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -152,6 +229,7 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
         .select("status, updated_at")
         .eq("id", orderId)
         .maybeSingle();
+
       if (!cancelled && !error) {
         const initial = (data as any)?.status ?? null;
         const upd = (data as any)?.updated_at ?? "";
@@ -160,12 +238,18 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
         lastUpdatedAtRef.current = upd || "";
       }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [orderId]);
 
-  // Realtime + History + Polling
+  // Realtime + History + Polling (uniquement si orderId)
   useEffect(() => {
-    const canNotify = () => enabled && (role === "driver" || role === "restaurant");
+    if (!orderId) return;
+
+    const canNotify = () =>
+      enabled && (role === "driver" || role === "restaurant");
 
     // ORDERS
     const chOrders = supabase
@@ -181,7 +265,8 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
           if (!newStatus || !IMPORTANT_STATUSES.has(newStatus)) return;
 
           const statusChanged = newStatus !== lastRef.current;
-          const updatedAtAdvanced = newUpdated && newUpdated !== lastUpdatedAtRef.current;
+          const updatedAtAdvanced =
+            newUpdated && newUpdated !== lastUpdatedAtRef.current;
 
           if ((statusChanged || updatedAtAdvanced) && shouldBeep(now, newStatus)) {
             if (canNotify()) {
@@ -202,7 +287,12 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
       .channel(`orders-hist-${orderId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "order_status_history", filter: `order_id=eq.${orderId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "order_status_history",
+          filter: `order_id=eq.${orderId}`,
+        },
         async (payload) => {
           const now = Date.now();
           const ns = (payload.new as any)?.new_status ?? null;
@@ -229,7 +319,9 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
           .select("status, updated_at")
           .eq("id", orderId)
           .maybeSingle();
+
         if (error || !data) return;
+
         const polled = (data as any)?.status ?? null;
         const upd = (data as any)?.updated_at ?? "";
         if (!polled || !IMPORTANT_STATUSES.has(polled)) return;
@@ -262,30 +354,72 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
     <>
       {/* Barre de contrôle */}
       <div className="text-xs text-gray-600 flex flex-wrap items-center gap-2">
-        <span>🔔 Alertes actives ({role})</span>
+        <span>
+          🔔 Alertes actives ({role})
+          {!orderId ? (
+            <span className="ml-2 text-[11px] text-gray-400">
+              (pas de orderId → pas de suivi)
+            </span>
+          ) : null}
+        </span>
+
         <label className="flex items-center gap-1">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
           Son ON/OFF
         </label>
+
         <label className="flex items-center gap-2">
           Volume
-          <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+          />
           <span className="tabular-nums">{Math.round(volume * 100)}%</span>
         </label>
+
         <button
           type="button"
-          onClick={async () => { await ensureAudioUnlocked(volume); await playBeepForStatus("ready", volume); showToastForStatus("ready"); }}
+          onClick={async () => {
+            await ensureAudioUnlocked(volume);
+            await playBeepForStatus("ready", volume);
+            showToastForStatus("ready");
+          }}
           className="px-2 py-1 border rounded text-[11px]"
           title="Clique pour autoriser le son et tester"
         >
           Test bip
         </button>
+
+        {orderId ? (
+          <span className="ml-auto text-[11px] text-gray-400">
+            last: {last ? last.toUpperCase() : "—"}
+          </span>
+        ) : null}
       </div>
 
       {/* Toast */}
       <div className="fixed top-4 right-4 z-50">
-        <div className={"transition-all duration-300 " + (toast.visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none")}>
-          <div className={"rounded-xl shadow-lg border px-4 py-2 text-sm " + toast.cls}>
+        <div
+          className={
+            "transition-all duration-300 " +
+            (toast.visible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 -translate-y-2 pointer-events-none")
+          }
+        >
+          <div
+            className={
+              "rounded-xl shadow-lg border px-4 py-2 text-sm " + toast.cls
+            }
+          >
             {toast.msg || "Notification"}
           </div>
         </div>
@@ -293,4 +427,3 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
     </>
   );
 }
-

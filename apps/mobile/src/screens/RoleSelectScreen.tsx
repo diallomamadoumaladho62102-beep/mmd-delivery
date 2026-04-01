@@ -10,13 +10,46 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 
-type RoleSelectNav = NativeStackNavigationProp<
-  RootStackParamList,
-  "RoleSelect"
->;
+import { supabase } from "../lib/supabase";
+import { setSelectedRole } from "../lib/authRole";
+
+// ✅ i18n
+import { useTranslation } from "react-i18next";
+
+type RoleSelectNav = NativeStackNavigationProp<RootStackParamList, "RoleSelect">;
 
 export function RoleSelectScreen() {
   const navigation = useNavigation<RoleSelectNav>();
+  const { t } = useTranslation(); // ✅ re-render on language change
+
+  async function handlePress(role: "client" | "driver" | "restaurant") {
+    // 1) mémoriser le rôle
+    await setSelectedRole(role);
+
+    // 2) vérifier la session
+    const { data } = await supabase.auth.getSession();
+    const isLoggedIn = !!data.session;
+
+    // 3) redirection
+    if (!isLoggedIn) {
+      if (role === "client") {
+        navigation.navigate("ClientAuth");
+        return;
+      }
+      if (role === "driver") {
+        navigation.navigate("DriverAuth");
+        return;
+      }
+      // ✅ Restaurant: il y a RestaurantAuth dans le Stack
+      navigation.navigate("RestaurantAuth");
+      return;
+    }
+
+    // connecté -> home direct
+    if (role === "client") navigation.navigate("ClientHome");
+    if (role === "driver") navigation.navigate("DriverTabs"); // ✅ Driver home = DriverTabs
+    if (role === "restaurant") navigation.navigate("RestaurantGate"); // ✅ passe par le gate (profil/approval)
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
@@ -36,7 +69,7 @@ export function RoleSelectScreen() {
             marginBottom: 12,
           }}
         >
-          Choisis ton mode
+          {t("roleSelect.title", "Choose your mode")}
         </Text>
 
         <Text
@@ -46,7 +79,10 @@ export function RoleSelectScreen() {
             marginBottom: 32,
           }}
         >
-          Choisis un rôle pour accéder à l&apos;interface correspondante.
+          {t(
+            "roleSelect.subtitle",
+            "Choose a role to access the corresponding interface."
+          )}
         </Text>
 
         <TouchableOpacity
@@ -57,10 +93,11 @@ export function RoleSelectScreen() {
             alignItems: "center",
             marginBottom: 16,
           }}
-          onPress={() => navigation.navigate("ClientHome")}
+          onPress={() => handlePress("client")}
+          activeOpacity={0.85}
         >
           <Text style={{ color: "white", fontSize: 16, fontWeight: "600" }}>
-            Client
+            {t("roleSelect.roles.client", "Client")}
           </Text>
         </TouchableOpacity>
 
@@ -72,10 +109,11 @@ export function RoleSelectScreen() {
             alignItems: "center",
             marginBottom: 16,
           }}
-          onPress={() => navigation.navigate("DriverHome")}
+          onPress={() => handlePress("driver")}
+          activeOpacity={0.85}
         >
           <Text style={{ color: "white", fontSize: 16, fontWeight: "600" }}>
-            Chauffeur
+            {t("roleSelect.roles.driver", "Driver")}
           </Text>
         </TouchableOpacity>
 
@@ -86,10 +124,11 @@ export function RoleSelectScreen() {
             borderRadius: 12,
             alignItems: "center",
           }}
-          onPress={() => navigation.navigate("RestaurantHome")}
+          onPress={() => handlePress("restaurant")}
+          activeOpacity={0.85}
         >
           <Text style={{ color: "white", fontSize: 16, fontWeight: "600" }}>
-            Restaurant
+            {t("roleSelect.roles.restaurant", "Restaurant")}
           </Text>
         </TouchableOpacity>
       </View>

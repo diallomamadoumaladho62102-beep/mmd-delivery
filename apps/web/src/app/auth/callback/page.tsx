@@ -1,19 +1,12 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
+import { Suspense } from "react";
+import CallbackClient from "./CallbackClient";
 
-export default function Callback() {
-  const router = useRouter();
-  const params = useSearchParams();
+export const dynamic = "force-dynamic";
 
-  useEffect(() => {
-    (async () => {
-      await supabase.auth.getSession(); // finalise la session depuis l’URL
-      router.replace(params.get("next") || "/auth/whoami"); // redirige vers whoami pour vérifier
-    })();
-  }, [router, params]);
-
-  return <main className="p-6">Connexion en cours…</main>;
+export default function Page() {
+  return (
+    <Suspense fallback={<main className="p-6">Connexion en cours…</main>}>
+      <CallbackClient />
+    </Suspense>
+  );
 }
-

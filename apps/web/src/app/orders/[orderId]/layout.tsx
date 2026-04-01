@@ -1,6 +1,9 @@
-import type { ReactNode } from 'react';
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export default function OrderIdLayout({ children }: { children: ReactNode }) {
+export default function OrderIdLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return <>{children}</>;
 }

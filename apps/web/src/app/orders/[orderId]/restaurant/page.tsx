@@ -40,11 +40,9 @@ type OrderRow = {
 
   pickup_code: string | null;
   dropoff_code: string | null;
-};
 
-type MemberRow = {
-  role: string;
-  user_id?: string;
+  // ✅ pour charger le driver directement
+  driver_id?: string | null;
 };
 
 type DriverProfile = {
@@ -98,10 +96,32 @@ export default function RestaurantOrderPage() {
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<OrderRow | null>(null);
+
+  // ✅ driver + loader (comme demandé)
   const [driver, setDriver] = useState<DriverProfile | null>(null);
+  const [driverLoading, setDriverLoading] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState<false | OrderStatus>(false);
+
+  async function loadDriver(driverId: string) {
+    setDriverLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .eq("id", driverId)
+        .maybeSingle();
+
+      if (error) throw error;
+      setDriver((data as DriverProfile) ?? null);
+    } catch {
+      setDriver(null);
+    } finally {
+      setDriverLoading(false);
+    }
+  }
 
   async function loadOrder() {
     if (!orderId) return;
@@ -126,7 +146,8 @@ export default function RestaurantOrderPage() {
         eta_minutes,
         delivery_fee,
         pickup_code,
-        dropoff_code
+        dropoff_code,
+        driver_id
       `
       )
       .eq("id", orderId)
@@ -148,36 +169,9 @@ export default function RestaurantOrderPage() {
     const typedOrder = data as OrderRow;
     setOrder(typedOrder);
 
-    // 2️⃣ Récupérer le chauffeur assigné (s'il existe)
-    const { data: driverMember, error: driverMemberError } = await supabase
-      .from("order_members")
-      .select("user_id, role")
-      .eq("order_id", orderId)
-      .eq("role", "driver")
-      .maybeSingle();
-
-    if (driverMemberError) {
-      console.error(driverMemberError);
-      setDriver(null);
-    } else if (driverMember && (driverMember as MemberRow).user_id) {
-      const driverId = (driverMember as MemberRow).user_id as string;
-      const { data: driverProfileRow, error: driverProfileError } =
-        await supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url")
-          .eq("id", driverId)
-          .maybeSingle();
-
-      if (driverProfileError || !driverProfileRow) {
-        console.error(driverProfileError);
-        setDriver(null);
-      } else {
-        setDriver({
-          id: driverProfileRow.id,
-          full_name: driverProfileRow.full_name ?? null,
-          avatar_url: driverProfileRow.avatar_url ?? null,
-        });
-      }
+    // 2️⃣ Charger le driver via order.driver_id (plus simple + fiable)
+    if (typedOrder.driver_id) {
+      await loadDriver(typedOrder.driver_id);
     } else {
       setDriver(null);
     }
@@ -189,6 +183,16 @@ export default function RestaurantOrderPage() {
     loadOrder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
+
+  // ✅ si driver_id change en realtime/refresh
+  useEffect(() => {
+    if (!order?.driver_id) {
+      setDriver(null);
+      return;
+    }
+    loadDriver(order.driver_id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.driver_id]);
 
   async function updateStatus(nextStatus: OrderStatus) {
     if (!order) return;
@@ -293,40 +297,41 @@ export default function RestaurantOrderPage() {
 
       {/* 🚖 CHAUFFEUR ASSIGNÉ – À LA PLACE DE “LIVRAISON” */}
       <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Chauffeur assigné
-        </h2>
+        <h2 className="text-sm font-semibold text-gray-800">Chauffeur</h2>
 
-        {driver ? (
+        {!order.driver_id ? (
+          <p className="text-xs text-gray-500">
+            Aucun chauffeur n’est encore assigné à cette commande.
+          </p>
+        ) : (
           <div className="flex items-center gap-3">
             {driverAvatarSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={driverAvatarSrc}
-                alt={driver.full_name ?? "Chauffeur"}
-                className="h-10 w-10 rounded-full object-cover"
+                alt={driver?.full_name ?? "Driver"}
+                className="w-12 h-12 rounded-full border object-cover"
               />
             ) : (
-              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold">
-                {(driver.full_name || "D").charAt(0).toUpperCase()}
+              <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-gray-100 text-xs font-bold">
+                DR
               </div>
             )}
-            <div>
-              <p className="text-sm text-gray-800">
-                <span className="font-medium">Chauffeur :</span>{" "}
-                {driver.full_name ?? "Chauffeur MMD"}
-              </p>
-              <p className="text-xs text-gray-500">
+
+            <div className="min-w-0">
+              <div className="text-sm font-semibold truncate">
+                {driver?.full_name?.trim() ||
+                  `Chauffeur ${order.driver_id.slice(0, 8)}`}
+              </div>
+              <div className="text-xs text-gray-500">
+                {driverLoading ? "Chargement du profil…" : "Profil chauffeur"}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
                 La livraison est entièrement gérée par le chauffeur. Le
                 restaurant n&apos;a pas besoin de gérer l&apos;adresse client.
-              </p>
+              </div>
             </div>
           </div>
-        ) : (
-          <p className="text-sm text-gray-700">
-            Aucun chauffeur n&apos;est encore assigné à cette commande. Son
-            profil apparaîtra ici dès qu&apos;un chauffeur MMD accepte la
-            course.
-          </p>
         )}
       </section>
 
@@ -392,9 +397,7 @@ export default function RestaurantOrderPage() {
           <p>
             Taxes :{" "}
             <span className="font-semibold">
-              {order.tax != null
-                ? `${order.tax.toFixed(2)} ${currency}`
-                : "—"}
+              {order.tax != null ? `${order.tax.toFixed(2)} ${currency}` : "—"}
             </span>
           </p>
           <p>
@@ -415,8 +418,8 @@ export default function RestaurantOrderPage() {
         </h2>
 
         <p className="text-xs text-gray-500">
-          Utilise ces boutons pour faire avancer la commande dans le flux
-          normal : acceptation → préparation → prête pour le chauffeur.
+          Utilise ces boutons pour faire avancer la commande dans le flux normal
+          : acceptation → préparation → prête pour le chauffeur.
         </p>
 
         <div className="flex flex-col gap-2">
@@ -445,9 +448,7 @@ export default function RestaurantOrderPage() {
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           >
-            {saving === "prepared"
-              ? "Mise à jour..."
-              : "Passer en préparation"}
+            {saving === "prepared" ? "Mise à jour..." : "Passer en préparation"}
           </button>
 
           {/* Marquer comme prête pour le driver */}

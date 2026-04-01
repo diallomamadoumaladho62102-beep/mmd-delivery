@@ -3,6 +3,41 @@
     "name": "MMD Delivery",
     "slug": "mmd-delivery",
     "scheme": "mmd",
-    "sdkVersion": "54.0.0"
+    "version": "1.0.0",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/new-order.wav"
+          ]
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.mmd.delivery"
+        }
+      ]
+    ],
+    "android": {
+      "notification": {
+        "sound": "new-order.wav"
+      },
+      "package": "com.maladho.mmdelivery"
+    },
+    "extra": {
+      "EXPO_PUBLIC_WEB_BASE_URL": "http://192.168.1.203:3000",
+      "EXPO_PUBLIC_STRIPE_PK": "pk_test_51SiVEKARYL6CPXX2vkJ7PP2gQ8HhajpgV3Q05D6Bs3aeo9owwmjUlJMvbWGYBbcwm2EMLLhinNcLk0unSK0MmOhc00jpgYyAFA",
+      "eas": {
+        "projectId": "127751ea-33ce-4f67-98ce-a9b29a46b838"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.maladho2025.mmdelivery",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
   }
 }

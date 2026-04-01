@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Quay lại",
+    "account": "Tài khoản",
+    "security": "Bảo mật",
+    "notifications": "Thông báo",
+    "language": "Ngôn ngữ",
+    "logout": "Đăng xuất",
+    "soon": "Sắp có ✅",
+    "ok": "OK",
+    "toAdd": "Cần thêm",
+    "ready": "Sẵn sàng",
+    "notConfigured": "Chưa cấu hình",
+    "notRequired": "Không bắt buộc"
+  },
+  "driver": {
+    "account": {
+      "title": "Tài khoản tài xế",
+      "subtitle": "Phương tiện, giấy tờ, thanh toán, trạng thái (hướng dẫn).",
+      "vehicle": "Phương tiện",
+      "documents": "Giấy tờ",
+      "payout": "Thanh toán",
+      "finalizeNow": "Hoàn tất ngay"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

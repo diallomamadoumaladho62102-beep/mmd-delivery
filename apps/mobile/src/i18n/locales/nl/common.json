@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Terug",
+    "account": "Account",
+    "security": "Beveiliging",
+    "notifications": "Meldingen",
+    "language": "Taal",
+    "logout": "Uitloggen",
+    "soon": "Binnenkort ✅",
+    "ok": "OK",
+    "toAdd": "Toe te voegen",
+    "ready": "Klaar",
+    "notConfigured": "Niet geconfigureerd",
+    "notRequired": "Niet vereist"
+  },
+  "driver": {
+    "account": {
+      "title": "Chauffeursaccount",
+      "subtitle": "Voertuig, documenten, uitbetaling, status (begeleid).",
+      "vehicle": "Voertuig",
+      "documents": "Documenten",
+      "payout": "Uitbetaling",
+      "finalizeNow": "Nu afronden"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

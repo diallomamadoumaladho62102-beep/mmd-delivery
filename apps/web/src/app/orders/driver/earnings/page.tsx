@@ -62,6 +62,192 @@ function computeDriverEarnings(
   return Math.max(0, Math.round(net * 100) / 100); // arrondi 2 décimales
 }
 
+function currentYearUTC() {
+  return new Date().getUTCFullYear();
+}
+
+type DownloadOk = {
+  routeVersion?: string;
+  year: number;
+  driverId: string;
+  file: {
+    bucket: string;
+    path: string;
+    signedUrl: string;
+    expiresInSeconds: number;
+  };
+};
+
+type ApiErr = {
+  error: string;
+  hint?: string;
+  bucket?: string;
+  path?: string;
+  routeVersion?: string;
+};
+
+function TaxPdfCard() {
+  const years = useMemo(() => {
+    const y = currentYearUTC();
+    return [y, y - 1, y - 2, y - 3];
+  }, []);
+
+  const [year, setYear] = useState<number>(years[1] ?? currentYearUTC() - 1);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function getAccessToken() {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw new Error(error.message);
+    const token = data?.session?.access_token;
+    if (!token) throw new Error("Tu dois être connecté (session access_token manquant).");
+    return token;
+  }
+
+  async function callJson<T>(url: string, token: string): Promise<T> {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    const json = (await res.json()) as any;
+
+    if (!res.ok) {
+      const errMsg = json?.error || `HTTP ${res.status}`;
+      const e = new Error(errMsg) as any;
+      e.payload = json;
+      e.status = res.status;
+      throw e;
+    }
+
+    return json as T;
+  }
+
+  async function onDownload() {
+    setLoading(true);
+    setMsg(null);
+
+    try {
+      const token = await getAccessToken();
+      const data = await callJson<DownloadOk>(
+        `/api/driver/tax/download?year=${year}`,
+        token
+      );
+
+      window.open(data.file.signedUrl, "_blank", "noopener,noreferrer");
+      setMsg(`✅ Download prêt (année ${year}).`);
+    } catch (e: any) {
+      const status = e?.status;
+      const payload = e?.payload as ApiErr | undefined;
+
+      if (status === 404) {
+        setMsg(
+          `⚠️ PDF pas encore généré pour ${year}. Clique “Generate PDF + Download”.`
+        );
+      } else {
+        setMsg(`❌ ${payload?.error ?? e?.message ?? "Erreur inconnue"}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onGenerateThenDownload() {
+    setLoading(true);
+    setMsg(null);
+
+    try {
+      const token = await getAccessToken();
+
+      // 1) Generate PDF (Option 2)
+      const genRes = await fetch(`/api/driver/tax/summary?year=${year}`, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+
+      const genJson = await genRes.json().catch(() => null);
+
+      if (!genRes.ok) {
+        throw new Error(genJson?.error || `Generate failed (HTTP ${genRes.status})`);
+      }
+
+      // 2) Download (increments download_count)
+      const data = await callJson<DownloadOk>(
+        `/api/driver/tax/download?year=${year}`,
+        token
+      );
+
+      window.open(data.file.signedUrl, "_blank", "noopener,noreferrer");
+      setMsg(`✅ Généré + download OK (année ${year}).`);
+    } catch (e: any) {
+      setMsg(`❌ ${e?.message ?? "Erreur inconnue"}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="border rounded-xl bg-white p-4 space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Tax PDF</h2>
+          <p className="text-sm text-gray-600">
+            Génère et télécharge ton résumé annuel (PDF) depuis le serveur.
+          </p>
+          <p className="text-xs text-gray-500">
+            “Download” incrémente <code>download_count</code> et met à jour{" "}
+            <code>last_downloaded_at</code>.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Année</span>
+          <select
+            className="rounded-lg border px-2 py-1 text-sm bg-white"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            disabled={loading}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={onDownload}
+          disabled={loading}
+          className="px-3 py-2 rounded-lg bg-black text-white text-sm font-medium disabled:opacity-50"
+        >
+          Download PDF
+        </button>
+
+        <button
+          onClick={onGenerateThenDownload}
+          disabled={loading}
+          className="px-3 py-2 rounded-lg border bg-white text-sm font-medium hover:bg-gray-50 disabled:opacity-50"
+        >
+          Generate PDF + Download
+        </button>
+      </div>
+
+      {msg && (
+        <div className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-800">
+          {msg}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function DriverEarningsPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [orders, setOrders] = useState<EarningsOrder[]>([]);
@@ -77,7 +263,8 @@ export default function DriverEarningsPage() {
 
       try {
         // 1) Récupérer l'utilisateur connecté
-        const { data: userData, error: userError } = await supabase.auth.getUser();
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
         if (userError) {
           console.error(userError);
           if (!cancelled) {
@@ -90,7 +277,9 @@ export default function DriverEarningsPage() {
         const user = userData.user;
         if (!user) {
           if (!cancelled) {
-            setErr("Tu dois être connecté en tant que chauffeur pour voir tes gains.");
+            setErr(
+              "Tu dois être connecté en tant que chauffeur pour voir tes gains."
+            );
             setLoading(false);
           }
           return;
@@ -215,10 +404,7 @@ export default function DriverEarningsPage() {
           {me && (
             <p className="text-xs text-gray-500 mt-1">
               Connecté en tant que{" "}
-              <span className="font-medium">
-                {me.full_name || me.id}
-              </span>
-              .
+              <span className="font-medium">{me.full_name || me.id}</span>.
             </p>
           )}
         </div>
@@ -231,17 +417,12 @@ export default function DriverEarningsPage() {
         </Link>
       </header>
 
-      {loading && (
-        <p className="text-sm text-gray-600">
-          Chargement de tes gains…
-        </p>
-      )}
+      {/* ✅ Tax PDF UI (Option 2) */}
+      <TaxPdfCard />
 
-      {err && (
-        <p className="text-sm text-red-600">
-          Erreur : {err}
-        </p>
-      )}
+      {loading && <p className="text-sm text-gray-600">Chargement de tes gains…</p>}
+
+      {err && <p className="text-sm text-red-600">Erreur : {err}</p>}
 
       {!loading && !err && (
         <>
@@ -255,15 +436,11 @@ export default function DriverEarningsPage() {
             ) : (
               <>
                 <p className="text-sm">
-                  <span className="font-medium">
-                    Nombre de courses livrées :
-                  </span>{" "}
+                  <span className="font-medium">Nombre de courses livrées :</span>{" "}
                   {orders.length}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">
-                    Gains estimés totaux :
-                  </span>{" "}
+                  <span className="font-medium">Gains estimés totaux :</span>{" "}
                   {totalEarnings.toFixed(2)} {currency}
                 </p>
                 <p className="text-xs text-gray-500">
@@ -281,10 +458,7 @@ export default function DriverEarningsPage() {
               <div className="space-y-3">
                 {orders.map((o) => {
                   const shortId = o.id.slice(0, 8);
-                  const earning = computeDriverEarnings(
-                    o.distance_miles,
-                    o.eta_minutes
-                  );
+                  const earning = computeDriverEarnings(o.distance_miles, o.eta_minutes);
 
                   return (
                     <article
@@ -293,9 +467,7 @@ export default function DriverEarningsPage() {
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div>
-                          <p className="text-sm font-semibold">
-                            {"Course #" + shortId}
-                          </p>
+                          <p className="text-sm font-semibold">{"Course #" + shortId}</p>
                           <p className="text-xs text-gray-500">
                             {"Livrée le " + formatDate(o.created_at)}
                           </p>
@@ -308,20 +480,14 @@ export default function DriverEarningsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                         <div className="space-y-1">
                           <p>
-                            <span className="font-medium">
-                              Distance :
-                            </span>{" "}
+                            <span className="font-medium">Distance :</span>{" "}
                             {o.distance_miles != null
                               ? o.distance_miles.toFixed(1) + " mi"
                               : "—"}
                           </p>
                           <p>
-                            <span className="font-medium">
-                              Temps estimé :
-                            </span>{" "}
-                            {o.eta_minutes != null
-                              ? o.eta_minutes + " min"
-                              : "—"}
+                            <span className="font-medium">Temps estimé :</span>{" "}
+                            {o.eta_minutes != null ? o.eta_minutes + " min" : "—"}
                           </p>
                         </div>
                         <div className="space-y-1">
@@ -330,19 +496,13 @@ export default function DriverEarningsPage() {
                               Montant total (client) :
                             </span>{" "}
                             {o.total != null
-                              ? o.total.toFixed(2) +
-                                " " +
-                                (o.currency ?? "USD")
+                              ? o.total.toFixed(2) + " " + (o.currency ?? "USD")
                               : "— " + (o.currency ?? "USD")}
                           </p>
                           <p>
-                            <span className="font-medium">
-                              Ta part (estimée) :
-                            </span>{" "}
+                            <span className="font-medium">Ta part (estimée) :</span>{" "}
                             {earning != null
-                              ? earning.toFixed(2) +
-                                " " +
-                                (o.currency ?? "USD")
+                              ? earning.toFixed(2) + " " + (o.currency ?? "USD")
                               : "—"}
                           </p>
                         </div>

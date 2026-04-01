@@ -2,6 +2,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
+type OrdersJoin =
+  | { order_type: string | null }
+  | { order_type: string | null }[]
+  | null
+  | undefined;
+
 type Row = {
   order_id: string;
   platform_pct: number | null;
@@ -11,8 +17,14 @@ type Row = {
   restaurant_pct: number | null;
   restaurant_amount: number | null;
   currency: string | null;
-  orders?: { order_type: string | null } | null; // jointure
+  orders?: OrdersJoin; // jointure (peut être objet OU tableau selon la relation)
 };
+
+function getOrderType(orders: OrdersJoin): string | null {
+  if (!orders) return null;
+  if (Array.isArray(orders)) return orders[0]?.order_type ?? null;
+  return orders.order_type ?? null;
+}
 
 export default function AdminCommissionsTable() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -30,8 +42,9 @@ export default function AdminCommissionsTable() {
     return `${n.toFixed(2)} ${cur}`;
   };
 
-  async function load(currentFilter = typeFilter) {
+  async function load(currentFilter: "all" | "food" | "errand" = typeFilter) {
     setLoading(true);
+    setErr(null);
 
     // on joint 'orders' pour avoir order_type
     let query = supabase
@@ -52,19 +65,35 @@ export default function AdminCommissionsTable() {
     if (error) {
       setErr(error.message);
       setRows([]);
-    } else {
-      const list = (data as Row[]) ?? [];
-      // on ne garde que les lignes avec montants > 0
-      const filtered = list.filter(r =>
-        ((r.platform_amount ?? 0) + (r.driver_amount ?? 0) + (r.restaurant_amount ?? 0)) > 0
-      );
-      setRows(filtered);
+      setLoading(false);
+      return;
     }
+
+    // ✅ data est unknown-ish (selon typings supabase) -> on sécurise
+    const list: Row[] = Array.isArray(data) ? (data as unknown as Row[]) : [];
+
+    // on ne garde que les lignes avec montants > 0
+    const filtered = list.filter(
+      (r) =>
+        (r.platform_amount ?? 0) +
+          (r.driver_amount ?? 0) +
+          (r.restaurant_amount ?? 0) >
+        0
+    );
+
+    setRows(filtered);
     setLoading(false);
   }
 
-  useEffect(() => { load(); /* au montage */ }, []);
-  useEffect(() => { load(typeFilter); /* à chaque changement de filtre */ }, [typeFilter]);
+  useEffect(() => {
+    load(); // au montage
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    load(typeFilter); // à chaque changement de filtre
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeFilter]);
 
   if (err) return <div className="text-red-600">{err}</div>;
   if (loading) return <div>Chargement des commissions…</div>;
@@ -77,7 +106,9 @@ export default function AdminCommissionsTable() {
         {/* Sélecteur de type */}
         <select
           value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as "all" | "food" | "errand")}
+          onChange={(e) =>
+            setTypeFilter(e.target.value as "all" | "food" | "errand")
+          }
           className="text-xs border rounded px-2 py-1"
           title="Filtrer par type de commande"
         >
@@ -107,25 +138,33 @@ export default function AdminCommissionsTable() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.order_id} className="border-t hover:bg-gray-50">
-                <td className="px-2 py-1 font-mono text-xs">{r.order_id.slice(0, 8)}…</td>
-                <td className="px-2 py-1">
-                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-                    {r.orders?.order_type ?? "—"}
-                  </span>
-                </td>
-                <td className="px-2 py-1">
-                  {pct(r.platform_pct)} • <b>{money(r.platform_amount, r.currency)}</b>
-                </td>
-                <td className="px-2 py-1">
-                  {pct(r.driver_pct)} • <b>{money(r.driver_amount, r.currency)}</b>
-                </td>
-                <td className="px-2 py-1">
-                  {pct(r.restaurant_pct)} • <b>{money(r.restaurant_amount, r.currency)}</b>
-                </td>
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const orderType = getOrderType(r.orders);
+              return (
+                <tr key={r.order_id} className="border-t hover:bg-gray-50">
+                  <td className="px-2 py-1 font-mono text-xs">
+                    {r.order_id.slice(0, 8)}…
+                  </td>
+                  <td className="px-2 py-1">
+                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs">
+                      {orderType ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1">
+                    {pct(r.platform_pct)} •{" "}
+                    <b>{money(r.platform_amount, r.currency)}</b>
+                  </td>
+                  <td className="px-2 py-1">
+                    {pct(r.driver_pct)} •{" "}
+                    <b>{money(r.driver_amount, r.currency)}</b>
+                  </td>
+                  <td className="px-2 py-1">
+                    {pct(r.restaurant_pct)} •{" "}
+                    <b>{money(r.restaurant_amount, r.currency)}</b>
+                  </td>
+                </tr>
+              );
+            })}
             {!rows.length && (
               <tr>
                 <td colSpan={5} className="px-2 py-6 text-center text-gray-500">

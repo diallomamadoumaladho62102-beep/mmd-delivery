@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
-export default function ChatInput({ orderId, onSent }: { orderId: string; onSent?: () => void }) {
+export default function ChatInput({
+  orderId,
+  onSent,
+}: {
+  orderId: string;
+  onSent?: () => void;
+}) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [pending, setPending] = useState(false);
@@ -11,16 +17,22 @@ export default function ChatInput({ orderId, onSent }: { orderId: string; onSent
 
   async function send() {
     setErr(null);
-    if (!text && !file) return;
+    const t = text.trim();
+    if (!t && !file) return;
 
     setPending(true);
     try {
       let image_path: string | null = null;
 
+      // upload image optionnel
       if (file) {
-        const fileName = file.name.replace(/\s+/g, "_");
-        const key = `${orderId}/${crypto.randomUUID()}_${fileName}`;
-        const up = await supabase.storage.from("chat-uploads").upload(key, file, { upsert: false });
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const key = `${orderId}/${crypto.randomUUID()}-${safeName}`;
+
+        const up = await supabase.storage
+          .from("chat-uploads")
+          .upload(key, file, { upsert: false });
+
         if (up.error) throw new Error(up.error.message);
         image_path = key;
       }
@@ -28,19 +40,21 @@ export default function ChatInput({ orderId, onSent }: { orderId: string; onSent
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error("Non connecté.");
 
+      // ✅ IMPORTANT: colonne = message (pas text)
       const { error } = await supabase.from("order_messages").insert({
         order_id: orderId,
         user_id: user.id,
-        text: text || null,
-        image_path
+        message: t || "", // ou null si tu préfères, mais ChatBox affiche message
+        image_path,
       });
+
       if (error) throw new Error(error.message);
 
       setText("");
       setFile(null);
       onSent?.();
     } catch (e: any) {
-      setErr(e.message || String(e));
+      setErr(e?.message || String(e));
     } finally {
       setPending(false);
     }
@@ -49,18 +63,30 @@ export default function ChatInput({ orderId, onSent }: { orderId: string; onSent
   return (
     <div className="border rounded-xl p-3 space-y-2">
       {err && <div className="text-red-600 text-sm">Erreur: {err}</div>}
+
       <textarea
         className="w-full border rounded px-3 py-2 h-20"
         placeholder="Écrire un message…"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            void send();
+          }
+        }}
       />
+
       <div className="flex items-center gap-2">
-        <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+
         <button
-          onClick={send}
-          disabled={pending}
+          onClick={() => void send()}
+          disabled={pending || (!text.trim() && !file)}
           className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
         >
           {pending ? "Envoi…" : "Envoyer"}
@@ -69,4 +95,3 @@ export default function ChatInput({ orderId, onSent }: { orderId: string; onSent
     </div>
   );
 }
-
