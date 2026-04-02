@@ -1,55 +1,100 @@
-import Link from "next/link";
+"use client";
+
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { supabase } from "../../lib/supabaseBrowser";
+
+type Role = "client" | "driver" | "restaurant";
 
 export default function SignupLanding() {
+  const router = useRouter();
+
+  const handlePress = async (role: Role) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("selectedRole", role);
+    }
+
+    const { data } = await supabase.auth.getSession();
+    const isLoggedIn = !!data.session;
+
+    if (!isLoggedIn) {
+      if (role === "client") {
+        router.push("/auth");
+        return;
+      }
+
+      if (role === "driver") {
+        router.push("/signup/driver");
+        return;
+      }
+
+      router.push("/signup/restaurant");
+      return;
+    }
+
+    if (role === "client") {
+      router.push("/dashboard");
+      return;
+    }
+
+    if (role === "driver") {
+      router.push("/orders/driver");
+      return;
+    }
+
+    router.push("/restaurant/profile");
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-xl w-full bg-white rounded-2xl shadow p-6 space-y-6">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-semibold">Créer un compte MMD Delivery</h1>
-          <p className="text-sm text-gray-600">
-            Choisis ton type de compte pour continuer.
+    <main className="min-h-screen bg-[#020617] px-6 py-10 text-white">
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-3xl flex-col justify-between">
+        <div>
+          <h1 className="mb-3 text-5xl font-bold leading-tight tracking-tight max-sm:text-4xl">
+            Choose your mode
+          </h1>
+
+          <p className="mb-10 max-w-2xl text-xl text-gray-400 max-sm:text-lg">
+            Choose a role to access the corresponding interface.
           </p>
+
+          <div className="space-y-6">
+            <button
+              type="button"
+              onClick={() => void handlePress("client")}
+              className="w-full rounded-[26px] bg-red-500 px-6 py-6 text-center text-3xl font-semibold text-white transition hover:opacity-95 active:scale-[0.99] max-sm:rounded-2xl max-sm:py-5 max-sm:text-2xl"
+            >
+              Client
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handlePress("driver")}
+              className="w-full rounded-[26px] bg-sky-500 px-6 py-6 text-center text-3xl font-semibold text-white transition hover:opacity-95 active:scale-[0.99] max-sm:rounded-2xl max-sm:py-5 max-sm:text-2xl"
+            >
+              Driver
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handlePress("restaurant")}
+              className="w-full rounded-[26px] bg-green-500 px-6 py-6 text-center text-3xl font-semibold text-white transition hover:opacity-95 active:scale-[0.99] max-sm:rounded-2xl max-sm:py-5 max-sm:text-2xl"
+            >
+              Restaurant
+            </button>
+          </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          {/* Client */}
-          <Link
-            href="/signup/client"
-            className="border rounded-xl p-4 flex flex-col items-center justify-between hover:shadow-md transition"
-          >
-            <div className="text-lg font-semibold">Client</div>
-            <p className="text-xs text-gray-600 text-center mt-2">
-              Commander à manger, se faire livrer.
-            </p>
-          </Link>
-
-          {/* Chauffeur */}
-          <Link
-            href="/signup/driver"
-            className="border rounded-xl p-4 flex flex-col items-center justify-between hover:shadow-md transition"
-          >
-            <div className="text-lg font-semibold">Chauffeur / Livreur</div>
-            <p className="text-xs text-gray-600 text-center mt-2">
-              Gagner de l&apos;argent en livrant.
-            </p>
-          </Link>
-
-          {/* Restaurant */}
-          <Link
-            href="/signup/restaurant"
-            className="border rounded-xl p-4 flex flex-col items-center justify-between hover:shadow-md transition"
-          >
-            <div className="text-lg font-semibold">Restaurant</div>
-            <p className="text-xs text-gray-600 text-center mt-2">
-              Recevoir des commandes MMD Delivery.
-            </p>
-          </Link>
+        <div className="flex justify-center pt-12">
+          <Image
+            src="/brand/mmd-logo.png"
+            alt="MMD Delivery Logo"
+            width={88}
+            height={88}
+            priority
+            className="h-auto w-auto opacity-95"
+          />
         </div>
-
-        <p className="text-[11px] text-gray-500 text-center">
-          Un compte par email. Tu pourras utiliser le même email plus tard dans l&apos;app mobile.
-        </p>
       </div>
-    </div>
+    </main>
   );
 }
