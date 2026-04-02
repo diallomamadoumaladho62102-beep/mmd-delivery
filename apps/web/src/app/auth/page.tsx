@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseBrowser";
 
 type ViewState = "idle" | "loading" | "success" | "error";
@@ -11,8 +12,8 @@ function isValidEmail(value: string): boolean {
 }
 
 export default function AuthPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [state, setState] = useState<ViewState>("idle");
   const [message, setMessage] = useState("");
@@ -25,15 +26,23 @@ export default function AuthPage() {
 
     const loadSession = async () => {
       const { data } = await supabase.auth.getSession();
+
       if (!mounted) return;
-      setIsAuthenticated(!!data.session);
+
+      if (data.session) {
+        window.location.href = "/dashboard";
+        return;
+      }
+
       setIsCheckingSession(false);
     };
 
     void loadSession();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
+      if (session) {
+        window.location.href = "/dashboard";
+      }
     });
 
     return () => {
@@ -80,23 +89,6 @@ export default function AuthPage() {
     setMessage("Lien magique envoyé. Vérifie ton email.");
   };
 
-  const signOut = async () => {
-    setState("loading");
-    setMessage("");
-
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      setState("error");
-      setMessage(`Erreur: ${error.message}`);
-      return;
-    }
-
-    setIsAuthenticated(false);
-    setState("success");
-    setMessage("Déconnexion réussie.");
-  };
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 py-10">
       <div className="mx-auto flex min-h-[80vh] w-full max-w-5xl items-center justify-center">
@@ -139,7 +131,7 @@ export default function AuthPage() {
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
                   Vérification de la session...
                 </div>
-              ) : !isAuthenticated ? (
+              ) : (
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
@@ -169,21 +161,6 @@ export default function AuthPage() {
                     className="w-full rounded-2xl bg-gray-900 px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {state === "loading" ? "Envoi en cours..." : "Envoyer le lien magique"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                    Tu es connecté.
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={signOut}
-                    disabled={state === "loading"}
-                    className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {state === "loading" ? "Patiente..." : "Se déconnecter"}
                   </button>
                 </div>
               )}
