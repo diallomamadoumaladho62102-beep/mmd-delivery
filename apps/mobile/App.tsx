@@ -12,6 +12,7 @@ import "./src/i18n";
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { supabase } from "./src/lib/supabase";
 import { getSelectedRole } from "./src/lib/authRole";
+import { API_BASE_URL } from "./lib/apiBase";
 
 // ✅ Notifications (exports corrigés)
 import { setupNotifications, getExpoPushToken } from "./src/lib/notifications";
@@ -19,13 +20,17 @@ import { setupNotifications, getExpoPushToken } from "./src/lib/notifications";
 // ✅ i18n (API)
 import { syncLocaleForRole } from "./src/i18n/index";
 
-console.log("API_URL =", process.env.EXPO_PUBLIC_API_URL);
-console.log("SUPABASE_URL =", process.env.EXPO_PUBLIC_SUPABASE_URL);
-console.log("SUPABASE_KEY_OK =", !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+const extra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined) ?? {};
+
+if (__DEV__) {
+  console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
+  console.log("SUPABASE_URL =", extra.EXPO_PUBLIC_SUPABASE_URL);
+  console.log("SUPABASE_KEY_OK =", !!extra.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+}
 
 type Role = "client" | "driver" | "restaurant";
 
-function toRole(v: any): Role {
+function toRole(v: unknown): Role {
   const x = String(v ?? "").toLowerCase();
   if (x === "driver" || x === "restaurant") return x;
   return "client";
@@ -44,16 +49,22 @@ function Splash() {
   );
 }
 
+function FatalFallback({ message }: { message: string }) {
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <Text style={{ textAlign: "center" }}>{message}</Text>
+    </View>
+  );
+}
+
 async function getDeviceIdSafe(): Promise<string> {
   try {
-    // ✅ Android: méthode officielle (SDK récent)
     const androidIdFn = (Application as any).getAndroidId;
     if (typeof androidIdFn === "function") {
       const id = androidIdFn();
       if (id) return String(id);
     }
 
-    // ✅ iOS: IDFV
     const iosIdFn = (Application as any)?.getIosIdForVendorAsync;
     if (typeof iosIdFn === "function") {
       const v = await iosIdFn();
@@ -61,8 +72,30 @@ async function getDeviceIdSafe(): Promise<string> {
     }
   } catch {}
 
-  // fallback stable-ish
   return `${Device.modelName ?? "device"}-${Device.osName ?? "os"}-${Device.osVersion ?? "0"}`;
+}
+
+function getStripeGateSafe():
+  | React.ComponentType<{ initialRouteName: string }>
+  | null {
+  try {
+    const stripeGateModule = require("./src/lib/StripeGate");
+    const StripeGate = stripeGateModule?.default ?? stripeGateModule;
+
+    if (!StripeGate) {
+      if (__DEV__) {
+        console.log("[App] StripeGate module loaded but export is empty");
+      }
+      return null;
+    }
+
+    return StripeGate;
+  } catch (error) {
+    if (__DEV__) {
+      console.log("[App] StripeGate load error:", error);
+    }
+    return null;
+  }
 }
 
 export default function App() {
@@ -78,28 +111,35 @@ export default function App() {
 
   const registerInFlightRef = useRef(false);
 
-  // ✅ i18n sync guards
   const lastRoleRef = useRef<Role | null>(null);
   const syncingLocaleRef = useRef(false);
 
   useEffect(() => {
     let alive = true;
 
-    // ✅ Notifications handler (safe, idempotent)
-    setupNotifications();
+    try {
+      setupNotifications();
+    } catch (error) {
+      if (__DEV__) {
+        console.log("[App] setupNotifications error:", error);
+      }
+    }
 
     const syncLocale = async () => {
       if (!alive) return;
       if (syncingLocaleRef.current) return;
+
       syncingLocaleRef.current = true;
 
       try {
         const role = toRole((await getSelectedRole()) ?? "client");
         await syncLocaleForRole(role as any);
         lastRoleRef.current = role;
-      } catch (e) {
-        console.log("syncLocale error:", e);
-        // fallback safe
+      } catch (error) {
+        if (__DEV__) {
+          console.log("syncLocale error:", error);
+        }
+
         try {
           await syncLocaleForRole("client" as any);
           lastRoleRef.current = "client";
@@ -113,15 +153,23 @@ export default function App() {
       try {
         if (!alive) return;
         if (registerInFlightRef.current) return;
+
         registerInFlightRef.current = true;
 
-        console.log("👤 USER ID (session):", userId);
+        if (__DEV__) {
+          console.log("👤 USER ID (session):", userId);
+        }
 
         const expoToken = await getExpoPushToken();
-        console.log("📲 EXPO PUSH TOKEN:", expoToken);
+
+        if (__DEV__) {
+          console.log("📲 EXPO PUSH TOKEN:", expoToken);
+        }
 
         if (!expoToken) {
-          console.log("❌ Pas de token (permissions refusées / simulateur / limitation)");
+          if (__DEV__) {
+            console.log("❌ Pas de token (permissions refusées / simulateur / limitation)");
+          }
           return;
         }
 
@@ -137,7 +185,9 @@ export default function App() {
           lastSavedRef.current?.role === role &&
           lastSavedRef.current?.deviceId === deviceId
         ) {
-          console.log("↩️ Token déjà enregistré (même device/role), skip");
+          if (__DEV__) {
+            console.log("↩️ Token déjà enregistré (même device/role), skip");
+          }
           return;
         }
 
@@ -152,18 +202,22 @@ export default function App() {
         });
 
         if (error) {
-          console.log("❌ Save token error:", error);
+          if (__DEV__) {
+            console.log("❌ Save token error:", error);
+          }
           return;
         }
 
         lastSavedRef.current = { userId, token: expoToken, role, deviceId };
-        console.log("✅ Token enregistré dans user_push_tokens (multi-device)");
+
+        if (__DEV__) {
+          console.log("✅ Token enregistré dans user_push_tokens (multi-device)");
+        }
       } finally {
         registerInFlightRef.current = false;
       }
     };
 
-    // ✅ boot: i18n + session
     (async () => {
       await syncLocale();
 
@@ -171,28 +225,39 @@ export default function App() {
         .getSession()
         .then(({ data }) => {
           if (!alive) return;
+
           const s = data.session ?? null;
           setSession(s);
           setAuthLoading(false);
-          if (s?.user?.id) void registerToken(s.user.id);
+
+          if (s?.user?.id) {
+            void registerToken(s.user.id);
+          }
         })
-        .catch(() => {
+        .catch((error) => {
+          if (__DEV__) {
+            console.log("[App] getSession error:", error);
+          }
+
           if (!alive) return;
           setAuthLoading(false);
         });
     })();
 
-    // ✅ auth changes => sync locale + token
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!alive) return;
+
       const s = newSession ?? null;
       setSession(s);
       setAuthLoading(false);
+
       void syncLocale();
-      if (s?.user?.id) void registerToken(s.user.id);
+
+      if (s?.user?.id) {
+        void registerToken(s.user.id);
+      }
     });
 
-    // ✅ role changes without auth change (RoleSelect) => poll léger
     const rolePoll = setInterval(() => {
       void (async () => {
         try {
@@ -207,6 +272,7 @@ export default function App() {
     return () => {
       alive = false;
       clearInterval(rolePoll);
+
       try {
         sub?.subscription?.unsubscribe?.();
       } catch {}
@@ -217,10 +283,13 @@ export default function App() {
     return session ? "ClientHome" : "RoleSelect";
   }, [session]);
 
-  // ✅ Force un remount du navigator quand session change
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
 
-  if (authLoading) return <Splash />;
+  const StripeGate = useMemo(() => getStripeGateSafe(), []);
+
+  if (authLoading) {
+    return <Splash />;
+  }
 
   if (isExpoGo()) {
     return (
@@ -230,7 +299,12 @@ export default function App() {
     );
   }
 
-  const StripeGate = require("./src/lib/StripeGate").default;
+  if (!StripeGate) {
+    return (
+      <FatalFallback message="Module Stripe indisponible. Vérifie StripeGate et relance l’application." />
+    );
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <StripeGate key={navKey} initialRouteName={initialRouteName} />

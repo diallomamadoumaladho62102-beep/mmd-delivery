@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import * as WebBrowser from "expo-web-browser";
+import { API_BASE_URL } from "./apiBase";
 
 export type TinType = "SSN" | "EIN";
 
@@ -42,13 +43,13 @@ export type W9Payload = {
   state: string;
   zip: string;
   tin_type: TinType;
-  tin?: string; // ✅ optional si déjà signed (si vide => keep current)
+  tin?: string;
   signed_name: string;
 };
 
 function apiBaseUrl() {
-  const url = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (!url) throw new Error("Missing EXPO_PUBLIC_API_URL in apps/mobile/.env");
+  const url = API_BASE_URL?.trim();
+  if (!url) throw new Error("Missing API_BASE_URL");
   return url.replace(/\/+$/, "");
 }
 

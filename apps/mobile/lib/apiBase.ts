@@ -1,8 +1,40 @@
 import Constants from "expo-constants";
 import { NativeModules } from "react-native";
 
+const PRODUCTION_API_URL = "https://mmd-delivery.vercel.app";
+const LOCAL_API_PORT = "3000";
+
 function safeTrim(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function stripTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+function ensureHttpProtocol(value: string): string {
+  const trimmed = safeTrim(value);
+  if (!trimmed) return "";
+
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return stripTrailingSlash(trimmed);
+  }
+
+  return stripTrailingSlash(`https://${trimmed}`);
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeApiUrl(value: unknown): string {
+  const normalized = ensureHttpProtocol(safeTrim(value));
+  return isValidHttpUrl(normalized) ? normalized : "";
 }
 
 function extractHostFromUrlLike(value: string): string | null {
@@ -14,11 +46,27 @@ function extractHostFromUrlLike(value: string): string | null {
     }
 
     const hostPart = value.split("/")[0];
-    const hostname = hostPart.split(":")[0];
-    return hostname || null;
+    return hostPart.split(":")[0] || null;
   } catch {
     return null;
   }
+}
+
+function isLocalHost(host: string | null): boolean {
+  if (!host) return false;
+
+  const h = host.toLowerCase();
+  return h === "localhost" || h === "127.0.0.1" || h === "::1";
+}
+
+function isPrivateLanHost(host: string | null): boolean {
+  if (!host) return false;
+
+  return (
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+  );
 }
 
 function getMetroHost(): string | null {
@@ -43,29 +91,80 @@ function getMetroHost(): string | null {
   return null;
 }
 
-export function getApiBaseUrl(): string {
-  const explicitEnv = safeTrim(process.env.EXPO_PUBLIC_API_URL);
-  if (explicitEnv) {
-    return explicitEnv;
-  }
+function getRuntimeEnvApiUrls(): { localUrl: string; prodUrl: string } {
+  try {
+    const env = (globalThis as any)?.process?.env;
 
-  const explicitExtra = safeTrim(
-    (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_WEB_BASE_URL
-  );
-  if (!__DEV__ && explicitExtra) {
-    return explicitExtra;
+    return {
+      localUrl: normalizeApiUrl(env?.EXPO_PUBLIC_API_URL_LOCAL),
+      prodUrl: normalizeApiUrl(env?.EXPO_PUBLIC_API_URL_PROD),
+    };
+  } catch {
+    return {
+      localUrl: "",
+      prodUrl: "",
+    };
   }
+}
 
+function getExpoExtraApiUrls(): { localUrl: string; prodUrl: string } {
+  const extra = (Constants.expoConfig?.extra as any) ?? {};
+
+  return {
+    localUrl: normalizeApiUrl(extra?.EXPO_PUBLIC_API_URL_LOCAL),
+    prodUrl: normalizeApiUrl(extra?.EXPO_PUBLIC_API_URL_PROD),
+  };
+}
+
+function getLocalDevApiUrlFromMetro(): string {
   const metroHost = getMetroHost();
-  if (__DEV__ && metroHost) {
-    return `http://${metroHost}:3000`;
+
+  if (!metroHost) return "";
+  if (isLocalHost(metroHost)) return "";
+  if (!isPrivateLanHost(metroHost)) return "";
+
+  return `http://${metroHost}:${LOCAL_API_PORT}`;
+}
+
+export function getApiBaseUrl(): string {
+  // 1) priorité à Expo extra
+  const expoUrls = getExpoExtraApiUrls();
+
+  if (__DEV__ && expoUrls.localUrl) {
+    return expoUrls.localUrl;
   }
 
-  if (explicitExtra) {
-    return explicitExtra;
+  if (expoUrls.prodUrl) {
+    return expoUrls.prodUrl;
   }
 
-  return "http://localhost:3000";
+  // 2) fallback runtime env
+  const envUrls = getRuntimeEnvApiUrls();
+
+  if (__DEV__ && envUrls.localUrl) {
+    return envUrls.localUrl;
+  }
+
+  if (envUrls.prodUrl) {
+    return envUrls.prodUrl;
+  }
+
+  // 3) fallback dev local via IP Metro
+  if (__DEV__) {
+    const metroLocalUrl = getLocalDevApiUrlFromMetro();
+    if (metroLocalUrl) {
+      return metroLocalUrl;
+    }
+  }
+
+  // 4) fallback final production
+  return PRODUCTION_API_URL;
 }
 
 export const API_BASE_URL = getApiBaseUrl();
+
+if (__DEV__) {
+  const extra = (Constants.expoConfig?.extra as any) ?? {};
+  console.log("🌐 APP_ENV =", extra?.APP_ENV ?? "development");
+  console.log("🌐 API_BASE_URL =", API_BASE_URL);
+}

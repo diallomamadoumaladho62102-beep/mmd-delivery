@@ -1,6 +1,7 @@
 {
   "name": "mmd-delivery",
   "private": true,
+  "version": "1.0.0",
   "scripts": {
     "dev": "cd apps/web && pnpm dev",
     "build": "cd apps/web && pnpm build",
@@ -11,23 +12,14 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.80.0",
     "dotenv": "^17.2.3",
-    "expo": "^54.0.32",
+    "expo": "~54.0.33",
     "react": "19.1.0",
     "react-native": "0.81.5"
   },
   "devDependencies": {
     "@types/react": "19.1.17",
-    "babel-preset-expo": "~54.0.9",
+    "babel-preset-expo": "~54.0.10",
     "supabase": "^2.53.6",
     "typescript": "~5.9.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "react": "19.1.0",
-      "react-dom": "19.1.0",
-      "@types/react": "19.1.17",
-      "@types/react-dom": "19.1.9"
-    }
-  },
-  "version": "1.0.0"
+  }
 }

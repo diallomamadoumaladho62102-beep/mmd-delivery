@@ -1,6 +1,5 @@
 import * as WebBrowser from "expo-web-browser";
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+import { API_BASE_URL } from "./apiBase";
 
 type CreateCheckoutResponse = {
   url: string;
@@ -16,8 +15,8 @@ type ConfirmPaidResponse = {
 };
 
 function apiBase() {
-  if (!API_URL) throw new Error("EXPO_PUBLIC_API_URL is missing");
-  return API_URL.replace(/\/$/, "");
+  if (!API_BASE_URL) throw new Error("API_BASE_URL is missing");
+  return API_BASE_URL.replace(/\/$/, "");
 }
 
 function sleep(ms: number) {
@@ -34,7 +33,6 @@ async function fetchWithTimeout(
 
   const AbortCtl: any = (globalThis as any).AbortController;
   if (!AbortCtl) {
-    // fallback sans abort
     return fetch(input, init);
   }
 
@@ -73,22 +71,18 @@ async function postJsonWithRetry<T>(
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        // évite erreurs vides
         throw new Error(txt || `HTTP ${res.status} ${res.statusText || ""}`.trim());
       }
 
-      // parfois l’API peut renvoyer du texte; on essaye JSON puis fallback
       const raw = await res.text().catch(() => "");
       try {
         return JSON.parse(raw) as T;
       } catch {
-        // si c’est déjà un JSON valide côté server, tant mieux; sinon erreur claire
         throw new Error(raw || "Invalid JSON response");
       }
     } catch (e: any) {
       lastErr = e;
 
-      // petit backoff progressif
       if (i < attempts) await sleep(800 * i);
     }
   }
@@ -110,7 +104,6 @@ export async function startCheckoutForOrder(orderId: string, accessToken: string
   const createEndpoint = `${base}/api/stripe/client/create-checkout-session`;
   const confirmEndpoint = `${base}/api/stripe/client/confirm-paid`;
 
-  // 1) Créer la session checkout (retry)
   const data = await postJsonWithRetry<CreateCheckoutResponse>(
     createEndpoint,
     accessToken,
@@ -120,19 +113,15 @@ export async function startCheckoutForOrder(orderId: string, accessToken: string
 
   if (!data?.url) throw new Error("Missing Checkout URL");
 
-  // 2) Ouvrir Stripe
-  // openBrowserAsync retourne quand l’utilisateur revient / ferme
   const result = await WebBrowser.openBrowserAsync(data.url);
 
-  // Si l’utilisateur annule directement, on peut éviter d’appeler confirm-paid
-  // (mais tu peux aussi le laisser: ça ne casse rien)
-  const didCancel = (result as any)?.type === "cancel" || (result as any)?.type === "dismiss";
+  const didCancel =
+    (result as any)?.type === "cancel" || (result as any)?.type === "dismiss";
 
   if (didCancel) {
     return;
   }
 
-  // 3) Confirmer paiement au retour (évite blocage si webhook rate)
   try {
     await postJsonWithRetry<ConfirmPaidResponse>(
       confirmEndpoint,
@@ -141,7 +130,6 @@ export async function startCheckoutForOrder(orderId: string, accessToken: string
       { attempts: 2, timeoutMs: 12000 }
     );
   } catch (e) {
-    // ne bloque pas l’UX si confirm échoue
     console.warn("[payments] confirm-paid failed:", (e as any)?.message ?? e);
   }
 }
