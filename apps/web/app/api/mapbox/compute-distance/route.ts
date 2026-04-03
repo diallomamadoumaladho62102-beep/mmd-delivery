@@ -11,6 +11,9 @@ if (!MAPBOX_TOKEN) {
   );
 }
 
+// ✅ FIX TS: on évite le union (A | B) qui casse Partial<BodyShape>
+// On garde les mêmes champs, mais optionnels.
+// Ensuite on valide nous-mêmes selon les cas.
 type BodyShape = {
   // cas adresses (mobile + web)
   pickupAddress?: string;
@@ -22,15 +25,6 @@ type BodyShape = {
   dropoffLat?: number;
   dropoffLng?: number;
 };
-
-type PricingResult =
-  | number
-  | {
-      deliveryFee?: number;
-      platformFee?: number;
-      driverPayout?: number;
-      [key: string]: unknown;
-    };
 
 async function geocodeAddress(address: string) {
   if (!MAPBOX_TOKEN) throw new Error("Token Mapbox manquant (env serveur)");
@@ -93,6 +87,8 @@ async function getDistanceAndDuration(
   const durationSeconds: number = Number(route.duration ?? 0);
 
   const distanceMiles = distanceMeters / 1609.34;
+
+  // ✅ minutes en number propre
   const etaMinutes = durationSeconds / 60;
   const etaMinutesRounded = Math.ceil(etaMinutes);
 
@@ -102,27 +98,6 @@ async function getDistanceAndDuration(
     etaMinutesRounded,
     distanceMeters,
     durationSeconds,
-  };
-}
-
-function normalizeDeliveryPricing(pricing: PricingResult) {
-  if (typeof pricing === "number") {
-    return {
-      deliveryFee: pricing,
-      pricingBreakdown: {
-        deliveryFee: pricing,
-      },
-    };
-  }
-
-  const deliveryFee = Number(pricing?.deliveryFee ?? 0);
-
-  return {
-    deliveryFee,
-    pricingBreakdown: {
-      ...pricing,
-      deliveryFee,
-    },
   };
 }
 
@@ -190,6 +165,7 @@ export async function POST(req: Request) {
       dropoffLng
     );
 
+    // 🔴 Niveau 3 — blocage backend absolu
     const BLOCK_MILES = 50;
 
     if (distanceMiles > BLOCK_MILES) {
@@ -205,18 +181,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // 💰 Formule MMD
-    const pricing = computeDeliveryPricing({
+    // 💰 Formule MMD (déjà définie dans lib/deliveryPricing)
+    const deliveryPrice = computeDeliveryPricing({
       distanceMiles,
       durationMinutes: etaMinutes,
-    }) as PricingResult;
+    });
 
-    const { deliveryFee, pricingBreakdown } = normalizeDeliveryPricing(pricing);
-
+    // ✅ IMPORTANT : renvoyer aussi les coords pour que le mobile puisse les sauvegarder dans orders
     return NextResponse.json({
       ok: true,
 
-      // ✅ champs modernes
+      // ✅ champs modernes (recommandés)
       pickupLat,
       pickupLng,
       dropoffLat,
@@ -224,11 +199,9 @@ export async function POST(req: Request) {
 
       distanceMiles,
       etaMinutes,
+      deliveryPrice,
 
-      // ✅ prix simple pour le mobile
-      deliveryPrice: deliveryFee,
-
-      // ✅ aliases simples
+      // ✅ aliases simples (souvent attendus côté UI)
       distance_miles: distanceMiles,
       eta_minutes: etaMinutesRounded,
 
@@ -236,7 +209,7 @@ export async function POST(req: Request) {
       distance_miles_est: distanceMiles,
       eta_minutes_est: etaMinutesRounded,
 
-      // ✅ compat naming DB
+      // ✅ compat naming DB si tu veux les mapper directement
       pickup_lat: pickupLat,
       pickup_lng: pickupLng,
       dropoff_lat: dropoffLat,
@@ -247,12 +220,9 @@ export async function POST(req: Request) {
         duration_seconds: durationSeconds,
       },
 
-      // ✅ anciens champs attendus par certains écrans
-      delivery_fee: deliveryFee,
-      delivery_fee_usd: deliveryFee,
-
-      // ✅ détail complet conservé
-      pricingBreakdown,
+      // certains vieux codes attendent ça
+      delivery_fee: deliveryPrice,
+      delivery_fee_usd: deliveryPrice,
     });
   } catch (e: any) {
     console.error("API /mapbox/compute-distance error:", e);
