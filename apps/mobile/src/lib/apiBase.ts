@@ -58,7 +58,7 @@ function getApiBaseUrl(): string {
 
   if (explicitExtra) return explicitExtra;
 
-  return "http://localhost:3000";
+  return "https://mmd-delivery.vercel.app";
 }
 
 export const API_BASE_URL = getApiBaseUrl();
