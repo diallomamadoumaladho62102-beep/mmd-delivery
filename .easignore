@@ -10,8 +10,8 @@ Backups*
 **/backups
 **/Backups*
 
-# Exclude non-mobile apps
-apps/web
+# Exclude monorepo web/apps from mobile build
+apps
 
 # Local backend / infra
 supabase

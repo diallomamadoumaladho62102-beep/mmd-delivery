@@ -14,17 +14,29 @@ export default ({ config }: { config: AppConfigInput }) => {
 
   const env = maybeProcess.process?.env ?? {};
 
-  // ✅ Environnement
+  // 🔥 ENV
   const APP_ENV = env.APP_ENV ?? "development";
 
-  // ✅ Choix automatique API
-  const EXPO_PUBLIC_API_URL =
+  // 🔥 API dynamique
+  const API_URL =
     APP_ENV === "production"
       ? env.EXPO_PUBLIC_API_URL_PROD
       : env.EXPO_PUBLIC_API_URL_LOCAL;
 
   return {
     ...config,
+
+    name: "MMD Delivery",
+    slug: "mmd-delivery",
+    version: "1.0.0",
+    scheme: "mmddelivery",
+
+    // ✅ SPLASH FIX (IMPORTANT)
+    splash: {
+      image: "./assets/brand/mmd-logo.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff",
+    },
 
     ios: {
       ...(config.ios ?? {}),
@@ -44,11 +56,11 @@ export default ({ config }: { config: AppConfigInput }) => {
 
       // 🔥 API toujours définie
       EXPO_PUBLIC_API_URL:
-        EXPO_PUBLIC_API_URL ??
+        API_URL ??
         env.EXPO_PUBLIC_SUPABASE_URL ??
         "",
 
-      // 🔥 Supabase
+      // 🔥 Supabase (public only)
       EXPO_PUBLIC_SUPABASE_URL:
         env.EXPO_PUBLIC_SUPABASE_URL ?? "",
       EXPO_PUBLIC_SUPABASE_ANON_KEY:
@@ -58,7 +70,7 @@ export default ({ config }: { config: AppConfigInput }) => {
       EXPO_PUBLIC_MAPBOX_TOKEN:
         env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "",
 
-      // 🔥 EAS (sécurité)
+      // 🔥 EAS
       eas: {
         projectId: "127751ea-33ce-4f67-98ce-a9b29a46b838",
       },
