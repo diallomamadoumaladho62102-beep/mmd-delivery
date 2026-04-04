@@ -10,6 +10,9 @@ Backups*
 **/backups
 **/Backups*
 
+# Exclude non-mobile apps
+apps/web
+
 # Local backend / infra
 supabase
 
