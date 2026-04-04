@@ -2,15 +2,12 @@
 node_modules
 .expo
 .git
+.tools
+.tools_backup
+backup
 
-# Ignore Supabase backend (IMPORTANT)
-supabase/sql
-supabase/.branches
-supabase/.temp
-supabase/functions
-supabase/migrations
-supabase/supabase
-supabase/.env.local
+# Ignore backend / local infra completely
+supabase
 
 # Optional
 *.log
