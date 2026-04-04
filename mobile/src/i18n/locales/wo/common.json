@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Dellu",
+    "account": "Konta",
+    "security": "Kaaraange",
+    "notifications": "Jàngale (notifications)",
+    "language": "Làkk",
+    "logout": "Génn",
+    "soon": "Dina ñëw ci kanam ✅",
+    "ok": "OK",
+    "toAdd": "Yokk",
+    "ready": "Jëfandikoo",
+    "notConfigured": "Ñu sàkkul",
+    "notRequired": "Du war a am"
+  },
+  "driver": {
+    "account": {
+      "title": "Konta bu dundu (driver)",
+      "subtitle": "Woto, ay dokimaan, peyment, statu (ci ndimbal).",
+      "vehicle": "Woto",
+      "documents": "Dokimaan",
+      "payout": "Peyment",
+      "finalizeNow": "Jeexal léegi"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

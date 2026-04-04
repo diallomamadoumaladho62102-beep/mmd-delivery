@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Zpět",
+    "account": "Účet",
+    "security": "Zabezpečení",
+    "notifications": "Oznámení",
+    "language": "Jazyk",
+    "logout": "Odhlásit se",
+    "soon": "Brzy ✅",
+    "ok": "OK",
+    "toAdd": "Doplnit",
+    "ready": "Připraveno",
+    "notConfigured": "Nenastaveno",
+    "notRequired": "Není vyžadováno"
+  },
+  "driver": {
+    "account": {
+      "title": "Účet řidiče",
+      "subtitle": "Vozidlo, dokumenty, výplata, stav (průvodce).",
+      "vehicle": "Vozidlo",
+      "documents": "Dokumenty",
+      "payout": "Výplata",
+      "finalizeNow": "Dokončit teď"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

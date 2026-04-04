@@ -10,9 +10,8 @@ Backups*
 **/backups
 **/Backups*
 
-# Exclude non-mobile apps only
-apps/web
-apps/orders
+# Exclude monorepo apps
+apps
 
 # Local backend / infra
 supabase

@@ -1,0 +1,1190 @@
+{
+  "common": {
+    "back": "← Retour",
+    "account": "Compte",
+    "security": "Sécurité",
+    "notifications": "Notifications",
+    "language": "Langue",
+    "logout": "Se déconnecter",
+    "soon": "Bientôt ✅",
+    "soonTitle": "Bientôt",
+    "ok": "OK",
+    "toAdd": "À ajouter",
+    "ready": "Prêt",
+    "notConfigured": "Non configuré",
+    "notRequired": "Non requis",
+    "error": "Erreur",
+    "success": "Succès",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "infoTitle": "Info",
+    "na": "—",
+    "yes": "Oui",
+    "errorTitle": "Erreur",
+    "refresh": "Rafraîchir",
+    "refreshIcon": "↻",
+    "ellipsis": "...",
+    "loadingDots": "…",
+    "updating": "Mise à jour…",
+    "edit": "Modifier",
+    "save": "Enregistrer",
+    "loading": "Chargement…",
+    "transport": {
+      "bike": "Vélo",
+      "car": "Voiture",
+      "moto": "Moto"
+    },
+    "payment": {
+      "notConfigured": "Non configuré",
+      "configured": "Prêt"
+    },
+    "verified": {
+      "notVerified": "Non configuré",
+      "bike": "⭐ Confirmé"
+    },
+    "status": {
+      "missing": "À ajouter"
+    },
+    "driver": {
+      "defaultName": "Ex: Mamadou"
+    },
+    "driverTier": {
+      "elite": "🏆 Elite",
+      "confirmed": "⭐ Confirmé",
+      "standard": "🔄 Standard",
+      "needsImprovement": "⚠️ À améliorer"
+    },
+    "profile": {
+      "title": "Profil",
+      "topDriver": "🏆 Top Driver",
+      "inProgress": "ℹ️ En progression",
+      "driverScore": "Driver Score",
+      "bikeNoVehicleLine": "Vélo : pas de permis / plaque / assurance / registration",
+      "deliveries": "Livraisons",
+      "acceptance": "Acceptation",
+      "cancellation": "Annulation",
+      "tipChangePhoto": "Astuce : touche la photo pour la changer (caméra / fichiers).",
+      "accountSection": "Compte",
+      "documentsSection": "Documents",
+      "ratingHistorySection": "Historique des notes",
+      "name": "Nom",
+      "phone": "Téléphone",
+      "transport": "Transport",
+      "payment": "Paiement",
+      "status": "Statut",
+      "info": "Info",
+      "configureStripeHint": "Configure Stripe pour activer les gains. (touche “Paiement”)",
+      "bikeNoDocsRow": "Vélo : aucun document requis",
+      "bikeNoDocs": "En mode vélo, aucun document n’est requis ✅",
+      "noReviewsYet": "Aucun avis pour l’instant.",
+      "editProfileTitle": "Modifier le profil",
+      "placeholderName": "Ex: Mamadou",
+      "placeholderPhone": "Ex: 9297408722",
+      "vehicleSection": "Véhicule",
+      "brand": "Marque",
+      "model": "Modèle",
+      "color": "Couleur",
+      "year": "Année",
+      "plate": "Plaque",
+      "placeholderBrand": "Ex: Honda",
+      "placeholderModel": "Ex: Accord",
+      "placeholderColor": "Ex: Noir",
+      "placeholderYear": "2020",
+      "placeholderPlate": "ABC-1234",
+      "bikeNoVehicleHint": "Vélo : pas besoin de permis/plaque/assurance/registration ✅",
+      "updated": "Profil mis à jour ✅",
+      "saveProfilesFailed": "Impossible de sauvegarder le compte (profiles).",
+      "saveDriverProfilesFailed": "Impossible de sauvegarder (driver_profiles).",
+      "avatarTitle": "Photo de profil",
+      "avatarUpdated": "Photo de profil mise à jour.",
+      "avatarUploadFailed": "Upload avatar impossible. Vérifie Storage policies (avatars).",
+      "avatarUnknownError": "Upload avatar: erreur inconnue.",
+      "uploadDocTitle": "Uploader {{doc}}",
+      "docSent": "{{doc}} envoyé.",
+      "docUploadFailed": "Upload impossible. Vérifie Storage policies (driver-docs).",
+      "docDbFailed": "Fichier uploadé mais DB non mise à jour (driver_documents).",
+      "docUnknownError": "Upload doc: erreur inconnue."
+    },
+    "permission": {
+      "title": "Permission",
+      "camera": "Autorise la caméra pour prendre une photo."
+    },
+    "auth": {
+      "logoutTitle": "Se déconnecter",
+      "logoutConfirm": "Tu veux vraiment te déconnecter ?",
+      "logoutError": "Impossible de se déconnecter.",
+      "logoutShort": "Déconnexion"
+    },
+    "order": {
+      "status": {
+        "pending": "En attente",
+        "accepted": "Acceptée",
+        "prepared": "En préparation",
+        "readyPickup": "Prête (pickup)",
+        "readyWaitingDriver": "Prête – en attente d’un chauffeur",
+        "readyDriverAssigned": "Prête – chauffeur assigné",
+        "dispatched": "En livraison",
+        "delivered": "Livrée",
+        "canceled": "Annulée"
+      },
+      "card": {
+        "title": "Commande #{{id}}",
+        "statusLabel": "Statut",
+        "acceptTimeTitle": "Temps pour accepter",
+        "expired": "⛔ Expiré",
+        "ringingActive": "🔔 Sonnerie active",
+        "totalLabel": "Total"
+      },
+      "errors": {
+        "notFound": "Commande introuvable.",
+        "load": "Impossible de charger la commande.",
+        "update": "Impossible de mettre à jour la commande.",
+        "updateStatus": "Impossible de mettre à jour le statut."
+      },
+      "actions": {
+        "accept": "Accepter la commande",
+        "toPreparing": "Passer en préparation",
+        "ready": "Commande prête",
+        "none": "Aucune action requise"
+      },
+      "driver": {
+        "none": "Aucun chauffeur assigné",
+        "loading": "Chargement du profil chauffeur…",
+        "profile": "Profil chauffeur",
+        "fallback": "Chauffeur"
+      }
+    },
+    "restaurant": {
+      "orders": {
+        "title": "Commandes restaurant",
+        "earningsBtn": "Earnings",
+        "testRing": "🔔 Tester sonnerie",
+        "loadingAccount": "Chargement du compte restaurant…",
+        "loadingOrders": "Chargement des commandes…",
+        "empty": "Aucune commande active pour le moment."
+      }
+    }
+  },
+  "shared": {
+    "common": {
+      "backWithArrow": "← Retour",
+      "backArrowOnly": "←",
+      "loadingEllipsis": "…",
+      "refresh": "Rafraîchir",
+      "loading": "Chargement…",
+      "cancel": "Annuler",
+      "delete": "Supprimer",
+      "save": "Enregistrer"
+    },
+    "orderChat": {
+      "alerts": {
+        "errorTitle": "Erreur",
+        "loadFailed": "Impossible de charger le chat.",
+        "permissionTitle": "Permission requise",
+        "permissionGalleryBody": "Autorise l’accès à la galerie pour envoyer une image.",
+        "pickImageFailed": "Impossible de sélectionner l’image.",
+        "sendFailed": "Impossible d’envoyer.",
+        "deleteFailed": "Impossible de supprimer."
+      },
+      "debug": {
+        "heicDetected": "🟡 HEIC détecté, conversion en JPG…"
+      },
+      "errors": {
+        "missingOrderId": "orderId manquant",
+        "missingOrderIdUi": "Erreur: orderId manquant.",
+        "imageNotFoundOnPhone": "Fichier image introuvable sur le téléphone.",
+        "imageEmptyOnPhone": "Fichier image vide (0 bytes) sur le téléphone.",
+        "base64ReadFailedEmpty": "Lecture base64 échouée (vide).",
+        "arrayBufferZeroBytes": "Conversion ArrayBuffer a produit 0 bytes."
+      },
+      "header": {
+        "subtitle": "Messages & pièces jointes"
+      },
+      "empty": "Aucun message pour le moment.",
+      "heic": {
+        "oldMessageTitle": "Image HEIC détectée (ancien message) — peut ne pas s’afficher sur l’app.",
+        "oldMessageBody": "Solution: renvoyer l’image après la mise à jour (HEIC → JPG). Pour l’ancienne, il faut conversion/migration."
+      },
+      "actions": {
+        "deleteTitle": "Supprimer",
+        "deleteConfirm": "Tu veux supprimer ce message ?",
+        "deleteLower": "supprimer",
+        "image": "Image",
+        "sending": "Envoi…",
+        "send": "Envoyer"
+      },
+      "image": {
+        "selectedPrefix": "Image sélectionnée: ",
+        "remove": "Retirer l’image"
+      },
+      "placeholders": {
+        "message": "Écrire un message…"
+      }
+    }
+  },
+  "client": {
+    "auth": {
+      "accountCreatedLoginNow": "Compte créé ! Connecte-toi maintenant.",
+      "accountCreatedTitle": "Compte créé",
+      "addPhoto": "Ajouter une photo",
+      "address": "Adresse",
+      "address1Placeholder": "Adresse (ligne 1)",
+      "address2Placeholder": "Complément (ligne 2)",
+      "addressTitle": "Adresse",
+      "cannotLogin": "Impossible de se connecter.",
+      "cannotPickPhoto": "Impossible de choisir une photo.",
+      "cannotSignup": "Impossible de créer le compte.",
+      "changePhoto": "Changer la photo",
+      "cityPlaceholder": "Ville",
+      "countryPlaceholder": "Pays",
+      "email": "Email",
+      "emailPlaceholder": "ex: nom@email.com",
+      "errorTitle": "Erreur",
+      "fullAddressRequired": "Adresse complète requise",
+      "fullName": "Nom complet",
+      "fullNamePlaceholder": "Prénom Nom",
+      "fullNameRequired": "Nom requis",
+      "haveAccount": "Tu as déjà un compte ?",
+      "loginBtn": "Se connecter",
+      "loginFailed": "Connexion échouée",
+      "mainAddressLabel": "Adresse principale",
+      "missingEmailPassword": "Email et mot de passe requis",
+      "missingTitle": "Champs manquants",
+      "noAccount": "Pas encore de compte ?",
+      "password": "Mot de passe",
+      "passwordMin6": "Minimum 6 caractères",
+      "passwordPlaceholder": "Mot de passe",
+      "passwordTitle": "Mot de passe",
+      "permissionBody": "Autorise l’accès aux photos pour choisir une photo de profil.",
+      "permissionTitle": "Permission requise",
+      "phone": "Téléphone",
+      "phonePlaceholder": "ex: +1 555 123 4567",
+      "phoneRequired": "Téléphone requis",
+      "photoTitle": "Photo de profil",
+      "photoUploadSkipped": "Photo ignorée (tu peux l’ajouter plus tard).",
+      "postalPlaceholder": "Code postal",
+      "profilePhoto": "Photo de profil",
+      "profileTitle": "Profil",
+      "sessionNotCreated": "Session non créée.",
+      "signupBtn": "Créer un compte",
+      "signupFailed": "Inscription échouée",
+      "statePlaceholder": "État",
+      "subtitleLogin": "Connecte-toi pour continuer.",
+      "subtitleSignup": "Crée ton compte pour commencer.",
+      "tipStateCountry": "Astuce: ajoute État + Pays pour éviter les erreurs.",
+      "titleLogin": "Connexion",
+      "titleSignup": "Inscription",
+      "verifyEmailThenLogin": "Vérifie ton email puis connecte-toi."
+    }
+  },
+  "driver": {
+    "profile": {
+      "authFallbackName": "Chauffeur",
+      "newDriver": "Nouveau",
+      "editShort": "Modifier",
+      "chooseOption": "Choisis une option :",
+      "saving": "Sauvegarde…",
+      "docs": {
+        "license": "Permis",
+        "insurance": "Assurance",
+        "registration": "Registration",
+        "missing": "Manquant"
+      },
+      "verified": {
+        "full": "Dossier complet ✅",
+        "notVerified": "Non vérifié"
+      }
+    },
+    "tax": {
+      "title": "Informations fiscales",
+      "sections": { "overview": "Aperçu", "important": "Important" },
+      "badges": { "soon": "Bientôt" },
+      "overview": {
+        "status": { "label": "Statut", "value": "Pas requis pour le moment" },
+        "formType": { "label": "Type de formulaire", "value": "W-9 / 1099 (US)" },
+        "country": { "label": "Pays", "value": "États-Unis" },
+        "withholding": { "label": "Retenue", "value": "Aucune taxe prélevée" }
+      },
+      "important": {
+        "title": "Nous ne prélevons pas les taxes",
+        "body": "Tu es responsable de déclarer tes revenus et de respecter les règles fiscales locales. Si tu es aux États-Unis, tu peux recevoir un formulaire annuel (comme un 1099) selon ton activité."
+      },
+      "buttons": {
+        "learnMore": "En savoir plus",
+        "yearlySummary": "Résumé annuel (PDF)"
+      },
+      "learnMore": {
+        "title": "Comment ça marche",
+        "body": "Nous ne prélevons pas les taxes. Tu es responsable de déclarer tes gains selon les règles de ton pays. En fin d’année, tu peux recevoir un résumé (ex : 1099 aux États-Unis)."
+      },
+      "yearlySummary": {
+        "comingSoonTitle": "Bientôt ✅",
+        "comingSoonBody": "Le téléchargement du résumé annuel sera disponible ici (PDF)."
+      }
+    },
+    "account": {
+      "title": "Compte Chauffeur",
+      "subtitle": "Véhicule, documents, paiement, statut (guidé).",
+      "vehicle": "Véhicule",
+      "documents": "Documents",
+      "payout": "Paiement",
+      "finalizeNow": "Finaliser maintenant",
+      "workTitle": "Travail",
+      "workSubtitle": "Ce qui impacte tes courses et tes gains.",
+      "workCenter": "Centre de travail",
+      "workCenterHint": "Zone, préférences, disponibilité",
+      "earnings": "Revenus",
+      "earningsHint": "Historique, paiements, retraits",
+      "taxInfo": "Infos fiscales",
+      "taxHint": "W-9 / 1099 (plus tard)"
+    },
+    "auth": {
+      "actions": {
+        "camera": "Caméra",
+        "cancel": "Annuler",
+        "createAccountSignup": "Créer un compte",
+        "createMyAccount": "Créer mon compte",
+        "files": "Fichiers",
+        "haveAccountLogin": "J’ai déjà un compte",
+        "login": "Se connecter"
+      },
+      "alert": {
+        "cameraPermission": "Autorise l’accès à la caméra.",
+        "errorTitle": "Erreur",
+        "galleryPermission": "Autorise l’accès aux photos.",
+        "loginFailedTitle": "Connexion échouée",
+        "permissionTitle": "Permission requise",
+        "pickPhotoFailed": "Impossible de sélectionner la photo.",
+        "signupFailedTitle": "Inscription échouée",
+        "takePhotoFailed": "Impossible de prendre la photo.",
+        "verifyEmailBody": "Vérifie ton email puis reconnecte-toi.",
+        "verifyEmailTitle": "Vérification email"
+      },
+      "avatar": {
+        "add": "Ajouter une photo",
+        "change": "Changer la photo",
+        "chooseOption": "Choisir une option",
+        "optional": "Optionnel",
+        "title": "Photo de profil"
+      },
+      "card": {
+        "loginTitle": "Connexion chauffeur",
+        "signupTitle": "Créer compte chauffeur"
+      },
+      "documents": {
+        "bikeNone": "Vélo: aucun document requis",
+        "carHint": "Voiture: ajoute au moins permis + assurance",
+        "title": "Documents"
+      },
+      "fields": {
+        "email": "Email",
+        "emailPlaceholder": "ex: driver@email.com",
+        "fullName": "Nom complet",
+        "fullNamePlaceholder": "Prénom Nom",
+        "password": "Mot de passe",
+        "passwordPlaceholder": "Mot de passe",
+        "phone": "Téléphone",
+        "phonePlaceholder": "ex: +1 555 123 4567"
+      },
+      "footer": "En continuant, tu acceptes les conditions d’utilisation.",
+      "header": {
+        "login": "Connexion",
+        "signup": "Inscription"
+      },
+      "loading": "Chargement…",
+      "referral": {
+        "autoFillHint": "Astuce: si tu as un code, il se mettra ici automatiquement.",
+        "placeholder": "Code de parrainage (optionnel)",
+        "title": "Parrainage"
+      },
+      "switch": {
+        "createAccount": "Créer un compte",
+        "haveAccount": "J’ai déjà un compte",
+        "newDriver": "Nouveau chauffeur",
+        "relogin": "Reconnexion"
+      },
+      "transport": {
+        "bike": "Vélo",
+        "car": "Voiture",
+        "moto": "Moto",
+        "title": "Transport"
+      },
+      "vehicle": {
+        "bikeNoDocs": "Vélo: pas de documents",
+        "brand": "Marque",
+        "brandPlaceholder": "ex: Toyota",
+        "colorOptional": "Couleur (optionnel)",
+        "invalidYear": "Année invalide",
+        "model": "Modèle",
+        "modelPlaceholder": "ex: Corolla",
+        "plate": "Plaque",
+        "title": "Véhicule",
+        "yearOptional": "Année (optionnel)"
+      }
+    },
+    "payments": {
+      "title": "Paiements",
+      "unavailable": "Impossible d’ouvrir Stripe pour le moment."
+    },
+    "menu": {
+      "driver_label": "Chauffeur",
+      "new_driver": "Nouveau",
+      "tips_week": "Tips semaine",
+      "load_error": "Impossible de charger le menu chauffeur.",
+      "payments_title": "Paiements",
+      "payments_unavailable": "Impossible d’ouvrir Stripe pour le moment.",
+      "referrals": "Parrainages",
+      "opportunities": "Opportunités",
+      "driver_program": "Programme Chauffeur",
+      "wallet": "Portefeuille",
+      "account": "Compte",
+      "payments_stripe": "Configurer les paiements (Stripe)",
+      "help": "Aide"
+    },
+    "home": {
+      "header": {
+        "title": "Tableau de bord chauffeur",
+        "subtitle": "La carte reste toujours active."
+      },
+      "online": "EN LIGNE",
+      "offline": "HORS LIGNE",
+      "gps": {
+        "title": "GPS",
+        "permissionDenied": "Permission GPS refusée.",
+        "enableToGoOnline": "Active la permission GPS pour passer en ligne.",
+        "locating": "Localisation du chauffeur…"
+      },
+      "zone": {
+        "title": "Activité dans ta zone",
+        "current": "Zone actuelle",
+        "calm": "Calme",
+        "busy": "Occupé",
+        "very_busy": "Très chargé"
+      },
+      "tabs": {
+        "home": "Accueil",
+        "revenue": "Revenus",
+        "inbox": "Boîte",
+        "menu": "Menu"
+      },
+      "map": {
+        "pickupTitle": "Pickup",
+        "dropoffTitle": "Dropoff"
+      },
+      "offer": {
+        "title": "Nouvelle course disponible",
+        "pickup": "Pickup :",
+        "dropoff": "Dropoff :",
+        "distance": "Distance estimée",
+        "earnings": "Gain estimé",
+        "createdAt": "Créée :",
+        "decline": "Refuser",
+        "accept": "Accepter",
+        "accepting": "Acceptation..."
+      },
+      "myOrders": {
+        "title": "Mes livraisons en cours",
+        "loading": "Chargement de tes livraisons…",
+        "emptyTitle": "Tu n’as pas encore de livraison en cours.",
+        "emptySubtitle": "Dès qu’une course est acceptée, elle apparaîtra ici.",
+        "viewDetails": "Voir les détails →"
+      },
+      "labels": {
+        "pickup": "Pickup:",
+        "dropoff": "Dropoff:",
+        "distance": "Distance:",
+        "driverEarnings": "Gain chauffeur:"
+      },
+      "status": {
+        "pending": "En attente (restaurant)",
+        "accepted": "Acceptée",
+        "prepared": "En préparation",
+        "ready": "Prête (en attente driver)",
+        "dispatched": "En livraison",
+        "delivered": "Livrée",
+        "canceled": "Annulée"
+      },
+      "kind": {
+        "food": "Commande restaurant",
+        "foodWithName": "Commande restaurant · {{name}}",
+        "pickup_dropoff": "Course pickup / dropoff"
+      },
+      "accept": {
+        "title": "Course acceptée",
+        "body": "Tu es maintenant assigné sur cette livraison."
+      },
+      "errors": {
+        "mustBeLoggedIn": "Tu dois être connecté.",
+        "loadOrders": "Impossible de charger les commandes.",
+        "accept": "Impossible d'accepter la course.",
+        "toggleOnline": "Impossible de changer le statut."
+      }
+    },
+    "map": {
+      "headerTitle": "Carte chauffeur",
+      "permissionDenied": "Permission localisation refusée. Active le GPS pour voir la carte chauffeur.",
+      "locating": "Récupération de ta position…",
+      "online": "EN LIGNE",
+      "offline": "HORS LIGNE",
+      "statusTitle": "Statut chauffeur",
+      "statusOnlineTitle": "Tu es EN LIGNE — tu peux recevoir des courses.",
+      "statusOfflineTitle": "Tu es hors ligne.",
+      "statusOnlineSubtitle": "Quand tu es en ligne, ta position est envoyée à MMD Delivery.",
+      "statusOfflineSubtitleHasLocation": "Passe en ligne pour commencer à recevoir des offres.",
+      "statusOfflineSubtitleNoLocation": "En attente de ta position (active les permissions GPS).",
+      "zoneActivityTitle": "Activité dans ta zone",
+      "zoneUnknown": "Inconnue",
+      "activity": {
+        "very_busy": "Très forte",
+        "busy": "Forte",
+        "normal": "Moyenne",
+        "calm": "Calme"
+      },
+      "bonusEstimated": "Bonus estimé dans ta zone {{boost}}",
+      "nextUpdateTitle": "Prochaine mise à jour",
+      "updateIntervalOnline": "Toutes les 2s en ligne",
+      "goOffline": "Me mettre hors ligne",
+      "incoming": {
+        "title": "Nouvelle course",
+        "pickup": "Pickup :",
+        "dropoff": "Dropoff :",
+        "decline": "Refuser",
+        "accept": "Accepter"
+      },
+      "restaurantsLoading": "Chargement des restaurants…",
+      "myOrders": {
+        "title": "Mes courses",
+        "loading": "Chargement de tes courses…",
+        "emptyTitle": "Aucune course assignée pour le moment.",
+        "emptySubtitle": "Dès qu’une course est attribuée, elle apparaîtra ici.",
+        "viewDetails": "Voir les détails →"
+      },
+      "orderCard": {
+        "pickupLabel": "Départ :",
+        "dropoffLabel": "Arrivée :",
+        "distanceLabel": "Distance:",
+        "earningsLabel": "Gain:"
+      },
+      "kind": {
+        "food": "Commande restaurant",
+        "foodWithName": "Commande restaurant · {{name}}",
+        "pickup_dropoff": "Course"
+      },
+      "status": {
+        "pending": "En attente (restaurant)",
+        "accepted": "Acceptée",
+        "prepared": "En préparation",
+        "ready": "Prête",
+        "dispatched": "En livraison",
+        "delivered": "Livrée",
+        "canceled": "Annulée"
+      },
+      "debug": {
+        "testIncomingOrder": "Tester une course entrante"
+      }
+    },
+    "revenue": {
+      "title": "Revenus",
+      "help_btn": "Aide",
+      "help_title": "Aide",
+      "help_body": "On ajoutera ici une page Aide (FAQ / Support).",
+      "auth_title": "Connexion",
+      "auth_body": "Connecte-toi comme chauffeur pour voir tes revenus.",
+      "load_error": "Impossible de charger les revenus.",
+      "not_added": "La page \"{{route}}\" n'est pas encore ajoutée dans AppNavigator.",
+      "range": {
+        "today": "Aujourd’hui",
+        "month": "Mois"
+      },
+      "tabs": {
+        "week": "Semaine",
+        "today": "Aujourd’hui",
+        "month": "Mois"
+      },
+      "days": {
+        "mon": "Lun",
+        "tue": "Mar",
+        "wed": "Mer",
+        "thu": "Jeu",
+        "fri": "Ven",
+        "sat": "Sam",
+        "sun": "Dim"
+      },
+      "total": "Total",
+      "net_price": "Prix net",
+      "tips": "Pourboires",
+      "trips": "Courses",
+      "points": "Points",
+      "show_details": "Afficher les détails",
+      "activity": "Activité",
+      "activity_hint": "Temps & courses",
+      "wallet": "Portefeuille",
+      "wallet_hint": "Solde & paiements",
+      "benefits": "Avantages",
+      "benefits_hint": "Bonus & boosts",
+      "recent_sessions": "Vos séances récentes",
+      "no_trips": "Aucune course livrée dans cette période.",
+      "trip_title": "Course",
+      "trip_id": "ID",
+      "tip": "Pourboire",
+      "driver_label": "Chauffeur",
+      "details": {
+        "auth": {
+          "title": "Connexion",
+          "message": "Connecte-toi comme chauffeur pour voir tes revenus."
+        },
+        "breakdown": {
+          "netPrice": "Prix net",
+          "tip": "Pourboire",
+          "title": "Détail",
+          "total": "Revenus totaux",
+          "viewLastTripPrice": "Voir le détail du prix de la course",
+          "viewHistory": "Voir l'historique des revenus"
+        },
+        "calc": {
+          "title": "Calcul",
+          "body": "En ligne/Au volant viennent du RPC get_driver_stats(from_ts,to_ts). Courses = livrées, Points = nombre de courses.",
+          "link": "Comment nous calculons les statistiques"
+        },
+        "completed": { "title": "Courses terminées" },
+        "driverId": "Driver",
+        "earnings": "Revenus",
+        "loadError": "Impossible de charger les détails.",
+        "noTripToShow": "Aucune course disponible pour afficher le détail.",
+        "range": { "today": "Aujourd’hui" },
+        "stats": {
+          "driving": "Au volant",
+          "online": "En ligne",
+          "points": "Points",
+          "title": "Statistiques",
+          "trips": "Courses"
+        },
+        "title": "Détails",
+        "tripAlert": {
+          "title": "Course",
+          "body": "ID: {{id}}\nDate: {{date}} {{time}}\nPrix net: {{net}}\nPourboire: {{tip}}\nTotal: {{total}}\nRestaurant: {{restaurant}}"
+        },
+        "tripsLabel": "Courses",
+        "week": {
+          "fri": "Ven",
+          "mon": "Lun",
+          "sat": "Sam",
+          "sun": "Dim",
+          "thu": "Jeu",
+          "tue": "Mar",
+          "wed": "Mer"
+        }
+      },
+      "history": {
+        "auth": {
+          "title": "Connexion",
+          "message": "Connecte-toi comme chauffeur pour voir ton historique."
+        },
+        "filters": {
+          "month": "Mois",
+          "today": "Aujourd’hui",
+          "week": "Semaine"
+        },
+        "list": {
+          "title": "Courses livrées",
+          "empty": "Aucune course livrée dans cette période."
+        },
+        "loadError": "Impossible de charger l’historique.",
+        "range": {
+          "month": "Ce mois",
+          "today": "Aujourd’hui",
+          "week": "Cette semaine"
+        },
+        "summary": {
+          "totalLabel": "Total",
+          "trips": "Courses"
+        },
+        "title": "Historique"
+      }
+    },
+    "inbox": {
+      "title": "Boîte",
+      "auth_title": "Connexion",
+      "auth_body": "Connecte-toi comme chauffeur pour voir ta boîte.",
+      "load_error": "Impossible de charger la boîte.",
+      "header": {
+        "subtitle_base": "En cours + livrées (7 jours)",
+        "unread_count": "{{count}} non lu"
+      },
+      "search_placeholder": "Rechercher (#id, restaurant, statut)…",
+      "not_logged_in": "Connecte-toi comme chauffeur pour voir tes conversations.",
+      "empty": "Aucune commande trouvée (en cours / livrée 7 jours).",
+      "sections": {
+        "in_progress": "En cours",
+        "in_progress_empty": "Aucune commande en cours.",
+        "delivered_7d": "Livrées (7 jours)",
+        "delivered_empty": "Aucune commande livrée sur 7 jours."
+      },
+      "badge": {
+        "delivered": "Livrée",
+        "in_progress": "En cours",
+        "unread": "Non lu"
+      },
+      "msg": {
+        "none": "Aucun message",
+        "attachment": "Pièce jointe"
+      },
+      "order": {
+        "fallback_title": "Commande"
+      },
+      "driver_label": "Chauffeur"
+    },
+    "security": {
+      "accountLabel": "Mot de passe actuel",
+      "confirmLabel": "Confirmer",
+      "errorTitle": "Erreur",
+      "genericError": "Une erreur est survenue.",
+      "hide": "Masquer",
+      "min8": "Minimum 8 caractères",
+      "mismatch": "Les mots de passe ne correspondent pas",
+      "newPasswordLabel": "Nouveau mot de passe",
+      "passwordTitle": "Mot de passe",
+      "save": "Enregistrer",
+      "sessionBody": "Reconnecte-toi pour continuer.",
+      "sessionTitle": "Session expirée",
+      "show": "Afficher",
+      "successBody": "Mot de passe mis à jour.",
+      "successTitle": "Succès",
+      "tip": "Choisis un mot de passe fort (8+ caractères).",
+      "title": "Sécurité"
+    },
+    "settings": {
+      "footer": "Besoin d’aide ? Contacte le support.",
+      "loadingFooter": "Chargement…",
+      "loggingOut": "Déconnexion…",
+      "logoutHint": "Déconnexion de ton compte.",
+      "notificationsHint": "Gérer les notifications.",
+      "notificationsSoon": "Bientôt ✅",
+      "securityHint": "Modifier ton mot de passe.",
+      "subtitle": "Gère ton compte chauffeur.",
+      "switchAccountTitle": "Changer de compte"
+    },
+    "orderDetails": {
+      "status": {
+        "pending": "En attente d’un chauffeur",
+        "accepted_prepared": "En attente (restaurant)",
+        "ready": "Prête pour retrait",
+        "dispatched": "En livraison",
+        "delivered": "Livrée",
+        "canceled": "Annulée"
+      },
+      "notFound": "Commande introuvable.",
+      "notFoundShort": "Course introuvable.",
+      "loadError": "Impossible de charger les détails de la commande.",
+      "mapsOpenError": "Impossible d'ouvrir l'application de navigation sur ce téléphone.",
+      "missingAddressTitle": "Adresse manquante",
+      "missingAddressBody": "Aucune adresse disponible pour cette étape.",
+      "missingCoordsTitle": "Infos manquantes",
+      "missingCoordsBody": "Cette course n’a pas encore de coordonnées GPS.",
+      "rezoom": "Re-zoom",
+      "acceptDeniedTitle": "Impossible d'accepter",
+      "acceptDeniedStripe": "Tu dois terminer la configuration Stripe avant d'accepter des courses.",
+      "acceptDeniedGeneric": "Impossible d'accepter cette course.",
+      "acceptedTitle": "Course acceptée ✅",
+      "acceptedBody": "Tu es maintenant assigné à cette course.",
+      "acceptError": "Impossible d'accepter la course pour le moment.",
+      "codeMissingTitle": "Code manquant",
+      "codeMissingBody": "Entre le code de vérification.",
+      "codeServerError": "Erreur serveur pendant la vérification du code.",
+      "codeInvalidTitle": "Code invalide",
+      "codePickupOk": "Code de retrait validé ✅",
+      "codeDropoffOk": "Code de livraison validé ✅",
+      "codeVerifyError": "Impossible de vérifier le code pour le moment.",
+      "chatTitle": "Chat",
+      "chatRouteMissing": "Route de chat introuvable. Vérifie AppNavigator (DriverChat / OrderChat).",
+      "map": {
+        "pickupTitle": "Restaurant",
+        "dropoffTitle": "Client"
+      },
+      "header": {
+        "title": "Course #{{id}}",
+        "createdAt": "Créée le : {{date}}"
+      },
+      "steps": {
+        "title": "Étapes",
+        "restaurant": "Restaurant : ",
+        "pickup": "Retrait ",
+        "dropoff": "Livraison "
+      },
+      "actions": {
+        "goPickup": "Aller au retrait",
+        "goDropoff": "Aller à la livraison"
+      },
+      "summary": {
+        "title": "Résumé",
+        "distance": "Distance",
+        "eta": "Temps estimé"
+      },
+      "earnings": {
+        "title": "Rémunération (estimation)",
+        "yourPart": "Ta part",
+        "note": "Montant estimé basé sur la répartition MMD Delivery."
+      },
+      "verify": {
+        "title": "Vérification",
+        "pickupBtn": "Valider retrait (code)",
+        "dropoffBtn": "Valider livraison (code)",
+        "autoHint": "Les boutons s’activent automatiquement au bon moment selon le statut."
+      },
+      "chat": {
+        "open": "Ouvrir le chat 💬"
+      },
+      "accept": {
+        "cta": "Accepter la course",
+        "loading": "Acceptation...",
+        "hint": "En acceptant, tu seras assigné à cette course."
+      },
+      "modal": {
+        "pickupTitle": "Code de retrait",
+        "dropoffTitle": "Code de livraison",
+        "hint": "Demande le code à la personne (restaurant ou client) et saisis-le.",
+        "placeholder": "Ex : ABC123",
+        "verifying": "Vérification...",
+        "submit": "Valider"
+      }
+    },
+    "benefits": {
+      "actions": {
+        "activate": "Activer",
+        "help": "Aide",
+        "refresh": "Rafraîchir",
+        "refreshing": "Rafraîchissement..."
+      },
+      "alert": {
+        "boostSelected": { "title": "Boost sélectionné ✅" },
+        "help": { "title": "Aide" }
+      },
+      "badge": {
+        "bonusDollar": "Bonus $",
+        "boost": "Boost",
+        "boostPercent": "Boost %",
+        "claim": "Réclamer",
+        "claimed": "Réclamé",
+        "earned": "Gagné",
+        "inProgress": "En cours"
+      },
+      "boostSubtitle": {
+        "timeWindow": "Boost actif sur une période limitée."
+      },
+      "empty": {
+        "activeBoost": "Aucun boost actif.",
+        "availableBoosts": "Aucun boost disponible.",
+        "bonusPeriod": "Aucun bonus sur cette période.",
+        "challenges": "Aucun défi pour l’instant."
+      },
+      "expires": "Expire :",
+      "header": {
+        "subtitle": "Bonus & boosts",
+        "title": "Avantages"
+      },
+      "loading": "Chargement…",
+      "sections": {
+        "activeBoost": "Boost actif",
+        "availableBoosts": "Boosts disponibles",
+        "bonus": "Bonus",
+        "challenges": "Défis"
+      },
+      "summary": {
+        "bonusEarned": "Bonus gagnés",
+        "deliveryPlusBonus": "(Livraisons + bonus)",
+        "events": "Événements :",
+        "payoutEstimated": "Payout estimé"
+      }
+    },
+    "opps": {
+      "actions": {
+        "activate": "Activer",
+        "join": "S’inscrire",
+        "joined": "Inscrit ✅",
+        "save": "Enregistrer",
+        "saved": "Enregistré ✅",
+        "view": "Voir"
+      },
+      "alerts": {
+        "joinedBody": "Inscription confirmée • {{title}}",
+        "loginToJoin": "Connecte-toi pour t’inscrire.",
+        "removedBody": "Retiré: {{title}}",
+        "removedTitle": "Retiré ✅",
+        "savedBody": "Ajouté: {{title}}",
+        "savedTitle": "Enregistré ✅"
+      },
+      "demo": {
+        "bkEvent": {
+          "distance": "Zone évènement",
+          "subtitle": "Prépare-toi à des demandes plus élevées dans la zone.",
+          "title": "Événement : forte demande à Brooklyn"
+        },
+        "boost": {
+          "distance": "Zone aéroport",
+          "subtitle": "Amplificateur+ • Courses seulement",
+          "title": "Obtiens +4,50 $ US de plus sur chaque course"
+        },
+        "jfk": {
+          "distance": "Zone aéroport",
+          "subtitle": "Positionne-toi avant le pic du soir.",
+          "title": "Zone JFK : forte demande"
+        },
+        "lga": {
+          "distance": "À 7.4 mi de distance",
+          "subtitle": "Estimation de revenus très élevés",
+          "title": "Revenus maximal à LGA"
+        },
+        "night": {
+          "distance": "Zones sélectionnées",
+          "subtitle": "Valable sur certaines zones.",
+          "title": "Bonus nuit : +2,00 $ par course"
+        },
+        "resMorning": {
+          "distance": "Rayon: 3–5 miles",
+          "subtitle": "Active les réservations pour sécuriser tes courses.",
+          "title": "Bloc Réservations du matin"
+        }
+      },
+      "empty": "Aucune opportunité pour ce jour dans cet onglet.",
+      "footer": "{{platform}} • Opportunités Chauffeur MMD",
+      "notifs": {
+        "channelName": "MMD Opportunités",
+        "reminderBody": "{{title}} • commence dans 30 minutes",
+        "reminderTitle": "Rappel opportunité ⏰"
+      },
+      "pill": {
+        "joined": "Inscrit ✅",
+        "saved": "Enregistrée"
+      },
+      "rating": {
+        "new": "Nouveau"
+      },
+      "scoreCard": {
+        "badge": "Occasions",
+        "title": "Ton score"
+      },
+      "tabs": {
+        "airports": "Aéroports",
+        "events": "Événements",
+        "promotions": "Promotions",
+        "reservations": "Réservations",
+        "savedWithCount": "Occasions enregistrées ({{count}})"
+      },
+      "tags": {
+        "boost": "Boost",
+        "new": "Nouveau",
+        "promo": "Promo",
+        "recommended": "Recommandé",
+        "soon": "Bientôt"
+      },
+      "title": "Opportunités"
+    },
+    "referrals": {
+      "deliveriesLabel": "🍔 Livraisons",
+      "footer": "Parrainage MMD • Chauffeur",
+      "header": {
+        "title": "Parrainer des amis",
+        "info": "Tu peux inviter tes amis et gagner des récompenses."
+      },
+      "headline": {
+        "noProgram": "Parraine tes amis",
+        "withProgram": "Jusqu’à {{amount}} en {{days}} jours"
+      },
+      "validForDaysAfterFriendSignup": "Valable {{days}} jours après l’inscription de ton ami.",
+      "programLoading": "Programme en cours de chargement.",
+      "rideLine": "{{amount}} pour chaque {{goal}} courses",
+      "deliveryLine": "{{amount}} pour chaque {{goal}} livraisons",
+      "showAllRewards": "Afficher toutes les récompenses",
+      "inviteNow": "Inviter",
+      "myCodeLabel": "Ton code",
+      "ridesLabel": "🚗 Courses",
+      "shareError": "Impossible d’ouvrir le partage.",
+      "shareSubject": "Invite MMD Driver",
+      "shareText": "Rejoins MMD Driver 🚗🍔\n\nMon code: {{code}}\nLien: {{link}}\n\nInscris-toi et commence à rouler !",
+      "status": {
+        "earned": "Vous avez gagné",
+        "invited": "Invités",
+        "title": "Statut",
+        "showInvites": "Afficher les invitations",
+        "invitesSoon": "On ajoute la liste détaillée ensuite.",
+        "friendHasDaysToComplete": "Ton ami a {{days}} jours pour compléter ses objectifs après avoir accepté ton invitation."
+      },
+      "modal": {
+        "allRewardsTitle": "Toutes les récompenses",
+        "inviteNow": "Inviter maintenant",
+        "summaryTitle": "📌 Résumé",
+        "summaryLine": "Max: {{max}} • Durée: {{days}} jours",
+        "rules": "Règles: une invitation = un seul ami. Les récompenses sont plafonnées au maximum."
+      }
+    },
+    "wallet": {
+      "available": {
+        "cashoutButton": "Retrait",
+        "lastCashout": "Dernier retrait",
+        "title": "Disponible",
+        "rules": "Minimum retrait: {{min}} • 1 retrait / jour"
+      },
+      "cashoutReason": {
+        "needStripe": "Active tes versements Stripe pour pouvoir encaisser.",
+        "alreadyToday": "Tu as déjà fait un retrait aujourd’hui. Réessaie demain.",
+        "min": "Minimum de retrait: {{min}}."
+      },
+      "cashout": {
+        "requestError": "Impossible de demander le retrait.",
+        "runtimeError": "Erreur pendant le retrait.",
+        "title": "Retrait"
+      },
+      "cashoutConfirm": {
+        "title": "Retrait instantané",
+        "body": "Tu vas retirer tout ton solde disponible: {{amount}}.\n\nRappel: minimum {{min}} • 1 fois / jour."
+      },
+      "cashoutRequested": {
+        "title": "Retrait demandé",
+        "body": "Retrait programmé: {{amount}}."
+      },
+      "cashoutUnavailable": {
+        "body": "Retrait indisponible.",
+        "title": "Retrait indisponible"
+      },
+      "debug": { "driver": "Driver" },
+      "header": { "title": "Portefeuille" },
+      "loadError": "Impossible de charger le portefeuille.",
+      "pending": {
+        "title": "En attente",
+        "desc": "Retraits en cours (scheduled / processing)"
+      },
+      "stripe": {
+        "activateButton": "Activer Stripe",
+        "activateDesc": "Configure Stripe pour recevoir tes paiements.",
+        "activateTitle": "Active les versements",
+        "startError": "Impossible de démarrer l'onboarding Stripe.",
+        "title": "Stripe"
+      },
+      "title": "Gains"
+    }
+  },
+  "restaurant": {
+    "menu": {
+      "loading": "Chargement…",
+      "errors": {
+        "accountRequired": "❌ Compte restaurant requis"
+      },
+      "alerts": {
+        "errorTitle": "Erreur",
+        "permissionTitle": "Permission requise",
+        "permissionPhotosBody": "Autorise l'accès aux photos.",
+        "invalidImageUri": "Image invalide (uri manquante).",
+        "imageNotUploaded": "Image non envoyée. Vérifie les policies Storage du bucket:",
+        "uploadFailed": "Upload impossible",
+        "deleteFailed": "Suppression impossible",
+        "updateFailed": "Update impossible."
+      },
+      "categories": {
+        "title": "Catégories",
+        "placeholder": "Ex: Pizzas, Boissons, Snacks...",
+        "nameRequired": "Nom de catégorie obligatoire",
+        "empty": "Aucune catégorie pour l’instant.",
+        "uncategorized": "Sans catégorie"
+      },
+      "header": {
+        "title": "Menu / Produits",
+        "earnings": "Earnings"
+      },
+      "actions": {
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "delete": "Supprimer"
+      },
+      "items": {
+        "addTitle": "Ajouter un produit",
+        "categoryLabel": "Catégorie",
+        "selectionLabel": "Sélection :",
+        "nameLabel": "Nom",
+        "descriptionLabel": "Description",
+        "priceLabel": "Prix (ex: 12.99)",
+        "currencyLabel": "Devise",
+        "imageLabel": "Image",
+        "chooseImage": "Choisir une image",
+        "changeImage": "Changer l’image",
+        "positionLabel": "Position (optionnel)",
+        "positionPlaceholder": "ex: 1",
+        "availableLabel": "Disponible",
+        "addButton": "Ajouter le produit",
+        "nameRequired": "Nom obligatoire",
+        "invalidPrice": "Prix invalide",
+        "noPhoto": "No photo",
+        "available": "✅ Disponible",
+        "unavailable": "⛔ Indispo",
+        "pricePrefix": "💰"
+      },
+      "list": {
+        "title": "Ton menu"
+      },
+      "edit": {
+        "title": "Modifier le produit"
+      }
+    },
+    "setup": {
+      "title": "Profil restaurant",
+      "fields": {
+        "restaurantName": "Nom du restaurant",
+        "phone": "Téléphone",
+        "address": "Adresse",
+        "city": "Ville",
+        "postalCode": "Code postal",
+        "cuisineType": "Type de cuisine",
+        "description": "Description"
+      },
+      "options": {
+        "delivery": "Livraison",
+        "pickup": "À emporter",
+        "dineIn": "Sur place"
+      },
+      "actions": {
+        "save": "Enregistrer mon profil restaurant"
+      },
+      "alerts": {
+        "errorTitle": "Erreur",
+        "notLoggedIn": "Pas connecté",
+        "successTitle": "OK",
+        "successBody": "Profil envoyé. En attente d'approbation admin."
+      }
+    },
+    "auth": {
+      "actions": {
+        "signIn": "Se connecter",
+        "signUp": "Créer un compte",
+        "switchToLogin": "J’ai déjà un compte",
+        "switchToSignup": "Créer un compte"
+      },
+      "debug": {
+        "help": "Si tu as un souci, contacte le support.",
+        "title": "Aide"
+      },
+      "errors": {
+        "emailRequired": "Email requis",
+        "passwordRequired": "Mot de passe requis",
+        "signinFailed": "Connexion échouée",
+        "signupFailed": "Inscription échouée",
+        "unknown": "Une erreur est survenue"
+      },
+      "fields": {
+        "email": "Email",
+        "password": "Mot de passe"
+      },
+      "placeholders": {
+        "email": "ex: resto@email.com"
+      },
+      "success": {
+        "createdAndSignedIn": "Compte créé et connecté ✅",
+        "signedIn": "Connecté ✅"
+      },
+      "titleLogin": "Connexion restaurant",
+      "titleSignup": "Inscription restaurant"
+    },
+    "gate": {
+      "loading": "Chargement…"
+    }
+  }
+}

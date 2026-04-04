@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Takaisin",
+    "account": "Tili",
+    "security": "Tietoturva",
+    "notifications": "Ilmoitukset",
+    "language": "Kieli",
+    "logout": "Kirjaudu ulos",
+    "soon": "Tulossa pian ✅",
+    "ok": "OK",
+    "toAdd": "Lisättävä",
+    "ready": "Valmis",
+    "notConfigured": "Ei määritetty",
+    "notRequired": "Ei vaadita"
+  },
+  "driver": {
+    "account": {
+      "title": "Kuljettajan tili",
+      "subtitle": "Ajoneuvo, asiakirjat, maksu, tila (ohjattu).",
+      "vehicle": "Ajoneuvo",
+      "documents": "Asiakirjat",
+      "payout": "Maksu",
+      "finalizeNow": "Viimeistele nyt"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}
