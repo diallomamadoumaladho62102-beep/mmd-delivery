@@ -16,14 +16,14 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "preview",
-        "EXPO_PUBLIC_API_URL": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://sjmszohmhudayxawfows.supabase.co"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL": "https://sjmszohmhudayxawfows.supabase.co"
       }
     }
   },
