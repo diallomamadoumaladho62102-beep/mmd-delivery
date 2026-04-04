@@ -1,13 +1,17 @@
-# Ignore dev & build
+# Dev / build
 node_modules
 .expo
 .git
 .tools
 .tools_backup
 backup
+Backups*
+**/backup
+**/backups
+**/Backups*
 
-# Ignore backend / local infra completely
+# Local backend / infra
 supabase
 
-# Optional
+# Logs
 *.log
