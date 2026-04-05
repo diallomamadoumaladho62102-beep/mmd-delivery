@@ -2,6 +2,7 @@
   "name": "mmd-delivery",
   "private": true,
   "version": "1.0.0",
+  "main": "index.js",
   "scripts": {
     "dev": "cd apps/web && pnpm dev",
     "build": "cd apps/web && pnpm build",
