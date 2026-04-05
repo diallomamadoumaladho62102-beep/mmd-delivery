@@ -1,0 +1,500 @@
+
+        setHasLicense(false);
+        setHasInsurance(false);
+        setHasRegistration(false);
+
+        setAvgRating(null);
+        setRatingCount(0);
+
+        setStatsDeliveries(0);
+        setStatsAcceptanceRate(0);
+        setStatsCancellationRate(0);
+        return;
+      }
+
+      const uid = user.id;
+
+      const fallback =
+        (user.user_metadata as any)?.full_name ??
+        (user.user_metadata as any)?.name ??
+        user.email ??
+        "Chauffeur";
+      setAuthFallbackName(String(fallback));
+
+      const metaAvatarPath =
+        ((user.user_metadata as any)?.avatar_path as string | undefined) ?? null;
+
+      setAvatarPath(metaAvatarPath);
+      await refreshAvatarUrl(metaAvatarPath);
+
+      const { data: p, error: pErr } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone, role")
+        .eq("id", uid)
+        .maybeSingle();
+
+      if (pErr) console.log("profiles error", pErr);
+
+      setProfile(
+        (p as any) ?? {
+          id: uid,
+          full_name: null,
+          phone: null,
+          role: "livreur",
+        }
+      );
+
+      const { data: d, error: dErr } = await supabase
+        .from("driver_profiles")
+        .select(
+          [
+            "user_id",
+            "full_name",
+            "phone",
+            "transport_mode",
+            "vehicle_brand",
+            "vehicle_model",
+            "vehicle_year",
+            "vehicle_color",
+            "plate_number",
+            "total_deliveries",
+            "acceptance_rate",
+            "cancellation_rate",
+          ].join(",")
+        )
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      if (dErr) console.log("driver_profiles error", dErr);
+
+      if (!d) {
+        const { data: created, error: cErr } = await supabase
+          .from("driver_profiles")
+          .upsert(
+            {
+              user_id: uid,
+              transport_mode: "car",
+              full_name: (p as any)?.full_name ?? null,
+              phone: (p as any)?.phone ?? null,
+            },
+            { onConflict: "user_id" }
+          )
+          .select(
+            [
+              "user_id",
+              "full_name",
+              "phone",
+              "transport_mode",
+              "vehicle_brand",
+              "vehicle_model",
+              "vehicle_year",
+              "vehicle_color",
+              "plate_number",
+              "total_deliveries",
+              "acceptance_rate",
+              "cancellation_rate",
+            ].join(",")
+          )
+          .single();
+
+        if (cErr) console.log("upsert driver_profiles error", cErr);
+        setDriver((created as any) ?? null);
+      } else {
+        setDriver(d as any);
+      }
+
+      await refreshStripeStatus(uid);
+      await Promise.all([loadDocs(uid), loadRating(uid), loadStatsFromOrders(uid)]);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadDocs, loadRating, loadStatsFromOrders, refreshAvatarUrl, refreshStripeStatus]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+    }, [loadAll])
+  );
+
+  function openEdit() {
+    setEditName(driver?.full_name ?? profile?.full_name ?? "");
+    setEditPhone(profile?.phone ?? driver?.phone ?? "");
+    setEditPlate(isBike ? "" : driver?.plate_number ?? "");
+    setEditBrand(isBike ? "" : driver?.vehicle_brand ?? "");
+    setEditModel(isBike ? "" : driver?.vehicle_model ?? "");
+    setEditYear(isBike ? "" : driver?.vehicle_year ? String(driver.vehicle_year) : "");
+    setEditColor(isBike ? "" : driver?.vehicle_color ?? "");
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    try {
+      setSaving(true);
+
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (!uid) {
+        Alert.alert("Connexion", "Connecte-toi d’abord.");
+        return;
+      }
+
+      const yearNum = editYear.trim().length > 0 ? Number(editYear.trim()) : null;
+      const safeYear = yearNum && Number.isFinite(yearNum) ? Math.round(yearNum) : null;
+
+      const { error: pErr } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: uid,
+            role: profile?.role ?? "livreur",
+            full_name: editName.trim() || null,
+            phone: editPhone.trim() || null,
+          },
+          { onConflict: "id" }
+        );
+
+      if (pErr) {
+        console.log("profiles upsert error", pErr);
+        Alert.alert("Erreur", "Impossible de sauvegarder le compte (profiles).");
+        return;
+      }
+
+      const payload: Partial<DriverProfileRow> = isBike
+        ? {
+            full_name: editName.trim() || null,
+            phone: editPhone.trim() || null,
+            vehicle_brand: null,
+            vehicle_model: null,
+            vehicle_year: null,
+            vehicle_color: null,
+            plate_number: null,
+            transport_mode: "bike",
+          }
+        : {
+            full_name: editName.trim() || null,
+            phone: editPhone.trim() || null,
+            vehicle_brand: editBrand.trim() || null,
+            vehicle_model: editModel.trim() || null,
+            vehicle_year: safeYear as any,
+            vehicle_color: editColor.trim() || null,
+            plate_number: editPlate.trim() || null,
+          };
+
+      const { error: dErr } = await supabase
+        .from("driver_profiles")
+        .update(payload as any)
+        .eq("user_id", uid);
+
+      if (dErr) {
+        console.log("save driver_profiles error", dErr);
+        Alert.alert("Erreur", "Impossible de sauvegarder (driver_profiles).");
+        return;
+      }
+
+      setEditOpen(false);
+      await loadAll();
+      Alert.alert("OK", "Profil mis à jour ✅");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function pickFromCamera(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission", "Autorise la caméra pour prendre une photo.");
+      return null;
+    }
+
+    const res = await ImagePicker.launchCameraAsync({
+      quality: 0.85,
+      allowsEditing: true,
+    });
+
+    if (res.canceled) return null;
+
+    const asset = res.assets?.[0];
+    if (!asset?.uri) return null;
+
+    const uri = asset.uri;
+    const name = `camera_${Date.now()}.jpg`;
+    return { uri, mime: "image/jpeg", name };
+  }
+
+  async function pickFromFiles(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["image/*", "application/pdf"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (res.canceled) return null;
+
+    const file = res.assets?.[0];
+    if (!file?.uri) return null;
+
+    const lower = (file.name ?? "").toLowerCase();
+    const mime =
+      file.mimeType ||
+      (lower.endsWith(".pdf")
+        ? "application/pdf"
+        : lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+        ? "image/jpeg"
+        : lower.endsWith(".png")
+        ? "image/png"
+        : "application/octet-stream");
+
+    const name = file.name || `file_${Date.now()}`;
+    return { uri: file.uri, mime, name };
+  }
+
+  async function pickAvatarFromCamera(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission", "Autorise la caméra pour prendre une photo.");
+      return null;
+    }
+
+    const res = await ImagePicker.launchCameraAsync({
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (res.canceled) return null;
+
+    const asset = res.assets?.[0];
+    if (!asset?.uri) return null;
+
+    const uri = asset.uri;
+    const name = `avatar_camera_${Date.now()}.jpg`;
+    return { uri, mime: "image/jpeg", name };
+  }
+
+  async function pickAvatarFromFiles(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["image/*"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (res.canceled) return null;
+
+    const file = res.assets?.[0];
+    if (!file?.uri) return null;
+
+    const lower = (file.name ?? "").toLowerCase();
+    const mime =
+      file.mimeType ||
+      (lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+        ? "image/jpeg"
+        : lower.endsWith(".png")
+        ? "image/png"
+        : "application/octet-stream");
+
+    const name = file.name || `avatar_${Date.now()}`;
+    return { uri: file.uri, mime, name };
+  }
+
+  async function uploadAvatar(source: "camera" | "files") {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (!uid) {
+        Alert.alert("Connexion", "Connecte-toi d’abord.");
+        return;
+      }
+
+      setSaving(true);
+
+      const picked =
+        source === "camera" ? await pickAvatarFromCamera() : await pickAvatarFromFiles();
+      if (!picked) return;
+
+      const ext = inferExt(picked.name, picked.mime);
+      const path = `${uid}/avatar/${Date.now()}.${ext}`;
+
+      const base64 = await FileSystem.readAsStringAsync(picked.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const bytes = new Uint8Array(decode(base64));
+
+      const { error: upErr } = await supabase.storage
+        .from("driver-documents")
+        .upload(path, bytes, {
+          contentType: picked.mime,
+          upsert: true,
+        });
+
+      if (upErr) {
+        console.log("avatar upload error", upErr);
+        Alert.alert("Erreur", "Upload avatar impossible. Vérifie Storage + policies.");
+        return;
+      }
+
+      const { error: metaErr } = await supabase.auth.updateUser({
+        data: { avatar_path: path },
+      });
+
+      if (metaErr) {
+        console.log("avatar updateUser error", metaErr);
+        Alert.alert("Erreur", "Photo uploadée mais profil non mis à jour (metadata).");
+        return;
+      }
+
+      setAvatarPath(path);
+      await refreshAvatarUrl(path);
+
+      Alert.alert("OK ✅", "Photo de profil mise à jour.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openAvatarMenu() {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Photo de profil",
+          options: ["Annuler", "Caméra", "Fichiers"],
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) uploadAvatar("camera");
+          if (idx === 2) uploadAvatar("files");
+        }
+      );
+      return;
+    }
+
+    Alert.alert("Photo de profil", "Choisis une option :", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Caméra", onPress: () => uploadAvatar("camera") },
+      { text: "Fichiers", onPress: () => uploadAvatar("files") },
+    ]);
+  }
+
+  async function uploadDoc(docType: DocType, source: "camera" | "files") {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (!uid) {
+        Alert.alert("Connexion", "Connecte-toi d’abord.");
+        return;
+      }
+
+      if (isBike) {
+        Alert.alert("Vélo", "En mode vélo, aucun document n’est requis ✅");
+        return;
+      }
+
+      setSaving(true);
+
+      const picked = source === "camera" ? await pickFromCamera() : await pickFromFiles();
+      if (!picked) return;
+
+      const ext = inferExt(picked.name, picked.mime);
+      const path = `${uid}/${docType}/${Date.now()}.${ext}`;
+
+      const base64 = await FileSystem.readAsStringAsync(picked.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const bytes = new Uint8Array(decode(base64));
+
+      const { error: upErr } = await supabase.storage
+        .from("driver-documents")
+        .upload(path, bytes, {
+          contentType: picked.mime,
+          upsert: true,
+        });
+
+      if (upErr) {
+        console.log("upload error", upErr);
+        Alert.alert("Erreur", "Upload impossible. Vérifie Storage + policies.");
+        return;
+      }
+
+      const { error: insErr } = await supabase.from("driver_documents").insert({
+        user_id: uid,
+        doc_type: docTypeToDb(docType),
+        file_path: path,
+      });
+
+      if (insErr) {
+        console.log("insert driver_documents error", insErr);
+        Alert.alert("Erreur", "Fichier uploadé mais DB non mise à jour (driver_documents).");
+        return;
+      }
+
+      Alert.alert("OK ✅", `${docLabel(docType)} envoyé.`);
+      await loadAll();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openDocMenu(docType: DocType) {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: `Uploader ${docLabel(docType)}`,
+          options: ["Annuler", "Caméra", "Fichiers"],
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) uploadDoc(docType, "camera");
+          if (idx === 2) uploadDoc(docType, "files");
+        }
+      );
+      return;
+    }
+
+    Alert.alert(`Uploader ${docLabel(docType)}`, "Choisis une option :", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Caméra", onPress: () => uploadDoc(docType, "camera") },
+      { text: "Fichiers", onPress: () => uploadDoc(docType, "files") },
+    ]);
+  }
+
+  const onPressStripe = useCallback(async () => {
+    try {
+      await startStripeOnboarding("driver");
+    } catch (e: any) {
+      Alert.alert("Stripe", e?.message ?? "Impossible de démarrer l'onboarding Stripe.");
+    }
+  }, []);
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>← Retour</Text>
+        </TouchableOpacity>
+
+        <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
+          Profil
+        </Text>
+
+        <TouchableOpacity onPress={openEdit}>
+          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>Modifier</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator />
+          <Text style={{ color: "#9CA3AF", marginTop: 10 }}>Chargement…</Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}

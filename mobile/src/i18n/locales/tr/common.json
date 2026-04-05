@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Geri",
+    "account": "Hesap",
+    "security": "Güvenlik",
+    "notifications": "Bildirimler",
+    "language": "Dil",
+    "logout": "Çıkış yap",
+    "soon": "Yakında ✅",
+    "ok": "Tamam",
+    "toAdd": "Eklenecek",
+    "ready": "Hazır",
+    "notConfigured": "Yapılandırılmadı",
+    "notRequired": "Gerekli değil"
+  },
+  "driver": {
+    "account": {
+      "title": "Sürücü hesabı",
+      "subtitle": "Araç, belgeler, ödeme, durum (yönlendirmeli).",
+      "vehicle": "Araç",
+      "documents": "Belgeler",
+      "payout": "Ödeme",
+      "finalizeNow": "Şimdi tamamla"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

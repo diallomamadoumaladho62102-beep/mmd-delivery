@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "MMD Delivery",
+    "slug": "mmd-delivery",
+    "splash": {
+      "image": "./apps/mobile/assets/brand/mmd-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "127751ea-33ce-4f67-98ce-a9b29a46b838"
+      }
+    },
+    "android": {
+      "package": "com.maladho2025.mmddelivery"
+    },
+    "ios": {
+      "bundleIdentifier": "com.maladho2025.mmddelivery",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

@@ -1,0 +1,20 @@
+# Dev / build
+node_modules
+.expo
+.git
+.tools
+.tools_backup
+backup
+Backups*
+**/backup
+**/backups
+**/Backups*
+
+# Exclude monorepo apps
+apps
+
+# Local backend / infra
+supabase
+
+# Logs
+*.log

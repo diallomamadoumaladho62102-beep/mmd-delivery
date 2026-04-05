@@ -1,0 +1,76 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+
+export async function proxy(req: NextRequest) {
+  const res = NextResponse.next();
+  const pathname = req.nextUrl.pathname;
+
+  // On protège seulement restaurant + orders/restaurant
+  const protect =
+    pathname === "/restaurant" ||
+    pathname.startsWith("/restaurant/") ||
+    pathname === "/orders/restaurant" ||
+    pathname.startsWith("/orders/restaurant/");
+
+  if (!protect) return res;
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          res.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: any) {
+          res.cookies.set({ name, value: "", ...options });
+        },
+      },
+    }
+  );
+
+  const { data: auth } = await supabase.auth.getUser();
+
+  // Pas connecté => redirect AVANT rendu => pas de flash
+  if (!auth.user) {
+    const url = req.nextUrl.clone();
+    url.pathname =
+      pathname === "/orders/restaurant" || pathname.startsWith("/orders/restaurant/")
+        ? "/signup"
+        : "/signup/restaurant";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // Optionnel: check role restaurant si tu veux
+  // (décommente si tu veux bloquer les non-restaurants)
+  /*
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
+  if (!prof?.role || prof.role !== "restaurant") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/signup";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+  */
+
+  return res;
+}
+
+export const config = {
+  // IMPORTANT: matcher doit inclure la route exacte + les sous-chemins
+  matcher: [
+    "/restaurant",
+    "/restaurant/:path*",
+    "/orders/restaurant",
+    "/orders/restaurant/:path*",
+  ],
+};

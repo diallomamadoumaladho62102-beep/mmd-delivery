@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Înapoi",
+    "account": "Cont",
+    "security": "Securitate",
+    "notifications": "Notificări",
+    "language": "Limbă",
+    "logout": "Deconectare",
+    "soon": "În curând ✅",
+    "ok": "OK",
+    "toAdd": "De adăugat",
+    "ready": "Gata",
+    "notConfigured": "Neconfigurat",
+    "notRequired": "Nu este necesar"
+  },
+  "driver": {
+    "account": {
+      "title": "Cont șofer",
+      "subtitle": "Vehicul, documente, plată, stare (ghidată).",
+      "vehicle": "Vehicul",
+      "documents": "Documente",
+      "payout": "Plată",
+      "finalizeNow": "Finalizează acum"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

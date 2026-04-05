@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← ተመለስ",
+    "account": "መለያ",
+    "security": "ደህንነት",
+    "notifications": "ማሳወቂያዎች",
+    "language": "ቋንቋ",
+    "logout": "ውጣ",
+    "soon": "በቅርቡ ✅",
+    "ok": "እሺ",
+    "toAdd": "ለመጨመር",
+    "ready": "ዝግጁ",
+    "notConfigured": "አልተዋቀረም",
+    "notRequired": "አያስፈልግም"
+  },
+  "driver": {
+    "account": {
+      "title": "የአሽከርካሪ መለያ",
+      "subtitle": "ተሽከርካሪ፣ ሰነዶች፣ ክፍያ፣ ሁኔታ (መመሪያ ጋር).",
+      "vehicle": "ተሽከርካሪ",
+      "documents": "ሰነዶች",
+      "payout": "ክፍያ",
+      "finalizeNow": "አሁን ጨርስ"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

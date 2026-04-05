@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Πίσω",
+    "account": "Λογαριασμός",
+    "security": "Ασφάλεια",
+    "notifications": "Ειδοποιήσεις",
+    "language": "Γλώσσα",
+    "logout": "Αποσύνδεση",
+    "soon": "Σύντομα ✅",
+    "ok": "OK",
+    "toAdd": "Προς προσθήκη",
+    "ready": "Έτοιμο",
+    "notConfigured": "Μη ρυθμισμένο",
+    "notRequired": "Δεν απαιτείται"
+  },
+  "driver": {
+    "account": {
+      "title": "Λογαριασμός οδηγού",
+      "subtitle": "Όχημα, έγγραφα, πληρωμή, κατάσταση (με καθοδήγηση).",
+      "vehicle": "Όχημα",
+      "documents": "Έγγραφα",
+      "payout": "Πληρωμή",
+      "finalizeNow": "Ολοκλήρωση τώρα"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

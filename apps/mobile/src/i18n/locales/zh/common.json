@@ -1,0 +1,1106 @@
+{
+  "common": {
+    "back": "← 返回",
+    "account": "账户",
+    "security": "安全",
+    "notifications": "通知",
+    "language": "语言",
+    "logout": "退出登录",
+    "soon": "即将推出 ✅",
+    "ok": "确定",
+    "toAdd": "待添加",
+    "ready": "已就绪",
+    "notConfigured": "未配置",
+    "notRequired": "不需要",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "na": "—",
+    "yes": "是",
+    "errorTitle": "错误",
+    "refresh": "刷新",
+    "refreshIcon": "↻",
+    "loading": "加载中…",
+    "loadingDots": "…",
+    "updating": "更新中…",
+    "auth": {
+      "logoutTitle": "退出登录",
+      "logoutConfirm": "你确定要退出登录吗？",
+      "logoutError": "无法退出登录。",
+      "logoutShort": "退出登录"
+    },
+    "order": {
+      "errors": {
+        "notFound": "未找到订单。",
+        "load": "无法加载订单。",
+        "update": "无法更新。",
+        "updateStatus": "无法更新状态。"
+      },
+      "status": {
+        "pending": "待处理",
+        "accepted": "已接单",
+        "prepared": "准备中",
+        "readyPickup": "可取餐（pickup）",
+        "dispatched": "配送中",
+        "delivered": "已送达",
+        "canceled": "已取消",
+        "readyWaitingDriver": "已准备好 — 等待司机",
+        "readyDriverAssigned": "已准备好 — 已分配司机"
+      },
+      "card": {
+        "title": "订单 #{{id}}",
+        "statusLabel": "状态：",
+        "acceptTimeTitle": "接单剩余时间",
+        "expired": "⛔ 已过期",
+        "ringingActive": "🔔 响铃中",
+        "totalLabel": "总计："
+      },
+      "actions": {
+        "accept": "接单",
+        "toPreparing": "进入准备中",
+        "ready": "订单已准备好（READY）",
+        "none": "当前无需餐厅操作。"
+      },
+      "driver": {
+        "none": "该订单尚未分配司机。",
+        "loading": "正在加载司机资料…",
+        "profile": "司机资料",
+        "fallback": "司机 {{id}}"
+      },
+      "details": {
+        "title": "订单 #{{id}}",
+        "statusLabel": "状态：",
+        "createdAt": "创建时间：",
+        "totalItemsTaxes": "总计（商品 + 税）：",
+        "netRestaurant": "餐厅净收入：",
+        "backToOrders": "← 返回订单列表",
+        "restaurantSection": "餐厅",
+        "pickupAddress": "取餐地址：",
+        "pickupCodeTitle": "取餐码（提供给司机）：",
+        "driverSection": "司机",
+        "recapTitle": "订单摘要",
+        "totalsTitle": "合计（餐厅）",
+        "subtotalLabel": "小计（商品）：",
+        "taxLabel": "税：",
+        "totalItemsTaxesLabel": "商品 + 税 合计：",
+        "commissionLabel": "餐厅佣金：",
+        "netLabel": "餐厅净收入：",
+        "debugTotalDb": "（调试）DB 总计："
+      }
+    },
+    "restaurant": {
+      "orders": {
+        "title": "餐厅订单",
+        "earningsBtn": "收入",
+        "testRing": "🔔 测试铃声",
+        "loadingAccount": "正在加载餐厅账户…",
+        "loadingOrders": "正在加载订单…",
+        "empty": "当前没有进行中的订单。"
+      }
+    },
+    "transport": {
+      "bike": "🚲 自行车",
+      "moto": "🛵 摩托车",
+      "car": "🚗 汽车"
+    },
+    "driverTier": {
+      "elite": "🏆 精英",
+      "confirmed": "⭐ 已确认",
+      "standard": "🔄 标准",
+      "needsImprovement": "⚠️ 需改进"
+    },
+    "profile": {
+      "title": "个人资料",
+      "topDriver": "🏆 优秀司机",
+      "inProgress": "ℹ️ 进行中",
+      "driverScore": "司机评分",
+      "bikeNoVehicleLine": "自行车：无需驾照/车牌/保险/注册",
+      "deliveries": "配送次数",
+      "acceptance": "接单率",
+      "cancellation": "取消率",
+      "tipChangePhoto": "提示：点击照片可更换（相机/文件）。",
+      "accountSection": "账户",
+      "documentsSection": "资料",
+      "ratingHistorySection": "评分记录",
+      "name": "姓名",
+      "phone": "电话",
+      "transport": "交通方式",
+      "payment": "收款",
+      "status": "状态",
+      "info": "信息",
+      "configureStripeHint": "设置 Stripe 以启用收入。（点击“收款”）",
+      "bikeNoDocsRow": "自行车：无需任何资料",
+      "bikeNoDocs": "自行车模式下无需提交资料 ✅",
+      "noReviewsYet": "暂时没有评价。",
+      "editProfileTitle": "编辑资料",
+      "placeholderName": "例如：Mamadou",
+      "placeholderPhone": "例如：9297408722",
+      "vehicleSection": "车辆",
+      "brand": "品牌",
+      "model": "车型",
+      "color": "颜色",
+      "year": "年份",
+      "plate": "车牌",
+      "placeholderBrand": "例如：Honda",
+      "placeholderModel": "例如：Accord",
+      "placeholderColor": "例如：黑色",
+      "placeholderYear": "2020",
+      "placeholderPlate": "ABC-1234",
+      "bikeNoVehicleHint": "自行车：无需驾照/车牌/保险/注册 ✅",
+      "updated": "资料已更新 ✅",
+      "saveProfilesFailed": "无法保存账户（profiles）。",
+      "saveDriverProfilesFailed": "无法保存（driver_profiles）。",
+      "avatarTitle": "头像",
+      "avatarUpdated": "头像已更新。",
+      "avatarUploadFailed": "无法上传头像。请检查 Storage policies（avatars）。",
+      "avatarUnknownError": "头像上传：未知错误。",
+      "uploadDocTitle": "上传 {{doc}}",
+      "docSent": "{{doc}} 已发送。",
+      "docUploadFailed": "上传失败。请检查 Storage policies（driver-docs）。",
+      "docDbFailed": "文件已上传，但数据库未更新（driver_documents）。",
+      "docUnknownError": "资料上传：未知错误。",
+      "edit": "编辑",
+      "newLabel": "新",
+      "loadingTitle": "加载中…",
+      "verified": {
+        "bike": "自行车 ✅",
+        "complete": "资料齐全 ✅",
+        "notVerified": "未验证"
+      },
+      "paymentStatus": {
+        "configured": "✅ 已设置",
+        "notConfigured": "❌ 未设置"
+      },
+      "docs": {
+        "license": "驾照",
+        "insurance": "保险",
+        "registration": "注册",
+        "ok": "OK ✅",
+        "missing": "缺失",
+        "uploading": "…"
+      },
+      "menu": {
+        "chooseOption": "请选择：",
+        "camera": "相机",
+        "files": "文件",
+        "cancel": "取消"
+      },
+      "alerts": {
+        "loginTitle": "登录",
+        "loginBody": "请先登录。",
+        "bikeTitle": "自行车"
+      }
+    },
+    "permission": {
+      "title": "权限",
+      "camera": "允许相机权限以拍照。"
+    }
+  },
+  "shared": {
+    "common": {
+      "backWithArrow": "← 返回",
+      "backArrowOnly": "←",
+      "loadingEllipsis": "…",
+      "refresh": "刷新",
+      "loading": "加载中…",
+      "cancel": "取消",
+      "delete": "删除",
+      "save": "保存"
+    },
+    "orderChat": {
+      "alerts": {
+        "errorTitle": "错误",
+        "loadFailed": "无法加载聊天。",
+        "permissionTitle": "需要权限",
+        "permissionGalleryBody": "允许访问相册以发送图片。",
+        "pickImageFailed": "无法选择图片。",
+        "sendFailed": "无法发送。",
+        "deleteFailed": "无法删除。"
+      },
+      "debug": {
+        "heicDetected": "🟡 检测到 HEIC，正在转换为 JPG…"
+      },
+      "errors": {
+        "missingOrderId": "缺少 orderId",
+        "missingOrderIdUi": "错误：缺少 orderId。",
+        "imageNotFoundOnPhone": "手机中未找到图片文件。",
+        "imageEmptyOnPhone": "图片文件为空（0 bytes）。",
+        "base64ReadFailedEmpty": "Base64 读取失败（空）。",
+        "arrayBufferZeroBytes": "ArrayBuffer 转换结果为 0 bytes。"
+      },
+      "header": {
+        "subtitle": "消息与附件"
+      },
+      "empty": "暂无消息。",
+      "heic": {
+        "oldMessageTitle": "检测到 HEIC 图片（旧消息）— 可能无法在应用中显示。",
+        "oldMessageBody": "解决方案：更新后重新发送图片（HEIC → JPG）。旧图片需要转换/迁移。"
+      },
+      "actions": {
+        "deleteTitle": "删除",
+        "deleteConfirm": "确定要删除这条消息吗？",
+        "deleteLower": "删除",
+        "image": "图片",
+        "sending": "发送中…",
+        "send": "发送"
+      },
+      "image": {
+        "selectedPrefix": "已选择图片：",
+        "remove": "移除图片"
+      },
+      "placeholders": {
+        "message": "输入消息…"
+      }
+    }
+  },
+  "client": {
+    "auth": {
+      "accountCreatedLoginNow": "账户已创建！现在登录吧。",
+      "accountCreatedTitle": "账户已创建",
+      "addPhoto": "添加照片",
+      "address": "地址",
+      "address1Placeholder": "地址（第 1 行）",
+      "address2Placeholder": "门牌号/房号（第 2 行）",
+      "addressTitle": "地址",
+      "cannotLogin": "无法登录。",
+      "cannotPickPhoto": "无法选择照片。",
+      "cannotSignup": "无法注册。",
+      "changePhoto": "更换照片",
+      "cityPlaceholder": "城市",
+      "countryPlaceholder": "国家",
+      "email": "邮箱",
+      "emailPlaceholder": "例如：name@email.com",
+      "errorTitle": "错误",
+      "fullAddressRequired": "需要完整地址",
+      "fullName": "姓名",
+      "fullNamePlaceholder": "名 姓",
+      "fullNameRequired": "需要姓名",
+      "haveAccount": "已有账户？",
+      "loginBtn": "登录",
+      "loginFailed": "登录失败",
+      "mainAddressLabel": "主要地址",
+      "missingEmailPassword": "需要邮箱和密码",
+      "missingTitle": "缺少字段",
+      "noAccount": "还没有账户？",
+      "password": "密码",
+      "passwordMin6": "至少 6 个字符",
+      "passwordPlaceholder": "密码",
+      "passwordTitle": "密码",
+      "permissionBody": "允许访问照片以选择头像。",
+      "permissionTitle": "需要权限",
+      "phone": "电话",
+      "phonePlaceholder": "例如：+1 555 123 4567",
+      "phoneRequired": "需要电话",
+      "photoTitle": "头像",
+      "photoUploadSkipped": "已跳过照片（可稍后添加）。",
+      "postalPlaceholder": "邮编",
+      "profilePhoto": "头像",
+      "profileTitle": "个人资料",
+      "sessionNotCreated": "会话未创建。",
+      "signupBtn": "创建账户",
+      "signupFailed": "注册失败",
+      "statePlaceholder": "州/省",
+      "subtitleLogin": "登录以继续。",
+      "subtitleSignup": "创建账户开始使用。",
+      "tipStateCountry": "提示：添加州/省 + 国家可避免错误。",
+      "titleLogin": "登录",
+      "titleSignup": "注册",
+      "verifyEmailThenLogin": "请先验证邮箱，然后再登录。"
+    }
+  },
+  "driver": {
+    "profile": {
+      "authFallbackName": "司机",
+      "newDriver": "新司机",
+      "editShort": "编辑",
+      "chooseOption": "请选择：",
+      "saving": "保存中…",
+      "docs": {
+        "license": "驾照",
+        "insurance": "保险",
+        "registration": "注册",
+        "missing": "缺失"
+      },
+      "verified": {
+        "full": "资料齐全 ✅",
+        "notVerified": "未验证"
+      }
+    },
+    "account": {
+      "title": "司机账户",
+      "subtitle": "车辆、资料、收款与状态（引导）。",
+      "vehicle": "车辆",
+      "documents": "资料",
+      "payout": "收款",
+      "finalizeNow": "立即完成",
+      "workTitle": "工作",
+      "workSubtitle": "影响你的行程与收入。",
+      "workCenter": "工作中心",
+      "workCenterHint": "区域、偏好、可用性",
+      "earnings": "收入",
+      "earningsHint": "历史、付款、提现",
+      "taxInfo": "税务信息",
+      "taxHint": "W-9 / 1099（稍后）"
+    },
+    "tax": {
+      "title": "税务信息",
+      "sections": { "overview": "概览", "important": "重要" },
+      "badges": { "soon": "即将推出" },
+      "overview": {
+        "status": { "label": "状态", "value": "目前不需要" },
+        "formType": { "label": "表格类型", "value": "W-9 / 1099（美国）" },
+        "country": { "label": "国家", "value": "美国" },
+        "withholding": { "label": "预扣", "value": "不代扣税款" }
+      },
+      "important": {
+        "title": "我们不代扣税款",
+        "body": "你需要自行申报收入并遵守当地税务规定。如果你在美国，根据你的活动情况，你可能会在年底收到年度表格（如 1099）。"
+      },
+      "buttons": {
+        "learnMore": "了解更多",
+        "yearlySummary": "年度汇总（PDF）"
+      },
+      "learnMore": {
+        "title": "税务如何运作",
+        "body": "我们不代扣税款。你需要根据当地规则自行申报收入。年底你可能会收到汇总（例如美国的 1099）。"
+      },
+      "yearlySummary": {
+        "comingSoonTitle": "即将推出 ✅",
+        "comingSoonBody": "年度汇总下载功能将会在这里提供（PDF）。"
+      }
+    },
+    "auth": {
+      "actions": {
+        "camera": "相机",
+        "cancel": "取消",
+        "createAccountSignup": "创建账户",
+        "createMyAccount": "创建我的账户",
+        "files": "文件",
+        "haveAccountLogin": "我已有账户",
+        "login": "登录"
+      },
+      "alert": {
+        "cameraPermission": "请允许相机权限。",
+        "errorTitle": "错误",
+        "galleryPermission": "请允许访问相册。",
+        "loginFailedTitle": "登录失败",
+        "permissionTitle": "需要权限",
+        "pickPhotoFailed": "无法选择照片。",
+        "signupFailedTitle": "注册失败",
+        "takePhotoFailed": "无法拍照。",
+        "verifyEmailBody": "请先验证邮箱，然后重新登录。",
+        "verifyEmailTitle": "邮箱验证"
+      },
+      "avatar": {
+        "add": "添加照片",
+        "change": "更换照片",
+        "chooseOption": "选择方式",
+        "optional": "可选",
+        "title": "头像"
+      },
+      "card": {
+        "loginTitle": "司机登录",
+        "signupTitle": "创建司机账户"
+      },
+      "documents": {
+        "bikeNone": "自行车：无需资料",
+        "carHint": "汽车：至少添加 驾照 + 保险",
+        "title": "资料"
+      },
+      "fields": {
+        "email": "邮箱",
+        "emailPlaceholder": "例如：driver@email.com",
+        "fullName": "姓名",
+        "fullNamePlaceholder": "名 姓",
+        "password": "密码",
+        "passwordPlaceholder": "密码",
+        "phone": "电话",
+        "phonePlaceholder": "例如：+1 555 123 4567"
+      },
+      "footer": "继续即表示你同意服务条款。",
+      "header": {
+        "login": "登录",
+        "signup": "注册"
+      },
+      "loading": "加载中…",
+      "referral": {
+        "autoFillHint": "提示：如果你有邀请码，可以在这里填写。",
+        "placeholder": "邀请码（可选）",
+        "title": "推荐"
+      },
+      "switch": {
+        "createAccount": "创建账户",
+        "haveAccount": "我有账户",
+        "newDriver": "新司机",
+        "relogin": "重新登录"
+      },
+      "transport": {
+        "bike": "自行车",
+        "car": "汽车",
+        "moto": "摩托车",
+        "title": "交通方式"
+      },
+      "vehicle": {
+        "bikeNoDocs": "自行车：无需资料",
+        "brand": "品牌",
+        "brandPlaceholder": "例如：Toyota",
+        "colorOptional": "颜色（可选）",
+        "invalidYear": "年份无效",
+        "model": "车型",
+        "modelPlaceholder": "例如：Corolla",
+        "plate": "车牌",
+        "title": "车辆",
+        "yearOptional": "年份（可选）"
+      }
+    },
+    "payments": {
+      "title": "收款",
+      "unavailable": "暂时无法打开 Stripe。"
+    },
+    "menu": {
+      "load_error": "无法加载司机菜单。",
+      "tips_week": "每周提示",
+      "referrals": "推荐",
+      "opportunities": "机会",
+      "driver_program": "司机计划",
+      "wallet": "钱包",
+      "account": "账户",
+      "payments_stripe": "设置收款（Stripe）",
+      "help": "帮助",
+      "payments_title": "收款",
+      "payments_unavailable": "暂时无法打开 Stripe。",
+      "driver_label": "司机",
+      "new_driver": "新司机"
+    },
+    "security": {
+      "accountLabel": "当前密码",
+      "confirmLabel": "确认",
+      "errorTitle": "错误",
+      "genericError": "发生错误。",
+      "hide": "隐藏",
+      "min8": "至少 8 个字符",
+      "mismatch": "两次密码不一致",
+      "newPasswordLabel": "新密码",
+      "passwordTitle": "密码",
+      "save": "保存",
+      "sessionBody": "请重新登录以继续。",
+      "sessionTitle": "会话已过期",
+      "show": "显示",
+      "successBody": "密码已更新。",
+      "successTitle": "成功",
+      "tip": "请选择强密码（8+ 字符）。",
+      "title": "安全"
+    },
+    "settings": {
+      "footer": "需要帮助？请联系支持。",
+      "loadingFooter": "加载中…",
+      "loggingOut": "正在退出…",
+      "logoutHint": "退出你的账户。",
+      "notificationsHint": "管理通知。",
+      "notificationsSoon": "即将推出 ✅",
+      "securityHint": "修改密码。",
+      "subtitle": "管理你的司机账户。",
+      "switchAccountTitle": "切换账户"
+    },
+    "home": {
+      "header": {
+        "title": "司机仪表盘",
+        "subtitle": "地图始终保持激活。"
+      },
+      "online": "在线",
+      "offline": "离线",
+      "gps": {
+        "title": "GPS",
+        "permissionDenied": "GPS 权限被拒绝。",
+        "enableToGoOnline": "启用 GPS 权限以切换为在线。",
+        "locating": "正在定位司机…"
+      },
+      "zone": {
+        "title": "你所在区域的活跃度",
+        "current": "当前区域",
+        "calm": "平静",
+        "busy": "繁忙",
+        "very_busy": "非常繁忙"
+      },
+      "tabs": {
+        "home": "首页",
+        "revenue": "收入",
+        "inbox": "收件箱",
+        "menu": "菜单"
+      },
+      "map": {
+        "pickupTitle": "取件",
+        "dropoffTitle": "送达"
+      },
+      "offer": {
+        "title": "有新的行程可接",
+        "pickup": "取件：",
+        "dropoff": "送达：",
+        "distance": "预计距离",
+        "earnings": "预计收入",
+        "createdAt": "创建：",
+        "decline": "拒绝",
+        "accept": "接受",
+        "accepting": "接受中..."
+      },
+      "myOrders": {
+        "title": "我的进行中配送",
+        "loading": "正在加载你的配送…",
+        "emptyTitle": "你还没有进行中的配送。",
+        "emptySubtitle": "一旦接单，它会显示在这里。",
+        "viewDetails": "查看详情 →"
+      },
+      "labels": {
+        "pickup": "取件：",
+        "dropoff": "送达：",
+        "distance": "距离：",
+        "driverEarnings": "司机收入："
+      },
+      "status": {
+        "pending": "等待中（餐厅）",
+        "accepted": "已接受",
+        "prepared": "准备中",
+        "ready": "已准备好（等待司机）",
+        "dispatched": "配送中",
+        "delivered": "已送达",
+        "canceled": "已取消"
+      },
+      "kind": {
+        "food": "餐厅订单",
+        "foodWithName": "餐厅订单 · {{name}}",
+        "pickup_dropoff": "取件/送达行程"
+      },
+      "accept": {
+        "title": "行程已接受",
+        "body": "你现在已被分配到该配送。"
+      },
+      "errors": {
+        "mustBeLoggedIn": "你必须先登录。",
+        "loadOrders": "无法加载订单。",
+        "accept": "无法接受该行程。",
+        "toggleOnline": "无法切换状态。"
+      }
+    },
+    "map": {
+      "headerTitle": "司机地图",
+      "permissionDenied": "位置权限被拒绝。启用 GPS 以查看司机地图。",
+      "locating": "正在获取你的位置…",
+      "online": "在线",
+      "offline": "离线",
+      "statusTitle": "司机状态",
+      "statusOnlineTitle": "你处于在线状态 — 可以接单。",
+      "statusOfflineTitle": "你处于离线状态。",
+      "statusOnlineSubtitle": "在线时，你的位置会发送到 MMD Delivery。",
+      "statusOfflineSubtitleHasLocation": "切换为在线以开始接单。",
+      "statusOfflineSubtitleNoLocation": "正在等待你的位置（请启用 GPS 权限）。",
+      "zoneActivityTitle": "你所在区域的活跃度",
+      "zoneUnknown": "未知",
+      "activity": {
+        "very_busy": "非常繁忙",
+        "busy": "繁忙",
+        "normal": "正常",
+        "calm": "平静"
+      },
+      "bonusEstimated": "你所在区域预计奖金 {{boost}}",
+      "nextUpdateTitle": "下次更新",
+      "updateIntervalOnline": "在线时每 2 秒更新",
+      "goOffline": "切换为离线",
+      "incoming": {
+        "title": "新行程",
+        "pickup": "取件：",
+        "dropoff": "送达：",
+        "decline": "拒绝",
+        "accept": "接受"
+      },
+      "restaurantsLoading": "正在加载餐厅…",
+      "myOrders": {
+        "title": "我的行程",
+        "loading": "正在加载你的行程…",
+        "emptyTitle": "暂时没有分配的行程。",
+        "emptySubtitle": "一旦分配行程，它会显示在这里。",
+        "viewDetails": "查看详情 →"
+      },
+      "orderCard": {
+        "pickupLabel": "从：",
+        "dropoffLabel": "到：",
+        "distanceLabel": "距离：",
+        "earningsLabel": "收入："
+      },
+      "kind": {
+        "food": "餐厅订单",
+        "foodWithName": "餐厅订单 · {{name}}",
+        "pickup_dropoff": "行程"
+      },
+      "status": {
+        "pending": "等待中（餐厅）",
+        "accepted": "已接受",
+        "prepared": "准备中",
+        "ready": "已准备好",
+        "dispatched": "配送中",
+        "delivered": "已送达",
+        "canceled": "已取消"
+      },
+      "debug": {
+        "testIncomingOrder": "测试来单"
+      }
+    },
+    "revenue": {
+      "title": "收入",
+      "help_btn": "帮助",
+      "help_title": "帮助",
+      "help_body": "我们将在这里添加帮助页面（FAQ / 支持）。",
+      "auth_title": "登录",
+      "auth_body": "请以司机身份登录以查看收入。",
+      "load_error": "无法加载收入。",
+      "not_added": "页面 \"{{route}}\" 尚未添加到 AppNavigator。",
+      "range": {
+        "today": "今天",
+        "month": "本月"
+      },
+      "tabs": {
+        "week": "本周",
+        "today": "今天",
+        "month": "本月"
+      },
+      "days": {
+        "mon": "周一",
+        "tue": "周二",
+        "wed": "周三",
+        "thu": "周四",
+        "fri": "周五",
+        "sat": "周六",
+        "sun": "周日"
+      },
+      "total": "总计",
+      "net_price": "净额",
+      "tips": "小费",
+      "trips": "行程",
+      "points": "积分",
+      "show_details": "查看详情",
+      "activity": "活跃度",
+      "activity_hint": "时间与行程",
+      "wallet": "钱包",
+      "wallet_hint": "余额与收款",
+      "benefits": "福利",
+      "benefits_hint": "奖金与加成",
+      "recent_sessions": "最近会话",
+      "no_trips": "该时间段内没有已送达的行程。",
+      "trip_title": "行程",
+      "trip_id": "ID",
+      "tip": "小费",
+      "driver_label": "司机",
+      "details": {
+        "auth": { "title": "登录" },
+        "breakdown": {
+          "netPrice": "净价",
+          "tip": "小费",
+          "title": "明细",
+          "total": "总收入"
+        },
+        "calc": { "title": "计算" },
+        "completed": { "title": "已完成行程" },
+        "driverId": "司机",
+        "earnings": "收入",
+        "loadError": "无法加载详情。",
+        "noTripToShow": "没有可显示详情的行程。",
+        "range": { "today": "今天" },
+        "stats": {
+          "driving": "行驶中",
+          "online": "在线",
+          "points": "积分",
+          "title": "统计",
+          "trips": "行程"
+        },
+        "title": "详情",
+        "tripAlert": { "title": "行程" },
+        "tripsLabel": "行程",
+        "week": {
+          "fri": "周五",
+          "mon": "周一",
+          "sat": "周六",
+          "sun": "周日",
+          "thu": "周四",
+          "tue": "周二",
+          "wed": "周三"
+        }
+      },
+      "history": {
+        "auth": { "title": "登录" },
+        "filters": {
+          "month": "本月",
+          "today": "今天",
+          "week": "本周"
+        },
+        "list": { "title": "已送达行程" },
+        "loadError": "无法加载历史记录。",
+        "range": {
+          "month": "本月",
+          "today": "今天",
+          "week": "本周"
+        },
+        "summary": {
+          "totalLabel": "总计",
+          "trips": "行程"
+        },
+        "title": "历史记录"
+      }
+    },
+    "inbox": {
+      "title": "收件箱",
+      "auth_title": "登录",
+      "auth_body": "请以司机身份登录以查看收件箱。",
+      "load_error": "无法加载收件箱。",
+      "header": {
+        "subtitle_base": "进行中 + 已送达（7 天）",
+        "unread_count": "{{count}} 未读"
+      },
+      "search_placeholder": "搜索（#id，餐厅，状态）…",
+      "not_logged_in": "请以司机身份登录以查看对话。",
+      "empty": "没有找到订单（进行中 / 最近 7 天已送达）。",
+      "sections": {
+        "in_progress": "进行中",
+        "in_progress_empty": "没有进行中订单。",
+        "delivered_7d": "已送达（7 天）",
+        "delivered_empty": "最近 7 天没有已送达订单。"
+      },
+      "badge": {
+        "delivered": "已送达",
+        "in_progress": "进行中",
+        "unread": "未读"
+      },
+      "msg": {
+        "none": "无消息",
+        "attachment": "附件"
+      },
+      "order": {
+        "fallback_title": "订单"
+      },
+      "driver_label": "司机"
+    },
+    "orderDetails": {
+      "status": {
+        "pending": "等待司机",
+        "accepted_prepared": "等待中（餐厅）",
+        "ready": "可取餐",
+        "dispatched": "配送中",
+        "delivered": "已送达",
+        "canceled": "已取消"
+      },
+      "notFound": "未找到订单。",
+      "notFoundShort": "未找到行程。",
+      "loadError": "无法加载订单详情。",
+      "mapsOpenError": "无法在此手机上打开导航应用。",
+      "missingAddressTitle": "缺少地址",
+      "missingAddressBody": "此步骤没有可用地址。",
+      "missingCoordsTitle": "缺少信息",
+      "missingCoordsBody": "此行程尚无 GPS 坐标。",
+      "rezoom": "重新缩放",
+      "acceptDeniedTitle": "无法接受",
+      "acceptDeniedStripe": "你必须先完成 Stripe 设置才能接单。",
+      "acceptDeniedGeneric": "无法接受该行程。",
+      "acceptedTitle": "行程已接受 ✅",
+      "acceptedBody": "你现在已被分配到该行程。",
+      "acceptError": "暂时无法接受该行程。",
+      "codeMissingTitle": "缺少验证码",
+      "codeMissingBody": "请输入验证码。",
+      "codeServerError": "验证验证码时服务器错误。",
+      "codeInvalidTitle": "验证码无效",
+      "codePickupOk": "取餐码验证成功 ✅",
+      "codeDropoffOk": "送达码验证成功 ✅",
+      "codeVerifyError": "暂时无法验证验证码。",
+      "chatTitle": "聊天",
+      "chatRouteMissing": "未找到聊天路由。请检查 AppNavigator（DriverChat / OrderChat）。",
+      "map": {
+        "pickupTitle": "餐厅",
+        "dropoffTitle": "客户"
+      },
+      "header": {
+        "title": "行程 #{{id}}",
+        "createdAt": "创建：{{date}}"
+      },
+      "steps": {
+        "title": "站点",
+        "restaurant": "餐厅：",
+        "pickup": "取餐 ",
+        "dropoff": "送达 "
+      },
+      "actions": {
+        "goPickup": "前往取餐",
+        "goDropoff": "前往送达"
+      },
+      "summary": {
+        "title": "摘要",
+        "distance": "距离",
+        "eta": "预计时间"
+      },
+      "earnings": {
+        "title": "收入（预估）",
+        "yourPart": "你的份额",
+        "note": "预估金额基于 MMD Delivery 分成。"
+      },
+      "verify": {
+        "title": "验证",
+        "pickupBtn": "验证取餐（验证码）",
+        "dropoffBtn": "验证送达（验证码）",
+        "autoHint": "按钮会根据状态自动启用。"
+      },
+      "chat": {
+        "open": "打开聊天 💬"
+      },
+      "accept": {
+        "cta": "接受行程",
+        "loading": "接受中...",
+        "hint": "接受后，你将被分配到该行程。"
+      },
+      "modal": {
+        "pickupTitle": "取餐码",
+        "dropoffTitle": "送达码",
+        "hint": "向餐厅或客户索要验证码并输入。",
+        "placeholder": "例如：ABC123",
+        "verifying": "验证中...",
+        "submit": "验证"
+      }
+    },
+    "opportunities": {
+      "title": "机会",
+      "score": {
+        "title": "你的评分",
+        "occasions": "机会",
+        "new": "新"
+      },
+      "tabs": {
+        "saved": "已保存的机会",
+        "promotions": "促销",
+        "airports": "机场",
+        "reservations": "预约",
+        "events": "活动"
+      },
+      "labels": {
+        "savedCount": "已保存的机会（{{count}}）",
+        "platformIos": "iOS",
+        "platformAndroid": "Android",
+        "footer": "{{platform}} • MMD 司机机会",
+        "noneForDay": "当天此标签下没有机会。"
+      },
+      "actions": {
+        "save": "保存",
+        "saved": "已保存 ✅",
+        "remove": "已移除 ✅",
+        "join": "加入",
+        "joined": "已加入 ✅",
+        "see": "查看",
+        "activate": "激活"
+      },
+      "pill": {
+        "joined": "已加入 ✅",
+        "saved": "已保存",
+        "soon": "即将开始",
+        "recommended": "推荐",
+        "boost": "加成",
+        "promo": "促销"
+      },
+      "alerts": {
+        "savedTitle": "已保存 ✅",
+        "savedBody": "已添加：{{title}}",
+        "removedTitle": "已移除 ✅",
+        "removedBody": "已移除：{{title}}",
+        "loginRequiredTitle": "需要登录",
+        "loginRequiredBody": "登录后才能加入。"
+      },
+      "reminder": {
+        "title": "机会提醒 ⏰",
+        "body": "{{title}} • 30 分钟后开始"
+      }
+    },
+    "referrals": {
+      "deliveriesLabel": "🍔 配送",
+      "footer": "MMD 推荐 • 司机",
+      "header": { "title": "邀请朋友" },
+      "headline": { "noProgram": "邀请你的朋友" },
+      "inviteNow": "邀请",
+      "modal": {
+        "allRewardsTitle": "全部奖励",
+        "inviteNow": "立即邀请",
+        "summaryTitle": "📌 摘要"
+      },
+      "myCodeLabel": "你的邀请码",
+      "ridesLabel": "🚗 行程",
+      "shareError": "无法打开分享。",
+      "shareSubject": "邀请 MMD 司机",
+      "status": {
+        "earned": "你已获得",
+        "invited": "已邀请",
+        "title": "状态"
+      }
+    },
+    "wallet": {
+      "available": {
+        "cashoutButton": "提现",
+        "lastCashout": "上次提现",
+        "title": "可用",
+        "rules": "最低提现：{{min}} • 每天 1 次"
+      },
+      "cashout": {
+        "requestError": "无法请求提现。",
+        "runtimeError": "提现时出错。",
+        "title": "提现"
+      },
+      "cashoutConfirm": {
+        "title": "即时提现",
+        "body": "你将提现吗出全部可用余额：{{amount}}。\n\n提醒：最低 {{min}} • 每天一次。"
+      },
+      "cashoutRequested": {
+        "title": "已请求提现",
+        "body": "提现已安排：{{amount}}。"
+      },
+      "cashoutUnavailable": {
+        "body": "提现不可用。",
+        "title": "提现不可用"
+      },
+      "cashoutReason": {
+        "needStripe": "启用 Stripe 收款后才能提现。",
+        "alreadyToday": "你今天已提现过。请明天再试。",
+        "min": "最低提现：{{min}}。"
+      },
+      "debug": { "driver": "司机" },
+      "header": { "title": "钱包" },
+      "loadError": "无法加载钱包。",
+      "pending": {
+        "title": "处理中",
+        "desc": "提现处理中（scheduled / processing）"
+      },
+      "stripe": {
+        "activateButton": "启用 Stripe",
+        "activateDesc": "设置 Stripe 以接收收款。",
+        "activateTitle": "启用收款",
+        "startError": "无法开始 Stripe 引导。",
+        "title": "Stripe"
+      },
+      "title": "收入"
+    }
+  },
+  "restaurant": {
+    "menu": {
+      "loading": "加载中…",
+      "errors": {
+        "accountRequired": "❌ 需要餐厅账户"
+      },
+      "alerts": {
+        "errorTitle": "错误",
+        "permissionTitle": "需要权限",
+        "permissionPhotosBody": "请允许访问照片。",
+        "invalidImageUri": "图片无效（缺少 uri）。",
+        "imageNotUploaded": "图片未上传。请检查 Storage policies 的 bucket：",
+        "uploadFailed": "上传失败",
+        "deleteFailed": "删除失败",
+        "updateFailed": "更新失败。"
+      },
+      "categories": {
+        "title": "分类",
+        "placeholder": "例如：披萨、饮料、小吃...",
+        "nameRequired": "分类名称必填",
+        "empty": "暂无分类。",
+        "uncategorized": "未分类"
+      },
+      "header": {
+        "title": "菜单 / 商品",
+        "earnings": "收入"
+      },
+      "actions": {
+        "add": "添加",
+        "edit": "编辑",
+        "delete": "删除"
+      },
+      "items": {
+        "addTitle": "添加商品",
+        "categoryLabel": "分类",
+        "selectionLabel": "选择：",
+        "nameLabel": "名称",
+        "descriptionLabel": "描述",
+        "priceLabel": "价格（例如：12.99）",
+        "currencyLabel": "币种",
+        "imageLabel": "图片",
+        "chooseImage": "选择图片",
+        "changeImage": "更换图片",
+        "positionLabel": "排序（可选）",
+        "positionPlaceholder": "例如：1",
+        "availableLabel": "可售",
+        "addButton": "添加商品",
+        "nameRequired": "名称必填",
+        "invalidPrice": "价格无效",
+        "noPhoto": "无图片",
+        "available": "✅ 可售",
+        "unavailable": "⛔ 不可售",
+        "pricePrefix": "💰"
+      },
+      "list": {
+        "title": "你的菜单"
+      },
+      "edit": {
+        "title": "编辑商品"
+      }
+    },
+    "setup": {
+      "title": "餐厅资料",
+      "fields": {
+        "restaurantName": "餐厅名称",
+        "phone": "电话",
+        "address": "地址",
+        "city": "城市",
+        "postalCode": "邮编",
+        "cuisineType": "菜系",
+        "description": "描述"
+      },
+      "options": {
+        "delivery": "配送",
+        "pickup": "自取",
+        "dineIn": "堂食"
+      },
+      "actions": {
+        "save": "保存餐厅资料"
+      },
+      "alerts": {
+        "errorTitle": "错误",
+        "notLoggedIn": "未登录",
+        "successTitle": "OK",
+        "successBody": "资料已提交，等待管理员审核。"
+      }
+    },
+    "auth": {
+      "actions": {
+        "signIn": "登录",
+        "signUp": "创建账户",
+        "switchToLogin": "我已有账户",
+        "switchToSignup": "创建账户"
+      },
+      "debug": {
+        "help": "如有问题，请联系支持。",
+        "title": "帮助"
+      },
+      "errors": {
+        "emailRequired": "邮箱必填",
+        "passwordRequired": "密码必填",
+        "signinFailed": "登录失败",
+        "signupFailed": "注册失败",
+        "unknown": "发生错误"
+      },
+      "fields": {
+        "email": "邮箱",
+        "password": "密码"
+      },
+      "placeholders": {
+        "email": "例如：restaurant@email.com"
+      },
+      "success": {
+        "createdAndSignedIn": "账户已创建并登录 ✅",
+        "signedIn": "已登录 ✅"
+      },
+      "titleLogin": "餐厅登录",
+      "titleSignup": "餐厅注册"
+    },
+    "gate": {
+      "loading": "加载中…"
+    }
+  }
+}

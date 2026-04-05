@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Pada",
+    "account": "Àkántì",
+    "security": "Aabo",
+    "notifications": "Ìkìlọ̀",
+    "language": "Èdè",
+    "logout": "Jáde",
+    "soon": "Ó ń bọ̀ láìpẹ́ ✅",
+    "ok": "OK",
+    "toAdd": "Láti fi kún",
+    "ready": "Tán",
+    "notConfigured": "Kò tíì ṣètò",
+    "notRequired": "Kò ṣe dandan"
+  },
+  "driver": {
+    "account": {
+      "title": "Àkántì awakọ",
+      "subtitle": "Ọkọ, àwọn ìwé, ìsanwó, ipo (pẹ̀lú ìtọ́sọ́nà).",
+      "vehicle": "Ọkọ",
+      "documents": "Àwọn ìwé",
+      "payout": "Ìsanwó",
+      "finalizeNow": "Parí báyìí"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

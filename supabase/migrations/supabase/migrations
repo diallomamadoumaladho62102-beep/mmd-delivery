@@ -1,0 +1,53 @@
+-- 1) Colonnes onboarding/lock
+alter table driver_profiles
+add column if not exists onboarding_status text not null default 'draft'
+  check (onboarding_status in ('draft','submitted','approved','rejected')),
+add column if not exists is_locked boolean not null default false,
+add column if not exists locked_at timestamptz;
+
+-- 2) RLS driver_profiles (si pas déjà fait)
+alter table driver_profiles enable row level security;
+
+-- Le chauffeur peut lire son profil
+drop policy if exists driver_profiles_select_own on driver_profiles;
+create policy driver_profiles_select_own
+on driver_profiles
+for select
+using (auth.uid() = courier_id);
+
+-- Le chauffeur peut créer sa ligne
+drop policy if exists driver_profiles_insert_own on driver_profiles;
+create policy driver_profiles_insert_own
+on driver_profiles
+for insert
+with check (auth.uid() = courier_id);
+
+-- Le chauffeur peut modifier tant que ce n’est PAS locked
+drop policy if exists driver_profiles_update_if_not_locked on driver_profiles;
+create policy driver_profiles_update_if_not_locked
+on driver_profiles
+for update
+using (auth.uid() = courier_id and is_locked = false)
+with check (auth.uid() = courier_id and is_locked = false);
+
+-- 3) RLS profiles (si tu ne l’avais pas encore)
+alter table profiles enable row level security;
+
+drop policy if exists profiles_select_own on profiles;
+create policy profiles_select_own
+on profiles
+for select
+using (auth.uid() = id);
+
+drop policy if exists profiles_insert_own on profiles;
+create policy profiles_insert_own
+on profiles
+for insert
+with check (auth.uid() = id);
+
+drop policy if exists profiles_update_own on profiles;
+create policy profiles_update_own
+on profiles
+for update
+using (auth.uid() = id)
+with check (auth.uid() = id);

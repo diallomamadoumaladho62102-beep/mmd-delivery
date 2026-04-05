@@ -1,0 +1,26 @@
+{
+  "name": "mmd-delivery",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "cd apps/web && pnpm dev",
+    "build": "cd apps/web && pnpm build",
+    "start": "cd apps/web && pnpm start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.80.0",
+    "dotenv": "^17.2.3",
+    "expo": "~54.0.33",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.17",
+    "babel-preset-expo": "~54.0.10",
+    "supabase": "^2.53.6",
+    "typescript": "~5.9.3"
+  }
+}

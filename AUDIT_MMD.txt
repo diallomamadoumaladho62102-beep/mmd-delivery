@@ -1,0 +1,14 @@
+=== AUDIT MMD DELIVERY ===
+Date: 2025-11-07T08:27:43
+
+[FICHIERS]
+
+[ENV]
+- .env.local: OK
+
+[DEPS WEB]
+- supabase-js: OK
+- next: latest
+
+[SUPABASE TESTS]
+- (audit supabase non exécuté)

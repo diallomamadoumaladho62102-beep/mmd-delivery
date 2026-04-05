@@ -1,0 +1,1446 @@
+import React, { useCallback, useMemo, useState } from "react";
+import { decode } from "base64-arraybuffer";
+import {
+  SafeAreaView,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  Modal,
+  TextInput,
+  Alert,
+  Platform,
+  ActionSheetIOS,
+} from "react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import { supabase } from "../lib/supabase";
+import { startStripeOnboarding } from "../utils/stripe";
+
+type TransportMode = "bike" | "moto" | "car";
+type DocType = "license" | "insurance" | "registration";
+
+type ProfileRow = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  role: string | null;
+};
+
+type DriverProfileRow = {
+  user_id: string;
+
+  full_name: string | null;
+  phone: string | null;
+
+  transport_mode: string | null;
+
+  vehicle_brand: string | null;
+  vehicle_model: string | null;
+  vehicle_year: number | null;
+  vehicle_color: string | null;
+  plate_number: string | null;
+
+  total_deliveries: number | null;
+  acceptance_rate: number | null;
+  cancellation_rate: number | null;
+};
+
+type DriverDocRow = {
+  id?: string;
+  user_id: string;
+  doc_type: string;
+  file_path: string;
+  created_at?: string;
+};
+
+type OrderStatus =
+  | "pending"
+  | "accepted"
+  | "prepared"
+  | "ready"
+  | "dispatched"
+  | "delivered"
+  | "canceled";
+
+type DriverRatingRpc = {
+  avg_rating: number;
+  rating_count: number;
+};
+
+function pct(n: number | null | undefined) {
+  if (n === null || n === undefined) return "—";
+  if (!Number.isFinite(n)) return "—";
+  return `${Math.round(Number(n))}%`;
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <Text
+      style={{
+        color: "white",
+        fontSize: 16,
+        fontWeight: "900",
+        marginTop: 18,
+        marginBottom: 10,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <View
+      style={{
+        backgroundColor: "#0B1220",
+        borderColor: "#111827",
+        borderWidth: 1,
+        borderRadius: 16,
+        padding: 14,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
+function Row({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value?: string;
+  onPress?: () => void;
+}) {
+  const Wrapper = onPress ? TouchableOpacity : View;
+  return (
+    <Wrapper
+      // @ts-ignore
+      onPress={onPress}
+      style={{
+        paddingVertical: 12,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}
+    >
+      <Text style={{ color: "#CBD5E1", fontSize: 14, fontWeight: "700" }}>
+        {label}
+      </Text>
+      <Text style={{ color: "white", fontSize: 14, fontWeight: "700" }}>
+        {value ?? "—"}
+      </Text>
+    </Wrapper>
+  );
+}
+
+function Divider() {
+  return <View style={{ height: 1, backgroundColor: "#111827" }} />;
+}
+
+function transportLabel(m: TransportMode) {
+  if (m === "bike") return "🚲 Vélo";
+  if (m === "moto") return "🛵 Moto";
+  return "🚗 Voiture";
+}
+
+function docLabel(t: DocType) {
+  if (t === "license") return "Permis";
+  if (t === "insurance") return "Assurance";
+  return "Registration";
+}
+
+function docTypeToDb(t: DocType) {
+  return t;
+}
+
+function inferExt(name: string, mime: string) {
+  const n = name.toLowerCase();
+  if (n.endsWith(".pdf")) return "pdf";
+  if (n.endsWith(".png")) return "png";
+  if (n.endsWith(".jpg") || n.endsWith(".jpeg")) return "jpg";
+  if (mime === "application/pdf") return "pdf";
+  if (mime === "image/png") return "png";
+  if (mime === "image/jpeg") return "jpg";
+  return "bin";
+}
+
+// ⭐⭐⭐⭐⭐ (sans images). Si count=0 -> ☆☆☆☆☆
+function StarsRow({
+  rating,
+  count,
+  size = 14,
+}: {
+  rating: number | null | undefined;
+  count: number;
+  size?: number;
+}) {
+  if (!count) {
+    return (
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Text style={{ color: "#374151", fontSize: size, fontWeight: "900" }}>
+          {"☆".repeat(5)}
+        </Text>
+      </View>
+    );
+  }
+
+  const v =
+    rating == null || !Number.isFinite(rating)
+      ? 0
+      : Math.max(0, Math.min(5, rating));
+
+  const full = Math.floor(v);
+  const half = v - full >= 0.5 ? 1 : 0;
+  const empty = 5 - full - half;
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <Text style={{ color: "#FBBF24", fontSize: size, fontWeight: "900" }}>
+        {"★".repeat(full)}
+      </Text>
+      {half ? (
+        <Text style={{ color: "#FBBF24", fontSize: size, fontWeight: "900" }}>
+          ½
+        </Text>
+      ) : null}
+      <Text style={{ color: "#374151", fontSize: size, fontWeight: "900" }}>
+        {"☆".repeat(empty)}
+      </Text>
+    </View>
+  );
+}
+
+export function DriverProfileScreen() {
+  const navigation = useNavigation<any>();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [driver, setDriver] = useState<DriverProfileRow | null>(null);
+
+  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
+  const [stripeOnboarded, setStripeOnboarded] = useState<boolean>(false);
+
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // ✅ si l’image échoue, on force fallback (évite bug iOS cache / 403 signed url)
+  const [avatarBroken, setAvatarBroken] = useState(false);
+
+  const [hasLicense, setHasLicense] = useState(false);
+  const [hasInsurance, setHasInsurance] = useState(false);
+  const [hasRegistration, setHasRegistration] = useState(false);
+
+  // ⭐ rating (summary + fallback driver_ratings; RPC optionnel en dernier)
+  const [avgRating, setAvgRating] = useState<number | null>(null);
+  const [ratingCount, setRatingCount] = useState<number>(0);
+
+  const [statsDeliveries, setStatsDeliveries] = useState<number>(0);
+  const [statsAcceptanceRate, setStatsAcceptanceRate] = useState<number>(0);
+  const [statsCancellationRate, setStatsCancellationRate] = useState<number>(0);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPlate, setEditPlate] = useState("");
+  const [editBrand, setEditBrand] = useState("");
+  const [editModel, setEditModel] = useState("");
+  const [editYear, setEditYear] = useState("");
+  const [editColor, setEditColor] = useState("");
+
+  const [authFallbackName, setAuthFallbackName] = useState<string>("Chauffeur");
+
+  const transportMode: TransportMode = useMemo(() => {
+    const m = (driver?.transport_mode ?? "").toLowerCase();
+    if (m === "bike" || m === "moto" || m === "car") return m;
+    return "car";
+  }, [driver?.transport_mode]);
+
+  const isBike = transportMode === "bike";
+
+  const headerName = useMemo(() => {
+    const name =
+      driver?.full_name?.trim() ||
+      profile?.full_name?.trim() ||
+      authFallbackName?.trim() ||
+      "Chauffeur";
+    return name;
+  }, [driver?.full_name, profile?.full_name, authFallbackName]);
+
+  const fallbackAvatarUri = useMemo(() => {
+    const safeName = encodeURIComponent(headerName || "Chauffeur");
+    return `https://ui-avatars.com/api/?name=${safeName}&background=111827&color=fff&size=128`;
+  }, [headerName]);
+
+  // ✅ cache-buster (iOS cache)
+  const avatarUri = useMemo(() => {
+    if (avatarBroken) return fallbackAvatarUri;
+    if (!avatarUrl) return fallbackAvatarUri;
+    const sep = avatarUrl.includes("?") ? "&" : "?";
+    return `${avatarUrl}${sep}v=${encodeURIComponent(
+      String(avatarPath ?? Date.now())
+    )}`;
+  }, [avatarUrl, fallbackAvatarUri, avatarBroken, avatarPath]);
+
+  const vehicleLine = useMemo(() => {
+    if (isBike) return "—";
+    const parts = [
+      driver?.vehicle_year ? String(driver.vehicle_year) : null,
+      driver?.vehicle_brand ?? null,
+      driver?.vehicle_model ?? null,
+    ].filter(Boolean);
+    const base = parts.length ? parts.join(" ") : "—";
+    const plate = driver?.plate_number ? ` • ${driver.plate_number}` : "";
+    return `${base}${plate}`;
+  }, [driver, isBike]);
+
+  const phoneToShow = useMemo(() => {
+    const p = profile?.phone?.trim();
+    const d = driver?.phone?.trim();
+    return p || d || "—";
+  }, [profile?.phone, driver?.phone]);
+
+  const verifiedLabel = useMemo(() => {
+    if (isBike) return "Vélo ✅";
+    if (hasLicense && hasInsurance && hasRegistration) return "Dossier complet ✅";
+    return "Non vérifié";
+  }, [hasLicense, hasInsurance, hasRegistration, isBike]);
+
+  const paymentLabel = useMemo(() => {
+    if (stripeOnboarded) return "✅ Configuré";
+    return "❌ Non configuré";
+  }, [stripeOnboarded]);
+
+  const docLicense = hasLicense ? "OK ✅" : "Manquant";
+  const docInsurance = hasInsurance ? "OK ✅" : "Manquant";
+  const docRegistration = hasRegistration ? "OK ✅" : "Manquant";
+
+  const loadDocs = useCallback(async (uid: string) => {
+    const { data, error } = await supabase
+      .from("driver_documents")
+      .select("user_id, doc_type, file_path")
+      .eq("user_id", uid);
+
+    if (error) {
+      console.log("driver_documents error", error);
+      setHasLicense(false);
+      setHasInsurance(false);
+      setHasRegistration(false);
+      return;
+    }
+
+    const rows = (data ?? []) as DriverDocRow[];
+    const types = new Set(rows.map((r) => String(r.doc_type)));
+
+    setHasLicense(types.has("license"));
+    setHasInsurance(types.has("insurance"));
+    setHasRegistration(types.has("registration"));
+  }, []);
+
+  /**
+   * ✅ NOTE DRIVER (comme DriverMenuScreen)
+   * 1) Try driver_rating_summary (rapide)
+   * 2) Fallback: compute depuis driver_ratings
+   * 3) (optionnel) try RPC get_driver_rating en dernier si tu l’as déjà
+   */
+  const loadRating = useCallback(async (uid: string) => {
+    try {
+      // 1) Summary
+      const { data: sum, error: sumErr } = await supabase
+        .from("driver_rating_summary")
+        .select("driver_id, rating, rating_count")
+        .eq("driver_id", uid)
+        .maybeSingle();
+
+      if (!sumErr && sum && Number((sum as any).rating_count) > 0) {
+        const r = Number((sum as any).rating);
+        const c = Number((sum as any).rating_count);
+
+        setAvgRating(Number.isFinite(r) ? r : null);
+        setRatingCount(Number.isFinite(c) ? c : 0);
+        return;
+      }
+
+      // 2) Fallback: driver_ratings
+      const { data, error } = await supabase
+        .from("driver_ratings")
+        .select("rating")
+        .eq("ratee_driver_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (!error) {
+        const ratings = (data ?? [])
+          .map((r: any) => Number(r.rating))
+          .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
+
+        if (ratings.length) {
+          const sumRatings = ratings.reduce((a, b) => a + b, 0);
+          setAvgRating(sumRatings / ratings.length);
+          setRatingCount(ratings.length);
+          return;
+        }
+      } else {
+        console.log("driver_ratings error", error);
+      }
+
+      // 3) Optionnel: RPC en dernier (si existe)
+      // IMPORTANT: adapte la clé si ta fonction attend "p_driver_id"
+      const callWith = async (args: any) => {
+        const res = await supabase.rpc("get_driver_rating", args);
+        return res;
+      };
+
+      let res = await callWith({ p_driver_id: uid });
+      if (res.error) res = await callWith({ driver_id: uid });
+
+      if (!res.error && res.data) {
+        const row = (Array.isArray(res.data) ? res.data[0] : res.data) as
+          | DriverRatingRpc
+          | null
+          | undefined;
+
+        const avg = Number(row?.avg_rating ?? 0);
+        const cnt = Number(row?.rating_count ?? 0);
+
+        if (Number.isFinite(cnt) && cnt > 0) {
+          setAvgRating(Number.isFinite(avg) ? avg : null);
+          setRatingCount(cnt);
+          return;
+        }
+      } else if (res.error) {
+        console.log("get_driver_rating RPC error:", res.error);
+      }
+
+      // Aucun avis
+      setAvgRating(null);
+      setRatingCount(0);
+    } catch (e) {
+      console.log("loadRating error", e);
+      setAvgRating(null);
+      setRatingCount(0);
+    }
+  }, []);
+
+  const loadStatsFromOrders = useCallback(async (uid: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("status")
+        .eq("driver_id", uid)
+        .limit(2000);
+
+      if (error) {
+        console.log("orders stats error", error);
+        setStatsDeliveries(0);
+        setStatsAcceptanceRate(0);
+        setStatsCancellationRate(0);
+        return;
+      }
+
+      const statuses = (data ?? [])
+        .map((r: any) => String(r.status ?? "") as OrderStatus)
+        .filter(Boolean);
+
+      const assigned = statuses.length;
+      const delivered = statuses.filter((s) => s === "delivered").length;
+      const canceled = statuses.filter((s) => s === "canceled").length;
+
+      const acceptedApprox = Math.max(0, assigned - canceled);
+
+      const cancellationRate = assigned === 0 ? 0 : (canceled / assigned) * 100;
+      const acceptanceRate = assigned === 0 ? 0 : (acceptedApprox / assigned) * 100;
+
+      setStatsDeliveries(delivered);
+      setStatsCancellationRate(cancellationRate);
+      setStatsAcceptanceRate(acceptanceRate);
+    } catch (e) {
+      console.log("loadStatsFromOrders error", e);
+      setStatsDeliveries(0);
+      setStatsAcceptanceRate(0);
+      setStatsCancellationRate(0);
+    }
+  }, []);
+
+  const refreshAvatarUrl = useCallback(async (path: string | null) => {
+    if (!path) {
+      setAvatarUrl(null);
+      setAvatarBroken(false);
+      return;
+    }
+
+    try {
+      setAvatarBroken(false);
+
+      const { data: signed, error: sErr } = await supabase.storage
+        .from("driver-documents")
+        .createSignedUrl(path, 60 * 60);
+
+      if (!sErr && signed?.signedUrl) {
+        setAvatarUrl(signed.signedUrl);
+        return;
+      }
+
+      const pub = supabase.storage.from("driver-documents").getPublicUrl(path);
+      const url = pub?.data?.publicUrl ?? null;
+      setAvatarUrl(url);
+    } catch (e) {
+      console.log("refreshAvatarUrl error", e);
+      setAvatarUrl(null);
+      setAvatarBroken(false);
+    }
+  }, []);
+
+  const refreshStripeStatus = useCallback(async (uid: string) => {
+    try {
+      const { error: syncErr } = await supabase.functions.invoke("check_connect_status");
+      if (syncErr) console.log("check_connect_status error:", syncErr);
+
+      const { data: dp, error: dpErr } = await supabase
+        .from("driver_profiles")
+        .select("stripe_account_id, stripe_onboarded")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      if (dpErr) {
+        console.log("driver_profiles stripe read error:", dpErr);
+        setStripeAccountId(null);
+        setStripeOnboarded(false);
+        return;
+      }
+
+      setStripeAccountId((dp as any)?.stripe_account_id ?? null);
+      setStripeOnboarded(Boolean((dp as any)?.stripe_onboarded));
+    } catch (e) {
+      console.log("refreshStripeStatus error:", e);
+      setStripeAccountId(null);
+      setStripeOnboarded(false);
+    }
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      const { data: authData, error: authErr } = await supabase.auth.getUser();
+      if (authErr) console.log("auth.getUser error", authErr);
+
+      const user = authData?.user;
+      if (!user) {
+        setProfile(null);
+        setDriver(null);
+        setAuthFallbackName("Chauffeur");
+        setAvatarPath(null);
+        setAvatarUrl(null);
+        setAvatarBroken(false);
+
+        setStripeAccountId(null);
+        setStripeOnboarded(false);
+
+        setHasLicense(false);
+        setHasInsurance(false);
+        setHasRegistration(false);
+
+        setAvgRating(null);
+        setRatingCount(0);
+
+        setStatsDeliveries(0);
+        setStatsAcceptanceRate(0);
+        setStatsCancellationRate(0);
+        return;
+      }
+
+      const uid = user.id;
+
+      const fallback =
+        (user.user_metadata as any)?.full_name ??
+        (user.user_metadata as any)?.name ??
+        user.email ??
+        "Chauffeur";
+      setAuthFallbackName(String(fallback));
+
+      const metaAvatarPath =
+        ((user.user_metadata as any)?.avatar_path as string | undefined) ?? null;
+
+      setAvatarPath(metaAvatarPath);
+      await refreshAvatarUrl(metaAvatarPath);
+
+      const { data: p, error: pErr } = await supabase
+        .from("profiles")
+        .select("id, full_name, phone, role")
+        .eq("id", uid)
+        .maybeSingle();
+
+      if (pErr) console.log("profiles error", pErr);
+
+      setProfile(
+        (p as any) ?? {
+          id: uid,
+          full_name: null,
+          phone: null,
+          role: "livreur",
+        }
+      );
+
+      const { data: d, error: dErr } = await supabase
+        .from("driver_profiles")
+        .select(
+          [
+            "user_id",
+            "full_name",
+            "phone",
+            "transport_mode",
+            "vehicle_brand",
+            "vehicle_model",
+            "vehicle_year",
+            "vehicle_color",
+            "plate_number",
+            "total_deliveries",
+            "acceptance_rate",
+            "cancellation_rate",
+          ].join(",")
+        )
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      if (dErr) console.log("driver_profiles error", dErr);
+
+      if (!d) {
+        const { data: created, error: cErr } = await supabase
+          .from("driver_profiles")
+          .upsert(
+            {
+              user_id: uid,
+              transport_mode: "car",
+              full_name: (p as any)?.full_name ?? null,
+              phone: (p as any)?.phone ?? null,
+            },
+            { onConflict: "user_id" }
+          )
+          .select(
+            [
+              "user_id",
+              "full_name",
+              "phone",
+              "transport_mode",
+              "vehicle_brand",
+              "vehicle_model",
+              "vehicle_year",
+              "vehicle_color",
+              "plate_number",
+              "total_deliveries",
+              "acceptance_rate",
+              "cancellation_rate",
+            ].join(",")
+          )
+          .single();
+
+        if (cErr) console.log("upsert driver_profiles error", cErr);
+        setDriver((created as any) ?? null);
+      } else {
+        setDriver(d as any);
+      }
+
+      await refreshStripeStatus(uid);
+      await Promise.all([loadDocs(uid), loadRating(uid), loadStatsFromOrders(uid)]);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadDocs, loadRating, loadStatsFromOrders, refreshAvatarUrl, refreshStripeStatus]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAll();
+    }, [loadAll])
+  );
+
+  function openEdit() {
+    setEditName(driver?.full_name ?? profile?.full_name ?? "");
+    setEditPhone(profile?.phone ?? driver?.phone ?? "");
+    setEditPlate(isBike ? "" : driver?.plate_number ?? "");
+    setEditBrand(isBike ? "" : driver?.vehicle_brand ?? "");
+    setEditModel(isBike ? "" : driver?.vehicle_model ?? "");
+    setEditYear(isBike ? "" : driver?.vehicle_year ? String(driver.vehicle_year) : "");
+    setEditColor(isBike ? "" : driver?.vehicle_color ?? "");
+    setEditOpen(true);
+  }
+
+  async function saveEdit() {
+    try {
+      setSaving(true);
+
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (!uid) {
+        Alert.alert("Connexion", "Connecte-toi d’abord.");
+        return;
+      }
+
+      const yearNum = editYear.trim().length > 0 ? Number(editYear.trim()) : null;
+      const safeYear = yearNum && Number.isFinite(yearNum) ? Math.round(yearNum) : null;
+
+      const { error: pErr } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: uid,
+            role: profile?.role ?? "livreur",
+            full_name: editName.trim() || null,
+            phone: editPhone.trim() || null,
+          },
+          { onConflict: "id" }
+        );
+
+      if (pErr) {
+        console.log("profiles upsert error", pErr);
+        Alert.alert("Erreur", "Impossible de sauvegarder le compte (profiles).");
+        return;
+      }
+
+      const payload: Partial<DriverProfileRow> = isBike
+        ? {
+            full_name: editName.trim() || null,
+            phone: editPhone.trim() || null,
+            vehicle_brand: null,
+            vehicle_model: null,
+            vehicle_year: null,
+            vehicle_color: null,
+            plate_number: null,
+            transport_mode: "bike",
+          }
+        : {
+            full_name: editName.trim() || null,
+            phone: editPhone.trim() || null,
+            vehicle_brand: editBrand.trim() || null,
+            vehicle_model: editModel.trim() || null,
+            vehicle_year: safeYear as any,
+            vehicle_color: editColor.trim() || null,
+            plate_number: editPlate.trim() || null,
+          };
+
+      const { error: dErr } = await supabase
+        .from("driver_profiles")
+        .update(payload as any)
+        .eq("user_id", uid);
+
+      if (dErr) {
+        console.log("save driver_profiles error", dErr);
+        Alert.alert("Erreur", "Impossible de sauvegarder (driver_profiles).");
+        return;
+      }
+
+      setEditOpen(false);
+      await loadAll();
+      Alert.alert("OK", "Profil mis à jour ✅");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function pickFromCamera(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission", "Autorise la caméra pour prendre une photo.");
+      return null;
+    }
+
+    const res = await ImagePicker.launchCameraAsync({
+      quality: 0.85,
+      allowsEditing: true,
+    });
+
+    if (res.canceled) return null;
+
+    const asset = res.assets?.[0];
+    if (!asset?.uri) return null;
+
+    const uri = asset.uri;
+    const name = `camera_${Date.now()}.jpg`;
+    return { uri, mime: "image/jpeg", name };
+  }
+
+  async function pickFromFiles(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["image/*", "application/pdf"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (res.canceled) return null;
+
+    const file = res.assets?.[0];
+    if (!file?.uri) return null;
+
+    const lower = (file.name ?? "").toLowerCase();
+    const mime =
+      file.mimeType ||
+      (lower.endsWith(".pdf")
+        ? "application/pdf"
+        : lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+        ? "image/jpeg"
+        : lower.endsWith(".png")
+        ? "image/png"
+        : "application/octet-stream");
+
+    const name = file.name || `file_${Date.now()}`;
+    return { uri: file.uri, mime, name };
+  }
+
+  async function pickAvatarFromCamera(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission", "Autorise la caméra pour prendre une photo.");
+      return null;
+    }
+
+    const res = await ImagePicker.launchCameraAsync({
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [1, 1],
+    });
+
+    if (res.canceled) return null;
+
+    const asset = res.assets?.[0];
+    if (!asset?.uri) return null;
+
+    const uri = asset.uri;
+    const name = `avatar_camera_${Date.now()}.jpg`;
+    return { uri, mime: "image/jpeg", name };
+  }
+
+  async function pickAvatarFromFiles(): Promise<{ uri: string; mime: string; name: string } | null> {
+    const res = await DocumentPicker.getDocumentAsync({
+      type: ["image/*"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (res.canceled) return null;
+
+    const file = res.assets?.[0];
+    if (!file?.uri) return null;
+
+    const lower = (file.name ?? "").toLowerCase();
+    const mime =
+      file.mimeType ||
+      (lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+        ? "image/jpeg"
+        : lower.endsWith(".png")
+        ? "image/png"
+        : "application/octet-stream");
+
+    const name = file.name || `avatar_${Date.now()}`;
+    return { uri: file.uri, mime, name };
+  }
+
+  async function uploadAvatar(source: "camera" | "files") {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (!uid) {
+        Alert.alert("Connexion", "Connecte-toi d’abord.");
+        return;
+      }
+
+      setSaving(true);
+
+      const picked =
+        source === "camera" ? await pickAvatarFromCamera() : await pickAvatarFromFiles();
+      if (!picked) return;
+
+      const ext = inferExt(picked.name, picked.mime);
+      const path = `${uid}/avatar/${Date.now()}.${ext}`;
+
+      const base64 = await FileSystem.readAsStringAsync(picked.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const bytes = new Uint8Array(decode(base64));
+
+      const { error: upErr } = await supabase.storage
+        .from("driver-documents")
+        .upload(path, bytes, {
+          contentType: picked.mime,
+          upsert: true,
+        });
+
+      if (upErr) {
+        console.log("avatar upload error", upErr);
+        Alert.alert("Erreur", "Upload avatar impossible. Vérifie Storage + policies.");
+        return;
+      }
+
+      const { error: metaErr } = await supabase.auth.updateUser({
+        data: { avatar_path: path },
+      });
+
+      if (metaErr) {
+        console.log("avatar updateUser error", metaErr);
+        Alert.alert("Erreur", "Photo uploadée mais profil non mis à jour (metadata).");
+        return;
+      }
+
+      setAvatarPath(path);
+      await refreshAvatarUrl(path);
+
+      Alert.alert("OK ✅", "Photo de profil mise à jour.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openAvatarMenu() {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Photo de profil",
+          options: ["Annuler", "Caméra", "Fichiers"],
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) uploadAvatar("camera");
+          if (idx === 2) uploadAvatar("files");
+        }
+      );
+      return;
+    }
+
+    Alert.alert("Photo de profil", "Choisis une option :", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Caméra", onPress: () => uploadAvatar("camera") },
+      { text: "Fichiers", onPress: () => uploadAvatar("files") },
+    ]);
+  }
+
+  async function uploadDoc(docType: DocType, source: "camera" | "files") {
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const uid = authData?.user?.id;
+      if (!uid) {
+        Alert.alert("Connexion", "Connecte-toi d’abord.");
+        return;
+      }
+
+      if (isBike) {
+        Alert.alert("Vélo", "En mode vélo, aucun document n’est requis ✅");
+        return;
+      }
+
+      setSaving(true);
+
+      const picked = source === "camera" ? await pickFromCamera() : await pickFromFiles();
+      if (!picked) return;
+
+      const ext = inferExt(picked.name, picked.mime);
+      const path = `${uid}/${docType}/${Date.now()}.${ext}`;
+
+      const base64 = await FileSystem.readAsStringAsync(picked.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const bytes = new Uint8Array(decode(base64));
+
+      const { error: upErr } = await supabase.storage
+        .from("driver-documents")
+        .upload(path, bytes, {
+          contentType: picked.mime,
+          upsert: true,
+        });
+
+      if (upErr) {
+        console.log("upload error", upErr);
+        Alert.alert("Erreur", "Upload impossible. Vérifie Storage + policies.");
+        return;
+      }
+
+      const { error: insErr } = await supabase.from("driver_documents").insert({
+        user_id: uid,
+        doc_type: docTypeToDb(docType),
+        file_path: path,
+      });
+
+      if (insErr) {
+        console.log("insert driver_documents error", insErr);
+        Alert.alert("Erreur", "Fichier uploadé mais DB non mise à jour (driver_documents).");
+        return;
+      }
+
+      Alert.alert("OK ✅", `${docLabel(docType)} envoyé.`);
+      await loadAll();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openDocMenu(docType: DocType) {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: `Uploader ${docLabel(docType)}`,
+          options: ["Annuler", "Caméra", "Fichiers"],
+          cancelButtonIndex: 0,
+        },
+        (idx) => {
+          if (idx === 1) uploadDoc(docType, "camera");
+          if (idx === 2) uploadDoc(docType, "files");
+        }
+      );
+      return;
+    }
+
+    Alert.alert(`Uploader ${docLabel(docType)}`, "Choisis une option :", [
+      { text: "Annuler", style: "cancel" },
+      { text: "Caméra", onPress: () => uploadDoc(docType, "camera") },
+      { text: "Fichiers", onPress: () => uploadDoc(docType, "files") },
+    ]);
+  }
+
+  const onPressStripe = useCallback(async () => {
+    try {
+      await startStripeOnboarding("driver");
+    } catch (e: any) {
+      Alert.alert("Stripe", e?.message ?? "Impossible de démarrer l'onboarding Stripe.");
+    }
+  }, []);
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 8,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>← Retour</Text>
+        </TouchableOpacity>
+
+        <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
+          Profil
+        </Text>
+
+        <TouchableOpacity onPress={openEdit}>
+          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>Modifier</Text>
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator />
+          <Text style={{ color: "#9CA3AF", marginTop: 10 }}>Chargement…</Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Card>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity
+                onPress={openAvatarMenu}
+                activeOpacity={0.85}
+                style={{ marginRight: 14 }}
+              >
+                <View style={{ width: 64, height: 64 }}>
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={{ width: 64, height: 64, borderRadius: 32 }}
+                    onError={() => setAvatarBroken(true)}
+                  />
+                  {saving ? (
+                    <View
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "rgba(0,0,0,0.25)",
+                        borderRadius: 32,
+                      }}
+                    >
+                      <ActivityIndicator />
+                    </View>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>
+                  {headerName}
+                </Text>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 6,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <StarsRow rating={avgRating} count={ratingCount} size={15} />
+
+                  <Text style={{ color: "#9CA3AF", fontWeight: "800", marginLeft: 8 }}>
+                    {ratingCount === 0 ? "Nouveau" : avgRating?.toFixed(2)}
+                    {ratingCount > 0 ? ` (${ratingCount})` : ""}
+                  </Text>
+
+                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>{"  "}•{"  "}</Text>
+                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>{verifiedLabel}</Text>
+
+                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>{"  "}•{"  "}</Text>
+                  <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
+                    {transportLabel(transportMode)}
+                  </Text>
+                </View>
+
+                {!isBike ? (
+                  <Text style={{ color: "#CBD5E1", marginTop: 6, fontWeight: "700" }}>
+                    {vehicleLine}
+                  </Text>
+                ) : (
+                  <Text style={{ color: "#CBD5E1", marginTop: 6, fontWeight: "700" }}>
+                    Vélo : pas de permis / plaque / assurance / registration
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View style={{ height: 12 }} />
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={{ flex: 1, backgroundColor: "#0A1730", borderRadius: 14, padding: 12 }}>
+                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>Livraisons</Text>
+                <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginTop: 6 }}>
+                  {statsDeliveries}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1, backgroundColor: "#0A1730", borderRadius: 14, padding: 12 }}>
+                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>Acceptation</Text>
+                <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginTop: 6 }}>
+                  {pct(statsAcceptanceRate)}
+                </Text>
+              </View>
+
+              <View style={{ flex: 1, backgroundColor: "#0A1730", borderRadius: 14, padding: 12 }}>
+                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>Annulation</Text>
+                <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginTop: 6 }}>
+                  {pct(statsCancellationRate)}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={{ color: "#64748B", marginTop: 10, fontWeight: "700" }}>
+              Astuce : touche la photo pour la changer (caméra / fichiers).
+            </Text>
+          </Card>
+
+          <SectionTitle>Compte</SectionTitle>
+          <Card>
+            <Row label="Nom" value={headerName} />
+            <Divider />
+            <Row label="Téléphone" value={phoneToShow} />
+            <Divider />
+            <Row label="Transport" value={transportLabel(transportMode)} />
+            <Divider />
+            <Row
+              label="Paiement"
+              value={paymentLabel}
+              onPress={!stripeOnboarded ? onPressStripe : undefined}
+            />
+            {!stripeOnboarded ? (
+              <Text style={{ color: "#94A3B8", marginTop: 8, fontWeight: "700" }}>
+                Configure Stripe pour activer les gains. (touche “Paiement”)
+              </Text>
+            ) : null}
+            <Divider />
+            <Row label="Statut" value={verifiedLabel} />
+          </Card>
+
+          {!isBike ? (
+            <>
+              <SectionTitle>Véhicule</SectionTitle>
+              <Card>
+                <Row label="Détails" value={vehicleLine} />
+                <Divider />
+                <Row label="Couleur" value={driver?.vehicle_color ?? "—"} />
+              </Card>
+
+              <SectionTitle>Documents</SectionTitle>
+              <Card>
+                <Row
+                  label="Permis"
+                  value={saving ? "…" : docLicense}
+                  onPress={() => openDocMenu("license")}
+                />
+                <Divider />
+                <Row
+                  label="Assurance"
+                  value={saving ? "…" : docInsurance}
+                  onPress={() => openDocMenu("insurance")}
+                />
+                <Divider />
+                <Row
+                  label="Registration"
+                  value={saving ? "…" : docRegistration}
+                  onPress={() => openDocMenu("registration")}
+                />
+              </Card>
+
+              <Text style={{ color: "#64748B", marginTop: 8, fontWeight: "700" }}>
+                Astuce : touche une ligne pour uploader (caméra / fichiers).
+              </Text>
+            </>
+          ) : (
+            <>
+              <SectionTitle>Documents</SectionTitle>
+              <Card>
+                <Row label="Info" value="Vélo : aucun document requis" />
+              </Card>
+            </>
+          )}
+
+          <Text style={{ color: "#6B7280", marginTop: 16, fontWeight: "700" }}>
+            {Platform.OS === "ios" ? "iOS" : "Android"} • Profil Chauffeur MMD
+          </Text>
+        </ScrollView>
+      )}
+
+      <Modal
+        visible={editOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditOpen(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.65)",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#0B1220",
+              borderRadius: 18,
+              borderWidth: 1,
+              borderColor: "#111827",
+              padding: 14,
+            }}
+          >
+            <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>
+              Modifier le profil
+            </Text>
+
+            <View style={{ height: 12 }} />
+
+            <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>Nom</Text>
+            <TextInput
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Ex: Mamadou"
+              placeholderTextColor="#64748B"
+              style={{
+                color: "white",
+                backgroundColor: "#071022",
+                borderColor: "#111827",
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                marginTop: 6,
+              }}
+            />
+
+            <View style={{ height: 10 }} />
+
+            <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>Téléphone</Text>
+            <TextInput
+              value={editPhone}
+              onChangeText={setEditPhone}
+              placeholder="Ex: 9297408722"
+              placeholderTextColor="#64748B"
+              keyboardType="phone-pad"
+              style={{
+                color: "white",
+                backgroundColor: "#071022",
+                borderColor: "#111827",
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                marginTop: 6,
+              }}
+            />
+
+            {!isBike ? (
+              <>
+                <View style={{ height: 12 }} />
+                <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>Véhicule</Text>
+
+                <View style={{ height: 8 }} />
+
+                <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>Marque</Text>
+                <TextInput
+                  value={editBrand}
+                  onChangeText={setEditBrand}
+                  placeholder="Ex: Honda"
+                  placeholderTextColor="#64748B"
+                  style={{
+                    color: "white",
+                    backgroundColor: "#071022",
+                    borderColor: "#111827",
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    marginTop: 6,
+                  }}
+                />
+
+                <View style={{ height: 10 }} />
+
+                <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>Modèle</Text>
+                <TextInput
+                  value={editModel}
+                  onChangeText={setEditModel}
+                  placeholder="Ex: Accord"
+                  placeholderTextColor="#64748B"
+                  style={{
+                    color: "white",
+                    backgroundColor: "#071022",
+                    borderColor: "#111827",
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    marginTop: 6,
+                  }}
+                />
+
+                <View style={{ height: 10 }} />
+
+                <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>Couleur</Text>
+                <TextInput
+                  value={editColor}
+                  onChangeText={setEditColor}
+                  placeholder="Ex: Noir"
+                  placeholderTextColor="#64748B"
+                  style={{
+                    color: "white",
+                    backgroundColor: "#071022",
+                    borderColor: "#111827",
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    marginTop: 6,
+                  }}
+                />
+
+                <View style={{ height: 10 }} />
+
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>Année</Text>
+                    <TextInput
+                      value={editYear}
+                      onChangeText={setEditYear}
+                      placeholder="2020"
+                      placeholderTextColor="#64748B"
+                      keyboardType="number-pad"
+                      style={{
+                        color: "white",
+                        backgroundColor: "#071022",
+                        borderColor: "#111827",
+                        borderWidth: 1,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        marginTop: 6,
+                      }}
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>Plaque</Text>
+                    <TextInput
+                      value={editPlate}
+                      onChangeText={setEditPlate}
+                      placeholder="ABC-1234"
+                      placeholderTextColor="#64748B"
+                      style={{
+                        color: "white",
+                        backgroundColor: "#071022",
+                        borderColor: "#111827",
+                        borderWidth: 1,
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        marginTop: 6,
+                      }}
+                    />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={{ height: 12 }} />
+                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
+                  Vélo : pas besoin de permis/plaque/assurance/registration ✅
+                </Text>
+              </>
+            )}
+
+            <View style={{ height: 14 }} />
+
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setEditOpen(false)}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "#1F2937",
+                }}
+                disabled={saving}
+              >
+                <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>Annuler</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={saveEdit}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                  backgroundColor: "#2563EB",
+                  opacity: saving ? 0.7 : 1,
+                }}
+                disabled={saving}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>
+                  {saving ? "Sauvegarde…" : "Enregistrer"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}

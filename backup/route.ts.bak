@@ -1,0 +1,178 @@
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
+import { stripe, webhookSecret } from "@/lib/stripe";
+import { createClient } from "@supabase/supabase-js";
+
+export const runtime = "nodejs"; // important
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+async function getRawBody(req: NextRequest) {
+  const ab = await req.arrayBuffer();
+  return Buffer.from(ab);
+}
+
+export async function POST(req: NextRequest) {
+  const sig = req.headers.get("stripe-signature");
+  if (!sig) return NextResponse.json({ error: "Missing stripe-signature" }, { status: 400 });
+
+  const rawBody = await getRawBody(req);
+
+  let event: Stripe.Event;
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret!);
+  } catch (e: any) {
+    return new NextResponse(`Webhook Error: ${e.message}`, { status: 400 });
+  }
+
+  // ✅ PAYMENT CONFIRMED (Checkout)
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+
+    // ✅ BLINDÉ: orderId peut venir de metadata OU client_reference_id
+    const orderId = session.metadata?.order_id || session.client_reference_id || null;
+
+    const paymentIntentId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id ?? null;
+
+    // (Optionnel) Log de debug utile en prod aussi
+    console.log("WEBHOOK checkout.session.completed", {
+      sessionId: session.id,
+      orderId,
+      paymentIntentId,
+      client_reference_id: session.client_reference_id,
+      metadata: session.metadata,
+    });
+
+    if (!orderId) {
+      return NextResponse.json({ received: true, ignored: "missing order_id" });
+    }
+
+    // 1) Read order
+    const { data: order } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "id, subtotal_cents, delivery_fee_cents, driver_id, restaurant_id, restaurant_user_id, currency, driver_paid_out, restaurant_paid_out"
+      )
+      .eq("id", orderId)
+      .single();
+
+    if (!order) return NextResponse.json({ received: true, ignored: "order not found" });
+
+    // ✅ Anti double payout (ne bloque pas si un seul côté est payé)
+    if (order.driver_paid_out && order.restaurant_paid_out) {
+      return NextResponse.json({ received: true, ignored: "already paid out" });
+    }
+
+    // 2) Resolve restaurant user id (chez toi restaurant_user_id est souvent null)
+    const restaurantUserId = order.restaurant_user_id ?? order.restaurant_id;
+    if (!restaurantUserId) {
+      return NextResponse.json({ received: true, ignored: "missing restaurant reference" });
+    }
+
+    // 3) Get restaurant stripe account
+    const { data: rest } = await supabaseAdmin
+      .from("restaurant_profiles")
+      .select("user_id, stripe_account_id, stripe_onboarded")
+      .eq("user_id", restaurantUserId)
+      .single();
+
+    if (!rest?.stripe_account_id) {
+      return NextResponse.json({ received: true, ignored: "restaurant stripe_account_id missing" });
+    }
+
+    // 4) Get driver stripe account
+    const { data: drv } = await supabaseAdmin
+      .from("driver_profiles")
+      .select("user_id, stripe_account_id, stripe_onboarded")
+      .eq("user_id", order.driver_id)
+      .single();
+
+    if (!drv?.stripe_account_id) {
+      return NextResponse.json({ received: true, ignored: "driver stripe_account_id missing" });
+    }
+
+    const restaurantAmount = Number(order.subtotal_cents || 0);
+    const driverAmount = Number(order.delivery_fee_cents || 0);
+
+    if (restaurantAmount <= 0 || driverAmount <= 0) {
+      return NextResponse.json({ received: true, ignored: "invalid amounts" });
+    }
+
+    const currency = String(order.currency || "usd").toLowerCase();
+
+    // 5) Find charge via PI for source_transaction
+    let sourceChargeId: string | null = null;
+
+    if (paymentIntentId) {
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+      const latest = pi.latest_charge;
+      if (typeof latest === "string") sourceChargeId = latest;
+      else if (latest?.id) sourceChargeId = latest.id;
+    }
+
+    if (!sourceChargeId) {
+      return NextResponse.json({ received: true, ignored: "missing source charge" });
+    }
+
+    // 6) Transfers (✅ idempotency keys pour éviter double transfert si Stripe retry)
+    const [tRest, tDrv] = await Promise.all([
+      stripe.transfers.create(
+        {
+          amount: restaurantAmount,
+          currency,
+          destination: rest.stripe_account_id,
+          transfer_group: `ORDER_${order.id}`,
+          source_transaction: sourceChargeId,
+          metadata: { role: "restaurant", order_id: order.id, source_charge: sourceChargeId },
+        },
+        { idempotencyKey: `order_${order.id}_restaurant` }
+      ),
+      stripe.transfers.create(
+        {
+          amount: driverAmount,
+          currency,
+          destination: drv.stripe_account_id,
+          transfer_group: `ORDER_${order.id}`,
+          source_transaction: sourceChargeId,
+          metadata: { role: "driver", order_id: order.id, source_charge: sourceChargeId },
+        },
+        { idempotencyKey: `order_${order.id}_driver` }
+      ),
+    ]);
+
+    const nowIso = new Date().toISOString();
+
+    // 7) Update DB
+    // ⚠️ Je n’ajoute PAS de nouvelles colonnes (stripe_payment_intent_id, etc.)
+    // parce que si elles n’existent pas chez toi, Supabase renverra une erreur et ça “gâte” tout.
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        payment_status: "paid",
+        driver_paid_out: true,
+        driver_paid_out_at: nowIso,
+        restaurant_paid_out: true,
+        restaurant_paid_out_at: nowIso,
+        driver_transfer_id: tDrv.id,
+        restaurant_transfer_id: tRest.id,
+        updated_at: nowIso,
+      })
+      .eq("id", order.id);
+
+    return NextResponse.json({
+      received: true,
+      ok: true,
+      order_id: order.id,
+      restaurant_transfer_id: tRest.id,
+      driver_transfer_id: tDrv.id,
+    });
+  }
+
+  return NextResponse.json({ received: true, type: event.type });
+}
