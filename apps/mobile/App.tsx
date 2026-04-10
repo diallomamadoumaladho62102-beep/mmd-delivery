@@ -3,45 +3,48 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
-import { View, Text } from "react-native";
+import { Text, View } from "react-native";
 
-// ✅ i18n (side-effect global boot)
-// IMPORTANT: laisse cet import, même si tu importes aussi syncLocaleForRole.
+// i18n boot (side effect global)
+// Important: garder cet import pour initialiser i18n au démarrage.
 import "./src/i18n";
 
 import { AppNavigator } from "./src/navigation/AppNavigator";
 import { supabase } from "./src/lib/supabase";
 import { getSelectedRole } from "./src/lib/authRole";
 import { API_BASE_URL } from "./lib/apiBase";
-
-// ✅ Notifications (exports corrigés)
 import { setupNotifications, getExpoPushToken } from "./src/lib/notifications";
-
-// ✅ i18n (API)
-import { syncLocaleForRole } from "./src/i18n/index";
-
-const extra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined) ?? {};
-
-if (__DEV__) {
-  console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
-  console.log("SUPABASE_URL =", extra.EXPO_PUBLIC_SUPABASE_URL);
-  console.log("SUPABASE_KEY_OK =", !!extra.EXPO_PUBLIC_SUPABASE_ANON_KEY);
-}
+import { syncLocaleForRole } from "./src/i18n";
 
 type Role = "client" | "driver" | "restaurant";
 
-function toRole(v: unknown): Role {
-  const x = String(v ?? "").toLowerCase();
-  if (x === "driver" || x === "restaurant") return x;
+type SessionLike = {
+  user?: {
+    id?: string;
+  } | null;
+} | null;
+
+type SavedTokenState = {
+  userId: string;
+  token: string;
+  role: string;
+  deviceId: string;
+};
+
+function toRole(value: unknown): Role {
+  const normalized = String(value ?? "").toLowerCase();
+  if (normalized === "driver" || normalized === "restaurant") {
+    return normalized;
+  }
   return "client";
 }
 
 function isExpoGo(): boolean {
-  const ownership = (Constants as any)?.appOwnership;
+  const ownership = (Constants as { appOwnership?: string } | undefined)?.appOwnership;
   return ownership === "expo";
 }
 
-function Splash() {
+function Splash(): React.JSX.Element {
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
       <Text>Chargement…</Text>
@@ -49,7 +52,7 @@ function Splash() {
   );
 }
 
-function FatalFallback({ message }: { message: string }) {
+function FatalFallback({ message }: { message: string }): React.JSX.Element {
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
       <Text style={{ textAlign: "center" }}>{message}</Text>
@@ -59,25 +62,32 @@ function FatalFallback({ message }: { message: string }) {
 
 async function getDeviceIdSafe(): Promise<string> {
   try {
-    const androidIdFn = (Application as any).getAndroidId;
+    const androidIdFn = (Application as { getAndroidId?: () => string | null }).getAndroidId;
     if (typeof androidIdFn === "function") {
-      const id = androidIdFn();
-      if (id) return String(id);
+      const androidId = androidIdFn();
+      if (androidId) {
+        return String(androidId);
+      }
     }
 
-    const iosIdFn = (Application as any)?.getIosIdForVendorAsync;
+    const iosIdFn = (
+      Application as { getIosIdForVendorAsync?: () => Promise<string | null> }
+    ).getIosIdForVendorAsync;
+
     if (typeof iosIdFn === "function") {
-      const v = await iosIdFn();
-      if (v) return String(v);
+      const iosId = await iosIdFn();
+      if (iosId) {
+        return String(iosId);
+      }
     }
-  } catch {}
+  } catch {
+    // fallback below
+  }
 
   return `${Device.modelName ?? "device"}-${Device.osName ?? "os"}-${Device.osVersion ?? "0"}`;
 }
 
-function getStripeGateSafe():
-  | React.ComponentType<{ initialRouteName: string }>
-  | null {
+function getStripeGateSafe(): React.ComponentType<{ initialRouteName: string }> | null {
   try {
     const stripeGateModule = require("./src/lib/StripeGate");
     const StripeGate = stripeGateModule?.default ?? stripeGateModule;
@@ -98,24 +108,23 @@ function getStripeGateSafe():
   }
 }
 
-export default function App() {
-  const [session, setSession] = useState<any>(null);
+export default function App(): React.JSX.Element {
+  const [session, setSession] = useState<SessionLike>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const lastSavedRef = useRef<{
-    userId: string;
-    token: string;
-    role: string;
-    deviceId: string;
-  } | null>(null);
-
+  const lastSavedRef = useRef<SavedTokenState | null>(null);
   const registerInFlightRef = useRef(false);
-
   const lastRoleRef = useRef<Role | null>(null);
   const syncingLocaleRef = useRef(false);
 
+  if (__DEV__) {
+    console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
+    console.log("SUPABASE_URL =", process.env.EXPO_PUBLIC_SUPABASE_URL);
+    console.log("SUPABASE_KEY_OK =", !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+  }
+
   useEffect(() => {
-    let alive = true;
+    let isMounted = true;
 
     try {
       setupNotifications();
@@ -125,34 +134,38 @@ export default function App() {
       }
     }
 
-    const syncLocale = async () => {
-      if (!alive) return;
-      if (syncingLocaleRef.current) return;
+    const syncLocale = async (): Promise<void> => {
+      if (!isMounted || syncingLocaleRef.current) {
+        return;
+      }
 
       syncingLocaleRef.current = true;
 
       try {
         const role = toRole((await getSelectedRole()) ?? "client");
-        await syncLocaleForRole(role as any);
+        await syncLocaleForRole(role as never);
         lastRoleRef.current = role;
       } catch (error) {
         if (__DEV__) {
-          console.log("syncLocale error:", error);
+          console.log("[App] syncLocale error:", error);
         }
 
         try {
-          await syncLocaleForRole("client" as any);
+          await syncLocaleForRole("client" as never);
           lastRoleRef.current = "client";
-        } catch {}
+        } catch {
+          // ignore fallback failure
+        }
       } finally {
         syncingLocaleRef.current = false;
       }
     };
 
-    const registerToken = async (userId: string) => {
+    const registerToken = async (userId: string): Promise<void> => {
       try {
-        if (!alive) return;
-        if (registerInFlightRef.current) return;
+        if (!isMounted || registerInFlightRef.current) {
+          return;
+        }
 
         registerInFlightRef.current = true;
 
@@ -175,7 +188,6 @@ export default function App() {
 
         const deviceId = await getDeviceIdSafe();
         const role = toRole((await getSelectedRole()) ?? "client");
-
         const platform = `${Device.osName ?? ""} ${Device.osVersion ?? ""}`.trim();
         const appVersion = Application.nativeApplicationVersion ?? "unknown";
 
@@ -208,7 +220,12 @@ export default function App() {
           return;
         }
 
-        lastSavedRef.current = { userId, token: expoToken, role, deviceId };
+        lastSavedRef.current = {
+          userId,
+          token: expoToken,
+          role,
+          deviceId,
+        };
 
         if (__DEV__) {
           console.log("✅ Token enregistré dans user_push_tokens (multi-device)");
@@ -218,43 +235,51 @@ export default function App() {
       }
     };
 
-    (async () => {
+    void (async () => {
       await syncLocale();
 
-      supabase.auth
-        .getSession()
-        .then(({ data }) => {
-          if (!alive) return;
+      try {
+        const { data } = await supabase.auth.getSession();
 
-          const s = data.session ?? null;
-          setSession(s);
-          setAuthLoading(false);
+        if (!isMounted) {
+          return;
+        }
 
-          if (s?.user?.id) {
-            void registerToken(s.user.id);
-          }
-        })
-        .catch((error) => {
-          if (__DEV__) {
-            console.log("[App] getSession error:", error);
-          }
+        const currentSession = (data.session ?? null) as SessionLike;
+        setSession(currentSession);
+        setAuthLoading(false);
 
-          if (!alive) return;
-          setAuthLoading(false);
-        });
+        const userId = currentSession?.user?.id;
+        if (userId) {
+          void registerToken(userId);
+        }
+      } catch (error) {
+        if (__DEV__) {
+          console.log("[App] getSession error:", error);
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setAuthLoading(false);
+      }
     })();
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!alive) return;
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!isMounted) {
+        return;
+      }
 
-      const s = newSession ?? null;
-      setSession(s);
+      const currentSession = (newSession ?? null) as SessionLike;
+      setSession(currentSession);
       setAuthLoading(false);
 
       void syncLocale();
 
-      if (s?.user?.id) {
-        void registerToken(s.user.id);
+      const userId = currentSession?.user?.id;
+      if (userId) {
+        void registerToken(userId);
       }
     });
 
@@ -265,17 +290,21 @@ export default function App() {
           if (lastRoleRef.current !== role) {
             await syncLocale();
           }
-        } catch {}
+        } catch {
+          // ignore polling errors
+        }
       })();
     }, 1500);
 
     return () => {
-      alive = false;
+      isMounted = false;
       clearInterval(rolePoll);
 
       try {
-        sub?.subscription?.unsubscribe?.();
-      } catch {}
+        authListener?.subscription?.unsubscribe?.();
+      } catch {
+        // ignore unsubscribe errors
+      }
     };
   }, []);
 
@@ -284,7 +313,6 @@ export default function App() {
   }, [session]);
 
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
-
   const StripeGate = useMemo(() => getStripeGateSafe(), []);
 
   if (authLoading) {

@@ -15,12 +15,16 @@ import { DriverTabs } from "./DriverTabs";
 import { HomeScreen } from "../screens/HomeScreen";
 import { RoleSelectScreen } from "../screens/RoleSelectScreen";
 
+// ✅ Delivery request
+import DeliveryRequestScreen from "../screens/DeliveryRequestScreen";
+
 // Client
 import { ClientHomeScreen } from "../screens/ClientHomeScreen";
 import { ClientNewOrderScreen } from "../screens/ClientNewOrderScreen";
 import { ClientRestaurantListScreen } from "../screens/ClientRestaurantListScreen";
 import { ClientRestaurantMenuScreen } from "../screens/ClientRestaurantMenuScreen";
 import { ClientOrderDetailsScreen } from "../screens/ClientOrderDetailsScreen";
+import { ClientDeliveryRequestDetailsScreen } from "../screens/ClientDeliveryRequestDetailsScreen";
 
 // ✅ Client Auth
 import { ClientAuthScreen } from "../screens/ClientAuthScreen";
@@ -89,6 +93,9 @@ export type RootStackParamList = {
   Home: undefined;
   RoleSelect: undefined;
 
+  // ✅ Delivery request
+  DeliveryRequest: undefined;
+
   // ✅ Auth
   ClientAuth: undefined;
   DriverAuth: undefined;
@@ -108,6 +115,7 @@ export type RootStackParamList = {
   ClientRestaurantList: undefined;
   ClientRestaurantMenu: { restaurantId: string; restaurantName: string };
   ClientOrderDetails: { orderId: string };
+  ClientDeliveryRequestDetails: { requestId: string };
 
   // Client Inbox + Chat
   ClientInbox: undefined;
@@ -169,7 +177,9 @@ export function AppNavigator({
   const { i18n } = useTranslation();
 
   // ✅ On garde la valeur (debug / tracking), MAIS on ne remount pas la navigation
-  const langKey = (i18n.resolvedLanguage || i18n.language || "en").toLowerCase();
+  const langKey =
+    (i18n.resolvedLanguage || i18n.language || "en").toLowerCase();
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _langForDebug = langKey;
 
@@ -184,7 +194,9 @@ export function AppNavigator({
     return !!navRef.current?.isReady?.();
   }, []);
 
-  const currentRoute = React.useCallback((): keyof RootStackParamList | undefined => {
+  const currentRoute = React.useCallback(():
+    | keyof RootStackParamList
+    | undefined => {
     if (!navReady()) return undefined;
     return navRef.current?.getCurrentRoute?.()?.name as
       | keyof RootStackParamList
@@ -211,9 +223,11 @@ export function AppNavigator({
     return (
       r === "ClientHome" ||
       r === "ClientNewOrder" ||
+      r === "DeliveryRequest" ||
       r === "ClientRestaurantList" ||
       r === "ClientRestaurantMenu" ||
       r === "ClientOrderDetails" ||
+      r === "ClientDeliveryRequestDetails" ||
       r === "ClientInbox" ||
       r === "ClientChat" ||
       r === "ClientProfile"
@@ -245,73 +259,82 @@ export function AppNavigator({
     );
   }, []);
 
-  const isInRestaurantArea = React.useCallback((r?: keyof RootStackParamList) => {
-    if (!r) return false;
-    return (
-      r === "RestaurantHome" ||
-      r === "RestaurantOrders" ||
-      r === "RestaurantOrderDetails" ||
-      r === "RestaurantEarnings" ||
-      r === "RestaurantTax" ||
-      r === "RestaurantLanguage" ||
-      r === "RestaurantSecurity" ||
-      r === "RestaurantChat" ||
-      r === "RestaurantGate" ||
-      r === "RestaurantSetup" ||
-      r === "RestaurantMenu"
-    );
-  }, []);
+  const isInRestaurantArea = React.useCallback(
+    (r?: keyof RootStackParamList) => {
+      if (!r) return false;
+      return (
+        r === "RestaurantHome" ||
+        r === "RestaurantOrders" ||
+        r === "RestaurantOrderDetails" ||
+        r === "RestaurantEarnings" ||
+        r === "RestaurantTax" ||
+        r === "RestaurantLanguage" ||
+        r === "RestaurantSecurity" ||
+        r === "RestaurantChat" ||
+        r === "RestaurantGate" ||
+        r === "RestaurantSetup" ||
+        r === "RestaurantMenu"
+      );
+    },
+    []
+  );
 
-  const isClientProfileComplete = React.useCallback(async (uid: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase
-        .from("client_profiles")
-        .select("phone, address, full_name, avatar_url")
-        .eq("user_id", uid)
-        .maybeSingle();
+  const isClientProfileComplete = React.useCallback(
+    async (uid: string): Promise<boolean> => {
+      try {
+        const { data, error } = await supabase
+          .from("client_profiles")
+          .select("phone, address, full_name, avatar_url")
+          .eq("user_id", uid)
+          .maybeSingle();
 
-      if (error) {
-        console.log("client_profiles check error (ignored):", error);
+        if (error) {
+          console.log("client_profiles check error (ignored):", error);
+          return true;
+        }
+
+        const phoneOk = !!(data as any)?.phone?.trim?.();
+        const addrOk = !!(data as any)?.address?.trim?.();
+        const nameOk = !!(data as any)?.full_name?.trim?.();
+        const avatarOk = !!(data as any)?.avatar_url?.trim?.();
+
+        return phoneOk && addrOk && nameOk && avatarOk;
+      } catch (e) {
+        console.log("client profile complete check failed (ignored):", e);
         return true;
       }
+    },
+    []
+  );
 
-      const phoneOk = !!(data as any)?.phone?.trim?.();
-      const addrOk = !!(data as any)?.address?.trim?.();
-      const nameOk = !!(data as any)?.full_name?.trim?.();
-      const avatarOk = !!(data as any)?.avatar_url?.trim?.();
+  const isRestaurantProfileComplete = React.useCallback(
+    async (uid: string): Promise<boolean> => {
+      try {
+        const { data, error } = await supabase
+          .from("restaurant_profiles")
+          .select("user_id, restaurant_name, address, city, postal_code")
+          .eq("user_id", uid)
+          .maybeSingle();
 
-      return phoneOk && addrOk && nameOk && avatarOk;
-    } catch (e) {
-      console.log("client profile complete check failed (ignored):", e);
-      return true;
-    }
-  }, []);
+        if (error) {
+          console.log("restaurant_profiles check error:", error);
+          return false;
+        }
+        if (!data) return false;
 
-  const isRestaurantProfileComplete = React.useCallback(async (uid: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase
-        .from("restaurant_profiles")
-        .select("user_id, restaurant_name, address, city, postal_code")
-        .eq("user_id", uid)
-        .maybeSingle();
+        const nameOk = !!(data as any)?.restaurant_name?.trim?.();
+        const addrOk = !!(data as any)?.address?.trim?.();
+        const cityOk = !!(data as any)?.city?.trim?.();
+        const zipOk = !!(data as any)?.postal_code?.trim?.();
 
-      if (error) {
-        console.log("restaurant_profiles check error:", error);
+        return nameOk && addrOk && cityOk && zipOk;
+      } catch (e) {
+        console.log("restaurant profile complete check failed:", e);
         return false;
       }
-      if (!data) return false;
-
-      const nameOk = !!(data as any)?.restaurant_name?.trim?.();
-      const addrOk = !!(data as any)?.address?.trim?.();
-      const cityOk = !!(data as any)?.city?.trim?.();
-      const zipOk = !!(data as any)?.postal_code?.trim?.();
-
-      return nameOk && addrOk && cityOk && zipOk;
-    } catch (e) {
-      console.log("restaurant profile complete check failed:", e);
-      return false;
-    }
-  }, []);
+    },
+    []
+  );
 
   const sync = React.useCallback(async () => {
     if (syncingRef.current) return;
@@ -433,6 +456,12 @@ export function AppNavigator({
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
 
+        {/* ✅ Delivery request */}
+        <Stack.Screen
+          name="DeliveryRequest"
+          component={DeliveryRequestScreen}
+        />
+
         {/* ✅ Auth */}
         <Stack.Screen name="ClientAuth" component={ClientAuthScreen} />
         <Stack.Screen name="DriverAuth" component={DriverAuthScreen} />
@@ -443,7 +472,10 @@ export function AppNavigator({
 
         {/* ✅ Restaurant Setup Flow */}
         <Stack.Screen name="RestaurantGate" component={RestaurantGateScreen} />
-        <Stack.Screen name="RestaurantSetup" component={RestaurantSetupScreen} />
+        <Stack.Screen
+          name="RestaurantSetup"
+          component={RestaurantSetupScreen}
+        />
         <Stack.Screen name="RestaurantMenu" component={RestaurantMenuScreen} />
 
         {/* Client */}
@@ -457,7 +489,14 @@ export function AppNavigator({
           name="ClientRestaurantMenu"
           component={ClientRestaurantMenuScreen}
         />
-        <Stack.Screen name="ClientOrderDetails" component={ClientOrderDetailsScreen} />
+        <Stack.Screen
+          name="ClientOrderDetails"
+          component={ClientOrderDetailsScreen}
+        />
+        <Stack.Screen
+          name="ClientDeliveryRequestDetails"
+          component={ClientDeliveryRequestDetailsScreen}
+        />
         <Stack.Screen name="ClientInbox" component={ClientInboxScreen} />
         <Stack.Screen name="ClientChat" component={ClientChatScreen} />
 
@@ -469,20 +508,35 @@ export function AppNavigator({
         />
         <Stack.Screen name="DriverMap" component={DriverMapScreen} />
         <Stack.Screen name="DriverChat" component={DriverChatScreen} />
-        <Stack.Screen name="DriverOnboarding" component={DriverOnboardingScreen} />
+        <Stack.Screen
+          name="DriverOnboarding"
+          component={DriverOnboardingScreen}
+        />
 
         {/* Driver Menu */}
         <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
-        <Stack.Screen name="DriverReferrals" component={DriverReferralsScreen} />
+        <Stack.Screen
+          name="DriverReferrals"
+          component={DriverReferralsScreen}
+        />
         <Stack.Screen
           name="DriverOpportunities"
           component={DriverOpportunitiesScreen}
         />
         <Stack.Screen name="DriverAccount" component={DriverAccountScreen} />
         <Stack.Screen name="DriverHelp" component={DriverHelpScreen} />
-        <Stack.Screen name="DriverWorkAccount" component={DriverWorkAccountScreen} />
-        <Stack.Screen name="DriverSecurity" component={DriverSecurityScreen} />
-        <Stack.Screen name="DriverLanguage" component={DriverLanguageScreen} />
+        <Stack.Screen
+          name="DriverWorkAccount"
+          component={DriverWorkAccountScreen}
+        />
+        <Stack.Screen
+          name="DriverSecurity"
+          component={DriverSecurityScreen}
+        />
+        <Stack.Screen
+          name="DriverLanguage"
+          component={DriverLanguageScreen}
+        />
 
         {/* ✅ NEW: Driver Tax */}
         <Stack.Screen name="DriverTax" component={DriverTaxScreen} />
@@ -502,12 +556,18 @@ export function AppNavigator({
 
         {/* Restaurant */}
         <Stack.Screen name="RestaurantHome" component={RestaurantHomeScreen} />
-        <Stack.Screen name="RestaurantOrders" component={RestaurantOrdersScreen} />
+        <Stack.Screen
+          name="RestaurantOrders"
+          component={RestaurantOrdersScreen}
+        />
         <Stack.Screen
           name="RestaurantOrderDetails"
           component={RestaurantOrderDetailsScreen}
         />
-        <Stack.Screen name="RestaurantEarnings" component={RestaurantEarningsScreen} />
+        <Stack.Screen
+          name="RestaurantEarnings"
+          component={RestaurantEarningsScreen}
+        />
         <Stack.Screen name="RestaurantTax" component={RestaurantTaxScreen} />
         <Stack.Screen
           name="RestaurantLanguage"

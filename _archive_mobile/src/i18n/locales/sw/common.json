@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Rudi",
+    "account": "Akaunti",
+    "security": "Usalama",
+    "notifications": "Arifa",
+    "language": "Lugha",
+    "logout": "Toka",
+    "soon": "Inakuja hivi karibuni ✅",
+    "ok": "Sawa",
+    "toAdd": "Kuongeza",
+    "ready": "Tayari",
+    "notConfigured": "Haijawekwa",
+    "notRequired": "Haihitajiki"
+  },
+  "driver": {
+    "account": {
+      "title": "Akaunti ya dereva",
+      "subtitle": "Gari, nyaraka, malipo, hali (inaongoza).",
+      "vehicle": "Gari",
+      "documents": "Nyaraka",
+      "payout": "Malipo",
+      "finalizeNow": "Maliza sasa"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

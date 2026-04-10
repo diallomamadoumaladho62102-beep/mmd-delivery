@@ -35,26 +35,58 @@ type OrderStatus =
   | "delivered"
   | "canceled";
 
-type OrderRow = {
+type ItemKind = "restaurant_order" | "delivery_request";
+
+type ClientItem = {
   id: string;
+  kind: ItemKind;
   status: OrderStatus;
+  payment_status: string | null;
   created_at: string | null;
+  updated_at: string | null;
+  paid_at: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
 };
 
 type OrderRowDb = {
   id?: unknown;
   status?: unknown;
+  payment_status?: unknown;
   created_at?: unknown;
+  updated_at?: unknown;
+  paid_at?: unknown;
   pickup_address?: unknown;
   dropoff_address?: unknown;
   distance_miles?: unknown;
   total?: unknown;
   delivery_fee?: unknown;
+  stripe_session_id?: unknown;
+  stripe_payment_intent_id?: unknown;
+  client_user_id?: unknown;
+  created_by?: unknown;
+};
+
+type DeliveryRequestRowDb = {
+  id?: unknown;
+  status?: unknown;
+  payment_status?: unknown;
+  created_at?: unknown;
+  updated_at?: unknown;
+  paid_at?: unknown;
+  pickup_address?: unknown;
+  dropoff_address?: unknown;
+  distance_miles?: unknown;
+  total?: unknown;
+  delivery_fee?: unknown;
+  stripe_session_id?: unknown;
+  stripe_payment_intent_id?: unknown;
+  client_user_id?: unknown;
   created_by?: unknown;
 };
 
@@ -67,8 +99,7 @@ type ErrorState =
     };
 
 const FETCH_LIMIT = 10;
-const HOME_RECENT_LIMIT = 3;
-const DEFAULT_NAME = "Mamadou";
+const HOME_RECENT_LIMIT = 10;
 const DEFAULT_CLIENT_NAME = "Client";
 const DEFAULT_AVATAR_BG = "#0F172A";
 
@@ -129,26 +160,57 @@ function orderBullet(status: OrderStatus) {
   return "🟡";
 }
 
-function orderStatusLabelForCard(
-  status: OrderStatus,
+function kindEmoji(kind: ItemKind) {
+  return kind === "delivery_request" ? "🚗" : "🍔";
+}
+
+function kindLabel(
+  kind: ItemKind,
   ts: (key: string, fallback: string, params?: Record<string, unknown>) => string
 ) {
-  if (status === "dispatched") {
+  return kind === "delivery_request"
+    ? ts("client.home.kind.delivery_request", "Delivery request")
+    : ts("client.home.kind.restaurant_order", "Restaurant order");
+}
+
+function orderStatusLabelForCard(
+  item: ClientItem,
+  ts: (key: string, fallback: string, params?: Record<string, unknown>) => string
+) {
+  if (item.kind === "delivery_request") {
+    if (item.payment_status === "paid" && item.status === "pending") {
+      return `💳 ${ts(
+        "delivery_requests.status.paid_pending",
+        "Paid • Waiting for a driver"
+      )}`;
+    }
+    if (item.payment_status === "processing" && item.status === "pending") {
+      return `⏳ ${ts(
+        "delivery_requests.status.processing_pending",
+        "Payment processing"
+      )}`;
+    }
+    if (item.payment_status === "unpaid") {
+      return `💤 ${ts("delivery_requests.status.unpaid", "Unpaid")}`;
+    }
+  }
+
+  if (item.status === "dispatched") {
     return `🚙 ${ts("orders.status.dispatched", "On the way")}`;
   }
-  if (status === "delivered") {
+  if (item.status === "delivered") {
     return `✅ ${ts("orders.status.delivered", "Delivered")}`;
   }
-  if (status === "canceled") {
+  if (item.status === "canceled") {
     return `⛔ ${ts("orders.status.canceled", "Canceled")}`;
   }
-  if (status === "accepted") {
+  if (item.status === "accepted") {
     return `👨‍🍳 ${ts("orders.status.accepted", "Accepted")}`;
   }
-  if (status === "prepared") {
+  if (item.status === "prepared") {
     return `🍽️ ${ts("orders.status.prepared", "Preparing")}`;
   }
-  if (status === "ready") {
+  if (item.status === "ready") {
     return `📦 ${ts("orders.status.ready", "Ready")}`;
   }
   return `⏳ ${ts("orders.status.pending", "Pending")}`;
@@ -162,15 +224,15 @@ function progressWidth(points: number, target: number): `${number}%` {
 
 function truncateName(name: string) {
   const clean = (name || "").trim();
-  if (!clean) return DEFAULT_NAME;
+  if (!clean) return DEFAULT_CLIENT_NAME;
   if (clean.length <= 14) return clean;
   return `${clean.slice(0, 12)}…`;
 }
 
 function getFirstName(name: string) {
   const clean = (name || "").trim();
-  if (!clean) return DEFAULT_NAME;
-  return clean.split(" ")[0] || DEFAULT_NAME;
+  if (!clean) return DEFAULT_CLIENT_NAME;
+  return clean.split(" ")[0] || DEFAULT_CLIENT_NAME;
 }
 
 function getGreeting(ts: (key: string, fallback: string) => string) {
@@ -182,7 +244,11 @@ function getGreeting(ts: (key: string, fallback: string) => string) {
 
 function formatCurrency(amount: number | null | undefined) {
   if (typeof amount !== "number" || Number.isNaN(amount)) return "—";
-  return `${amount.toFixed(2)} USD`;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
 }
 
 function formatDistance(distance: number | null | undefined) {
@@ -218,30 +284,87 @@ function toSafeString(value: unknown): string | null {
 }
 
 function toSafeNumber(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : typeof value === "string" && value.trim() && !Number.isNaN(Number(value))
+    ? Number(value)
+    : null;
 }
 
-function normalizeOrders(rows: OrderRowDb[] | null | undefined): OrderRow[] {
+function normalizeOrderRows(rows: OrderRowDb[] | null | undefined): ClientItem[] {
   if (!Array.isArray(rows)) return [];
 
-  return rows
-    .map((row) => {
-      if (!row || typeof row !== "object") return null;
-      if (typeof row.id !== "string" || !row.id.trim()) return null;
-      if (!isValidOrderStatus(row.status)) return null;
+  const result: ClientItem[] = [];
 
-      return {
-        id: row.id,
-        status: row.status,
-        created_at: toSafeString(row.created_at),
-        pickup_address: toSafeString(row.pickup_address),
-        dropoff_address: toSafeString(row.dropoff_address),
-        distance_miles: toSafeNumber(row.distance_miles),
-        total: toSafeNumber(row.total),
-        delivery_fee: toSafeNumber(row.delivery_fee),
-      } satisfies OrderRow;
-    })
-    .filter((item): item is OrderRow => Boolean(item));
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    if (typeof row.id !== "string" || !row.id.trim()) continue;
+    if (!isValidOrderStatus(row.status)) continue;
+
+    result.push({
+      id: row.id,
+      kind: "restaurant_order",
+      status: row.status,
+      payment_status: toSafeString(row.payment_status),
+      created_at: toSafeString(row.created_at),
+      updated_at: toSafeString(row.updated_at),
+      paid_at: toSafeString(row.paid_at),
+      pickup_address: toSafeString(row.pickup_address),
+      dropoff_address: toSafeString(row.dropoff_address),
+      distance_miles: toSafeNumber(row.distance_miles),
+      total: toSafeNumber(row.total),
+      delivery_fee: toSafeNumber(row.delivery_fee),
+      stripe_session_id: toSafeString(row.stripe_session_id),
+      stripe_payment_intent_id: toSafeString(row.stripe_payment_intent_id),
+    });
+  }
+
+  return result;
+}
+
+function normalizeDeliveryRequestRows(
+  rows: DeliveryRequestRowDb[] | null | undefined
+): ClientItem[] {
+  if (!Array.isArray(rows)) return [];
+
+  const result: ClientItem[] = [];
+
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    if (typeof row.id !== "string" || !row.id.trim()) continue;
+    if (!isValidOrderStatus(row.status)) continue;
+
+    result.push({
+      id: row.id,
+      kind: "delivery_request",
+      status: row.status,
+      payment_status: toSafeString(row.payment_status),
+      created_at: toSafeString(row.created_at),
+      updated_at: toSafeString(row.updated_at),
+      paid_at: toSafeString(row.paid_at),
+      pickup_address: toSafeString(row.pickup_address),
+      dropoff_address: toSafeString(row.dropoff_address),
+      distance_miles: toSafeNumber(row.distance_miles),
+      total: toSafeNumber(row.total),
+      delivery_fee: toSafeNumber(row.delivery_fee),
+      stripe_session_id: toSafeString(row.stripe_session_id),
+      stripe_payment_intent_id: toSafeString(row.stripe_payment_intent_id),
+    });
+  }
+
+  return result;
+}
+
+function sortClientItems(items: ClientItem[]) {
+  return [...items].sort((a, b) => {
+    const aRaw = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bRaw = b.created_at ? new Date(b.created_at).getTime() : 0;
+
+    const aTime = Number.isFinite(aRaw) ? aRaw : 0;
+    const bTime = Number.isFinite(bRaw) ? bRaw : 0;
+
+    return bTime - aTime;
+  });
 }
 
 function isValidImageUri(uri: string | null) {
@@ -430,7 +553,7 @@ function FeaturedOrderCard({
 }: {
   title: string;
   subtitle: string;
-  order?: OrderRow;
+  order?: ClientItem;
   accentColor: string;
   borderColor: string;
   backgroundColor: string;
@@ -518,7 +641,7 @@ function FeaturedOrderCard({
               marginBottom: 10,
             }}
           >
-            #{order.id.slice(0, 8)} •{" "}
+            {kindEmoji(order.kind)} #{order.id.slice(0, 8)} •{" "}
             {order.created_at
               ? new Date(order.created_at).toLocaleDateString()
               : "—"}
@@ -532,7 +655,7 @@ function FeaturedOrderCard({
             }}
             numberOfLines={1}
           >
-            Pickup:{" "}
+            {ts("client.home.labels.pickup", "Pickup")}:{" "}
             <Text style={{ color: "white", fontWeight: "900" }}>
               {order.pickup_address ?? "—"}
             </Text>
@@ -546,7 +669,7 @@ function FeaturedOrderCard({
             }}
             numberOfLines={1}
           >
-            Dropoff:{" "}
+            {ts("client.home.labels.dropoff", "Dropoff")}:{" "}
             <Text style={{ color: "white", fontWeight: "900" }}>
               {order.dropoff_address ?? "—"}
             </Text>
@@ -570,7 +693,7 @@ function FeaturedOrderCard({
               }}
               numberOfLines={1}
             >
-              {orderStatusLabelForCard(order.status, ts)}
+              {orderStatusLabelForCard(order, ts)}
             </Text>
 
             <Text
@@ -668,6 +791,9 @@ export function ClientHomeScreen() {
   const isMountedRef = useRef(true);
   const fetchInFlightRef = useRef(false);
   const signOutInFlightRef = useRef(false);
+  const realtimeChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(
+    null
+  );
 
   const ts = useCallback(
     (key: string, fallback: string, params?: Record<string, unknown>) =>
@@ -677,7 +803,7 @@ export function ClientHomeScreen() {
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [items, setItems] = useState<ClientItem[]>([]);
   const [error, setError] = useState<ErrorState>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
@@ -687,6 +813,10 @@ export function ClientHomeScreen() {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
     };
   }, []);
 
@@ -705,106 +835,212 @@ export function ClientHomeScreen() {
     }, [])
   );
 
-  const fetchOrders = useCallback(async (mode: "load" | "refresh" = "load") => {
-    if (fetchInFlightRef.current) return;
-
-    fetchInFlightRef.current = true;
-
-    if (mode === "refresh") {
-      if (isMountedRef.current) setRefreshing(true);
-    } else {
-      if (isMountedRef.current) setLoading(true);
-    }
-
-    try {
-      if (isMountedRef.current) setError(null);
-
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError) throw sessionError;
-
-      const session = sessionData?.session;
-      if (!session) {
-        if (!isMountedRef.current) return;
-
-        setError({
-          key: "client.home.errors.must_login",
-          fallback: "You must be logged in to see your orders.",
-        });
-        setOrders([]);
-        setAvatarUrl(null);
-        setDisplayName("");
-        return;
-      }
-
-      const user = session.user;
-      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-
-      const fullName =
-        (typeof meta.full_name === "string" && meta.full_name) ||
-        (typeof meta.name === "string" && meta.name) ||
-        (typeof meta.display_name === "string" && meta.display_name) ||
-        user.email ||
-        DEFAULT_CLIENT_NAME;
-
-      const nextAvatar =
-        (typeof meta.avatar_url === "string" && meta.avatar_url) ||
-        (typeof meta.picture === "string" && meta.picture) ||
-        (typeof meta.photoURL === "string" && meta.photoURL) ||
-        (typeof meta.photo_url === "string" && meta.photo_url) ||
-        null;
-
-      const { data, error: ordersError } = await supabase
+  const fetchAllForUser = useCallback(async (userId: string) => {
+    const [ordersRes, requestsRes] = await Promise.all([
+      supabase
         .from("orders")
         .select(
           `
             id,
             status,
+            payment_status,
             created_at,
+            updated_at,
+            paid_at,
             pickup_address,
             dropoff_address,
             distance_miles,
             total,
             delivery_fee,
+            stripe_session_id,
+            stripe_payment_intent_id,
+            client_user_id
+          `
+        )
+        .eq("client_user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(FETCH_LIMIT),
+
+      supabase
+        .from("delivery_requests")
+        .select(
+          `
+            id,
+            status,
+            payment_status,
+            created_at,
+            updated_at,
+            paid_at,
+            pickup_address,
+            dropoff_address,
+            distance_miles,
+            total,
+            delivery_fee,
+            stripe_session_id,
+            stripe_payment_intent_id,
+            client_user_id,
             created_by
           `
         )
-        .eq("created_by", user.id)
+        .or(`client_user_id.eq.${userId},created_by.eq.${userId}`)
         .order("created_at", { ascending: false })
-        .limit(FETCH_LIMIT);
+        .limit(FETCH_LIMIT),
+    ]);
 
-      if (ordersError) throw ordersError;
-      if (!isMountedRef.current) return;
+    if (ordersRes.error) throw ordersRes.error;
+    if (requestsRes.error) throw requestsRes.error;
 
-      setDisplayName(String(fullName));
-      setAvatarUrl(isValidImageUri(nextAvatar) ? nextAvatar : null);
-      setOrders(normalizeOrders((data as OrderRowDb[] | null) ?? []));
-    } catch (e: unknown) {
-      if (!isMountedRef.current) return;
+    const normalizedOrders = normalizeOrderRows(
+      (ordersRes.data as OrderRowDb[] | null) ?? []
+    );
+    const normalizedRequests = normalizeDeliveryRequestRows(
+      (requestsRes.data as DeliveryRequestRowDb[] | null) ?? []
+    );
 
-      const message =
-        e instanceof Error
-          ? e.message
-          : ts("common.errors.unknown", "Unknown error");
+    return sortClientItems([...normalizedOrders, ...normalizedRequests]);
+  }, []);
 
-      setError({
-        key: "client.home.errors.load_failed",
-        fallback: "Unable to load your orders right now.",
-        params: { message },
-      });
-    } finally {
-      fetchInFlightRef.current = false;
+  const fetchOrders = useCallback(
+    async (mode: "load" | "refresh" = "load", silent = false) => {
+      if (fetchInFlightRef.current) return;
 
-      if (!isMountedRef.current) return;
+      fetchInFlightRef.current = true;
 
-      if (mode === "refresh") {
-        setRefreshing(false);
-      } else {
-        setLoading(false);
+      if (!silent) {
+        if (mode === "refresh") {
+          if (isMountedRef.current) setRefreshing(true);
+        } else {
+          if (isMountedRef.current) setLoading(true);
+        }
       }
-    }
-  }, [ts]);
+
+      try {
+        if (isMountedRef.current) setError(null);
+
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
+
+        if (sessionError) throw sessionError;
+
+        const session = sessionData?.session;
+        if (!session) {
+          if (!isMountedRef.current) return;
+
+          setError({
+            key: "client.home.errors.must_login",
+            fallback: "You must be logged in to see your orders.",
+          });
+          setItems([]);
+          setAvatarUrl(null);
+          setDisplayName("");
+          return;
+        }
+
+        const user = session.user;
+        const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+
+        const fullName =
+          (typeof meta.full_name === "string" && meta.full_name) ||
+          (typeof meta.name === "string" && meta.name) ||
+          (typeof meta.display_name === "string" && meta.display_name) ||
+          user.email ||
+          DEFAULT_CLIENT_NAME;
+
+        const nextAvatar =
+          (typeof meta.avatar_url === "string" && meta.avatar_url) ||
+          (typeof meta.picture === "string" && meta.picture) ||
+          (typeof meta.photoURL === "string" && meta.photoURL) ||
+          (typeof meta.photo_url === "string" && meta.photo_url) ||
+          null;
+
+        const mergedItems = await fetchAllForUser(user.id);
+
+        if (!isMountedRef.current) return;
+
+        setDisplayName(String(fullName));
+        setAvatarUrl(isValidImageUri(nextAvatar) ? nextAvatar : null);
+        setItems(mergedItems);
+
+        subscribeRealtime(user.id);
+      } catch (e: unknown) {
+        if (!isMountedRef.current) return;
+
+        const message =
+          e instanceof Error
+            ? e.message
+            : ts("common.errors.unknown", "Unknown error");
+
+        setError({
+          key: "client.home.errors.load_failed",
+          fallback: "Unable to load your orders right now.",
+          params: { message },
+        });
+      } finally {
+        fetchInFlightRef.current = false;
+
+        if (!isMountedRef.current || silent) return;
+
+        if (mode === "refresh") {
+          setRefreshing(false);
+        } else {
+          setLoading(false);
+        }
+      }
+    },
+    [fetchAllForUser, ts]
+  );
+
+  const subscribeRealtime = useCallback(
+    (userId: string) => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
+      }
+
+      const channel = supabase
+        .channel(`client-home-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "orders",
+            filter: `client_user_id=eq.${userId}`,
+          },
+          () => {
+            void fetchOrders("load", true);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "delivery_requests",
+            filter: `client_user_id=eq.${userId}`,
+          },
+          () => {
+            void fetchOrders("load", true);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "delivery_requests",
+            filter: `created_by=eq.${userId}`,
+          },
+          () => {
+            void fetchOrders("load", true);
+          }
+        )
+        .subscribe();
+
+      realtimeChannelRef.current = channel;
+    },
+    [fetchOrders]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -813,13 +1049,13 @@ export function ClientHomeScreen() {
   );
 
   const stats = useMemo(() => {
-    const totalOrders = orders.length;
-    const inProgress = orders.filter((o) => isInProgress(o.status)).length;
-    const delivered = orders.filter((o) => isDelivered(o.status)).length;
-    const canceled = orders.filter((o) => isCanceled(o.status)).length;
+    const totalOrders = items.length;
+    const inProgress = items.filter((o) => isInProgress(o.status)).length;
+    const delivered = items.filter((o) => isDelivered(o.status)).length;
+    const canceled = items.filter((o) => isCanceled(o.status)).length;
     const now = Date.now();
 
-    const last24h = orders.filter((o) => {
+    const last24h = items.filter((o) => {
       if (!o.created_at) return false;
       const time = new Date(o.created_at).getTime();
       return !Number.isNaN(time) && now - time <= 24 * 60 * 60 * 1000;
@@ -836,7 +1072,7 @@ export function ClientHomeScreen() {
 
     const pointsToNext = Math.max(0, nextLevelTarget - points);
 
-    const last7dDelivered = orders.filter((o) => {
+    const last7dDelivered = items.filter((o) => {
       if (!o.created_at) return false;
       const time = new Date(o.created_at).getTime();
       const inLast7d =
@@ -859,7 +1095,7 @@ export function ClientHomeScreen() {
       last7dDelivered,
       missionTarget,
     };
-  }, [orders]);
+  }, [items]);
 
   const initials = useMemo(() => {
     const base = (displayName || DEFAULT_CLIENT_NAME).trim();
@@ -969,34 +1205,50 @@ export function ClientHomeScreen() {
   );
 
   const recentOrders = useMemo(
-    () => orders.slice(0, HOME_RECENT_LIMIT),
-    [orders]
+    () => items.slice(0, HOME_RECENT_LIMIT),
+    [items]
   );
 
   const featuredOrder = recentOrders[0];
   const activeOrder = useMemo(
-    () => orders.find((o) => isInProgress(o.status)),
-    [orders]
+    () => items.find((o) => isInProgress(o.status)),
+    [items]
   );
   const lastDeliveredOrder = useMemo(
-    () => orders.find((o) => isDelivered(o.status)),
-    [orders]
+    () => items.find((o) => isDelivered(o.status)),
+    [items]
   );
   const greeting = getGreeting(ts);
-  const firstName = getFirstName(displayName || DEFAULT_NAME);
+  const firstName = getFirstName(displayName || DEFAULT_CLIENT_NAME);
 
   const handleOpenFeaturedOrder = useCallback(() => {
-    const target = activeOrder ?? lastDeliveredOrder ?? featuredOrder;
-    if (!target?.id) return;
+  const target = activeOrder ?? lastDeliveredOrder ?? featuredOrder;
+  if (!target?.id) return;
 
+  if (target.kind === "restaurant_order") {
     navigation.navigate("ClientOrderDetails", {
       orderId: target.id,
     });
-  }, [activeOrder, featuredOrder, lastDeliveredOrder, navigation]);
+    return;
+  }
+
+  (navigation as any).navigate("ClientDeliveryRequestDetails", {
+    requestId: target.id,
+  });
+}, [activeOrder, featuredOrder, lastDeliveredOrder, navigation]);
+
+  const handleOpenRestaurantOrder = useCallback(
+    (orderId: string) => {
+      navigation.navigate("ClientOrderDetails", {
+        orderId,
+      });
+    },
+    [navigation]
+  );
 
   const handleOpenChat = useCallback(
     (orderId: string) => {
-      navigation.navigate("ClientChat", { orderId });
+      navigation.navigate("ClientChat", { orderId } as never);
     },
     [navigation]
   );
@@ -1260,9 +1512,7 @@ export function ClientHomeScreen() {
                     <View style={{ height: 8 }} />
 
                     <MenuAction
-                      label={
-                        signOutInFlightRef.current ? "Signing out..." : "Logout"
-                      }
+                      label="Sign out"
                       accent="danger"
                       onPress={() => {
                         void handleSignOut();
@@ -1273,391 +1523,198 @@ export function ClientHomeScreen() {
               </Pressable>
             </View>
 
+            {error ? (
+              <View
+                style={{
+                  borderRadius: 18,
+                  borderWidth: 1,
+                  borderColor: "rgba(248,113,113,0.20)",
+                  backgroundColor: "rgba(127,29,29,0.26)",
+                  padding: 14,
+                  marginBottom: 14,
+                }}
+              >
+                <Text style={{ color: "#FCA5A5", fontWeight: "800" }}>
+                  {ts(error.key, error.fallback, error.params)}
+                </Text>
+              </View>
+            ) : null}
+
+            <ActionBanner
+              title={ts("client.home.banner.delivery.title", "Request a driver")}
+              subtitle={ts(
+                "client.home.banner.delivery.subtitle",
+                "Book a pickup and dropoff delivery request in seconds."
+              )}
+              emoji="🚗"
+              tileEmoji="📍"
+              backgroundColor="rgba(15,23,42,0.88)"
+              borderColor="rgba(59,130,246,0.18)"
+              onPress={() => navigation.navigate("DeliveryRequest" as never)}
+            />
+
+            <ActionBanner
+              title={ts("client.home.banner.restaurant.title", "Order food")}
+              subtitle={ts(
+                "client.home.banner.restaurant.subtitle",
+                "Browse restaurants and place an order quickly."
+              )}
+              emoji="🍔"
+              tileEmoji="🛍️"
+              backgroundColor="rgba(15,23,42,0.88)"
+              borderColor="rgba(251,146,60,0.18)"
+              onPress={() => navigation.navigate("ClientRestaurantList" as never)}
+            />
+
+            <SectionTitle
+              title={ts("client.home.section.overview", "Overview")}
+            />
+
             <View
               style={{
-                borderRadius: 26,
-                padding: 16,
+                flexDirection: "row",
+                gap: 10,
                 marginBottom: 14,
-                backgroundColor: "rgba(15,23,42,0.92)",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.06)",
               }}
             >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 17,
-                    fontWeight: "900",
-                  }}
-                >
-                  {ts("client.home.loyalty.title", "Loyalty progress")}
-                </Text>
+              {quickStats.map((stat) => (
+                <StatCard
+                  key={stat.label}
+                  icon={stat.icon}
+                  label={stat.label}
+                  value={stat.value}
+                  bg={stat.bg}
+                  border={stat.border}
+                />
+              ))}
+            </View>
 
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(59,130,246,0.16)",
-                    borderWidth: 1,
-                    borderColor: "rgba(96,165,250,0.24)",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#BFDBFE",
-                      fontSize: 12,
-                      fontWeight: "900",
-                    }}
-                  >
-                    {stats.level}
-                  </Text>
-                </View>
-              </View>
+            <View
+              style={{
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.06)",
+                backgroundColor: "rgba(15,23,42,0.9)",
+                padding: 16,
+                marginBottom: 14,
+              }}
+            >
+              <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
+                {ts("client.home.rewards.title", "Rewards progress")}
+              </Text>
+
+              <Text style={{ color: "#94A3B8", fontSize: 13, marginTop: 5 }}>
+                {ts("client.home.rewards.level", "Level")}: {stats.level} •{" "}
+                {stats.points} pts
+              </Text>
 
               <View
                 style={{
-                  marginTop: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#CBD5E1",
-                    fontSize: 13,
-                  }}
-                >
-                  {ts("client.home.loyalty.score", "Your score")}
-                </Text>
-
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 13,
-                    fontWeight: "700",
-                  }}
-                >
-                  {stats.points} pts
-                </Text>
-              </View>
-
-              <View
-                style={{
-                  marginTop: 12,
                   height: 10,
                   borderRadius: 999,
-                  backgroundColor: "rgba(255,255,255,0.07)",
                   overflow: "hidden",
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  marginTop: 12,
                 }}
               >
                 <View
                   style={{
                     width: progressBarWidth,
                     height: "100%",
-                    borderRadius: 999,
                     backgroundColor: "#3B82F6",
                   }}
                 />
               </View>
 
-              <Text
-                style={{
-                  color: "#94A3B8",
-                  fontSize: 12,
-                  marginTop: 10,
-                }}
-              >
+              <Text style={{ color: "#CBD5E1", fontSize: 12, marginTop: 8 }}>
                 {stats.pointsToNext > 0
-                  ? ts(
-                      "client.home.loyalty.next",
-                      `${stats.pointsToNext} pts to next level`
-                    )
-                  : ts("client.home.loyalty.max", "You are progressing strongly")}
+                  ? `${stats.pointsToNext} ${ts(
+                      "client.home.rewards.to_next",
+                      "points to next level"
+                    )}`
+                  : ts("client.home.rewards.maxed", "You reached the current goal")}
               </Text>
-            </View>
 
-            <View style={{ flexDirection: "row", gap: 10, marginBottom: 14 }}>
-              {quickStats.map((item) => (
-                <StatCard
-                  key={item.label}
-                  icon={item.icon}
-                  label={item.label}
-                  value={item.value}
-                  bg={item.bg}
-                  border={item.border}
-                />
-              ))}
-            </View>
+              <View style={{ height: 14 }} />
 
-            <ActionBanner
-              title={ts("client.home.new_order.title", "New Pickup / Dropoff")}
-              subtitle={ts(
-                "client.home.new_order.subtitle",
-                "Create a new delivery in seconds."
-              )}
-              emoji="⚡"
-              tileEmoji="📦"
-              backgroundColor="rgba(37,99,235,0.20)"
-              borderColor="rgba(96,165,250,0.24)"
-              onPress={() => navigation.navigate("ClientNewOrder")}
-            />
+              <Text style={{ color: "white", fontSize: 15, fontWeight: "900" }}>
+                {ts("client.home.mission.title", "Weekly mission")}
+              </Text>
 
-            <ActionBanner
-              title={ts("client.home.restaurants.title", "Order from restaurants")}
-              subtitle={ts(
-                "client.home.restaurants.subtitle",
-                "Browse restaurants and place an order fast."
-              )}
-              emoji="🍔"
-              tileEmoji="🛍️"
-              backgroundColor="rgba(22,101,52,0.20)"
-              borderColor="rgba(74,222,128,0.24)"
-              onPress={() => navigation.navigate("ClientRestaurantList")}
-            />
-
-            <FeaturedOrderCard
-              title={ts("client.home.featured.active_title", "Active order")}
-              subtitle={ts(
-                "client.home.featured.active_subtitle",
-                "Track the order currently moving through the system."
-              )}
-              order={activeOrder}
-              accentColor="#93C5FD"
-              borderColor="rgba(96,165,250,0.22)"
-              backgroundColor="rgba(30,41,59,0.92)"
-              emptyTitle={ts("client.home.active.empty_title", "No active order")}
-              emptySubtitle={ts(
-                "client.home.active.empty_subtitle",
-                "Your next live order will appear here for instant tracking."
-              )}
-              ctaLabel={ts("client.home.open", "Open")}
-              onPress={handleOpenFeaturedOrder}
-              ts={ts}
-            />
-
-            <FeaturedOrderCard
-              title={ts("client.home.featured.completed_title", "Last completed")}
-              subtitle={ts(
-                "client.home.featured.completed_subtitle",
-                "Your most recent finished delivery."
-              )}
-              order={lastDeliveredOrder}
-              accentColor="#86EFAC"
-              borderColor="rgba(52,211,153,0.22)"
-              backgroundColor="rgba(6,78,59,0.28)"
-              emptyTitle={ts(
-                "client.home.completed.empty_title",
-                "No completed order yet"
-              )}
-              emptySubtitle={ts(
-                "client.home.completed.empty_subtitle",
-                "Once a delivery is completed, it will appear here."
-              )}
-              ctaLabel={ts("client.home.details", "Details")}
-              onPress={handleOpenFeaturedOrder}
-              ts={ts}
-            />
-
-            <View
-              style={{
-                borderRadius: 24,
-                padding: 16,
-                marginBottom: 14,
-                backgroundColor: "rgba(17,24,39,0.95)",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.06)",
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 6,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 16,
-                    fontWeight: "900",
-                  }}
-                >
-                  {ts("client.home.weekly_challenge", "Weekly challenge")}
-                </Text>
-
-                <Text
-                  style={{
-                    color: "#FDE68A",
-                    fontSize: 12,
-                    fontWeight: "900",
-                  }}
-                >
-                  {stats.last7dDelivered}/{stats.missionTarget}
-                </Text>
-              </View>
-
-              <Text
-                style={{
-                  color: "#94A3B8",
-                  fontSize: 13,
-                }}
-              >
-                {ts(
-                  "client.home.weekly_challenge_subtitle",
-                  "Complete deliveries this week to keep your activity strong."
-                )}
+              <Text style={{ color: "#94A3B8", fontSize: 13, marginTop: 5 }}>
+                {stats.last7dDelivered}/{stats.missionTarget}{" "}
+                {ts("client.home.mission.completed", "completed deliveries")}
               </Text>
 
               <View
                 style={{
-                  marginTop: 12,
                   height: 10,
                   borderRadius: 999,
-                  backgroundColor: "rgba(255,255,255,0.07)",
                   overflow: "hidden",
+                  backgroundColor: "rgba(255,255,255,0.06)",
+                  marginTop: 12,
                 }}
               >
                 <View
                   style={{
                     width: missionBarWidth,
                     height: "100%",
-                    borderRadius: 999,
-                    backgroundColor: "#F59E0B",
+                    backgroundColor: "#22C55E",
                   }}
                 />
               </View>
-
-              <Text
-                style={{
-                  color: "#CBD5E1",
-                  fontSize: 12,
-                  marginTop: 10,
-                }}
-              >
-                {stats.last7dDelivered >= stats.missionTarget
-                  ? ts(
-                      "client.home.weekly_done",
-                      "Challenge completed. Great job."
-                    )
-                  : ts(
-                      "client.home.weekly_remaining",
-                      `${Math.max(
-                        0,
-                        stats.missionTarget - stats.last7dDelivered
-                      )} more to complete the challenge`
-                    )}
-              </Text>
             </View>
 
-            {loading && !refreshing && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 12,
-                }}
-              >
-                <ActivityIndicator color="#ffffff" />
-                <Text style={{ color: "#9CA3AF", fontSize: 13, marginLeft: 8 }}>
-                  {ts("client.home.loading_orders", "Loading your orders.")}
-                </Text>
-              </View>
-            )}
-
-            {error && (
-              <View
-                style={{
-                  marginBottom: 12,
-                  borderRadius: 16,
-                  paddingHorizontal: 12,
-                  paddingVertical: 10,
-                  backgroundColor: "rgba(127,29,29,0.30)",
-                  borderWidth: 1,
-                  borderColor: "rgba(248,113,113,0.24)",
-                }}
-              >
-                <Text
-                  style={{ color: "#FCA5A5", fontSize: 12, fontWeight: "700" }}
-                >
-                  {ts(error.key, error.fallback, error.params)}
-                </Text>
-
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    void fetchOrders("load");
-                  }}
-                  style={{
-                    marginTop: 10,
-                    alignSelf: "flex-start",
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(255,255,255,0.06)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "white",
-                      fontSize: 12,
-                      fontWeight: "900",
-                    }}
-                  >
-                    {ts("common.retry", "Retry")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <FeaturedOrderCard
+              title={ts("client.home.highlight.title", "Highlighted order")}
+              subtitle={ts(
+                "client.home.highlight.subtitle",
+                "Your most relevant recent request or order."
+              )}
+              order={activeOrder ?? lastDeliveredOrder ?? featuredOrder}
+              accentColor="#93C5FD"
+              borderColor="rgba(96,165,250,0.18)"
+              backgroundColor="rgba(15,23,42,0.92)"
+              emptyTitle={ts("client.home.empty.title", "Nothing here yet")}
+              emptySubtitle={ts(
+                "client.home.empty.subtitle",
+                "Create a pickup/dropoff order or order from a restaurant to test the system."
+              )}
+              ctaLabel={ts("client.home.highlight.cta", "Open")}
+              onPress={handleOpenFeaturedOrder}
+              ts={ts}
+            />
 
             <SectionTitle
-              title={ts("client.home.recent_orders", "Recent orders")}
+              title={ts("client.home.section.recent", "Recent activity")}
               right={
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("ClientNewOrder")}
-                  style={{
-                    paddingHorizontal: 18,
-                    paddingVertical: 10,
-                    borderRadius: 999,
-                    backgroundColor: "#38A169",
-                    borderWidth: 1,
-                    borderColor: "rgba(134,239,172,0.18)",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "white",
-                      fontWeight: "900",
-                      fontSize: 14,
-                    }}
-                  >
-                    {ts("client.home.new_order_short", "＋ New Order")}
-                  </Text>
-                </TouchableOpacity>
+                loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : undefined
               }
             />
 
-            {orders.length === 0 && !loading ? (
-              <View style={{ paddingVertical: 20, alignItems: "center" }}>
+            {items.length === 0 && !loading ? (
+              <View
+                style={{
+                  borderRadius: 24,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.06)",
+                  backgroundColor: "rgba(15,23,42,0.94)",
+                  padding: 18,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontSize: 30, marginBottom: 8 }}>📭</Text>
                 <Text
                   style={{
-                    color: "#9CA3AF",
-                    fontSize: 13,
+                    color: "white",
+                    fontSize: 15,
+                    fontWeight: "900",
                     textAlign: "center",
                   }}
                 >
-                  {ts("client.home.empty.title", "No orders yet for this account.")}
+                  {ts("client.home.empty.title", "Nothing here yet")}
                 </Text>
                 <Text
                   style={{
@@ -1676,16 +1733,21 @@ export function ClientHomeScreen() {
             ) : (
               recentOrders.map((order) => {
                 const pill = statusPillStyles(order.status);
+                const isRestaurant = order.kind === "restaurant_order";
 
                 return (
                   <TouchableOpacity
-                    key={order.id}
+                    key={`${order.kind}-${order.id}`}
                     activeOpacity={0.92}
-                    onPress={() =>
-                      navigation.navigate("ClientOrderDetails", {
-                        orderId: order.id,
-                      })
-                    }
+                    onPress={() => {
+  if (isRestaurant) {
+    handleOpenRestaurantOrder(order.id);
+  } else {
+    (navigation as any).navigate("ClientDeliveryRequestDetails", {
+      requestId: order.id,
+    });
+  }
+}}
                     style={{
                       borderRadius: 24,
                       borderWidth: 1,
@@ -1711,7 +1773,20 @@ export function ClientHomeScreen() {
                           }}
                           numberOfLines={1}
                         >
-                          {orderBullet(order.status)} #{order.id.slice(0, 8)}
+                          {kindEmoji(order.kind)} {orderBullet(order.status)} #
+                          {order.id.slice(0, 8)}
+                        </Text>
+
+                        <Text
+                          style={{
+                            color: "#CBD5E1",
+                            fontSize: 12,
+                            marginTop: 5,
+                            fontWeight: "800",
+                          }}
+                          numberOfLines={1}
+                        >
+                          {kindLabel(order.kind, ts)}
                         </Text>
 
                         <Text
@@ -1732,7 +1807,7 @@ export function ClientHomeScreen() {
                           }}
                           numberOfLines={1}
                         >
-                          Pickup:{" "}
+                          {ts("client.home.labels.pickup", "Pickup")}:{" "}
                           <Text style={{ color: "white", fontWeight: "800" }}>
                             {order.pickup_address ?? "—"}
                           </Text>
@@ -1746,7 +1821,7 @@ export function ClientHomeScreen() {
                           }}
                           numberOfLines={1}
                         >
-                          Dropoff:{" "}
+                          {ts("client.home.labels.dropoff", "Dropoff")}:{" "}
                           <Text style={{ color: "white", fontWeight: "800" }}>
                             {order.dropoff_address ?? "—"}
                           </Text>
@@ -1779,33 +1854,73 @@ export function ClientHomeScreen() {
                           >
                             💵 {formatCurrency(order.total ?? order.delivery_fee)}
                           </Text>
+
+                          {order.payment_status ? (
+                            <Text
+                              style={{
+                                color:
+                                  order.payment_status === "paid"
+                                    ? "#86EFAC"
+                                    : order.payment_status === "processing"
+                                    ? "#FDE68A"
+                                    : "#CBD5E1",
+                                fontSize: 12,
+                                fontWeight: "800",
+                              }}
+                            >
+                              💳 {order.payment_status}
+                            </Text>
+                          ) : null}
                         </View>
                       </View>
 
                       <View style={{ alignItems: "flex-end" }}>
-                        <TouchableOpacity
-                          onPress={() => handleOpenChat(order.id)}
-                          style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 20,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: "rgba(255,255,255,0.05)",
-                            borderWidth: 1,
-                            borderColor: "rgba(255,255,255,0.08)",
-                          }}
-                        >
-                          <Text
+                        {isRestaurant ? (
+                          <Pressable
+                            onPress={() => handleOpenChat(order.id)}
                             style={{
-                              color: "#E5E7EB",
-                              fontSize: 17,
-                              fontWeight: "900",
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: "rgba(255,255,255,0.05)",
+                              borderWidth: 1,
+                              borderColor: "rgba(255,255,255,0.08)",
                             }}
                           >
-                            💬
-                          </Text>
-                        </TouchableOpacity>
+                            <Text
+                              style={{
+                                color: "#E5E7EB",
+                                fontSize: 17,
+                                fontWeight: "900",
+                              }}
+                            >
+                              💬
+                            </Text>
+                          </Pressable>
+                        ) : (
+                          <View
+                            style={{
+                              paddingHorizontal: 10,
+                              paddingVertical: 8,
+                              borderRadius: 999,
+                              backgroundColor: "rgba(59,130,246,0.10)",
+                              borderWidth: 1,
+                              borderColor: "rgba(96,165,250,0.18)",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#93C5FD",
+                                fontSize: 11,
+                                fontWeight: "900",
+                              }}
+                            >
+                              LIVE
+                            </Text>
+                          </View>
+                        )}
 
                         <View
                           style={{
@@ -1816,7 +1931,7 @@ export function ClientHomeScreen() {
                             backgroundColor: pill.bg,
                             borderWidth: 1,
                             borderColor: pill.border,
-                            maxWidth: 150,
+                            maxWidth: 170,
                           }}
                         >
                           <Text
@@ -1827,7 +1942,7 @@ export function ClientHomeScreen() {
                               fontWeight: "900",
                             }}
                           >
-                            {orderStatusLabelForCard(order.status, ts)}
+                            {orderStatusLabelForCard(order, ts)}
                           </Text>
                         </View>
                       </View>
@@ -1837,7 +1952,7 @@ export function ClientHomeScreen() {
               })
             )}
 
-            {orders.length > HOME_RECENT_LIMIT && (
+            {items.length > HOME_RECENT_LIMIT && (
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={handleOpenFeaturedOrder}

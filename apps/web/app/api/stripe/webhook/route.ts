@@ -1,4 +1,4 @@
-// apps/web/src/app/api/stripe/webhook/route.ts
+// apps/web/app/api/stripe/webhook/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import {
@@ -22,13 +22,33 @@ type OrderRow = {
   stripe_payment_intent_id: string | null;
 };
 
+type DeliveryRequestRow = {
+  id: string;
+  payment_status: string | null;
+  total: number | null;
+  total_cents: number | null;
+  currency: string | null;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+};
+
 type MinimalOrderForAmount = Pick<
   OrderRow,
   "total" | "grand_total" | "total_cents" | "currency"
 >;
 
+type MinimalDeliveryRequestForAmount = Pick<
+  DeliveryRequestRow,
+  "total" | "total_cents" | "currency"
+>;
+
 type OrderLookupResult = {
   order: OrderRow | null;
+  error: PostgrestError | null;
+};
+
+type DeliveryRequestLookupResult = {
+  deliveryRequest: DeliveryRequestRow | null;
   error: PostgrestError | null;
 };
 
@@ -52,6 +72,29 @@ type VerifyPaidStateFailure = {
 };
 
 type VerifyPaidStateResult = VerifyPaidStateSuccess | VerifyPaidStateFailure;
+
+type VerifyDeliveryPaidStateSuccess = {
+  ok: true;
+  reason: "verified";
+  error: null;
+  deliveryRequest: DeliveryRequestRow;
+};
+
+type VerifyDeliveryPaidStateFailure = {
+  ok: false;
+  reason:
+    | "verify_lookup_failed"
+    | "verify_delivery_request_not_found"
+    | "verify_not_paid"
+    | "verify_session_mismatch"
+    | "verify_payment_intent_mismatch";
+  error: PostgrestError | null;
+  deliveryRequest: DeliveryRequestRow | null;
+};
+
+type VerifyDeliveryPaidStateResult =
+  | VerifyDeliveryPaidStateSuccess
+  | VerifyDeliveryPaidStateFailure;
 
 type FallbackSuccess = {
   ok: true;
@@ -84,6 +127,35 @@ type RobustMarkPaidFailure = {
 };
 
 type RobustMarkPaidResult = RobustMarkPaidSuccess | RobustMarkPaidFailure;
+
+type DeliveryFallbackSuccess = {
+  ok: true;
+  used: string;
+  alreadyPaid?: boolean;
+};
+
+type DeliveryFallbackFailure = {
+  ok: false;
+  error: unknown;
+};
+
+type DeliveryFallbackResult = DeliveryFallbackSuccess | DeliveryFallbackFailure;
+
+type DeliveryRobustMarkPaidSuccess = {
+  ok: true;
+  via: "fallback_update";
+  used?: string;
+  already_paid?: boolean;
+};
+
+type DeliveryRobustMarkPaidFailure = {
+  ok: false;
+  fallback: DeliveryFallbackFailure;
+};
+
+type DeliveryRobustMarkPaidResult =
+  | DeliveryRobustMarkPaidSuccess
+  | DeliveryRobustMarkPaidFailure;
 
 type GenericErrorLike = {
   code?: unknown;
@@ -135,7 +207,7 @@ function json(body: Record<string, unknown>, status = 200) {
     status,
     headers: {
       "Cache-Control": "no-store",
-      "Pragma": "no-cache",
+      Pragma: "no-cache",
       "X-Content-Type-Options": "nosniff",
     },
   });
@@ -149,7 +221,7 @@ function methodNotAllowed() {
       headers: {
         Allow: "POST",
         "Cache-Control": "no-store",
-        "Pragma": "no-cache",
+        Pragma: "no-cache",
         "X-Content-Type-Options": "nosniff",
       },
     }
@@ -216,6 +288,27 @@ function pickOrderIdFromMetadata(
   return normalized.length > 0 ? normalized : null;
 }
 
+function pickDeliveryRequestIdFromMetadata(
+  md: Record<string, unknown> | null | undefined
+): string | null {
+  const raw =
+    md?.deliveryRequestId ??
+    md?.delivery_request_id ??
+    md?.delivery_requestId ??
+    md?.deliveryRequestID ??
+    md?.delivery_request ??
+    md?.delivery ??
+    md?.requestId ??
+    md?.request_id ??
+    md?.delivery_request_uuid ??
+    null;
+
+  if (!raw) return null;
+
+  const normalized = String(raw).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 function toPositiveNumber(value: unknown): number | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -231,6 +324,18 @@ function resolveOrderAmountCents(order: MinimalOrderForAmount): number | null {
 
   const grandTotal = toPositiveNumber(order.grand_total);
   if (grandTotal != null) return Math.round(grandTotal * 100);
+
+  return null;
+}
+
+function resolveDeliveryRequestAmountCents(
+  deliveryRequest: MinimalDeliveryRequestForAmount
+): number | null {
+  const totalCents = toPositiveNumber(deliveryRequest.total_cents);
+  if (totalCents != null) return Math.round(totalCents);
+
+  const total = toPositiveNumber(deliveryRequest.total);
+  if (total != null) return Math.round(total * 100);
 
   return null;
 }
@@ -254,6 +359,24 @@ async function loadOrderForPaymentCheck(
 
   return {
     order: data ?? null,
+    error,
+  };
+}
+
+async function loadDeliveryRequestForPaymentCheck(
+  supabaseAdmin: SupabaseClient,
+  deliveryRequestId: string
+): Promise<DeliveryRequestLookupResult> {
+  const { data, error } = await supabaseAdmin
+    .from("delivery_requests")
+    .select(
+      "id, payment_status, total, total_cents, currency, stripe_session_id, stripe_payment_intent_id"
+    )
+    .eq("id", deliveryRequestId)
+    .maybeSingle<DeliveryRequestRow>();
+
+  return {
+    deliveryRequest: data ?? null,
     error,
   };
 }
@@ -372,6 +495,86 @@ async function verifyOrderPaidState(opts: {
   };
 }
 
+async function verifyDeliveryRequestPaidState(opts: {
+  supabaseAdmin: SupabaseClient;
+  deliveryRequestId: string;
+  expectedSessionId?: string | null;
+  expectedPaymentIntentId?: string | null;
+}): Promise<VerifyDeliveryPaidStateResult> {
+  const {
+    supabaseAdmin,
+    deliveryRequestId,
+    expectedSessionId,
+    expectedPaymentIntentId,
+  } = opts;
+
+  const { deliveryRequest, error } = await loadDeliveryRequestForPaymentCheck(
+    supabaseAdmin,
+    deliveryRequestId
+  );
+
+  if (error) {
+    return {
+      ok: false,
+      reason: "verify_lookup_failed",
+      error,
+      deliveryRequest: null,
+    };
+  }
+
+  if (!deliveryRequest) {
+    return {
+      ok: false,
+      reason: "verify_delivery_request_not_found",
+      error: null,
+      deliveryRequest: null,
+    };
+  }
+
+  if (!isPaidStatus(deliveryRequest.payment_status)) {
+    return {
+      ok: false,
+      reason: "verify_not_paid",
+      error: null,
+      deliveryRequest,
+    };
+  }
+
+  if (
+    expectedSessionId &&
+    !isMatchingOrEmpty(deliveryRequest.stripe_session_id, expectedSessionId)
+  ) {
+    return {
+      ok: false,
+      reason: "verify_session_mismatch",
+      error: null,
+      deliveryRequest,
+    };
+  }
+
+  if (
+    expectedPaymentIntentId &&
+    !isMatchingOrEmpty(
+      deliveryRequest.stripe_payment_intent_id,
+      expectedPaymentIntentId
+    )
+  ) {
+    return {
+      ok: false,
+      reason: "verify_payment_intent_mismatch",
+      error: null,
+      deliveryRequest,
+    };
+  }
+
+  return {
+    ok: true,
+    reason: "verified",
+    error: null,
+    deliveryRequest,
+  };
+}
+
 async function persistStripeEvent(opts: {
   supabaseAdmin: SupabaseClient;
   event: Stripe.Event;
@@ -434,6 +637,18 @@ function isFallbackFailure(result: FallbackResult): result is FallbackFailure {
 function isRobustMarkPaidFailure(
   result: RobustMarkPaidResult
 ): result is RobustMarkPaidFailure {
+  return result.ok === false;
+}
+
+function isDeliveryFallbackFailure(
+  result: DeliveryFallbackResult
+): result is DeliveryFallbackFailure {
+  return result.ok === false;
+}
+
+function isDeliveryRobustMarkPaidFailure(
+  result: DeliveryRobustMarkPaidResult
+): result is DeliveryRobustMarkPaidFailure {
   return result.ok === false;
 }
 
@@ -504,6 +719,87 @@ async function fallbackMarkPaid(opts: {
 
     lastErr = error;
     console.log("⚠️ WEBHOOK fallback update failed", {
+      label: attempt.label,
+      code: getErrorCode(error),
+      message: getErrorMessage(error),
+      details: getErrorDetails(error),
+      hint: getErrorHint(error),
+    });
+  }
+
+  return { ok: false, error: lastErr };
+}
+
+async function fallbackMarkDeliveryRequestPaid(opts: {
+  supabaseAdmin: SupabaseClient;
+  deliveryRequestId: string;
+  sessionId: string | null;
+  paymentIntentId: string | null;
+}): Promise<DeliveryFallbackResult> {
+  const { supabaseAdmin, deliveryRequestId, sessionId, paymentIntentId } = opts;
+  const nowIso = new Date().toISOString();
+
+  const { deliveryRequest, error: readErr } =
+    await loadDeliveryRequestForPaymentCheck(supabaseAdmin, deliveryRequestId);
+
+  if (readErr) {
+    return { ok: false, error: readErr };
+  }
+
+  if (!deliveryRequest) {
+    return {
+      ok: false,
+      error: new Error(`Delivery request not found: ${deliveryRequestId}`),
+    };
+  }
+
+  if (isPaidStatus(deliveryRequest.payment_status)) {
+    console.log("ℹ️ WEBHOOK fallback skipped: delivery_request already paid", {
+      deliveryRequestId,
+    });
+    return { ok: true, used: "already_paid", alreadyPaid: true };
+  }
+
+  const attempts: Array<{ label: string; payload: Record<string, unknown> }> = [
+    {
+      label: "payment_status + paid_at + stripe refs + updated_at",
+      payload: {
+        payment_status: "paid",
+        paid_at: nowIso,
+        ...(sessionId ? { stripe_session_id: sessionId } : {}),
+        ...(paymentIntentId ? { stripe_payment_intent_id: paymentIntentId } : {}),
+        updated_at: nowIso,
+      },
+    },
+    {
+      label: "payment_status + paid_at + updated_at",
+      payload: {
+        payment_status: "paid",
+        paid_at: nowIso,
+        updated_at: nowIso,
+      },
+    },
+  ];
+
+  let lastErr: unknown = null;
+
+  for (const attempt of attempts) {
+    const { error } = await supabaseAdmin
+      .from("delivery_requests")
+      .update(attempt.payload)
+      .eq("id", deliveryRequestId)
+      .neq("payment_status", "paid");
+
+    if (!error) {
+      console.log("✅ WEBHOOK fallback delivery_request update OK", {
+        label: attempt.label,
+        deliveryRequestId,
+      });
+      return { ok: true, used: attempt.label };
+    }
+
+    lastErr = error;
+    console.log("⚠️ WEBHOOK fallback delivery_request update failed", {
       label: attempt.label,
       code: getErrorCode(error),
       message: getErrorMessage(error),
@@ -625,19 +921,69 @@ async function markOrderPaidRobustly(opts: {
   };
 }
 
+async function markDeliveryRequestPaidRobustly(opts: {
+  supabaseAdmin: SupabaseClient;
+  deliveryRequestId: string;
+  sessionId: string | null;
+  paymentIntentId: string | null;
+}): Promise<DeliveryRobustMarkPaidResult> {
+  const { supabaseAdmin, deliveryRequestId, sessionId, paymentIntentId } = opts;
+
+  const fb = await fallbackMarkDeliveryRequestPaid({
+    supabaseAdmin,
+    deliveryRequestId,
+    sessionId,
+    paymentIntentId,
+  });
+
+  if (isDeliveryFallbackFailure(fb)) {
+    return {
+      ok: false,
+      fallback: fb,
+    };
+  }
+
+  const verified = await verifyDeliveryRequestPaidState({
+    supabaseAdmin,
+    deliveryRequestId,
+    expectedSessionId: sessionId,
+    expectedPaymentIntentId: paymentIntentId,
+  });
+
+  if (!verified.ok) {
+    return {
+      ok: false,
+      fallback: {
+        ok: false,
+        error: new Error(
+          `Verification failed after fallback: ${verified.reason}`
+        ),
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    via: "fallback_update",
+    used: fb.used,
+    already_paid: fb.alreadyPaid ?? false,
+  };
+}
+
 async function handleCheckoutCompletedLikeEvent(
   supabaseAdmin: SupabaseClient,
   event: Stripe.Event
 ) {
   const session = event.data.object as Stripe.Checkout.Session;
+  const metadata = (session.metadata ?? null) as Record<string, unknown> | null;
 
   const orderId =
-    pickOrderIdFromMetadata(
-      session.metadata as Record<string, unknown> | null
-    ) ||
+    pickOrderIdFromMetadata(metadata) ||
     (session.client_reference_id
       ? String(session.client_reference_id).trim()
       : null);
+
+  const deliveryRequestId = pickDeliveryRequestIdFromMetadata(metadata);
 
   const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
   const sessionId = normalizeStringOrNull(session.id);
@@ -647,6 +993,7 @@ async function handleCheckoutCompletedLikeEvent(
   console.log(`✅ WEBHOOK ${event.type}`, {
     sessionId,
     orderId,
+    deliveryRequestId,
     paymentIntentId,
     amount_total: session.amount_total,
     currency: session.currency,
@@ -655,10 +1002,10 @@ async function handleCheckoutCompletedLikeEvent(
     metadata: session.metadata,
   });
 
-  if (!orderId) {
+  if (!orderId && !deliveryRequestId) {
     return json({
       received: true,
-      ignored: "missing orderId/order_id",
+      ignored: "missing orderId/order_id and deliveryRequestId/delivery_request_id",
       type: event.type,
     });
   }
@@ -667,6 +1014,7 @@ async function handleCheckoutCompletedLikeEvent(
     console.log("ℹ️ WEBHOOK: checkout session not paid yet, ignored", {
       type: event.type,
       orderId,
+      deliveryRequestId,
       sessionId,
       payment_status: session.payment_status,
     });
@@ -675,87 +1023,283 @@ async function handleCheckoutCompletedLikeEvent(
       received: true,
       ok: true,
       order_id: orderId,
+      delivery_request_id: deliveryRequestId,
       type: event.type,
       ignored: "session_not_paid",
       payment_status: session.payment_status,
     });
   }
 
-  const { order, error: orderErr } = await loadOrderForPaymentCheck(
-    supabaseAdmin,
-    orderId
-  );
+  if (orderId) {
+    const { order, error: orderErr } = await loadOrderForPaymentCheck(
+      supabaseAdmin,
+      orderId
+    );
 
-  if (orderErr) {
-    console.log("❌ WEBHOOK: order lookup failed", {
+    if (orderErr) {
+      console.log("❌ WEBHOOK: order lookup failed", {
+        orderId,
+        code: getErrorCode(orderErr),
+        message: getErrorMessage(orderErr),
+      });
+      return json(
+        { received: true, ok: false, error: "order_lookup_failed" },
+        500
+      );
+    }
+
+    if (!order) {
+      console.log("❌ WEBHOOK: order not found", { orderId });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "order_not_found",
+          order_id: orderId,
+        },
+        404
+      );
+    }
+
+    if (
+      order.stripe_session_id &&
+      sessionId &&
+      order.stripe_session_id !== sessionId
+    ) {
+      console.log("❌ WEBHOOK: session id mismatch", {
+        orderId,
+        db_session_id: order.stripe_session_id,
+        webhook_session_id: sessionId,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "session_id_mismatch",
+          order_id: orderId,
+        },
+        409
+      );
+    }
+
+    if (
+      order.stripe_payment_intent_id &&
+      paymentIntentId &&
+      order.stripe_payment_intent_id !== paymentIntentId
+    ) {
+      console.log("❌ WEBHOOK: payment intent mismatch", {
+        orderId,
+        db_payment_intent_id: order.stripe_payment_intent_id,
+        webhook_payment_intent_id: paymentIntentId,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "payment_intent_mismatch",
+          order_id: orderId,
+        },
+        409
+      );
+    }
+
+    const expectedAmountCents = resolveOrderAmountCents(order);
+    const expectedCurrency = normalizeCurrency(order.currency) ?? "usd";
+
+    if (!expectedAmountCents || !sessionAmountTotal) {
+      console.log("❌ WEBHOOK: missing amount for verification", {
+        orderId,
+        expectedAmountCents,
+        sessionAmountTotal,
+      });
+      return json(
+        { received: true, ok: false, error: "amount_verification_failed" },
+        400
+      );
+    }
+
+    if (expectedAmountCents !== sessionAmountTotal) {
+      console.log("❌ WEBHOOK: amount mismatch", {
+        orderId,
+        expectedAmountCents,
+        sessionAmountTotal,
+        sessionId,
+        paymentIntentId,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "amount_mismatch",
+          order_id: orderId,
+        },
+        400
+      );
+    }
+
+    if (!sessionCurrency || sessionCurrency !== expectedCurrency) {
+      console.log("❌ WEBHOOK: currency mismatch", {
+        orderId,
+        expectedCurrency,
+        sessionCurrency,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "currency_mismatch",
+          order_id: orderId,
+        },
+        400
+      );
+    }
+
+    if (isPaidStatus(order.payment_status)) {
+      console.log("ℹ️ WEBHOOK: order already paid", { orderId });
+      return json({
+        received: true,
+        ok: true,
+        order_id: orderId,
+        via: "already_paid",
+        type: event.type,
+      });
+    }
+
+    const result = await markOrderPaidRobustly({
+      supabaseAdmin,
       orderId,
-      code: getErrorCode(orderErr),
-      message: getErrorMessage(orderErr),
+      sessionId,
+      paymentIntentId,
     });
-    return json({ received: true, ok: false, error: "order_lookup_failed" }, 500);
+
+    if (isRobustMarkPaidFailure(result)) {
+      console.log("❌ WEBHOOK: could not mark order paid", {
+        orderId,
+        sessionId,
+        paymentIntentId,
+        rpcCode: getErrorCode(result.rpc.error),
+        rpcMessage: getErrorMessage(result.rpc.error),
+        fallbackCode: getErrorCode(result.fallback.error),
+        fallbackMessage: getErrorMessage(result.fallback.error),
+      });
+
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "Could not mark order paid",
+          rpc: {
+            code: getErrorCode(result.rpc.error),
+            message: getErrorMessage(result.rpc.error),
+          },
+          fallback: {
+            code: getErrorCode(result.fallback.error),
+            message: getErrorMessage(result.fallback.error),
+            details: getErrorDetails(result.fallback.error),
+            hint: getErrorHint(result.fallback.error),
+          },
+        },
+        500
+      );
+    }
+
+    return json({
+      received: true,
+      ok: true,
+      order_id: orderId,
+      via: result.via,
+      used: result.used,
+      already_paid: result.already_paid ?? false,
+      type: event.type,
+    });
   }
 
-  if (!order) {
-    console.log("❌ WEBHOOK: order not found", { orderId });
+  if (!deliveryRequestId) {
+    return json({
+      received: true,
+      ignored: "missing deliveryRequestId/delivery_request_id",
+      type: event.type,
+    });
+  }
+
+  const { deliveryRequest, error: deliveryErr } =
+    await loadDeliveryRequestForPaymentCheck(supabaseAdmin, deliveryRequestId);
+
+  if (deliveryErr) {
+    console.log("❌ WEBHOOK: delivery_request lookup failed", {
+      deliveryRequestId,
+      code: getErrorCode(deliveryErr),
+      message: getErrorMessage(deliveryErr),
+    });
+    return json(
+      { received: true, ok: false, error: "delivery_request_lookup_failed" },
+      500
+    );
+  }
+
+  if (!deliveryRequest) {
+    console.log("❌ WEBHOOK: delivery_request not found", { deliveryRequestId });
     return json(
       {
         received: true,
         ok: false,
-        error: "order_not_found",
-        order_id: orderId,
+        error: "delivery_request_not_found",
+        delivery_request_id: deliveryRequestId,
       },
       404
     );
   }
 
   if (
-    order.stripe_session_id &&
+    deliveryRequest.stripe_session_id &&
     sessionId &&
-    order.stripe_session_id !== sessionId
+    deliveryRequest.stripe_session_id !== sessionId
   ) {
-    console.log("❌ WEBHOOK: session id mismatch", {
-      orderId,
-      db_session_id: order.stripe_session_id,
+    console.log("❌ WEBHOOK: delivery_request session id mismatch", {
+      deliveryRequestId,
+      db_session_id: deliveryRequest.stripe_session_id,
       webhook_session_id: sessionId,
     });
     return json(
       {
         received: true,
         ok: false,
-        error: "session_id_mismatch",
-        order_id: orderId,
+        error: "delivery_request_session_id_mismatch",
+        delivery_request_id: deliveryRequestId,
       },
       409
     );
   }
 
   if (
-    order.stripe_payment_intent_id &&
+    deliveryRequest.stripe_payment_intent_id &&
     paymentIntentId &&
-    order.stripe_payment_intent_id !== paymentIntentId
+    deliveryRequest.stripe_payment_intent_id !== paymentIntentId
   ) {
-    console.log("❌ WEBHOOK: payment intent mismatch", {
-      orderId,
-      db_payment_intent_id: order.stripe_payment_intent_id,
+    console.log("❌ WEBHOOK: delivery_request payment intent mismatch", {
+      deliveryRequestId,
+      db_payment_intent_id: deliveryRequest.stripe_payment_intent_id,
       webhook_payment_intent_id: paymentIntentId,
     });
     return json(
       {
         received: true,
         ok: false,
-        error: "payment_intent_mismatch",
-        order_id: orderId,
+        error: "delivery_request_payment_intent_mismatch",
+        delivery_request_id: deliveryRequestId,
       },
       409
     );
   }
 
-  const expectedAmountCents = resolveOrderAmountCents(order);
-  const expectedCurrency = normalizeCurrency(order.currency) ?? "usd";
+  const expectedAmountCents =
+    resolveDeliveryRequestAmountCents(deliveryRequest);
+  const expectedCurrency =
+    normalizeCurrency(deliveryRequest.currency) ?? "usd";
 
   if (!expectedAmountCents || !sessionAmountTotal) {
-    console.log("❌ WEBHOOK: missing amount for verification", {
-      orderId,
+    console.log("❌ WEBHOOK: delivery_request missing amount for verification", {
+      deliveryRequestId,
       expectedAmountCents,
       sessionAmountTotal,
     });
@@ -766,8 +1310,8 @@ async function handleCheckoutCompletedLikeEvent(
   }
 
   if (expectedAmountCents !== sessionAmountTotal) {
-    console.log("❌ WEBHOOK: amount mismatch", {
-      orderId,
+    console.log("❌ WEBHOOK: delivery_request amount mismatch", {
+      deliveryRequestId,
       expectedAmountCents,
       sessionAmountTotal,
       sessionId,
@@ -777,16 +1321,16 @@ async function handleCheckoutCompletedLikeEvent(
       {
         received: true,
         ok: false,
-        error: "amount_mismatch",
-        order_id: orderId,
+        error: "delivery_request_amount_mismatch",
+        delivery_request_id: deliveryRequestId,
       },
       400
     );
   }
 
   if (!sessionCurrency || sessionCurrency !== expectedCurrency) {
-    console.log("❌ WEBHOOK: currency mismatch", {
-      orderId,
+    console.log("❌ WEBHOOK: delivery_request currency mismatch", {
+      deliveryRequestId,
       expectedCurrency,
       sessionCurrency,
     });
@@ -794,38 +1338,38 @@ async function handleCheckoutCompletedLikeEvent(
       {
         received: true,
         ok: false,
-        error: "currency_mismatch",
-        order_id: orderId,
+        error: "delivery_request_currency_mismatch",
+        delivery_request_id: deliveryRequestId,
       },
       400
     );
   }
 
-  if (isPaidStatus(order.payment_status)) {
-    console.log("ℹ️ WEBHOOK: order already paid", { orderId });
+  if (isPaidStatus(deliveryRequest.payment_status)) {
+    console.log("ℹ️ WEBHOOK: delivery_request already paid", {
+      deliveryRequestId,
+    });
     return json({
       received: true,
       ok: true,
-      order_id: orderId,
+      delivery_request_id: deliveryRequestId,
       via: "already_paid",
       type: event.type,
     });
   }
 
-  const result = await markOrderPaidRobustly({
+  const result = await markDeliveryRequestPaidRobustly({
     supabaseAdmin,
-    orderId,
+    deliveryRequestId,
     sessionId,
     paymentIntentId,
   });
 
-  if (isRobustMarkPaidFailure(result)) {
-    console.log("❌ WEBHOOK: could not mark order paid", {
-      orderId,
+  if (isDeliveryRobustMarkPaidFailure(result)) {
+    console.log("❌ WEBHOOK: could not mark delivery_request paid", {
+      deliveryRequestId,
       sessionId,
       paymentIntentId,
-      rpcCode: getErrorCode(result.rpc.error),
-      rpcMessage: getErrorMessage(result.rpc.error),
       fallbackCode: getErrorCode(result.fallback.error),
       fallbackMessage: getErrorMessage(result.fallback.error),
     });
@@ -834,11 +1378,7 @@ async function handleCheckoutCompletedLikeEvent(
       {
         received: true,
         ok: false,
-        error: "Could not mark order paid",
-        rpc: {
-          code: getErrorCode(result.rpc.error),
-          message: getErrorMessage(result.rpc.error),
-        },
+        error: "Could not mark delivery_request paid",
         fallback: {
           code: getErrorCode(result.fallback.error),
           message: getErrorMessage(result.fallback.error),
@@ -853,7 +1393,7 @@ async function handleCheckoutCompletedLikeEvent(
   return json({
     received: true,
     ok: true,
-    order_id: orderId,
+    delivery_request_id: deliveryRequestId,
     via: result.via,
     used: result.used,
     already_paid: result.already_paid ?? false,
@@ -866,10 +1406,10 @@ async function handlePaymentIntentSucceeded(
   event: Stripe.Event
 ) {
   const pi = event.data.object as Stripe.PaymentIntent;
+  const metadata = (pi.metadata ?? null) as Record<string, unknown> | null;
 
-  const orderIdFromMd = pickOrderIdFromMetadata(
-    pi.metadata as Record<string, unknown> | null
-  );
+  const orderIdFromMd = pickOrderIdFromMetadata(metadata);
+  const deliveryRequestIdFromMd = pickDeliveryRequestIdFromMetadata(metadata);
   const paymentIntentId = pi.id;
   const piAmount = getStripeAmountFromPaymentIntent(pi);
   const piCurrency = normalizeCurrency(pi.currency);
@@ -877,6 +1417,7 @@ async function handlePaymentIntentSucceeded(
   console.log("✅ WEBHOOK payment_intent.succeeded", {
     paymentIntentId,
     orderIdFromMd,
+    deliveryRequestIdFromMd,
     metadata: pi.metadata,
     amount: pi.amount,
     currency: pi.currency,
@@ -906,69 +1447,256 @@ async function handlePaymentIntentSucceeded(
     orderId = found?.id ?? null;
   }
 
-  if (!orderId) {
-    console.log("⚠️ WEBHOOK PI succeeded ignored: cannot resolve orderId", {
+  if (orderId) {
+    const { order, error: orderErr } = await loadOrderForPaymentCheck(
+      supabaseAdmin,
+      orderId
+    );
+
+    if (orderErr) {
+      console.log("❌ WEBHOOK PI: order lookup failed", {
+        orderId,
+        code: getErrorCode(orderErr),
+        message: getErrorMessage(orderErr),
+      });
+      return json(
+        { received: true, ok: false, error: "order_lookup_failed" },
+        500
+      );
+    }
+
+    if (!order) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "order_not_found",
+          order_id: orderId,
+        },
+        404
+      );
+    }
+
+    if (
+      order.stripe_payment_intent_id &&
+      order.stripe_payment_intent_id !== paymentIntentId
+    ) {
+      console.log("❌ WEBHOOK PI: payment intent mismatch", {
+        orderId,
+        db_payment_intent_id: order.stripe_payment_intent_id,
+        webhook_payment_intent_id: paymentIntentId,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "payment_intent_mismatch",
+          order_id: orderId,
+        },
+        409
+      );
+    }
+
+    const expectedAmountCents = resolveOrderAmountCents(order);
+    const expectedCurrency = normalizeCurrency(order.currency) ?? "usd";
+
+    if (!expectedAmountCents || !piAmount) {
+      console.log("❌ WEBHOOK PI: missing amount for verification", {
+        orderId,
+        expectedAmountCents,
+        piAmount,
+      });
+      return json(
+        { received: true, ok: false, error: "amount_verification_failed" },
+        400
+      );
+    }
+
+    if (expectedAmountCents !== piAmount) {
+      console.log("❌ WEBHOOK PI: amount mismatch", {
+        orderId,
+        expectedAmountCents,
+        piAmount,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "amount_mismatch",
+          order_id: orderId,
+        },
+        400
+      );
+    }
+
+    if (!piCurrency || piCurrency !== expectedCurrency) {
+      console.log("❌ WEBHOOK PI: currency mismatch", {
+        orderId,
+        expectedCurrency,
+        piCurrency,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "currency_mismatch",
+          order_id: orderId,
+        },
+        400
+      );
+    }
+
+    if (isPaidStatus(order.payment_status)) {
+      console.log("ℹ️ WEBHOOK PI: order already paid", { orderId });
+      return json({
+        received: true,
+        ok: true,
+        order_id: orderId,
+        via: "already_paid",
+        type: event.type,
+      });
+    }
+
+    const result = await markOrderPaidRobustly({
+      supabaseAdmin,
+      orderId,
+      sessionId: null,
       paymentIntentId,
     });
+
+    if (isRobustMarkPaidFailure(result)) {
+      console.log("❌ WEBHOOK: could not mark order paid (PI)", {
+        orderId,
+        paymentIntentId,
+        rpcCode: getErrorCode(result.rpc.error),
+        rpcMessage: getErrorMessage(result.rpc.error),
+        fallbackCode: getErrorCode(result.fallback.error),
+        fallbackMessage: getErrorMessage(result.fallback.error),
+      });
+
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "Could not mark order paid (PI)",
+          rpc: {
+            code: getErrorCode(result.rpc.error),
+            message: getErrorMessage(result.rpc.error),
+          },
+          fallback: {
+            code: getErrorCode(result.fallback.error),
+            message: getErrorMessage(result.fallback.error),
+            details: getErrorDetails(result.fallback.error),
+            hint: getErrorHint(result.fallback.error),
+          },
+        },
+        500
+      );
+    }
+
     return json({
       received: true,
-      ignored: "cannot_resolve_order_id",
+      ok: true,
+      order_id: orderId,
+      via: result.via,
+      used: result.used,
+      already_paid: result.already_paid ?? false,
       type: event.type,
     });
   }
 
-  const { order, error: orderErr } = await loadOrderForPaymentCheck(
-    supabaseAdmin,
-    orderId
-  );
+  let deliveryRequestId: string | null = deliveryRequestIdFromMd;
 
-  if (orderErr) {
-    console.log("❌ WEBHOOK PI: order lookup failed", {
-      orderId,
-      code: getErrorCode(orderErr),
-      message: getErrorMessage(orderErr),
-    });
-    return json({ received: true, ok: false, error: "order_lookup_failed" }, 500);
+  if (!deliveryRequestId) {
+    const { data: found, error: findErr } = await supabaseAdmin
+      .from("delivery_requests")
+      .select("id")
+      .eq("stripe_payment_intent_id", paymentIntentId)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+
+    if (findErr) {
+      console.log(
+        "⚠️ WEBHOOK: could not lookup delivery_request by stripe_payment_intent_id",
+        {
+          code: getErrorCode(findErr),
+          message: getErrorMessage(findErr),
+        }
+      );
+    }
+
+    deliveryRequestId = found?.id ?? null;
   }
 
-  if (!order) {
+  if (!deliveryRequestId) {
+    console.log(
+      "⚠️ WEBHOOK PI succeeded ignored: cannot resolve orderId or deliveryRequestId",
+      {
+        paymentIntentId,
+      }
+    );
+    return json({
+      received: true,
+      ignored: "cannot_resolve_order_id_or_delivery_request_id",
+      type: event.type,
+    });
+  }
+
+  const { deliveryRequest, error: deliveryErr } =
+    await loadDeliveryRequestForPaymentCheck(supabaseAdmin, deliveryRequestId);
+
+  if (deliveryErr) {
+    console.log("❌ WEBHOOK PI: delivery_request lookup failed", {
+      deliveryRequestId,
+      code: getErrorCode(deliveryErr),
+      message: getErrorMessage(deliveryErr),
+    });
+    return json(
+      { received: true, ok: false, error: "delivery_request_lookup_failed" },
+      500
+    );
+  }
+
+  if (!deliveryRequest) {
     return json(
       {
         received: true,
         ok: false,
-        error: "order_not_found",
-        order_id: orderId,
+        error: "delivery_request_not_found",
+        delivery_request_id: deliveryRequestId,
       },
       404
     );
   }
 
   if (
-    order.stripe_payment_intent_id &&
-    order.stripe_payment_intent_id !== paymentIntentId
+    deliveryRequest.stripe_payment_intent_id &&
+    deliveryRequest.stripe_payment_intent_id !== paymentIntentId
   ) {
-    console.log("❌ WEBHOOK PI: payment intent mismatch", {
-      orderId,
-      db_payment_intent_id: order.stripe_payment_intent_id,
+    console.log("❌ WEBHOOK PI: delivery_request payment intent mismatch", {
+      deliveryRequestId,
+      db_payment_intent_id: deliveryRequest.stripe_payment_intent_id,
       webhook_payment_intent_id: paymentIntentId,
     });
     return json(
       {
         received: true,
         ok: false,
-        error: "payment_intent_mismatch",
-        order_id: orderId,
+        error: "delivery_request_payment_intent_mismatch",
+        delivery_request_id: deliveryRequestId,
       },
       409
     );
   }
 
-  const expectedAmountCents = resolveOrderAmountCents(order);
-  const expectedCurrency = normalizeCurrency(order.currency) ?? "usd";
+  const expectedAmountCents =
+    resolveDeliveryRequestAmountCents(deliveryRequest);
+  const expectedCurrency =
+    normalizeCurrency(deliveryRequest.currency) ?? "usd";
 
   if (!expectedAmountCents || !piAmount) {
-    console.log("❌ WEBHOOK PI: missing amount for verification", {
-      orderId,
+    console.log("❌ WEBHOOK PI: delivery_request missing amount for verification", {
+      deliveryRequestId,
       expectedAmountCents,
       piAmount,
     });
@@ -979,8 +1707,8 @@ async function handlePaymentIntentSucceeded(
   }
 
   if (expectedAmountCents !== piAmount) {
-    console.log("❌ WEBHOOK PI: amount mismatch", {
-      orderId,
+    console.log("❌ WEBHOOK PI: delivery_request amount mismatch", {
+      deliveryRequestId,
       expectedAmountCents,
       piAmount,
     });
@@ -988,16 +1716,16 @@ async function handlePaymentIntentSucceeded(
       {
         received: true,
         ok: false,
-        error: "amount_mismatch",
-        order_id: orderId,
+        error: "delivery_request_amount_mismatch",
+        delivery_request_id: deliveryRequestId,
       },
       400
     );
   }
 
   if (!piCurrency || piCurrency !== expectedCurrency) {
-    console.log("❌ WEBHOOK PI: currency mismatch", {
-      orderId,
+    console.log("❌ WEBHOOK PI: delivery_request currency mismatch", {
+      deliveryRequestId,
       expectedCurrency,
       piCurrency,
     });
@@ -1005,37 +1733,37 @@ async function handlePaymentIntentSucceeded(
       {
         received: true,
         ok: false,
-        error: "currency_mismatch",
-        order_id: orderId,
+        error: "delivery_request_currency_mismatch",
+        delivery_request_id: deliveryRequestId,
       },
       400
     );
   }
 
-  if (isPaidStatus(order.payment_status)) {
-    console.log("ℹ️ WEBHOOK PI: order already paid", { orderId });
+  if (isPaidStatus(deliveryRequest.payment_status)) {
+    console.log("ℹ️ WEBHOOK PI: delivery_request already paid", {
+      deliveryRequestId,
+    });
     return json({
       received: true,
       ok: true,
-      order_id: orderId,
+      delivery_request_id: deliveryRequestId,
       via: "already_paid",
       type: event.type,
     });
   }
 
-  const result = await markOrderPaidRobustly({
+  const result = await markDeliveryRequestPaidRobustly({
     supabaseAdmin,
-    orderId,
+    deliveryRequestId,
     sessionId: null,
     paymentIntentId,
   });
 
-  if (isRobustMarkPaidFailure(result)) {
-    console.log("❌ WEBHOOK: could not mark order paid (PI)", {
-      orderId,
+  if (isDeliveryRobustMarkPaidFailure(result)) {
+    console.log("❌ WEBHOOK: could not mark delivery_request paid (PI)", {
+      deliveryRequestId,
       paymentIntentId,
-      rpcCode: getErrorCode(result.rpc.error),
-      rpcMessage: getErrorMessage(result.rpc.error),
       fallbackCode: getErrorCode(result.fallback.error),
       fallbackMessage: getErrorMessage(result.fallback.error),
     });
@@ -1044,11 +1772,7 @@ async function handlePaymentIntentSucceeded(
       {
         received: true,
         ok: false,
-        error: "Could not mark order paid (PI)",
-        rpc: {
-          code: getErrorCode(result.rpc.error),
-          message: getErrorMessage(result.rpc.error),
-        },
+        error: "Could not mark delivery_request paid (PI)",
         fallback: {
           code: getErrorCode(result.fallback.error),
           message: getErrorMessage(result.fallback.error),
@@ -1063,7 +1787,7 @@ async function handlePaymentIntentSucceeded(
   return json({
     received: true,
     ok: true,
-    order_id: orderId,
+    delivery_request_id: deliveryRequestId,
     via: result.via,
     used: result.used,
     already_paid: result.already_paid ?? false,
@@ -1093,7 +1817,7 @@ export async function POST(req: NextRequest) {
         status: 400,
         headers: {
           "Cache-Control": "no-store",
-          "Pragma": "no-cache",
+          Pragma: "no-cache",
           "X-Content-Type-Options": "nosniff",
         },
       });

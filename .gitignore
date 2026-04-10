@@ -11,3 +11,5 @@ pnpm-debug.log*
 .vscode
 .DS_Store
 .vercel
+
+.expo/

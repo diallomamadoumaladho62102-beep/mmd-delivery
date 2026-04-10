@@ -14,6 +14,19 @@ type ConfirmPaidResponse = {
   order_id?: string;
 };
 
+type CreateDeliveryCheckoutResponse = {
+  url: string;
+  session_id?: string;
+  id?: string;
+};
+
+type ConfirmDeliveryPaidResponse = {
+  ok: boolean;
+  stripe_paid?: boolean;
+  already?: boolean;
+  delivery_request_id?: string;
+};
+
 function apiBase() {
   if (!API_BASE_URL) throw new Error("API_BASE_URL is missing");
   return API_BASE_URL.replace(/\/$/, "");
@@ -37,7 +50,10 @@ async function fetchWithTimeout(
   }
 
   const controller = new AbortCtl();
-  const t: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), timeoutMs);
+  const t: ReturnType<typeof setTimeout> = setTimeout(
+    () => controller.abort(),
+    timeoutMs
+  );
 
   try {
     return await fetch(input, { ...init, signal: controller.signal });
@@ -49,13 +65,13 @@ async function fetchWithTimeout(
 async function postJsonWithRetry<T>(
   url: string,
   token: string,
-  body: any,
+  body: unknown,
   opts?: { attempts?: number; timeoutMs?: number }
 ): Promise<T> {
   const attempts = opts?.attempts ?? 2;
   const timeoutMs = opts?.timeoutMs ?? 15000;
 
-  let lastErr: any = null;
+  let lastErr: unknown = null;
 
   for (let i = 1; i <= attempts; i++) {
     try {
@@ -71,7 +87,9 @@ async function postJsonWithRetry<T>(
 
       if (!res.ok) {
         const txt = await res.text().catch(() => "");
-        throw new Error(txt || `HTTP ${res.status} ${res.statusText || ""}`.trim());
+        throw new Error(
+          txt || `HTTP ${res.status} ${res.statusText || ""}`.trim()
+        );
       }
 
       const raw = await res.text().catch(() => "");
@@ -80,10 +98,12 @@ async function postJsonWithRetry<T>(
       } catch {
         throw new Error(raw || "Invalid JSON response");
       }
-    } catch (e: any) {
+    } catch (e) {
       lastErr = e;
 
-      if (i < attempts) await sleep(800 * i);
+      if (i < attempts) {
+        await sleep(800 * i);
+      }
     }
   }
 
@@ -91,12 +111,15 @@ async function postJsonWithRetry<T>(
 }
 
 /**
- * ✅ Paiement Stripe robuste:
+ * ✅ Paiement Stripe robuste (restaurants/orders)
  * - Crée une session checkout (retry + timeout)
  * - Ouvre Stripe
  * - Au retour, appelle confirm-paid (même si webhook rate)
  */
-export async function startCheckoutForOrder(orderId: string, accessToken: string): Promise<void> {
+export async function startCheckoutForOrder(
+  orderId: string,
+  accessToken: string
+): Promise<void> {
   if (!orderId) throw new Error("orderId is required");
   if (!accessToken) throw new Error("accessToken is required");
 
@@ -131,5 +154,61 @@ export async function startCheckoutForOrder(orderId: string, accessToken: string
     );
   } catch (e) {
     console.warn("[payments] confirm-paid failed:", (e as any)?.message ?? e);
+  }
+}
+
+/**
+ * ✅ Paiement Stripe robuste (delivery_requests)
+ * - Crée une session checkout dédiée delivery request
+ * - Ouvre Stripe
+ * - Au retour, appelle confirm-delivery-request-paid
+ */
+export async function startCheckoutForDeliveryRequest(
+  deliveryRequestId: string,
+  accessToken: string
+): Promise<void> {
+  if (!deliveryRequestId) {
+    throw new Error("deliveryRequestId is required");
+  }
+  if (!accessToken) {
+    throw new Error("accessToken is required");
+  }
+
+  const base = apiBase();
+  const createEndpoint = `${base}/api/stripe/client/create-delivery-request-checkout-session`;
+  const confirmEndpoint = `${base}/api/stripe/client/confirm-delivery-request-paid`;
+
+  const data = await postJsonWithRetry<CreateDeliveryCheckoutResponse>(
+    createEndpoint,
+    accessToken,
+    { deliveryRequestId },
+    { attempts: 2, timeoutMs: 15000 }
+  );
+
+  if (!data?.url) {
+    throw new Error("Missing Checkout URL");
+  }
+
+  const result = await WebBrowser.openBrowserAsync(data.url);
+
+  const didCancel =
+    (result as any)?.type === "cancel" || (result as any)?.type === "dismiss";
+
+  if (didCancel) {
+    return;
+  }
+
+  try {
+    await postJsonWithRetry<ConfirmDeliveryPaidResponse>(
+      confirmEndpoint,
+      accessToken,
+      { deliveryRequestId },
+      { attempts: 2, timeoutMs: 12000 }
+    );
+  } catch (e) {
+    console.warn(
+      "[payments] confirm-delivery-request-paid failed:",
+      (e as any)?.message ?? e
+    );
   }
 }

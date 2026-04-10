@@ -8,6 +8,7 @@ const nextConfig = {
   allowedDevOrigins: [
     "http://192.168.1.203:3000",
     "http://192.168.1.204:3000",
+    "http://192.168.1.203:8081", // ✅ mobile Expo (IMPORTANT)
   ],
 };
 

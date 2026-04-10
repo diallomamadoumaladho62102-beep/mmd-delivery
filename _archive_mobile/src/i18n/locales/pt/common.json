@@ -1,0 +1,28 @@
+{
+  "common": {
+    "back": "← Voltar",
+    "account": "Conta",
+    "security": "Segurança",
+    "notifications": "Notificações",
+    "language": "Idioma",
+    "logout": "Sair",
+    "soon": "Em breve ✅",
+    "ok": "OK",
+    "toAdd": "A adicionar",
+    "ready": "Pronto",
+    "notConfigured": "Não configurado",
+    "notRequired": "Não obrigatório"
+  },
+  "driver": {
+    "account": {
+      "title": "Conta do motorista",
+      "subtitle": "Veículo, documentos, pagamento, status (guiado).",
+      "vehicle": "Veículo",
+      "documents": "Documentos",
+      "payout": "Pagamento",
+      "finalizeNow": "Finalizar agora"
+    }
+  },
+  "client": {},
+  "restaurant": {}
+}

@@ -1,0 +1,1254 @@
+{
+  "common": {
+    "back": "← Rutto",
+    "account": "Konto",
+    "security": "Kisal",
+    "notifications": "Jangirde (notifications)",
+    "language": "Demdol",
+    "logout": "Yaltude",
+    "soon": "E njaaɗi ko ɓooyii ✅",
+    "ok": "OK",
+    "toAdd": "Ɓeydu",
+    "ready": "Hepii",
+    "notConfigured": "Wonaa ngam",
+    "notRequired": "Wonaa wajibi",
+    "error": "Juume",
+    "success": "Moƴƴi",
+    "cancel": "Haɗtu",
+    "confirm": "Tabit",
+    "na": "—",
+    "yes": "Eey",
+    "errorTitle": "Juume",
+    "refresh": "Hesɗitin",
+    "refreshIcon": "↻",
+    "loading": "Nana loowa…",
+    "loadingDots": "…",
+    "updating": "Nana hesɗitina…",
+    "auth": {
+      "logoutTitle": "Yaltude",
+      "logoutConfirm": "Aɗa yiɗi yaltude goonga?",
+      "logoutError": "Horiima yaltude.",
+      "logoutShort": "Yaltude"
+    },
+    "order": {
+      "errors": {
+        "notFound": "Odaare heɓaaka.",
+        "load": "Horiima loowde odaare.",
+        "update": "Horiima hesɗitinde.",
+        "updateStatus": "Horiima hesɗitinde xaalis/staatus."
+      },
+      "status": {
+        "pending": "Nana e ɗoo",
+        "accepted": "Aɗaɗi/Jaɓaama",
+        "prepared": "Nana heɓna (preparing)",
+        "readyPickup": "Hepii (pickup)",
+        "dispatched": "Nana waɗɗi e laawol",
+        "delivered": "Hokkaaɓe/Heɓnaama",
+        "canceled": "Haɗtaama",
+        "readyWaitingDriver": "Hepii — nana wadi driver",
+        "readyDriverAssigned": "Hepii — driver dana ɗaɓɓaama"
+      },
+      "card": {
+        "title": "Odaare #{{id}}",
+        "statusLabel": "Xaalis:",
+        "acceptTimeTitle": "SAHAA TO JAƁƁUGOL",
+        "expired": "⛔ Waktuuji gasii",
+        "ringingActive": "🔔 Ringing ena koɗɗi",
+        "totalLabel": "Total:"
+      },
+      "actions": {
+        "accept": "Jaɓ odaare",
+        "toPreparing": "Wattude to preparing",
+        "ready": "Odaare hepii (READY)",
+        "none": "Alaa ko restaurant waɗata jooni."
+      },
+      "driver": {
+        "none": "Alaa driver ɗaɓɓaande e ndee odaare tawo.",
+        "loading": "Nana loowa profil driver…",
+        "profile": "Profil driver",
+        "fallback": "Driver {{id}}"
+      },
+      "details": {
+        "title": "Odaare #{{id}}",
+        "statusLabel": "Xaalis:",
+        "createdAt": "Sosaa:",
+        "totalItemsTaxes": "Total (items + taxes):",
+        "netRestaurant": "Net restaurant:",
+        "backToOrders": "← Rutto to orderiji",
+        "restaurantSection": "Restaurant",
+        "pickupAddress": "Nokku pickup:",
+        "pickupCodeTitle": "Kode pickup to hokku driver:",
+        "driverSection": "Driver",
+        "recapTitle": "Dokkital odaare",
+        "totalsTitle": "Totals (restaurant)",
+        "subtotalLabel": "Subtotal (items):",
+        "taxLabel": "Taxes:",
+        "totalItemsTaxesLabel": "Total items + taxes:",
+        "commissionLabel": "Commission restaurant:",
+        "netLabel": "Net restaurant:",
+        "debugTotalDb": "(Debug) DB total:"
+      }
+    },
+    "restaurant": {
+      "orders": {
+        "title": "Orderiji restaurant",
+        "earningsBtn": "Earnings",
+        "testRing": "🔔 Test ring",
+        "loadingAccount": "Nana loowa konto restaurant…",
+        "loadingOrders": "Nana loowa orderiji…",
+        "empty": "Alaa orderiji aktive jooni."
+      }
+    },
+    "transport": {
+      "bike": "🚲 Bike",
+      "moto": "🛵 Moto",
+      "car": "🚗 Car"
+    },
+    "driverTier": {
+      "elite": "🏆 Elite",
+      "confirmed": "⭐ Confirmé",
+      "standard": "🔄 Standard",
+      "needsImprovement": "⚠️ Ena waɗi laawol"
+    },
+    "profile": {
+      "title": "Profil",
+      "topDriver": "🏆 Top Driver",
+      "inProgress": "ℹ️ Nana ndee",
+      "driverScore": "Driver Score",
+      "bikeNoVehicleLine": "Bike: alaa permis / plaque / insurance / registration",
+      "deliveries": "Deliveries",
+      "acceptance": "Jaɓɓugol",
+      "cancellation": "Haɗtugol",
+      "tipChangePhoto": "Tipp: tappu foto ndee ngam waylude (camera / files).",
+      "accountSection": "Konto",
+      "documentsSection": "Dokimaaɗe",
+      "ratingHistorySection": "Tarik rating",
+      "name": "Innde",
+      "phone": "Phone",
+      "transport": "Transport",
+      "payment": "Payout",
+      "status": "Xaalis",
+      "info": "Info",
+      "configureStripeHint": "Teeltu Stripe ngam earnings. (tappu “Payout”)",
+      "bikeNoDocsRow": "Bike: alaa dokimaaɗe wajibi",
+      "bikeNoDocs": "E bike mode, alaa dokimaaɗe wajibi ✅",
+      "noReviewsYet": "Alaa review tawo.",
+      "editProfileTitle": "Waylu profil",
+      "placeholderName": "e.g. Mamadou",
+      "placeholderPhone": "e.g. 9297408722",
+      "vehicleSection": "Mootor",
+      "brand": "Brand",
+      "model": "Model",
+      "color": "Noorndu",
+      "year": "Hitaande",
+      "plate": "Plaque",
+      "placeholderBrand": "e.g. Honda",
+      "placeholderModel": "e.g. Accord",
+      "placeholderColor": "e.g. Black",
+      "placeholderYear": "2020",
+      "placeholderPlate": "ABC-1234",
+      "bikeNoVehicleHint": "Bike: alaa permis/plaque/insurance/registration wajibi ✅",
+      "updated": "Profil hesɗitinaama ✅",
+      "saveProfilesFailed": "Horiima danndude konto (profiles).",
+      "saveDriverProfilesFailed": "Horiima danndude (driver_profiles).",
+      "avatarTitle": "Foto profil",
+      "avatarUpdated": "Foto profil hesɗitinaama.",
+      "avatarUploadFailed": "Horiima upload avatar. Yeeɓ Storage policies (avatars).",
+      "avatarUnknownError": "Upload avatar: juume anndaa.",
+      "uploadDocTitle": "Upload {{doc}}",
+      "docSent": "{{doc}} neldaama.",
+      "docUploadFailed": "Upload horiima. Yeeɓ Storage policies (driver-docs).",
+      "docDbFailed": "Fayl uploadi, kono DB hesɗitaaka (driver_documents).",
+      "docUnknownError": "Doc upload: juume anndaa.",
+      "edit": "Waylu",
+      "newLabel": "Kesɗo",
+      "loadingTitle": "Nana loowa…",
+      "verified": {
+        "bike": "Bike ✅",
+        "complete": "Dokimaaɗe fow ✅",
+        "notVerified": "Wonaa verified"
+      },
+      "paymentStatus": {
+        "configured": "✅ Teeltaama",
+        "notConfigured": "❌ Wonaa teeltaama"
+      },
+      "docs": {
+        "license": "License",
+        "insurance": "Insurance",
+        "registration": "Registration",
+        "ok": "OK ✅",
+        "missing": "Laataa",
+        "uploading": "…"
+      },
+      "menu": {
+        "chooseOption": "Suɓu cuɓoraaɗe:",
+        "camera": "Camera",
+        "files": "Files",
+        "cancel": "Haɗtu"
+      },
+      "alerts": {
+        "loginTitle": "Login",
+        "loginBody": "Wota, log in ɗoo.",
+        "bikeTitle": "Bike"
+      }
+    },
+    "permission": {
+      "title": "Permission",
+      "camera": "Naatnu permission camera ngam nattude foto."
+    }
+  },
+
+  "shared": {
+    "common": {
+      "backWithArrow": "← Rutto",
+      "backArrowOnly": "←",
+      "loadingEllipsis": "…",
+      "refresh": "Hesɗitin",
+      "loading": "Nana loowa…",
+      "cancel": "Haɗtu",
+      "delete": "Momtu",
+      "save": "Danndu"
+    },
+    "orderChat": {
+      "alerts": {
+        "errorTitle": "Juume",
+        "loadFailed": "Horiima loowde chat.",
+        "permissionTitle": "Permission ena wajibi",
+        "permissionGalleryBody": "Naatnu permission gallery ngam nelda foto.",
+        "pickImageFailed": "Horiima suɓa foto.",
+        "sendFailed": "Horiima nelda.",
+        "deleteFailed": "Horiima momtude."
+      },
+      "debug": {
+        "heicDetected": "🟡 HEIC heɓaama, nana wayla to JPG…"
+      },
+      "errors": {
+        "missingOrderId": "orderId laata",
+        "missingOrderIdUi": "Juume: orderId laata.",
+        "imageNotFoundOnPhone": "Fayl foto heɓaaka e phone.",
+        "imageEmptyOnPhone": "Fayl foto ko 0 bytes e phone.",
+        "base64ReadFailedEmpty": "Base64 read horiima (koofo).",
+        "arrayBufferZeroBytes": "ArrayBuffer wayla ndee hokkataa 0 bytes."
+      },
+      "header": {
+        "subtitle": "Peeje & attachments"
+      },
+      "empty": "Alaa peeje tawo.",
+      "heic": {
+        "oldMessageTitle": "HEIC foto (peeje mawnde) — waawi waasa hollude e app.",
+        "oldMessageBody": "Laawol: neldu foto ɗee kadi caggal update (HEIC → JPG). Ndeen mawnde, conversion/migration ena wajibi."
+      },
+      "actions": {
+        "deleteTitle": "Momtu",
+        "deleteConfirm": "Aɗa yiɗi momtude ndee peeje?",
+        "deleteLower": "momtu",
+        "image": "Foto",
+        "sending": "Nana nelda…",
+        "send": "Neldu"
+      },
+      "image": {
+        "selectedPrefix": "Foto suɓaande: ",
+        "remove": "Momtu foto"
+      },
+      "placeholders": {
+        "message": "Winndu peeje…"
+      }
+    }
+  },
+
+  "client": {},
+
+  "driver": {
+    "profile": {
+      "authFallbackName": "Driver",
+      "newDriver": "Kesɗo",
+      "editShort": "Waylu",
+      "chooseOption": "Suɓu cuɓoraaɗe:",
+      "saving": "Nana dannda…",
+      "docs": {
+        "license": "License",
+        "insurance": "Insurance",
+        "registration": "Registration",
+        "missing": "Laataa"
+      },
+      "verified": {
+        "full": "Dokimaaɗe fow ✅",
+        "notVerified": "Wonaa verified"
+      }
+    },
+
+    "account": {
+      "title": "Konto moƴƴoowo (driver)",
+      "subtitle": "Mootor, dokimaaɗe, yuɓɓugol, xaalis (ɗowndu).",
+      "vehicle": "Mootor",
+      "documents": "Dokimaaɗe",
+      "payout": "Yuɓɓugol",
+      "finalizeNow": "Timmin ɗoo",
+
+      "workTitle": "Golle",
+      "workSubtitle": "Ko ɗum jeyaa e trip maa e earnings maa.",
+      "workCenter": "Work center",
+      "workCenterHint": "Zone, cuɓoraaɗe, availability",
+      "earnings": "Earnings",
+      "earningsHint": "History, payouts, cashouts",
+      "taxInfo": "Tax info",
+      "taxHint": "W-9 / 1099 (caggal)"
+    },
+
+    "tax": {
+      "title": "Tax info",
+      "sections": { "overview": "Overview", "important": "Important" },
+      "badges": { "soon": "E njaaɗi ko ɓooyii ✅" },
+      "overview": {
+        "status": { "label": "Status", "value": "Wonaa wajibi" },
+        "formType": { "label": "Form type", "value": "W-9 / 1099 (USA)" },
+        "country": { "label": "Country", "value": "USA" },
+        "withholding": { "label": "Withholding", "value": "Min ngarraa tax" }
+      },
+      "important": {
+        "title": "Min ngarraa tax",
+        "body": "Aɗa yiɗi ɗaɓɓude e tax ɗuuɗi maa. So aɗa e USA, a waawi heɓde annual form e caggal (wano 1099) teeɗɗunde e earnings maa."
+      },
+      "buttons": {
+        "learnMore": "Ɓeydu humpito",
+        "yearlySummary": "Annual summary (PDF)"
+      },
+      "learnMore": {
+        "title": "Hol no tax ena golliri",
+        "body": "Min ngarraa tax. Aɗa yiɗi ɗaɓɓude e earnings maa e tax ɗuuɗi maa. E caggal hitaande, a waawi heɓde summary (wano 1099 e USA)."
+      },
+      "yearlySummary": {
+        "comingSoonTitle": "E njaaɗi ko ɓooyii ✅",
+        "comingSoonBody": "Annual summary download maa woodi ɗoo (PDF)."
+      }
+    },
+
+    "auth": {
+      "actions": {
+        "camera": "Camera",
+        "cancel": "Haɗtu",
+        "createAccountSignup": "Sos konto",
+        "createMyAccount": "Sos konto am",
+        "files": "Files",
+        "haveAccountLogin": "Mi waɗii konto kadi",
+        "login": "Login"
+      },
+      "alert": {
+        "cameraPermission": "Naatnu permission camera.",
+        "errorTitle": "Juume",
+        "galleryPermission": "Naatnu permission photo library.",
+        "loginFailedTitle": "Login horiima",
+        "permissionTitle": "Permission ena wajibi",
+        "pickPhotoFailed": "Horiima suɓa foto.",
+        "signupFailedTitle": "Signup horiima",
+        "takePhotoFailed": "Horiima nattude foto.",
+        "verifyEmailBody": "Tabit email maa, ndee ɗaa login kadi.",
+        "verifyEmailTitle": "Email tabitgol"
+      },
+      "avatar": {
+        "add": "Ɓeydu foto",
+        "change": "Waylu foto",
+        "chooseOption": "Suɓu cuɓoraaɗe",
+        "optional": "Optional",
+        "title": "Foto profil"
+      },
+      "card": {
+        "loginTitle": "Login driver",
+        "signupTitle": "Sos konto driver"
+      },
+      "documents": {
+        "bikeNone": "Bike: alaa dokimaaɗe wajibi",
+        "carHint": "Car: ɓeydu at least license + insurance",
+        "title": "Dokimaaɗe"
+      },
+      "fields": {
+        "email": "Email",
+        "emailPlaceholder": "e.g. driver@email.com",
+        "fullName": "Innde fow",
+        "fullNamePlaceholder": "First Last",
+        "password": "Password",
+        "passwordPlaceholder": "Password",
+        "phone": "Phone",
+        "phonePlaceholder": "e.g. +1 555 123 4567"
+      },
+      "footer": "So a ɗaɓɓii, a jaɓii terms of service.",
+      "header": {
+        "login": "Login",
+        "signup": "Signup"
+      },
+      "loading": "Nana loowa…",
+      "referral": {
+        "autoFillHint": "Tipp: so a jogii code, waawi heɓde ɗoo.",
+        "placeholder": "Referral code (optional)",
+        "title": "Referral"
+      },
+      "switch": {
+        "createAccount": "Sos konto",
+        "haveAccount": "Mi jogii konto",
+        "newDriver": "Driver kesɗo",
+        "relogin": "Login kadi"
+      },
+      "transport": {
+        "bike": "Bike",
+        "car": "Car",
+        "moto": "Moto",
+        "title": "Transport"
+      },
+      "vehicle": {
+        "bikeNoDocs": "Bike: alaa dokimaaɗe",
+        "brand": "Brand",
+        "brandPlaceholder": "e.g. Toyota",
+        "colorOptional": "Noorndu (optional)",
+        "invalidYear": "Hitaande moƴƴaaka",
+        "model": "Model",
+        "modelPlaceholder": "e.g. Corolla",
+        "plate": "Plaque",
+        "title": "Mootor",
+        "yearOptional": "Hitaande (optional)"
+      }
+    },
+
+    "payments": {
+      "title": "Yuɓɓugol",
+      "unavailable": "Horiima udditde Stripe jooni."
+    },
+
+    "menu": {
+      "load_error": "Horiima loowde menu driver.",
+      "tips_week": "Fotaaji naange",
+      "referrals": "Referrals",
+      "opportunities": "Oportunite",
+      "driver_program": "Program driver",
+      "wallet": "Wallet",
+      "account": "Konto",
+      "payments_stripe": "Teeltu yuɓɓugol (Stripe)",
+      "help": "Ballal",
+      "payments_title": "Yuɓɓugol",
+      "payments_unavailable": "Horiima udditde Stripe jooni.",
+      "driver_label": "Driver",
+      "new_driver": "Kesɗo"
+    },
+
+    "security": {
+      "accountLabel": "Password jooni",
+      "confirmLabel": "Tabit",
+      "errorTitle": "Juume",
+      "genericError": "Huunde juume waɗi.",
+      "hide": "Suuɗ",
+      "min8": "Ɗiɗo 8 characters",
+      "mismatch": "Passwords ɗee nanndiyaa",
+      "newPasswordLabel": "Password kesɗo",
+      "passwordTitle": "Password",
+      "save": "Danndu",
+      "sessionBody": "Login kadi ngam jokkude.",
+      "sessionTitle": "Session gasii",
+      "show": "Hollu",
+      "successBody": "Password hesɗitinaama.",
+      "successTitle": "Moƴƴi",
+      "tip": "Suɓu password moƴƴo (8+ characters).",
+      "title": "Kisal"
+    },
+
+    "settings": {
+      "footer": "Aɗa hatojini ballal? Jokkondir e support.",
+      "loadingFooter": "Nana loowa…",
+      "loggingOut": "Nana yalta…",
+      "logoutHint": "Yaltude e konto maa.",
+      "notificationsHint": "Toppito notifications.",
+      "notificationsSoon": "E njaaɗi ko ɓooyii ✅",
+      "securityHint": "Waylu password maa.",
+      "subtitle": "Toppito konto driver maa.",
+      "switchAccountTitle": "Waylu konto"
+    },
+
+    "home": {
+      "header": {
+        "title": "Dashboard driver",
+        "subtitle": "Map ɗoo ena waɗɗi active."
+      },
+      "online": "ONLINE",
+      "offline": "OFFLINE",
+      "gps": {
+        "title": "GPS",
+        "permissionDenied": "Permission GPS saliima.",
+        "enableToGoOnline": "Naatnu permission GPS ngam online.",
+        "locating": "Nana yiytina nokku driver…"
+      },
+      "zone": {
+        "title": "Activity e nokku maa",
+        "current": "Nokku jooni",
+        "calm": "Hedo",
+        "busy": "Heewi",
+        "very_busy": "Heewi mawni"
+      },
+      "tabs": {
+        "home": "Jaŋngirde",
+        "revenue": "Cakkitiiɗe",
+        "inbox": "Inbox",
+        "menu": "Menu"
+      },
+      "map": {
+        "pickupTitle": "Pickup",
+        "dropoffTitle": "Dropoff"
+      },
+      "offer": {
+        "title": "Trip kesɗo ena woodi",
+        "pickup": "Pickup:",
+        "dropoff": "Dropoff:",
+        "distance": "Distance estimation",
+        "earnings": "Earnings estimation",
+        "createdAt": "Sosaa:",
+        "decline": "Salaa",
+        "accept": "Jaɓ",
+        "accepting": "Nana jaɓa..."
+      },
+      "myOrders": {
+        "title": "Deliveries am e ɗoo",
+        "loading": "Nana loowa deliveries maa…",
+        "emptyTitle": "Alaa deliveries e ɗoo tawo.",
+        "emptySubtitle": "So a jaɓii delivery, maa hollu ɗoo.",
+        "viewDetails": "Yiy details →"
+      },
+      "labels": {
+        "pickup": "Pickup:",
+        "dropoff": "Dropoff:",
+        "distance": "Distance:",
+        "driverEarnings": "Earnings driver:"
+      },
+      "status": {
+        "pending": "Pending (restaurant)",
+        "accepted": "Accepted",
+        "prepared": "Preparing",
+        "ready": "Ready (waiting driver)",
+        "dispatched": "On delivery",
+        "delivered": "Delivered",
+        "canceled": "Canceled"
+      },
+      "kind": {
+        "food": "Order restaurant",
+        "foodWithName": "Order restaurant · {{name}}",
+        "pickup_dropoff": "Trip pickup / dropoff"
+      },
+      "accept": {
+        "title": "Trip jaɓaama",
+        "body": "Aɗa jooni ɗaɓɓaama e ndee delivery."
+      },
+      "errors": {
+        "mustBeLoggedIn": "Alaa login, a log in.",
+        "loadOrders": "Horiima loowde orders.",
+        "accept": "Horiima jaɓɓude trip.",
+        "toggleOnline": "Horiima waylude xaalis."
+      }
+    },
+
+    "map": {
+      "headerTitle": "Map driver",
+      "permissionDenied": "Permission location saliima. Naatnu GPS ngam yiy map driver.",
+      "locating": "Nana heɓa location maa…",
+      "online": "ONLINE",
+      "offline": "OFFLINE",
+      "statusTitle": "Xaalis driver",
+      "statusOnlineTitle": "Aɗa ONLINE — a waawi heɓde trips.",
+      "statusOfflineTitle": "Aɗa OFFLINE.",
+      "statusOnlineSubtitle": "So aɗa online, location maa neldotoo MMD Delivery.",
+      "statusOfflineSubtitleHasLocation": "Wattude online ngam fuɗɗa heɓde offers.",
+      "statusOfflineSubtitleNoLocation": "Nana wadi location maa (naatnu permissions GPS).",
+      "zoneActivityTitle": "Activity e nokku maa",
+      "zoneUnknown": "Anndaa",
+      "activity": {
+        "very_busy": "Heewi mawni",
+        "busy": "Heewi",
+        "normal": "Normal",
+        "calm": "Hedo"
+      },
+      "bonusEstimated": "Bonus estimation e nokku maa {{boost}}",
+      "nextUpdateTitle": "Update arɗo",
+      "updateIntervalOnline": "Kila 2s so online",
+      "goOffline": "Wattude offline",
+      "incoming": {
+        "title": "Trip kesɗo",
+        "pickup": "Pickup:",
+        "dropoff": "Dropoff:",
+        "decline": "Salaa",
+        "accept": "Jaɓ"
+      },
+      "restaurantsLoading": "Nana loowa restaurants…",
+      "myOrders": {
+        "title": "Trips am",
+        "loading": "Nana loowa trips maa…",
+        "emptyTitle": "Alaa trip ɗaɓɓaande tawo.",
+        "emptySubtitle": "So trip ɗaɓɓaama, maa hollu ɗoo.",
+        "viewDetails": "Yiy details →"
+      },
+      "orderCard": {
+        "pickupLabel": "From:",
+        "dropoffLabel": "To:",
+        "distanceLabel": "Distance:",
+        "earningsLabel": "Earnings:"
+      },
+      "kind": {
+        "food": "Order restaurant",
+        "foodWithName": "Order restaurant · {{name}}",
+        "pickup_dropoff": "Trip"
+      },
+      "status": {
+        "pending": "Pending (restaurant)",
+        "accepted": "Accepted",
+        "prepared": "Preparing",
+        "ready": "Ready",
+        "dispatched": "On delivery",
+        "delivered": "Delivered",
+        "canceled": "Canceled"
+      },
+      "debug": {
+        "testIncomingOrder": "Test incoming trip"
+      }
+    },
+
+    "revenue": {
+      "title": "Cakkitiiɗe",
+      "help_btn": "Ballal",
+      "help_title": "Ballal",
+      "help_body": "Min ɓeydata Ballal page ɗoo (FAQ / Support).",
+      "auth_title": "Login",
+      "auth_body": "Log in so driver ngam yiy earnings maa.",
+      "load_error": "Horiima loowde earnings.",
+      "not_added": "Page \"{{route}}\" ɓeydaaka e AppNavigator tawo.",
+      "range": {
+        "today": "Hannde",
+        "month": "Lewru"
+      },
+      "tabs": {
+        "week": "Naange",
+        "today": "Hannde",
+        "month": "Lewru"
+      },
+      "days": {
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat",
+        "sun": "Sun"
+      },
+      "total": "Total",
+      "net_price": "Net",
+      "tips": "Tips",
+      "trips": "Trips",
+      "points": "Points",
+      "show_details": "Hollu details",
+      "activity": "Activity",
+      "activity_hint": "Waktu & trips",
+      "wallet": "Wallet",
+      "wallet_hint": "Balance & payouts",
+      "benefits": "Benefits",
+      "benefits_hint": "Bonuses & boosts",
+      "recent_sessions": "Sessions ɓooyii",
+      "no_trips": "Alaa trips delivered e ndee periode.",
+      "trip_title": "Trip",
+      "trip_id": "ID",
+      "tip": "Tip",
+      "driver_label": "Driver",
+      "details": {
+        "auth": { "title": "Login" },
+        "breakdown": {
+          "netPrice": "Net price",
+          "tip": "Tip",
+          "title": "Breakdown",
+          "total": "Total earnings"
+        },
+        "calc": { "title": "Calculation" },
+        "completed": { "title": "Trips completed" },
+        "driverId": "Driver",
+        "earnings": "Earnings",
+        "loadError": "Horiima loowde details.",
+        "noTripToShow": "Alaa trip ngam hollude details.",
+        "range": { "today": "Hannde" },
+        "stats": {
+          "driving": "Driving",
+          "online": "Online",
+          "points": "Points",
+          "title": "Stats",
+          "trips": "Trips"
+        },
+        "title": "Details",
+        "tripAlert": { "title": "Trip" },
+        "tripsLabel": "Trips",
+        "week": {
+          "fri": "Fri",
+          "mon": "Mon",
+          "sat": "Sat",
+          "sun": "Sun",
+          "thu": "Thu",
+          "tue": "Tue",
+          "wed": "Wed"
+        }
+      },
+      "history": {
+        "auth": { "title": "Login" },
+        "filters": {
+          "month": "Lewru",
+          "today": "Hannde",
+          "week": "Naange"
+        },
+        "list": { "title": "Trips delivered" },
+        "loadError": "Horiima loowde history.",
+        "range": {
+          "month": "Ndee lewru",
+          "today": "Hannde",
+          "week": "Ndee naange"
+        },
+        "summary": {
+          "totalLabel": "Total",
+          "trips": "Trips"
+        },
+        "title": "History"
+      }
+    },
+
+    "inbox": {
+      "title": "Inbox",
+      "auth_title": "Login",
+      "auth_body": "Log in so driver ngam yiy inbox.",
+      "load_error": "Horiima loowde inbox.",
+      "header": {
+        "subtitle_base": "In progress + delivered (7 days)",
+        "unread_count": "{{count}} waawaa/ndiytaa"
+      },
+      "search_placeholder": "Yiil (#id, restaurant, status)…",
+      "not_logged_in": "Log in so driver ngam yiy chats maa.",
+      "empty": "Alaa orders (in progress / delivered 7 days).",
+      "sections": {
+        "in_progress": "In progress",
+        "in_progress_empty": "Alaa orders in progress.",
+        "delivered_7d": "Delivered (7 days)",
+        "delivered_empty": "Alaa delivered e last 7 days."
+      },
+      "badge": {
+        "delivered": "Delivered",
+        "in_progress": "In progress",
+        "unread": "Unread"
+      },
+      "msg": {
+        "none": "Alaa message",
+        "attachment": "Attachment"
+      },
+      "order": {
+        "fallback_title": "Order"
+      },
+      "driver_label": "Driver"
+    },
+
+    "orderDetails": {
+      "status": {
+        "pending": "Nana wadi driver",
+        "accepted_prepared": "Nana wadi (restaurant)",
+        "ready": "Hepii ngam pickup",
+        "dispatched": "On delivery",
+        "delivered": "Delivered",
+        "canceled": "Canceled"
+      },
+      "notFound": "Order heɓaaka.",
+      "notFoundShort": "Trip heɓaaka.",
+      "loadError": "Horiima loowde order details.",
+      "mapsOpenError": "Horiima udditde navigation app e ndee phone.",
+      "missingAddressTitle": "Address laata",
+      "missingAddressBody": "Alaa address ngam ndee step.",
+      "missingCoordsTitle": "Info laata",
+      "missingCoordsBody": "Ndee trip alaa GPS coords tawo.",
+      "rezoom": "Re-zoom",
+      "acceptDeniedTitle": "Horiima jaɓ",
+      "acceptDeniedStripe": "Aɗa waawi timmin setup Stripe mbere a jaɓ trips.",
+      "acceptDeniedGeneric": "Horiima jaɓ ndee trip.",
+      "acceptedTitle": "Trip jaɓaama ✅",
+      "acceptedBody": "Aɗa jooni ɗaɓɓaama e ndee trip.",
+      "acceptError": "Horiima jaɓ trip jooni.",
+      "codeMissingTitle": "Code laata",
+      "codeMissingBody": "Naatnu code verification.",
+      "codeServerError": "Server juume e verification code.",
+      "codeInvalidTitle": "Code moƴƴaaka",
+      "codePickupOk": "Pickup code moƴƴi ✅",
+      "codeDropoffOk": "Dropoff code moƴƴi ✅",
+      "codeVerifyError": "Horiima verify code jooni.",
+      "chatTitle": "Chat",
+      "chatRouteMissing": "Chat route heɓaaka. Yeeɓ AppNavigator (DriverChat / OrderChat).",
+      "map": {
+        "pickupTitle": "Restaurant",
+        "dropoffTitle": "Customer"
+      },
+      "header": {
+        "title": "Trip #{{id}}",
+        "createdAt": "Sosaa: {{date}}"
+      },
+      "steps": {
+        "title": "Stops",
+        "restaurant": "Restaurant: ",
+        "pickup": "Pickup ",
+        "dropoff": "Dropoff "
+      },
+      "actions": {
+        "goPickup": "Yah pickup",
+        "goDropoff": "Yah dropoff"
+      },
+      "summary": {
+        "title": "Summary",
+        "distance": "Distance",
+        "eta": "Waktu estimation"
+      },
+      "earnings": {
+        "title": "Earnings (estimate)",
+        "yourPart": "Ɗemngal maa",
+        "note": "Ko estimate based on split MMD Delivery."
+      },
+      "verify": {
+        "title": "Verification",
+        "pickupBtn": "Verify pickup (code)",
+        "dropoffBtn": "Verify dropoff (code)",
+        "autoHint": "Buttons ena ɗaɓɓitinaa on time based on status."
+      },
+      "chat": {
+        "open": "Uddit chat 💬"
+      },
+      "accept": {
+        "cta": "Jaɓ trip",
+        "loading": "Nana jaɓa...",
+        "hint": "So a jaɓii, a ɗaɓɓete e ndee trip."
+      },
+      "modal": {
+        "pickupTitle": "Pickup code",
+        "dropoffTitle": "Dropoff code",
+        "hint": "Ɗaɓ code (restaurant walla customer) ndee naatnu ɗoo.",
+        "placeholder": "e.g. ABC123",
+        "verifying": "Nana verify...",
+        "submit": "Verify"
+      }
+    },
+
+    "opportunities": {
+      "title": "Oportunite",
+      "score": {
+        "title": "Score maa",
+        "occasions": "Occasions",
+        "new": "Kesɗo"
+      },
+      "tabs": {
+        "saved": "Saved occasions",
+        "promotions": "Promotions",
+        "airports": "Airports",
+        "reservations": "Reservations",
+        "events": "Events"
+      },
+      "labels": {
+        "savedCount": "Saved occasions ({{count}})",
+        "platformIos": "iOS",
+        "platformAndroid": "Android",
+        "footer": "{{platform}} • MMD Driver Opportunities",
+        "noneForDay": "Alaa opportunity e ndee ñalnde e ndee tab."
+      },
+      "actions": {
+        "save": "Danndu",
+        "saved": "Danndaama ✅",
+        "remove": "Momtaama ✅",
+        "join": "Naat",
+        "joined": "Naatii ✅",
+        "see": "Yiy",
+        "activate": "Huutoro"
+      },
+      "pill": {
+        "joined": "Naatii ✅",
+        "saved": "Danndaama",
+        "soon": "Soon",
+        "recommended": "Recommended",
+        "boost": "Boost",
+        "promo": "Promo"
+      },
+      "alerts": {
+        "savedTitle": "Danndaama ✅",
+        "savedBody": "Ɓeydaama: {{title}}",
+        "removedTitle": "Momtaama ✅",
+        "removedBody": "Momtaama: {{title}}",
+        "loginRequiredTitle": "Login ena wajibi",
+        "loginRequiredBody": "Log in ngam naatude."
+      },
+      "reminder": {
+        "title": "Opportunity reminder ⏰",
+        "body": "{{title}} • fuɗɗata e 30 minutes"
+      }
+    },
+
+    "accountScreen": {
+      "title": "Konto driver",
+      "subtitle": "Mootor, dokimaaɗe, payout, status (guided).",
+      "onboardingTitle": "Onboarding (guided)",
+      "finalizeNow": "Timmin ɗoo",
+      "transportTitle": "Type transport",
+      "accountTitle": "Konto",
+      "nameLabel": "Innde",
+      "phoneLabel": "Phone",
+      "vehicleTitle": "Mootor",
+      "brandLabel": "Brand",
+      "modelLabel": "Model",
+      "yearLabel": "Hitaande",
+      "colorLabel": "Noorndu (optional)",
+      "plateLabel": "Plaque",
+      "bikeSelectedTitle": "Bike suɓaama ✅",
+      "bikeSelectedBody": "Alaa license, plate, insurance walla registration wajibi.",
+      "statusTitle": "Xaalis",
+      "docsLabel": "Dokimaaɗe:",
+      "docsBikeOk": "✅ Wonaa wajibi (Bike)",
+      "docsVerified": "✅ Verified",
+      "docsPending": "⏳ Pending",
+      "payoutLabel": "Payout:",
+      "payoutOk": "✅ Teeltaama",
+      "payoutNo": "❌ Wonaa teeltaama",
+      "onlineLabel": "Online:",
+      "onlineYes": "✅ Eey",
+      "onlineNo": "❌ Alaa",
+      "goOnline": "Wattude online",
+      "goOffline": "Wattude offline",
+      "saveBtn": "Danndu",
+      "savingEllipsis": "...",
+      "loading": "Nana loowa…",
+      "loginTitle": "Login",
+      "loginBody": "Log in ɗoo.",
+      "saveOkTitle": "OK",
+      "saveOkBody": "Danndaama ✅",
+      "saveProfilesFailed": "Horiima danndude profile (profiles).",
+      "saveDriverProfilesFailed": "Horiima danndude driver profile (driver_profiles).",
+      "toggleOnlineFailed": "Horiima waylude online status.",
+      "completeTitle": "Complete",
+      "completeBody": "Timmin ndee fannu, ndee danndu.",
+      "docsTitle": "Dokimaaɗe",
+      "docsBikeBody": "Wonaa wajibi e Bike.",
+      "docsWaitBody": "Nana wadi admin verification.",
+      "payoutTitle": "Payout",
+      "payoutBody": "Teeltu payouts ngam earnings.",
+      "toCompleteTitle": "Ko timminde",
+      "allComplete": "Fow timminaama ✅"
+    },
+
+    "benefits": {
+      "actions": {
+        "activate": "Huutoro",
+        "help": "Ballal",
+        "refresh": "Hesɗitin",
+        "refreshing": "Nana hesɗitina..."
+      },
+      "alert": {
+        "boostSelected": { "title": "Boost suɓaama ✅" },
+        "help": { "title": "Ballal" }
+      },
+      "badge": {
+        "bonusDollar": "Bonus $",
+        "boost": "Boost",
+        "boostPercent": "Boost %",
+        "claim": "Heɓ",
+        "claimed": "Heɓaama",
+        "earned": "Heɓaama",
+        "inProgress": "Nana e ɗoo"
+      },
+      "boostSubtitle": {
+        "timeWindow": "Boost ena woodi e waktu keewal."
+      },
+      "empty": {
+        "activeBoost": "Alaa boost active.",
+        "availableBoosts": "Alaa boost available.",
+        "bonusPeriod": "Alaa bonus e ndee periode.",
+        "challenges": "Alaa challenge tawo."
+      },
+      "expires": "Expire:",
+      "header": {
+        "subtitle": "Bonuses & boosts",
+        "title": "Benefits"
+      },
+      "loading": "Nana loowa…",
+      "sections": {
+        "activeBoost": "Boost active",
+        "availableBoosts": "Boosts available",
+        "bonus": "Bonus",
+        "challenges": "Challenges"
+      },
+      "summary": {
+        "bonusEarned": "Bonuses heɓaama",
+        "deliveryPlusBonus": "(Deliveries + bonuses)",
+        "events": "Events:",
+        "payoutEstimated": "Payout estimate"
+      }
+    },
+
+    "opps": {
+      "actions": {
+        "activate": "Huutoro",
+        "join": "Naat",
+        "joined": "Naatii ✅",
+        "save": "Danndu",
+        "saved": "Danndaama ✅",
+        "view": "Yiy"
+      },
+      "alerts": {
+        "joinedBody": "Registration confirmed • {{title}}",
+        "loginToJoin": "Log in ngam naatude.",
+        "removedBody": "Momtaama: {{title}}",
+        "removedTitle": "Momtaama ✅",
+        "savedBody": "Ɓeydaama: {{title}}",
+        "savedTitle": "Danndaama ✅"
+      },
+      "demo": {
+        "bkEvent": {
+          "distance": "Event area",
+          "subtitle": "Hebu e demand mawni e ndee area.",
+          "title": "Event: demand mawni e Brooklyn"
+        },
+        "boost": {
+          "distance": "Airport area",
+          "subtitle": "Boost+ • Trips tan",
+          "title": "Heɓ +$4.50 ɓeydu e kila trip"
+        },
+        "jfk": {
+          "distance": "Airport zone",
+          "subtitle": "Jooɗu ɗoo mbere peak jooɗii.",
+          "title": "JFK zone: demand mawni"
+        },
+        "lga": {
+          "distance": "7.4 mi away",
+          "subtitle": "Earnings estimate mawni",
+          "title": "Max earnings e LGA"
+        },
+        "night": {
+          "distance": "Areas suɓaande",
+          "subtitle": "Ena valid e woɗnde areas.",
+          "title": "Bonus night: +$2.00 e trip"
+        },
+        "resMorning": {
+          "distance": "Radius: 3–5 miles",
+          "subtitle": "Huutoro reservations ngam ɗaɓɓude trips.",
+          "title": "Morning reservations block"
+        }
+      },
+      "empty": "Alaa opportunity e ndee ñalnde e ndee tab.",
+      "footer": "{{platform}} • MMD Driver Opportunities",
+      "notifs": {
+        "channelName": "MMD Opportunities",
+        "reminderBody": "{{title}} • fuɗɗata e 30 minutes",
+        "reminderTitle": "Opportunity reminder ⏰"
+      },
+      "pill": {
+        "joined": "Naatii ✅",
+        "saved": "Danndaama"
+      },
+      "rating": { "new": "Kesɗo" },
+      "scoreCard": {
+        "badge": "Opportunities",
+        "title": "Score maa"
+      },
+      "tabs": {
+        "airports": "Airports",
+        "events": "Events",
+        "promotions": "Promotions",
+        "reservations": "Reservations",
+        "savedWithCount": "Saved opportunities ({{count}})"
+      },
+      "tags": {
+        "boost": "Boost",
+        "new": "Kesɗo",
+        "promo": "Promo",
+        "recommended": "Recommended",
+        "soon": "Soon"
+      },
+      "title": "Oportunite"
+    },
+
+    "referrals": {
+      "deliveriesLabel": "🍔 Deliveries",
+      "footer": "MMD Referral • Driver",
+      "header": { "title": "Invite yimɓe" },
+      "headline": { "noProgram": "Invite yimɓe maa" },
+      "inviteNow": "Invite",
+      "modal": {
+        "allRewardsTitle": "Rewards fow",
+        "inviteNow": "Invite jooni",
+        "summaryTitle": "📌 Summary"
+      },
+      "myCodeLabel": "Code maa",
+      "ridesLabel": "🚗 Rides",
+      "shareError": "Horiima udditde sharing.",
+      "shareSubject": "Invite MMD Driver",
+      "status": {
+        "earned": "A heɓii",
+        "invited": "Invited",
+        "title": "Status"
+      }
+    },
+
+    "wallet": {
+      "available": {
+        "cashoutButton": "Cash out",
+        "lastCashout": "Cash out ɓooyii",
+        "title": "Available",
+        "rules": "Minimum cash out: {{min}} • 1 cash out / day"
+      },
+      "cashout": {
+        "requestError": "Horiima naatnude cash out request.",
+        "runtimeError": "Juume e cash out.",
+        "title": "Cash out"
+      },
+      "cashoutConfirm": {
+        "title": "Instant cash out",
+        "body": "Aɗa cash out full balance maa: {{amount}}.\n\nRappel: minimum {{min}} • once per day."
+      },
+      "cashoutRequested": {
+        "title": "Cash out ɗaɓɓaama",
+        "body": "Cash out scheduled: {{amount}}."
+      },
+      "cashoutUnavailable": {
+        "body": "Cash out unavailable.",
+        "title": "Cash out unavailable"
+      },
+      "cashoutReason": {
+        "needStripe": "Huutoro Stripe payouts ngam cash out.",
+        "alreadyToday": "A cash-outii hannde. Eto kadi janngo.",
+        "min": "Minimum cash out: {{min}}."
+      },
+      "debug": { "driver": "Driver" },
+      "header": { "title": "Wallet" },
+      "loadError": "Horiima loowde wallet.",
+      "pending": {
+        "title": "Pending",
+        "desc": "Cash outs e ɗoo (scheduled / processing)"
+      },
+      "stripe": {
+        "activateButton": "Huutoro Stripe",
+        "activateDesc": "Teeltu Stripe ngam heɓde payouts maa.",
+        "activateTitle": "Huutoro payouts",
+        "startError": "Horiima fuɗɗa onboarding Stripe.",
+        "title": "Stripe"
+      },
+      "title": "Earnings"
+    }
+  },
+
+  "restaurant": {
+    "menu": {
+      "loading": "Nana loowa…",
+      "errors": {
+        "accountRequired": "❌ Konto restaurant ena wajibi"
+      },
+      "alerts": {
+        "errorTitle": "Juume",
+        "permissionTitle": "Permission ena wajibi",
+        "permissionPhotosBody": "Naatnu access to photos.",
+        "invalidImageUri": "Foto moƴƴaaka (uri laata).",
+        "imageNotUploaded": "Foto uploadiaka. Yeeɓ Storage policies bucket:",
+        "uploadFailed": "Upload horiima",
+        "deleteFailed": "Delete horiima",
+        "updateFailed": "Update horiima."
+      },
+      "categories": {
+        "title": "Categories",
+        "placeholder": "e.g. Pizzas, Drinks, Snacks...",
+        "nameRequired": "Innde category ena wajibi",
+        "empty": "Alaa categories tawo.",
+        "uncategorized": "Uncategorized"
+      },
+      "header": {
+        "title": "Menu / Items",
+        "earnings": "Earnings"
+      },
+      "actions": {
+        "add": "Ɓeydu",
+        "edit": "Waylu",
+        "delete": "Momtu"
+      },
+      "items": {
+        "addTitle": "Ɓeydu item",
+        "categoryLabel": "Category",
+        "selectionLabel": "Selection:",
+        "nameLabel": "Innde",
+        "descriptionLabel": "Description",
+        "priceLabel": "Price (e.g. 12.99)",
+        "currencyLabel": "Currency",
+        "imageLabel": "Foto",
+        "chooseImage": "Suɓu foto",
+        "changeImage": "Waylu foto",
+        "positionLabel": "Position (optional)",
+        "positionPlaceholder": "e.g. 1",
+        "availableLabel": "Available",
+        "addButton": "Ɓeydu item",
+        "nameRequired": "Innde ena wajibi",
+        "invalidPrice": "Price moƴƴaaka",
+        "noPhoto": "Alaa foto",
+        "available": "✅ Available",
+        "unavailable": "⛔ Unavailable",
+        "pricePrefix": "💰"
+      },
+      "list": {
+        "title": "Menu maa"
+      },
+      "edit": {
+        "title": "Waylu item"
+      }
+    },
+    "setup": {
+      "title": "Profil restaurant",
+      "fields": {
+        "restaurantName": "Innde restaurant",
+        "phone": "Phone",
+        "address": "Address",
+        "city": "City",
+        "postalCode": "Postal code",
+        "cuisineType": "Cuisine type",
+        "description": "Description"
+      },
+      "options": {
+        "delivery": "Delivery",
+        "pickup": "Pickup",
+        "dineIn": "Dine-in"
+      },
+      "actions": {
+        "save": "Danndu profil restaurant am"
+      },
+      "alerts": {
+        "errorTitle": "Juume",
+        "notLoggedIn": "Alaa login",
+        "successTitle": "OK",
+        "successBody": "Profil neldaama. Nana wadi admin approval."
+      }
+    },
+    "auth": {
+      "actions": {
+        "signIn": "Login",
+        "signUp": "Sos konto",
+        "switchToLogin": "Mi jogii konto",
+        "switchToSignup": "Sos konto"
+      },
+      "debug": {
+        "help": "So a jogii juume, jokkondir e support.",
+        "title": "Ballal"
+      },
+      "errors": {
+        "emailRequired": "Email ena wajibi",
+        "passwordRequired": "Password ena wajibi",
+        "signinFailed": "Login horiima",
+        "signupFailed": "Signup horiima",
+        "unknown": "Huunde juume waɗi"
+      },
+      "fields": {
+        "email": "Email",
+        "password": "Password"
+      },
+      "placeholders": {
+        "email": "e.g. restaurant@email.com"
+      },
+      "success": {
+        "createdAndSignedIn": "Konto sosaama, loginaama ✅",
+        "signedIn": "Loginaama ✅"
+      },
+      "titleLogin": "Login restaurant",
+      "titleSignup": "Signup restaurant"
+    },
+    "gate": {
+      "loading": "Nana loowa…"
+    }
+  }
+}
