@@ -1,8 +1,9 @@
-export default function SuccessPage() {
+export default function StripeSuccessPage() {
   return (
-    <main style={{ padding: 40 }}>
-      <h1>Paiement réussi ✅</h1>
+    <div style={{ padding: 40 }}>
+      <h1>✅ Paiement réussi</h1>
       <p>Merci pour votre commande.</p>
-    </main>
+      <p>Votre paiement a bien été confirmé.</p>
+    </div>
   );
 }
