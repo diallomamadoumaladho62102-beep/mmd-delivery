@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type ViewState = "idle" | "loading" | "success" | "error";
@@ -12,7 +11,6 @@ function isValidEmail(value: string): boolean {
 }
 
 export default function AuthPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [state, setState] = useState<ViewState>("idle");
@@ -90,39 +88,43 @@ export default function AuthPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 py-10">
-      <div className="mx-auto flex min-h-[80vh] w-full max-w-5xl items-center justify-center">
-        <div className="grid w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xl md:grid-cols-2">
-          <div className="flex flex-col justify-center bg-gray-900 px-8 py-10 text-white md:px-10">
-            <Image
-              src="/brand/mmd-logo.png"
-              alt="MMD Delivery Logo"
-              width={90}
-              height={90}
-              priority
-              className="mb-6 h-auto w-auto"
-            />
+    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-white to-gray-50 px-4 py-6 md:px-6 md:py-10">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-center">
+        <div className="grid w-full overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-xl md:min-h-[640px] md:grid-cols-2">
+          <section className="flex flex-col justify-center bg-gray-900 px-6 py-8 text-white md:px-10 md:py-12">
+            <div className="mb-6">
+              <Image
+                src="/brand/mmd-logo.png"
+                alt="MMD Delivery Logo"
+                width={84}
+                height={84}
+                priority
+                className="h-20 w-20 object-contain rounded-xl"
+              />
+            </div>
 
-            <h1 className="text-3xl font-bold leading-tight md:text-4xl">
+            <h1 className="text-2xl font-bold leading-tight md:text-4xl">
               Bienvenue sur MMD Delivery
             </h1>
 
-            <p className="mt-4 text-sm text-gray-300 md:text-base">
+            <p className="mt-4 max-w-md text-sm leading-6 text-gray-300 md:text-base">
               Une plateforme moderne pour les clients, les chauffeurs et les restaurants.
             </p>
 
-            <div className="mt-8 space-y-3 text-sm text-gray-300">
+            <div className="mt-8 space-y-3 text-sm text-gray-300 md:text-base">
               <div>Commande rapide</div>
               <div>Suivi en temps réel</div>
               <div>Gestion simple et sécurisée</div>
             </div>
-          </div>
+          </section>
 
-          <div className="flex items-center justify-center px-6 py-10 md:px-10">
+          <section className="flex items-center justify-center px-6 py-8 md:px-10 md:py-12">
             <div className="w-full max-w-md">
               <div className="mb-6">
-                <h2 className="text-2xl font-semibold text-gray-900">Connexion</h2>
-                <p className="mt-2 text-sm text-gray-600">
+                <h2 className="text-2xl font-semibold text-gray-900 md:text-3xl">
+                  Connexion
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-gray-600">
                   Entre ton email pour recevoir un lien magique de connexion.
                 </p>
               </div>
@@ -134,13 +136,18 @@ export default function AuthPage() {
               ) : (
                 <div className="space-y-4">
                   <div>
-                    <label htmlFor="email" className="mb-2 block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="email"
+                      className="mb-2 block text-sm font-medium text-gray-700"
+                    >
                       Email
                     </label>
+
                     <input
                       id="email"
                       type="email"
                       autoComplete="email"
+                      inputMode="email"
                       placeholder="ton.email@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -149,7 +156,7 @@ export default function AuthPage() {
                           void sendMagicLink();
                         }
                       }}
-                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-gray-900"
+                      className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-900 focus:ring-2 focus:ring-gray-200"
                       disabled={state === "loading"}
                     />
                   </div>
@@ -167,19 +174,19 @@ export default function AuthPage() {
 
               {message ? (
                 <div
-                  className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
+                  className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
                     state === "error"
-                      ? "border border-red-200 bg-red-50 text-red-700"
+                      ? "border-red-200 bg-red-50 text-red-700"
                       : state === "success"
-                      ? "border border-green-200 bg-green-50 text-green-700"
-                      : "border border-gray-200 bg-gray-50 text-gray-700"
+                      ? "border-green-200 bg-green-50 text-green-700"
+                      : "border-gray-200 bg-gray-50 text-gray-700"
                   }`}
                 >
                   {message}
                 </div>
               ) : null}
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </main>
