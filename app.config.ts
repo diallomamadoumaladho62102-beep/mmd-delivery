@@ -7,6 +7,12 @@ type AppConfigInput = {
   [key: string]: unknown;
 };
 
+type AppEnv = "development" | "production";
+
+function cleanEnv(value: string | undefined): string {
+  return (value ?? "").trim();
+}
+
 export default ({ config }: { config: AppConfigInput }) => {
   const maybeProcess = globalThis as {
     process?: { env?: Record<string, string | undefined> };
@@ -14,24 +20,40 @@ export default ({ config }: { config: AppConfigInput }) => {
 
   const env = maybeProcess.process?.env ?? {};
 
-  // 🔥 ENV
-  const APP_ENV = env.APP_ENV ?? "development";
+  const APP_ENV: AppEnv =
+    env.APP_ENV === "production" ? "production" : "development";
 
-  // 🔥 API dynamique
+  const EXPO_PUBLIC_API_URL_LOCAL = cleanEnv(env.EXPO_PUBLIC_API_URL_LOCAL);
+  const EXPO_PUBLIC_API_URL_PROD = cleanEnv(env.EXPO_PUBLIC_API_URL_PROD);
+  const EXPO_PUBLIC_SUPABASE_URL = cleanEnv(env.EXPO_PUBLIC_SUPABASE_URL);
+  const EXPO_PUBLIC_SUPABASE_ANON_KEY = cleanEnv(env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+  const EXPO_PUBLIC_MAPBOX_TOKEN = cleanEnv(env.EXPO_PUBLIC_MAPBOX_TOKEN);
+
   const API_URL =
     APP_ENV === "production"
-      ? env.EXPO_PUBLIC_API_URL_PROD
-      : env.EXPO_PUBLIC_API_URL_LOCAL;
+      ? EXPO_PUBLIC_API_URL_PROD
+      : EXPO_PUBLIC_API_URL_LOCAL;
+
+  const existingIos =
+    (config.ios as Record<string, unknown> | undefined) ?? {};
+  const existingAndroid =
+    (config.android as Record<string, unknown> | undefined) ?? {};
+  const existingExtra = config.extra ?? {};
+  const existingInfoPlist =
+    (existingIos.infoPlist as Record<string, unknown> | undefined) ?? {};
 
   return {
     ...config,
 
     name: "MMD Delivery",
     slug: "mmd-delivery",
+    description: "MMD Delivery - Food and delivery platform",
     version: "1.0.0",
+    orientation: "portrait",
     scheme: "mmddelivery",
+    icon: "./assets/icon.png",
+    assetBundlePatterns: ["**/*"],
 
-    // ✅ SPLASH FIX (IMPORTANT)
     splash: {
       image: "./assets/brand/mmd-logo.png",
       resizeMode: "contain",
@@ -39,38 +61,39 @@ export default ({ config }: { config: AppConfigInput }) => {
     },
 
     ios: {
-      ...(config.ios ?? {}),
+      ...existingIos,
       bundleIdentifier: "com.maladho2025.mmddelivery",
+      buildNumber: "1.0.0",
+      supportsTablet: true,
+      infoPlist: {
+        ...existingInfoPlist,
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
 
     android: {
-      ...(config.android ?? {}),
+      ...existingAndroid,
       package: "com.maladho2025.mmddelivery",
+      versionCode: 1,
+      adaptiveIcon: {
+        foregroundImage: "./assets/icon.png",
+        backgroundColor: "#ffffff",
+      },
     },
 
     extra: {
-      ...(config.extra ?? {}),
-
-      // 🔥 ENV
+      ...existingExtra,
       APP_ENV,
 
-      // 🔥 API toujours définie
-      EXPO_PUBLIC_API_URL:
-        API_URL ??
-        env.EXPO_PUBLIC_SUPABASE_URL ??
-        "",
+      // IMPORTANT:
+      // L'app mobile doit appeler ton backend web pour /api/stripe/...
+      // donc on n'utilise PAS Supabase comme fallback ici.
+      EXPO_PUBLIC_API_URL: API_URL || "",
 
-      // 🔥 Supabase (public only)
-      EXPO_PUBLIC_SUPABASE_URL:
-        env.EXPO_PUBLIC_SUPABASE_URL ?? "",
-      EXPO_PUBLIC_SUPABASE_ANON_KEY:
-        env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "",
+      EXPO_PUBLIC_SUPABASE_URL,
+      EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      EXPO_PUBLIC_MAPBOX_TOKEN,
 
-      // 🔥 Mapbox
-      EXPO_PUBLIC_MAPBOX_TOKEN:
-        env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "",
-
-      // 🔥 EAS
       eas: {
         projectId: "127751ea-33ce-4f67-98ce-a9b29a46b838",
       },

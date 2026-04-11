@@ -1,20 +1,28 @@
-# Dev / build
+# Dependencies / caches
 node_modules
 .expo
 .git
-.tools
-.tools_backup
+.vercel
+.vscode
+.DS_Store
+*.log
+dist
+tmp
+
+# Archives / backups
+_archive_mobile
 backup
 Backups*
 **/backup
 **/backups
 **/Backups*
 
-# Exclude monorepo apps
-apps
-
-# Local backend / infra
+# Web / server code not needed for iOS mobile build
+apps/web
+apps/orders
+api
 supabase
 
-# Logs
-*.log
+# Native / build caches
+android/.gradle
+android/app/build
