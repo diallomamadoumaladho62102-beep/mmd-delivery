@@ -688,35 +688,43 @@ export default function AdminRestaurantsPage() {
           </p>
         </header>
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-sm text-slate-500">Total restaurants</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
-              {totalRestaurants}
-            </div>
-          </div>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="text-sm font-medium text-slate-500">
+      Total restaurants
+    </div>
+    <div className="mt-3 text-4xl font-bold text-slate-900">
+      {totalRestaurants}
+    </div>
+  </div>
 
-          <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Approuvés</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
-              {approvedCount}
-            </div>
-          </div>
+  <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
+    <div className="text-sm font-medium text-green-700">
+      Approuvés
+    </div>
+    <div className="mt-3 text-4xl font-bold text-green-900">
+      {approvedCount}
+    </div>
+  </div>
 
-          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">En attente</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
-              {pendingCount}
-            </div>
-          </div>
+  <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
+    <div className="text-sm font-medium text-yellow-700">
+      En attente
+    </div>
+    <div className="mt-3 text-4xl font-bold text-yellow-900">
+      {pendingCount}
+    </div>
+  </div>
 
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Refusés</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
-              {rejectedCount}
-            </div>
-          </div>
-        </section>
+  <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
+    <div className="text-sm font-medium text-red-700">
+      Refusés
+    </div>
+    <div className="mt-3 text-4xl font-bold text-red-900">
+      {rejectedCount}
+    </div>
+  </div>
+</section>
 
         {err && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
