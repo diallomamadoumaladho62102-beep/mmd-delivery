@@ -755,8 +755,8 @@ export default function AdminRestaurantsPage() {
                   )}`}
                 >
                   <div className="space-y-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-2">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                      <div className="min-w-0 flex-1 space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="text-xl font-semibold text-slate-900">
                             {r.restaurant_name}
@@ -775,7 +775,7 @@ export default function AdminRestaurantsPage() {
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2">
                           <p>
                             <span className="font-medium">Contact :</span>{" "}
                             {r.contact_name || "—"}
@@ -815,13 +815,13 @@ export default function AdminRestaurantsPage() {
                         </p>
                       </div>
 
-                      <div className="w-full max-w-sm space-y-3 lg:min-w-[320px]">
+                      <div className="w-full xl:max-w-md">
                         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                           <div className="mb-3 text-sm font-semibold text-slate-900">
                             Actions rapides
                           </div>
 
-                          <div className="flex flex-col gap-3">
+                          <div className="grid grid-cols-2 gap-3">
                             <button
                               type="button"
                               disabled={updatingUserId === r.user_id}
@@ -834,7 +834,7 @@ export default function AdminRestaurantsPage() {
                               className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border border-green-700 bg-green-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {updatingUserId === r.user_id
-                                ? "Validation en cours..."
+                                ? "Validation..."
                                 : "Approuver"}
                             </button>
 
@@ -850,7 +850,7 @@ export default function AdminRestaurantsPage() {
                               className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               {updatingUserId === r.user_id
-                                ? "Traitement en cours..."
+                                ? "Traitement..."
                                 : "Refuser"}
                             </button>
                           </div>
@@ -1003,7 +1003,8 @@ export default function AdminRestaurantsPage() {
                                       ) : (
                                         <div className="space-y-1">
                                           <div className="max-w-xl truncate text-xs text-slate-600">
-                                            {d.file_path || "Fichier indisponible"}
+                                            {d.file_path ||
+                                              "Fichier indisponible"}
                                           </div>
 
                                           {d._signedUrl && (
