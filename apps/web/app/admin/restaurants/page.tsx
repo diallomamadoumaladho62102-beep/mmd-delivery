@@ -689,38 +689,38 @@ export default function AdminRestaurantsPage() {
         </header>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm min-h-[132px] flex flex-col justify-center">
+  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
     <div className="text-sm font-medium leading-none text-slate-500">
       Total restaurants
     </div>
-    <div className="mt-4 text-4xl font-bold leading-none text-slate-900">
+    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-slate-900">
       {totalRestaurants}
     </div>
   </div>
 
-  <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm min-h-[132px] flex flex-col justify-center">
+  <div className="rounded-2xl border border-green-200 bg-green-50 p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
     <div className="text-sm font-medium leading-none text-green-700">
       Approuvés
     </div>
-    <div className="mt-4 text-4xl font-bold leading-none text-green-900">
+    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-green-900">
       {approvedCount}
     </div>
   </div>
 
-  <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm min-h-[132px] flex flex-col justify-center">
+  <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
     <div className="text-sm font-medium leading-none text-yellow-700">
       En attente
     </div>
-    <div className="mt-4 text-4xl font-bold leading-none text-yellow-900">
+    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-yellow-900">
       {pendingCount}
     </div>
   </div>
 
-  <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm min-h-[132px] flex flex-col justify-center">
+  <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
     <div className="text-sm font-medium leading-none text-red-700">
       Refusés
     </div>
-    <div className="mt-4 text-4xl font-bold leading-none text-red-900">
+    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-red-900">
       {rejectedCount}
     </div>
   </div>
@@ -758,7 +758,7 @@ export default function AdminRestaurantsPage() {
               return (
                 <section
                   key={r.user_id}
-                  className={`rounded-2xl border p-5 shadow-sm ${getActionCardClass(
+                  className={`rounded-2xl border p-6 shadow-sm ${getActionCardClass(
                     status
                   )}`}
                 >
@@ -823,7 +823,7 @@ export default function AdminRestaurantsPage() {
                         </p>
                       </div>
 
-                      <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col justify-center">
+                      <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col items-center justify-center text-center">
                         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                           <div className="mb-3 text-sm font-semibold text-slate-900">
                             Actions rapides
