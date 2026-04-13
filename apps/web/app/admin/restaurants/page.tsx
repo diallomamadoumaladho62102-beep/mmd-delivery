@@ -261,6 +261,37 @@ function formatRestaurantAddress(
   return parts.length ? parts.join(", ") : "—";
 }
 
+function getRestaurantInsight(row: RestaurantAdminRow): {
+  label: string;
+  className: string;
+} {
+  const hasDocs = row.documents.length > 0;
+  const hasCoreInfo =
+    Boolean(row.phone) &&
+    Boolean(row.restaurant_email) &&
+    Boolean(row.address) &&
+    Boolean(row.cuisine_type);
+
+  if (!hasDocs) {
+    return {
+      label: "Aucun document reçu",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+
+  if (!hasCoreInfo) {
+    return {
+      label: "Profil incomplet",
+      className: "border-yellow-200 bg-yellow-50 text-yellow-700",
+    };
+  }
+
+  return {
+    label: "Prêt pour vérification",
+    className: "border-green-200 bg-green-50 text-green-700",
+  };
+}
+
 async function buildSignedDocument(
   row: Omit<RestaurantDocumentRow, "_signedUrl" | "_isImage">
 ): Promise<RestaurantDocumentRow> {
@@ -420,35 +451,44 @@ export default function AdminRestaurantsPage() {
           docsByUser.set(row.user_id, existing);
         });
 
-        const merged: RestaurantAdminRow[] = typedRestaurantProfiles.map((r) => {
-          const profileInfo = profileById.get(r.user_id) ?? {
-            full_name: null,
-            email: null,
-          };
+        const merged: RestaurantAdminRow[] = typedRestaurantProfiles
+          .map((r) => {
+            const profileInfo = profileById.get(r.user_id) ?? {
+              full_name: null,
+              email: null,
+            };
 
-          return {
-            user_id: r.user_id,
-            restaurant_name: r.restaurant_name?.trim() || "Restaurant sans nom",
-            contact_name: profileInfo.full_name,
-            contact_email: profileInfo.email,
-            restaurant_email: r.email ?? null,
-            phone: r.phone ?? null,
-            address: r.address ?? null,
-            city: r.city ?? null,
-            postal_code: r.postal_code ?? null,
-            cuisine_type: r.cuisine_type ?? null,
-            license_number: r.license_number ?? null,
-            tax_id: r.tax_id ?? null,
-            website: r.website ?? null,
-            instagram: r.instagram ?? null,
-            facebook: r.facebook ?? null,
-            offers_delivery: Boolean(r.offers_delivery),
-            offers_pickup: Boolean(r.offers_pickup),
-            offers_dine_in: Boolean(r.offers_dine_in),
-            opening_hours: normalizeOpeningHours(r.opening_hours),
-            documents: sortDocuments(docsByUser.get(r.user_id) ?? []),
-          };
-        });
+            return {
+              user_id: r.user_id,
+              restaurant_name:
+                r.restaurant_name?.trim() || "Restaurant sans nom",
+              contact_name: profileInfo.full_name,
+              contact_email: profileInfo.email,
+              restaurant_email: r.email ?? null,
+              phone: r.phone ?? null,
+              address: r.address ?? null,
+              city: r.city ?? null,
+              postal_code: r.postal_code ?? null,
+              cuisine_type: r.cuisine_type ?? null,
+              license_number: r.license_number ?? null,
+              tax_id: r.tax_id ?? null,
+              website: r.website ?? null,
+              instagram: r.instagram ?? null,
+              facebook: r.facebook ?? null,
+              offers_delivery: Boolean(r.offers_delivery),
+              offers_pickup: Boolean(r.offers_pickup),
+              offers_dine_in: Boolean(r.offers_dine_in),
+              opening_hours: normalizeOpeningHours(r.opening_hours),
+              documents: sortDocuments(docsByUser.get(r.user_id) ?? []),
+            };
+          })
+          .sort((a, b) => {
+            const aPriority =
+              a.documents.length === 0 ? 0 : !a.phone || !a.address ? 1 : 2;
+            const bPriority =
+              b.documents.length === 0 ? 0 : !b.phone || !b.address ? 1 : 2;
+            return aPriority - bPriority;
+          });
 
         if (!cancelledRef?.cancelled) {
           setRows(merged);
@@ -682,6 +722,7 @@ export default function AdminRestaurantsPage() {
               const status = getGlobalStatus(r.documents);
               const isApproved = status === "approved";
               const isRejected = status === "rejected";
+              const insight = getRestaurantInsight(r);
 
               const websiteHref = safeExternalHref(r.website);
               const instagramHref = safeExternalHref(r.instagram);
@@ -694,10 +735,30 @@ export default function AdminRestaurantsPage() {
                   className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">
-                        {r.restaurant_name}
-                      </h2>
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-semibold text-slate-900">
+                          {r.restaurant_name}
+                        </h2>
+                        <span
+                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+                            isApproved
+                              ? "border-green-200 bg-green-100 text-green-800"
+                              : isRejected
+                              ? "border-red-200 bg-red-100 text-red-800"
+                              : "border-yellow-200 bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {statusLabel(status)}
+                        </span>
+                      </div>
+
+                      <div
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${insight.className}`}
+                      >
+                        {insight.label}
+                      </div>
+
                       <p className="text-sm text-slate-700">
                         Contact : {r.contact_name || "—"}
                       </p>
@@ -710,20 +771,6 @@ export default function AdminRestaurantsPage() {
                       <p className="text-sm text-slate-600">
                         📞 {r.phone || "Téléphone inconnu"}
                       </p>
-                    </div>
-
-                    <div>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
-                          isApproved
-                            ? "border-green-200 bg-green-100 text-green-800"
-                            : isRejected
-                            ? "border-red-200 bg-red-100 text-red-800"
-                            : "border-yellow-200 bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {statusLabel(status)}
-                      </span>
                     </div>
                   </div>
 
@@ -946,7 +993,7 @@ export default function AdminRestaurantsPage() {
                         onClick={() =>
                           void updateRestaurantStatus(r.user_id, "approved")
                         }
-                        className="block w-full rounded-xl bg-green-600 px-4 py-3 text-center text-base font-semibold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex min-h-[52px] w-full items-center justify-center rounded-xl border border-green-700 bg-green-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {updatingUserId === r.user_id
                           ? "Validation en cours..."
@@ -959,7 +1006,7 @@ export default function AdminRestaurantsPage() {
                         onClick={() =>
                           void updateRestaurantStatus(r.user_id, "rejected")
                         }
-                        className="block w-full rounded-xl bg-red-600 px-4 py-3 text-center text-base font-semibold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex min-h-[52px] w-full items-center justify-center rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {updatingUserId === r.user_id
                           ? "Traitement en cours..."
