@@ -292,6 +292,32 @@ function getRestaurantInsight(row: RestaurantAdminRow): {
   };
 }
 
+function getPriorityScore(row: RestaurantAdminRow): number {
+  const status = getGlobalStatus(row.documents);
+  if (status === "pending" && row.documents.length === 0) return 0;
+  if (
+    status === "pending" &&
+    (!row.phone || !row.address || !row.restaurant_email)
+  ) {
+    return 1;
+  }
+  if (status === "pending") return 2;
+  if (status === "rejected") return 3;
+  return 4;
+}
+
+function getActionCardClass(status: RestaurantDocStatus): string {
+  switch (status) {
+    case "approved":
+      return "border-green-200 bg-green-50";
+    case "rejected":
+      return "border-red-200 bg-red-50";
+    case "pending":
+    default:
+      return "border-slate-200 bg-white";
+  }
+}
+
 async function buildSignedDocument(
   row: Omit<RestaurantDocumentRow, "_signedUrl" | "_isImage">
 ): Promise<RestaurantDocumentRow> {
@@ -482,13 +508,7 @@ export default function AdminRestaurantsPage() {
               documents: sortDocuments(docsByUser.get(r.user_id) ?? []),
             };
           })
-          .sort((a, b) => {
-            const aPriority =
-              a.documents.length === 0 ? 0 : !a.phone || !a.address ? 1 : 2;
-            const bPriority =
-              b.documents.length === 0 ? 0 : !b.phone || !b.address ? 1 : 2;
-            return aPriority - bPriority;
-          });
+          .sort((a, b) => getPriorityScore(a) - getPriorityScore(b));
 
         if (!cancelledRef?.cancelled) {
           setRows(merged);
@@ -720,8 +740,6 @@ export default function AdminRestaurantsPage() {
           <div className="space-y-4">
             {rows.map((r) => {
               const status = getGlobalStatus(r.documents);
-              const isApproved = status === "approved";
-              const isRejected = status === "rejected";
               const insight = getRestaurantInsight(r);
 
               const websiteHref = safeExternalHref(r.website);
@@ -732,287 +750,322 @@ export default function AdminRestaurantsPage() {
               return (
                 <section
                   key={r.user_id}
-                  className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                  className={`rounded-2xl border p-5 shadow-sm ${getActionCardClass(
+                    status
+                  )}`}
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-lg font-semibold text-slate-900">
-                          {r.restaurant_name}
-                        </h2>
-                        <span
-                          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
-                            isApproved
-                              ? "border-green-200 bg-green-100 text-green-800"
-                              : isRejected
-                              ? "border-red-200 bg-red-100 text-red-800"
-                              : "border-yellow-200 bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {statusLabel(status)}
-                        </span>
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-xl font-semibold text-slate-900">
+                            {r.restaurant_name}
+                          </h2>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${badgeClassForStatus(
+                              status
+                            )}`}
+                          >
+                            {statusLabel(status)}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${insight.className}`}
+                          >
+                            {insight.label}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2 xl:grid-cols-4">
+                          <p>
+                            <span className="font-medium">Contact :</span>{" "}
+                            {r.contact_name || "—"}
+                          </p>
+                          <p>
+                            <span className="font-medium">Téléphone :</span>{" "}
+                            {r.phone || "—"}
+                          </p>
+                          <p className="break-all">
+                            <span className="font-medium">Email :</span>{" "}
+                            {r.restaurant_email || r.contact_email || "—"}
+                          </p>
+                          <p>
+                            <span className="font-medium">Cuisine :</span>{" "}
+                            {r.cuisine_type || "—"}
+                          </p>
+                        </div>
+
+                        <p className="text-sm text-slate-600">
+                          <span className="font-medium text-slate-700">
+                            Adresse :
+                          </span>{" "}
+                          {formatRestaurantAddress(r)}
+                        </p>
+
+                        <p className="text-sm text-slate-600">
+                          <span className="font-medium text-slate-700">
+                            Options :
+                          </span>{" "}
+                          {[
+                            r.offers_delivery ? "Livraison" : null,
+                            r.offers_pickup ? "À emporter" : null,
+                            r.offers_dine_in ? "Sur place" : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" • ") || "—"}
+                        </p>
                       </div>
 
-                      <div
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${insight.className}`}
-                      >
-                        {insight.label}
+                      <div className="w-full max-w-sm space-y-3 lg:min-w-[320px]">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <div className="mb-3 text-sm font-semibold text-slate-900">
+                            Actions rapides
+                          </div>
+
+                          <div className="flex flex-col gap-3">
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateRestaurantStatus(
+                                  r.user_id,
+                                  "approved"
+                                )
+                              }
+                              className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border border-green-700 bg-green-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Validation en cours..."
+                                : "Approuver"}
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateRestaurantStatus(
+                                  r.user_id,
+                                  "rejected"
+                                )
+                              }
+                              className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Traitement en cours..."
+                                : "Refuser"}
+                            </button>
+                          </div>
+                        </div>
                       </div>
-
-                      <p className="text-sm text-slate-700">
-                        Contact : {r.contact_name || "—"}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        Email contact : {r.contact_email || "—"}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        Email restaurant : {r.restaurant_email || "—"}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        📞 {r.phone || "Téléphone inconnu"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-                    <div className="space-y-1">
-                      <p>
-                        <span className="font-medium">Adresse : </span>
-                        {formatRestaurantAddress(r)}
-                      </p>
-                      <p>
-                        <span className="font-medium">Type de cuisine : </span>
-                        {r.cuisine_type || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Options : </span>
-                        {[
-                          r.offers_delivery ? "Livraison" : null,
-                          r.offers_pickup ? "À emporter" : null,
-                          r.offers_dine_in ? "Sur place" : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" • ") || "—"}
-                      </p>
                     </div>
 
-                    <div className="space-y-1">
-                      <p>
-                        <span className="font-medium">Licence : </span>
-                        {r.license_number || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Tax ID (EIN) : </span>
-                        {r.tax_id || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Site web : </span>
-                        {websiteHref ? (
-                          <a
-                            href={websiteHref}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 underline"
-                          >
-                            {r.website}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </p>
-                      <p>
-                        <span className="font-medium">Instagram : </span>
-                        {instagramHref ? (
-                          <a
-                            href={instagramHref}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 underline"
-                          >
-                            Profil
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </p>
-                      <p>
-                        <span className="font-medium">Facebook : </span>
-                        {facebookHref ? (
-                          <a
-                            href={facebookHref}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 underline"
-                          >
-                            Page
-                          </a>
-                        ) : (
-                          "—"
-                        )}
-                      </p>
-                    </div>
-                  </div>
+                    <details className="rounded-2xl border border-slate-200 bg-white open:shadow-sm">
+                      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-900">
+                        Voir les détails
+                      </summary>
 
-                  {r.opening_hours && (
-                    <div className="space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-700">
-                      <p className="text-sm font-semibold text-slate-900">
-                        Horaires d’ouverture
-                      </p>
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-                        {(Object.keys(DAY_LABELS) as DayKey[]).map((day) => {
-                          const slot = r.opening_hours?.[day];
-                          return (
-                            <div key={day}>
-                              <span className="font-medium">
-                                {DAY_LABELS[day]} :{" "}
-                              </span>
-                              {slot && slot.open && slot.close
-                                ? `${slot.open} – ${slot.close}`
-                                : "—"}
+                      <div className="space-y-5 border-t border-slate-200 px-4 py-4">
+                        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+                          <div className="space-y-2">
+                            <p>
+                              <span className="font-medium">Licence :</span>{" "}
+                              {r.license_number || "—"}
+                            </p>
+                            <p>
+                              <span className="font-medium">Tax ID (EIN) :</span>{" "}
+                              {r.tax_id || "—"}
+                            </p>
+                            <p>
+                              <span className="font-medium">Email contact :</span>{" "}
+                              {r.contact_email || "—"}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <p>
+                              <span className="font-medium">Site web :</span>{" "}
+                              {websiteHref ? (
+                                <a
+                                  href={websiteHref}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 underline"
+                                >
+                                  {r.website}
+                                </a>
+                              ) : (
+                                "—"
+                              )}
+                            </p>
+                            <p>
+                              <span className="font-medium">Instagram :</span>{" "}
+                              {instagramHref ? (
+                                <a
+                                  href={instagramHref}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 underline"
+                                >
+                                  Profil
+                                </a>
+                              ) : (
+                                "—"
+                              )}
+                            </p>
+                            <p>
+                              <span className="font-medium">Facebook :</span>{" "}
+                              {facebookHref ? (
+                                <a
+                                  href={facebookHref}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-blue-600 underline"
+                                >
+                                  Page
+                                </a>
+                              ) : (
+                                "—"
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        {r.opening_hours && (
+                          <div className="space-y-2 text-xs text-slate-700">
+                            <p className="text-sm font-semibold text-slate-900">
+                              Horaires d’ouverture
+                            </p>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                              {(Object.keys(DAY_LABELS) as DayKey[]).map(
+                                (day) => {
+                                  const slot = r.opening_hours?.[day];
+                                  return (
+                                    <div key={day}>
+                                      <span className="font-medium">
+                                        {DAY_LABELS[day]} :{" "}
+                                      </span>
+                                      {slot && slot.open && slot.close
+                                        ? `${slot.open} – ${slot.close}`
+                                        : "—"}
+                                    </div>
+                                  );
+                                }
+                              )}
                             </div>
-                          );
-                        })}
+                          </div>
+                        )}
+
+                        <div className="space-y-3 text-sm">
+                          <p className="font-semibold text-slate-900">
+                            Documents
+                          </p>
+
+                          {r.documents.length === 0 ? (
+                            <p className="text-slate-600">
+                              Aucun document envoyé pour l’instant.
+                            </p>
+                          ) : (
+                            <ul className="space-y-3">
+                              {r.documents.map((d) => (
+                                <li
+                                  key={d.id}
+                                  className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                                >
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="space-y-2">
+                                      <div className="text-xs font-semibold text-slate-700">
+                                        {labelForDocType(d.doc_type)}
+                                      </div>
+
+                                      {d._isImage && d._signedUrl ? (
+                                        <div className="flex items-center gap-3">
+                                          <img
+                                            src={d._signedUrl}
+                                            alt={labelForDocType(d.doc_type)}
+                                            className="h-20 w-20 rounded border bg-white object-cover"
+                                          />
+                                          <div className="space-y-1">
+                                            <a
+                                              href={d._signedUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-xs text-blue-600 underline"
+                                            >
+                                              Ouvrir
+                                            </a>
+                                            <div className="text-xs text-slate-500">
+                                              Créé : {formatDate(d.created_at)}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                              Revu : {formatDate(d.reviewed_at)}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-1">
+                                          <div className="max-w-xl truncate text-xs text-slate-600">
+                                            {d.file_path || "Fichier indisponible"}
+                                          </div>
+
+                                          {d._signedUrl && (
+                                            <a
+                                              href={d._signedUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-xs text-blue-600 underline"
+                                            >
+                                              Ouvrir
+                                            </a>
+                                          )}
+
+                                          <div className="text-xs text-slate-500">
+                                            Créé : {formatDate(d.created_at)}
+                                          </div>
+                                          <div className="text-xs text-slate-500">
+                                            Revu : {formatDate(d.reviewed_at)}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {d.review_notes ? (
+                                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                                          {d.review_notes}
+                                        </div>
+                                      ) : null}
+                                    </div>
+
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
+                                        d.status
+                                      )}`}
+                                    >
+                                      {statusLabel(d.status)}
+                                    </span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-slate-700">
+                            Note admin
+                          </label>
+                          <textarea
+                            value={reviewNote}
+                            onChange={(e) =>
+                              setNoteDrafts((prev) => ({
+                                ...prev,
+                                [r.user_id]: e.target.value,
+                              }))
+                            }
+                            rows={3}
+                            placeholder="Ajouter une note interne pour cette review..."
+                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-3 border-t border-slate-200 pt-4 text-sm">
-                    <p className="font-semibold text-slate-900">Documents</p>
-
-                    {r.documents.length === 0 ? (
-                      <p className="text-slate-600">
-                        Aucun document envoyé pour l’instant.
-                      </p>
-                    ) : (
-                      <ul className="space-y-3">
-                        {r.documents.map((d) => (
-                          <li
-                            key={d.id}
-                            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-                          >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="space-y-2">
-                                <div className="text-xs font-semibold text-slate-700">
-                                  {labelForDocType(d.doc_type)}
-                                </div>
-
-                                {d._isImage && d._signedUrl ? (
-                                  <div className="flex items-center gap-3">
-                                    <img
-                                      src={d._signedUrl}
-                                      alt={labelForDocType(d.doc_type)}
-                                      className="h-20 w-20 rounded border bg-white object-cover"
-                                    />
-                                    <div className="space-y-1">
-                                      <a
-                                        href={d._signedUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-xs text-blue-600 underline"
-                                      >
-                                        Ouvrir
-                                      </a>
-                                      <div className="text-xs text-slate-500">
-                                        Créé : {formatDate(d.created_at)}
-                                      </div>
-                                      <div className="text-xs text-slate-500">
-                                        Revu : {formatDate(d.reviewed_at)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    <div className="max-w-xl truncate text-xs text-slate-600">
-                                      {d.file_path || "Fichier indisponible"}
-                                    </div>
-
-                                    {d._signedUrl && (
-                                      <a
-                                        href={d._signedUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-xs text-blue-600 underline"
-                                      >
-                                        Ouvrir
-                                      </a>
-                                    )}
-
-                                    <div className="text-xs text-slate-500">
-                                      Créé : {formatDate(d.created_at)}
-                                    </div>
-                                    <div className="text-xs text-slate-500">
-                                      Revu : {formatDate(d.reviewed_at)}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {d.review_notes ? (
-                                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                    {d.review_notes}
-                                  </div>
-                                ) : null}
-                              </div>
-
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
-                                  d.status
-                                )}`}
-                              >
-                                {statusLabel(d.status)}
-                              </span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 border-t border-slate-200 pt-4">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Note admin
-                      </label>
-                      <textarea
-                        value={reviewNote}
-                        onChange={(e) =>
-                          setNoteDrafts((prev) => ({
-                            ...prev,
-                            [r.user_id]: e.target.value,
-                          }))
-                        }
-                        rows={3}
-                        placeholder="Ajouter une note interne pour cette review..."
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-3 pt-3">
-                      <button
-                        type="button"
-                        disabled={updatingUserId === r.user_id}
-                        onClick={() =>
-                          void updateRestaurantStatus(r.user_id, "approved")
-                        }
-                        className="inline-flex min-h-[52px] w-full items-center justify-center rounded-xl border border-green-700 bg-green-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {updatingUserId === r.user_id
-                          ? "Validation en cours..."
-                          : "Approuver"}
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={updatingUserId === r.user_id}
-                        onClick={() =>
-                          void updateRestaurantStatus(r.user_id, "rejected")
-                        }
-                        className="inline-flex min-h-[52px] w-full items-center justify-center rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {updatingUserId === r.user_id
-                          ? "Traitement en cours..."
-                          : "Refuser"}
-                      </button>
-                    </div>
+                    </details>
                   </div>
                 </section>
               );
