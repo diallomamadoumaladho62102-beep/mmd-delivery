@@ -755,8 +755,8 @@ export default function AdminRestaurantsPage() {
                   )}`}
                 >
                   <div className="space-y-4">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="min-w-0 flex-1 space-y-3">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] xl:items-start">
+                      <div className="min-w-0 space-y-4 pr-2 xl:pr-6">
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="text-xl font-semibold text-slate-900">
                             {r.restaurant_name}
