@@ -672,7 +672,7 @@ export default function AdminRestaurantsPage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-screen-xl space-y-6 px-6 py-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
             MMD Delivery · Admin Restaurants
