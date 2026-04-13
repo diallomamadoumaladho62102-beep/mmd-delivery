@@ -13,3 +13,6 @@ pnpm-debug.log*
 .vercel
 
 .expo/
+
+*.ipa
+build*/
