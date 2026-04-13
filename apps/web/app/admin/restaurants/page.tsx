@@ -822,38 +822,50 @@ export default function AdminRestaurantsPage() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-3">
-                            <button
-                              type="button"
-                              disabled={updatingUserId === r.user_id}
-                              onClick={() =>
-                                void updateRestaurantStatus(
-                                  r.user_id,
-                                  "approved"
-                                )
-                              }
-                              className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border border-green-700 bg-green-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {updatingUserId === r.user_id
-                                ? "Validation..."
-                                : "Approuver"}
-                            </button>
+  <button
+    type="button"
+    disabled={updatingUserId === r.user_id}
+    onClick={() => void updateRestaurantStatus(r.user_id, "approved")}
+    style={{
+      minHeight: "54px",
+      width: "100%",
+      borderRadius: "12px",
+      backgroundColor: "#16a34a",
+      color: "#ffffff",
+      border: "2px solid #166534",
+      fontSize: "16px",
+      fontWeight: 700,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+    }}
+  >
+    {updatingUserId === r.user_id ? "Validation..." : "Approuver"}
+  </button>
 
-                            <button
-                              type="button"
-                              disabled={updatingUserId === r.user_id}
-                              onClick={() =>
-                                void updateRestaurantStatus(
-                                  r.user_id,
-                                  "rejected"
-                                )
-                              }
-                              className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-center text-base font-bold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {updatingUserId === r.user_id
-                                ? "Traitement..."
-                                : "Refuser"}
-                            </button>
-                          </div>
+  <button
+    type="button"
+    disabled={updatingUserId === r.user_id}
+    onClick={() => void updateRestaurantStatus(r.user_id, "rejected")}
+    style={{
+      minHeight: "54px",
+      width: "100%",
+      borderRadius: "12px",
+      backgroundColor: "#dc2626",
+      color: "#ffffff",
+      border: "2px solid #991b1b",
+      fontSize: "16px",
+      fontWeight: 700,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+    }}
+  >
+    {updatingUserId === r.user_id ? "Traitement..." : "Refuser"}
+  </button>
+</div>
                         </div>
                       </div>
                     </div>
