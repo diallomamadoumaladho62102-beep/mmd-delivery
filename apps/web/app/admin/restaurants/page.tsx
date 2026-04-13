@@ -110,7 +110,7 @@ type ReviewRestaurantApiResponse = {
 function isReviewRestaurantRole(
   value: string | null
 ): value is ReviewRestaurantRole {
-  return typeof value === "string" && value.trim().length > 0;
+  return typeof value === "string" && canReviewRestaurants(value as ReviewRestaurantRole);
 }
 
 function isImagePath(path: string): boolean {
@@ -247,6 +247,15 @@ function getLatestReviewNote(documents: RestaurantDocumentRow[]): string {
   return withNotes[0]?.review_notes?.trim() ?? "";
 }
 
+function formatRestaurantAddress(row: Pick<RestaurantAdminRow, "address" | "city" | "postal_code">): string {
+  const parts = [
+    row.address?.trim(),
+    [row.city?.trim(), row.postal_code?.trim()].filter(Boolean).join(" "),
+  ].filter(Boolean);
+
+  return parts.length ? parts.join(", ") : "—";
+}
+
 async function buildSignedDocument(
   row: Omit<RestaurantDocumentRow, "_signedUrl" | "_isImage">
 ): Promise<RestaurantDocumentRow> {
@@ -313,17 +322,15 @@ export default function AdminRestaurantsPage() {
           .from("profiles")
           .select("id, role")
           .eq("id", user.id)
-          .maybeSingle<AdminRoleRow>();
+          .maybeSingle();
 
         if (meError) {
           throw new Error(meError.message);
         }
 
-        if (
-          !me ||
-          !isReviewRestaurantRole(me.role) ||
-          !canReviewRestaurants(me.role)
-        ) {
+        const meRow = me as AdminRoleRow | null;
+
+        if (!meRow || !isReviewRestaurantRole(meRow.role)) {
           if (!cancelledRef?.cancelled) {
             setAuthChecked(true);
             setIsAdmin(false);
@@ -430,9 +437,9 @@ export default function AdminRestaurantsPage() {
             website: r.website ?? null,
             instagram: r.instagram ?? null,
             facebook: r.facebook ?? null,
-            offers_delivery: !!r.offers_delivery,
-            offers_pickup: !!r.offers_pickup,
-            offers_dine_in: !!r.offers_dine_in,
+            offers_delivery: Boolean(r.offers_delivery),
+            offers_pickup: Boolean(r.offers_pickup),
+            offers_dine_in: Boolean(r.offers_dine_in),
             opening_hours: normalizeOpeningHours(r.opening_hours),
             documents: sortDocuments(docsByUser.get(r.user_id) ?? []),
           };
@@ -719,10 +726,7 @@ export default function AdminRestaurantsPage() {
                     <div className="space-y-1">
                       <p>
                         <span className="font-medium">Adresse : </span>
-                        {r.address || "—"}
-                        {r.city || r.postal_code
-                          ? `, ${r.city || ""} ${r.postal_code || ""}`.trim()
-                          : ""}
+                        {formatRestaurantAddress(r)}
                       </p>
                       <p>
                         <span className="font-medium">Type de cuisine : </span>
@@ -844,7 +848,7 @@ export default function AdminRestaurantsPage() {
                                   <div className="flex items-center gap-3">
                                     <img
                                       src={d._signedUrl}
-                                      alt={d.doc_type}
+                                      alt={labelForDocType(d.doc_type)}
                                       className="h-20 w-20 rounded border bg-white object-cover"
                                     />
                                     <div className="space-y-1">
@@ -867,7 +871,7 @@ export default function AdminRestaurantsPage() {
                                 ) : (
                                   <div className="space-y-1">
                                     <div className="max-w-xl truncate text-xs text-slate-600">
-                                      {d.file_path}
+                                      {d.file_path || "Fichier indisponible"}
                                     </div>
 
                                     {d._signedUrl && (
@@ -902,7 +906,7 @@ export default function AdminRestaurantsPage() {
                                   d.status
                                 )}`}
                               >
-                                {d.status}
+                                {statusLabel(d.status)}
                               </span>
                             </div>
                           </li>
