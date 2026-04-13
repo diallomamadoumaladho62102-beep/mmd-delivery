@@ -823,13 +823,13 @@ export default function AdminRestaurantsPage() {
                         </p>
                       </div>
 
-                      <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col items-center justify-center text-center">
+                      <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col justify-center">
                         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                           <div className="mb-3 text-sm font-semibold text-slate-900">
                             Actions rapides
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 gap-4 mt-4">
   <button
     type="button"
     disabled={updatingUserId === r.user_id}
