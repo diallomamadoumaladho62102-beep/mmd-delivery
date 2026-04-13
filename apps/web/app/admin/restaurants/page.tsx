@@ -939,18 +939,18 @@ export default function AdminRestaurantsPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
+                    <div className="flex flex-col gap-3 pt-3">
                       <button
                         type="button"
                         disabled={updatingUserId === r.user_id}
                         onClick={() =>
                           void updateRestaurantStatus(r.user_id, "approved")
                         }
-                        className="min-h-[48px] w-full rounded-xl border border-green-700 bg-green-600 px-4 py-3 text-base font-semibold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="block w-full rounded-xl bg-green-600 px-4 py-3 text-center text-base font-semibold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {updatingUserId === r.user_id
-                          ? "Validation…"
-                          : "✅ Approuver"}
+                          ? "Validation en cours..."
+                          : "Approuver"}
                       </button>
 
                       <button
@@ -959,11 +959,11 @@ export default function AdminRestaurantsPage() {
                         onClick={() =>
                           void updateRestaurantStatus(r.user_id, "rejected")
                         }
-                        className="min-h-[48px] w-full rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-base font-semibold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="block w-full rounded-xl bg-red-600 px-4 py-3 text-center text-base font-semibold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {updatingUserId === r.user_id
-                          ? "Traitement…"
-                          : "❌ Refuser"}
+                          ? "Traitement en cours..."
+                          : "Refuser"}
                       </button>
                     </div>
                   </div>
