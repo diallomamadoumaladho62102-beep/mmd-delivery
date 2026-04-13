@@ -110,7 +110,10 @@ type ReviewRestaurantApiResponse = {
 function isReviewRestaurantRole(
   value: string | null
 ): value is ReviewRestaurantRole {
-  return typeof value === "string" && canReviewRestaurants(value as ReviewRestaurantRole);
+  return (
+    typeof value === "string" &&
+    canReviewRestaurants(value as ReviewRestaurantRole)
+  );
 }
 
 function isImagePath(path: string): boolean {
@@ -247,7 +250,9 @@ function getLatestReviewNote(documents: RestaurantDocumentRow[]): string {
   return withNotes[0]?.review_notes?.trim() ?? "";
 }
 
-function formatRestaurantAddress(row: Pick<RestaurantAdminRow, "address" | "city" | "postal_code">): string {
+function formatRestaurantAddress(
+  row: Pick<RestaurantAdminRow, "address" | "city" | "postal_code">
+): string {
   const parts = [
     row.address?.trim(),
     [row.city?.trim(), row.postal_code?.trim()].filter(Boolean).join(" "),
@@ -618,8 +623,8 @@ export default function AdminRestaurantsPage() {
           </h1>
 
           <p className="text-sm text-slate-600">
-            Vérifie les profils restaurants, leurs documents et approuve ou refuse
-            les demandes.
+            Vérifie les profils restaurants, leurs documents et approuve ou
+            refuse les demandes.
           </p>
         </header>
 
@@ -934,18 +939,18 @@ export default function AdminRestaurantsPage() {
                       />
                     </div>
 
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
                       <button
                         type="button"
                         disabled={updatingUserId === r.user_id}
                         onClick={() =>
                           void updateRestaurantStatus(r.user_id, "approved")
                         }
-                        className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-60"
+                        className="min-h-[48px] w-full rounded-xl border border-green-700 bg-green-600 px-4 py-3 text-base font-semibold text-white shadow-md transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {updatingUserId === r.user_id
                           ? "Validation…"
-                          : "Approuver"}
+                          : "✅ Approuver"}
                       </button>
 
                       <button
@@ -954,11 +959,11 @@ export default function AdminRestaurantsPage() {
                         onClick={() =>
                           void updateRestaurantStatus(r.user_id, "rejected")
                         }
-                        className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60"
+                        className="min-h-[48px] w-full rounded-xl border border-red-700 bg-red-600 px-4 py-3 text-base font-semibold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {updatingUserId === r.user_id
                           ? "Traitement…"
-                          : "Refuser"}
+                          : "❌ Refuser"}
                       </button>
                     </div>
                   </div>
