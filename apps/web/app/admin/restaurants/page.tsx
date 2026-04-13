@@ -755,8 +755,8 @@ export default function AdminRestaurantsPage() {
                   )}`}
                 >
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] xl:items-start">
-                      <div className="min-w-0 space-y-4 pr-2 xl:pr-6">
+                    <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 xl:items-start">
+                      <div className="min-w-0 space-y-4 rounded-2xl border border-slate-100 bg-white/70 p-5 xl:pr-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="text-xl font-semibold text-slate-900">
                             {r.restaurant_name}
@@ -815,7 +815,7 @@ export default function AdminRestaurantsPage() {
                         </p>
                       </div>
 
-                      <div className="w-full xl:max-w-md">
+                      <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5">
                         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                           <div className="mb-3 text-sm font-semibold text-slate-900">
                             Actions rapides
