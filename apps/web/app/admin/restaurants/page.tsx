@@ -554,10 +554,24 @@ export default function AdminRestaurantsPage() {
     try {
       const reviewNotes = (noteDrafts[targetUserId] ?? "").trim();
 
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      if (!session?.access_token) {
+        throw new Error("Session utilisateur introuvable");
+      }
+
       const response = await fetch("/api/admin/restaurants/review", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           userId: targetUserId,
@@ -689,42 +703,42 @@ export default function AdminRestaurantsPage() {
         </header>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
-    <div className="text-sm font-medium leading-none text-slate-500">
-      Total restaurants
-    </div>
-    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-slate-900">
-      {totalRestaurants}
-    </div>
-  </div>
+          <div className="min-h-[132px] rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-slate-500">
+              Total restaurants
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-slate-900">
+              {totalRestaurants}
+            </div>
+          </div>
 
-  <div className="rounded-2xl border border-green-200 bg-green-50 p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
-    <div className="text-sm font-medium leading-none text-green-700">
-      Approuvés
-    </div>
-    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-green-900">
-      {approvedCount}
-    </div>
-  </div>
+          <div className="min-h-[132px] rounded-2xl border border-green-200 bg-green-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-green-700">
+              Approuvés
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-green-900">
+              {approvedCount}
+            </div>
+          </div>
 
-  <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
-    <div className="text-sm font-medium leading-none text-yellow-700">
-      En attente
-    </div>
-    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-yellow-900">
-      {pendingCount}
-    </div>
-  </div>
+          <div className="min-h-[132px] rounded-2xl border border-yellow-200 bg-yellow-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-yellow-700">
+              En attente
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-yellow-900">
+              {pendingCount}
+            </div>
+          </div>
 
-  <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm min-h-[132px] flex flex-col items-center justify-center text-center">
-    <div className="text-sm font-medium leading-none text-red-700">
-      Refusés
-    </div>
-    <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-red-900">
-      {rejectedCount}
-    </div>
-  </div>
-</section>
+          <div className="min-h-[132px] rounded-2xl border border-red-200 bg-red-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-red-700">
+              Refusés
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-red-900">
+              {rejectedCount}
+            </div>
+          </div>
+        </section>
 
         {err && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
@@ -829,51 +843,59 @@ export default function AdminRestaurantsPage() {
                             Actions rapides
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4 mt-4">
-  <button
-    type="button"
-    disabled={updatingUserId === r.user_id}
-    onClick={() => void updateRestaurantStatus(r.user_id, "approved")}
-    style={{
-      minHeight: "54px",
-      width: "100%",
-      borderRadius: "12px",
-      backgroundColor: "#16a34a",
-      color: "#ffffff",
-      border: "2px solid #166534",
-      fontSize: "16px",
-      fontWeight: 700,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-    }}
-  >
-    {updatingUserId === r.user_id ? "Validation..." : "Approuver"}
-  </button>
+                          <div className="mt-4 grid grid-cols-2 gap-4">
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateRestaurantStatus(r.user_id, "approved")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#16a34a",
+                                color: "#ffffff",
+                                border: "2px solid #166534",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Validation..."
+                                : "Approuver"}
+                            </button>
 
-  <button
-    type="button"
-    disabled={updatingUserId === r.user_id}
-    onClick={() => void updateRestaurantStatus(r.user_id, "rejected")}
-    style={{
-      minHeight: "54px",
-      width: "100%",
-      borderRadius: "12px",
-      backgroundColor: "#dc2626",
-      color: "#ffffff",
-      border: "2px solid #991b1b",
-      fontSize: "16px",
-      fontWeight: 700,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-    }}
-  >
-    {updatingUserId === r.user_id ? "Traitement..." : "Refuser"}
-  </button>
-</div>
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateRestaurantStatus(r.user_id, "rejected")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#dc2626",
+                                color: "#ffffff",
+                                border: "2px solid #991b1b",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Traitement..."
+                                : "Refuser"}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
