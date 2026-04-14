@@ -14,7 +14,7 @@ type VehicleType =
   | "other";
 
 type DocType = "profile_photo" | "driver_license" | "id_card";
-type DocStatus = "pending" | "approved" | "rejected";
+type ReviewStatus = "pending" | "approved" | "rejected";
 
 type ReviewDriverRole = Parameters<typeof canReviewDrivers>[0];
 
@@ -23,19 +23,20 @@ type DriverProfileRow = {
   phone: string | null;
   date_of_birth: string | null;
   address: string | null;
-  vehicle_type: VehicleType;
+  vehicle_type: VehicleType | null;
   vehicle_brand: string | null;
   vehicle_model: string | null;
   vehicle_year: number | null;
   vehicle_color: string | null;
   plate_number: string | null;
+  status: string | null;
 };
 
 type DriverDocumentRow = {
   id: string;
   user_id: string;
   doc_type: DocType;
-  status: DocStatus;
+  status: ReviewStatus;
   file_path: string;
   created_at: string;
   reviewed_at: string | null;
@@ -51,12 +52,13 @@ type DriverAdminRow = {
   phone: string | null;
   date_of_birth: string | null;
   address: string | null;
-  vehicle_type: VehicleType;
+  vehicle_type: VehicleType | null;
   vehicle_brand: string | null;
   vehicle_model: string | null;
   vehicle_year: number | null;
   vehicle_color: string | null;
   plate_number: string | null;
+  status: ReviewStatus;
   documents: DriverDocumentRow[];
 };
 
@@ -82,11 +84,26 @@ type ReviewDriverApiResponse = {
 };
 
 function isReviewDriverRole(value: string | null): value is ReviewDriverRole {
-  return typeof value === "string" && value.trim().length > 0;
+  return (
+    typeof value === "string" &&
+    canReviewDrivers(value as ReviewDriverRole)
+  );
 }
 
 function isImagePath(path: string): boolean {
   return /\.(png|jpe?g|webp|gif)$/i.test(path);
+}
+
+function normalizeDriverStatus(
+  value: string | null | undefined
+): ReviewStatus {
+  return value === "approved" || value === "rejected" ? value : "pending";
+}
+
+function normalizeVehicleType(
+  value: VehicleType | null | undefined
+): VehicleType {
+  return value ?? "other";
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -127,7 +144,7 @@ function labelForDocType(docType: DocType): string {
   }
 }
 
-function badgeClassForStatus(status: DocStatus): string {
+function badgeClassForStatus(status: ReviewStatus): string {
   switch (status) {
     case "approved":
       return "border-green-200 bg-green-100 text-green-800";
@@ -139,14 +156,7 @@ function badgeClassForStatus(status: DocStatus): string {
   }
 }
 
-function getGlobalStatus(documents: DriverDocumentRow[]): DocStatus {
-  if (!documents.length) return "pending";
-  if (documents.some((d) => d.status === "rejected")) return "rejected";
-  if (documents.every((d) => d.status === "approved")) return "approved";
-  return "pending";
-}
-
-function statusLabel(status: DocStatus): string {
+function statusLabel(status: ReviewStatus): string {
   switch (status) {
     case "approved":
       return "Approuvé";
@@ -242,7 +252,7 @@ export default function AdminDriversPage() {
           throw new Error(meError.message);
         }
 
-        if (!me || !isReviewDriverRole(me.role) || !canReviewDrivers(me.role)) {
+        if (!me || !isReviewDriverRole(me.role)) {
           if (!cancelledRef?.cancelled) {
             setAuthChecked(true);
             setIsAdmin(false);
@@ -259,7 +269,7 @@ export default function AdminDriversPage() {
         const { data: driverProfiles, error: dpError } = await supabase
           .from("driver_profiles")
           .select(
-            "user_id, phone, date_of_birth, address, vehicle_type, vehicle_brand, vehicle_model, vehicle_year, vehicle_color, plate_number"
+            "user_id, phone, date_of_birth, address, vehicle_type, vehicle_brand, vehicle_model, vehicle_year, vehicle_color, plate_number, status"
           )
           .order("created_at", { ascending: false });
 
@@ -339,12 +349,13 @@ export default function AdminDriversPage() {
             phone: d.phone,
             date_of_birth: d.date_of_birth,
             address: d.address,
-            vehicle_type: d.vehicle_type,
+            vehicle_type: normalizeVehicleType(d.vehicle_type),
             vehicle_brand: d.vehicle_brand,
             vehicle_model: d.vehicle_model,
             vehicle_year: d.vehicle_year,
             vehicle_color: d.vehicle_color,
             plate_number: d.plate_number,
+            status: normalizeDriverStatus(d.status),
             documents: sortDocuments(docsByUser.get(d.user_id) ?? []),
           };
         });
@@ -384,7 +395,7 @@ export default function AdminDriversPage() {
 
   async function updateDriverStatus(
     targetUserId: string,
-    newStatus: Extract<DocStatus, "approved" | "rejected">
+    newStatus: Extract<ReviewStatus, "approved" | "rejected">
   ) {
     setUpdatingUserId(targetUserId);
     setErr(null);
@@ -393,10 +404,24 @@ export default function AdminDriversPage() {
     try {
       const reviewNotes = (noteDrafts[targetUserId] ?? "").trim();
 
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      if (!session?.access_token) {
+        throw new Error("Session utilisateur introuvable");
+      }
+
       const response = await fetch("/api/admin/drivers/review", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           userId: targetUserId,
@@ -433,6 +458,7 @@ export default function AdminDriversPage() {
           r.user_id === targetUserId
             ? {
                 ...r,
+                status: newStatus,
                 documents: sortDocuments(
                   r.documents.map((d) => ({
                     ...d,
@@ -462,17 +488,17 @@ export default function AdminDriversPage() {
   const totalDrivers = rows.length;
 
   const approvedCount = useMemo(
-    () => rows.filter((r) => getGlobalStatus(r.documents) === "approved").length,
+    () => rows.filter((r) => r.status === "approved").length,
     [rows]
   );
 
   const pendingCount = useMemo(
-    () => rows.filter((r) => getGlobalStatus(r.documents) === "pending").length,
+    () => rows.filter((r) => r.status === "pending").length,
     [rows]
   );
 
   const rejectedCount = useMemo(
-    () => rows.filter((r) => getGlobalStatus(r.documents) === "rejected").length,
+    () => rows.filter((r) => r.status === "rejected").length,
     [rows]
   );
 
@@ -571,7 +597,7 @@ export default function AdminDriversPage() {
         ) : (
           <div className="space-y-4">
             {rows.map((r) => {
-              const status = getGlobalStatus(r.documents);
+              const status = r.status;
               const isApproved = status === "approved";
               const isRejected = status === "rejected";
               const reviewNote = noteDrafts[r.user_id] ?? "";
@@ -624,7 +650,7 @@ export default function AdminDriversPage() {
                     <div className="space-y-1">
                       <p>
                         <span className="font-medium">Véhicule : </span>
-                        {r.vehicle_type.toUpperCase()}
+                        {normalizeVehicleType(r.vehicle_type).toUpperCase()}
                         {r.vehicle_brand ? ` • ${r.vehicle_brand}` : ""}
                         {r.vehicle_model ? ` • ${r.vehicle_model}` : ""}
                       </p>
@@ -721,7 +747,7 @@ export default function AdminDriversPage() {
                                   d.status
                                 )}`}
                               >
-                                {d.status}
+                                {statusLabel(d.status)}
                               </span>
                             </div>
                           </li>
