@@ -169,7 +169,8 @@ function notFound(message: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertAdminAccess();
+    // ✅ CORRECTION ICI
+    const admin = await assertAdminAccess(request);
     const actor = admin.userId;
 
     const body = await parseBody(request);
