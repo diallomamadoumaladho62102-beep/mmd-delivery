@@ -64,6 +64,7 @@ type RestaurantAdminRow = {
   offers_dine_in: boolean;
   opening_hours: OpeningHours | null;
   documents: RestaurantDocumentRow[];
+  status: RestaurantDocStatus;
 };
 
 type RestaurantProfileRow = {
@@ -84,6 +85,7 @@ type RestaurantProfileRow = {
   offers_pickup: boolean | null;
   offers_dine_in: boolean | null;
   opening_hours: unknown;
+  status: string | null;
 };
 
 type ProfileRow = {
@@ -118,6 +120,10 @@ function isReviewRestaurantRole(
 
 function isImagePath(path: string): boolean {
   return /\.(png|jpe?g|webp|gif)$/i.test(path);
+}
+
+function normalizeRestaurantStatus(value: string | null | undefined): RestaurantDocStatus {
+  return value === "approved" || value === "rejected" ? value : "pending";
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -181,15 +187,6 @@ function statusLabel(status: RestaurantDocStatus): string {
     default:
       return "En attente";
   }
-}
-
-function getGlobalStatus(
-  documents: RestaurantDocumentRow[]
-): RestaurantDocStatus {
-  if (!documents.length) return "pending";
-  if (documents.some((d) => d.status === "rejected")) return "rejected";
-  if (documents.every((d) => d.status === "approved")) return "approved";
-  return "pending";
 }
 
 function safeExternalHref(value: string | null | undefined): string | null {
@@ -293,7 +290,7 @@ function getRestaurantInsight(row: RestaurantAdminRow): {
 }
 
 function getPriorityScore(row: RestaurantAdminRow): number {
-  const status = getGlobalStatus(row.documents);
+  const status = row.status;
   if (status === "pending" && row.documents.length === 0) return 0;
   if (
     status === "pending" &&
@@ -409,7 +406,7 @@ export default function AdminRestaurantsPage() {
         const { data: restaurantProfiles, error: rpError } = await supabase
           .from("restaurant_profiles")
           .select(
-            "user_id, restaurant_name, phone, email, address, city, postal_code, cuisine_type, license_number, tax_id, website, instagram, facebook, offers_delivery, offers_pickup, offers_dine_in, opening_hours"
+            "user_id, restaurant_name, phone, email, address, city, postal_code, cuisine_type, license_number, tax_id, website, instagram, facebook, offers_delivery, offers_pickup, offers_dine_in, opening_hours, status"
           )
           .order("created_at", { ascending: false });
 
@@ -506,6 +503,7 @@ export default function AdminRestaurantsPage() {
               offers_dine_in: Boolean(r.offers_dine_in),
               opening_hours: normalizeOpeningHours(r.opening_hours),
               documents: sortDocuments(docsByUser.get(r.user_id) ?? []),
+              status: normalizeRestaurantStatus(r.status),
             };
           })
           .sort((a, b) => getPriorityScore(a) - getPriorityScore(b));
@@ -608,6 +606,7 @@ export default function AdminRestaurantsPage() {
           r.user_id === targetUserId
             ? {
                 ...r,
+                status: newStatus,
                 documents: sortDocuments(
                   r.documents.map((d) => ({
                     ...d,
@@ -637,20 +636,17 @@ export default function AdminRestaurantsPage() {
   const totalRestaurants = rows.length;
 
   const approvedCount = useMemo(
-    () =>
-      rows.filter((r) => getGlobalStatus(r.documents) === "approved").length,
+    () => rows.filter((r) => r.status === "approved").length,
     [rows]
   );
 
   const pendingCount = useMemo(
-    () =>
-      rows.filter((r) => getGlobalStatus(r.documents) === "pending").length,
+    () => rows.filter((r) => r.status === "pending").length,
     [rows]
   );
 
   const rejectedCount = useMemo(
-    () =>
-      rows.filter((r) => getGlobalStatus(r.documents) === "rejected").length,
+    () => rows.filter((r) => r.status === "rejected").length,
     [rows]
   );
 
@@ -761,7 +757,7 @@ export default function AdminRestaurantsPage() {
         ) : (
           <div className="space-y-4">
             {rows.map((r) => {
-              const status = getGlobalStatus(r.documents);
+              const status = r.status;
               const insight = getRestaurantInsight(r);
 
               const websiteHref = safeExternalHref(r.website);

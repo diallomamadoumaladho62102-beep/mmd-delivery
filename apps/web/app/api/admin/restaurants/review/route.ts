@@ -20,6 +20,11 @@ type RestaurantDocumentUpdate = {
   review_notes: string | null;
 };
 
+type RestaurantProfileStatusUpdate = {
+  status: RestaurantReviewStatus;
+  updated_at: string;
+};
+
 function isRestaurantReviewStatus(
   value: unknown
 ): value is RestaurantReviewStatus {
@@ -66,6 +71,18 @@ function buildRestaurantDocumentUpdate(params: {
   };
 }
 
+function buildRestaurantProfileStatusUpdate(params: {
+  status: RestaurantReviewStatus;
+  reviewedAt: string;
+}): RestaurantProfileStatusUpdate {
+  const { status, reviewedAt } = params;
+
+  return {
+    status,
+    updated_at: reviewedAt,
+  };
+}
+
 async function updateRestaurantDocuments(params: {
   supabase: ReturnType<typeof buildSupabaseAdminClient>;
   userId: string;
@@ -80,6 +97,35 @@ async function updateRestaurantDocuments(params: {
 
   if (error) {
     throw new Error(`Failed to update restaurant documents: ${error.message}`);
+  }
+}
+
+async function updateRestaurantProfileStatus(params: {
+  supabase: ReturnType<typeof buildSupabaseAdminClient>;
+  userId: string;
+  status: RestaurantReviewStatus;
+  reviewedAt: string;
+}): Promise<void> {
+  const { supabase, userId, status, reviewedAt } = params;
+
+  const payload = buildRestaurantProfileStatusUpdate({
+    status,
+    reviewedAt,
+  });
+
+  const { data, error } = await supabase
+    .from("restaurant_profiles")
+    .update(payload)
+    .eq("user_id", userId)
+    .select("user_id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to update restaurant profile: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Restaurant profile not found.");
   }
 }
 
@@ -158,6 +204,13 @@ export async function POST(request: NextRequest) {
       reviewedAt,
       reviewedBy: actor,
       reviewNotes,
+    });
+
+    await updateRestaurantProfileStatus({
+      supabase,
+      userId,
+      status,
+      reviewedAt,
     });
 
     await updateRestaurantDocuments({
