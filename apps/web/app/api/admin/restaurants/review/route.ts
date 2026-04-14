@@ -66,27 +66,6 @@ function buildRestaurantDocumentUpdate(params: {
   };
 }
 
-async function ensureRestaurantDocumentsExist(params: {
-  supabase: ReturnType<typeof buildSupabaseAdminClient>;
-  userId: string;
-}): Promise<void> {
-  const { supabase, userId } = params;
-
-  const { data, error } = await supabase
-    .from("restaurant_documents")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1);
-
-  if (error) {
-    throw new Error(`Failed to verify restaurant documents: ${error.message}`);
-  }
-
-  if (!data || data.length === 0) {
-    throw new Error("No restaurant documents found for this user.");
-  }
-}
-
 async function updateRestaurantDocuments(params: {
   supabase: ReturnType<typeof buildSupabaseAdminClient>;
   userId: string;
@@ -94,18 +73,13 @@ async function updateRestaurantDocuments(params: {
 }): Promise<void> {
   const { supabase, userId, payload } = params;
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("restaurant_documents")
     .update(payload)
-    .eq("user_id", userId)
-    .select("id");
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`Failed to update restaurant documents: ${error.message}`);
-  }
-
-  if (!data || data.length === 0) {
-    throw new Error("Restaurant review update did not affect any documents.");
   }
 }
 
@@ -157,19 +131,8 @@ function badRequest(message: string) {
   );
 }
 
-function notFound(message: string) {
-  return NextResponse.json(
-    {
-      ok: false,
-      error: message,
-    },
-    { status: 404 }
-  );
-}
-
 export async function POST(request: NextRequest) {
   try {
-    // ✅ CORRECTION ICI
     const admin = await assertAdminAccess(request);
     const actor = admin.userId;
 
@@ -189,24 +152,6 @@ export async function POST(request: NextRequest) {
 
     const supabase = buildSupabaseAdminClient();
     const reviewedAt = new Date().toISOString();
-
-    try {
-      await ensureRestaurantDocumentsExist({
-        supabase,
-        userId,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Restaurant documents not found";
-
-      if (message === "No restaurant documents found for this user.") {
-        return notFound(message);
-      }
-
-      throw error;
-    }
 
     const updatePayload = buildRestaurantDocumentUpdate({
       status,
