@@ -1,3 +1,5 @@
+import { NextRequest } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabaseServer";
 import {
   canAccessAdminDashboard,
@@ -30,21 +32,70 @@ function normalizeRole(value: unknown): UserRole | null {
     : null;
 }
 
-async function requireAuthenticatedProfile(): Promise<AdminSession> {
+function getSupabaseUrl() {
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!value) throw new Error("Missing SUPABASE URL");
+  return value;
+}
+
+function getSupabaseAnonKey() {
+  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!value) throw new Error("Missing SUPABASE ANON KEY");
+  return value;
+}
+
+async function getUserFromRequest(request?: NextRequest) {
+  // 🔥 PRIORITÉ : Authorization header (Bearer token)
+  const authHeader = request?.headers.get("authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.replace("Bearer ", "").trim()
+    : "";
+
+  if (token) {
+    const supabase = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      throw new AdminAccessError("Auth session missing!", 401);
+    }
+
+    return user;
+  }
+
+  // 🔥 FALLBACK : cookies (SSR)
   const supabase = await supabaseServer();
 
   const {
     data: { user },
-    error: userError,
+    error,
   } = await supabase.auth.getUser();
 
-  if (userError) {
-    throw new AdminAccessError(userError.message, 401);
+  if (error) {
+    throw new AdminAccessError(error.message, 401);
   }
 
   if (!user) {
     throw new AdminAccessError("Unauthorized", 401);
   }
+
+  return user;
+}
+
+async function requireAuthenticatedProfile(
+  request?: NextRequest
+): Promise<AdminSession> {
+  const user = await getUserFromRequest(request);
+
+  const supabase = await supabaseServer();
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
@@ -77,9 +128,10 @@ async function requireAuthenticatedProfile(): Promise<AdminSession> {
 }
 
 async function assertPermission(
-  checker: (role: UserRole) => boolean
+  checker: (role: UserRole) => boolean,
+  request?: NextRequest
 ): Promise<AdminSession> {
-  const session = await requireAuthenticatedProfile();
+  const session = await requireAuthenticatedProfile(request);
 
   if (!checker(session.role)) {
     throw new AdminAccessError("Forbidden", 403);
@@ -88,26 +140,38 @@ async function assertPermission(
   return session;
 }
 
-export async function assertAdminAccess(): Promise<AdminSession> {
-  return assertPermission(canAccessAdminDashboard);
+export async function assertAdminAccess(
+  request?: NextRequest
+): Promise<AdminSession> {
+  return assertPermission(canAccessAdminDashboard, request);
 }
 
-export async function assertCanAccessPayouts(): Promise<AdminSession> {
-  return assertPermission(canAccessPayouts);
+export async function assertCanAccessPayouts(
+  request?: NextRequest
+): Promise<AdminSession> {
+  return assertPermission(canAccessPayouts, request);
 }
 
-export async function assertCanRetryPayout(): Promise<AdminSession> {
-  return assertPermission(canRetryPayout);
+export async function assertCanRetryPayout(
+  request?: NextRequest
+): Promise<AdminSession> {
+  return assertPermission(canRetryPayout, request);
 }
 
-export async function assertCanReviewDrivers(): Promise<AdminSession> {
-  return assertPermission(canReviewDrivers);
+export async function assertCanReviewDrivers(
+  request?: NextRequest
+): Promise<AdminSession> {
+  return assertPermission(canReviewDrivers, request);
 }
 
-export async function assertCanReviewRestaurants(): Promise<AdminSession> {
-  return assertPermission(canReviewRestaurants);
+export async function assertCanReviewRestaurants(
+  request?: NextRequest
+): Promise<AdminSession> {
+  return assertPermission(canReviewRestaurants, request);
 }
 
-export async function assertCanAccessAuditLogs(): Promise<AdminSession> {
-  return assertPermission(canAccessAuditLogs);
+export async function assertCanAccessAuditLogs(
+  request?: NextRequest
+): Promise<AdminSession> {
+  return assertPermission(canAccessAuditLogs, request);
 }
