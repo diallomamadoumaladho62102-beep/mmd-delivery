@@ -55,13 +55,20 @@ function getBearerToken(request?: NextRequest): string {
     : "";
 }
 
-function createStatelessSupabaseClient() {
+function createStatelessSupabaseClient(token?: string) {
   return createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
+    global: token
+      ? {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      : undefined,
   });
 }
 
@@ -74,7 +81,7 @@ async function getUserAndClientFromRequest(request?: NextRequest): Promise<{
   const token = getBearerToken(request);
 
   if (token) {
-    const supabase = createStatelessSupabaseClient();
+    const supabase = createStatelessSupabaseClient(token);
 
     const {
       data: { user },
