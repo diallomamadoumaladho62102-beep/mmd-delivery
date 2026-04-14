@@ -20,6 +20,11 @@ type DriverDocumentUpdate = {
   review_notes: string | null;
 };
 
+type DriverProfileStatusUpdate = {
+  status: DriverReviewStatus;
+  updated_at: string;
+};
+
 function isDriverReviewStatus(value: unknown): value is DriverReviewStatus {
   return value === "approved" || value === "rejected";
 }
@@ -62,25 +67,16 @@ function buildDriverDocumentUpdate(params: {
   };
 }
 
-async function ensureDriverDocumentsExist(params: {
-  supabase: ReturnType<typeof buildSupabaseAdminClient>;
-  userId: string;
-}): Promise<void> {
-  const { supabase, userId } = params;
+function buildDriverProfileStatusUpdate(params: {
+  status: DriverReviewStatus;
+  reviewedAt: string;
+}): DriverProfileStatusUpdate {
+  const { status, reviewedAt } = params;
 
-  const { data, error } = await supabase
-    .from("driver_documents")
-    .select("id")
-    .eq("user_id", userId)
-    .limit(1);
-
-  if (error) {
-    throw new Error(`Failed to verify driver documents: ${error.message}`);
-  }
-
-  if (!data || data.length === 0) {
-    throw new Error("No driver documents found for this user.");
-  }
+  return {
+    status,
+    updated_at: reviewedAt,
+  };
 }
 
 async function updateDriverDocuments(params: {
@@ -90,18 +86,42 @@ async function updateDriverDocuments(params: {
 }): Promise<void> {
   const { supabase, userId, payload } = params;
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("driver_documents")
     .update(payload)
-    .eq("user_id", userId)
-    .select("id");
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`Failed to update driver documents: ${error.message}`);
   }
+}
 
-  if (!data || data.length === 0) {
-    throw new Error("Driver review update did not affect any documents.");
+async function updateDriverProfileStatus(params: {
+  supabase: ReturnType<typeof buildSupabaseAdminClient>;
+  userId: string;
+  status: DriverReviewStatus;
+  reviewedAt: string;
+}): Promise<void> {
+  const { supabase, userId, status, reviewedAt } = params;
+
+  const payload = buildDriverProfileStatusUpdate({
+    status,
+    reviewedAt,
+  });
+
+  const { data, error } = await supabase
+    .from("driver_profiles")
+    .update(payload)
+    .eq("user_id", userId)
+    .select("user_id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to update driver profile: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("Driver profile not found.");
   }
 }
 
@@ -150,19 +170,9 @@ function badRequest(message: string) {
   );
 }
 
-function notFound(message: string) {
-  return NextResponse.json(
-    {
-      ok: false,
-      error: message,
-    },
-    { status: 404 }
-  );
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertAdminAccess();
+    const admin = await assertAdminAccess(request);
     const actor = admin.userId;
 
     const body = await parseBody(request);
@@ -182,27 +192,18 @@ export async function POST(request: NextRequest) {
     const supabase = buildSupabaseAdminClient();
     const reviewedAt = new Date().toISOString();
 
-    try {
-      await ensureDriverDocumentsExist({
-        supabase,
-        userId,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Driver documents not found";
-
-      if (message === "No driver documents found for this user.") {
-        return notFound(message);
-      }
-
-      throw error;
-    }
-
     const updatePayload = buildDriverDocumentUpdate({
       status,
       reviewedAt,
       reviewedBy: actor,
       reviewNotes,
+    });
+
+    await updateDriverProfileStatus({
+      supabase,
+      userId,
+      status,
+      reviewedAt,
     });
 
     await updateDriverDocuments({
