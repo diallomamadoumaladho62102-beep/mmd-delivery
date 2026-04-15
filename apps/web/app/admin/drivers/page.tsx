@@ -5,31 +5,48 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { canReviewDrivers } from "@/lib/adminAccess";
 
-type VehicleType =
-  | "bike"
-  | "ebike"
-  | "scooter"
-  | "motorbike"
-  | "car"
+type VehicleType = "bike" | "moto" | "car" | "other";
+
+type DocType =
+  | "profile_photo"
+  | "id_card_front"
+  | "id_card_back"
+  | "license_front"
+  | "license_back"
+  | "insurance"
+  | "registration"
+  | "driver_license"
+  | "id_card"
+  | "passport"
   | "other";
 
-type DocType = "profile_photo" | "driver_license" | "id_card";
 type ReviewStatus = "pending" | "approved" | "rejected";
 
 type ReviewDriverRole = Parameters<typeof canReviewDrivers>[0];
 
 type DriverProfileRow = {
   user_id: string;
+  full_name: string | null;
   phone: string | null;
+  emergency_phone: string | null;
   date_of_birth: string | null;
   address: string | null;
-  vehicle_type: VehicleType | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  transport_mode: string | null;
+  vehicle_type: string | null;
   vehicle_brand: string | null;
   vehicle_model: string | null;
   vehicle_year: number | null;
   vehicle_color: string | null;
   plate_number: string | null;
+  license_number: string | null;
+  license_expiry: string | null;
   status: string | null;
+  documents_required: boolean | null;
+  missing_requirements: string | null;
+  is_online: boolean | null;
 };
 
 type DriverDocumentRow = {
@@ -50,15 +67,24 @@ type DriverAdminRow = {
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  emergency_phone: string | null;
   date_of_birth: string | null;
   address: string | null;
-  vehicle_type: VehicleType | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  transport_mode: VehicleType;
   vehicle_brand: string | null;
   vehicle_model: string | null;
   vehicle_year: number | null;
   vehicle_color: string | null;
   plate_number: string | null;
+  license_number: string | null;
+  license_expiry: string | null;
   status: ReviewStatus;
+  documents_required: boolean;
+  missing_requirements: string | null;
+  is_online: boolean;
   documents: DriverDocumentRow[];
 };
 
@@ -79,6 +105,10 @@ type ReviewDriverApiResponse = {
   status?: "approved" | "rejected";
   reviewedAt?: string;
   reviewNotes?: string | null;
+  documentsRequired?: boolean;
+  missingRequirements?: string[];
+  missingRequirementsText?: string | null;
+  isOnline?: boolean;
   message?: string;
   error?: string;
 };
@@ -92,19 +122,24 @@ function isImagePath(path: string): boolean {
 }
 
 function normalizeDriverStatus(
-  value: string | null | undefined
+  value: string | null | undefined,
 ): ReviewStatus {
   return value === "approved" || value === "rejected" ? value : "pending";
 }
 
 function normalizeVehicleType(
-  value: VehicleType | null | undefined
+  value: string | null | undefined,
 ): VehicleType {
-  return value ?? "other";
+  if (value === "bike" || value === "moto" || value === "car") return value;
+  return "other";
 }
 
-function formatVehicleType(value: VehicleType | null | undefined): string {
-  return normalizeVehicleType(value).toUpperCase();
+function formatVehicleType(value: string | null | undefined): string {
+  const v = normalizeVehicleType(value);
+  if (v === "bike") return "Bike";
+  if (v === "moto") return "Moto";
+  if (v === "car") return "Car";
+  return "Other";
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -132,25 +167,40 @@ function formatBirthDate(value: string | null | undefined): string {
 
 function getTimestamp(value: string | null | undefined): number {
   if (!value) return 0;
-
   const time = new Date(value).getTime();
   return Number.isFinite(time) ? time : 0;
 }
 
 function sortDocuments(documents: DriverDocumentRow[]): DriverDocumentRow[] {
   return [...documents].sort(
-    (a, b) => getTimestamp(b.created_at) - getTimestamp(a.created_at)
+    (a, b) => getTimestamp(b.created_at) - getTimestamp(a.created_at),
   );
 }
 
 function labelForDocType(docType: DocType): string {
   switch (docType) {
     case "profile_photo":
-      return "Photo de profil";
+      return "Photo personnelle";
+    case "id_card_front":
+      return "ID recto";
+    case "id_card_back":
+      return "ID verso";
+    case "license_front":
+      return "Permis recto";
+    case "license_back":
+      return "Permis verso";
+    case "insurance":
+      return "Assurance";
+    case "registration":
+      return "Registration";
     case "driver_license":
-      return "Permis";
+      return "Permis (ancien format)";
     case "id_card":
-      return "ID / Passeport";
+      return "ID (ancien format)";
+    case "passport":
+      return "Passeport";
+    case "other":
+      return "Autre document";
     default:
       return docType;
   }
@@ -192,47 +242,17 @@ function getLatestReviewNote(documents: DriverDocumentRow[]): string {
   return withNotes[0]?.review_notes?.trim() ?? "";
 }
 
-function getDriverInsight(row: DriverAdminRow): {
-  label: string;
-  className: string;
-} {
-  const hasDocs = row.documents.length > 0;
-  const hasCoreInfo =
-    Boolean(row.phone) &&
-    Boolean(row.address) &&
-    Boolean(row.full_name) &&
-    Boolean(row.vehicle_type);
-
-  if (!hasDocs) {
-    return {
-      label: "Aucun document reçu",
-      className: "border-red-200 bg-red-50 text-red-700",
-    };
-  }
-
-  if (!hasCoreInfo) {
-    return {
-      label: "Profil incomplet",
-      className: "border-yellow-200 bg-yellow-50 text-yellow-700",
-    };
-  }
-
-  return {
-    label: "Prêt pour vérification",
-    className: "border-green-200 bg-green-50 text-green-700",
-  };
-}
-
-function getPriorityScore(row: DriverAdminRow): number {
-  const status = row.status;
-
-  if (status === "pending" && row.documents.length === 0) return 0;
-  if (status === "pending" && (!row.phone || !row.address || !row.full_name)) {
-    return 1;
-  }
-  if (status === "pending") return 2;
-  if (status === "rejected") return 3;
-  return 4;
+function parseMissingRequirements(
+  text: string | null | undefined,
+): string[] {
+  if (!text) return [];
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  const withoutPrefix = trimmed.replace(/^Missing:\s*/i, "");
+  return withoutPrefix
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function getActionCardClass(status: ReviewStatus): string {
@@ -247,8 +267,55 @@ function getActionCardClass(status: ReviewStatus): string {
   }
 }
 
+function getPriorityScore(row: DriverAdminRow): number {
+  if (row.status === "pending" && row.documents.length === 0) return 0;
+  if (row.status === "pending" && row.documents_required) return 1;
+  if (row.status === "pending") return 2;
+  if (row.status === "rejected") return 3;
+  if (row.status === "approved" && row.documents_required) return 4;
+  return 5;
+}
+
+function getDriverInsight(row: DriverAdminRow): {
+  label: string;
+  className: string;
+} {
+  if (row.documents.length === 0) {
+    return {
+      label: "Aucun document reçu",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+
+  if (row.documents_required) {
+    return {
+      label: "Éléments manquants",
+      className: "border-yellow-200 bg-yellow-50 text-yellow-700",
+    };
+  }
+
+  if (row.status === "approved") {
+    return {
+      label: "Dossier validé",
+      className: "border-green-200 bg-green-50 text-green-700",
+    };
+  }
+
+  if (row.status === "rejected") {
+    return {
+      label: "Dossier refusé",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+
+  return {
+    label: "Prêt pour vérification",
+    className: "border-blue-200 bg-blue-50 text-blue-700",
+  };
+}
+
 async function buildSignedDocument(
-  row: Omit<DriverDocumentRow, "_signedUrl" | "_isImage">
+  row: Omit<DriverDocumentRow, "_signedUrl" | "_isImage">,
 ): Promise<DriverDocumentRow> {
   const doc: DriverDocumentRow = {
     ...row,
@@ -260,12 +327,17 @@ async function buildSignedDocument(
     return doc;
   }
 
-  const { data, error } = await supabase.storage
-    .from("driver-docs")
-    .createSignedUrl(row.file_path, 60 * 60);
+  const bucketsToTry = ["avatars", "driver-docs"];
 
-  if (!error && data?.signedUrl) {
-    doc._signedUrl = data.signedUrl;
+  for (const bucket of bucketsToTry) {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(row.file_path, 60 * 60);
+
+    if (!error && data?.signedUrl) {
+      doc._signedUrl = data.signedUrl;
+      return doc;
+    }
   }
 
   return doc;
@@ -336,9 +408,32 @@ export default function AdminDriversPage() {
         const { data: driverProfiles, error: dpError } = await supabase
           .from("driver_profiles")
           .select(
-            "user_id, phone, date_of_birth, address, vehicle_type, vehicle_brand, vehicle_model, vehicle_year, vehicle_color, plate_number, status"
+            `
+            user_id,
+            full_name,
+            phone,
+            emergency_phone,
+            date_of_birth,
+            address,
+            city,
+            state,
+            zip_code,
+            transport_mode,
+            vehicle_type,
+            vehicle_brand,
+            vehicle_model,
+            vehicle_year,
+            vehicle_color,
+            plate_number,
+            license_number,
+            license_expiry,
+            status,
+            documents_required,
+            missing_requirements,
+            is_online
+          `,
           )
-          .order("created_at", { ascending: false });
+          .order("updated_at", { ascending: false });
 
         if (dpError) {
           throw new Error(dpError.message);
@@ -380,7 +475,7 @@ export default function AdminDriversPage() {
         const { data: docsRowsRaw, error: docsError } = await supabase
           .from("driver_documents")
           .select(
-            "id, user_id, doc_type, status, file_path, created_at, reviewed_at, review_notes"
+            "id, user_id, doc_type, status, file_path, created_at, reviewed_at, review_notes",
           )
           .in("user_id", userIds);
 
@@ -392,7 +487,7 @@ export default function AdminDriversPage() {
           ((docsRowsRaw ?? []) as Omit<
             DriverDocumentRow,
             "_signedUrl" | "_isImage"
-          >[]).map((row) => buildSignedDocument(row))
+          >[]).map((row) => buildSignedDocument(row)),
         );
 
         const docsByUser = new Map<string, DriverDocumentRow[]>();
@@ -406,24 +501,35 @@ export default function AdminDriversPage() {
         const merged: DriverAdminRow[] = typedDriverProfiles
           .map((d) => {
             const profileInfo = profileById.get(d.user_id) ?? {
-              full_name: null,
+              full_name: d.full_name ?? null,
               email: null,
             };
 
             return {
               user_id: d.user_id,
-              full_name: profileInfo.full_name,
+              full_name: d.full_name ?? profileInfo.full_name,
               email: profileInfo.email,
               phone: d.phone,
+              emergency_phone: d.emergency_phone,
               date_of_birth: d.date_of_birth,
               address: d.address,
-              vehicle_type: normalizeVehicleType(d.vehicle_type),
+              city: d.city,
+              state: d.state,
+              zip_code: d.zip_code,
+              transport_mode: normalizeVehicleType(
+                d.transport_mode ?? d.vehicle_type,
+              ),
               vehicle_brand: d.vehicle_brand,
               vehicle_model: d.vehicle_model,
               vehicle_year: d.vehicle_year,
               vehicle_color: d.vehicle_color,
               plate_number: d.plate_number,
+              license_number: d.license_number,
+              license_expiry: d.license_expiry,
               status: normalizeDriverStatus(d.status),
+              documents_required: Boolean(d.documents_required),
+              missing_requirements: d.missing_requirements ?? null,
+              is_online: Boolean(d.is_online),
               documents: sortDocuments(docsByUser.get(d.user_id) ?? []),
             };
           })
@@ -450,7 +556,7 @@ export default function AdminDriversPage() {
         }
       }
     },
-    [router]
+    [router],
   );
 
   useEffect(() => {
@@ -464,7 +570,7 @@ export default function AdminDriversPage() {
 
   async function updateDriverStatus(
     targetUserId: string,
-    newStatus: Extract<ReviewStatus, "approved" | "rejected">
+    newStatus: Extract<ReviewStatus, "approved" | "rejected">,
   ) {
     setUpdatingUserId(targetUserId);
     setErr(null);
@@ -503,7 +609,7 @@ export default function AdminDriversPage() {
 
       if (!response.ok || !json.ok) {
         throw new Error(
-          json.error || "Erreur lors de la mise à jour du chauffeur"
+          json.error || "Erreur lors de la mise à jour du chauffeur",
         );
       }
 
@@ -519,26 +625,41 @@ export default function AdminDriversPage() {
         json.message ||
           (newStatus === "approved"
             ? "Chauffeur approuvé ✅"
-            : "Chauffeur refusé ❌")
+            : "Chauffeur refusé ❌"),
       );
 
       setRows((prev) =>
-        prev.map((r) =>
-          r.user_id === targetUserId
-            ? {
-                ...r,
-                status: newStatus,
-                documents: sortDocuments(
-                  r.documents.map((d) => ({
-                    ...d,
-                    status: newStatus,
-                    reviewed_at: reviewedAt,
-                    review_notes: normalizedReviewNotes,
-                  }))
-                ),
-              }
-            : r
-        )
+        prev
+          .map((r) =>
+            r.user_id === targetUserId
+              ? {
+                  ...r,
+                  status: newStatus,
+                  documents_required:
+                    typeof json.documentsRequired === "boolean"
+                      ? json.documentsRequired
+                      : r.documents_required,
+                  missing_requirements:
+                    typeof json.missingRequirementsText === "string" ||
+                    json.missingRequirementsText === null
+                      ? json.missingRequirementsText ?? null
+                      : r.missing_requirements,
+                  is_online:
+                    typeof json.isOnline === "boolean"
+                      ? json.isOnline
+                      : false,
+                  documents: sortDocuments(
+                    r.documents.map((d) => ({
+                      ...d,
+                      status: newStatus,
+                      reviewed_at: reviewedAt,
+                      review_notes: normalizedReviewNotes,
+                    })),
+                  ),
+                }
+              : r,
+          )
+          .sort((a, b) => getPriorityScore(a) - getPriorityScore(b)),
       );
 
       setNoteDrafts((prev) => ({
@@ -558,17 +679,22 @@ export default function AdminDriversPage() {
 
   const approvedCount = useMemo(
     () => rows.filter((r) => r.status === "approved").length,
-    [rows]
+    [rows],
   );
 
   const pendingCount = useMemo(
     () => rows.filter((r) => r.status === "pending").length,
-    [rows]
+    [rows],
   );
 
   const rejectedCount = useMemo(
     () => rows.filter((r) => r.status === "rejected").length,
-    [rows]
+    [rows],
+  );
+
+  const incompleteCount = useMemo(
+    () => rows.filter((r) => r.documents_required).length,
+    [rows],
   );
 
   if (loading || !authChecked) {
@@ -614,12 +740,12 @@ export default function AdminDriversPage() {
           </h1>
 
           <p className="text-sm text-slate-600">
-            Vérifie les profils chauffeurs, leurs documents et approuve ou refuse
-            les candidatures.
+            Vérifie les profils chauffeurs, leurs documents et indique clairement
+            les informations manquantes avant validation.
           </p>
         </header>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <div className="min-h-[132px] rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="text-sm font-medium leading-none text-slate-500">
               Total chauffeurs
@@ -655,6 +781,15 @@ export default function AdminDriversPage() {
               {rejectedCount}
             </div>
           </div>
+
+          <div className="min-h-[132px] rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-amber-700">
+              Incomplets
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-amber-900">
+              {incompleteCount}
+            </div>
+          </div>
         </section>
 
         {err && (
@@ -681,12 +816,13 @@ export default function AdminDriversPage() {
               const status = r.status;
               const insight = getDriverInsight(r);
               const reviewNote = noteDrafts[r.user_id] ?? "";
+              const missingList = parseMissingRequirements(r.missing_requirements);
 
               return (
                 <section
                   key={r.user_id}
                   className={`rounded-2xl border p-6 shadow-sm ${getActionCardClass(
-                    status
+                    status,
                   )}`}
                 >
                   <div className="space-y-4">
@@ -696,18 +832,36 @@ export default function AdminDriversPage() {
                           <h2 className="text-xl font-semibold text-slate-900">
                             {r.full_name || "Nom inconnu"}
                           </h2>
+
                           <span
                             className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${badgeClassForStatus(
-                              status
+                              status,
                             )}`}
                           >
                             {statusLabel(status)}
                           </span>
+
                           <span
                             className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${insight.className}`}
                           >
                             {insight.label}
                           </span>
+
+                          {r.documents_required && (
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                              Documents requis
+                            </span>
+                          )}
+
+                          {r.is_online ? (
+                            <span className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                              En ligne
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                              Hors ligne
+                            </span>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2">
@@ -719,6 +873,10 @@ export default function AdminDriversPage() {
                             <span className="font-medium">Téléphone :</span>{" "}
                             {r.phone || "—"}
                           </p>
+                          <p>
+                            <span className="font-medium">Téléphone urgence :</span>{" "}
+                            {r.emergency_phone || "—"}
+                          </p>
                           <p className="break-all">
                             <span className="font-medium">Email :</span>{" "}
                             {r.email || "—"}
@@ -727,23 +885,53 @@ export default function AdminDriversPage() {
                             <span className="font-medium">Date de naissance :</span>{" "}
                             {formatBirthDate(r.date_of_birth)}
                           </p>
+                          <p>
+                            <span className="font-medium">Mode :</span>{" "}
+                            {formatVehicleType(r.transport_mode)}
+                          </p>
                         </div>
 
-                        <p className="text-sm text-slate-600">
-                          <span className="font-medium text-slate-700">
-                            Adresse :
-                          </span>{" "}
-                          {r.address || "—"}
-                        </p>
+                        <div className="text-sm text-slate-600 space-y-1">
+                          <p>
+                            <span className="font-medium text-slate-700">
+                              Adresse :
+                            </span>{" "}
+                            {r.address || "—"}
+                          </p>
+                          <p>
+                            <span className="font-medium text-slate-700">
+                              Ville / État / ZIP :
+                            </span>{" "}
+                            {[r.city, r.state, r.zip_code].filter(Boolean).join(" • ") || "—"}
+                          </p>
+                        </div>
 
-                        <p className="text-sm text-slate-600">
-                          <span className="font-medium text-slate-700">
-                            Véhicule :
-                          </span>{" "}
-                          {formatVehicleType(r.vehicle_type)}
-                          {r.vehicle_brand ? ` • ${r.vehicle_brand}` : ""}
-                          {r.vehicle_model ? ` • ${r.vehicle_model}` : ""}
-                        </p>
+                        <div className="text-sm text-slate-600 space-y-1">
+                          <p>
+                            <span className="font-medium text-slate-700">
+                              Véhicule :
+                            </span>{" "}
+                            {formatVehicleType(r.transport_mode)}
+                            {r.vehicle_brand ? ` • ${r.vehicle_brand}` : ""}
+                            {r.vehicle_model ? ` • ${r.vehicle_model}` : ""}
+                          </p>
+                          <p>
+                            <span className="font-medium text-slate-700">
+                              Année / Couleur / Plaque :
+                            </span>{" "}
+                            {[r.vehicle_year, r.vehicle_color, r.plate_number]
+                              .filter(Boolean)
+                              .join(" • ") || "—"}
+                          </p>
+                          <p>
+                            <span className="font-medium text-slate-700">
+                              Permis :
+                            </span>{" "}
+                            {[r.license_number, r.license_expiry]
+                              .filter(Boolean)
+                              .join(" • ") || "—"}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col justify-center">
@@ -752,7 +940,11 @@ export default function AdminDriversPage() {
                             Actions rapides
                           </div>
 
-                          <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="text-xs text-slate-600 mb-4">
+                            L’API recalculera automatiquement les documents et champs manquants.
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
                             <button
                               type="button"
                               disabled={updatingUserId === r.user_id}
@@ -818,8 +1010,8 @@ export default function AdminDriversPage() {
                         <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                           <div className="space-y-2">
                             <p>
-                              <span className="font-medium">Type véhicule :</span>{" "}
-                              {formatVehicleType(r.vehicle_type)}
+                              <span className="font-medium">Mode de transport :</span>{" "}
+                              {formatVehicleType(r.transport_mode)}
                             </p>
                             <p>
                               <span className="font-medium">Marque / modèle :</span>{" "}
@@ -830,6 +1022,10 @@ export default function AdminDriversPage() {
                             <p>
                               <span className="font-medium">Email :</span>{" "}
                               {r.email || "—"}
+                            </p>
+                            <p>
+                              <span className="font-medium">Téléphone urgence :</span>{" "}
+                              {r.emergency_phone || "—"}
                             </p>
                           </div>
 
@@ -846,7 +1042,36 @@ export default function AdminDriversPage() {
                               <span className="font-medium">Plaque :</span>{" "}
                               {r.plate_number || "—"}
                             </p>
+                            <p>
+                              <span className="font-medium">Permis / expiration :</span>{" "}
+                              {[r.license_number, r.license_expiry]
+                                .filter(Boolean)
+                                .join(" • ") || "—"}
+                            </p>
                           </div>
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                          <p className="font-semibold text-slate-900">
+                            Éléments manquants signalés au chauffeur
+                          </p>
+
+                          {missingList.length === 0 ? (
+                            <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-green-700">
+                              Aucun élément manquant enregistré.
+                            </div>
+                          ) : (
+                            <ul className="space-y-2">
+                              {missingList.map((item) => (
+                                <li
+                                  key={item}
+                                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800"
+                                >
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
 
                         <div className="space-y-3 text-sm">
@@ -930,7 +1155,7 @@ export default function AdminDriversPage() {
 
                                     <span
                                       className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
-                                        d.status
+                                        d.status,
                                       )}`}
                                     >
                                       {statusLabel(d.status)}
@@ -954,10 +1179,13 @@ export default function AdminDriversPage() {
                                 [r.user_id]: e.target.value,
                               }))
                             }
-                            rows={3}
-                            placeholder="Ajouter une note interne pour cette review..."
+                            rows={4}
+                            placeholder="Ajouter une note qui accompagnera la review..."
                             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                           />
+                          <p className="text-xs text-slate-500">
+                            Cette note peut expliquer au chauffeur ce qu’il doit corriger ou compléter.
+                          </p>
                         </div>
                       </div>
                     </details>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -17,14 +17,6 @@ type Profile = {
   client_state?: string | null;
   client_zip?: string | null;
 
-  // Driver
-  driver_license_number?: string | null;
-  driver_license_state?: string | null;
-  vehicle_make?: string | null;
-  vehicle_model?: string | null;
-  vehicle_year?: string | null;
-  vehicle_plate?: string | null;
-
   // Restaurant
   restaurant_legal_name?: string | null;
   restaurant_display_name?: string | null;
@@ -37,6 +29,69 @@ type Profile = {
   restaurant_contact_name?: string | null;
 };
 
+type DriverProfile = {
+  user_id: string;
+  full_name: string | null;
+  phone: string | null;
+  emergency_phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  date_of_birth: string | null;
+  transport_mode: string | null;
+  vehicle_type: string | null;
+  vehicle_brand: string | null;
+  vehicle_model: string | null;
+  vehicle_year: number | null;
+  vehicle_color: string | null;
+  plate_number: string | null;
+  license_number: string | null;
+  license_expiry: string | null;
+  status: string | null;
+  documents_required: boolean | null;
+  missing_requirements: string | null;
+  is_online: boolean | null;
+};
+
+function roleLabel(role: string | null): string {
+  if (!role) return "Inconnu";
+  if (role === "client") return "Client";
+  if (role === "driver") return "Chauffeur / Livreur";
+  if (role === "restaurant") return "Restaurant";
+  if (role === "admin") return "Administrateur";
+  return role;
+}
+
+function transportModeLabel(value: string | null | undefined): string {
+  if (value === "bike") return "Bike";
+  if (value === "moto") return "Moto";
+  if (value === "car") return "Car";
+  return "—";
+}
+
+function parseMissingRequirements(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  const withoutPrefix = trimmed.replace(/^Missing:\s*/i, "");
+  return withoutPrefix
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatBirthDate(value: string | null | undefined): string {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+  }).format(date);
+}
+
 export default function AccountPage() {
   const router = useRouter();
 
@@ -45,9 +100,24 @@ export default function AccountPage() {
 
   const [userEmail, setUserEmail] = useState<string>("");
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  // Charger user + profil
+  const missingRequirements = useMemo(
+    () => parseMissingRequirements(driverProfile?.missing_requirements),
+    [driverProfile?.missing_requirements],
+  );
+
+  const mustCompleteDriverProfile =
+    profile?.role === "driver" &&
+    driverProfile?.status === "approved" &&
+    driverProfile?.documents_required === true;
+
+  const canGoOnline =
+    profile?.role === "driver" &&
+    driverProfile?.status === "approved" &&
+    driverProfile?.documents_required === false;
+
   useEffect(() => {
     let cancelled = false;
 
@@ -55,13 +125,13 @@ export default function AccountPage() {
       setLoading(true);
       setErr(null);
 
-      // 1) Récupérer l'utilisateur connecté
       const { data: userData, error: userErr } = await supabase.auth.getUser();
       if (userErr) {
         if (!cancelled) setErr(userErr.message);
         setLoading(false);
         return;
       }
+
       const user = userData.user;
       if (!user) {
         if (!cancelled) {
@@ -75,7 +145,6 @@ export default function AccountPage() {
         setUserEmail(user.email ?? "");
       }
 
-      // 2) Récupérer le profil
       const { data: prof, error: profErr } = await supabase
         .from("profiles")
         .select("*")
@@ -88,31 +157,80 @@ export default function AccountPage() {
         return;
       }
 
-      if (!cancelled) {
-        if (!prof) {
+      if (!prof) {
+        if (!cancelled) {
           setProfile(null);
+          setDriverProfile(null);
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (!cancelled) {
+        setProfile(prof as Profile);
+      }
+
+      if (prof.avatar_url) {
+        const { data: signed, error: signedErr } = await supabase.storage
+          .from("avatars")
+          .createSignedUrl(prof.avatar_url, 60 * 60);
+
+        if (!cancelled && !signedErr && signed?.signedUrl) {
+          setAvatarUrl(signed.signedUrl);
+        }
+      }
+
+      if (prof.role === "driver") {
+        const { data: dp, error: dpErr } = await supabase
+          .from("driver_profiles")
+          .select(
+            `
+            user_id,
+            full_name,
+            phone,
+            emergency_phone,
+            address,
+            city,
+            state,
+            zip_code,
+            date_of_birth,
+            transport_mode,
+            vehicle_type,
+            vehicle_brand,
+            vehicle_model,
+            vehicle_year,
+            vehicle_color,
+            plate_number,
+            license_number,
+            license_expiry,
+            status,
+            documents_required,
+            missing_requirements,
+            is_online
+          `,
+          )
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (dpErr) {
+          if (!cancelled) setErr(dpErr.message);
           setLoading(false);
           return;
         }
 
-        setProfile(prof as Profile);
-
-        // 3) Si avatar_url → créer une URL signée (bucket avatars)
-        if (prof.avatar_url) {
-          const { data: signed, error: signedErr } = await supabase.storage
-            .from("avatars")
-            .createSignedUrl(prof.avatar_url, 60 * 60); // 1h
-
-          if (!signedErr && signed?.signedUrl) {
-            setAvatarUrl(signed.signedUrl);
-          }
+        if (!cancelled) {
+          setDriverProfile((dp as DriverProfile | null) ?? null);
         }
+      } else if (!cancelled) {
+        setDriverProfile(null);
+      }
 
+      if (!cancelled) {
         setLoading(false);
       }
     }
 
-    load();
+    void load();
 
     return () => {
       cancelled = true;
@@ -126,17 +244,7 @@ export default function AccountPage() {
       setErr(error.message);
       return;
     }
-    // Après déconnexion, retour vers /signup
     router.push("/signup");
-  }
-
-  function roleLabel(role: string | null): string {
-    if (!role) return "Inconnu";
-    if (role === "client") return "Client";
-    if (role === "driver") return "Chauffeur / Livreur";
-    if (role === "restaurant") return "Restaurant";
-    if (role === "admin") return "Administrateur";
-    return role;
   }
 
   if (loading) {
@@ -147,7 +255,6 @@ export default function AccountPage() {
     );
   }
 
-  // Pas connecté
   if (!userEmail) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -168,7 +275,6 @@ export default function AccountPage() {
     );
   }
 
-  // Pas de profil en base
   if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -179,8 +285,7 @@ export default function AccountPage() {
             profil n&apos;a encore été créé.
           </p>
           <p className="text-xs text-gray-500 text-center">
-            Va sur la page d&apos;inscription et choisis ton type de compte (client, chauffeur ou
-            restaurant).
+            Va sur la page d&apos;inscription et choisis ton type de compte.
           </p>
           <button
             onClick={() => router.push("/signup")}
@@ -200,11 +305,9 @@ export default function AccountPage() {
     );
   }
 
-  // Vue principale : profil trouvé
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-xl w-full bg-white rounded-2xl shadow p-6 space-y-6">
-        {/* Header */}
+      <div className="max-w-2xl w-full bg-white rounded-2xl shadow p-6 space-y-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {avatarUrl ? (
@@ -236,15 +339,13 @@ export default function AccountPage() {
           </button>
         </div>
 
-        {/* Infos générales */}
         <div className="border rounded-xl p-4 space-y-2">
           <h2 className="text-sm font-semibold">Informations générales</h2>
-          {profile.phone && (
-            <div className="text-sm">
-              <span className="text-gray-500">Téléphone : </span>
-              <span>{profile.phone}</span>
-            </div>
-          )}
+
+          <div className="text-sm">
+            <span className="text-gray-500">Téléphone : </span>
+            <span>{profile.phone || "—"}</span>
+          </div>
 
           {profile.role === "client" && (
             <div className="text-sm space-y-1">
@@ -263,38 +364,174 @@ export default function AccountPage() {
           )}
         </div>
 
-        {/* Bloc spécifique chauffeur */}
         {profile.role === "driver" && (
-          <div className="border rounded-xl p-4 space-y-3">
-            <h2 className="text-sm font-semibold">Profil chauffeur / livreur</h2>
-            {profile.driver_license_number && (
-              <div className="text-sm">
-                <span className="text-gray-500">Permis : </span>
-                {profile.driver_license_number} ({profile.driver_license_state})
-              </div>
-            )}
-            {(profile.vehicle_make ||
-              profile.vehicle_model ||
-              profile.vehicle_year ||
-              profile.vehicle_plate) && (
-              <div className="text-sm space-y-1">
-                <div className="text-gray-500 text-xs">Véhicule :</div>
-                <div>
-                  {[profile.vehicle_make, profile.vehicle_model, profile.vehicle_year]
-                    .filter(Boolean)
-                    .join(" ")}
-                </div>
-                {profile.vehicle_plate && (
-                  <div className="text-xs text-gray-600">
-                    Plaque : {profile.vehicle_plate}
-                  </div>
+          <div className="space-y-4">
+            <div className="border rounded-xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold">Profil chauffeur / livreur</h2>
+
+                {driverProfile ? (
+                  canGoOnline ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200">
+                      Dossier complet
+                    </span>
+                  ) : mustCompleteDriverProfile ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-amber-50 text-amber-700 border-amber-200">
+                      Profil à compléter
+                    </span>
+                  ) : driverProfile.status === "approved" ? (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-gray-50 text-gray-700 border-gray-200">
+                      Accès limité
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-blue-50 text-blue-700 border-blue-200">
+                      En attente d’approbation
+                    </span>
+                  )
+                ) : (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full border text-xs font-semibold bg-red-50 text-red-700 border-red-200">
+                    Fiche chauffeur introuvable
+                  </span>
                 )}
               </div>
-            )}
+
+              {!driverProfile ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Ton rôle est chauffeur, mais aucune fiche n’a été trouvée dans
+                    <code> driver_profiles </code>.
+                  </p>
+                  <button
+                    onClick={() => router.push("/signup/driver")}
+                    className="px-3 py-2 rounded bg-black text-white text-sm"
+                  >
+                    Créer / compléter mon profil chauffeur
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Mode : </span>
+                      <span>{transportModeLabel(driverProfile.transport_mode)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Statut : </span>
+                      <span>{driverProfile.status || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Téléphone d’urgence : </span>
+                      <span>{driverProfile.emergency_phone || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Date de naissance : </span>
+                      <span>{formatBirthDate(driverProfile.date_of_birth)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Disponibilité : </span>
+                      <span>{driverProfile.is_online ? "En ligne" : "Hors ligne"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Documents requis : </span>
+                      <span>{driverProfile.documents_required ? "Oui" : "Non"}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-sm space-y-1">
+                    <div className="text-gray-500 text-xs">Adresse :</div>
+                    <div>{driverProfile.address || "—"}</div>
+                    <div className="text-xs text-gray-600">
+                      {[driverProfile.city, driverProfile.state, driverProfile.zip_code]
+                        .filter(Boolean)
+                        .join(" " ) || "—"}
+                    </div>
+                  </div>
+
+                  <div className="text-sm space-y-1">
+                    <div className="text-gray-500 text-xs">Véhicule :</div>
+                    <div>
+                      {[
+                        driverProfile.vehicle_brand,
+                        driverProfile.vehicle_model,
+                        driverProfile.vehicle_year,
+                      ]
+                        .filter(Boolean)
+                        .join(" ") || "—"}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      {[
+                        driverProfile.vehicle_color ? `Couleur: ${driverProfile.vehicle_color}` : null,
+                        driverProfile.plate_number ? `Plaque: ${driverProfile.plate_number}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" • ") || "—"}
+                    </div>
+                  </div>
+
+                  <div className="text-sm space-y-1">
+                    <div className="text-gray-500 text-xs">Permis :</div>
+                    <div>
+                      {driverProfile.license_number || "—"}
+                      {driverProfile.license_expiry
+                        ? ` • Expire le ${driverProfile.license_expiry}`
+                        : ""}
+                    </div>
+                  </div>
+
+                  {mustCompleteDriverProfile && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                      <p className="text-sm font-semibold text-amber-800">
+                        Ton profil chauffeur est incomplet
+                      </p>
+                      <p className="text-sm text-amber-700">
+                        Merci de compléter les informations et documents manquants pour pouvoir continuer à recevoir des courses.
+                      </p>
+
+                      {missingRequirements.length > 0 && (
+                        <ul className="space-y-2">
+                          {missingRequirements.map((item) => (
+                            <li
+                              key={item}
+                              className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900"
+                            >
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <button
+                        onClick={() => router.push("/signup/driver")}
+                        className="px-3 py-2 rounded bg-black text-white text-sm"
+                      >
+                        Compléter mon profil chauffeur
+                      </button>
+                    </div>
+                  )}
+
+                  {!mustCompleteDriverProfile && profile.role === "driver" && (
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={() => router.push("/signup/driver")}
+                        className="px-3 py-2 rounded border text-sm"
+                      >
+                        Mettre à jour mon profil chauffeur
+                      </button>
+
+                      <button
+                        onClick={() => router.push("/orders/driver")}
+                        className="px-3 py-2 rounded bg-black text-white text-sm"
+                      >
+                        Ouvrir mon tableau de bord chauffeur
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Bloc spécifique restaurant */}
         {profile.role === "restaurant" && (
           <div className="border rounded-xl p-4 space-y-3">
             <h2 className="text-sm font-semibold">Profil restaurant</h2>
@@ -355,7 +592,6 @@ export default function AccountPage() {
           </div>
         )}
 
-        {/* Bloc actions client : créer une nouvelle commande */}
         {profile.role === "client" && (
           <div className="border rounded-xl p-4 space-y-3">
             <h2 className="text-sm font-semibold">Tes actions</h2>
@@ -374,8 +610,8 @@ export default function AccountPage() {
         {err && <div className="text-red-600 text-xs text-center">{err}</div>}
 
         <p className="text-[11px] text-gray-500 text-center">
-          Les informations du profil ne sont pas modifiables depuis cette page. Les changements
-          se feront par l&apos;administration ou une future page &quot;Modifier mon profil&quot;.
+          Les informations du profil ne sont pas modifiables directement ici.
+          Utilise les pages dédiées pour compléter ou mettre à jour ton dossier.
         </p>
       </div>
     </div>

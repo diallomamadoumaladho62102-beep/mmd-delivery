@@ -1,74 +1,259 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 const ROLE = "driver";
+const PROFILE_BUCKET = "avatars";
+const DRIVER_DOCS_BUCKET = "driver-docs";
 
 type VehicleType = "car" | "moto" | "bike";
+type DriverDocType =
+  | "profile_photo"
+  | "id_card_front"
+  | "id_card_back"
+  | "license_front"
+  | "license_back"
+  | "insurance"
+  | "registration";
+
+type DriverProfileRow = {
+  id?: string;
+  user_id: string;
+  full_name: string | null;
+  phone: string | null;
+  emergency_phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  date_of_birth: string | null;
+  transport_mode: VehicleType;
+  vehicle_type: string | null;
+  vehicle_brand: string | null;
+  vehicle_model: string | null;
+  vehicle_year: number | null;
+  vehicle_color: string | null;
+  plate_number: string | null;
+  license_number: string | null;
+  license_expiry: string | null;
+  status: string | null;
+  documents_required: boolean | null;
+  is_online?: boolean | null;
+};
+
+type PublicProfileRow = {
+  id: string;
+  role: string | null;
+  full_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  email?: string | null;
+};
+
+type DriverDocumentRow = {
+  id: string;
+  user_id: string;
+  doc_type: DriverDocType;
+  file_path: string;
+  country: string | null;
+  state: string | null;
+  doc_number: string | null;
+  expires_at: string | null;
+  status: string | null;
+  driver_id: string | null;
+};
+
+type ExistingDocsMap = Partial<Record<DriverDocType, DriverDocumentRow>>;
+
+function trimOrNull(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeZip(value: string): string {
+  return value.trim();
+}
+
+function getFileExt(file: File): string {
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  return ext || "jpg";
+}
+
+function buildStoragePath(
+  uid: string,
+  docType: DriverDocType,
+  file: File,
+): string {
+  const ext = getFileExt(file);
+  return `drivers/${uid}/${docType}_${Date.now()}.${ext}`;
+}
 
 export default function SignupDriver() {
   const [err, setErr] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
 
-  // type de véhicule
-  const [vehicleType, setVehicleType] = useState<VehicleType>("car");
-
-  // email pour envoyer le lien
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
-
-  // email réel après connexion (lecture seule)
   const [authEmail, setAuthEmail] = useState("");
 
-  // Infos perso
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [vehicleType, setVehicleType] = useState<VehicleType>("bike");
+
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState(""); // ✅ date de naissance
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [stateValue, setStateValue] = useState("");
+  const [zipCode, setZipCode] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
 
-  // Infos véhicule
-  const [vehicleMake, setVehicleMake] = useState("");
+  const [vehicleBrand, setVehicleBrand] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
   const [vehicleYear, setVehicleYear] = useState<number | "">("");
   const [vehicleColor, setVehicleColor] = useState("");
-  const [vehiclePlate, setVehiclePlate] = useState("");
+  const [plateNumber, setPlateNumber] = useState("");
 
-  // Permis (surtout pour voiture / moto)
   const [licenseNumber, setLicenseNumber] = useState("");
-  const [licenseState, setLicenseState] = useState("");
+  const [licenseExpiry, setLicenseExpiry] = useState("");
 
-  // Photo chauffeur (selfie / profil)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-
-  // ✅ Vérification d’identité (ID upload)
-  const [idType, setIdType] = useState("");
+  const [idType, setIdType] = useState("id_card");
   const [idNumber, setIdNumber] = useState("");
   const [idCountry, setIdCountry] = useState("US");
-  const [idExpiry, setIdExpiry] = useState(""); // format YYYY-MM-DD
-  const [idFile, setIdFile] = useState<File | null>(null);
-  const [idPreview, setIdPreview] = useState<string | null>(null);
+  const [idFrontFile, setIdFrontFile] = useState<File | null>(null);
+  const [idBackFile, setIdBackFile] = useState<File | null>(null);
 
-  const [saving, setSaving] = useState(false);
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null);
+  const [licenseFrontFile, setLicenseFrontFile] = useState<File | null>(null);
+  const [licenseBackFile, setLicenseBackFile] = useState<File | null>(null);
+  const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
+  const [registrationFile, setRegistrationFile] = useState<File | null>(null);
 
-  // Récupérer l'utilisateur connecté
+  const [existingDocs, setExistingDocs] = useState<ExistingDocsMap>({});
+
+  const requiresMotorDocs = vehicleType === "car" || vehicleType === "moto";
+
+  async function loadConnectedUser() {
+    setErr(null);
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+
+    const user = data.user;
+    setUid(user?.id ?? null);
+    setAuthEmail(user?.email ?? "");
+  }
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data, error }) => {
-      if (error) {
-        console.error(error);
-        return;
-      }
-      const user = data.user;
-      setUid(user?.id ?? null);
-      setAuthEmail(user?.email ?? "");
-    });
+    loadConnectedUser();
   }, []);
 
-  // Envoi du lien magique
+  useEffect(() => {
+    if (!uid) {
+      setLoadingProfile(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadExistingData() {
+      setLoadingProfile(true);
+      setErr(null);
+
+      try {
+        const [{ data: publicProfile, error: publicProfileErr }, { data: driverProfile, error: driverProfileErr }, { data: docs, error: docsErr }] =
+          await Promise.all([
+            supabase
+              .from("profiles")
+              .select("id, role, full_name, phone, avatar_url, email")
+              .eq("id", uid)
+              .maybeSingle<PublicProfileRow>(),
+            supabase
+              .from("driver_profiles")
+              .select("*")
+              .eq("user_id", uid)
+              .maybeSingle<DriverProfileRow>(),
+            supabase
+              .from("driver_documents")
+              .select("*")
+              .eq("user_id", uid),
+          ]);
+
+        if (publicProfileErr) throw publicProfileErr;
+        if (driverProfileErr) throw driverProfileErr;
+        if (docsErr) throw docsErr;
+
+        if (cancelled) return;
+
+        if (publicProfile) {
+          setFullName(publicProfile.full_name ?? "");
+          setPhone(publicProfile.phone ?? "");
+        }
+
+        if (driverProfile) {
+          setFullName(driverProfile.full_name ?? publicProfile?.full_name ?? "");
+          setPhone(driverProfile.phone ?? publicProfile?.phone ?? "");
+          setEmergencyPhone(driverProfile.emergency_phone ?? "");
+          setAddress(driverProfile.address ?? "");
+          setCity(driverProfile.city ?? "");
+          setStateValue(driverProfile.state ?? "");
+          setZipCode(driverProfile.zip_code ?? "");
+          setDateOfBirth(driverProfile.date_of_birth ?? "");
+          setVehicleType((driverProfile.transport_mode as VehicleType) || "bike");
+          setVehicleBrand(driverProfile.vehicle_brand ?? "");
+          setVehicleModel(driverProfile.vehicle_model ?? "");
+          setVehicleYear(driverProfile.vehicle_year ?? "");
+          setVehicleColor(driverProfile.vehicle_color ?? "");
+          setPlateNumber(driverProfile.plate_number ?? "");
+          setLicenseNumber(driverProfile.license_number ?? "");
+          setLicenseExpiry(driverProfile.license_expiry ?? "");
+        }
+
+        if (docs && docs.length > 0) {
+          const mapped: ExistingDocsMap = {};
+          for (const doc of docs as DriverDocumentRow[]) {
+            mapped[doc.doc_type] = doc;
+          }
+          setExistingDocs(mapped);
+
+          const idDoc =
+            mapped.id_card_front ||
+            mapped.id_card_back;
+
+          if (idDoc?.doc_number) setIdNumber(idDoc.doc_number);
+          if (idDoc?.country) setIdCountry(idDoc.country);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setErr(e?.message ?? "Erreur lors du chargement du profil chauffeur.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingProfile(false);
+        }
+      }
+    }
+
+    loadExistingData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
+
   async function sendLink() {
     setErr(null);
+    setSuccess(null);
+
     try {
-      if (!email) {
+      if (!email.trim()) {
         setErr("Merci de saisir un email.");
         return;
       }
@@ -76,214 +261,551 @@ export default function SignupDriver() {
       const redirect = `${window.location.origin}/auth/callback?next=/signup/driver`;
 
       const { error } = await supabase.auth.signInWithOtp({
-        email,
+        email: email.trim(),
         options: { emailRedirectTo: redirect },
       });
 
-      if (error) setErr(error.message);
-      else setSent(true);
+      if (error) {
+        setErr(error.message);
+        return;
+      }
+
+      setSent(true);
+      setSuccess("Lien magique envoyé. Ouvre ton email puis reviens sur cette page.");
     } catch (e: any) {
-      console.error(e);
       setErr(e?.message ?? "Erreur lors de l'envoi du lien.");
     }
   }
 
-  // Sauvegarde du profil driver + vérification d’identité
+  const hasProfilePhoto = !!profilePhotoFile || !!existingDocs.profile_photo;
+  const hasIdFront = !!idFrontFile || !!existingDocs.id_card_front;
+  const hasIdBack = !!idBackFile || !!existingDocs.id_card_back;
+  const hasLicenseFront = !!licenseFrontFile || !!existingDocs.license_front;
+  const hasLicenseBack = !!licenseBackFile || !!existingDocs.license_back;
+  const hasInsurance = !!insuranceFile || !!existingDocs.insurance;
+  const hasRegistration = !!registrationFile || !!existingDocs.registration;
+
+  const isBaseComplete = useMemo(() => {
+    return (
+      !!trimOrNull(fullName) &&
+      !!trimOrNull(phone) &&
+      !!trimOrNull(emergencyPhone) &&
+      !!trimOrNull(address) &&
+      !!trimOrNull(city) &&
+      !!trimOrNull(stateValue) &&
+      !!trimOrNull(normalizeZip(zipCode)) &&
+      !!trimOrNull(dateOfBirth) &&
+      hasProfilePhoto &&
+      !!trimOrNull(idType) &&
+      !!trimOrNull(idNumber) &&
+      !!trimOrNull(idCountry) &&
+      hasIdFront &&
+      hasIdBack
+    );
+  }, [
+    fullName,
+    phone,
+    emergencyPhone,
+    address,
+    city,
+    stateValue,
+    zipCode,
+    dateOfBirth,
+    hasProfilePhoto,
+    idType,
+    idNumber,
+    idCountry,
+    hasIdFront,
+    hasIdBack,
+  ]);
+
+  const isMotorComplete = useMemo(() => {
+    if (!requiresMotorDocs) return true;
+
+    return (
+      !!trimOrNull(licenseNumber) &&
+      !!trimOrNull(licenseExpiry) &&
+      !!trimOrNull(vehicleBrand) &&
+      !!trimOrNull(vehicleModel) &&
+      !!vehicleYear &&
+      !!trimOrNull(vehicleColor) &&
+      !!trimOrNull(plateNumber) &&
+      hasLicenseFront &&
+      hasLicenseBack &&
+      hasInsurance &&
+      hasRegistration
+    );
+  }, [
+    requiresMotorDocs,
+    licenseNumber,
+    licenseExpiry,
+    vehicleBrand,
+    vehicleModel,
+    vehicleYear,
+    vehicleColor,
+    plateNumber,
+    hasLicenseFront,
+    hasLicenseBack,
+    hasInsurance,
+    hasRegistration,
+  ]);
+
+  const isProfileComplete = isBaseComplete && isMotorComplete;
+
+  async function uploadAndUpsertDocument(
+    docType: DriverDocType,
+    file: File,
+    extra?: {
+      country?: string | null;
+      state?: string | null;
+      doc_number?: string | null;
+      expires_at?: string | null;
+    },
+  ) {
+    if (!uid) {
+      throw new Error("Utilisateur non connecté.");
+    }
+
+    const filePath = buildStoragePath(uid, docType, file);
+
+    const { data: uploadData, error: uploadErr } = await supabase.storage
+      .from(DRIVER_DOCS_BUCKET)
+      .upload(filePath, file, { upsert: true });
+
+    if (uploadErr) throw uploadErr;
+
+    const payload = {
+      user_id: uid,
+      driver_id: null,
+      doc_type: docType,
+      file_path: uploadData.path,
+      country: extra?.country ?? null,
+      state: extra?.state ?? null,
+      doc_number: extra?.doc_number ?? null,
+      expires_at: extra?.expires_at ?? null,
+      status: "pending",
+      reviewed_at: null,
+      reviewed_by: null,
+      review_notes: null,
+    };
+
+    const { error: docErr } = await supabase
+      .from("driver_documents")
+      .upsert(payload, { onConflict: "user_id,doc_type" });
+
+    if (docErr) throw docErr;
+  }
+
   async function saveProfile() {
     setErr(null);
+    setSuccess(null);
 
     if (!uid) {
       setErr("Tu dois être connecté pour enregistrer ton profil.");
       return;
     }
 
-    if (!fullName.trim()) {
+    if (!trimOrNull(fullName)) {
       setErr("Merci de saisir ton nom complet.");
       return;
     }
 
-    if (!phone.trim()) {
+    if (!trimOrNull(phone)) {
       setErr("Merci de saisir ton numéro de téléphone.");
       return;
     }
 
-    if (!dateOfBirth.trim()) {
+    if (!trimOrNull(emergencyPhone)) {
+      setErr("Merci de saisir un numéro de téléphone d’urgence.");
+      return;
+    }
+
+    if (!trimOrNull(address)) {
+      setErr("Merci de saisir ton adresse.");
+      return;
+    }
+
+    if (!trimOrNull(city)) {
+      setErr("Merci de saisir ta ville.");
+      return;
+    }
+
+    if (!trimOrNull(stateValue)) {
+      setErr("Merci de saisir ton État.");
+      return;
+    }
+
+    if (!trimOrNull(normalizeZip(zipCode))) {
+      setErr("Merci de saisir ton ZIP code.");
+      return;
+    }
+
+    if (!trimOrNull(dateOfBirth)) {
       setErr("Merci de saisir ta date de naissance.");
       return;
     }
 
-    // 🚴 VALIDATION VÉLO → seulement marque + modèle obligatoires
-    if (vehicleType === "bike") {
-      if (!vehicleMake.trim() || !vehicleModel.trim()) {
-        setErr("Pour le vélo, merci d’indiquer au moins la marque et le modèle.");
-        return;
-      }
-      // permis, année, couleur, plaque → pas obligatoires pour vélo
-    }
-
-    // 🚗🏍️ VALIDATION VOITURE + MOTO → tout obligatoire
-    if (vehicleType === "car" || vehicleType === "moto") {
-      if (
-        !vehicleMake.trim() ||
-        !vehicleModel.trim() ||
-        !vehicleYear ||
-        !vehicleColor.trim() ||
-        !vehiclePlate.trim()
-      ) {
-        setErr(
-          "Merci de remplir toutes les informations du véhicule (marque, modèle, année, couleur, plaque)."
-        );
-        return;
-      }
-
-      if (!licenseNumber.trim() || !licenseState.trim()) {
-        setErr(
-          "Merci de remplir toutes les informations du permis (numéro + état)."
-        );
-        return;
-      }
-    }
-
-    if (!avatarFile) {
-      setErr("Merci de prendre une photo de profil avant d'enregistrer.");
-      return;
-    }
-
-    // ✅ Vérification identité : obligatoire pour tous les chauffeurs (car, moto, vélo)
-    if (!idType.trim()) {
+    if (!trimOrNull(idType)) {
       setErr("Merci de choisir le type de pièce d’identité.");
       return;
     }
-    if (!idNumber.trim()) {
+
+    if (!trimOrNull(idNumber)) {
       setErr("Merci de saisir le numéro de la pièce d’identité.");
       return;
     }
-    if (!idCountry.trim()) {
+
+    if (!trimOrNull(idCountry)) {
       setErr("Merci de saisir le pays d’émission de la pièce.");
       return;
     }
-    if (!idExpiry.trim()) {
-      setErr("Merci de saisir la date d’expiration de la pièce.");
+
+    if (!hasProfilePhoto) {
+      setErr("Merci d’ajouter une photo personnelle.");
       return;
     }
-    if (!idFile) {
-      setErr("Merci de prendre une photo de ta pièce d’identité.");
+
+    if (!hasIdFront) {
+      setErr("Merci d’ajouter la photo recto de la pièce d’identité.");
       return;
+    }
+
+    if (!hasIdBack) {
+      setErr("Merci d’ajouter la photo verso de la pièce d’identité.");
+      return;
+    }
+
+    if (requiresMotorDocs) {
+      if (!trimOrNull(licenseNumber)) {
+        setErr("Merci de saisir le numéro du permis.");
+        return;
+      }
+
+      if (!trimOrNull(licenseExpiry)) {
+        setErr("Merci de saisir la date d’expiration du permis.");
+        return;
+      }
+
+      if (!trimOrNull(vehicleBrand)) {
+        setErr("Merci de saisir la marque du véhicule.");
+        return;
+      }
+
+      if (!trimOrNull(vehicleModel)) {
+        setErr("Merci de saisir le modèle du véhicule.");
+        return;
+      }
+
+      if (!vehicleYear) {
+        setErr("Merci de saisir l’année du véhicule.");
+        return;
+      }
+
+      if (!trimOrNull(vehicleColor)) {
+        setErr("Merci de saisir la couleur du véhicule.");
+        return;
+      }
+
+      if (!trimOrNull(plateNumber)) {
+        setErr("Merci de saisir la plaque d’immatriculation.");
+        return;
+      }
+
+      if (!hasLicenseFront) {
+        setErr("Merci d’ajouter la photo recto du permis.");
+        return;
+      }
+
+      if (!hasLicenseBack) {
+        setErr("Merci d’ajouter la photo verso du permis.");
+        return;
+      }
+
+      if (!hasInsurance) {
+        setErr("Merci d’ajouter le document d’assurance.");
+        return;
+      }
+
+      if (!hasRegistration) {
+        setErr("Merci d’ajouter le document de registration.");
+        return;
+      }
     }
 
     setSaving(true);
 
     try {
-      // 1️⃣ Upload de la photo chauffeur
-      const avatarExt = avatarFile.name.split(".").pop() || "jpg";
-      const avatarPath = `drivers/${uid}/avatar_${Date.now()}.${avatarExt}`;
+      if (profilePhotoFile) {
+        const avatarPath = buildStoragePath(uid, "profile_photo", profilePhotoFile);
 
-      const { data: avatarUpload, error: avatarError } = await supabase.storage
-        .from("avatars")
-        .upload(avatarPath, avatarFile, { upsert: true });
+        const { data: avatarUpload, error: avatarError } = await supabase.storage
+          .from(PROFILE_BUCKET)
+          .upload(avatarPath, profilePhotoFile, { upsert: true });
 
-      if (avatarError) {
-        console.error(avatarError);
-        throw avatarError;
+        if (avatarError) throw avatarError;
+
+        const avatarUrl = avatarUpload.path;
+
+        const { error: profileUpsertErr } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: uid,
+              role: ROLE,
+              full_name: trimOrNull(fullName),
+              phone: trimOrNull(phone),
+              avatar_url: avatarUrl,
+              email: authEmail || null,
+            },
+            { onConflict: "id" },
+          );
+
+        if (profileUpsertErr) throw profileUpsertErr;
+
+        await uploadAndUpsertDocument("profile_photo", profilePhotoFile);
+      } else {
+        const { error: profileUpsertErr } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: uid,
+              role: ROLE,
+              full_name: trimOrNull(fullName),
+              phone: trimOrNull(phone),
+              email: authEmail || null,
+            },
+            { onConflict: "id" },
+          );
+
+        if (profileUpsertErr) throw profileUpsertErr;
       }
 
-      const avatar_url = avatarUpload?.path ?? null;
-
-      // 2️⃣ Upload de la pièce d’identité
-      const idExt = idFile.name.split(".").pop() || "jpg";
-      const idPath = `drivers/${uid}/id_${Date.now()}.${idExt}`;
-
-      const { data: idUpload, error: idError } = await supabase.storage
-        .from("avatars")
-        .upload(idPath, idFile, { upsert: true });
-
-      if (idError) {
-        console.error(idError);
-        throw idError;
-      }
-
-      const id_image_path = idUpload?.path ?? null;
-
-      // 3️⃣ UPSERT dans profiles (insert OU update si déjà existant)
-      const payload: any = {
-        id: uid,
-        role: ROLE,
-        full_name: fullName || null,
-        phone: phone || null,
-        avatar_url,
-
-        // Type de véhicule
-        driver_vehicle_type: vehicleType,
-        driver_vehicle_make: vehicleMake || null,
-        driver_vehicle_model: vehicleModel || null,
-        driver_vehicle_year: vehicleYear === "" ? null : vehicleYear,
-        driver_vehicle_color: vehicleColor || null,
-        driver_vehicle_plate: vehiclePlate || null,
-
-        // Permis
-        driver_license_number: licenseNumber || null,
-        driver_license_state: licenseState || null,
+      const driverProfilePayload = {
+        user_id: uid,
+        full_name: trimOrNull(fullName),
+        phone: trimOrNull(phone),
+        emergency_phone: trimOrNull(emergencyPhone),
+        address: trimOrNull(address),
+        city: trimOrNull(city),
+        state: trimOrNull(stateValue),
+        zip_code: trimOrNull(normalizeZip(zipCode)),
+        date_of_birth: trimOrNull(dateOfBirth),
+        transport_mode: vehicleType,
+        vehicle_type: vehicleType,
+        vehicle_brand: trimOrNull(vehicleBrand),
+        vehicle_model: trimOrNull(vehicleModel),
+        vehicle_year: vehicleYear === "" ? null : Number(vehicleYear),
+        vehicle_color: trimOrNull(vehicleColor),
+        plate_number: trimOrNull(plateNumber),
+        license_number: trimOrNull(licenseNumber),
+        license_expiry: trimOrNull(licenseExpiry),
+        documents_required: !isProfileComplete,
+        updated_at: new Date().toISOString(),
       };
 
-      const { error: upsertProfileErr } = await supabase
-        .from("profiles")
-        .upsert(payload, { onConflict: "id" });
+      const { error: upsertDriverProfileErr } = await supabase
+        .from("driver_profiles")
+        .upsert(driverProfilePayload, { onConflict: "user_id" });
 
-      if (upsertProfileErr) {
-        console.error(upsertProfileErr);
-        throw upsertProfileErr;
-      }
+      if (upsertDriverProfileErr) throw upsertDriverProfileErr;
 
-      // 4️⃣ INSERT dans driver_verifications (une seule vérification par chauffeur)
-      const { error: verifErr } = await supabase
-        .from("driver_verifications")
-        .insert({
-          user_id: uid,
-          date_of_birth: dateOfBirth || null,
-          id_type: idType || null,
-          id_number: idNumber || null,
-          id_country: idCountry || null,
-          id_expiry: idExpiry || null,
-          id_image_path,
-          status: "pending",
+      if (idFrontFile) {
+        await uploadAndUpsertDocument("id_card_front", idFrontFile, {
+          country: trimOrNull(idCountry),
+          doc_number: trimOrNull(idNumber),
         });
-
-      if (verifErr) {
-        // 23505 = duplicate key (la vérification existe déjà)
-        if ((verifErr as any).code === "23505") {
-          setErr(
-            "Ta vérification d’identité est déjà enregistrée. Elle est en attente de validation ou déjà validée."
-          );
-          return;
-        }
-
-        console.error(verifErr);
-        setErr("Erreur lors de l’enregistrement de la vérification d’identité.");
-        return;
       }
 
-      alert(
-        "Profil chauffeur + pièce d’identité envoyés ✅\nStatut : en attente de vérification."
+      if (idBackFile) {
+        await uploadAndUpsertDocument("id_card_back", idBackFile, {
+          country: trimOrNull(idCountry),
+          doc_number: trimOrNull(idNumber),
+        });
+      }
+
+      if (requiresMotorDocs && licenseFrontFile) {
+        await uploadAndUpsertDocument("license_front", licenseFrontFile, {
+          country: "US",
+          state: trimOrNull(stateValue),
+          doc_number: trimOrNull(licenseNumber),
+          expires_at: trimOrNull(licenseExpiry),
+        });
+      }
+
+      if (requiresMotorDocs && licenseBackFile) {
+        await uploadAndUpsertDocument("license_back", licenseBackFile, {
+          country: "US",
+          state: trimOrNull(stateValue),
+          doc_number: trimOrNull(licenseNumber),
+          expires_at: trimOrNull(licenseExpiry),
+        });
+      }
+
+      if (requiresMotorDocs && insuranceFile) {
+        await uploadAndUpsertDocument("insurance", insuranceFile);
+      }
+
+      if (requiresMotorDocs && registrationFile) {
+        await uploadAndUpsertDocument("registration", registrationFile);
+      }
+
+      const refreshedDocs: ExistingDocsMap = {
+        ...existingDocs,
+        ...(profilePhotoFile
+          ? {
+              profile_photo: {
+                id: existingDocs.profile_photo?.id ?? "local",
+                user_id: uid,
+                doc_type: "profile_photo",
+                file_path: "",
+                country: null,
+                state: null,
+                doc_number: null,
+                expires_at: null,
+                status: "pending",
+                driver_id: null,
+              },
+            }
+          : {}),
+        ...(idFrontFile
+          ? {
+              id_card_front: {
+                id: existingDocs.id_card_front?.id ?? "local",
+                user_id: uid,
+                doc_type: "id_card_front",
+                file_path: "",
+                country: trimOrNull(idCountry),
+                state: null,
+                doc_number: trimOrNull(idNumber),
+                expires_at: null,
+                status: "pending",
+                driver_id: null,
+              },
+            }
+          : {}),
+        ...(idBackFile
+          ? {
+              id_card_back: {
+                id: existingDocs.id_card_back?.id ?? "local",
+                user_id: uid,
+                doc_type: "id_card_back",
+                file_path: "",
+                country: trimOrNull(idCountry),
+                state: null,
+                doc_number: trimOrNull(idNumber),
+                expires_at: null,
+                status: "pending",
+                driver_id: null,
+              },
+            }
+          : {}),
+        ...(licenseFrontFile
+          ? {
+              license_front: {
+                id: existingDocs.license_front?.id ?? "local",
+                user_id: uid,
+                doc_type: "license_front",
+                file_path: "",
+                country: "US",
+                state: trimOrNull(stateValue),
+                doc_number: trimOrNull(licenseNumber),
+                expires_at: trimOrNull(licenseExpiry),
+                status: "pending",
+                driver_id: null,
+              },
+            }
+          : {}),
+        ...(licenseBackFile
+          ? {
+              license_back: {
+                id: existingDocs.license_back?.id ?? "local",
+                user_id: uid,
+                doc_type: "license_back",
+                file_path: "",
+                country: "US",
+                state: trimOrNull(stateValue),
+                doc_number: trimOrNull(licenseNumber),
+                expires_at: trimOrNull(licenseExpiry),
+                status: "pending",
+                driver_id: null,
+              },
+            }
+          : {}),
+        ...(insuranceFile
+          ? {
+              insurance: {
+                id: existingDocs.insurance?.id ?? "local",
+                user_id: uid,
+                doc_type: "insurance",
+                file_path: "",
+                country: null,
+                state: null,
+                doc_number: null,
+                expires_at: null,
+                status: "pending",
+                driver_id: null,
+              },
+            }
+          : {}),
+        ...(registrationFile
+          ? {
+              registration: {
+                id: existingDocs.registration?.id ?? "local",
+                user_id: uid,
+                doc_type: "registration",
+                file_path: "",
+                country: null,
+                state: null,
+                doc_number: null,
+                expires_at: null,
+                status: "pending",
+                driver_id: null,
+              },
+            }
+          : {}),
+      };
+
+      setExistingDocs(refreshedDocs);
+
+      setProfilePhotoFile(null);
+      setIdFrontFile(null);
+      setIdBackFile(null);
+      setLicenseFrontFile(null);
+      setLicenseBackFile(null);
+      setInsuranceFile(null);
+      setRegistrationFile(null);
+
+      setSuccess(
+        isProfileComplete
+          ? "Profil chauffeur enregistré. Ton dossier est complet."
+          : "Profil chauffeur enregistré. Il manque encore des informations ou documents.",
       );
     } catch (e: any) {
-      console.error(e);
       setErr(
         e?.message ??
-          "Erreur lors de l'enregistrement du profil / de la pièce d’identité."
+          "Erreur lors de l'enregistrement du profil chauffeur.",
       );
     } finally {
       setSaving(false);
     }
   }
 
-  // UI SI PAS CONNECTÉ
+  function renderFileStatus(label: string, hasExisting: boolean, pendingNew: boolean) {
+    if (pendingNew) {
+      return <span className="text-xs text-green-700">Nouveau fichier prêt : {label}</span>;
+    }
+    if (hasExisting) {
+      return <span className="text-xs text-blue-700">Déjà enregistré : {label}</span>;
+    }
+    return <span className="text-xs text-gray-500">Manquant : {label}</span>;
+  }
+
   if (!uid) {
     return (
       <div className="max-w-md mx-auto p-6 space-y-4">
         <h1 className="text-xl font-semibold">Devenir chauffeur / livreur</h1>
         <p className="text-sm text-gray-600">
-          Entre ton email pour créer ton compte et continuer l’inscription
-          chauffeur.
+          Entre ton email pour créer ton compte et continuer l’inscription chauffeur.
         </p>
 
         <input
@@ -298,44 +820,46 @@ export default function SignupDriver() {
           <button
             onClick={sendLink}
             className="px-3 py-2 rounded bg-black text-white text-sm"
-            disabled={!email || sent}
+            disabled={!email.trim() || sent}
           >
             {sent ? "Lien envoyé ✅" : "Envoyer le lien magique"}
           </button>
 
           <button
             type="button"
-            onClick={async () => {
-              const { data, error } = await supabase.auth.getUser();
-              if (error) {
-                console.error(error);
-                setErr(error.message);
-                return;
-              }
-              const user = data.user;
-              setUid(user?.id ?? null);
-              setAuthEmail(user?.email ?? "");
-            }}
+            onClick={loadConnectedUser}
             className="text-xs underline"
           >
             J’ai déjà un compte — recharger
           </button>
         </div>
 
+        {success && <div className="text-green-700 text-sm">{success}</div>}
         {err && <div className="text-red-600 text-sm">{err}</div>}
       </div>
     );
   }
 
-  // UI SI CONNECTÉ
-  return (
-    <div className="max-w-md mx-auto p-6 space-y-5">
-      <h1 className="text-xl font-semibold">Ton profil — chauffeur / livreur</h1>
+  if (loadingProfile) {
+    return (
+      <div className="max-w-md mx-auto p-6">
+        <div className="text-sm text-gray-600">Chargement du profil chauffeur…</div>
+      </div>
+    );
+  }
 
-      {/* Email compte */}
+  return (
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Ton profil — chauffeur / livreur</h1>
+        <p className="text-sm text-gray-600 mt-1">
+          Complète toutes les informations demandées. Pour vélo, seuls les documents d’identité sont exigés. Pour moto et voiture, le permis, l’assurance et la registration sont aussi obligatoires.
+        </p>
+      </div>
+
       {authEmail && (
         <div className="space-y-1">
-          <label className="block text-sm font-medium">Email (compte)</label>
+          <label className="block text-sm font-medium">Email du compte</label>
           <input
             className="w-full border rounded px-3 py-2 bg-gray-100"
             value={authEmail}
@@ -344,48 +868,71 @@ export default function SignupDriver() {
         </div>
       )}
 
-      {/* Type de véhicule */}
       <div className="space-y-1">
-        <label className="text-sm font-medium">Type de véhicule</label>
+        <label className="block text-sm font-medium">Mode de transport</label>
         <select
           className="w-full border rounded px-3 py-2"
           value={vehicleType}
           onChange={(e) => setVehicleType(e.target.value as VehicleType)}
         >
-          <option value="car">Voiture</option>
-          <option value="moto">Moto / Scooter</option>
           <option value="bike">Vélo</option>
+          <option value="moto">Moto / Scooter</option>
+          <option value="car">Voiture</option>
         </select>
-
-        {vehicleType === "bike" ? (
-          <p className="text-xs text-gray-600">
-            Pour les vélos, le permis et la plaque ne sont pas obligatoires.
-          </p>
-        ) : (
-          <p className="text-xs text-gray-600">
-            Pour les voitures et motos, les informations du permis et du véhicule
-            sont obligatoires.
-          </p>
-        )}
       </div>
 
-      {/* Infos perso */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">
-          Informations personnelles
-        </label>
+      <div className="border rounded-lg p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Informations personnelles</h2>
+
         <input
           className="w-full border rounded px-3 py-2"
           placeholder="Nom complet"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
         />
+
         <input
           className="w-full border rounded px-3 py-2"
           placeholder="Téléphone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
+
+        <input
+          className="w-full border rounded px-3 py-2"
+          placeholder="Téléphone d’urgence"
+          value={emergencyPhone}
+          onChange={(e) => setEmergencyPhone(e.target.value)}
+        />
+
+        <input
+          className="w-full border rounded px-3 py-2"
+          placeholder="Adresse"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            className="w-full border rounded px-3 py-2"
+            placeholder="Ville"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+          <input
+            className="w-full border rounded px-3 py-2"
+            placeholder="État"
+            value={stateValue}
+            onChange={(e) => setStateValue(e.target.value)}
+          />
+          <input
+            className="w-full border rounded px-3 py-2"
+            placeholder="ZIP code"
+            value={zipCode}
+            onChange={(e) => setZipCode(e.target.value)}
+          />
+        </div>
+
         <input
           className="w-full border rounded px-3 py-2"
           type="date"
@@ -394,119 +941,34 @@ export default function SignupDriver() {
         />
       </div>
 
-      {/* Permis */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">
-          Permis de conduire{" "}
-          {vehicleType === "bike"
-            ? "(optionnel pour vélo)"
-            : "(obligatoire pour voiture / moto)"}
-        </label>
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Numéro de permis"
-          value={licenseNumber}
-          onChange={(e) => setLicenseNumber(e.target.value)}
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="État du permis (ex: NY)"
-          value={licenseState}
-          onChange={(e) => setLicenseState(e.target.value)}
-        />
-      </div>
+      <div className="border rounded-lg p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Photo personnelle</h2>
 
-      {/* Véhicule */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Véhicule</label>
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder={
-            vehicleType === "bike"
-              ? "Marque du vélo (ex: E-Bike, VTT...)"
-              : "Marque du véhicule (ex: Honda, Toyota, Yamaha...)"
-          }
-          value={vehicleMake}
-          onChange={(e) => setVehicleMake(e.target.value)}
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder={
-            vehicleType === "bike"
-              ? "Modèle du vélo (ex: Électrique, VTT...)"
-              : "Modèle (ex: Accord, PCX 125...)"
-          }
-          value={vehicleModel}
-          onChange={(e) => setVehicleModel(e.target.value)}
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Année (ex: 2020)"
-          value={vehicleYear}
-          onChange={(e) =>
-            setVehicleYear(
-              e.target.value === "" ? "" : Number(e.target.value)
-            )
-          }
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder={
-            vehicleType === "bike" ? "Couleur du vélo" : "Couleur du véhicule"
-          }
-          value={vehicleColor}
-          onChange={(e) => setVehicleColor(e.target.value)}
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder={
-            vehicleType === "bike"
-              ? "Plaque (optionnel pour vélo)"
-              : "Plaque d'immatriculation"
-          }
-          value={vehiclePlate}
-          onChange={(e) => setVehiclePlate(e.target.value)}
-        />
-      </div>
-
-      {/* Photo chauffeur */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">
-          Photo de profil (chauffeur)
-        </label>
         <input
           type="file"
           accept="image/*"
           capture="user"
-          onChange={(e) => {
-            const file = e.target.files?.[0] ?? null;
-            setAvatarFile(file);
-            if (file) setAvatarPreview(URL.createObjectURL(file));
-          }}
+          onChange={(e) => setProfilePhotoFile(e.target.files?.[0] ?? null)}
         />
-        {avatarPreview && (
-          <img
-            src={avatarPreview}
-            className="h-24 w-24 rounded-full object-cover border"
-          />
+
+        {renderFileStatus(
+          "photo personnelle",
+          !!existingDocs.profile_photo,
+          !!profilePhotoFile,
         )}
       </div>
 
-      {/* Vérification d’identité */}
-      <div className="space-y-2 border rounded-lg p-4">
-        <label className="block text-sm font-semibold">
-          Vérification d’identité
-        </label>
+      <div className="border rounded-lg p-4 space-y-3">
+        <h2 className="text-sm font-semibold">Pièce d’identité</h2>
 
         <select
           className="w-full border rounded px-3 py-2"
           value={idType}
           onChange={(e) => setIdType(e.target.value)}
         >
-          <option value="">Type de pièce</option>
-          <option value="driver_license">Permis de conduire</option>
           <option value="id_card">Carte d’identité</option>
           <option value="passport">Passeport</option>
+          <option value="driver_license">Permis de conduire</option>
         </select>
 
         <input
@@ -523,46 +985,198 @@ export default function SignupDriver() {
           onChange={(e) => setIdCountry(e.target.value)}
         />
 
-        <input
-          className="w-full border rounded px-3 py-2"
-          type="date"
-          value={idExpiry}
-          onChange={(e) => setIdExpiry(e.target.value)}
-        />
-
-        <div className="space-y-1">
-          <span className="text-sm">Photo de la pièce d’identité</span>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Photo recto</label>
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,.pdf"
             capture="environment"
-            onChange={(e) => {
-              const file = e.target.files?.[0] ?? null;
-              setIdFile(file);
-              if (file) setIdPreview(URL.createObjectURL(file));
-            }}
+            onChange={(e) => setIdFrontFile(e.target.files?.[0] ?? null)}
           />
-          {idPreview && (
-            <img
-              src={idPreview}
-              className="h-24 w-40 rounded object-cover border mt-2"
-            />
+          {renderFileStatus(
+            "ID recto",
+            !!existingDocs.id_card_front,
+            !!idFrontFile,
           )}
         </div>
 
-        <p className="text-xs text-gray-600">
-          Ces informations servent uniquement à vérifier ton identité.
-        </p>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium">Photo verso</label>
+          <input
+            type="file"
+            accept="image/*,.pdf"
+            capture="environment"
+            onChange={(e) => setIdBackFile(e.target.files?.[0] ?? null)}
+          />
+          {renderFileStatus(
+            "ID verso",
+            !!existingDocs.id_card_back,
+            !!idBackFile,
+          )}
+        </div>
+      </div>
+
+      <div className="border rounded-lg p-4 space-y-3">
+        <h2 className="text-sm font-semibold">
+          Véhicule {vehicleType === "bike" ? "(optionnel pour vélo)" : "(obligatoire)"}
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            className="w-full border rounded px-3 py-2"
+            placeholder="Marque"
+            value={vehicleBrand}
+            onChange={(e) => setVehicleBrand(e.target.value)}
+          />
+          <input
+            className="w-full border rounded px-3 py-2"
+            placeholder="Modèle"
+            value={vehicleModel}
+            onChange={(e) => setVehicleModel(e.target.value)}
+          />
+          <input
+            className="w-full border rounded px-3 py-2"
+            placeholder="Année"
+            type="number"
+            value={vehicleYear}
+            onChange={(e) =>
+              setVehicleYear(e.target.value === "" ? "" : Number(e.target.value))
+            }
+          />
+          <input
+            className="w-full border rounded px-3 py-2"
+            placeholder="Couleur"
+            value={vehicleColor}
+            onChange={(e) => setVehicleColor(e.target.value)}
+          />
+        </div>
+
+        <input
+          className="w-full border rounded px-3 py-2"
+          placeholder="Plaque d’immatriculation"
+          value={plateNumber}
+          onChange={(e) => setPlateNumber(e.target.value)}
+        />
+      </div>
+
+      {requiresMotorDocs && (
+        <>
+          <div className="border rounded-lg p-4 space-y-3">
+            <h2 className="text-sm font-semibold">Permis de conduire</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                className="w-full border rounded px-3 py-2"
+                placeholder="Numéro du permis"
+                value={licenseNumber}
+                onChange={(e) => setLicenseNumber(e.target.value)}
+              />
+              <input
+                className="w-full border rounded px-3 py-2"
+                type="date"
+                value={licenseExpiry}
+                onChange={(e) => setLicenseExpiry(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Photo recto du permis</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                capture="environment"
+                onChange={(e) => setLicenseFrontFile(e.target.files?.[0] ?? null)}
+              />
+              {renderFileStatus(
+                "permis recto",
+                !!existingDocs.license_front,
+                !!licenseFrontFile,
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Photo verso du permis</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                capture="environment"
+                onChange={(e) => setLicenseBackFile(e.target.files?.[0] ?? null)}
+              />
+              {renderFileStatus(
+                "permis verso",
+                !!existingDocs.license_back,
+                !!licenseBackFile,
+              )}
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4 space-y-3">
+            <h2 className="text-sm font-semibold">Documents véhicule</h2>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Assurance</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                capture="environment"
+                onChange={(e) => setInsuranceFile(e.target.files?.[0] ?? null)}
+              />
+              {renderFileStatus(
+                "assurance",
+                !!existingDocs.insurance,
+                !!insuranceFile,
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Registration</label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                capture="environment"
+                onChange={(e) => setRegistrationFile(e.target.files?.[0] ?? null)}
+              />
+              {renderFileStatus(
+                "registration",
+                !!existingDocs.registration,
+                !!registrationFile,
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="border rounded-lg p-4 space-y-2 bg-gray-50">
+        <h2 className="text-sm font-semibold">État du dossier</h2>
+        <div className="text-sm">
+          Base profile:{" "}
+          <span className={isBaseComplete ? "text-green-700" : "text-red-600"}>
+            {isBaseComplete ? "complet" : "incomplet"}
+          </span>
+        </div>
+        <div className="text-sm">
+          Vehicle requirements:{" "}
+          <span className={isMotorComplete ? "text-green-700" : "text-red-600"}>
+            {isMotorComplete ? "complet" : "incomplet"}
+          </span>
+        </div>
+        <div className="text-sm font-medium">
+          Overall:{" "}
+          <span className={isProfileComplete ? "text-green-700" : "text-red-600"}>
+            {isProfileComplete ? "profil complet" : "profil incomplet"}
+          </span>
+        </div>
       </div>
 
       <button
         onClick={saveProfile}
-        className="px-3 py-2 rounded bg-black text-white w-full"
+        className="px-4 py-3 rounded bg-black text-white w-full disabled:opacity-60"
         disabled={saving}
       >
         {saving ? "Enregistrement..." : "Enregistrer mon profil chauffeur"}
       </button>
 
+      {success && <div className="text-green-700 text-sm">{success}</div>}
       {err && <div className="text-red-600 text-sm">{err}</div>}
     </div>
   );
