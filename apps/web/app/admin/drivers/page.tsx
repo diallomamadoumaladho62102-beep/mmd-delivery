@@ -84,10 +84,7 @@ type ReviewDriverApiResponse = {
 };
 
 function isReviewDriverRole(value: string | null): value is ReviewDriverRole {
-  return (
-    typeof value === "string" &&
-    canReviewDrivers(value as ReviewDriverRole)
-  );
+  return typeof value === "string" && canReviewDrivers(value as ReviewDriverRole);
 }
 
 function isImagePath(path: string): boolean {
@@ -106,6 +103,10 @@ function normalizeVehicleType(
   return value ?? "other";
 }
 
+function formatVehicleType(value: VehicleType | null | undefined): string {
+  return normalizeVehicleType(value).toUpperCase();
+}
+
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
 
@@ -115,6 +116,17 @@ function formatDate(value: string | null | undefined): string {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
+  }).format(date);
+}
+
+function formatBirthDate(value: string | null | undefined): string {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
   }).format(date);
 }
 
@@ -178,6 +190,61 @@ function getLatestReviewNote(documents: DriverDocumentRow[]): string {
     });
 
   return withNotes[0]?.review_notes?.trim() ?? "";
+}
+
+function getDriverInsight(row: DriverAdminRow): {
+  label: string;
+  className: string;
+} {
+  const hasDocs = row.documents.length > 0;
+  const hasCoreInfo =
+    Boolean(row.phone) &&
+    Boolean(row.address) &&
+    Boolean(row.full_name) &&
+    Boolean(row.vehicle_type);
+
+  if (!hasDocs) {
+    return {
+      label: "Aucun document reçu",
+      className: "border-red-200 bg-red-50 text-red-700",
+    };
+  }
+
+  if (!hasCoreInfo) {
+    return {
+      label: "Profil incomplet",
+      className: "border-yellow-200 bg-yellow-50 text-yellow-700",
+    };
+  }
+
+  return {
+    label: "Prêt pour vérification",
+    className: "border-green-200 bg-green-50 text-green-700",
+  };
+}
+
+function getPriorityScore(row: DriverAdminRow): number {
+  const status = row.status;
+
+  if (status === "pending" && row.documents.length === 0) return 0;
+  if (status === "pending" && (!row.phone || !row.address || !row.full_name)) {
+    return 1;
+  }
+  if (status === "pending") return 2;
+  if (status === "rejected") return 3;
+  return 4;
+}
+
+function getActionCardClass(status: ReviewStatus): string {
+  switch (status) {
+    case "approved":
+      return "border-green-200 bg-green-50";
+    case "rejected":
+      return "border-red-200 bg-red-50";
+    case "pending":
+    default:
+      return "border-slate-200 bg-white";
+  }
 }
 
 async function buildSignedDocument(
@@ -336,29 +403,31 @@ export default function AdminDriversPage() {
           docsByUser.set(row.user_id, existing);
         });
 
-        const merged: DriverAdminRow[] = typedDriverProfiles.map((d) => {
-          const profileInfo = profileById.get(d.user_id) ?? {
-            full_name: null,
-            email: null,
-          };
+        const merged: DriverAdminRow[] = typedDriverProfiles
+          .map((d) => {
+            const profileInfo = profileById.get(d.user_id) ?? {
+              full_name: null,
+              email: null,
+            };
 
-          return {
-            user_id: d.user_id,
-            full_name: profileInfo.full_name,
-            email: profileInfo.email,
-            phone: d.phone,
-            date_of_birth: d.date_of_birth,
-            address: d.address,
-            vehicle_type: normalizeVehicleType(d.vehicle_type),
-            vehicle_brand: d.vehicle_brand,
-            vehicle_model: d.vehicle_model,
-            vehicle_year: d.vehicle_year,
-            vehicle_color: d.vehicle_color,
-            plate_number: d.plate_number,
-            status: normalizeDriverStatus(d.status),
-            documents: sortDocuments(docsByUser.get(d.user_id) ?? []),
-          };
-        });
+            return {
+              user_id: d.user_id,
+              full_name: profileInfo.full_name,
+              email: profileInfo.email,
+              phone: d.phone,
+              date_of_birth: d.date_of_birth,
+              address: d.address,
+              vehicle_type: normalizeVehicleType(d.vehicle_type),
+              vehicle_brand: d.vehicle_brand,
+              vehicle_model: d.vehicle_model,
+              vehicle_year: d.vehicle_year,
+              vehicle_color: d.vehicle_color,
+              plate_number: d.plate_number,
+              status: normalizeDriverStatus(d.status),
+              documents: sortDocuments(docsByUser.get(d.user_id) ?? []),
+            };
+          })
+          .sort((a, b) => getPriorityScore(a) - getPriorityScore(b));
 
         if (!cancelledRef?.cancelled) {
           setRows(merged);
@@ -507,7 +576,9 @@ export default function AdminDriversPage() {
       <main className="min-h-screen bg-slate-50">
         <div className="mx-auto max-w-6xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h1 className="mb-4 text-2xl font-bold">Chauffeurs — Admin</h1>
+            <h1 className="mb-4 text-2xl font-bold">
+              Chauffeurs — vérification admin
+            </h1>
             <p className="text-sm text-slate-600">Chargement…</p>
           </div>
         </div>
@@ -520,7 +591,9 @@ export default function AdminDriversPage() {
       <main className="min-h-screen bg-slate-50">
         <div className="mx-auto max-w-6xl p-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h1 className="mb-4 text-2xl font-bold">Chauffeurs — Admin</h1>
+            <h1 className="mb-4 text-2xl font-bold">
+              Chauffeurs — vérification admin
+            </h1>
             <p className="text-sm text-red-600">{err}</p>
           </div>
         </div>
@@ -530,13 +603,13 @@ export default function AdminDriversPage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="mx-auto w-full max-w-screen-xl space-y-6 px-6 py-6">
         <header className="space-y-3">
           <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
             MMD Delivery · Admin Drivers
           </div>
 
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
             Chauffeurs — vérification admin
           </h1>
 
@@ -546,31 +619,39 @@ export default function AdminDriversPage() {
           </p>
         </header>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Total chauffeurs</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="min-h-[132px] rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-slate-500">
+              Total chauffeurs
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-slate-900">
               {totalDrivers}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Approuvés</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
+          <div className="min-h-[132px] rounded-2xl border border-green-200 bg-green-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-green-700">
+              Approuvés
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-green-900">
               {approvedCount}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">En attente</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
+          <div className="min-h-[132px] rounded-2xl border border-yellow-200 bg-yellow-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-yellow-700">
+              En attente
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-yellow-900">
               {pendingCount}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Refusés</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900">
+          <div className="min-h-[132px] rounded-2xl border border-red-200 bg-red-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-red-700">
+              Refusés
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-red-900">
               {rejectedCount}
             </div>
           </div>
@@ -598,210 +679,288 @@ export default function AdminDriversPage() {
           <div className="space-y-4">
             {rows.map((r) => {
               const status = r.status;
-              const isApproved = status === "approved";
-              const isRejected = status === "rejected";
+              const insight = getDriverInsight(r);
               const reviewNote = noteDrafts[r.user_id] ?? "";
 
               return (
                 <section
                   key={r.user_id}
-                  className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+                  className={`rounded-2xl border p-6 shadow-sm ${getActionCardClass(
+                    status
+                  )}`}
                 >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">
-                        {r.full_name || "Nom inconnu"}
-                      </h2>
-                      <p className="text-sm text-slate-600">
-                        {r.email || "Email inconnu"}
-                      </p>
-                      <p className="text-sm text-slate-600">
-                        📞 {r.phone || "Téléphone inconnu"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
-                          isApproved
-                            ? "border-green-200 bg-green-100 text-green-800"
-                            : isRejected
-                            ? "border-red-200 bg-red-100 text-red-800"
-                            : "border-yellow-200 bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {statusLabel(status)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <p>
-                        <span className="font-medium">Date de naissance : </span>
-                        {r.date_of_birth || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Adresse : </span>
-                        {r.address || "—"}
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <p>
-                        <span className="font-medium">Véhicule : </span>
-                        {normalizeVehicleType(r.vehicle_type).toUpperCase()}
-                        {r.vehicle_brand ? ` • ${r.vehicle_brand}` : ""}
-                        {r.vehicle_model ? ` • ${r.vehicle_model}` : ""}
-                      </p>
-                      <p>
-                        <span className="font-medium">Année / couleur : </span>
-                        {r.vehicle_year || "—"} / {r.vehicle_color || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Plaque : </span>
-                        {r.plate_number || "—"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 border-t border-slate-200 pt-4 text-sm">
-                    <p className="font-semibold text-slate-900">Documents</p>
-
-                    {r.documents.length === 0 ? (
-                      <p className="text-slate-600">
-                        Aucun document envoyé pour l’instant.
-                      </p>
-                    ) : (
-                      <ul className="space-y-3">
-                        {r.documents.map((d) => (
-                          <li
-                            key={d.id}
-                            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-8 xl:grid-cols-2 xl:items-center">
+                      <div className="min-w-0 space-y-5 rounded-2xl border border-slate-100 bg-white/70 p-6 xl:pr-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-xl font-semibold text-slate-900">
+                            {r.full_name || "Nom inconnu"}
+                          </h2>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${badgeClassForStatus(
+                              status
+                            )}`}
                           >
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                              <div className="space-y-2">
-                                <div className="text-xs font-semibold text-slate-700">
-                                  {labelForDocType(d.doc_type)}
-                                </div>
+                            {statusLabel(status)}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${insight.className}`}
+                          >
+                            {insight.label}
+                          </span>
+                        </div>
 
-                                {d._isImage && d._signedUrl ? (
-                                  <div className="flex items-center gap-3">
-                                    <img
-                                      src={d._signedUrl}
-                                      alt={d.doc_type}
-                                      className="h-20 w-20 rounded border bg-white object-cover"
-                                    />
-                                    <div className="space-y-1">
-                                      <a
-                                        href={d._signedUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-xs text-blue-600 underline"
-                                      >
-                                        Ouvrir
-                                      </a>
-                                      <div className="text-xs text-slate-500">
-                                        Créé : {formatDate(d.created_at)}
-                                      </div>
-                                      <div className="text-xs text-slate-500">
-                                        Revu : {formatDate(d.reviewed_at)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    <div className="max-w-xl truncate text-xs text-slate-600">
-                                      {d.file_path}
-                                    </div>
+                        <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2">
+                          <p>
+                            <span className="font-medium">Nom :</span>{" "}
+                            {r.full_name || "—"}
+                          </p>
+                          <p>
+                            <span className="font-medium">Téléphone :</span>{" "}
+                            {r.phone || "—"}
+                          </p>
+                          <p className="break-all">
+                            <span className="font-medium">Email :</span>{" "}
+                            {r.email || "—"}
+                          </p>
+                          <p>
+                            <span className="font-medium">Date de naissance :</span>{" "}
+                            {formatBirthDate(r.date_of_birth)}
+                          </p>
+                        </div>
 
-                                    {d._signedUrl && (
-                                      <a
-                                        href={d._signedUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-xs text-blue-600 underline"
-                                      >
-                                        Ouvrir
-                                      </a>
-                                    )}
+                        <p className="text-sm text-slate-600">
+                          <span className="font-medium text-slate-700">
+                            Adresse :
+                          </span>{" "}
+                          {r.address || "—"}
+                        </p>
 
-                                    <div className="text-xs text-slate-500">
-                                      Créé : {formatDate(d.created_at)}
-                                    </div>
-                                    <div className="text-xs text-slate-500">
-                                      Revu : {formatDate(d.reviewed_at)}
-                                    </div>
-                                  </div>
-                                )}
+                        <p className="text-sm text-slate-600">
+                          <span className="font-medium text-slate-700">
+                            Véhicule :
+                          </span>{" "}
+                          {formatVehicleType(r.vehicle_type)}
+                          {r.vehicle_brand ? ` • ${r.vehicle_brand}` : ""}
+                          {r.vehicle_model ? ` • ${r.vehicle_model}` : ""}
+                        </p>
+                      </div>
 
-                                {d.review_notes ? (
-                                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-                                    {d.review_notes}
-                                  </div>
-                                ) : null}
-                              </div>
+                      <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col justify-center">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                          <div className="mb-3 text-sm font-semibold text-slate-900">
+                            Actions rapides
+                          </div>
 
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
-                                  d.status
-                                )}`}
-                              >
-                                {statusLabel(d.status)}
-                              </span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                          <div className="mt-4 grid grid-cols-2 gap-4">
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateDriverStatus(r.user_id, "approved")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#16a34a",
+                                color: "#ffffff",
+                                border: "2px solid #166534",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Validation..."
+                                : "Approuver"}
+                            </button>
 
-                  <div className="space-y-3 border-t border-slate-200 pt-4">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Note admin
-                      </label>
-                      <textarea
-                        value={reviewNote}
-                        onChange={(e) =>
-                          setNoteDrafts((prev) => ({
-                            ...prev,
-                            [r.user_id]: e.target.value,
-                          }))
-                        }
-                        rows={3}
-                        placeholder="Ajouter une note interne pour cette review..."
-                        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
-                      />
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateDriverStatus(r.user_id, "rejected")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#dc2626",
+                                color: "#ffffff",
+                                border: "2px solid #991b1b",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Traitement..."
+                                : "Refuser"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <button
-                        type="button"
-                        disabled={updatingUserId === r.user_id}
-                        onClick={() =>
-                          void updateDriverStatus(r.user_id, "approved")
-                        }
-                        className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-green-700 disabled:opacity-60"
-                      >
-                        {updatingUserId === r.user_id
-                          ? "Validation…"
-                          : "Approuver"}
-                      </button>
+                    <details className="rounded-2xl border border-slate-200 bg-white open:shadow-sm">
+                      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-slate-900">
+                        Voir les détails
+                      </summary>
 
-                      <button
-                        type="button"
-                        disabled={updatingUserId === r.user_id}
-                        onClick={() =>
-                          void updateDriverStatus(r.user_id, "rejected")
-                        }
-                        className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 disabled:opacity-60"
-                      >
-                        {updatingUserId === r.user_id
-                          ? "Traitement…"
-                          : "Refuser"}
-                      </button>
-                    </div>
+                      <div className="space-y-5 border-t border-slate-200 px-4 py-4">
+                        <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+                          <div className="space-y-2">
+                            <p>
+                              <span className="font-medium">Type véhicule :</span>{" "}
+                              {formatVehicleType(r.vehicle_type)}
+                            </p>
+                            <p>
+                              <span className="font-medium">Marque / modèle :</span>{" "}
+                              {[r.vehicle_brand, r.vehicle_model]
+                                .filter(Boolean)
+                                .join(" • ") || "—"}
+                            </p>
+                            <p>
+                              <span className="font-medium">Email :</span>{" "}
+                              {r.email || "—"}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <p>
+                              <span className="font-medium">Année :</span>{" "}
+                              {r.vehicle_year || "—"}
+                            </p>
+                            <p>
+                              <span className="font-medium">Couleur :</span>{" "}
+                              {r.vehicle_color || "—"}
+                            </p>
+                            <p>
+                              <span className="font-medium">Plaque :</span>{" "}
+                              {r.plate_number || "—"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                          <p className="font-semibold text-slate-900">
+                            Documents
+                          </p>
+
+                          {r.documents.length === 0 ? (
+                            <p className="text-slate-600">
+                              Aucun document envoyé pour l’instant.
+                            </p>
+                          ) : (
+                            <ul className="space-y-3">
+                              {r.documents.map((d) => (
+                                <li
+                                  key={d.id}
+                                  className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                                >
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="space-y-2">
+                                      <div className="text-xs font-semibold text-slate-700">
+                                        {labelForDocType(d.doc_type)}
+                                      </div>
+
+                                      {d._isImage && d._signedUrl ? (
+                                        <div className="flex items-center gap-3">
+                                          <img
+                                            src={d._signedUrl}
+                                            alt={labelForDocType(d.doc_type)}
+                                            className="h-20 w-20 rounded border bg-white object-cover"
+                                          />
+                                          <div className="space-y-1">
+                                            <a
+                                              href={d._signedUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-xs text-blue-600 underline"
+                                            >
+                                              Ouvrir
+                                            </a>
+                                            <div className="text-xs text-slate-500">
+                                              Créé : {formatDate(d.created_at)}
+                                            </div>
+                                            <div className="text-xs text-slate-500">
+                                              Revu : {formatDate(d.reviewed_at)}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-1">
+                                          <div className="max-w-xl truncate text-xs text-slate-600">
+                                            {d.file_path || "Fichier indisponible"}
+                                          </div>
+
+                                          {d._signedUrl && (
+                                            <a
+                                              href={d._signedUrl}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-xs text-blue-600 underline"
+                                            >
+                                              Ouvrir
+                                            </a>
+                                          )}
+
+                                          <div className="text-xs text-slate-500">
+                                            Créé : {formatDate(d.created_at)}
+                                          </div>
+                                          <div className="text-xs text-slate-500">
+                                            Revu : {formatDate(d.reviewed_at)}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {d.review_notes ? (
+                                        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                                          {d.review_notes}
+                                        </div>
+                                      ) : null}
+                                    </div>
+
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
+                                        d.status
+                                      )}`}
+                                    >
+                                      {statusLabel(d.status)}
+                                    </span>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-slate-700">
+                            Note admin
+                          </label>
+                          <textarea
+                            value={reviewNote}
+                            onChange={(e) =>
+                              setNoteDrafts((prev) => ({
+                                ...prev,
+                                [r.user_id]: e.target.value,
+                              }))
+                            }
+                            rows={3}
+                            placeholder="Ajouter une note interne pour cette review..."
+                            className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                          />
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 </section>
               );
