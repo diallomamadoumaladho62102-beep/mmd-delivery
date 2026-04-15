@@ -54,6 +54,24 @@ type DriverProfile = {
   is_online: boolean | null;
 };
 
+type DriverDocumentType =
+  | "profile_photo"
+  | "id_card_front"
+  | "id_card_back"
+  | "license_front"
+  | "license_back"
+  | "insurance"
+  | "registration";
+
+type DriverDocumentStatus = "pending" | "approved" | "rejected";
+
+type DriverDocumentRow = {
+  id: string;
+  user_id: string;
+  doc_type: DriverDocumentType;
+  status: DriverDocumentStatus;
+};
+
 function roleLabel(role: string | null): string {
   if (!role) return "Inconnu";
   if (role === "client") return "Client";
@@ -68,17 +86,6 @@ function transportModeLabel(value: string | null | undefined): string {
   if (value === "moto") return "Moto";
   if (value === "car") return "Car";
   return "—";
-}
-
-function parseMissingRequirements(value: string | null | undefined): string[] {
-  if (!value) return [];
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-  const withoutPrefix = trimmed.replace(/^Missing:\s*/i, "");
-  return withoutPrefix
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
 }
 
 function formatBirthDate(value: string | null | undefined): string {
@@ -101,22 +108,57 @@ export default function AccountPage() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
+  const [driverDocuments, setDriverDocuments] = useState<DriverDocumentRow[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const missingRequirements = useMemo(
-    () => parseMissingRequirements(driverProfile?.missing_requirements),
-    [driverProfile?.missing_requirements],
-  );
+  const missingRequirements = useMemo(() => {
+    if (!driverProfile) return [];
+
+    const missing: string[] = [];
+    const docTypes = new Set(driverDocuments.map((doc) => doc.doc_type));
+
+    if (!driverProfile.full_name) missing.push("full name");
+    if (!driverProfile.phone) missing.push("phone number");
+    if (!driverProfile.emergency_phone) missing.push("emergency phone number");
+    if (!driverProfile.address) missing.push("address");
+    if (!driverProfile.city) missing.push("city");
+    if (!driverProfile.state) missing.push("state");
+    if (!driverProfile.zip_code) missing.push("zip code");
+    if (!driverProfile.date_of_birth) missing.push("date of birth");
+
+    if (!docTypes.has("profile_photo")) missing.push("profile photo");
+    if (!docTypes.has("id_card_front")) missing.push("ID card front");
+    if (!docTypes.has("id_card_back")) missing.push("ID card back");
+
+    const requiresMotorDocs =
+      driverProfile.transport_mode === "moto" || driverProfile.transport_mode === "car";
+
+    if (requiresMotorDocs) {
+      if (!driverProfile.vehicle_brand) missing.push("vehicle brand");
+      if (!driverProfile.vehicle_model) missing.push("vehicle model");
+      if (!driverProfile.vehicle_year) missing.push("vehicle year");
+      if (!driverProfile.vehicle_color) missing.push("vehicle color");
+      if (!driverProfile.plate_number) missing.push("plate number");
+      if (!driverProfile.license_number) missing.push("license number");
+      if (!driverProfile.license_expiry) missing.push("license expiry");
+      if (!docTypes.has("license_front")) missing.push("license front");
+      if (!docTypes.has("license_back")) missing.push("license back");
+      if (!docTypes.has("insurance")) missing.push("insurance");
+      if (!docTypes.has("registration")) missing.push("registration");
+    }
+
+    return missing;
+  }, [driverProfile, driverDocuments]);
 
   const mustCompleteDriverProfile =
     profile?.role === "driver" &&
     driverProfile?.status === "approved" &&
-    driverProfile?.documents_required === true;
+    missingRequirements.length > 0;
 
   const canGoOnline =
     profile?.role === "driver" &&
     driverProfile?.status === "approved" &&
-    driverProfile?.documents_required === false;
+    missingRequirements.length === 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -125,108 +167,115 @@ export default function AccountPage() {
       setLoading(true);
       setErr(null);
 
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr) {
-        if (!cancelled) setErr(userErr.message);
-        setLoading(false);
-        return;
-      }
+      try {
+        const { data: userData, error: userErr } = await supabase.auth.getUser();
+        if (userErr) throw userErr;
 
-      const user = userData.user;
-      if (!user) {
-        if (!cancelled) {
-          setErr(null);
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (!cancelled) {
-        setUserEmail(user.email ?? "");
-      }
-
-      const { data: prof, error: profErr } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profErr) {
-        if (!cancelled) setErr(profErr.message);
-        setLoading(false);
-        return;
-      }
-
-      if (!prof) {
-        if (!cancelled) {
-          setProfile(null);
-          setDriverProfile(null);
-          setLoading(false);
-        }
-        return;
-      }
-
-      if (!cancelled) {
-        setProfile(prof as Profile);
-      }
-
-      if (prof.avatar_url) {
-        const { data: signed, error: signedErr } = await supabase.storage
-          .from("avatars")
-          .createSignedUrl(prof.avatar_url, 60 * 60);
-
-        if (!cancelled && !signedErr && signed?.signedUrl) {
-          setAvatarUrl(signed.signedUrl);
-        }
-      }
-
-      if (prof.role === "driver") {
-        const { data: dp, error: dpErr } = await supabase
-          .from("driver_profiles")
-          .select(
-            `
-            user_id,
-            full_name,
-            phone,
-            emergency_phone,
-            address,
-            city,
-            state,
-            zip_code,
-            date_of_birth,
-            transport_mode,
-            vehicle_type,
-            vehicle_brand,
-            vehicle_model,
-            vehicle_year,
-            vehicle_color,
-            plate_number,
-            license_number,
-            license_expiry,
-            status,
-            documents_required,
-            missing_requirements,
-            is_online
-          `,
-          )
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (dpErr) {
-          if (!cancelled) setErr(dpErr.message);
-          setLoading(false);
+        const user = userData.user;
+        if (!user) {
+          if (!cancelled) {
+            setErr(null);
+            setLoading(false);
+          }
           return;
         }
 
         if (!cancelled) {
-          setDriverProfile((dp as DriverProfile | null) ?? null);
+          setUserEmail(user.email ?? "");
         }
-      } else if (!cancelled) {
-        setDriverProfile(null);
-      }
 
-      if (!cancelled) {
-        setLoading(false);
+        const { data: prof, error: profErr } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profErr) throw profErr;
+
+        if (!prof) {
+          if (!cancelled) {
+            setProfile(null);
+            setDriverProfile(null);
+            setDriverDocuments([]);
+            setAvatarUrl(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setProfile(prof as Profile);
+        }
+
+        if (prof.avatar_url) {
+          const { data: signed, error: signedErr } = await supabase.storage
+            .from("avatars")
+            .createSignedUrl(prof.avatar_url, 60 * 60);
+
+          if (!cancelled && !signedErr && signed?.signedUrl) {
+            setAvatarUrl(signed.signedUrl);
+          }
+        } else if (!cancelled) {
+          setAvatarUrl(null);
+        }
+
+        if (prof.role === "driver") {
+          const { data: dp, error: dpErr } = await supabase
+            .from("driver_profiles")
+            .select(
+              `
+              user_id,
+              full_name,
+              phone,
+              emergency_phone,
+              address,
+              city,
+              state,
+              zip_code,
+              date_of_birth,
+              transport_mode,
+              vehicle_type,
+              vehicle_brand,
+              vehicle_model,
+              vehicle_year,
+              vehicle_color,
+              plate_number,
+              license_number,
+              license_expiry,
+              status,
+              documents_required,
+              missing_requirements,
+              is_online
+            `,
+            )
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (dpErr) throw dpErr;
+
+          const { data: docs, error: docsErr } = await supabase
+            .from("driver_documents")
+            .select("id, user_id, doc_type, status")
+            .eq("user_id", user.id);
+
+          if (docsErr) throw docsErr;
+
+          if (!cancelled) {
+            setDriverProfile((dp as DriverProfile | null) ?? null);
+            setDriverDocuments((docs as DriverDocumentRow[] | null) ?? []);
+          }
+        } else if (!cancelled) {
+          setDriverProfile(null);
+          setDriverDocuments([]);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setErr(e?.message ?? "Erreur lors du chargement du compte.");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
@@ -433,7 +482,7 @@ export default function AccountPage() {
                     </div>
                     <div>
                       <span className="text-gray-500">Documents requis : </span>
-                      <span>{driverProfile.documents_required ? "Oui" : "Non"}</span>
+                      <span>{missingRequirements.length > 0 ? "Oui" : "Non"}</span>
                     </div>
                   </div>
 
@@ -443,7 +492,7 @@ export default function AccountPage() {
                     <div className="text-xs text-gray-600">
                       {[driverProfile.city, driverProfile.state, driverProfile.zip_code]
                         .filter(Boolean)
-                        .join(" " ) || "—"}
+                        .join(" ") || "—"}
                     </div>
                   </div>
 
@@ -460,8 +509,12 @@ export default function AccountPage() {
                     </div>
                     <div className="text-xs text-gray-600">
                       {[
-                        driverProfile.vehicle_color ? `Couleur: ${driverProfile.vehicle_color}` : null,
-                        driverProfile.plate_number ? `Plaque: ${driverProfile.plate_number}` : null,
+                        driverProfile.vehicle_color
+                          ? `Couleur: ${driverProfile.vehicle_color}`
+                          : null,
+                        driverProfile.plate_number
+                          ? `Plaque: ${driverProfile.plate_number}`
+                          : null,
                       ]
                         .filter(Boolean)
                         .join(" • ") || "—"}
@@ -484,7 +537,8 @@ export default function AccountPage() {
                         Ton profil chauffeur est incomplet
                       </p>
                       <p className="text-sm text-amber-700">
-                        Merci de compléter les informations et documents manquants pour pouvoir continuer à recevoir des courses.
+                        Merci de compléter les informations et documents manquants pour
+                        pouvoir continuer à recevoir des courses.
                       </p>
 
                       {missingRequirements.length > 0 && (
@@ -568,7 +622,11 @@ export default function AccountPage() {
                   profile.restaurant_state ||
                   profile.restaurant_zip) && (
                   <div className="text-xs text-gray-600">
-                    {[profile.restaurant_city, profile.restaurant_state, profile.restaurant_zip]
+                    {[
+                      profile.restaurant_city,
+                      profile.restaurant_state,
+                      profile.restaurant_zip,
+                    ]
                       .filter(Boolean)
                       .join(" ")}
                   </div>

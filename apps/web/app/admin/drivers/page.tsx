@@ -84,6 +84,7 @@ type DriverAdminRow = {
   status: ReviewStatus;
   documents_required: boolean;
   missing_requirements: string | null;
+  computed_missing_requirements: string[];
   is_online: boolean;
   documents: DriverDocumentRow[];
 };
@@ -267,9 +268,64 @@ function getActionCardClass(status: ReviewStatus): string {
   }
 }
 
+function computeMissingRequirementsForRow(input: {
+  transport_mode: VehicleType;
+  full_name: string | null;
+  phone: string | null;
+  emergency_phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  date_of_birth: string | null;
+  vehicle_brand: string | null;
+  vehicle_model: string | null;
+  vehicle_year: number | null;
+  vehicle_color: string | null;
+  plate_number: string | null;
+  license_number: string | null;
+  license_expiry: string | null;
+  documents: DriverDocumentRow[];
+}): string[] {
+  const missing: string[] = [];
+  const docTypes = new Set(input.documents.map((doc) => doc.doc_type));
+
+  if (!input.full_name) missing.push("full name");
+  if (!input.phone) missing.push("phone number");
+  if (!input.emergency_phone) missing.push("emergency phone number");
+  if (!input.address) missing.push("address");
+  if (!input.city) missing.push("city");
+  if (!input.state) missing.push("state");
+  if (!input.zip_code) missing.push("zip code");
+  if (!input.date_of_birth) missing.push("date of birth");
+
+  if (!docTypes.has("profile_photo")) missing.push("profile photo");
+  if (!docTypes.has("id_card_front")) missing.push("ID card front");
+  if (!docTypes.has("id_card_back")) missing.push("ID card back");
+
+  const requiresMotorDocs =
+    input.transport_mode === "moto" || input.transport_mode === "car";
+
+  if (requiresMotorDocs) {
+    if (!input.vehicle_brand) missing.push("vehicle brand");
+    if (!input.vehicle_model) missing.push("vehicle model");
+    if (!input.vehicle_year) missing.push("vehicle year");
+    if (!input.vehicle_color) missing.push("vehicle color");
+    if (!input.plate_number) missing.push("plate number");
+    if (!input.license_number) missing.push("license number");
+    if (!input.license_expiry) missing.push("license expiry");
+    if (!docTypes.has("license_front")) missing.push("license front");
+    if (!docTypes.has("license_back")) missing.push("license back");
+    if (!docTypes.has("insurance")) missing.push("insurance");
+    if (!docTypes.has("registration")) missing.push("registration");
+  }
+
+  return missing;
+}
+
 function getPriorityScore(row: DriverAdminRow): number {
-  if (row.status === "pending" && row.documents.length === 0) return 0;
-  if (row.status === "pending" && row.documents_required) return 1;
+  if (row.documents.length === 0) return 0;
+  if (row.computed_missing_requirements.length > 0) return 1;
   if (row.status === "pending") return 2;
   if (row.status === "rejected") return 3;
   if (row.status === "approved" && row.documents_required) return 4;
@@ -287,7 +343,7 @@ function getDriverInsight(row: DriverAdminRow): {
     };
   }
 
-  if (row.documents_required) {
+  if (row.computed_missing_requirements.length > 0) {
     return {
       label: "Éléments manquants",
       className: "border-yellow-200 bg-yellow-50 text-yellow-700",
@@ -505,6 +561,34 @@ export default function AdminDriversPage() {
               email: null,
             };
 
+            const transportMode = normalizeVehicleType(
+              d.transport_mode ?? d.vehicle_type,
+            );
+            const documents = sortDocuments(docsByUser.get(d.user_id) ?? []);
+            const computedMissingRequirements = computeMissingRequirementsForRow({
+              transport_mode: transportMode,
+              full_name: d.full_name ?? profileInfo.full_name ?? null,
+              phone: d.phone,
+              emergency_phone: d.emergency_phone,
+              address: d.address,
+              city: d.city,
+              state: d.state,
+              zip_code: d.zip_code,
+              date_of_birth: d.date_of_birth,
+              vehicle_brand: d.vehicle_brand,
+              vehicle_model: d.vehicle_model,
+              vehicle_year: d.vehicle_year,
+              vehicle_color: d.vehicle_color,
+              plate_number: d.plate_number,
+              license_number: d.license_number,
+              license_expiry: d.license_expiry,
+              documents,
+            });
+
+            const fallbackMissing = parseMissingRequirements(
+              d.missing_requirements ?? null,
+            );
+
             return {
               user_id: d.user_id,
               full_name: d.full_name ?? profileInfo.full_name,
@@ -516,9 +600,7 @@ export default function AdminDriversPage() {
               city: d.city,
               state: d.state,
               zip_code: d.zip_code,
-              transport_mode: normalizeVehicleType(
-                d.transport_mode ?? d.vehicle_type,
-              ),
+              transport_mode: transportMode,
               vehicle_brand: d.vehicle_brand,
               vehicle_model: d.vehicle_model,
               vehicle_year: d.vehicle_year,
@@ -527,10 +609,17 @@ export default function AdminDriversPage() {
               license_number: d.license_number,
               license_expiry: d.license_expiry,
               status: normalizeDriverStatus(d.status),
-              documents_required: Boolean(d.documents_required),
-              missing_requirements: d.missing_requirements ?? null,
+              documents_required: computedMissingRequirements.length > 0,
+              missing_requirements:
+                computedMissingRequirements.length > 0
+                  ? computedMissingRequirements.join(", ")
+                  : d.missing_requirements ?? null,
+              computed_missing_requirements:
+                computedMissingRequirements.length > 0
+                  ? computedMissingRequirements
+                  : fallbackMissing,
               is_online: Boolean(d.is_online),
-              documents: sortDocuments(docsByUser.get(d.user_id) ?? []),
+              documents,
             };
           })
           .sort((a, b) => getPriorityScore(a) - getPriorityScore(b));
@@ -630,35 +719,61 @@ export default function AdminDriversPage() {
 
       setRows((prev) =>
         prev
-          .map((r) =>
-            r.user_id === targetUserId
-              ? {
-                  ...r,
-                  status: newStatus,
-                  documents_required:
-                    typeof json.documentsRequired === "boolean"
-                      ? json.documentsRequired
-                      : r.documents_required,
-                  missing_requirements:
-                    typeof json.missingRequirementsText === "string" ||
-                    json.missingRequirementsText === null
-                      ? json.missingRequirementsText ?? null
-                      : r.missing_requirements,
-                  is_online:
-                    typeof json.isOnline === "boolean"
-                      ? json.isOnline
-                      : false,
-                  documents: sortDocuments(
-                    r.documents.map((d) => ({
-                      ...d,
-                      status: newStatus,
-                      reviewed_at: reviewedAt,
-                      review_notes: normalizedReviewNotes,
-                    })),
-                  ),
-                }
-              : r,
-          )
+          .map((r) => {
+            if (r.user_id !== targetUserId) return r;
+
+            const updatedDocuments = sortDocuments(
+              r.documents.map((d) => ({
+                ...d,
+                status: newStatus,
+                reviewed_at: reviewedAt,
+                review_notes: normalizedReviewNotes,
+              })),
+            );
+
+            const computedMissingRequirements = computeMissingRequirementsForRow({
+              transport_mode: r.transport_mode,
+              full_name: r.full_name,
+              phone: r.phone,
+              emergency_phone: r.emergency_phone,
+              address: r.address,
+              city: r.city,
+              state: r.state,
+              zip_code: r.zip_code,
+              date_of_birth: r.date_of_birth,
+              vehicle_brand: r.vehicle_brand,
+              vehicle_model: r.vehicle_model,
+              vehicle_year: r.vehicle_year,
+              vehicle_color: r.vehicle_color,
+              plate_number: r.plate_number,
+              license_number: r.license_number,
+              license_expiry: r.license_expiry,
+              documents: updatedDocuments,
+            });
+
+            return {
+              ...r,
+              status: newStatus,
+              documents_required:
+                typeof json.documentsRequired === "boolean"
+                  ? json.documentsRequired
+                  : computedMissingRequirements.length > 0,
+              missing_requirements:
+                typeof json.missingRequirementsText === "string" ||
+                json.missingRequirementsText === null
+                  ? json.missingRequirementsText ?? null
+                  : computedMissingRequirements.join(", "),
+              computed_missing_requirements:
+                Array.isArray(json.missingRequirements)
+                  ? json.missingRequirements
+                  : computedMissingRequirements,
+              is_online:
+                typeof json.isOnline === "boolean"
+                  ? json.isOnline
+                  : false,
+              documents: updatedDocuments,
+            };
+          })
           .sort((a, b) => getPriorityScore(a) - getPriorityScore(b)),
       );
 
@@ -693,7 +808,7 @@ export default function AdminDriversPage() {
   );
 
   const incompleteCount = useMemo(
-    () => rows.filter((r) => r.documents_required).length,
+    () => rows.filter((r) => r.computed_missing_requirements.length > 0).length,
     [rows],
   );
 
@@ -816,7 +931,7 @@ export default function AdminDriversPage() {
               const status = r.status;
               const insight = getDriverInsight(r);
               const reviewNote = noteDrafts[r.user_id] ?? "";
-              const missingList = parseMissingRequirements(r.missing_requirements);
+              const missingList = r.computed_missing_requirements;
 
               return (
                 <section
@@ -847,7 +962,7 @@ export default function AdminDriversPage() {
                             {insight.label}
                           </span>
 
-                          {r.documents_required && (
+                          {r.computed_missing_requirements.length > 0 && (
                             <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
                               Documents requis
                             </span>

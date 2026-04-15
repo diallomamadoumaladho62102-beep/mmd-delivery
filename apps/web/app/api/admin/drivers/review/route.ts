@@ -92,8 +92,13 @@ function hasDoc(
   docsByType: Map<string, DriverDocumentRow>,
   docType: string,
 ): boolean {
-  const doc = docsByType.get(docType);
-  return !!doc;
+  return docsByType.has(docType);
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean)),
+  );
 }
 
 function computeMissingRequirements(params: {
@@ -105,7 +110,9 @@ function computeMissingRequirements(params: {
   const docsByType = new Map<string, DriverDocumentRow>();
 
   for (const doc of documents) {
-    docsByType.set(doc.doc_type, doc);
+    if (!docsByType.has(doc.doc_type)) {
+      docsByType.set(doc.doc_type, doc);
+    }
   }
 
   if (!hasText(profile.full_name)) missing.push("full name");
@@ -154,12 +161,13 @@ function computeMissingRequirements(params: {
     }
   }
 
-  return missing;
+  return uniqueStrings(missing);
 }
 
 function formatMissingRequirements(missing: string[]): string | null {
-  if (missing.length === 0) return null;
-  return `Missing: ${missing.join(", ")}`;
+  const clean = uniqueStrings(missing);
+  if (clean.length === 0) return null;
+  return `Missing: ${clean.join(", ")}`;
 }
 
 function buildDriverDocumentUpdate(params: {
@@ -403,7 +411,7 @@ export async function POST(request: NextRequest) {
       documents: driverDocuments,
     });
 
-    const updatePayload = buildDriverDocumentUpdate({
+    const documentUpdate = buildDriverDocumentUpdate({
       status,
       reviewedAt,
       reviewedBy: actor,
@@ -415,13 +423,13 @@ export async function POST(request: NextRequest) {
       userId,
       status,
       reviewedAt,
-      missingRequirements: status === "rejected" ? missingRequirements : missingRequirements,
+      missingRequirements,
     });
 
     await updateDriverDocuments({
       supabase,
       userId,
-      payload: updatePayload,
+      payload: documentUpdate,
     });
 
     await writeDriverAuditLog({

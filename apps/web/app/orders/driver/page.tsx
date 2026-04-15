@@ -52,6 +52,38 @@ type DriverProfile = {
   documents_required: boolean;
   is_online: boolean;
   missing_requirements: string | null;
+  phone?: string | null;
+  emergency_phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  date_of_birth?: string | null;
+  vehicle_brand?: string | null;
+  vehicle_model?: string | null;
+  vehicle_year?: number | null;
+  vehicle_color?: string | null;
+  plate_number?: string | null;
+  license_number?: string | null;
+  license_expiry?: string | null;
+};
+
+type DriverDocumentType =
+  | "profile_photo"
+  | "id_card_front"
+  | "id_card_back"
+  | "license_front"
+  | "license_back"
+  | "insurance"
+  | "registration";
+
+type DriverDocumentStatus = "pending" | "approved" | "rejected";
+
+type DriverDocumentRow = {
+  id: string;
+  user_id: string;
+  doc_type: DriverDocumentType;
+  status: DriverDocumentStatus;
 };
 
 const ACTIVE_STATUSES: OrderStatus[] = [
@@ -90,17 +122,6 @@ function getAvatarSrc(url: string | null): string | null {
   return null;
 }
 
-function parseMissingRequirements(value: string | null | undefined): string[] {
-  if (!value) return [];
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-  const withoutPrefix = trimmed.replace(/^Missing:\s*/i, "");
-  return withoutPrefix
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 function transportModeLabel(value: string | null | undefined): string {
   if (value === "bike") return "Bike";
   if (value === "moto") return "Moto";
@@ -111,6 +132,7 @@ function transportModeLabel(value: string | null | undefined): string {
 export default function DriverOrdersDashboardPage() {
   const [me, setMe] = useState<Me | null>(null);
   const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
+  const [driverDocuments, setDriverDocuments] = useState<DriverDocumentRow[]>([]);
   const [available, setAvailable] = useState<OrderRow[]>([]);
   const [mine, setMine] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,201 +142,287 @@ export default function DriverOrdersDashboardPage() {
   >({});
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  const missingRequirements = useMemo(() => {
+    if (!driverProfile) return [];
+
+    const missing: string[] = [];
+    const docTypes = new Set(driverDocuments.map((doc) => doc.doc_type));
+
+    if (!driverProfile.full_name) missing.push("full name");
+    if (!driverProfile.phone) missing.push("phone number");
+    if (!driverProfile.emergency_phone) missing.push("emergency phone number");
+    if (!driverProfile.address) missing.push("address");
+    if (!driverProfile.city) missing.push("city");
+    if (!driverProfile.state) missing.push("state");
+    if (!driverProfile.zip_code) missing.push("zip code");
+    if (!driverProfile.date_of_birth) missing.push("date of birth");
+
+    if (!docTypes.has("profile_photo")) missing.push("profile photo");
+    if (!docTypes.has("id_card_front")) missing.push("ID card front");
+    if (!docTypes.has("id_card_back")) missing.push("ID card back");
+
+    const requiresMotorDocs =
+      driverProfile.transport_mode === "moto" || driverProfile.transport_mode === "car";
+
+    if (requiresMotorDocs) {
+      if (!driverProfile.vehicle_brand) missing.push("vehicle brand");
+      if (!driverProfile.vehicle_model) missing.push("vehicle model");
+      if (!driverProfile.vehicle_year) missing.push("vehicle year");
+      if (!driverProfile.vehicle_color) missing.push("vehicle color");
+      if (!driverProfile.plate_number) missing.push("plate number");
+      if (!driverProfile.license_number) missing.push("license number");
+      if (!driverProfile.license_expiry) missing.push("license expiry");
+      if (!docTypes.has("license_front")) missing.push("license front");
+      if (!docTypes.has("license_back")) missing.push("license back");
+      if (!docTypes.has("insurance")) missing.push("insurance");
+      if (!docTypes.has("registration")) missing.push("registration");
+    }
+
+    return missing;
+  }, [driverProfile, driverDocuments]);
+
   const mustCompleteProfile =
-    driverProfile?.status === "approved" &&
-    driverProfile?.documents_required === true;
+    driverProfile?.status === "approved" && missingRequirements.length > 0;
 
   const isApproved = driverProfile?.status === "approved";
   const canAccessDriverWork =
-    driverProfile?.status === "approved" &&
-    driverProfile?.documents_required === false;
-
-  const missingRequirements = useMemo(
-    () => parseMissingRequirements(driverProfile?.missing_requirements),
-    [driverProfile?.missing_requirements],
-  );
+    driverProfile?.status === "approved" && missingRequirements.length === 0;
 
   async function load() {
     setLoading(true);
     setErr(null);
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-      console.error(userError);
-      setErr(userError.message);
-      setLoading(false);
-      return;
-    }
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
 
-    const user = userData.user;
-    if (!user) {
-      setErr(
-        "Tu dois te connecter en tant que chauffeur pour voir ce tableau de bord.",
-      );
-      setLoading(false);
-      return;
-    }
+      const user = userData.user;
+      if (!user) {
+        setErr(
+          "Tu dois te connecter en tant que chauffeur pour voir ce tableau de bord.",
+        );
+        setLoading(false);
+        return;
+      }
 
-    const uid = user.id;
+      const uid = user.id;
 
-    const [
-      { data: profileRow, error: profileError },
-      { data: driverRow, error: driverError },
-    ] = await Promise.all([
-      supabase.from("profiles").select("id, full_name").eq("id", uid).maybeSingle(),
-      supabase
-        .from("driver_profiles")
+      const [
+        { data: profileRow, error: profileError },
+        { data: driverRow, error: driverError },
+        { data: docsRow, error: docsError },
+      ] = await Promise.all([
+        supabase.from("profiles").select("id, full_name").eq("id", uid).maybeSingle(),
+        supabase
+          .from("driver_profiles")
+          .select(
+            `
+            user_id,
+            full_name,
+            phone,
+            emergency_phone,
+            address,
+            city,
+            state,
+            zip_code,
+            date_of_birth,
+            transport_mode,
+            vehicle_brand,
+            vehicle_model,
+            vehicle_year,
+            vehicle_color,
+            plate_number,
+            license_number,
+            license_expiry,
+            status,
+            documents_required,
+            is_online,
+            missing_requirements
+          `,
+          )
+          .eq("user_id", uid)
+          .maybeSingle(),
+        supabase
+          .from("driver_documents")
+          .select("id, user_id, doc_type, status")
+          .eq("user_id", uid),
+      ]);
+
+      if (!profileError && profileRow) {
+        setMe({
+          id: profileRow.id,
+          full_name: profileRow.full_name ?? null,
+        });
+      } else {
+        setMe({ id: uid, full_name: user.email ?? null });
+      }
+
+      if (driverError) throw driverError;
+      if (docsError) throw docsError;
+
+      setDriverProfile((driverRow as DriverProfile | null) ?? null);
+      setDriverDocuments((docsRow as DriverDocumentRow[] | null) ?? []);
+
+      if (!driverRow) {
+        setAvailable([]);
+        setMine([]);
+        setClientByOrder({});
+        setLoading(false);
+        return;
+      }
+
+      const computedMissing = (() => {
+        const profile = driverRow as DriverProfile;
+        const docs = (docsRow as DriverDocumentRow[] | null) ?? [];
+        const docTypes = new Set(docs.map((doc) => doc.doc_type));
+        const missing: string[] = [];
+
+        if (!profile.full_name) missing.push("full name");
+        if (!profile.phone) missing.push("phone number");
+        if (!profile.emergency_phone) missing.push("emergency phone number");
+        if (!profile.address) missing.push("address");
+        if (!profile.city) missing.push("city");
+        if (!profile.state) missing.push("state");
+        if (!profile.zip_code) missing.push("zip code");
+        if (!profile.date_of_birth) missing.push("date of birth");
+
+        if (!docTypes.has("profile_photo")) missing.push("profile photo");
+        if (!docTypes.has("id_card_front")) missing.push("ID card front");
+        if (!docTypes.has("id_card_back")) missing.push("ID card back");
+
+        const requiresMotorDocs =
+          profile.transport_mode === "moto" || profile.transport_mode === "car";
+
+        if (requiresMotorDocs) {
+          if (!profile.vehicle_brand) missing.push("vehicle brand");
+          if (!profile.vehicle_model) missing.push("vehicle model");
+          if (!profile.vehicle_year) missing.push("vehicle year");
+          if (!profile.vehicle_color) missing.push("vehicle color");
+          if (!profile.plate_number) missing.push("plate number");
+          if (!profile.license_number) missing.push("license number");
+          if (!profile.license_expiry) missing.push("license expiry");
+          if (!docTypes.has("license_front")) missing.push("license front");
+          if (!docTypes.has("license_back")) missing.push("license back");
+          if (!docTypes.has("insurance")) missing.push("insurance");
+          if (!docTypes.has("registration")) missing.push("registration");
+        }
+
+        return missing;
+      })();
+
+      if (driverRow.status !== "approved" || computedMissing.length > 0) {
+        setAvailable([]);
+        setMine([]);
+        setClientByOrder({});
+        setLoading(false);
+        return;
+      }
+
+      const { data: ordersData, error: ordersError } = await supabase
+        .from("orders")
         .select(
-          "user_id, full_name, transport_mode, status, documents_required, is_online, missing_requirements",
+          `
+          id,
+          status,
+          created_at,
+          restaurant_name,
+          currency,
+          subtotal,
+          total,
+          distance_miles,
+          eta_minutes,
+          delivery_fee
+        `,
         )
-        .eq("user_id", uid)
-        .maybeSingle(),
-    ]);
+        .in("status", ACTIVE_STATUSES)
+        .order("created_at", { ascending: false });
 
-    if (!profileError && profileRow) {
-      setMe({
-        id: profileRow.id,
-        full_name: profileRow.full_name ?? null,
-      });
-    } else {
-      setMe({ id: uid, full_name: user.email ?? null });
-    }
+      if (ordersError) throw ordersError;
 
-    if (driverError) {
-      console.error(driverError);
-      setErr(driverError.message);
-      setLoading(false);
-      return;
-    }
+      const allOrders = (ordersData || []) as OrderRow[];
+      const orderIds = allOrders.map((o) => o.id);
 
-    setDriverProfile((driverRow as DriverProfile | null) ?? null);
+      if (orderIds.length === 0) {
+        setAvailable([]);
+        setMine([]);
+        setClientByOrder({});
+        setLoading(false);
+        return;
+      }
 
-    if (!driverRow) {
-      setAvailable([]);
-      setMine([]);
-      setClientByOrder({});
-      setLoading(false);
-      return;
-    }
+      const { data: membersData, error: membersError } = await supabase
+        .from("order_members")
+        .select("order_id, user_id, role")
+        .in("order_id", orderIds);
 
-    if (driverRow.status !== "approved" || driverRow.documents_required === true) {
-      setAvailable([]);
-      setMine([]);
-      setClientByOrder({});
-      setLoading(false);
-      return;
-    }
+      if (membersError) throw membersError;
 
-    const { data: ordersData, error: ordersError } = await supabase
-      .from("orders")
-      .select(
-        `
-        id,
-        status,
-        created_at,
-        restaurant_name,
-        currency,
-        subtotal,
-        total,
-        distance_miles,
-        eta_minutes,
-        delivery_fee
-      `,
-      )
-      .in("status", ACTIVE_STATUSES)
-      .order("created_at", { ascending: false });
+      const members = (membersData || []) as MemberRow[];
 
-    if (ordersError) {
-      console.error(ordersError);
-      setErr(ordersError.message);
-      setLoading(false);
-      return;
-    }
+      const mineOrders = allOrders.filter((o) =>
+        members.some(
+          (m) =>
+            m.order_id === o.id &&
+            m.role === "driver" &&
+            m.user_id === uid &&
+            o.status !== "delivered" &&
+            o.status !== "canceled",
+        ),
+      );
 
-    const allOrders = (ordersData || []) as OrderRow[];
-    const orderIds = allOrders.map((o) => o.id);
-
-    if (orderIds.length === 0) {
-      setAvailable([]);
-      setMine([]);
-      setClientByOrder({});
-      setLoading(false);
-      return;
-    }
-
-    const { data: membersData, error: membersError } = await supabase
-      .from("order_members")
-      .select("order_id, user_id, role")
-      .in("order_id", orderIds);
-
-    if (membersError) {
-      console.error(membersError);
-      setErr(membersError.message);
-      setLoading(false);
-      return;
-    }
-
-    const members = (membersData || []) as MemberRow[];
-
-    const mineOrders = allOrders.filter((o) =>
-      members.some(
-        (m) =>
-          m.order_id === o.id &&
-          m.role === "driver" &&
-          m.user_id === uid &&
+      const availableOrders = allOrders.filter(
+        (o) =>
           o.status !== "delivered" &&
-          o.status !== "canceled",
-      ),
-    );
+          o.status !== "canceled" &&
+          !members.some((m) => m.order_id === o.id && m.role === "driver"),
+      );
 
-    const availableOrders = allOrders.filter(
-      (o) =>
-        o.status !== "delivered" &&
-        o.status !== "canceled" &&
-        !members.some((m) => m.order_id === o.id && m.role === "driver"),
-    );
+      setMine(mineOrders);
+      setAvailable(availableOrders);
 
-    setMine(mineOrders);
-    setAvailable(availableOrders);
+      const clientMembers = members.filter((m) => m.role === "client");
+      const clientIds = Array.from(new Set(clientMembers.map((m) => m.user_id)));
 
-    const clientMembers = members.filter((m) => m.role === "client");
-    const clientIds = Array.from(new Set(clientMembers.map((m) => m.user_id)));
+      if (clientIds.length === 0) {
+        setClientByOrder({});
+        setLoading(false);
+        return;
+      }
 
-    if (clientIds.length === 0) {
-      setClientByOrder({});
+      const { data: clientProfilesData, error: clientProfilesError } =
+        await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url")
+          .in("id", clientIds);
+
+      if (clientProfilesError || !clientProfilesData) {
+        console.error(clientProfilesError);
+        setClientByOrder({});
+        setLoading(false);
+        return;
+      }
+
+      const profilesMap = new Map<string, ClientProfile>();
+      for (const p of clientProfilesData) {
+        profilesMap.set(p.id, {
+          id: p.id,
+          full_name: p.full_name ?? null,
+          avatar_url: p.avatar_url ?? null,
+        });
+      }
+
+      const byOrder: Record<string, ClientProfile | null> = {};
+      for (const m of clientMembers) {
+        byOrder[m.order_id] = profilesMap.get(m.user_id) ?? null;
+      }
+
+      setClientByOrder(byOrder);
+    } catch (e: any) {
+      console.error(e);
+      setErr(e?.message ?? "Erreur lors du chargement du tableau de bord chauffeur.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { data: clientProfilesData, error: clientProfilesError } =
-      await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .in("id", clientIds);
-
-    if (clientProfilesError || !clientProfilesData) {
-      console.error(clientProfilesError);
-      setClientByOrder({});
-      setLoading(false);
-      return;
-    }
-
-    const profilesMap = new Map<string, ClientProfile>();
-    for (const p of clientProfilesData) {
-      profilesMap.set(p.id, {
-        id: p.id,
-        full_name: p.full_name ?? null,
-        avatar_url: p.avatar_url ?? null,
-      });
-    }
-
-    const byOrder: Record<string, ClientProfile | null> = {};
-    for (const m of clientMembers) {
-      byOrder[m.order_id] = profilesMap.get(m.user_id) ?? null;
-    }
-
-    setClientByOrder(byOrder);
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -444,7 +552,7 @@ export default function DriverOrdersDashboardPage() {
               <p className="text-xs text-gray-600">
                 Dossier requis :{" "}
                 <span className="font-medium">
-                  {driverProfile.documents_required ? "oui" : "non"}
+                  {missingRequirements.length > 0 ? "oui" : "non"}
                 </span>
               </p>
               <p className="text-xs text-gray-600">

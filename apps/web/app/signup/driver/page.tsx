@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 const ROLE = "driver";
@@ -8,6 +8,8 @@ const PROFILE_BUCKET = "avatars";
 const DRIVER_DOCS_BUCKET = "driver-docs";
 
 type VehicleType = "car" | "moto" | "bike";
+type DriverDocumentStatus = "pending" | "approved" | "rejected";
+
 type DriverDocType =
   | "profile_photo"
   | "id_card_front"
@@ -60,7 +62,7 @@ type DriverDocumentRow = {
   state: string | null;
   doc_number: string | null;
   expires_at: string | null;
-  status: string | null;
+  status: DriverDocumentStatus | string | null;
   driver_id: string | null;
 };
 
@@ -87,6 +89,48 @@ function buildStoragePath(
 ): string {
   const ext = getFileExt(file);
   return `drivers/${uid}/${docType}_${Date.now()}.${ext}`;
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return ((error as { message: string }).message || fallback).trim() || fallback;
+  }
+  return fallback;
+}
+
+function normalizeYearInput(value: string): number | "" {
+  if (!value.trim()) return "";
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : "";
+}
+
+function buildLocalDoc(params: {
+  existingId?: string;
+  uid: string;
+  docType: DriverDocType;
+  country?: string | null;
+  state?: string | null;
+  docNumber?: string | null;
+  expiresAt?: string | null;
+}): DriverDocumentRow {
+  return {
+    id: params.existingId ?? "local",
+    user_id: params.uid,
+    doc_type: params.docType,
+    file_path: "",
+    country: params.country ?? null,
+    state: params.state ?? null,
+    doc_number: params.docNumber ?? null,
+    expires_at: params.expiresAt ?? null,
+    status: "pending",
+    driver_id: null,
+  };
 }
 
 export default function SignupDriver() {
@@ -137,7 +181,7 @@ export default function SignupDriver() {
 
   const requiresMotorDocs = vehicleType === "car" || vehicleType === "moto";
 
-  async function loadConnectedUser() {
+  const loadConnectedUser = useCallback(async () => {
     setErr(null);
 
     const { data, error } = await supabase.auth.getUser();
@@ -149,14 +193,15 @@ export default function SignupDriver() {
     const user = data.user;
     setUid(user?.id ?? null);
     setAuthEmail(user?.email ?? "");
-  }
-
-  useEffect(() => {
-    loadConnectedUser();
   }, []);
 
   useEffect(() => {
+    void loadConnectedUser();
+  }, [loadConnectedUser]);
+
+  useEffect(() => {
     if (!uid) {
+      setExistingDocs({});
       setLoadingProfile(false);
       return;
     }
@@ -168,23 +213,23 @@ export default function SignupDriver() {
       setErr(null);
 
       try {
-        const [{ data: publicProfile, error: publicProfileErr }, { data: driverProfile, error: driverProfileErr }, { data: docs, error: docsErr }] =
-          await Promise.all([
-            supabase
-              .from("profiles")
-              .select("id, role, full_name, phone, avatar_url, email")
-              .eq("id", uid)
-              .maybeSingle<PublicProfileRow>(),
-            supabase
-              .from("driver_profiles")
-              .select("*")
-              .eq("user_id", uid)
-              .maybeSingle<DriverProfileRow>(),
-            supabase
-              .from("driver_documents")
-              .select("*")
-              .eq("user_id", uid),
-          ]);
+        const [
+          { data: publicProfile, error: publicProfileErr },
+          { data: driverProfile, error: driverProfileErr },
+          { data: docs, error: docsErr },
+        ] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("id, role, full_name, phone, avatar_url, email")
+            .eq("id", uid)
+            .maybeSingle<PublicProfileRow>(),
+          supabase
+            .from("driver_profiles")
+            .select("*")
+            .eq("user_id", uid)
+            .maybeSingle<DriverProfileRow>(),
+          supabase.from("driver_documents").select("*").eq("user_id", uid),
+        ]);
 
         if (publicProfileErr) throw publicProfileErr;
         if (driverProfileErr) throw driverProfileErr;
@@ -216,23 +261,23 @@ export default function SignupDriver() {
           setLicenseExpiry(driverProfile.license_expiry ?? "");
         }
 
-        if (docs && docs.length > 0) {
-          const mapped: ExistingDocsMap = {};
-          for (const doc of docs as DriverDocumentRow[]) {
-            mapped[doc.doc_type] = doc;
-          }
-          setExistingDocs(mapped);
-
-          const idDoc =
-            mapped.id_card_front ||
-            mapped.id_card_back;
-
-          if (idDoc?.doc_number) setIdNumber(idDoc.doc_number);
-          if (idDoc?.country) setIdCountry(idDoc.country);
+        const mapped: ExistingDocsMap = {};
+        for (const doc of (docs ?? []) as DriverDocumentRow[]) {
+          mapped[doc.doc_type] = doc;
         }
-      } catch (e: any) {
+        setExistingDocs(mapped);
+
+        const idDoc = mapped.id_card_front || mapped.id_card_back;
+        if (idDoc?.doc_number) setIdNumber(idDoc.doc_number);
+        if (idDoc?.country) setIdCountry(idDoc.country);
+      } catch (error: unknown) {
         if (!cancelled) {
-          setErr(e?.message ?? "Erreur lors du chargement du profil chauffeur.");
+          setErr(
+            toErrorMessage(
+              error,
+              "Erreur lors du chargement du profil chauffeur.",
+            ),
+          );
         }
       } finally {
         if (!cancelled) {
@@ -241,7 +286,7 @@ export default function SignupDriver() {
       }
     }
 
-    loadExistingData();
+    void loadExistingData();
 
     return () => {
       cancelled = true;
@@ -272,8 +317,8 @@ export default function SignupDriver() {
 
       setSent(true);
       setSuccess("Lien magique envoyé. Ouvre ton email puis reviens sur cette page.");
-    } catch (e: any) {
-      setErr(e?.message ?? "Erreur lors de l'envoi du lien.");
+    } catch (error: unknown) {
+      setErr(toErrorMessage(error, "Erreur lors de l'envoi du lien."));
     }
   }
 
@@ -394,6 +439,29 @@ export default function SignupDriver() {
       .upsert(payload, { onConflict: "user_id,doc_type" });
 
     if (docErr) throw docErr;
+  }
+
+  async function upsertPublicProfile(
+    params: {
+      avatarUrl?: string | null;
+    } = {},
+  ) {
+    if (!uid) throw new Error("Utilisateur non connecté.");
+
+    const payload = {
+      id: uid,
+      role: ROLE,
+      full_name: trimOrNull(fullName),
+      phone: trimOrNull(phone),
+      email: authEmail || null,
+      ...(params.avatarUrl ? { avatar_url: params.avatarUrl } : {}),
+    };
+
+    const { error } = await supabase
+      .from("profiles")
+      .upsert(payload, { onConflict: "id" });
+
+    if (error) throw error;
   }
 
   async function saveProfile() {
@@ -544,40 +612,10 @@ export default function SignupDriver() {
 
         if (avatarError) throw avatarError;
 
-        const avatarUrl = avatarUpload.path;
-
-        const { error: profileUpsertErr } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: uid,
-              role: ROLE,
-              full_name: trimOrNull(fullName),
-              phone: trimOrNull(phone),
-              avatar_url: avatarUrl,
-              email: authEmail || null,
-            },
-            { onConflict: "id" },
-          );
-
-        if (profileUpsertErr) throw profileUpsertErr;
-
+        await upsertPublicProfile({ avatarUrl: avatarUpload.path });
         await uploadAndUpsertDocument("profile_photo", profilePhotoFile);
       } else {
-        const { error: profileUpsertErr } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: uid,
-              role: ROLE,
-              full_name: trimOrNull(fullName),
-              phone: trimOrNull(phone),
-              email: authEmail || null,
-            },
-            { onConflict: "id" },
-          );
-
-        if (profileUpsertErr) throw profileUpsertErr;
+        await upsertPublicProfile();
       }
 
       const driverProfilePayload = {
@@ -609,158 +647,133 @@ export default function SignupDriver() {
 
       if (upsertDriverProfileErr) throw upsertDriverProfileErr;
 
+      const uploads: Promise<void>[] = [];
+
       if (idFrontFile) {
-        await uploadAndUpsertDocument("id_card_front", idFrontFile, {
-          country: trimOrNull(idCountry),
-          doc_number: trimOrNull(idNumber),
-        });
+        uploads.push(
+          uploadAndUpsertDocument("id_card_front", idFrontFile, {
+            country: trimOrNull(idCountry),
+            doc_number: trimOrNull(idNumber),
+          }),
+        );
       }
 
       if (idBackFile) {
-        await uploadAndUpsertDocument("id_card_back", idBackFile, {
-          country: trimOrNull(idCountry),
-          doc_number: trimOrNull(idNumber),
-        });
+        uploads.push(
+          uploadAndUpsertDocument("id_card_back", idBackFile, {
+            country: trimOrNull(idCountry),
+            doc_number: trimOrNull(idNumber),
+          }),
+        );
       }
 
       if (requiresMotorDocs && licenseFrontFile) {
-        await uploadAndUpsertDocument("license_front", licenseFrontFile, {
-          country: "US",
-          state: trimOrNull(stateValue),
-          doc_number: trimOrNull(licenseNumber),
-          expires_at: trimOrNull(licenseExpiry),
-        });
+        uploads.push(
+          uploadAndUpsertDocument("license_front", licenseFrontFile, {
+            country: "US",
+            state: trimOrNull(stateValue),
+            doc_number: trimOrNull(licenseNumber),
+            expires_at: trimOrNull(licenseExpiry),
+          }),
+        );
       }
 
       if (requiresMotorDocs && licenseBackFile) {
-        await uploadAndUpsertDocument("license_back", licenseBackFile, {
-          country: "US",
-          state: trimOrNull(stateValue),
-          doc_number: trimOrNull(licenseNumber),
-          expires_at: trimOrNull(licenseExpiry),
-        });
+        uploads.push(
+          uploadAndUpsertDocument("license_back", licenseBackFile, {
+            country: "US",
+            state: trimOrNull(stateValue),
+            doc_number: trimOrNull(licenseNumber),
+            expires_at: trimOrNull(licenseExpiry),
+          }),
+        );
       }
 
       if (requiresMotorDocs && insuranceFile) {
-        await uploadAndUpsertDocument("insurance", insuranceFile);
+        uploads.push(uploadAndUpsertDocument("insurance", insuranceFile));
       }
 
       if (requiresMotorDocs && registrationFile) {
-        await uploadAndUpsertDocument("registration", registrationFile);
+        uploads.push(uploadAndUpsertDocument("registration", registrationFile));
       }
+
+      await Promise.all(uploads);
 
       const refreshedDocs: ExistingDocsMap = {
         ...existingDocs,
         ...(profilePhotoFile
           ? {
-              profile_photo: {
-                id: existingDocs.profile_photo?.id ?? "local",
-                user_id: uid,
-                doc_type: "profile_photo",
-                file_path: "",
-                country: null,
-                state: null,
-                doc_number: null,
-                expires_at: null,
-                status: "pending",
-                driver_id: null,
-              },
+              profile_photo: buildLocalDoc({
+                existingId: existingDocs.profile_photo?.id,
+                uid,
+                docType: "profile_photo",
+              }),
             }
           : {}),
         ...(idFrontFile
           ? {
-              id_card_front: {
-                id: existingDocs.id_card_front?.id ?? "local",
-                user_id: uid,
-                doc_type: "id_card_front",
-                file_path: "",
+              id_card_front: buildLocalDoc({
+                existingId: existingDocs.id_card_front?.id,
+                uid,
+                docType: "id_card_front",
                 country: trimOrNull(idCountry),
-                state: null,
-                doc_number: trimOrNull(idNumber),
-                expires_at: null,
-                status: "pending",
-                driver_id: null,
-              },
+                docNumber: trimOrNull(idNumber),
+              }),
             }
           : {}),
         ...(idBackFile
           ? {
-              id_card_back: {
-                id: existingDocs.id_card_back?.id ?? "local",
-                user_id: uid,
-                doc_type: "id_card_back",
-                file_path: "",
+              id_card_back: buildLocalDoc({
+                existingId: existingDocs.id_card_back?.id,
+                uid,
+                docType: "id_card_back",
                 country: trimOrNull(idCountry),
-                state: null,
-                doc_number: trimOrNull(idNumber),
-                expires_at: null,
-                status: "pending",
-                driver_id: null,
-              },
+                docNumber: trimOrNull(idNumber),
+              }),
             }
           : {}),
         ...(licenseFrontFile
           ? {
-              license_front: {
-                id: existingDocs.license_front?.id ?? "local",
-                user_id: uid,
-                doc_type: "license_front",
-                file_path: "",
+              license_front: buildLocalDoc({
+                existingId: existingDocs.license_front?.id,
+                uid,
+                docType: "license_front",
                 country: "US",
                 state: trimOrNull(stateValue),
-                doc_number: trimOrNull(licenseNumber),
-                expires_at: trimOrNull(licenseExpiry),
-                status: "pending",
-                driver_id: null,
-              },
+                docNumber: trimOrNull(licenseNumber),
+                expiresAt: trimOrNull(licenseExpiry),
+              }),
             }
           : {}),
         ...(licenseBackFile
           ? {
-              license_back: {
-                id: existingDocs.license_back?.id ?? "local",
-                user_id: uid,
-                doc_type: "license_back",
-                file_path: "",
+              license_back: buildLocalDoc({
+                existingId: existingDocs.license_back?.id,
+                uid,
+                docType: "license_back",
                 country: "US",
                 state: trimOrNull(stateValue),
-                doc_number: trimOrNull(licenseNumber),
-                expires_at: trimOrNull(licenseExpiry),
-                status: "pending",
-                driver_id: null,
-              },
+                docNumber: trimOrNull(licenseNumber),
+                expiresAt: trimOrNull(licenseExpiry),
+              }),
             }
           : {}),
         ...(insuranceFile
           ? {
-              insurance: {
-                id: existingDocs.insurance?.id ?? "local",
-                user_id: uid,
-                doc_type: "insurance",
-                file_path: "",
-                country: null,
-                state: null,
-                doc_number: null,
-                expires_at: null,
-                status: "pending",
-                driver_id: null,
-              },
+              insurance: buildLocalDoc({
+                existingId: existingDocs.insurance?.id,
+                uid,
+                docType: "insurance",
+              }),
             }
           : {}),
         ...(registrationFile
           ? {
-              registration: {
-                id: existingDocs.registration?.id ?? "local",
-                user_id: uid,
-                doc_type: "registration",
-                file_path: "",
-                country: null,
-                state: null,
-                doc_number: null,
-                expires_at: null,
-                status: "pending",
-                driver_id: null,
-              },
+              registration: buildLocalDoc({
+                existingId: existingDocs.registration?.id,
+                uid,
+                docType: "registration",
+              }),
             }
           : {}),
       };
@@ -780,17 +793,23 @@ export default function SignupDriver() {
           ? "Profil chauffeur enregistré. Ton dossier est complet."
           : "Profil chauffeur enregistré. Il manque encore des informations ou documents.",
       );
-    } catch (e: any) {
+    } catch (error: unknown) {
       setErr(
-        e?.message ??
+        toErrorMessage(
+          error,
           "Erreur lors de l'enregistrement du profil chauffeur.",
+        ),
       );
     } finally {
       setSaving(false);
     }
   }
 
-  function renderFileStatus(label: string, hasExisting: boolean, pendingNew: boolean) {
+  function renderFileStatus(
+    label: string,
+    hasExisting: boolean,
+    pendingNew: boolean,
+  ) {
     if (pendingNew) {
       return <span className="text-xs text-green-700">Nouveau fichier prêt : {label}</span>;
     }
@@ -827,7 +846,7 @@ export default function SignupDriver() {
 
           <button
             type="button"
-            onClick={loadConnectedUser}
+            onClick={() => void loadConnectedUser()}
             className="text-xs underline"
           >
             J’ai déjà un compte — recharger
@@ -853,7 +872,9 @@ export default function SignupDriver() {
       <div>
         <h1 className="text-2xl font-semibold">Ton profil — chauffeur / livreur</h1>
         <p className="text-sm text-gray-600 mt-1">
-          Complète toutes les informations demandées. Pour vélo, seuls les documents d’identité sont exigés. Pour moto et voiture, le permis, l’assurance et la registration sont aussi obligatoires.
+          Complète toutes les informations demandées. Pour vélo, seuls les documents
+          d’identité sont exigés. Pour moto et voiture, le permis, l’assurance et la
+          registration sont aussi obligatoires.
         </p>
       </div>
 
@@ -1039,9 +1060,7 @@ export default function SignupDriver() {
             placeholder="Année"
             type="number"
             value={vehicleYear}
-            onChange={(e) =>
-              setVehicleYear(e.target.value === "" ? "" : Number(e.target.value))
-            }
+            onChange={(e) => setVehicleYear(normalizeYearInput(e.target.value))}
           />
           <input
             className="w-full border rounded px-3 py-2"
@@ -1169,7 +1188,7 @@ export default function SignupDriver() {
       </div>
 
       <button
-        onClick={saveProfile}
+        onClick={() => void saveProfile()}
         className="px-4 py-3 rounded bg-black text-white w-full disabled:opacity-60"
         disabled={saving}
       >
