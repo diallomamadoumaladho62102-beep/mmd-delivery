@@ -689,66 +689,125 @@ export function DriverHomeScreen() {
 
   // ✅ toggle ONLINE/OFFLINE (Supabase + GPS DB)
   const toggleOnline = useCallback(async () => {
-    try {
-      const next = !isOnline;
-      const userId = await getUserIdOrThrow();
+  try {
+    const next = !isOnline;
+    const userId = await getUserIdOrThrow();
 
-      if (next) {
-        const ok = await ensureGpsPermission();
-        if (!ok) {
-          Alert.alert(
-            t("driver.home.gps.title", "GPS"),
-            t("driver.home.gps.enableToGoOnline", "Active la permission GPS pour passer en ligne.")
-          );
-          return;
-        }
+    const { data: driver, error: driverErr } = await supabase
+      .from("driver_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
 
-        const { error: upErr } = await supabase
-          .from("driver_profiles")
-          .update({ is_online: true })
-          .eq("user_id", userId);
+    if (driverErr || !driver) {
+      Alert.alert("Erreur", "Profil chauffeur introuvable.");
+      return;
+    }
 
-        if (upErr) throw upErr;
+    const { data: docs } = await supabase
+      .from("driver_documents")
+      .select("*")
+      .eq("user_id", userId);
 
-        setIsOnline(true);
+    const documents = docs ?? [];
 
-        await startDbGpsTracking(userId);
-        await fetchDriverOrders();
+    const missing: string[] = [];
+
+    if (!driver.full_name) missing.push("Nom complet");
+    if (!driver.phone) missing.push("Téléphone");
+    if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
+    if (!driver.address) missing.push("Adresse");
+    if (!driver.city) missing.push("Ville");
+    if (!driver.state) missing.push("État");
+    if (!driver.zip_code) missing.push("ZIP code");
+    if (!driver.date_of_birth) missing.push("Date de naissance");
+
+    if (!driver.photo_url) missing.push("Photo personnelle");
+    if (!driver.id_recto_url) missing.push("Pièce identité recto");
+    if (!driver.id_verso_url) missing.push("Pièce identité verso");
+
+    const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
+
+    if (isVehicle) {
+      if (!driver.vehicle_brand) missing.push("Marque véhicule");
+      if (!driver.vehicle_model) missing.push("Modèle véhicule");
+      if (!driver.vehicle_year) missing.push("Année véhicule");
+      if (!driver.plate_number) missing.push("Plaque");
+
+      if (!driver.license_number) missing.push("Numéro permis");
+      if (!driver.license_expiration) missing.push("Expiration permis");
+
+      const hasDoc = (type: string) =>
+        documents.some((d: any) => d.type === type && d.url);
+
+      if (!hasDoc("license_front")) missing.push("Permis recto");
+      if (!hasDoc("license_back")) missing.push("Permis verso");
+      if (!hasDoc("insurance")) missing.push("Assurance");
+      if (!hasDoc("registration")) missing.push("Registration");
+    }
+
+    if (missing.length > 0) {
+      Alert.alert(
+        "Profil incomplet",
+        "Complète ton profil avant de passer en ligne :\n\n" +
+          missing.map((m) => "• " + m).join("\n")
+      );
+      return;
+    }
+
+    if (next) {
+      const ok = await ensureGpsPermission();
+      if (!ok) {
+        Alert.alert("GPS", "Active le GPS pour passer en ligne.");
         return;
       }
 
-      const { error: downErr } = await supabase
+      const { error: upErr } = await supabase
         .from("driver_profiles")
-        .update({ is_online: false })
+        .update({ is_online: true })
         .eq("user_id", userId);
 
-      if (downErr) throw downErr;
+      if (upErr) throw upErr;
 
-      setIsOnline(false);
+      setIsOnline(true);
 
-      await stopDbGpsTracking();
-      await stopSound();
-
-      setActiveOffer(null);
-      setAvailableOrders([]);
-      setMyOrders([]);
-    } catch (e: any) {
-      console.log("toggleOnline error:", e);
-      Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("driver.home.errors.toggleOnline", "Impossible de changer le statut.")
-      );
+      await startDbGpsTracking(userId);
+      await fetchDriverOrders();
+      return;
     }
-  }, [
-    ensureGpsPermission,
-    fetchDriverOrders,
-    getUserIdOrThrow,
-    isOnline,
-    startDbGpsTracking,
-    stopDbGpsTracking,
-    stopSound,
-    t,
-  ]);
+
+    const { error: downErr } = await supabase
+      .from("driver_profiles")
+      .update({ is_online: false })
+      .eq("user_id", userId);
+
+    if (downErr) throw downErr;
+
+    setIsOnline(false);
+
+    await stopDbGpsTracking();
+    await stopSound();
+
+    setActiveOffer(null);
+    setAvailableOrders([]);
+    setMyOrders([]);
+  } catch (e: any) {
+    console.log("toggleOnline error:", e);
+    Alert.alert(
+      t("shared.orderChat.alerts.errorTitle", "Erreur"),
+      e?.message ?? "Impossible de changer le statut."
+    );
+  }
+}, [
+  ensureGpsPermission,
+  fetchDriverOrders,
+  getUserIdOrThrow,
+  isOnline,
+  startDbGpsTracking,
+  stopDbGpsTracking,
+  stopSound,
+  t,
+]);
 
   const onlineLabel = isOnline ? t("driver.home.online", "EN LIGNE") : t("driver.home.offline", "HORS LIGNE");
   const onlineColorBg = isOnline ? "#22C55E" : "#EF4444";

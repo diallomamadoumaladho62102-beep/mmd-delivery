@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/DriverOnboardingScreen.tsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -36,14 +36,10 @@ export function DriverOnboardingScreen() {
   const [plate, setPlate] = useState("");
 
   const [vehicleVerified, setVehicleVerified] = useState(false);
-
-  // ✅ Paiement: vérité Stripe (stripe_onboarded) plutôt que payout_enabled
   const [payoutEnabled, setPayoutEnabled] = useState(false);
-
   const [isOnline, setIsOnline] = useState(false);
 
   const needsVehicle = transportMode === "car" || transportMode === "moto";
-  const isBikeMode = transportMode === "bike";
 
   function normalizePhone(p: string) {
     return String(p ?? "").replace(/[^\d+]/g, "").trim();
@@ -58,8 +54,7 @@ export function DriverOnboardingScreen() {
   }
 
   async function ensureDriverProfileRow(uid: string) {
-    // ✅ insert "safe" (si déjà existant => ignore via upsert)
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       id: uid,
       user_id: uid,
       transport_mode: "bike",
@@ -68,9 +63,7 @@ export function DriverOnboardingScreen() {
       acceptance_rate: 0,
       cancellation_rate: 0,
       vehicle_verified: false,
-
       payout_enabled: false,
-
       full_name: null,
       phone: null,
       vehicle_type: null,
@@ -85,7 +78,6 @@ export function DriverOnboardingScreen() {
       plate_number: null,
       rating: null,
       rating_count: null,
-
       stripe_account_id: null,
       stripe_onboarded: false,
     };
@@ -94,7 +86,9 @@ export function DriverOnboardingScreen() {
       .from("driver_profiles")
       .upsert(payload, { onConflict: "id" });
 
-    if (error) console.log("ensureDriverProfileRow upsert error:", error);
+    if (error) {
+      console.log("ensureDriverProfileRow upsert error:", error);
+    }
   }
 
   async function fetchDriverProfile(uid: string) {
@@ -128,32 +122,31 @@ export function DriverOnboardingScreen() {
     const stripeOnboarded =
       typeof d?.stripe_onboarded === "boolean" ? !!d.stripe_onboarded : null;
 
-    // Stripe = source of truth, fallback payout_enabled
     return stripeOnboarded !== null ? stripeOnboarded : !!d?.payout_enabled;
   }, []);
 
-  const refreshStripeAndReload = useCallback(
-    async (uid: string) => {
-      try {
-        const { error: fnErr } = await supabase.functions.invoke(
-          "check_connect_status",
-          { body: {} }
-        );
-        if (fnErr) console.log("check_connect_status error:", fnErr);
+  const refreshStripeAndReload = useCallback(async (uid: string) => {
+    try {
+      const { error: fnErr } = await supabase.functions.invoke(
+        "check_connect_status",
+        { body: {} }
+      );
+      if (fnErr) {
+        console.log("check_connect_status error:", fnErr);
+      }
 
-        const { data: dp, error: dpErr } = await fetchDriverProfile(uid);
-        if (dpErr) {
-          console.log("driver_profiles reload after stripe error:", dpErr);
-          return null;
-        }
-        return dp;
-      } catch (e) {
-        console.log("refreshStripeAndReload error:", e);
+      const { data: dp, error: dpErr } = await fetchDriverProfile(uid);
+      if (dpErr) {
+        console.log("driver_profiles reload after stripe error:", dpErr);
         return null;
       }
-    },
-    []
-  );
+
+      return dp;
+    } catch (e) {
+      console.log("refreshStripeAndReload error:", e);
+      return null;
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -173,22 +166,25 @@ export function DriverOnboardingScreen() {
 
       const uid = user.id;
 
-      // 1) profiles
       const { data: p, error: pErr } = await supabase
         .from("profiles")
         .select("id, full_name, phone, role")
         .eq("id", uid)
         .maybeSingle();
 
-      if (pErr) console.log("profiles load error:", pErr);
+      if (pErr) {
+        console.log("profiles load error:", pErr);
+      }
+
       if (p) {
         setFullName(p.full_name ?? "");
         setPhone(p.phone ?? "");
       }
 
-      // 2) driver_profiles
       let { data: d, error: dErr } = await fetchDriverProfile(uid);
-      if (dErr) console.log("driver_profiles load error:", dErr);
+      if (dErr) {
+        console.log("driver_profiles load error:", dErr);
+      }
 
       if (!d) {
         await ensureDriverProfileRow(uid);
@@ -199,13 +195,11 @@ export function DriverOnboardingScreen() {
       if (d) {
         const tm: TransportMode = (d.transport_mode as TransportMode) || "bike";
         setTransportMode(tm);
-
         setBrand(d.vehicle_brand ?? "");
         setModel(d.vehicle_model ?? "");
         setYear(d.vehicle_year ? String(d.vehicle_year) : "");
         setColor(d.vehicle_color ?? "");
         setPlate(d.plate_number ?? "");
-
         setVehicleVerified(!!d.vehicle_verified);
         setPayoutEnabled(resolvePayoutOk(d));
         setIsOnline(!!d.is_online);
@@ -216,15 +210,14 @@ export function DriverOnboardingScreen() {
   }, [navigation, resolvePayoutOk, t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
-  // ✅ Recharge à chaque focus (après Stripe/documents)
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
 
-      (async () => {
+      void (async () => {
         try {
           const { data: authRes } = await supabase.auth.getUser();
           const uid = authRes?.user?.id;
@@ -249,112 +242,6 @@ export function DriverOnboardingScreen() {
     }, [refreshStripeAndReload, resolvePayoutOk])
   );
 
-  const checklist = useMemo(() => {
-    const items: { key: string; label: string; done: boolean; hint?: string }[] = [];
-
-    items.push({
-      key: "name",
-      label: t("common.profile.name", "Name"),
-      done: !!fullName.trim(),
-      hint: t("common.profile.placeholderName", "e.g. Mamadou"),
-    });
-
-    items.push({
-      key: "phone",
-      label: t("common.profile.phone", "Phone"),
-      done: !!normalizePhone(phone),
-      hint: t("client.auth.phoneRequired", "Phone is required"),
-    });
-
-    items.push({
-      key: "transport",
-      label: t("common.profile.transport", "Transport"),
-      done: !!transportMode,
-      hint: t("driver.auth.transport.title", "Choose Bike/Moto/Car"),
-    });
-
-    if (needsVehicle) {
-      items.push({
-        key: "vehicle",
-        label: t("common.profile.vehicleSection", "Vehicle"),
-        done: !!brand.trim() && !!model.trim() && !!parseYear(year) && !!plate.trim(),
-        hint: t("common.profile.vehicleSection", "Brand, model, year, plate"),
-      });
-    }
-
-    items.push({
-      key: "docs",
-      label: t("common.profile.documentsSection", "Documents"),
-      done: isBikeMode ? true : vehicleVerified,
-      hint: isBikeMode
-        ? t("common.profile.bikeNoDocs", "Bike: no documents required ✅")
-        : t("common.soon", "Coming soon ✅"),
-    });
-
-    items.push({
-      key: "payout",
-      label: t("common.profile.payment", "Payout"),
-      done: payoutEnabled,
-      hint: t(
-        "common.profile.configureStripeHint",
-        "Set up Stripe to enable earnings. (tap “Payout”)"
-      ),
-    });
-
-    const doneCount = items.filter((x) => x.done).length;
-    const percent = Math.round((doneCount / items.length) * 100);
-
-    return { items, doneCount, total: items.length, percent };
-  }, [
-    brand,
-    fullName,
-    isBikeMode,
-    model,
-    needsVehicle,
-    phone,
-    plate,
-    payoutEnabled,
-    t,
-    transportMode,
-    vehicleVerified,
-    year,
-  ]);
-
-  const firstMissing = useMemo(
-    () => checklist.items.find((x) => !x.done)?.key ?? null,
-    [checklist]
-  );
-
-  function goToFirstMissing() {
-    if (!firstMissing) return;
-
-    if (firstMissing === "docs") {
-      Alert.alert(
-        t("common.profile.documentsSection", "Documents"),
-        isBikeMode
-          ? t("common.profile.bikeNoDocs", "Bike: no documents required ✅")
-          : t("common.soon", "Coming soon ✅")
-      );
-      return;
-    }
-
-    if (firstMissing === "payout") {
-      Alert.alert(
-        t("common.profile.payment", "Payout"),
-        t(
-          "common.profile.configureStripeHint",
-          "Set up Stripe to enable earnings. (tap “Payout”)"
-        )
-      );
-      return;
-    }
-
-    Alert.alert(
-      t("common.ready", "Ready"),
-      t("common.toAdd", "To add")
-    );
-  }
-
   function setMode(next: TransportMode) {
     setTransportMode(next);
     if (next === "bike") {
@@ -366,12 +253,8 @@ export function DriverOnboardingScreen() {
     }
   }
 
-  function buildMissingLines() {
-    const missing = checklist.items.filter((x) => !x.done);
-    if (!missing.length) return [t("common.ready", "Ready")];
-
-    const lines = missing.map((m) => `• ${m.label}${m.hint ? ` — ${m.hint}` : ""}`);
-    return Array.from(new Set(lines));
+  function goToProfile() {
+    navigation.navigate("DriverProfile");
   }
 
   async function saveAll() {
@@ -381,6 +264,7 @@ export function DriverOnboardingScreen() {
       const { data: authRes } = await supabase.auth.getUser();
       const user = authRes?.user;
       if (!user) return;
+
       const uid = user.id;
 
       const { error: pErr } = await supabase
@@ -395,12 +279,15 @@ export function DriverOnboardingScreen() {
       if (pErr) {
         Alert.alert(
           t("common.errorTitle", "Error"),
-          t("common.profile.saveProfilesFailed", "Unable to save account (profiles).")
+          t(
+            "common.profile.saveProfilesFailed",
+            "Unable to save account (profiles)."
+          )
         );
         return;
       }
 
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         transport_mode: transportMode,
         full_name: fullName.trim() || null,
         phone: normalizePhone(phone) || null,
@@ -429,65 +316,19 @@ export function DriverOnboardingScreen() {
         console.log("driver_profiles update error:", dErr);
         Alert.alert(
           t("common.errorTitle", "Error"),
-          t("common.profile.saveDriverProfilesFailed", "Unable to save (driver_profiles).")
+          t(
+            "common.profile.saveDriverProfilesFailed",
+            "Unable to save (driver_profiles)."
+          )
         );
         return;
-      }
-
-      Alert.alert(t("common.ok", "OK"), t("common.profile.updated", "Profile updated ✅"));
-      await load();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function toggleOnline(next: boolean) {
-    // ✅ Traductions + logique inchangée
-    const allowed = isBikeMode
-      ? checklist.percent >= 80
-      : checklist.percent === 100 && vehicleVerified && payoutEnabled;
-
-    if (next && !allowed) {
-      Alert.alert(t("common.toAdd", "To add"), buildMissingLines().join("\n"));
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const { data: authRes } = await supabase.auth.getUser();
-      const user = authRes?.user;
-      if (!user) return;
-      const uid = user.id;
-
-      const { error } = await supabase
-        .from("driver_profiles")
-        .update({ is_online: next })
-        .or(`user_id.eq.${uid},id.eq.${uid}`);
-
-      if (error) {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          t("driver.home.errors.toggleOnline", "Unable to change status.")
-        );
-        return;
-      }
-
-      const refreshed = await fetchDriverProfile(uid);
-      if (refreshed.data) {
-        setIsOnline(!!refreshed.data.is_online);
-        setVehicleVerified(!!(refreshed.data as any).vehicle_verified);
-        setPayoutEnabled(resolvePayoutOk(refreshed.data));
-      } else {
-        setIsOnline(next);
       }
 
       Alert.alert(
         t("common.ok", "OK"),
-        next
-          ? t("driver.map.statusOnlineTitle", "You are ONLINE — you can receive trips.")
-          : t("driver.map.statusOfflineTitle", "You are offline.")
+        t("common.profile.updated", "Profile updated ✅")
       );
+      await load();
     } finally {
       setSaving(false);
     }
@@ -515,8 +356,8 @@ export function DriverOnboardingScreen() {
     m === "bike"
       ? t("driver.auth.transport.bike", "Bike")
       : m === "moto"
-      ? t("driver.auth.transport.moto", "Motorbike")
-      : t("driver.auth.transport.car", "Car");
+        ? t("driver.auth.transport.moto", "Motorbike")
+        : t("driver.auth.transport.car", "Car");
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
@@ -545,7 +386,6 @@ export function DriverOnboardingScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* CARD: CHECKLIST / PROGRESSION */}
         <View
           style={{
             backgroundColor: "#0B1220",
@@ -555,72 +395,97 @@ export function DriverOnboardingScreen() {
             borderColor: "#111827",
           }}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ color: "white", fontWeight: "900", fontSize: 18, flex: 1, paddingRight: 10 }}>
-              {t("driver.account.subtitle", "Vehicle, documents, payout, guided status.")}
-            </Text>
-
-            <View
-              style={{
-                backgroundColor: "#071022",
-                borderRadius: 999,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderWidth: 1,
-                borderColor: "#111827",
-              }}
-            >
-              <Text style={{ color: "#93C5FD", fontWeight: "900" }}>{checklist.percent}%</Text>
-            </View>
-          </View>
-
-          <Text style={{ color: "#9CA3AF", marginTop: 8, fontWeight: "700" }}>
-            {t("driver.accountScreen.subtitle", "Vehicle, documents, payout, status (guided).")}
+          <Text style={{ color: "white", fontWeight: "900", fontSize: 18 }}>
+            {t("driver.account.subtitle", "Set up your driver account")}
           </Text>
 
-          <View style={{ marginTop: 12, gap: 10 }}>
-            {checklist.items.map((it) => (
-              <View
-                key={it.key}
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: it.done ? "#D1FAE5" : "#FCA5A5", fontWeight: "900" }}>
-                  {it.done ? "✅" : "❌"} {it.label}
-                </Text>
+          <Text
+            style={{
+              color: "#9CA3AF",
+              marginTop: 8,
+              fontWeight: "700",
+              lineHeight: 20,
+            }}
+          >
+            {t(
+              "driver.account.setupHint",
+              "Complete your basic info here, then finish documents, identity and payout in your driver profile."
+            )}
+          </Text>
 
-                {!it.done && it.hint ? (
-                  <Text style={{ color: "#9CA3AF", fontWeight: "700", flex: 1, textAlign: "right" }}>
-                    {it.hint}
-                  </Text>
-                ) : (
-                  <Text style={{ color: "#9CA3AF", fontWeight: "700" }}> </Text>
-                )}
-              </View>
-            ))}
+          <View
+            style={{
+              marginTop: 12,
+              backgroundColor: "#071022",
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#111827",
+              padding: 12,
+            }}
+          >
+            <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
+              {t("common.profile.payment", "Payout")}:{" "}
+              {payoutEnabled
+                ? t("common.ready", "Ready")
+                : t("common.notConfigured", "Not configured")}
+            </Text>
+
+            <Text
+              style={{
+                color: "#CBD5E1",
+                fontWeight: "800",
+                marginTop: 6,
+              }}
+            >
+              {t("common.profile.documentsSection", "Documents")}:{" "}
+              {vehicleVerified
+                ? t("common.profile.verified.complete", "All documents ✅")
+                : t("common.profile.verified.notVerified", "Profile incomplete ❌")}
+            </Text>
+
+            <Text
+              style={{
+                color: "#CBD5E1",
+                fontWeight: "800",
+                marginTop: 6,
+              }}
+            >
+              {t("driver.map.statusTitle", "Driver status")}:{" "}
+              {isOnline
+                ? t("driver.map.online", "ONLINE")
+                : t("driver.map.offline", "OFFLINE")}
+            </Text>
           </View>
 
           <TouchableOpacity
-            onPress={goToFirstMissing}
-            style={{ marginTop: 14, borderRadius: 12, padding: 12, backgroundColor: "#2563EB" }}
+            onPress={goToProfile}
+            style={{
+              marginTop: 14,
+              borderRadius: 12,
+              padding: 12,
+              backgroundColor: "#2563EB",
+            }}
           >
-            <Text style={{ color: "white", textAlign: "center", fontWeight: "900" }}>
-              {t("driver.account.finalizeNow", "Finish now")}
+            <Text
+              style={{
+                color: "white",
+                textAlign: "center",
+                fontWeight: "900",
+              }}
+            >
+              {t("driver.account.completeProfile", "Complete profile")}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* TRANSPORT */}
-        <Text style={{ color: "white", fontWeight: "900", fontSize: 16, marginTop: 16 }}>
+        <Text
+          style={{
+            color: "white",
+            fontWeight: "900",
+            fontSize: 16,
+            marginTop: 16,
+          }}
+        >
           {t("driver.auth.transport.title", "Transport")}
         </Text>
 
@@ -640,7 +505,13 @@ export function DriverOnboardingScreen() {
                   backgroundColor: active ? "#0A1730" : "#071022",
                 }}
               >
-                <Text style={{ color: "white", textAlign: "center", fontWeight: "900" }}>
+                <Text
+                  style={{
+                    color: "white",
+                    textAlign: "center",
+                    fontWeight: "900",
+                  }}
+                >
                   {transportLabel(m)}
                 </Text>
               </TouchableOpacity>
@@ -648,8 +519,14 @@ export function DriverOnboardingScreen() {
           })}
         </View>
 
-        {/* COMPTE */}
-        <Text style={{ color: "white", fontWeight: "900", fontSize: 16, marginTop: 16 }}>
+        <Text
+          style={{
+            color: "white",
+            fontWeight: "900",
+            fontSize: 16,
+            marginTop: 16,
+          }}
+        >
           {t("common.profile.accountSection", "Account")}
         </Text>
 
@@ -679,7 +556,10 @@ export function DriverOnboardingScreen() {
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
-          placeholder={t("common.profile.placeholderPhone", "e.g. +1 555 123 4567")}
+          placeholder={t(
+            "common.profile.placeholderPhone",
+            "e.g. +1 555 123 4567"
+          )}
           placeholderTextColor="#64748B"
           style={{
             color: "white",
@@ -692,10 +572,16 @@ export function DriverOnboardingScreen() {
           }}
         />
 
-        {/* VEHICULE */}
         {needsVehicle ? (
           <>
-            <Text style={{ color: "white", fontWeight: "900", fontSize: 16, marginTop: 18 }}>
+            <Text
+              style={{
+                color: "white",
+                fontWeight: "900",
+                fontSize: 16,
+                marginTop: 18,
+              }}
+            >
               {t("common.profile.vehicleSection", "Vehicle")}
             </Text>
 
@@ -818,68 +704,6 @@ export function DriverOnboardingScreen() {
           </View>
         )}
 
-        {/* STATUT */}
-        <View
-          style={{
-            marginTop: 16,
-            backgroundColor: "#0B1220",
-            borderRadius: 16,
-            padding: 14,
-            borderWidth: 1,
-            borderColor: "#111827",
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-            {t("common.profile.status", "Status")}
-          </Text>
-
-          <Text style={{ color: "#9CA3AF", marginTop: 10, fontWeight: "800" }}>
-            {t("common.profile.documentsSection", "Documents")}:{" "}
-            {isBikeMode
-              ? t("common.profile.bikeNoDocs", "Bike: no documents required ✅")
-              : vehicleVerified
-              ? t("common.profile.verified.complete", "All documents ✅")
-              : t("common.profile.docs.uploading", "…")}
-          </Text>
-
-          <Text style={{ color: "#9CA3AF", marginTop: 6, fontWeight: "800" }}>
-            {t("common.profile.payment", "Payout")}:{" "}
-            {payoutEnabled
-              ? t("common.ready", "Ready")
-              : t("common.notConfigured", "Not configured")}
-          </Text>
-
-          <Text style={{ color: "#9CA3AF", marginTop: 6, fontWeight: "800" }}>
-            {t("driver.map.statusTitle", "Driver status")}:{" "}
-            {isOnline ? t("driver.map.online", "ONLINE") : t("driver.map.offline", "OFFLINE")}
-          </Text>
-
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-            <TouchableOpacity
-              onPress={() => toggleOnline(!isOnline)}
-              disabled={saving}
-              style={{
-                flex: 1,
-                borderRadius: 12,
-                padding: 12,
-                backgroundColor: isOnline ? "#DC2626" : "#16A34A",
-                opacity: saving ? 0.6 : 1,
-              }}
-            >
-              <Text style={{ color: "white", textAlign: "center", fontWeight: "900" }}>
-                {isOnline ? t("driver.map.goOffline", "Go offline") : t("driver.home.online", "ONLINE")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {__DEV__ ? (
-            <Text style={{ color: "#64748B", marginTop: 10, fontWeight: "700" }}>
-              Debug: vehicle_verified={String(vehicleVerified)} • payout_enabled={String(payoutEnabled)} •
-              is_online={String(isOnline)}
-            </Text>
-          ) : null}
-        </View>
-
         <View style={{ height: 18 }} />
 
         <TouchableOpacity
@@ -892,8 +716,16 @@ export function DriverOnboardingScreen() {
             opacity: saving ? 0.6 : 1,
           }}
         >
-          <Text style={{ color: "white", textAlign: "center", fontWeight: "900" }}>
-            {saving ? t("shared.common.loadingEllipsis", "…") : t("shared.common.save", "Save")}
+          <Text
+            style={{
+              color: "white",
+              textAlign: "center",
+              fontWeight: "900",
+            }}
+          >
+            {saving
+              ? t("shared.common.loadingEllipsis", "…")
+              : t("shared.common.save", "Save")}
           </Text>
         </TouchableOpacity>
 
@@ -902,3 +734,5 @@ export function DriverOnboardingScreen() {
     </SafeAreaView>
   );
 }
+
+export default DriverOnboardingScreen;

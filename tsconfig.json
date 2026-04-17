@@ -1,8 +1,9 @@
 {
   "files": [],
   "references": [],
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "skipLibCheck": true
-  },
-  "extends": "expo/tsconfig.base"
+    "skipLibCheck": true,
+    "types": ["react", "react-native"]
+  }
 }
