@@ -588,99 +588,82 @@ export default function DriverMapScreen() {
     return status === "granted";
   }
 
-  async function validateDriverProfileForOnline(userId: string): Promise<string[]> {
-    const missing: string[] = [];
+async function validateDriverProfileForOnline(userId: string): Promise<string[]> {
+  const missing: string[] = [];
 
-    const { data: driver, error: driverErr } = await supabase
-      .from("driver_profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+  const { data: driver, error: driverErr } = await supabase
+    .from("driver_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
 
-    if (driverErr || !driver) {
-      return ["Profil chauffeur introuvable"];
-    }
-    const { data: docs } = await supabase
-      .from("driver_documents")
-      .select("*")
-      .or(`user_id.eq.${userId},driver_id.eq.${userId}`);
-
-    const documents = docs ?? [];
-
-    console.log("DriverMap docs check", {
-      userId,
-      docsCount: documents.length,
-      docTypes: documents.map((d: any) => String(d?.doc_type ?? d?.type ?? "")),
-    });
-
-
-    const hasDoc = (docType: string) =>
-      documents.some((d: any) => {
-        const typeValue = String(d?.doc_type ?? d?.type ?? "");
-        const fileValue = d?.file_path ?? d?.url ?? null;
-        return typeValue === docType && !!fileValue;
-      });
-
-    if (!driver.full_name) missing.push("Nom complet");
-    if (!driver.phone) missing.push("Téléphone");
-    if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
-    if (!driver.address) missing.push("Adresse");
-    if (!driver.city) missing.push("Ville");
-    if (!driver.state) missing.push("État");
-    if (!driver.zip_code) missing.push("ZIP code");
-    if (!driver.date_of_birth) missing.push("Date de naissance");
-
-    const hasProfilePhoto =
-      !!driver.photo_url ||
-      hasDoc("profile_photo") ||
-      hasDoc("photo") ||
-      hasDoc("avatar");
-
-    const hasIdFront =
-      !!driver.id_recto_url ||
-      hasDoc("id_card_front") ||
-      hasDoc("id_front") ||
-      hasDoc("identity_front");
-
-    const hasIdBack =
-      !!driver.id_verso_url ||
-      hasDoc("id_card_back") ||
-      hasDoc("id_back") ||
-      hasDoc("identity_back");
-
-    if (!hasProfilePhoto) {
-      missing.push("Photo personnelle");
-    }
-
-    if (!hasIdFront) {
-      missing.push("Pièce identité recto");
-    }
-
-    if (!hasIdBack) {
-      missing.push("Pièce identité verso");
-    }
-
-    const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
-
-    if (isVehicle) {
-      if (!driver.vehicle_brand) missing.push("Marque véhicule");
-      if (!driver.vehicle_model) missing.push("Modèle véhicule");
-      if (!driver.vehicle_year) missing.push("Année véhicule");
-      if (!driver.vehicle_color) missing.push("Couleur véhicule");
-      if (!driver.plate_number) missing.push("Plaque");
-      if (!driver.license_number) missing.push("Numéro permis");
-      if (!driver.license_expiry && !driver.license_expiration) {
-        missing.push("Expiration permis");
-      }
-
-      if (!hasDoc("license_front")) missing.push("Permis recto");
-      if (!hasDoc("license_back")) missing.push("Permis verso");
-      if (!hasDoc("insurance")) missing.push("Assurance");
-      if (!hasDoc("registration")) missing.push("Registration");
-    }
-
-    return missing;
+  if (driverErr || !driver) {
+    return ["Profil chauffeur introuvable"];
   }
+
+  const { data, error } = await supabase
+    .from("driver_documents")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.log("driver_documents error", error);
+  }
+
+  const latestByType = new Map<string, any>();
+
+  for (const row of data ?? []) {
+    const key = String(row.doc_type);
+    if (!latestByType.has(key)) {
+      latestByType.set(key, row);
+    }
+  }
+
+  const documents = Array.from(latestByType.values());
+
+  const hasDoc = (docType: string) =>
+    documents.some((d: any) => String(d?.doc_type) === docType);
+
+  console.log("DriverMap FIX docs check", {
+    userId,
+    docsCount: documents.length,
+    docTypes: documents.map((d: any) => d.doc_type),
+  });
+
+  if (!driver.full_name) missing.push("Nom complet");
+  if (!driver.phone) missing.push("Téléphone");
+  if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
+  if (!driver.address) missing.push("Adresse");
+  if (!driver.city) missing.push("Ville");
+  if (!driver.state) missing.push("État");
+  if (!driver.zip_code) missing.push("ZIP code");
+  if (!driver.date_of_birth) missing.push("Date de naissance");
+
+  if (!hasDoc("profile_photo")) missing.push("Photo personnelle");
+  if (!hasDoc("id_card_front")) missing.push("Pièce identité recto");
+  if (!hasDoc("id_card_back")) missing.push("Pièce identité verso");
+
+  const isVehicle =
+    driver.transport_mode === "car" || driver.transport_mode === "moto";
+
+  if (isVehicle) {
+    if (!driver.vehicle_brand) missing.push("Marque véhicule");
+    if (!driver.vehicle_model) missing.push("Modèle véhicule");
+    if (!driver.vehicle_year) missing.push("Année véhicule");
+    if (!driver.vehicle_color) missing.push("Couleur véhicule");
+    if (!driver.plate_number) missing.push("Plaque");
+    if (!driver.license_number) missing.push("Numéro permis");
+    if (!driver.license_expiry) missing.push("Expiration permis");
+
+    if (!hasDoc("license_front")) missing.push("Permis recto");
+    if (!hasDoc("license_back")) missing.push("Permis verso");
+    if (!hasDoc("insurance")) missing.push("Assurance");
+    if (!hasDoc("registration")) missing.push("Registration");
+  }
+
+  return missing;
+}
 
   useEffect(() => {
     let cancelled = false;
