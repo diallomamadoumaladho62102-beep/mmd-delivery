@@ -1244,10 +1244,18 @@ export function DriverProfileScreen() {
       setAvatarBroken(false);
       await refreshAvatarUrl(storagePath);
 
-      const { error: docErr } = await supabase.from("driver_documents").upsert(
+      const { data: driverRow } = await supabase
+  .from("driver_profiles")
+  .select("id")
+  .eq("user_id", uid)
+  .single();
+
+const driverId = driverRow?.id ?? uid;
+
+const { error: docErr } = await supabase.from("driver_documents").upsert(
         {
           user_id: uid,
-          driver_id: null,
+          driver_id: driverId,
           doc_type: "profile_photo",
           file_path: storagePath,
           status: "pending",
@@ -1392,10 +1400,18 @@ export function DriverProfileScreen() {
         extra.country = "US";
       }
 
-      const { error: insErr } = await supabase.from("driver_documents").upsert(
+      const { data: driverRow } = await supabase
+  .from("driver_profiles")
+  .select("id")
+  .eq("user_id", uid)
+  .single();
+
+const driverId = driverRow?.id ?? uid;
+
+const { error: insErr } = await supabase.from("driver_documents").upsert(
         {
           user_id: uid,
-          driver_id: null,
+          driver_id: driverId,
           doc_type: docType,
           file_path: filePath,
           country: extra.country ?? null,
