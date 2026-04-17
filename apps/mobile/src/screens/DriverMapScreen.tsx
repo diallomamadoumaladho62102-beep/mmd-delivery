@@ -600,13 +600,19 @@ export default function DriverMapScreen() {
     if (driverErr || !driver) {
       return ["Profil chauffeur introuvable"];
     }
-
     const { data: docs } = await supabase
       .from("driver_documents")
       .select("*")
-      .eq("user_id", userId);
+      .or(`user_id.eq.${userId},driver_id.eq.${userId}`);
 
     const documents = docs ?? [];
+
+    console.log("DriverMap docs check", {
+      userId,
+      docsCount: documents.length,
+      docTypes: documents.map((d: any) => String(d?.doc_type ?? d?.type ?? "")),
+    });
+
 
     const hasDoc = (docType: string) =>
       documents.some((d: any) => {
