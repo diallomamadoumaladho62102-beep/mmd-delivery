@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -622,8 +622,16 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
 
   const documents = Array.from(latestByType.values());
 
+  const docTypeSet = new Set(
+    documents.map((d: any) =>
+      String(d?.doc_type ?? "")
+        .trim()
+        .toLowerCase()
+    )
+  );
+
   const hasDoc = (docType: string) =>
-    documents.some((d: any) => String(d?.doc_type) === docType);
+    docTypeSet.has(docType.toLowerCase());
 
   console.log("DriverMap FIX docs check", {
     userId,
