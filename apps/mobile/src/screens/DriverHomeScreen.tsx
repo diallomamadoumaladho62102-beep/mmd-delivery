@@ -10,6 +10,7 @@ import {
   Alert,
   Animated,
   PanResponder,
+  Image,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -75,12 +76,7 @@ type ZoneDef = {
   };
 };
 
-/**
- * Zones approximatives (Brooklyn, East New York, Flatbush, Manhattan, etc.)
- * Tu pourras plus tard remplacer les coordonnées + multiplicateurs par ceux de ta base.
- */
 const ZONES: ZoneDef[] = [
-  // East New York (Brooklyn)
   {
     name: "East New York",
     demand: "busy",
@@ -88,7 +84,6 @@ const ZONES: ZoneDef[] = [
     zoomDelta: 0.035,
     bounds: { minLat: 40.65, maxLat: 40.69, minLon: -73.9, maxLon: -73.84 },
   },
-  // Flatbush (Brooklyn)
   {
     name: "Flatbush",
     demand: "busy",
@@ -96,7 +91,6 @@ const ZONES: ZoneDef[] = [
     zoomDelta: 0.035,
     bounds: { minLat: 40.63, maxLat: 40.66, minLon: -73.97, maxLon: -73.94 },
   },
-  // Downtown Brooklyn
   {
     name: "Downtown Brooklyn",
     demand: "very_busy",
@@ -104,7 +98,6 @@ const ZONES: ZoneDef[] = [
     zoomDelta: 0.03,
     bounds: { minLat: 40.68, maxLat: 40.7, minLon: -73.99, maxLon: -73.97 },
   },
-  // Manhattan (global)
   {
     name: "Manhattan",
     demand: "very_busy",
@@ -112,7 +105,6 @@ const ZONES: ZoneDef[] = [
     zoomDelta: 0.04,
     bounds: { minLat: 40.7, maxLat: 40.86, minLon: -74.02, maxLon: -73.93 },
   },
-  // Queens
   {
     name: "Queens",
     demand: "busy",
@@ -120,7 +112,6 @@ const ZONES: ZoneDef[] = [
     zoomDelta: 0.06,
     bounds: { minLat: 40.68, maxLat: 40.78, minLon: -73.92, maxLon: -73.77 },
   },
-  // Bronx
   {
     name: "Bronx",
     demand: "busy",
@@ -128,7 +119,6 @@ const ZONES: ZoneDef[] = [
     zoomDelta: 0.06,
     bounds: { minLat: 40.81, maxLat: 40.92, minLon: -73.93, maxLon: -73.82 },
   },
-  // Staten Island
   {
     name: "Staten Island",
     demand: "calm",
@@ -138,10 +128,6 @@ const ZONES: ZoneDef[] = [
   },
 ];
 
-/**
- * Retourne la zone + niveau de demande + multiplicateur selon la position du driver.
- * Si aucune zone ne matche → zone calme générique.
- */
 function getZoneInfoFromLocation(
   lat: number,
   lon: number
@@ -165,11 +151,6 @@ function getZoneInfoFromLocation(
   return { name: "Zone actuelle", demand: "calm", multiplier: 1.0, zoomDelta: 0.08 };
 }
 
-/**
- * Panneau des livraisons :
- * - translateY = SHEET_MIN_TRANSLATE_Y => complètement en haut (grand)
- * - translateY = SHEET_MAX_TRANSLATE_Y => complètement en bas (on voit juste le header)
- */
 const SHEET_MIN_TRANSLATE_Y = 0;
 const SHEET_MAX_TRANSLATE_Y = 160;
 
@@ -184,14 +165,11 @@ export function DriverHomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
-  // ONLINE / OFFLINE
   const [isOnline, setIsOnline] = useState<boolean>(false);
 
-  // Offre en grande carte + chrono
   const [activeOffer, setActiveOffer] = useState<DriverOrder | null>(null);
   const [countdown, setCountdown] = useState<number>(60);
 
-  // Carte chauffeur
   const [region, setRegion] = useState<Region>({
     latitude: 40.650002,
     longitude: -73.949997,
@@ -201,30 +179,35 @@ export function DriverHomeScreen() {
   const [hasLocation, setHasLocation] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(true);
 
-  // Infos sur la zone (nom, niveau, multiplicateur)
   const [zoneStatus, setZoneStatus] = useState<ZoneDemand>("calm");
   const [zoneName, setZoneName] = useState<string>(t("driver.home.zone.current", "Zone actuelle"));
   const [zoneMultiplier, setZoneMultiplier] = useState<number>(1.0);
 
-  // offset pour faire glisser le panneau "Mes livraisons en cours"
+  const [searchMessageIndex, setSearchMessageIndex] = useState(0);
+
+  const searchMessages = useMemo(
+    () => [
+      t("driver.home.searching.msg1", "Searching for the best trips near you"),
+      t("driver.home.searching.msg2", "Analyzing the most profitable routes"),
+      t("driver.home.searching.msg3", "Prioritizing nearby and urgent requests"),
+      t("driver.home.searching.msg4", "Live sync with your current zone"),
+    ],
+    [t]
+  );
+
   const sheetOffset = useRef(new Animated.Value(SHEET_MAX_TRANSLATE_Y)).current;
   const sheetStartOffset = useRef(0);
 
-  // 🔔 Son: éviter rejouer le même son
   const lastOfferIdRef = useRef<string | null>(null);
 
-  // ✅ refs sound + timers (volume progressif + arrêt auto)
   const soundRef = useRef<Audio.Sound | null>(null);
   const volumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 🔄 Animation recherche de courses
   const searchingAnim = useRef(new Animated.Value(0)).current;
 
-  // ✅ GPS DB interval (upsert driver_locations)
   const gpsDbIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ✅ stop sound helper (centralisé)
   const stopSound = useCallback(async () => {
     try {
       if (volumeIntervalRef.current) {
@@ -245,7 +228,6 @@ export function DriverHomeScreen() {
     } catch {}
   }, []);
 
-  // ✅ helper session + userId
   const getUserIdOrThrow = useCallback(async (): Promise<string> => {
     const { data: sessionData, error: sErr } = await supabase.auth.getSession();
     if (sErr) throw sErr;
@@ -254,17 +236,14 @@ export function DriverHomeScreen() {
     return userId;
   }, [t]);
 
-  // ✅ GPS permissions helper
   const ensureGpsPermission = useCallback(async (): Promise<boolean> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     return status === "granted";
   }, []);
 
-  // ✅ Start DB tracking (UPSERT into driver_locations every 5s)
   const startDbGpsTracking = useCallback(
     async (driverId: string) => {
       if (!driverId) return;
-
       if (gpsDbIntervalRef.current) return;
 
       const ok = await ensureGpsPermission();
@@ -316,7 +295,6 @@ export function DriverHomeScreen() {
     }
   }, []);
 
-  // ✅ Quand on revient online, on remet le panneau à une position correcte
   useEffect(() => {
     if (isOnline) {
       Animated.spring(sheetOffset, {
@@ -361,7 +339,6 @@ export function DriverHomeScreen() {
     return { label: t("driver.home.zone.calm", "Calme"), color: "#22C55E" };
   }, [zoneStatus, t]);
 
-  // ✅ GPS carte (watchPosition) : reste pour la MAP
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
 
@@ -465,7 +442,6 @@ export function DriverHomeScreen() {
 
       const allAvailable = (available ?? []) as DriverOrder[];
       const myList = (mine ?? []) as DriverOrder[];
-
       const readyOnly = allAvailable.filter((o) => o.status === "ready");
 
       setAvailableOrders(readyOnly);
@@ -493,7 +469,6 @@ export function DriverHomeScreen() {
     }, [isOnline, fetchDriverOrders])
   );
 
-  // ✅ Realtime : dès qu'une commande change, on refresh direct
   useEffect(() => {
     if (!isOnline) return;
 
@@ -603,7 +578,6 @@ export function DriverHomeScreen() {
     setActiveOffer(null);
   }, [stopSound]);
 
-  // Gestion du chrono pour la grande carte
   useEffect(() => {
     if (!activeOffer) return;
     if (countdown <= 0) {
@@ -614,7 +588,6 @@ export function DriverHomeScreen() {
     return () => clearTimeout(timer);
   }, [activeOffer, countdown]);
 
-  // 🔄 Animation
   useEffect(() => {
     const anim = Animated.loop(
       Animated.timing(searchingAnim, { toValue: 1, duration: 1200, useNativeDriver: true })
@@ -623,7 +596,16 @@ export function DriverHomeScreen() {
     return () => anim.stop();
   }, [searchingAnim]);
 
-  // 🔔 Sonnerie répétitive 60s : doux au début, plus fort après 10s
+  useEffect(() => {
+    if (!isOnline || activeOffer) return;
+
+    const interval = setInterval(() => {
+      setSearchMessageIndex((prev) => (prev + 1) % searchMessages.length);
+    }, 2800);
+
+    return () => clearInterval(interval);
+  }, [isOnline, activeOffer, searchMessages.length]);
+
   useEffect(() => {
     if (!activeOffer?.id) {
       void stopSound();
@@ -680,7 +662,6 @@ export function DriverHomeScreen() {
     };
   }, [activeOffer?.id, stopSound]);
 
-  // ✅ toggle ONLINE/OFFLINE (Supabase + GPS DB) + KYC FIX ROBUSTE
   const toggleOnline = useCallback(async () => {
     try {
       const next = !isOnline;
@@ -710,9 +691,7 @@ export function DriverHomeScreen() {
       const latestByType = new Map<string, any>();
 
       for (const row of docs ?? []) {
-        const key = String(row?.doc_type ?? row?.type ?? "")
-          .trim()
-          .toLowerCase();
+        const key = String(row?.doc_type ?? row?.type ?? "").trim().toLowerCase();
 
         if (key && !latestByType.has(key)) {
           latestByType.set(key, row);
@@ -723,14 +702,11 @@ export function DriverHomeScreen() {
 
       const docTypeSet = new Set(
         documents.map((d: any) =>
-          String(d?.doc_type ?? d?.type ?? "")
-            .trim()
-            .toLowerCase()
+          String(d?.doc_type ?? d?.type ?? "").trim().toLowerCase()
         )
       );
 
-      const hasDoc = (docType: string) =>
-        docTypeSet.has(docType.toLowerCase());
+      const hasDoc = (docType: string) => docTypeSet.has(docType.toLowerCase());
 
       const missing: string[] = [];
 
@@ -747,8 +723,7 @@ export function DriverHomeScreen() {
       if (!hasDoc("id_card_front")) missing.push("Pièce identité recto");
       if (!hasDoc("id_card_back")) missing.push("Pièce identité verso");
 
-      const isVehicle =
-        driver.transport_mode === "car" || driver.transport_mode === "moto";
+      const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
 
       if (isVehicle) {
         if (!driver.vehicle_brand) missing.push("Marque véhicule");
@@ -836,7 +811,6 @@ export function DriverHomeScreen() {
   const onlineColorBg = isOnline ? "#22C55E" : "#EF4444";
   const onlineColorText = "#F9FAFB";
 
-  // ✅ Fallback propre pour compat vieux champs
   const offerPickupLng =
     activeOffer?.pickup_lng ??
     (activeOffer as any)?.pickup_lon ??
@@ -861,13 +835,47 @@ export function DriverHomeScreen() {
     [navAny]
   );
 
-  // ✅ sécurité: si l'écran se démonte, couper interval DB
   useEffect(() => {
     return () => {
       void stopDbGpsTracking();
       void stopSound();
     };
   }, [stopDbGpsTracking, stopSound]);
+
+  const searchShimmerTranslate = searchingAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-320, 320],
+  });
+
+  const searchPulseScale = searchingAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.025, 1],
+  });
+
+  const searchOpacity = searchingAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.84, 1, 0.84],
+  });
+
+  const radarOuterScale = searchingAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.9, 1.25],
+  });
+
+  const radarOuterOpacity = searchingAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.02],
+  });
+
+  const radarInnerScale = searchingAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.12, 1],
+  });
+
+  const glowOpacity = searchingAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.18, 0.34, 0.18],
+  });
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
@@ -937,7 +945,6 @@ export function DriverHomeScreen() {
           </View>
         )}
 
-        {/* Header */}
         <View style={{ position: "absolute", top: 16, left: 16, right: 16 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <View>
@@ -964,7 +971,6 @@ export function DriverHomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Zone info */}
           <View style={{ marginTop: 10, flexDirection: "row", justifyContent: "flex-start" }}>
             <View
               style={{
@@ -990,7 +996,6 @@ export function DriverHomeScreen() {
           </View>
         </View>
 
-        {/* ✅ BARRE BOUTONS (HORS LIGNE SEULEMENT) */}
         {!isOnline && (
           <View
             style={{
@@ -1058,7 +1063,6 @@ export function DriverHomeScreen() {
           </View>
         )}
 
-        {/* Bas de l’écran (EN LIGNE SEULEMENT) */}
         {isOnline && (
           <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
             {activeOffer ? (
@@ -1176,148 +1180,373 @@ export function DriverHomeScreen() {
               <Animated.View
                 style={{
                   transform: [{ translateY: sheetOffset }],
-                  backgroundColor: "rgba(15,23,42,0.96)",
-                  borderTopLeftRadius: 16,
-                  borderTopRightRadius: 16,
-                  paddingHorizontal: 16,
-                  paddingTop: 10,
-                  paddingBottom: 16,
+                  paddingHorizontal: 12,
+                  paddingBottom: 0,
                 }}
                 {...panResponder.panHandlers}
               >
-                <View style={{ alignItems: "center", marginBottom: 8 }}>
-                  <View style={{ width: 40, height: 4, borderRadius: 999, backgroundColor: "#4B5563" }} />
-                </View>
+                {/* PREMIUM SEARCH BAR */}
+                <Animated.View
+                  style={{
+                    transform: [{ scale: searchPulseScale }],
+                    opacity: searchOpacity,
+                    marginBottom: 0,
+                    borderRadius: 24,
+                    overflow: "hidden",
+                    backgroundColor: "rgba(2,6,23,0.97)",
+                    borderWidth: 1,
+                    borderColor: "rgba(96,165,250,0.22)",
+                    shadowColor: "#60A5FA",
+                    shadowOpacity: 0.24,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 8 },
+                    elevation: 10,
+                  }}
+                >
+                  {/* glow background */}
+                  <Animated.View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      top: -20,
+                      left: -20,
+                      right: -20,
+                      bottom: -20,
+                      opacity: glowOpacity,
+                      backgroundColor: "#0F172A",
+                    }}
+                  />
 
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "600" }}>
-                    {t("driver.home.myOrders.title", "Mes livraisons en cours")}
-                  </Text>
-
-                  <TouchableOpacity onPress={() => void fetchDriverOrders()}>
-                    <Text style={{ color: "#3B82F6", fontSize: 12, fontWeight: "500" }}>
-                      {t("shared.common.refresh", "Refresh")}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {loading && (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    <ActivityIndicator color="#ffffff" />
-                    <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                      {t("driver.home.myOrders.loading", "Chargement de tes livraisons…")}
-                    </Text>
-                  </View>
-                )}
-
-                {error && (
-                  <Text style={{ color: "#F97373", fontSize: 12, marginBottom: 6 }}>
-                    {error}
-                  </Text>
-                )}
-
-                <ScrollView style={{ maxHeight: 260 }} contentContainerStyle={{ paddingBottom: 8 }}>
-                  {myOrders.length === 0 && !loading ? (
-                    <View style={{ paddingVertical: 12, alignItems: "center" }}>
-                      <Text style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center" }}>
-                        {t("driver.home.myOrders.emptyTitle", "Tu n’as pas encore de livraison en cours.")}
-                      </Text>
-                      <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 2, textAlign: "center" }}>
-                        {t("driver.home.myOrders.emptySubtitle", "Dès qu’une course est acceptée, elle apparaîtra ici.")}
-                      </Text>
-                    </View>
-                  ) : (
-                    myOrders.map((order) => (
-                      <TouchableOpacity
-                        key={order.id}
-                        onPress={() => handleOpenOrder(order.id)}
+                  <View
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingTop: 14,
+                      paddingBottom: 14,
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                      }}
+                    >
+                      {/* MMD LOGO PREMIUM */}
+                      <Animated.View
                         style={{
-                          backgroundColor: "#020617",
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: "#1F2937",
-                          padding: 10,
-                          marginBottom: 8,
+                          transform: [{ scale: radarInnerScale }],
+                          width: 54,
+                          height: 54,
+                          borderRadius: 16,
+                          marginRight: 12,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#0B0F1A",
+                          shadowColor: "#FF6A00",
+                          shadowOpacity: 0.85,
+                          shadowRadius: 18,
+                          shadowOffset: { width: 0, height: 6 },
+                          elevation: 16,
                         }}
                       >
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
-                          <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "600" }}>
-                            #{order.id.slice(0, 8)}
-                          </Text>
+                        <View
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            borderWidth: 1.5,
+                            borderColor: "rgba(255,140,0,0.5)",
+                          }}
+                        >
+                          <Image
+                            source={require("../../assets/brand/mmd-logo.png")}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="contain"
+                          />
+                        </View>
+                      </Animated.View>
+
+                      {/* text */}
+                      <View style={{ flex: 1 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginBottom: 3,
+                          }}
+                        >
                           <Text
                             style={{
-                              color:
-                                order.status === "delivered"
-                                  ? "#22C55E"
-                                  : order.status === "dispatched"
-                                  ? "#FBBF24"
-                                  : "#93C5FD",
-                              fontSize: 11,
-                              fontWeight: "600",
+                              color: "#F8FAFC",
+                              fontSize: 15,
+                              fontWeight: "900",
+                              letterSpacing: 0.2,
                             }}
                           >
-                            {formatStatus(order.status)}
+                            {t("driver.home.searching.title", "Premium detection mode")}
                           </Text>
-                        </View>
 
-                        <Text style={{ color: "#93C5FD", fontSize: 11, marginBottom: 2 }}>
-                          {formatKind(order.kind, order.restaurant_name)}
-                        </Text>
-
-                        <Text style={{ color: "#6B7280", fontSize: 10, marginBottom: 4 }}>
-                          {formatDate(order.created_at)}
-                        </Text>
-
-                        <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }}>
-                          {t("driver.home.labels.pickup", "Pickup:")}{" "}
-                          <Text style={{ color: "#E5E7EB", fontWeight: "500" }} numberOfLines={1}>
-                            {order.pickup_address ?? "—"}
-                          </Text>
-                        </Text>
-                        <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 4 }}>
-                          {t("driver.home.labels.dropoff", "Dropoff:")}{" "}
-                          <Text style={{ color: "#E5E7EB", fontWeight: "500" }} numberOfLines={1}>
-                            {order.dropoff_address ?? "—"}
-                          </Text>
-                        </Text>
-
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-                          <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
-                            {t("driver.home.labels.distance", "Distance:")}{" "}
-                            <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
-                              {order.distance_miles != null ? `${order.distance_miles.toFixed(2)} mi` : "—"}
+                          <View
+                            style={{
+                              marginLeft: 8,
+                              paddingHorizontal: 9,
+                              paddingVertical: 3,
+                              borderRadius: 999,
+                              backgroundColor: "rgba(34,197,94,0.14)",
+                              borderWidth: 1,
+                              borderColor: "rgba(34,197,94,0.28)",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#4ADE80",
+                                fontSize: 10,
+                                fontWeight: "900",
+                                letterSpacing: 0.4,
+                              }}
+                            >
+                              LIVE
                             </Text>
-                          </Text>
-
-                          <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
-                            {t("driver.home.labels.driverEarnings", "Gain chauffeur:")}{" "}
-                            <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
-                              {order.driver_delivery_payout != null
-                                ? `${order.driver_delivery_payout.toFixed(2)} USD`
-                                : order.delivery_fee != null
-                                ? `${order.delivery_fee.toFixed(2)} USD`
-                                : order.total != null
-                                ? `${order.total.toFixed(2)} USD`
-                                : "—"}
-                            </Text>
-                          </Text>
+                          </View>
                         </View>
 
                         <Text
                           style={{
-                            marginTop: 4,
-                            color: "#3B82F6",
-                            fontSize: 11,
+                            color: "#93C5FD",
+                            fontSize: 12.5,
                             fontWeight: "600",
-                            textAlign: "right",
                           }}
                         >
-                          {t("driver.home.myOrders.viewDetails", "Voir les détails →")}
+                          {searchMessages[searchMessageIndex]}
                         </Text>
-                      </TouchableOpacity>
-                    ))
+                      </View>
+                    </View>
+
+                    {/* status chips */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        marginTop: 12,
+                        gap: 8,
+                      }}
+                    >
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(59,130,246,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(59,130,246,0.24)",
+                        }}
+                      >
+                        <Text style={{ color: "#BFDBFE", fontSize: 11, fontWeight: "700" }}>
+                          {t("driver.home.searching.chip1", "Nearby trips")}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(34,197,94,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(34,197,94,0.24)",
+                        }}
+                      >
+                        <Text style={{ color: "#86EFAC", fontSize: 11, fontWeight: "700" }}>
+                          {t("driver.home.searching.chip2", "Optimized earnings")}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(249,115,22,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(249,115,22,0.24)",
+                        }}
+                      >
+                        <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "700" }}>
+                          {t("driver.home.searching.chip3", "Priority zone")}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* shimmer */}
+                  <Animated.View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      bottom: 0,
+                      width: 140,
+                      transform: [{ translateX: searchShimmerTranslate }, { skewX: "-18deg" }],
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    }}
+                  />
+                </Animated.View>
+
+                {/* MY ACTIVE DELIVERIES PANEL */}
+                <View
+                  style={{
+                    backgroundColor: "rgba(15,23,42,0.96)",
+                    borderTopLeftRadius: 16,
+                    borderTopRightRadius: 16,
+                    paddingHorizontal: 16,
+                    paddingTop: 4,
+                    paddingBottom: 16,
+                  }}
+                >
+                  <View style={{ alignItems: "center", marginBottom: 8 }}>
+                    <View style={{ width: 40, height: 4, borderRadius: 999, backgroundColor: "#4B5563" }} />
+                  </View>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "600" }}>
+                      {t("driver.home.myOrders.title", "My active deliveries")}
+                    </Text>
+
+                    <TouchableOpacity onPress={() => void fetchDriverOrders()}>
+                      <Text style={{ color: "#3B82F6", fontSize: 12, fontWeight: "500" }}>
+                        {t("shared.common.refresh", "Refresh")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {loading && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <ActivityIndicator color="#ffffff" />
+                      <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
+                        {t("driver.home.myOrders.loading", "Loading your deliveries…")}
+                      </Text>
+                    </View>
                   )}
-                </ScrollView>
+
+                  {error && (
+                    <Text style={{ color: "#F97373", fontSize: 12, marginBottom: 6 }}>
+                      {error}
+                    </Text>
+                  )}
+
+                  <ScrollView style={{ maxHeight: 260 }} contentContainerStyle={{ paddingBottom: 8 }}>
+                    {myOrders.length === 0 && !loading ? (
+                      <View style={{ paddingVertical: 12, alignItems: "center" }}>
+                        <Text style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center" }}>
+                          {t("driver.home.myOrders.emptyTitle", "You don’t have any active deliveries yet.")}
+                        </Text>
+                        <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 2, textAlign: "center" }}>
+                          {t(
+                            "driver.home.myOrders.emptySubtitle",
+                            "As soon as a trip is accepted, it will appear here."
+                          )}
+                        </Text>
+                      </View>
+                    ) : (
+                      myOrders.map((order) => (
+                        <TouchableOpacity
+                          key={order.id}
+                          onPress={() => handleOpenOrder(order.id)}
+                          style={{
+                            backgroundColor: "#020617",
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#1F2937",
+                            padding: 10,
+                            marginBottom: 8,
+                          }}
+                        >
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+                            <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "600" }}>
+                              #{order.id.slice(0, 8)}
+                            </Text>
+                            <Text
+                              style={{
+                                color:
+                                  order.status === "delivered"
+                                    ? "#22C55E"
+                                    : order.status === "dispatched"
+                                    ? "#FBBF24"
+                                    : "#93C5FD",
+                                fontSize: 11,
+                                fontWeight: "600",
+                              }}
+                            >
+                              {formatStatus(order.status)}
+                            </Text>
+                          </View>
+
+                          <Text style={{ color: "#93C5FD", fontSize: 11, marginBottom: 2 }}>
+                            {formatKind(order.kind, order.restaurant_name)}
+                          </Text>
+
+                          <Text style={{ color: "#6B7280", fontSize: 10, marginBottom: 4 }}>
+                            {formatDate(order.created_at)}
+                          </Text>
+
+                          <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }}>
+                            {t("driver.home.labels.pickup", "Pickup:")}{" "}
+                            <Text style={{ color: "#E5E7EB", fontWeight: "500" }} numberOfLines={1}>
+                              {order.pickup_address ?? "—"}
+                            </Text>
+                          </Text>
+                          <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 4 }}>
+                            {t("driver.home.labels.dropoff", "Dropoff:")}{" "}
+                            <Text style={{ color: "#E5E7EB", fontWeight: "500" }} numberOfLines={1}>
+                              {order.dropoff_address ?? "—"}
+                            </Text>
+                          </Text>
+
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+                            <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
+                              {t("driver.home.labels.distance", "Distance:")}{" "}
+                              <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
+                                {order.distance_miles != null ? `${order.distance_miles.toFixed(2)} mi` : "—"}
+                              </Text>
+                            </Text>
+
+                            <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
+                              {t("driver.home.labels.driverEarnings", "Driver earnings:")}{" "}
+                              <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
+                                {order.driver_delivery_payout != null
+                                  ? `${order.driver_delivery_payout.toFixed(2)} USD`
+                                  : order.delivery_fee != null
+                                  ? `${order.delivery_fee.toFixed(2)} USD`
+                                  : order.total != null
+                                  ? `${order.total.toFixed(2)} USD`
+                                  : "—"}
+                              </Text>
+                            </Text>
+                          </View>
+
+                          <Text
+                            style={{
+                              marginTop: 4,
+                              color: "#3B82F6",
+                              fontSize: 11,
+                              fontWeight: "600",
+                              textAlign: "right",
+                            }}
+                          >
+                            {t("driver.home.myOrders.viewDetails", "View details →")}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
               </Animated.View>
             )}
           </View>
