@@ -162,7 +162,6 @@ function getZoneInfoFromLocation(
     }
   }
 
-  // ✅ ne pas hardcoder dans la UI: on utilise la clé plus bas
   return { name: "Zone actuelle", demand: "calm", multiplier: 1.0, zoomDelta: 0.08 };
 }
 
@@ -171,8 +170,8 @@ function getZoneInfoFromLocation(
  * - translateY = SHEET_MIN_TRANSLATE_Y => complètement en haut (grand)
  * - translateY = SHEET_MAX_TRANSLATE_Y => complètement en bas (on voit juste le header)
  */
-const SHEET_MIN_TRANSLATE_Y = 0; // tiré vers le haut
-const SHEET_MAX_TRANSLATE_Y = 160; // ✅ ne descend jamais complètement (collapsed)
+const SHEET_MIN_TRANSLATE_Y = 0;
+const SHEET_MAX_TRANSLATE_Y = 160;
 
 export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
@@ -266,7 +265,6 @@ export function DriverHomeScreen() {
     async (driverId: string) => {
       if (!driverId) return;
 
-      // stop if already running
       if (gpsDbIntervalRef.current) return;
 
       const ok = await ensureGpsPermission();
@@ -284,7 +282,6 @@ export function DriverHomeScreen() {
           const lat = loc.coords.latitude;
           const lng = loc.coords.longitude;
 
-          // ✅ FIX IMPORTANT: UPSERT + onConflict driver_id
           const { error: upErr } = await supabase.from("driver_locations").upsert(
             {
               driver_id: driverId,
@@ -438,7 +435,6 @@ export function DriverHomeScreen() {
 
       const driverId = await getUserIdOrThrow();
 
-      // 🔍 1) commandes dispo (pending / prepared / ready)
       const { data: available, error: availableError } = await supabase
         .from("orders")
         .select(
@@ -453,7 +449,6 @@ export function DriverHomeScreen() {
 
       if (availableError) throw availableError;
 
-      // 🔍 2) Mes commandes acceptées
       const { data: mine, error: mineError } = await supabase
         .from("orders")
         .select(
@@ -471,13 +466,11 @@ export function DriverHomeScreen() {
       const allAvailable = (available ?? []) as DriverOrder[];
       const myList = (mine ?? []) as DriverOrder[];
 
-      // ✅ Offres visibles chauffeur = seulement READY
       const readyOnly = allAvailable.filter((o) => o.status === "ready");
 
       setAvailableOrders(readyOnly);
       setMyOrders(myList);
 
-      // ✅ Offre active = première ready
       if (!activeOffer && readyOnly.length > 0) {
         setActiveOffer(readyOnly[0]);
         setCountdown(60);
@@ -492,7 +485,6 @@ export function DriverHomeScreen() {
     }
   }, [isOnline, activeOffer, getUserIdOrThrow, t]);
 
-  // Rafraîchir les commandes quand l’écran revient en focus
   useFocusEffect(
     useCallback(() => {
       if (isOnline) {
@@ -622,7 +614,7 @@ export function DriverHomeScreen() {
     return () => clearTimeout(timer);
   }, [activeOffer, countdown]);
 
-  // 🔄 Animation (conservée, même si la UI n’affiche pas encore "Recherche...")
+  // 🔄 Animation
   useEffect(() => {
     const anim = Animated.loop(
       Animated.timing(searchingAnim, { toValue: 1, duration: 1200, useNativeDriver: true })
@@ -653,7 +645,7 @@ export function DriverHomeScreen() {
         soundRef.current = sound;
         await sound.playAsync();
 
-        setTimeout(() => {
+        const rampTimeout = setTimeout(() => {
           let volume = 0.2;
 
           volumeIntervalRef.current = setInterval(async () => {
@@ -675,6 +667,7 @@ export function DriverHomeScreen() {
         }, 10000);
 
         stopTimeoutRef.current = setTimeout(() => {
+          clearTimeout(rampTimeout);
           void stopSound();
         }, 60000);
       } catch (e) {
@@ -687,133 +680,163 @@ export function DriverHomeScreen() {
     };
   }, [activeOffer?.id, stopSound]);
 
-  // ✅ toggle ONLINE/OFFLINE (Supabase + GPS DB)
+  // ✅ toggle ONLINE/OFFLINE (Supabase + GPS DB) + KYC FIX ROBUSTE
   const toggleOnline = useCallback(async () => {
-  try {
-    const next = !isOnline;
-    const userId = await getUserIdOrThrow();
+    try {
+      const next = !isOnline;
+      const userId = await getUserIdOrThrow();
 
-    const { data: driver, error: driverErr } = await supabase
-      .from("driver_profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
+      const { data: driver, error: driverErr } = await supabase
+        .from("driver_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
 
-    if (driverErr || !driver) {
-      Alert.alert("Erreur", "Profil chauffeur introuvable.");
-      return;
-    }
-
-    const { data: docs } = await supabase
-      .from("driver_documents")
-      .select("*")
-      .eq("user_id", userId);
-
-    const documents = docs ?? [];
-
-    const missing: string[] = [];
-
-    if (!driver.full_name) missing.push("Nom complet");
-    if (!driver.phone) missing.push("Téléphone");
-    if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
-    if (!driver.address) missing.push("Adresse");
-    if (!driver.city) missing.push("Ville");
-    if (!driver.state) missing.push("État");
-    if (!driver.zip_code) missing.push("ZIP code");
-    if (!driver.date_of_birth) missing.push("Date de naissance");
-
-    if (!driver.photo_url) missing.push("Photo personnelle");
-    if (!driver.id_recto_url) missing.push("Pièce identité recto");
-    if (!driver.id_verso_url) missing.push("Pièce identité verso");
-
-    const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
-
-    if (isVehicle) {
-      if (!driver.vehicle_brand) missing.push("Marque véhicule");
-      if (!driver.vehicle_model) missing.push("Modèle véhicule");
-      if (!driver.vehicle_year) missing.push("Année véhicule");
-      if (!driver.plate_number) missing.push("Plaque");
-
-      if (!driver.license_number) missing.push("Numéro permis");
-      if (!driver.license_expiration) missing.push("Expiration permis");
-
-      const hasDoc = (type: string) =>
-        documents.some((d: any) => d.type === type && d.url);
-
-      if (!hasDoc("license_front")) missing.push("Permis recto");
-      if (!hasDoc("license_back")) missing.push("Permis verso");
-      if (!hasDoc("insurance")) missing.push("Assurance");
-      if (!hasDoc("registration")) missing.push("Registration");
-    }
-
-    if (missing.length > 0) {
-      Alert.alert(
-        "Profil incomplet",
-        "Complète ton profil avant de passer en ligne :\n\n" +
-          missing.map((m) => "• " + m).join("\n")
-      );
-      return;
-    }
-
-    if (next) {
-      const ok = await ensureGpsPermission();
-      if (!ok) {
-        Alert.alert("GPS", "Active le GPS pour passer en ligne.");
+      if (driverErr || !driver) {
+        Alert.alert("Erreur", "Profil chauffeur introuvable.");
         return;
       }
 
-      const { error: upErr } = await supabase
+      const { data: docs, error: docsErr } = await supabase
+        .from("driver_documents")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (docsErr) {
+        throw docsErr;
+      }
+
+      const latestByType = new Map<string, any>();
+
+      for (const row of docs ?? []) {
+        const key = String(row?.doc_type ?? row?.type ?? "")
+          .trim()
+          .toLowerCase();
+
+        if (key && !latestByType.has(key)) {
+          latestByType.set(key, row);
+        }
+      }
+
+      const documents = Array.from(latestByType.values());
+
+      const docTypeSet = new Set(
+        documents.map((d: any) =>
+          String(d?.doc_type ?? d?.type ?? "")
+            .trim()
+            .toLowerCase()
+        )
+      );
+
+      const hasDoc = (docType: string) =>
+        docTypeSet.has(docType.toLowerCase());
+
+      const missing: string[] = [];
+
+      if (!driver.full_name) missing.push("Nom complet");
+      if (!driver.phone) missing.push("Téléphone");
+      if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
+      if (!driver.address) missing.push("Adresse");
+      if (!driver.city) missing.push("Ville");
+      if (!driver.state) missing.push("État");
+      if (!driver.zip_code) missing.push("ZIP code");
+      if (!driver.date_of_birth) missing.push("Date de naissance");
+
+      if (!hasDoc("profile_photo")) missing.push("Photo personnelle");
+      if (!hasDoc("id_card_front")) missing.push("Pièce identité recto");
+      if (!hasDoc("id_card_back")) missing.push("Pièce identité verso");
+
+      const isVehicle =
+        driver.transport_mode === "car" || driver.transport_mode === "moto";
+
+      if (isVehicle) {
+        if (!driver.vehicle_brand) missing.push("Marque véhicule");
+        if (!driver.vehicle_model) missing.push("Modèle véhicule");
+        if (!driver.vehicle_year) missing.push("Année véhicule");
+        if (!driver.plate_number) missing.push("Plaque");
+
+        if (!driver.license_number) missing.push("Numéro permis");
+        if (!driver.license_expiration && !driver.license_expiry) {
+          missing.push("Expiration permis");
+        }
+
+        if (!hasDoc("license_front")) missing.push("Permis recto");
+        if (!hasDoc("license_back")) missing.push("Permis verso");
+        if (!hasDoc("insurance")) missing.push("Assurance");
+        if (!hasDoc("registration")) missing.push("Registration");
+      }
+
+      if (missing.length > 0) {
+        Alert.alert(
+          "Profil incomplet",
+          "Complète ton profil avant de passer en ligne :\n\n" +
+            missing.map((m) => "• " + m).join("\n")
+        );
+        return;
+      }
+
+      if (next) {
+        const ok = await ensureGpsPermission();
+        if (!ok) {
+          Alert.alert("GPS", "Active le GPS pour passer en ligne.");
+          return;
+        }
+
+        const { error: upErr } = await supabase
+          .from("driver_profiles")
+          .update({ is_online: true })
+          .eq("user_id", userId);
+
+        if (upErr) throw upErr;
+
+        setIsOnline(true);
+
+        await startDbGpsTracking(userId);
+        await fetchDriverOrders();
+        return;
+      }
+
+      const { error: downErr } = await supabase
         .from("driver_profiles")
-        .update({ is_online: true })
+        .update({ is_online: false })
         .eq("user_id", userId);
 
-      if (upErr) throw upErr;
+      if (downErr) throw downErr;
 
-      setIsOnline(true);
+      setIsOnline(false);
 
-      await startDbGpsTracking(userId);
-      await fetchDriverOrders();
-      return;
+      await stopDbGpsTracking();
+      await stopSound();
+
+      setActiveOffer(null);
+      setAvailableOrders([]);
+      setMyOrders([]);
+      setCountdown(60);
+      lastOfferIdRef.current = null;
+    } catch (e: any) {
+      console.log("toggleOnline error:", e);
+      Alert.alert(
+        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        e?.message ?? "Impossible de changer le statut."
+      );
     }
-
-    const { error: downErr } = await supabase
-      .from("driver_profiles")
-      .update({ is_online: false })
-      .eq("user_id", userId);
-
-    if (downErr) throw downErr;
-
-    setIsOnline(false);
-
-    await stopDbGpsTracking();
-    await stopSound();
-
-    setActiveOffer(null);
-    setAvailableOrders([]);
-    setMyOrders([]);
-  } catch (e: any) {
-    console.log("toggleOnline error:", e);
-    Alert.alert(
-      t("shared.orderChat.alerts.errorTitle", "Erreur"),
-      e?.message ?? "Impossible de changer le statut."
-    );
-  }
-}, [
-  ensureGpsPermission,
-  fetchDriverOrders,
-  getUserIdOrThrow,
-  isOnline,
-  startDbGpsTracking,
-  stopDbGpsTracking,
-  stopSound,
-  t,
-]);
+  }, [
+    ensureGpsPermission,
+    fetchDriverOrders,
+    getUserIdOrThrow,
+    isOnline,
+    startDbGpsTracking,
+    stopDbGpsTracking,
+    stopSound,
+    t,
+  ]);
 
   const onlineLabel = isOnline ? t("driver.home.online", "EN LIGNE") : t("driver.home.offline", "HORS LIGNE");
   const onlineColorBg = isOnline ? "#22C55E" : "#EF4444";
   const onlineColorText = "#F9FAFB";
 
-  // ✅ Fallback propre pour compat vieux champs (si tu avais anciennement pickup_lon, pickup_long, etc.)
+  // ✅ Fallback propre pour compat vieux champs
   const offerPickupLng =
     activeOffer?.pickup_lng ??
     (activeOffer as any)?.pickup_lon ??
@@ -842,8 +865,9 @@ export function DriverHomeScreen() {
   useEffect(() => {
     return () => {
       void stopDbGpsTracking();
+      void stopSound();
     };
-  }, [stopDbGpsTracking]);
+  }, [stopDbGpsTracking, stopSound]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
