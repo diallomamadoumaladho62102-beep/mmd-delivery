@@ -442,17 +442,21 @@ export function DriverHomeScreen() {
 
       const allAvailable = (available ?? []) as DriverOrder[];
       const myList = (mine ?? []) as DriverOrder[];
-      const readyOnly = allAvailable.filter((o) => o.status === "ready");
+      const visibleAvailable = allAvailable.filter((o) => {
+  if (o.kind === "food") return o.status === "ready";
+  if (o.kind === "pickup_dropoff") return o.status === "pending";
+  return false;
+});
 
-      setAvailableOrders(readyOnly);
-      setMyOrders(myList);
+setAvailableOrders(visibleAvailable);
+setMyOrders(myList);
 
-      if (!activeOffer && readyOnly.length > 0) {
-        setActiveOffer(readyOnly[0]);
-        setCountdown(60);
-      } else if (readyOnly.length === 0) {
-        setActiveOffer(null);
-      }
+if (!activeOffer && visibleAvailable.length > 0) {
+  setActiveOffer(visibleAvailable[0]);
+  setCountdown(60);
+} else if (visibleAvailable.length === 0) {
+  setActiveOffer(null);
+}
     } catch (e: any) {
       console.log("Erreur chargement commandes driver:", e);
       setError(t("driver.home.errors.loadOrders", "Impossible de charger les commandes."));

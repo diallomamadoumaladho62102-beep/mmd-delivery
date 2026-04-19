@@ -592,9 +592,7 @@ export function DeliveryRequestScreen() {
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
 
-      if (sessionError) {
-        throw sessionError;
-      }
+      if (sessionError) throw sessionError;
 
       const user = sessionData?.session?.user;
       if (!user) {
@@ -607,71 +605,118 @@ export function DeliveryRequestScreen() {
       const safePickupPhone = cleanText(pickupPhone);
       const safeDropoffContactName = cleanText(dropoffContactName);
       const safeDropoffPhone = cleanText(dropoffPhone);
+
       const safeTitle =
         cleanText(title) ||
-        (requestType === "ride" ? "Private ride request" : "Package delivery");
+        (requestType === "ride"
+          ? "Private ride request"
+          : "Package delivery");
+
       const safeDescription = cleanText(description);
 
       const safeFee = toSafeMoney(deliveryFee);
       const safeTotal = roundMoney(subtotal + tax + safeFee);
 
-      const payload = {
+      const { data: deliveryData, error: deliveryError } = await supabase
+        .from("delivery_requests")
+        .insert({
+          created_by: user.id,
+          client_user_id: user.id,
+          status: "pending",
+          payment_status: "unpaid",
+
+          kind: "delivery",
+          request_type: requestType,
+
+          title: safeTitle,
+          errand_description: safeDescription || null,
+
+          pickup_address: safePickup,
+          dropoff_address: safeDropoff,
+
+          pickup_contact_name: safePickupContactName || null,
+          pickup_phone: safePickupPhone || null,
+          dropoff_contact_name: safeDropoffContactName || null,
+          dropoff_phone: safeDropoffPhone || null,
+
+          pickup_lat: pickupCoords?.lat ?? null,
+          pickup_lng: pickupCoords?.lng ?? null,
+          dropoff_lat: dropoffCoords?.lat ?? null,
+          dropoff_lng: dropoffCoords?.lng ?? null,
+
+          distance_miles: distanceMiles,
+          eta_minutes: etaMinutes != null ? Math.round(etaMinutes) : null,
+
+          subtotal,
+          delivery_fee: safeFee,
+          tax,
+          total: safeTotal,
+
+          subtotal_cents: cents(subtotal),
+          delivery_fee_cents: cents(safeFee),
+          tax_cents: cents(tax),
+          total_cents: cents(safeTotal),
+
+          currency,
+        })
+        .select("id")
+        .single();
+
+      if (deliveryError) throw deliveryError;
+
+      const deliveryId = String(deliveryData?.id ?? "").trim();
+      if (!deliveryId) {
+        throw new Error("Delivery request created without a valid id.");
+      }
+
+      const { error: orderError } = await supabase.from("orders").insert({
+        kind: "pickup_dropoff",
+        status: "waiting_payment",
+        driver_id: null,
+
         created_by: user.id,
         client_user_id: user.id,
-        status: "pending",
-        payment_status: "unpaid",
-        kind: "delivery",
-        request_type: requestType,
-        title: safeTitle,
-        errand_description: safeDescription || null,
+
         pickup_address: safePickup,
         dropoff_address: safeDropoff,
-        pickup_contact_name: safePickupContactName || null,
-        pickup_phone: safePickupPhone || null,
-        dropoff_contact_name: safeDropoffContactName || null,
-        dropoff_phone: safeDropoffPhone || null,
+
         pickup_lat: pickupCoords?.lat ?? null,
         pickup_lng: pickupCoords?.lng ?? null,
         dropoff_lat: dropoffCoords?.lat ?? null,
         dropoff_lng: dropoffCoords?.lng ?? null,
+
         distance_miles: distanceMiles,
-        eta_minutes: etaMinutes != null ? Math.round(etaMinutes) : null,
-        subtotal,
         delivery_fee: safeFee,
-        tax,
         total: safeTotal,
-        subtotal_cents: cents(subtotal),
-        delivery_fee_cents: cents(safeFee),
-        tax_cents: cents(tax),
-        total_cents: cents(safeTotal),
-        currency,
-      };
 
-      const { data, error } = await supabase
-        .from("delivery_requests")
-        .insert(payload)
-        .select("id")
-        .single();
+        external_ref_id: deliveryId,
+        external_ref_type: "delivery_request",
 
-      if (error) {
-        throw error;
+        created_at: new Date().toISOString(),
+      });
+
+      if (orderError) {
+        console.error("❌ order insert error:", orderError);
+
+        await supabase
+          .from("delivery_requests")
+          .delete()
+          .eq("id", deliveryId);
+
+        throw new Error("Failed to create order");
       }
 
-      const createdId = String(data?.id ?? "").trim();
-      setLastCreatedId(createdId || null);
+      setLastCreatedId(deliveryId);
 
       Alert.alert(
         "Success",
-        requestType === "ride"
-          ? "Your ride request has been created. You can now pay securely."
-          : "Your delivery request has been created. You can now pay securely."
+        "Delivery created. Please complete payment to dispatch to drivers."
       );
 
-      console.log("delivery_requests created:", createdId || null);
-    } catch (e: unknown) {
-      const message =
-        e instanceof Error ? e.message : "Unable to create request right now.";
-      Alert.alert("Request failed", message);
+      console.log("delivery_requests created:", deliveryId);
+    } catch (e: any) {
+      console.error("❌ create request error:", e);
+      Alert.alert("Error", e?.message ?? "Failed to create request");
     } finally {
       setSubmitting(false);
     }

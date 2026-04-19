@@ -40,6 +40,7 @@ type OrderStatus =
 
 type Order = {
   id: string;
+  kind: "pickup_dropoff" | "food" | string;
   status: OrderStatus;
   created_at: string | null;
   restaurant_name: string | null;
@@ -236,6 +237,7 @@ export function DriverOrderDetailsScreen() {
         .select(
           `
           id,
+          kind,
           status,
           created_at,
           restaurant_name,
@@ -410,7 +412,13 @@ export function DriverOrderDetailsScreen() {
 
   const canPickup = !!order && order.status === "ready" && isAssignedDriver;
   const canDeliver = !!order && order.status === "dispatched" && isAssignedDriver;
-  const canAccept = !!order && order.status === "pending" && !order.driver_id;
+  const canAccept =
+  !!order &&
+  !order.driver_id &&
+  (
+    (order.kind === "pickup_dropoff" && order.status === "pending") ||
+    (order.kind === "food" && order.status === "ready")
+  );
 
   function openCodeModal(kind: VerifyKind) {
     if (kind === "pickup" && !canPickup) return;
@@ -493,7 +501,7 @@ export function DriverOrderDetailsScreen() {
     try {
       setAccepting(true);
 
-      const { data: accepted, error: accErr } = await supabase.rpc("accept_order", {
+      const { data: accepted, error: accErr } = await supabase.rpc("driver_accept_ready_order", {
         p_order_id: order.id,
       });
 

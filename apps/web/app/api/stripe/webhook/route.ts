@@ -1359,47 +1359,76 @@ async function handleCheckoutCompletedLikeEvent(
   }
 
   const result = await markDeliveryRequestPaidRobustly({
-    supabaseAdmin,
+  supabaseAdmin,
+  deliveryRequestId,
+  sessionId: null,
+  paymentIntentId,
+});
+
+if (isDeliveryRobustMarkPaidFailure(result)) {
+  console.log("❌ WEBHOOK: could not mark delivery_request paid (PI)", {
     deliveryRequestId,
-    sessionId,
     paymentIntentId,
+    fallbackCode: getErrorCode(result.fallback.error),
+    fallbackMessage: getErrorMessage(result.fallback.error),
   });
 
-  if (isDeliveryRobustMarkPaidFailure(result)) {
-    console.log("❌ WEBHOOK: could not mark delivery_request paid", {
-      deliveryRequestId,
-      sessionId,
-      paymentIntentId,
-      fallbackCode: getErrorCode(result.fallback.error),
-      fallbackMessage: getErrorMessage(result.fallback.error),
-    });
-
-    return json(
-      {
-        received: true,
-        ok: false,
-        error: "Could not mark delivery_request paid",
-        fallback: {
-          code: getErrorCode(result.fallback.error),
-          message: getErrorMessage(result.fallback.error),
-          details: getErrorDetails(result.fallback.error),
-          hint: getErrorHint(result.fallback.error),
-        },
+  return json(
+    {
+      received: true,
+      ok: false,
+      error: "Could not mark delivery_request paid (PI)",
+      fallback: {
+        code: getErrorCode(result.fallback.error),
+        message: getErrorMessage(result.fallback.error),
+        details: getErrorDetails(result.fallback.error),
+        hint: getErrorHint(result.fallback.error),
       },
-      500
-    );
-  }
-
-  return json({
-    received: true,
-    ok: true,
-    delivery_request_id: deliveryRequestId,
-    via: result.via,
-    used: result.used,
-    already_paid: result.already_paid ?? false,
-    type: event.type,
-  });
+    },
+    500
+  );
 }
+
+const { error: releaseOrderError } = await supabaseAdmin
+  .from("orders")
+  .update({ status: "pending" })
+  .eq("external_ref_id", deliveryRequestId)
+  .eq("external_ref_type", "delivery_request")
+  .eq("status", "waiting_payment");
+
+if (releaseOrderError) {
+  console.log("❌ WEBHOOK PI: failed to release order to drivers", {
+    deliveryRequestId,
+    code: getErrorCode(releaseOrderError),
+    message: getErrorMessage(releaseOrderError),
+    details: getErrorDetails(releaseOrderError),
+    hint: getErrorHint(releaseOrderError),
+  });
+
+  return json(
+    {
+      received: true,
+      ok: false,
+      error: "delivery_request_paid_but_order_not_released",
+      delivery_request_id: deliveryRequestId,
+    },
+    500
+  );
+}
+
+console.log("✅ WEBHOOK PI: order released to drivers", {
+  deliveryRequestId,
+});
+
+return json({
+  received: true,
+  ok: true,
+  delivery_request_id: deliveryRequestId,
+  via: result.via,
+  used: result.used,
+  already_paid: result.already_paid ?? false,
+  type: event.type,
+});}
 
 async function handlePaymentIntentSucceeded(
   supabaseAdmin: SupabaseClient,
@@ -1754,46 +1783,76 @@ async function handlePaymentIntentSucceeded(
   }
 
   const result = await markDeliveryRequestPaidRobustly({
-    supabaseAdmin,
+  supabaseAdmin,
+  deliveryRequestId,
+  sessionId: null,
+  paymentIntentId,
+});
+
+if (isDeliveryRobustMarkPaidFailure(result)) {
+  console.log("❌ WEBHOOK: could not mark delivery_request paid (PI)", {
     deliveryRequestId,
-    sessionId: null,
     paymentIntentId,
+    fallbackCode: getErrorCode(result.fallback.error),
+    fallbackMessage: getErrorMessage(result.fallback.error),
   });
 
-  if (isDeliveryRobustMarkPaidFailure(result)) {
-    console.log("❌ WEBHOOK: could not mark delivery_request paid (PI)", {
-      deliveryRequestId,
-      paymentIntentId,
-      fallbackCode: getErrorCode(result.fallback.error),
-      fallbackMessage: getErrorMessage(result.fallback.error),
-    });
-
-    return json(
-      {
-        received: true,
-        ok: false,
-        error: "Could not mark delivery_request paid (PI)",
-        fallback: {
-          code: getErrorCode(result.fallback.error),
-          message: getErrorMessage(result.fallback.error),
-          details: getErrorDetails(result.fallback.error),
-          hint: getErrorHint(result.fallback.error),
-        },
+  return json(
+    {
+      received: true,
+      ok: false,
+      error: "Could not mark delivery_request paid (PI)",
+      fallback: {
+        code: getErrorCode(result.fallback.error),
+        message: getErrorMessage(result.fallback.error),
+        details: getErrorDetails(result.fallback.error),
+        hint: getErrorHint(result.fallback.error),
       },
-      500
-    );
-  }
-
-  return json({
-    received: true,
-    ok: true,
-    delivery_request_id: deliveryRequestId,
-    via: result.via,
-    used: result.used,
-    already_paid: result.already_paid ?? false,
-    type: event.type,
-  });
+    },
+    500
+  );
 }
+
+const { error: releaseOrderError } = await supabaseAdmin
+  .from("orders")
+  .update({ status: "pending" })
+  .eq("external_ref_id", deliveryRequestId)
+  .eq("external_ref_type", "delivery_request")
+  .eq("status", "waiting_payment");
+
+if (releaseOrderError) {
+  console.log("❌ WEBHOOK PI: failed to release order to drivers", {
+    deliveryRequestId,
+    code: getErrorCode(releaseOrderError),
+    message: getErrorMessage(releaseOrderError),
+    details: getErrorDetails(releaseOrderError),
+    hint: getErrorHint(releaseOrderError),
+  });
+
+  return json(
+    {
+      received: true,
+      ok: false,
+      error: "delivery_request_paid_but_order_not_released",
+      delivery_request_id: deliveryRequestId,
+    },
+    500
+  );
+}
+
+console.log("✅ WEBHOOK PI: order released to drivers", {
+  deliveryRequestId,
+});
+
+return json({
+  received: true,
+  ok: true,
+  delivery_request_id: deliveryRequestId,
+  via: result.via,
+  used: result.used,
+  already_paid: result.already_paid ?? false,
+  type: event.type,
+});}
 
 export async function POST(req: NextRequest) {
   try {
