@@ -93,6 +93,22 @@ type PricingConfigRow = {
   currency: string | null;
 };
 
+type DeliveryRequestRow = {
+  id: string;
+  created_by: string | null;
+  client_user_id: string | null;
+  payment_status: string | null;
+  pickup_address: string | null;
+  dropoff_address: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
+  distance_miles: number | null;
+  delivery_fee: number | null;
+  total: number | null;
+};
+
 function cents(value: number) {
   return Math.round(value * 100);
 }
@@ -166,6 +182,10 @@ function computeDeliveryPricingFromConfig(
 
   const raw = baseFare + distanceMiles * perMile + durationMinutes * perMinute;
   return roundMoney(raw);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function DeliveryRequestScreen() {
@@ -260,17 +280,13 @@ export function DeliveryRequestScreen() {
 
       const { data, error } = await supabase
         .from("pricing_config")
-        .select(
-          "delivery_fee_base, delivery_fee_per_mile, delivery_fee_per_minute, currency"
-        )
+        .select("delivery_fee_base, delivery_fee_per_mile, delivery_fee_per_minute, currency")
         .eq("config_key", "errand_default")
         .eq("order_type", "errand")
         .eq("active", true)
         .maybeSingle();
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setPricingConfig((data as PricingConfigRow | null) ?? null);
     } catch (e) {
@@ -300,18 +316,12 @@ export function DeliveryRequestScreen() {
     }
 
     if (!looksLikeCompleteAddress(pickup) || !looksLikeCompleteAddress(dropoff)) {
-      Alert.alert(
-        "Incomplete address",
-        "Please enter complete pickup and dropoff addresses."
-      );
+      Alert.alert("Incomplete address", "Please enter complete pickup and dropoff addresses.");
       return false;
     }
 
     if (requestType === "package" && !cleanText(description)) {
-      Alert.alert(
-        "Missing description",
-        "Please describe what needs to be delivered."
-      );
+      Alert.alert("Missing description", "Please describe what needs to be delivered.");
       return false;
     }
 
@@ -327,24 +337,15 @@ export function DeliveryRequestScreen() {
       if (!pickupValue || !dropoffValue) {
         resetEstimateState();
         if (!silent) {
-          Alert.alert(
-            "Missing fields",
-            "Please fill in both pickup and dropoff addresses first."
-          );
+          Alert.alert("Missing fields", "Please fill in both pickup and dropoff addresses first.");
         }
         return false;
       }
 
-      if (
-        !looksLikeCompleteAddress(pickupValue) ||
-        !looksLikeCompleteAddress(dropoffValue)
-      ) {
+      if (!looksLikeCompleteAddress(pickupValue) || !looksLikeCompleteAddress(dropoffValue)) {
         resetEstimateState();
         if (!silent) {
-          Alert.alert(
-            "Incomplete address",
-            "Please enter complete pickup and dropoff addresses."
-          );
+          Alert.alert("Incomplete address", "Please enter complete pickup and dropoff addresses.");
         }
         return false;
       }
@@ -363,12 +364,14 @@ export function DeliveryRequestScreen() {
       const requestId = Date.now();
       activeEstimateRequestIdRef.current = requestId;
 
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+
       try {
         setEstimating(true);
         setEstimateError(null);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 20000);
+        timeout = setTimeout(() => controller.abort(), 20000);
 
         const url = `${API_BASE_URL}/api/mapbox/compute-distance`;
 
@@ -381,8 +384,6 @@ export function DeliveryRequestScreen() {
           }),
           signal: controller.signal,
         });
-
-        clearTimeout(timeout);
 
         const rawText = await res.text();
         let json: MapboxDistanceResponse | null = null;
@@ -474,11 +475,7 @@ export function DeliveryRequestScreen() {
           json.delivery_fee?.deliveryFee ??
           undefined;
 
-        const feeLocal = computeDeliveryPricingFromConfig(
-          dMiles,
-          tMinutes,
-          pricingConfig
-        );
+        const feeLocal = computeDeliveryPricingFromConfig(dMiles, tMinutes, pricingConfig);
 
         const finalFee =
           typeof feeFromApi === "number" && !Number.isNaN(feeFromApi)
@@ -531,6 +528,10 @@ export function DeliveryRequestScreen() {
 
         return false;
       } finally {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+
         if (activeEstimateRequestIdRef.current === requestId) {
           setEstimating(false);
         }
@@ -547,10 +548,7 @@ export function DeliveryRequestScreen() {
     const pickupValue = normalizeAddress(pickupAddress);
     const dropoffValue = normalizeAddress(dropoffAddress);
 
-    if (
-      !looksLikeCompleteAddress(pickupValue) ||
-      !looksLikeCompleteAddress(dropoffValue)
-    ) {
+    if (!looksLikeCompleteAddress(pickupValue) || !looksLikeCompleteAddress(dropoffValue)) {
       if (!pickupValue || !dropoffValue) {
         resetEstimateState();
       }
@@ -577,6 +575,125 @@ export function DeliveryRequestScreen() {
     };
   }, [pickupAddress, dropoffAddress, handleEstimate, resetEstimateState]);
 
+  const waitForDeliveryPayment = useCallback(async (deliveryId: string) => {
+    const maxAttempts = 15;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const { data, error } = await supabase
+        .from("delivery_requests")
+        .select("payment_status")
+        .eq("id", deliveryId)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      const paymentStatus = String(data?.payment_status ?? "").toLowerCase();
+
+      if (paymentStatus === "paid") {
+        return true;
+      }
+
+      await sleep(2000);
+    }
+
+    return false;
+  }, []);
+
+  const createOrderFromPaidDeliveryRequest = useCallback(
+    async (deliveryId: string, userId: string) => {
+      const { data: existingOrder, error: existingOrderError } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("external_ref_id", deliveryId)
+        .eq("external_ref_type", "delivery_request")
+        .maybeSingle();
+
+      if (existingOrderError) {
+        throw existingOrderError;
+      }
+
+      if (existingOrder?.id) {
+        return String(existingOrder.id);
+      }
+
+      const { data: deliveryData, error: deliveryReadError } = await supabase
+        .from("delivery_requests")
+        .select(
+          [
+            "id",
+            "created_by",
+            "client_user_id",
+            "payment_status",
+            "pickup_address",
+            "dropoff_address",
+            "pickup_lat",
+            "pickup_lng",
+            "dropoff_lat",
+            "dropoff_lng",
+            "distance_miles",
+            "delivery_fee",
+            "total",
+          ].join(", ")
+        )
+        .eq("id", deliveryId)
+        .single();
+
+      if (deliveryReadError) {
+        throw deliveryReadError;
+      }
+
+      const delivery = (deliveryData ?? null) as unknown as DeliveryRequestRow | null;
+
+      if (!delivery?.id) {
+        throw new Error("Delivery request not found after payment.");
+      }
+
+      if (delivery.payment_status !== "paid") {
+        throw new Error("Payment has not been confirmed yet.");
+      }
+
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          kind: "pickup_dropoff",
+          status: "created",
+          driver_id: null,
+
+          created_by: delivery.created_by ?? userId,
+          client_user_id: delivery.client_user_id ?? userId,
+
+          pickup_address: delivery.pickup_address,
+          dropoff_address: delivery.dropoff_address,
+
+          pickup_lat: delivery.pickup_lat,
+          pickup_lng: delivery.pickup_lng,
+          dropoff_lat: delivery.dropoff_lat,
+          dropoff_lng: delivery.dropoff_lng,
+
+          distance_miles: delivery.distance_miles,
+          delivery_fee: delivery.delivery_fee,
+          total: delivery.total,
+
+          external_ref_id: delivery.id,
+          external_ref_type: "delivery_request",
+
+          created_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+
+      if (orderError) {
+        console.error("❌ order insert error:", orderError);
+        throw new Error(orderError.message || "Failed to create order");
+      }
+
+      return String(orderData?.id ?? "");
+    },
+    []
+  );
+
   const handleCreateRequest = useCallback(async () => {
     if (submitting) return;
     if (!validate()) return;
@@ -589,8 +706,7 @@ export function DeliveryRequestScreen() {
     setSubmitting(true);
 
     try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) throw sessionError;
 
@@ -608,9 +724,7 @@ export function DeliveryRequestScreen() {
 
       const safeTitle =
         cleanText(title) ||
-        (requestType === "ride"
-          ? "Private ride request"
-          : "Package delivery");
+        (requestType === "ride" ? "Private ride request" : "Package delivery");
 
       const safeDescription = cleanText(description);
 
@@ -669,54 +783,17 @@ export function DeliveryRequestScreen() {
         throw new Error("Delivery request created without a valid id.");
       }
 
-      const { error: orderError } = await supabase.from("orders").insert({
-        kind: "pickup_dropoff",
-        status: "waiting_payment",
-        driver_id: null,
-
-        created_by: user.id,
-        client_user_id: user.id,
-
-        pickup_address: safePickup,
-        dropoff_address: safeDropoff,
-
-        pickup_lat: pickupCoords?.lat ?? null,
-        pickup_lng: pickupCoords?.lng ?? null,
-        dropoff_lat: dropoffCoords?.lat ?? null,
-        dropoff_lng: dropoffCoords?.lng ?? null,
-
-        distance_miles: distanceMiles,
-        delivery_fee: safeFee,
-        total: safeTotal,
-
-        external_ref_id: deliveryId,
-        external_ref_type: "delivery_request",
-
-        created_at: new Date().toISOString(),
-      });
-
-      if (orderError) {
-        console.error("❌ order insert error:", orderError);
-
-        await supabase
-          .from("delivery_requests")
-          .delete()
-          .eq("id", deliveryId);
-
-        throw new Error("Failed to create order");
-      }
-
       setLastCreatedId(deliveryId);
 
       Alert.alert(
         "Success",
-        "Delivery created. Please complete payment to dispatch to drivers."
+        "Delivery request created. Tap Pay now to complete payment."
       );
 
       console.log("delivery_requests created:", deliveryId);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("❌ create request error:", e);
-      Alert.alert("Error", e?.message ?? "Failed to create request");
+      Alert.alert("Error", e instanceof Error ? e.message : "Failed to create request");
     } finally {
       setSubmitting(false);
     }
@@ -751,15 +828,16 @@ export function DeliveryRequestScreen() {
         return;
       }
 
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
       if (sessionError) {
         throw sessionError;
       }
 
+      const user = sessionData?.session?.user;
       const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
+
+      if (!user || !accessToken) {
         throw new Error("You must be logged in to pay.");
       }
 
@@ -767,9 +845,23 @@ export function DeliveryRequestScreen() {
 
       await startCheckoutForDeliveryRequest(lastCreatedId, accessToken);
 
+      const paid = await waitForDeliveryPayment(lastCreatedId);
+
+      if (!paid) {
+        Alert.alert(
+          "Payment pending",
+          "Payment was started, but confirmation is still pending. The driver will not see the order until payment is confirmed."
+        );
+        return;
+      }
+
+      const orderId = await createOrderFromPaidDeliveryRequest(lastCreatedId, user.id);
+
       Alert.alert(
-        "Payment",
-        "If the payment completed, your delivery request will be marked as paid shortly."
+        "Payment successful",
+        orderId
+          ? "Your payment is confirmed and the order is now visible for driver dispatch."
+          : "Your payment is confirmed."
       );
     } catch (e: unknown) {
       const message =
@@ -778,7 +870,7 @@ export function DeliveryRequestScreen() {
     } finally {
       setPaying(false);
     }
-  }, [lastCreatedId, paying]);
+  }, [lastCreatedId, paying, createOrderFromPaidDeliveryRequest, waitForDeliveryPayment]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
