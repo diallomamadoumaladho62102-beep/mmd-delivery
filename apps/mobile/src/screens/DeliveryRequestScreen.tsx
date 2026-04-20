@@ -658,7 +658,7 @@ export function DeliveryRequestScreen() {
         .from("orders")
         .insert({
           kind: "pickup_dropoff",
-          status: "created",
+          status: "pending",
           driver_id: null,
 
           created_by: delivery.created_by ?? userId,
