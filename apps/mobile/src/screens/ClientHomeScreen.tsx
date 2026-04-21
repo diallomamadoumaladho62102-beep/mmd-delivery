@@ -836,69 +836,110 @@ export function ClientHomeScreen() {
   );
 
   const fetchAllForUser = useCallback(async (userId: string) => {
-    const [ordersRes, requestsRes] = await Promise.all([
-      supabase
-        .from("orders")
-        .select(
-          `
-            id,
-            status,
-            payment_status,
-            created_at,
-            updated_at,
-            paid_at,
-            pickup_address,
-            dropoff_address,
-            distance_miles,
-            total,
-            delivery_fee,
-            stripe_session_id,
-            stripe_payment_intent_id,
-            client_user_id
-          `
-        )
-        .eq("client_user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(FETCH_LIMIT),
+  const [ordersRes, requestsClientRes, requestsCreatedRes] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        `
+          id,
+          status,
+          payment_status,
+          created_at,
+          updated_at,
+          paid_at,
+          pickup_address,
+          dropoff_address,
+          distance_miles,
+          total,
+          delivery_fee,
+          stripe_session_id,
+          stripe_payment_intent_id,
+          client_user_id
+        `
+      )
+      .eq("client_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(FETCH_LIMIT),
 
-      supabase
-        .from("delivery_requests")
-        .select(
-          `
-            id,
-            status,
-            payment_status,
-            created_at,
-            updated_at,
-            paid_at,
-            pickup_address,
-            dropoff_address,
-            distance_miles,
-            total,
-            delivery_fee,
-            stripe_session_id,
-            stripe_payment_intent_id,
-            client_user_id,
-            created_by
-          `
-        )
-        .or(`client_user_id.eq.${userId},created_by.eq.${userId}`)
-        .order("created_at", { ascending: false })
-        .limit(FETCH_LIMIT),
-    ]);
+    supabase
+      .from("delivery_requests")
+      .select(
+        `
+          id,
+          status,
+          payment_status,
+          created_at,
+          updated_at,
+          paid_at,
+          pickup_address,
+          dropoff_address,
+          distance_miles,
+          total,
+          delivery_fee,
+          stripe_session_id,
+          stripe_payment_intent_id,
+          client_user_id,
+          created_by
+        `
+      )
+      .eq("client_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(FETCH_LIMIT),
 
-    if (ordersRes.error) throw ordersRes.error;
-    if (requestsRes.error) throw requestsRes.error;
+    supabase
+      .from("delivery_requests")
+      .select(
+        `
+          id,
+          status,
+          payment_status,
+          created_at,
+          updated_at,
+          paid_at,
+          pickup_address,
+          dropoff_address,
+          distance_miles,
+          total,
+          delivery_fee,
+          stripe_session_id,
+          stripe_payment_intent_id,
+          client_user_id,
+          created_by
+        `
+      )
+      .eq("created_by", userId)
+      .order("created_at", { ascending: false })
+      .limit(FETCH_LIMIT),
+  ]);
 
-    const normalizedOrders = normalizeOrderRows(
-      (ordersRes.data as OrderRowDb[] | null) ?? []
-    );
-    const normalizedRequests = normalizeDeliveryRequestRows(
-      (requestsRes.data as DeliveryRequestRowDb[] | null) ?? []
-    );
+  if (ordersRes.error) {
+    console.log("❌ orders error:", ordersRes.error);
+    throw ordersRes.error;
+  }
 
-    return sortClientItems([...normalizedOrders, ...normalizedRequests]);
-  }, []);
+  if (requestsClientRes.error) {
+    console.log("❌ delivery_requests client_user_id error:", requestsClientRes.error);
+  }
+
+  if (requestsCreatedRes.error) {
+    console.log("❌ delivery_requests created_by error:", requestsCreatedRes.error);
+  }
+
+  const normalizedOrders = normalizeOrderRows(
+    (ordersRes.data as OrderRowDb[] | null) ?? []
+  );
+
+  const normalizedRequests = normalizeDeliveryRequestRows([
+    ...((requestsClientRes.data as DeliveryRequestRowDb[] | null) ?? []),
+    ...((requestsCreatedRes.data as DeliveryRequestRowDb[] | null) ?? []),
+  ]);
+
+  const dedupedRequests = Array.from(
+    new Map(normalizedRequests.map((item) => [item.id, item])).values()
+  );
+
+  return sortClientItems([...normalizedOrders, ...dedupedRequests]);
+}, []);
 
   const fetchOrders = useCallback(
     async (mode: "load" | "refresh" = "load", silent = false) => {
