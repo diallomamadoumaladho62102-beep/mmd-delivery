@@ -44,19 +44,18 @@ function getMetroHost(): string | null {
 }
 
 function getApiBaseUrl(): string {
-  const explicitEnv = safeTrim(process.env.EXPO_PUBLIC_API_URL);
+  const explicitEnv = safeTrim(process.env.EXPO_PUBLIC_API_BASE_URL);
   if (explicitEnv) return explicitEnv;
 
   const explicitExtra = safeTrim(
-    (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_WEB_BASE_URL
+    (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_BASE_URL
   );
+  if (explicitExtra) return explicitExtra;
 
   const metroHost = getMetroHost();
   if (__DEV__ && metroHost) {
     return `http://${metroHost}:3000`;
   }
-
-  if (explicitExtra) return explicitExtra;
 
   return "https://mmd-delivery.vercel.app";
 }

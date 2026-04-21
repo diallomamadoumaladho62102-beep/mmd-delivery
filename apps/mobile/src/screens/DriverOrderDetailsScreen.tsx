@@ -20,6 +20,7 @@ import type { RouteProp } from "@react-navigation/native";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import { API_BASE_URL } from "../lib/apiBase";
 
 import {
   startDriverLocationTracking,
@@ -85,18 +86,14 @@ function formatDate(iso: string | null) {
 }
 
 function getApiBaseUrl() {
-  const raw = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+  const raw = API_BASE_URL.trim().replace(/\/+$/, "");
 
   if (!raw) {
-    throw new Error(
-      "EXPO_PUBLIC_API_BASE_URL manquant. Exemple: http://192.168.1.45:3000"
-    );
+    throw new Error("API_BASE_URL manquant.");
   }
 
   if (!/^https?:\/\//i.test(raw)) {
-    throw new Error(
-      "EXPO_PUBLIC_API_BASE_URL doit être une URL absolue. Exemple: http://192.168.1.45:3000"
-    );
+    throw new Error("API_BASE_URL doit être une URL absolue.");
   }
 
   return raw;
@@ -413,12 +410,12 @@ export function DriverOrderDetailsScreen() {
   const canPickup = !!order && order.status === "ready" && isAssignedDriver;
   const canDeliver = !!order && order.status === "dispatched" && isAssignedDriver;
   const canAccept =
-  !!order &&
-  !order.driver_id &&
-  (
-    (order.kind === "pickup_dropoff" && order.status === "pending") ||
-    (order.kind === "food" && order.status === "ready")
-  );
+    !!order &&
+    !order.driver_id &&
+    (
+      (order.kind === "pickup_dropoff" && order.status === "pending") ||
+      (order.kind === "food" && order.status === "ready")
+    );
 
   function openCodeModal(kind: VerifyKind) {
     if (kind === "pickup" && !canPickup) return;
@@ -459,7 +456,7 @@ export function DriverOrderDetailsScreen() {
       );
     }
 
-    const apiBaseUrl = getApiBaseUrl();
+    const apiBaseUrl = API_BASE_URL;
 
     const endpoint =
       kind === "pickup"
