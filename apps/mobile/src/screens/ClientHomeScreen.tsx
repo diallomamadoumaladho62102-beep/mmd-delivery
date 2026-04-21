@@ -35,7 +35,7 @@ type OrderStatus =
   | "delivered"
   | "canceled";
 
-type ItemKind = "restaurant_order" | "delivery_request";
+type ItemKind = "restaurant_order" | "pickup_dropoff" | "delivery_request";
 
 type ClientItem = {
   id: string;
@@ -56,6 +56,7 @@ type ClientItem = {
 
 type OrderRowDb = {
   id?: unknown;
+  kind?: unknown;
   status?: unknown;
   payment_status?: unknown;
   created_at?: unknown;
@@ -161,16 +162,24 @@ function orderBullet(status: OrderStatus) {
 }
 
 function kindEmoji(kind: ItemKind) {
-  return kind === "delivery_request" ? "🚗" : "🍔";
+  if (kind === "delivery_request") return "🚗";
+  if (kind === "pickup_dropoff") return "📦";
+  return "🍔";
 }
 
 function kindLabel(
   kind: ItemKind,
   ts: (key: string, fallback: string, params?: Record<string, unknown>) => string
 ) {
-  return kind === "delivery_request"
-    ? ts("client.home.kind.delivery_request", "Delivery request")
-    : ts("client.home.kind.restaurant_order", "Restaurant order");
+  if (kind === "delivery_request") {
+    return ts("client.home.kind.delivery_request", "Delivery request");
+  }
+
+  if (kind === "pickup_dropoff") {
+    return ts("client.home.kind.pickup_dropoff", "Pickup & dropoff order");
+  }
+
+  return ts("client.home.kind.restaurant_order", "Restaurant order");
 }
 
 function orderStatusLabelForCard(
@@ -193,6 +202,25 @@ function orderStatusLabelForCard(
     if (item.payment_status === "unpaid") {
       return `💤 ${ts("delivery_requests.status.unpaid", "Unpaid")}`;
     }
+  }
+
+  if (item.kind === "pickup_dropoff") {
+    if (item.status === "pending" && item.payment_status === "paid") {
+      return `📦 ${ts(
+        "orders.status.pickup_dropoff_pending",
+        "Paid • Waiting for driver dispatch"
+      )}`;
+    }
+    if (item.status === "dispatched") {
+      return `🚙 ${ts("orders.status.dispatched", "On the way")}`;
+    }
+    if (item.status === "delivered") {
+      return `✅ ${ts("orders.status.delivered", "Delivered")}`;
+    }
+    if (item.status === "canceled") {
+      return `⛔ ${ts("orders.status.canceled", "Canceled")}`;
+    }
+    return `⏳ ${ts("orders.status.pending", "Pending")}`;
   }
 
   if (item.status === "dispatched") {
@@ -301,9 +329,12 @@ function normalizeOrderRows(rows: OrderRowDb[] | null | undefined): ClientItem[]
     if (typeof row.id !== "string" || !row.id.trim()) continue;
     if (!isValidOrderStatus(row.status)) continue;
 
+    const rowKind =
+      row.kind === "pickup_dropoff" ? "pickup_dropoff" : "restaurant_order";
+
     result.push({
       id: row.id,
-      kind: "restaurant_order",
+      kind: rowKind,
       status: row.status,
       payment_status: toSafeString(row.payment_status),
       created_at: toSafeString(row.created_at),
@@ -836,110 +867,117 @@ export function ClientHomeScreen() {
   );
 
   const fetchAllForUser = useCallback(async (userId: string) => {
-  const [ordersRes, requestsClientRes, requestsCreatedRes] = await Promise.all([
-    supabase
-      .from("orders")
-      .select(
-        `
-          id,
-          status,
-          payment_status,
-          created_at,
-          updated_at,
-          paid_at,
-          pickup_address,
-          dropoff_address,
-          distance_miles,
-          total,
-          delivery_fee,
-          stripe_session_id,
-          stripe_payment_intent_id,
-          client_user_id
-        `
-      )
-      .eq("client_user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(FETCH_LIMIT),
+    const [ordersRes, requestsClientRes, requestsCreatedRes] = await Promise.all([
+      supabase
+        .from("orders")
+        .select(
+          `
+            id,
+            kind,
+            status,
+            payment_status,
+            created_at,
+            updated_at,
+            paid_at,
+            pickup_address,
+            dropoff_address,
+            distance_miles,
+            total,
+            delivery_fee,
+            stripe_session_id,
+            stripe_payment_intent_id,
+            client_user_id
+          `
+        )
+        .eq("client_user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(FETCH_LIMIT),
 
-    supabase
-      .from("delivery_requests")
-      .select(
-        `
-          id,
-          status,
-          payment_status,
-          created_at,
-          updated_at,
-          paid_at,
-          pickup_address,
-          dropoff_address,
-          distance_miles,
-          total,
-          delivery_fee,
-          stripe_session_id,
-          stripe_payment_intent_id,
-          client_user_id,
-          created_by
-        `
-      )
-      .eq("client_user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(FETCH_LIMIT),
+      supabase
+        .from("delivery_requests")
+        .select(
+          `
+            id,
+            status,
+            payment_status,
+            created_at,
+            updated_at,
+            paid_at,
+            pickup_address,
+            dropoff_address,
+            distance_miles,
+            total,
+            delivery_fee,
+            stripe_session_id,
+            stripe_payment_intent_id,
+            client_user_id,
+            created_by
+          `
+        )
+        .eq("client_user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(FETCH_LIMIT),
 
-    supabase
-      .from("delivery_requests")
-      .select(
-        `
-          id,
-          status,
-          payment_status,
-          created_at,
-          updated_at,
-          paid_at,
-          pickup_address,
-          dropoff_address,
-          distance_miles,
-          total,
-          delivery_fee,
-          stripe_session_id,
-          stripe_payment_intent_id,
-          client_user_id,
-          created_by
-        `
-      )
-      .eq("created_by", userId)
-      .order("created_at", { ascending: false })
-      .limit(FETCH_LIMIT),
-  ]);
+      supabase
+        .from("delivery_requests")
+        .select(
+          `
+            id,
+            status,
+            payment_status,
+            created_at,
+            updated_at,
+            paid_at,
+            pickup_address,
+            dropoff_address,
+            distance_miles,
+            total,
+            delivery_fee,
+            stripe_session_id,
+            stripe_payment_intent_id,
+            client_user_id,
+            created_by
+          `
+        )
+        .eq("created_by", userId)
+        .order("created_at", { ascending: false })
+        .limit(FETCH_LIMIT),
+    ]);
 
-  if (ordersRes.error) {
-    console.log("❌ orders error:", ordersRes.error);
-    throw ordersRes.error;
-  }
+    if (ordersRes.error) {
+      console.log("❌ orders error:", ordersRes.error);
+      throw ordersRes.error;
+    }
 
-  if (requestsClientRes.error) {
-    console.log("❌ delivery_requests client_user_id error:", requestsClientRes.error);
-  }
+    if (requestsClientRes.error) {
+      console.log(
+        "❌ delivery_requests client_user_id error:",
+        requestsClientRes.error
+      );
+    }
 
-  if (requestsCreatedRes.error) {
-    console.log("❌ delivery_requests created_by error:", requestsCreatedRes.error);
-  }
+    if (requestsCreatedRes.error) {
+      console.log(
+        "❌ delivery_requests created_by error:",
+        requestsCreatedRes.error
+      );
+    }
 
-  const normalizedOrders = normalizeOrderRows(
-    (ordersRes.data as OrderRowDb[] | null) ?? []
-  );
+    const normalizedOrders = normalizeOrderRows(
+      (ordersRes.data as OrderRowDb[] | null) ?? []
+    );
 
-  const normalizedRequests = normalizeDeliveryRequestRows([
-    ...((requestsClientRes.data as DeliveryRequestRowDb[] | null) ?? []),
-    ...((requestsCreatedRes.data as DeliveryRequestRowDb[] | null) ?? []),
-  ]);
+    const normalizedRequests = normalizeDeliveryRequestRows([
+      ...((requestsClientRes.data as DeliveryRequestRowDb[] | null) ?? []),
+      ...((requestsCreatedRes.data as DeliveryRequestRowDb[] | null) ?? []),
+    ]);
 
-  const dedupedRequests = Array.from(
-    new Map(normalizedRequests.map((item) => [item.id, item])).values()
-  );
+    const dedupedRequests = Array.from(
+      new Map(normalizedRequests.map((item) => [item.id, item])).values()
+    );
 
-  return sortClientItems([...normalizedOrders, ...dedupedRequests]);
-}, []);
+    return sortClientItems([...normalizedOrders, ...dedupedRequests]);
+  }, []);
 
   const fetchOrders = useCallback(
     async (mode: "load" | "refresh" = "load", silent = false) => {
@@ -1263,20 +1301,20 @@ export function ClientHomeScreen() {
   const firstName = getFirstName(displayName || DEFAULT_CLIENT_NAME);
 
   const handleOpenFeaturedOrder = useCallback(() => {
-  const target = activeOrder ?? lastDeliveredOrder ?? featuredOrder;
-  if (!target?.id) return;
+    const target = activeOrder ?? lastDeliveredOrder ?? featuredOrder;
+    if (!target?.id) return;
 
-  if (target.kind === "restaurant_order") {
-    navigation.navigate("ClientOrderDetails", {
-      orderId: target.id,
+    if (target.kind === "restaurant_order") {
+      navigation.navigate("ClientOrderDetails", {
+        orderId: target.id,
+      });
+      return;
+    }
+
+    (navigation as any).navigate("ClientDeliveryRequestDetails", {
+      requestId: target.id,
     });
-    return;
-  }
-
-  (navigation as any).navigate("ClientDeliveryRequestDetails", {
-    requestId: target.id,
-  });
-}, [activeOrder, featuredOrder, lastDeliveredOrder, navigation]);
+  }, [activeOrder, featuredOrder, lastDeliveredOrder, navigation]);
 
   const handleOpenRestaurantOrder = useCallback(
     (orderId: string) => {
@@ -1781,14 +1819,14 @@ export function ClientHomeScreen() {
                     key={`${order.kind}-${order.id}`}
                     activeOpacity={0.92}
                     onPress={() => {
-  if (isRestaurant) {
-    handleOpenRestaurantOrder(order.id);
-  } else {
-    (navigation as any).navigate("ClientDeliveryRequestDetails", {
-      requestId: order.id,
-    });
-  }
-}}
+                      if (isRestaurant) {
+                        handleOpenRestaurantOrder(order.id);
+                      } else {
+                        (navigation as any).navigate("ClientDeliveryRequestDetails", {
+                          requestId: order.id,
+                        });
+                      }
+                    }}
                     style={{
                       borderRadius: 24,
                       borderWidth: 1,
