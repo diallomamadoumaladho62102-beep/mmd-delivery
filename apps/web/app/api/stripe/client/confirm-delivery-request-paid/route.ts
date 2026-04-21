@@ -31,6 +31,17 @@ type GenericErrorLike = {
   hint?: unknown;
 };
 
+type StripeCheckResult = {
+  paid: boolean;
+  stripe_paid: boolean;
+  payment_intent_id: string | null;
+  source:
+    | "payment_intent"
+    | "checkout_session"
+    | "checkout_session_complete"
+    | "none";
+};
+
 const REQUEST_ID_MAX_LENGTH = 128;
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 
@@ -70,7 +81,7 @@ function json(body: Record<string, unknown>, status = 200) {
     status,
     headers: {
       "Cache-Control": "no-store",
-      "Pragma": "no-cache",
+      Pragma: "no-cache",
       "X-Content-Type-Options": "nosniff",
     },
   });
@@ -110,8 +121,24 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function safeLower(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function isPaidStatus(status: unknown): boolean {
-  return String(status ?? "").trim().toLowerCase() === "paid";
+  return safeLower(status) === "paid";
+}
+
+function isStripePaymentIntentPaid(status: unknown): boolean {
+  return safeLower(status) === "succeeded";
+}
+
+function isStripeCheckoutSessionPaid(paymentStatus: unknown): boolean {
+  return safeLower(paymentStatus) === "paid";
+}
+
+function isStripeCheckoutSessionComplete(status: unknown): boolean {
+  return safeLower(status) === "complete";
 }
 
 function logSupabaseError(
@@ -209,11 +236,7 @@ function paymentIntentIdFromUnknown(value: unknown): string | null {
 
 async function stripePaymentLooksPaid(
   deliveryRequest: DeliveryRequestRow
-): Promise<{
-  paid: boolean;
-  stripe_paid?: boolean;
-  payment_intent_id?: string | null;
-}> {
+): Promise<StripeCheckResult> {
   const paymentIntentId = String(
     deliveryRequest.stripe_payment_intent_id ?? ""
   ).trim();
@@ -223,13 +246,20 @@ async function stripePaymentLooksPaid(
     try {
       const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-      if (pi.status === "succeeded") {
+      if (isStripePaymentIntentPaid(pi.status)) {
         return {
           paid: true,
           stripe_paid: true,
-          payment_intent_id: paymentIntentIdFromUnknown(pi.id),
+          payment_intent_id: paymentIntentIdFromUnknown(pi.id) ?? paymentIntentId,
+          source: "payment_intent",
         };
       }
+
+      console.log("[confirm-delivery-request-paid] paymentIntent not paid", {
+        delivery_request_id: deliveryRequest.id,
+        payment_intent_id: paymentIntentId,
+        payment_intent_status: pi.status,
+      });
     } catch (e) {
       console.warn(
         "[confirm-delivery-request-paid] paymentIntent retrieve failed:",
@@ -244,18 +274,34 @@ async function stripePaymentLooksPaid(
         expand: ["payment_intent"],
       });
 
-      const sessionPiId = paymentIntentIdFromUnknown(session.payment_intent);
+      const sessionPiId =
+        paymentIntentIdFromUnknown(session.payment_intent) ?? paymentIntentId;
 
-      if (
-        session.payment_status === "paid" ||
-        session.status === "complete"
-      ) {
+      if (isStripeCheckoutSessionPaid(session.payment_status)) {
         return {
           paid: true,
           stripe_paid: true,
           payment_intent_id: sessionPiId,
+          source: "checkout_session",
         };
       }
+
+      if (isStripeCheckoutSessionComplete(session.status)) {
+        return {
+          paid: true,
+          stripe_paid: true,
+          payment_intent_id: sessionPiId,
+          source: "checkout_session_complete",
+        };
+      }
+
+      console.log("[confirm-delivery-request-paid] checkout session not paid", {
+        delivery_request_id: deliveryRequest.id,
+        stripe_session_id: sessionId,
+        session_payment_status: session.payment_status,
+        session_status: session.status,
+        session_payment_intent_id: sessionPiId,
+      });
     } catch (e) {
       console.warn(
         "[confirm-delivery-request-paid] session retrieve failed:",
@@ -264,7 +310,12 @@ async function stripePaymentLooksPaid(
     }
   }
 
-  return { paid: false, stripe_paid: false, payment_intent_id: null };
+  return {
+    paid: false,
+    stripe_paid: false,
+    payment_intent_id: paymentIntentId || null,
+    source: "none",
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -350,6 +401,10 @@ export async function POST(req: NextRequest) {
         already: true,
         stripe_paid: true,
         delivery_request_id: deliveryRequest.id,
+        payment_status: "paid",
+        stripe_payment_intent_id: deliveryRequest.stripe_payment_intent_id,
+        stripe_session_id: deliveryRequest.stripe_session_id,
+        paid_at: deliveryRequest.paid_at,
       });
     }
 
@@ -362,6 +417,9 @@ export async function POST(req: NextRequest) {
           stripe_paid: false,
           delivery_request_id: deliveryRequest.id,
           error: "Stripe payment not confirmed yet",
+          payment_status: deliveryRequest.payment_status,
+          stripe_payment_intent_id: deliveryRequest.stripe_payment_intent_id,
+          stripe_session_id: deliveryRequest.stripe_session_id,
         },
         409
       );
@@ -369,17 +427,22 @@ export async function POST(req: NextRequest) {
 
     const nowIso = new Date().toISOString();
 
-    const { error: updErr } = await supabaseAdmin
+    const { data: updatedRow, error: updErr } = await supabaseAdmin
       .from("delivery_requests")
       .update({
         payment_status: "paid",
         paid_at: deliveryRequest.paid_at ?? nowIso,
         stripe_payment_intent_id:
           stripeCheck.payment_intent_id ??
-          deliveryRequest.stripe_payment_intent_id,
+          deliveryRequest.stripe_payment_intent_id ??
+          null,
         updated_at: nowIso,
       })
-      .eq("id", deliveryRequest.id);
+      .eq("id", deliveryRequest.id)
+      .select(
+        "id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at"
+      )
+      .single();
 
     if (updErr) {
       logSupabaseError(
@@ -387,10 +450,25 @@ export async function POST(req: NextRequest) {
         updErr,
         {
           delivery_request_id: deliveryRequest.id,
+          stripe_check_source: stripeCheck.source,
+          stripe_payment_intent_id: stripeCheck.payment_intent_id,
         }
       );
 
       return json({ error: "Failed to mark delivery request paid" }, 500);
+    }
+
+    if (!updatedRow || !isPaidStatus((updatedRow as { payment_status?: unknown }).payment_status)) {
+      console.error("[confirm-delivery-request-paid] update returned unexpected row", {
+        delivery_request_id: deliveryRequest.id,
+        updated_row: updatedRow ?? null,
+        stripe_check_source: stripeCheck.source,
+      });
+
+      return json(
+        { error: "Payment update could not be verified after write" },
+        500
+      );
     }
 
     return json({
@@ -398,6 +476,19 @@ export async function POST(req: NextRequest) {
       stripe_paid: true,
       already: false,
       delivery_request_id: deliveryRequest.id,
+      payment_status: (updatedRow as { payment_status?: string | null }).payment_status ?? "paid",
+      stripe_payment_intent_id:
+        (updatedRow as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ??
+        stripeCheck.payment_intent_id ??
+        null,
+      stripe_session_id:
+        (updatedRow as { stripe_session_id?: string | null }).stripe_session_id ??
+        deliveryRequest.stripe_session_id,
+      paid_at:
+        (updatedRow as { paid_at?: string | null }).paid_at ??
+        deliveryRequest.paid_at ??
+        nowIso,
+      stripe_check_source: stripeCheck.source,
     });
   } catch (e: unknown) {
     const message = getErrorMessage(e);
