@@ -98,6 +98,7 @@ type DeliveryRequestRow = {
   created_by: string | null;
   client_user_id: string | null;
   payment_status: string | null;
+  paid_at: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
   pickup_lat: number | null;
@@ -581,7 +582,7 @@ export function DeliveryRequestScreen() {
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       const { data, error } = await supabase
         .from("delivery_requests")
-        .select("payment_status")
+        .select("payment_status, paid_at")
         .eq("id", deliveryId)
         .single();
 
@@ -626,6 +627,7 @@ export function DeliveryRequestScreen() {
             "created_by",
             "client_user_id",
             "payment_status",
+            "paid_at",
             "pickup_address",
             "dropoff_address",
             "pickup_lat",
@@ -654,11 +656,15 @@ export function DeliveryRequestScreen() {
         throw new Error("Payment has not been confirmed yet.");
       }
 
+      const nowIso = new Date().toISOString();
+
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .insert({
           kind: "pickup_dropoff",
           status: "pending",
+          payment_status: "paid",
+          paid_at: delivery.paid_at ?? nowIso,
           driver_id: null,
 
           created_by: delivery.created_by ?? userId,
@@ -679,7 +685,8 @@ export function DeliveryRequestScreen() {
           external_ref_id: delivery.id,
           external_ref_type: "delivery_request",
 
-          created_at: new Date().toISOString(),
+          created_at: nowIso,
+          updated_at: nowIso,
         })
         .select("id")
         .single();

@@ -352,7 +352,7 @@ export function ClientOrderDetailsScreen() {
   }, [orderId, ts]);
 
   const fetchPaymentStatusOnly = useCallback(async () => {
-    const { data, error } = await supabase.from("orders").select("payment_status").eq("id", orderId).single();
+    const { data, error } = await supabase.from("orders").select("payment_status, paid_at").eq("id", orderId).single();
     if (error) throw error;
     return normalizePaymentStatus((data as any)?.payment_status);
   }, [orderId]);
