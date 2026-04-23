@@ -35,7 +35,7 @@ type OrderStatus =
   | "delivered"
   | "canceled";
 
-type ItemKind = "restaurant_order" | "pickup_dropoff" | "delivery_request";
+type ItemKind = "restaurant_order" | "delivery_request";
 
 type ClientItem = {
   id: string;
@@ -163,7 +163,6 @@ function orderBullet(status: OrderStatus) {
 
 function kindEmoji(kind: ItemKind) {
   if (kind === "delivery_request") return "🚗";
-  if (kind === "pickup_dropoff") return "📦";
   return "🍔";
 }
 
@@ -173,10 +172,6 @@ function kindLabel(
 ) {
   if (kind === "delivery_request") {
     return ts("client.home.kind.delivery_request", "Delivery request");
-  }
-
-  if (kind === "pickup_dropoff") {
-    return ts("client.home.kind.pickup_dropoff", "Pickup & dropoff order");
   }
 
   return ts("client.home.kind.restaurant_order", "Restaurant order");
@@ -201,15 +196,6 @@ function orderStatusLabelForCard(
     }
     if (item.payment_status === "unpaid") {
       return `💤 ${ts("delivery_requests.status.unpaid", "Unpaid")}`;
-    }
-  }
-
-  if (item.kind === "pickup_dropoff") {
-    if (item.status === "pending" && item.payment_status === "paid") {
-      return `📦 ${ts(
-        "orders.status.pickup_dropoff_pending",
-        "Paid • Waiting for driver dispatch"
-      )}`;
     }
     if (item.status === "dispatched") {
       return `🚙 ${ts("orders.status.dispatched", "On the way")}`;
@@ -329,12 +315,19 @@ function normalizeOrderRows(rows: OrderRowDb[] | null | undefined): ClientItem[]
     if (typeof row.id !== "string" || !row.id.trim()) continue;
     if (!isValidOrderStatus(row.status)) continue;
 
-    const rowKind =
-      row.kind === "pickup_dropoff" ? "pickup_dropoff" : "restaurant_order";
+    const rawKind = typeof row.kind === "string" ? row.kind.trim().toLowerCase() : "";
+
+    // ✅ IMPORTANT:
+    // On ne montre plus pickup_dropoff dans la home client.
+    // Le flux client officiel "delivery request" doit rester uniquement celui avec la voiture.
+    // Le flux carton sera gardé pour un autre usage plus tard (taxi / autre module).
+    if (rawKind === "pickup_dropoff") {
+      continue;
+    }
 
     result.push({
       id: row.id,
-      kind: rowKind,
+      kind: "restaurant_order",
       status: row.status,
       payment_status: toSafeString(row.payment_status),
       created_at: toSafeString(row.created_at),
@@ -396,6 +389,44 @@ function sortClientItems(items: ClientItem[]) {
 
     return bTime - aTime;
   });
+}
+
+function dedupeClientItems(items: ClientItem[]) {
+  const map = new Map<string, ClientItem>();
+
+  for (const item of items) {
+    const key = item.id;
+    const existing = map.get(key);
+
+    if (!existing) {
+      map.set(key, item);
+      continue;
+    }
+
+    // On préfère delivery_request si jamais il y a conflit d'id
+    if (existing.kind !== "delivery_request" && item.kind === "delivery_request") {
+      map.set(key, item);
+      continue;
+    }
+
+    const existingTime = existing.updated_at
+      ? new Date(existing.updated_at).getTime()
+      : existing.created_at
+      ? new Date(existing.created_at).getTime()
+      : 0;
+
+    const incomingTime = item.updated_at
+      ? new Date(item.updated_at).getTime()
+      : item.created_at
+      ? new Date(item.created_at).getTime()
+      : 0;
+
+    if (incomingTime > existingTime) {
+      map.set(key, item);
+    }
+  }
+
+  return Array.from(map.values());
 }
 
 function isValidImageUri(uri: string | null) {
@@ -972,11 +1003,12 @@ export function ClientHomeScreen() {
       ...((requestsCreatedRes.data as DeliveryRequestRowDb[] | null) ?? []),
     ]);
 
-    const dedupedRequests = Array.from(
-      new Map(normalizedRequests.map((item) => [item.id, item])).values()
-    );
+    const merged = dedupeClientItems([
+      ...normalizedOrders,
+      ...normalizedRequests,
+    ]);
 
-    return sortClientItems([...normalizedOrders, ...dedupedRequests]);
+    return sortClientItems(merged);
   }, []);
 
   const fetchOrders = useCallback(
@@ -1757,7 +1789,7 @@ export function ClientHomeScreen() {
               emptyTitle={ts("client.home.empty.title", "Nothing here yet")}
               emptySubtitle={ts(
                 "client.home.empty.subtitle",
-                "Create a pickup/dropoff order or order from a restaurant to test the system."
+                "Create a delivery request or order from a restaurant to test the system."
               )}
               ctaLabel={ts("client.home.highlight.cta", "Open")}
               onPress={handleOpenFeaturedOrder}
@@ -1805,7 +1837,7 @@ export function ClientHomeScreen() {
                 >
                   {ts(
                     "client.home.empty.subtitle",
-                    "Create a pickup/dropoff order or order from a restaurant to test the system."
+                    "Create a delivery request or order from a restaurant to test the system."
                   )}
                 </Text>
               </View>

@@ -54,7 +54,6 @@ type DriverOrder = {
   driver_delivery_payout: number | null;
   total: number | null;
 
-  // ✅ coords stockées dans orders (DB = lat + lng)
   pickup_lat: number | null;
   pickup_lng: number | null;
   dropoff_lat: number | null;
@@ -154,6 +153,42 @@ function getZoneInfoFromLocation(
 const SHEET_MIN_TRANSLATE_Y = 0;
 const SHEET_MAX_TRANSLATE_Y = 160;
 
+function normalizeKind(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
+function normalizeStatus(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined): boolean {
+  if (!order) return false;
+
+  const kind = normalizeKind(order.kind);
+  const status = normalizeStatus(order.status);
+
+  if (kind === "food") {
+    return status === "ready";
+  }
+
+  if (kind === "pickup_dropoff") {
+    return status === "pending";
+  }
+
+  return false;
+}
+
+function getBestDriverAmount(order: Partial<DriverOrder> | null | undefined): number | null {
+  if (!order) return null;
+  if (typeof order.driver_delivery_payout === "number") return order.driver_delivery_payout;
+  if (typeof order.delivery_fee === "number") return order.delivery_fee;
+  if (typeof order.total === "number") return order.total;
+  return null;
+}
+
 export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const navAny = navigation as unknown as AnyNav;
@@ -225,14 +260,18 @@ export function DriverHomeScreen() {
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
-    } catch {}
+    } catch (e) {
+      console.log("stopSound error:", e);
+    }
   }, []);
 
   const getUserIdOrThrow = useCallback(async (): Promise<string> => {
     const { data: sessionData, error: sErr } = await supabase.auth.getSession();
     if (sErr) throw sErr;
     const userId = sessionData.session?.user?.id;
-    if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+    if (!userId) {
+      throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+    }
     return userId;
   }, [t]);
 
@@ -398,72 +437,114 @@ export function DriverHomeScreen() {
     };
   }, [ensureGpsPermission, t]);
 
-  const fetchDriverOrders = useCallback(async () => {
-    try {
-      if (!isOnline) {
-        setAvailableOrders([]);
-        setMyOrders([]);
-        setActiveOffer(null);
-        return;
+  const fetchDriverOrders = useCallback(
+    async (forceOnline = false) => {
+      try {
+        const canLoad = forceOnline || isOnline;
+
+        if (!canLoad) {
+          setAvailableOrders([]);
+          setMyOrders([]);
+          setActiveOffer(null);
+          setCountdown(60);
+          lastOfferIdRef.current = null;
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        const driverId = await getUserIdOrThrow();
+
+        const { data: available, error: availableError } = await supabase
+          .from("orders")
+          .select(
+            `id, kind, status, created_at,
+             restaurant_name, pickup_address, dropoff_address,
+             distance_miles, delivery_fee, driver_delivery_payout, total,
+             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`
+          )
+          .in("status", ["pending", "prepared", "ready"])
+          .is("driver_id", null)
+          .order("created_at", { ascending: false });
+
+        if (availableError) throw availableError;
+
+        const { data: mine, error: mineError } = await supabase
+          .from("orders")
+          .select(
+            `id, kind, status, created_at,
+             restaurant_name, pickup_address, dropoff_address,
+             distance_miles, delivery_fee, driver_delivery_payout, total,
+             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`
+          )
+          .eq("driver_id", driverId)
+          .not("status", "in", '("delivered","canceled")')
+          .order("created_at", { ascending: false });
+
+        if (mineError) throw mineError;
+
+        const allAvailable = (available ?? []) as DriverOrder[];
+        const myList = (mine ?? []) as DriverOrder[];
+
+        const visibleAvailable = allAvailable.filter((o) => {
+          const visible = isOrderVisibleForDriver(o);
+
+          console.log("DRIVER_HOME_AVAILABLE_DEBUG", {
+            id: o.id,
+            raw_kind: o.kind,
+            normalized_kind: normalizeKind(o.kind),
+            raw_status: o.status,
+            normalized_status: normalizeStatus(o.status),
+            visible,
+            driver_id_expected_null: true,
+          });
+
+          return visible;
+        });
+
+        console.log("DRIVER_HOME_FETCH_RESULT", {
+          available_total: allAvailable.length,
+          visible_total: visibleAvailable.length,
+          mine_total: myList.length,
+          forceOnline,
+          isOnline_snapshot: isOnline,
+        });
+
+        setAvailableOrders(visibleAvailable);
+        setMyOrders(myList);
+
+        setActiveOffer((prev) => {
+          if (visibleAvailable.length === 0) {
+            if (prev) {
+              lastOfferIdRef.current = null;
+            }
+            setCountdown(60);
+            return null;
+          }
+
+          if (prev) {
+            const stillExists = visibleAvailable.find((o) => o.id === prev.id);
+            if (stillExists) {
+              return stillExists;
+            }
+          }
+
+          const nextOffer = visibleAvailable[0] ?? null;
+          if (!prev || prev.id !== nextOffer?.id) {
+            setCountdown(60);
+          }
+          return nextOffer;
+        });
+      } catch (e: any) {
+        console.log("Erreur chargement commandes driver:", e);
+        setError(t("driver.home.errors.loadOrders", "Impossible de charger les commandes."));
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(true);
-      setError(null);
-
-      const driverId = await getUserIdOrThrow();
-
-      const { data: available, error: availableError } = await supabase
-        .from("orders")
-        .select(
-          `id, kind, status, created_at,
-           restaurant_name, pickup_address, dropoff_address,
-           distance_miles, delivery_fee, driver_delivery_payout, total,
-           pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`
-        )
-        .in("status", ["pending", "prepared", "ready"])
-        .is("driver_id", null)
-        .order("created_at", { ascending: false });
-
-      if (availableError) throw availableError;
-
-      const { data: mine, error: mineError } = await supabase
-        .from("orders")
-        .select(
-          `id, kind, status, created_at,
-           restaurant_name, pickup_address, dropoff_address,
-           distance_miles, delivery_fee, driver_delivery_payout, total,
-           pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`
-        )
-        .eq("driver_id", driverId)
-        .not("status", "in", '("delivered","canceled")')
-        .order("created_at", { ascending: false });
-
-      if (mineError) throw mineError;
-
-      const allAvailable = (available ?? []) as DriverOrder[];
-      const myList = (mine ?? []) as DriverOrder[];
-      const visibleAvailable = allAvailable.filter((o) => {
-  if (o.kind === "food") return o.status === "ready";
-  if (o.kind === "pickup_dropoff") return o.status === "pending";
-  return false;
-});
-
-setAvailableOrders(visibleAvailable);
-setMyOrders(myList);
-
-if (!activeOffer && visibleAvailable.length > 0) {
-  setActiveOffer(visibleAvailable[0]);
-  setCountdown(60);
-} else if (visibleAvailable.length === 0) {
-  setActiveOffer(null);
-}
-    } catch (e: any) {
-      console.log("Erreur chargement commandes driver:", e);
-      setError(t("driver.home.errors.loadOrders", "Impossible de charger les commandes."));
-    } finally {
-      setLoading(false);
-    }
-  }, [isOnline, activeOffer, getUserIdOrThrow, t]);
+    },
+    [isOnline, getUserIdOrThrow, t]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -514,13 +595,19 @@ if (!activeOffer && visibleAvailable.length > 0) {
 
   const formatKind = useCallback(
     (kind: OrderKind, restaurantName: string | null) => {
-      if (kind === "food") {
+      const normalizedKind = normalizeKind(kind);
+
+      if (normalizedKind === "food") {
         return restaurantName
           ? t("driver.home.kind.foodWithName", "Commande restaurant · {{name}}", { name: restaurantName })
           : t("driver.home.kind.food", "Commande restaurant");
       }
-      if (kind === "pickup_dropoff") return t("driver.home.kind.pickup_dropoff", "Course pickup / dropoff");
-      return String(kind);
+
+      if (normalizedKind === "pickup_dropoff") {
+        return t("driver.home.kind.pickup_dropoff", "Course pickup / dropoff");
+      }
+
+      return String(kind ?? "—");
     },
     [t]
   );
@@ -544,7 +631,9 @@ if (!activeOffer && visibleAvailable.length > 0) {
         setAcceptingId(orderId);
 
         const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+        if (!sessionData.session) {
+          throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+        }
 
         const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", {
           p_order_id: orderId,
@@ -561,6 +650,9 @@ if (!activeOffer && visibleAvailable.length > 0) {
         await stopSound();
 
         setActiveOffer(null);
+        setCountdown(60);
+        lastOfferIdRef.current = null;
+
         await fetchDriverOrders();
 
         navAny.navigate("DriverOrderDetails", { orderId });
@@ -580,14 +672,20 @@ if (!activeOffer && visibleAvailable.length > 0) {
   const handleDeclineActiveOffer = useCallback(async () => {
     await stopSound();
     setActiveOffer(null);
+    setCountdown(60);
+    lastOfferIdRef.current = null;
   }, [stopSound]);
 
   useEffect(() => {
     if (!activeOffer) return;
+
     if (countdown <= 0) {
       setActiveOffer(null);
+      setCountdown(60);
+      lastOfferIdRef.current = null;
       return;
     }
+
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
   }, [activeOffer, countdown]);
@@ -648,7 +746,9 @@ if (!activeOffer && visibleAvailable.length > 0) {
 
             try {
               await soundRef.current.setVolumeAsync(volume);
-            } catch {}
+            } catch (e) {
+              console.log("setVolumeAsync error:", e);
+            }
           }, 1000);
         }, 10000);
 
@@ -772,7 +872,7 @@ if (!activeOffer && visibleAvailable.length > 0) {
         setIsOnline(true);
 
         await startDbGpsTracking(userId);
-        await fetchDriverOrders();
+        await fetchDriverOrders(true);
         return;
       }
 
@@ -1127,10 +1227,7 @@ if (!activeOffer && visibleAvailable.length > 0) {
                       </Text>
                       <Text style={{ color: "#4ADE80", fontSize: 15, fontWeight: "800" }}>
                         {(() => {
-                          const gain =
-                            activeOffer.driver_delivery_payout ??
-                            activeOffer.delivery_fee ??
-                            activeOffer.total;
+                          const gain = getBestDriverAmount(activeOffer);
                           return gain != null ? `${gain.toFixed(2)} USD` : "—";
                         })()}
                       </Text>
@@ -1189,7 +1286,6 @@ if (!activeOffer && visibleAvailable.length > 0) {
                 }}
                 {...panResponder.panHandlers}
               >
-                {/* PREMIUM SEARCH BAR */}
                 <Animated.View
                   style={{
                     transform: [{ scale: searchPulseScale }],
@@ -1207,7 +1303,6 @@ if (!activeOffer && visibleAvailable.length > 0) {
                     elevation: 10,
                   }}
                 >
-                  {/* glow background */}
                   <Animated.View
                     pointerEvents="none"
                     style={{
@@ -1234,7 +1329,6 @@ if (!activeOffer && visibleAvailable.length > 0) {
                         alignItems: "center",
                       }}
                     >
-                      {/* MMD LOGO PREMIUM */}
                       <Animated.View
                         style={{
                           transform: [{ scale: radarInnerScale }],
@@ -1270,7 +1364,6 @@ if (!activeOffer && visibleAvailable.length > 0) {
                         </View>
                       </Animated.View>
 
-                      {/* text */}
                       <View style={{ flex: 1 }}>
                         <View
                           style={{
@@ -1326,7 +1419,6 @@ if (!activeOffer && visibleAvailable.length > 0) {
                       </View>
                     </View>
 
-                    {/* status chips */}
                     <View
                       style={{
                         flexDirection: "row",
@@ -1382,7 +1474,6 @@ if (!activeOffer && visibleAvailable.length > 0) {
                     </View>
                   </View>
 
-                  {/* shimmer */}
                   <Animated.View
                     pointerEvents="none"
                     style={{
@@ -1396,7 +1487,6 @@ if (!activeOffer && visibleAvailable.length > 0) {
                   />
                 </Animated.View>
 
-                {/* MY ACTIVE DELIVERIES PANEL */}
                 <View
                   style={{
                     backgroundColor: "rgba(15,23,42,0.96)",
@@ -1524,13 +1614,10 @@ if (!activeOffer && visibleAvailable.length > 0) {
                             <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
                               {t("driver.home.labels.driverEarnings", "Driver earnings:")}{" "}
                               <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
-                                {order.driver_delivery_payout != null
-                                  ? `${order.driver_delivery_payout.toFixed(2)} USD`
-                                  : order.delivery_fee != null
-                                  ? `${order.delivery_fee.toFixed(2)} USD`
-                                  : order.total != null
-                                  ? `${order.total.toFixed(2)} USD`
-                                  : "—"}
+                                {(() => {
+                                  const amount = getBestDriverAmount(order);
+                                  return amount != null ? `${amount.toFixed(2)} USD` : "—";
+                                })()}
                               </Text>
                             </Text>
                           </View>

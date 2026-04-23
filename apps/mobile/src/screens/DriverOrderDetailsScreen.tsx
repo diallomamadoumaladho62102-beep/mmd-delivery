@@ -12,6 +12,7 @@ import {
   TextInput,
   Platform,
   Linking,
+  Image,
 } from "react-native";
 import MapView, { Marker, Polyline, Region } from "react-native-maps";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
@@ -21,6 +22,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../lib/apiBase";
+import * as ImagePicker from "expo-image-picker";
 
 import {
   startDriverLocationTracking,
@@ -61,6 +63,8 @@ type Order = {
 
 type VerifyKind = "pickup" | "dropoff";
 
+const PROOF_BUCKET = "delivery-proofs";
+
 function formatMoneyUSD(v: number | null) {
   if (v == null) return "—";
   return `${v.toFixed(2)} USD`;
@@ -99,6 +103,13 @@ function getApiBaseUrl() {
   return raw;
 }
 
+function normalizeKind(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+}
+
 export function DriverOrderDetailsScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DriverOrderDetailsRoute>();
@@ -113,9 +124,14 @@ export function DriverOrderDetailsScreen() {
   const [codeInput, setCodeInput] = useState("");
   const [submittingCode, setSubmittingCode] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
+  const [proofUploading, setProofUploading] = useState(false);
 
   const mapRef = useRef<MapView | null>(null);
   const didFitRef = useRef(false);
+
+  const normalizedKind = useMemo(() => normalizeKind(order?.kind), [order?.kind]);
+  const isPickupDropoff = normalizedKind === "pickup_dropoff";
 
   const pickupCoord = useMemo(() => {
     if (order?.pickup_lat == null || order?.pickup_lng == null) return null;
@@ -170,8 +186,31 @@ export function DriverOrderDetailsScreen() {
     }
   }, [pickupCoord, dropoffCoord]);
 
-  function formatStatusLabel(status: OrderStatus) {
-    switch (status) {
+  function formatStatusLabel(currentOrder: Order) {
+    const kind = normalizeKind(currentOrder.kind);
+
+    if (kind === "pickup_dropoff") {
+      switch (currentOrder.status) {
+        case "pending":
+          return t("driver.orderDetails.status.pd_pending", "En attente d’un chauffeur");
+        case "accepted":
+          return t("driver.orderDetails.status.pd_accepted", "Pickup à confirmer");
+        case "prepared":
+          return t("driver.orderDetails.status.pd_prepared", "Pickup à confirmer");
+        case "ready":
+          return t("driver.orderDetails.status.pd_ready", "Pickup prêt à confirmer");
+        case "dispatched":
+          return t("driver.orderDetails.status.pd_dispatched", "En route vers le destinataire");
+        case "delivered":
+          return t("driver.orderDetails.status.delivered", "Livrée");
+        case "canceled":
+          return t("driver.orderDetails.status.canceled", "Annulée");
+        default:
+          return currentOrder.status;
+      }
+    }
+
+    switch (currentOrder.status) {
       case "pending":
         return t("driver.orderDetails.status.pending", "En attente d’un chauffeur");
       case "accepted":
@@ -186,7 +225,7 @@ export function DriverOrderDetailsScreen() {
       case "canceled":
         return t("driver.orderDetails.status.canceled", "Annulée");
       default:
-        return status;
+        return currentOrder.status;
     }
   }
 
@@ -199,6 +238,9 @@ export function DriverOrderDetailsScreen() {
     }
     if (status === "ready") {
       return { bg: "#1E293B", border: "#60A5FA", text: "#BFDBFE" };
+    }
+    if (status === "accepted" || status === "prepared") {
+      return { bg: "#172554", border: "#3B82F6", text: "#BFDBFE" };
     }
     if (status === "canceled") {
       return { bg: "#7F1D1D", border: "#FCA5A5", text: "#FECACA" };
@@ -331,7 +373,7 @@ export function DriverOrderDetailsScreen() {
     if (isMine && isEnded) {
       stopDriverLocationTracking();
     }
-  }, [order?.status, order?.driver_id, myUserId]);
+  }, [order?.status, order?.driver_id, myUserId, order]);
 
   function openMapsSingle(params: {
     address: string | null;
@@ -407,8 +449,16 @@ export function DriverOrderDetailsScreen() {
   const isAssignedDriver =
     !!order && !!myUserId && !!order.driver_id && order.driver_id === myUserId;
 
-  const canPickup = !!order && order.status === "ready" && isAssignedDriver;
+  const canPickup =
+    !!order &&
+    isAssignedDriver &&
+    (
+      (isPickupDropoff && ["accepted", "prepared", "ready"].includes(order.status)) ||
+      (!isPickupDropoff && order.status === "ready")
+    );
+
   const canDeliver = !!order && order.status === "dispatched" && isAssignedDriver;
+
   const canAccept =
     !!order &&
     !order.driver_id &&
@@ -421,13 +471,16 @@ export function DriverOrderDetailsScreen() {
     if (kind === "pickup" && !canPickup) return;
     if (kind === "dropoff" && !canDeliver) return;
     setCodeInput("");
+    setProofPhotoUri(null);
     setVerifyingKind(kind);
   }
 
   function closeCodeModal() {
     setVerifyingKind(null);
     setCodeInput("");
+    setProofPhotoUri(null);
     setSubmittingCode(false);
+    setProofUploading(false);
   }
 
   const transportFee = order?.delivery_fee ?? null;
@@ -438,7 +491,89 @@ export function DriverOrderDetailsScreen() {
       ? Math.round(transportFee * 0.8 * 100) / 100
       : null;
 
-  async function callConfirmRoute(kind: VerifyKind, currentOrderId: string) {
+  async function takeProofPhoto() {
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+      if (permission.status !== "granted") {
+        Alert.alert(
+          t("driver.orderDetails.photo.permissionTitle", "Caméra"),
+          t(
+            "driver.orderDetails.photo.permissionBody",
+            "Autorise la caméra pour prendre une photo de preuve."
+          )
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.75,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) {
+        return;
+      }
+
+      setProofPhotoUri(result.assets[0].uri);
+    } catch (e: any) {
+      console.log("takeProofPhoto error:", e);
+      Alert.alert(
+        t("common.error", "Erreur"),
+        e?.message ??
+          t(
+            "driver.orderDetails.photo.captureError",
+            "Impossible de prendre la photo pour le moment."
+          )
+      );
+    }
+  }
+
+  async function uploadProofPhoto(params: {
+    orderId: string;
+    kind: VerifyKind;
+    photoUri: string;
+  }) {
+    const { orderId: currentOrderId, kind, photoUri } = params;
+
+    setProofUploading(true);
+    try {
+      const response = await fetch(photoUri);
+      const blob = await response.blob();
+
+      const ext = "jpg";
+      const filePath = `${currentOrderId}/${kind}-${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(PROOF_BUCKET)
+        .upload(filePath, blob, {
+          contentType: "image/jpeg",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: publicData } = supabase.storage
+        .from(PROOF_BUCKET)
+        .getPublicUrl(filePath);
+
+      return {
+        storagePath: filePath,
+        publicUrl: publicData?.publicUrl ?? null,
+      };
+    } finally {
+      setProofUploading(false);
+    }
+  }
+
+  async function callConfirmRoute(
+    kind: VerifyKind,
+    currentOrderId: string,
+    proofPhotoUrl: string | null
+  ) {
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession();
 
@@ -456,7 +591,7 @@ export function DriverOrderDetailsScreen() {
       );
     }
 
-    const apiBaseUrl = API_BASE_URL;
+    const apiBaseUrl = getApiBaseUrl();
 
     const endpoint =
       kind === "pickup"
@@ -469,7 +604,10 @@ export function DriverOrderDetailsScreen() {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ order_id: currentOrderId }),
+      body: JSON.stringify({
+        order_id: currentOrderId,
+        proof_photo_url: proofPhotoUrl,
+      }),
     });
 
     const result = await response.json().catch(() => null);
@@ -566,6 +704,17 @@ export function DriverOrderDetailsScreen() {
       return;
     }
 
+    if (!proofPhotoUri) {
+      Alert.alert(
+        t("driver.orderDetails.photo.requiredTitle", "Photo requise"),
+        t(
+          "driver.orderDetails.photo.requiredBody",
+          "Prends une photo de preuve avant de valider."
+        )
+      );
+      return;
+    }
+
     try {
       setSubmittingCode(true);
 
@@ -606,7 +755,13 @@ export function DriverOrderDetailsScreen() {
         return;
       }
 
-      await callConfirmRoute(kind, order.id);
+      const uploaded = await uploadProofPhoto({
+        orderId: order.id,
+        kind,
+        photoUri: proofPhotoUri,
+      });
+
+      await callConfirmRoute(kind, order.id, uploaded.publicUrl);
       await fetchOrder();
       closeCodeModal();
 
@@ -714,7 +869,11 @@ export function DriverOrderDetailsScreen() {
           {pickupCoord && (
             <Marker
               coordinate={pickupCoord}
-              title={t("driver.orderDetails.map.pickupTitle", "Restaurant")}
+              title={
+                isPickupDropoff
+                  ? t("driver.orderDetails.map.pickupGeneric", "Pickup")
+                  : t("driver.orderDetails.map.pickupTitle", "Restaurant")
+              }
               description={order.pickup_address ?? undefined}
             />
           )}
@@ -722,7 +881,11 @@ export function DriverOrderDetailsScreen() {
           {dropoffCoord && (
             <Marker
               coordinate={dropoffCoord}
-              title={t("driver.orderDetails.map.dropoffTitle", "Client")}
+              title={
+                isPickupDropoff
+                  ? t("driver.orderDetails.map.dropoffGeneric", "Dropoff")
+                  : t("driver.orderDetails.map.dropoffTitle", "Client")
+              }
               description={order.dropoff_address ?? undefined}
             />
           )}
@@ -785,9 +948,13 @@ export function DriverOrderDetailsScreen() {
         >
           <View style={{ flex: 1, paddingRight: 10 }}>
             <Text style={{ color: "white", fontSize: 22, fontWeight: "800", marginBottom: 4 }}>
-              {t("driver.orderDetails.header.title", "Course #{{id}}", {
-                id: order.id.slice(0, 8),
-              })}
+              {isPickupDropoff
+                ? t("driver.orderDetails.header.tripTitle", "Trip #{{id}}", {
+                    id: order.id.slice(0, 8),
+                  })
+                : t("driver.orderDetails.header.title", "Course #{{id}}", {
+                    id: order.id.slice(0, 8),
+                  })}
             </Text>
             <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
               {t("driver.orderDetails.header.createdAt", "Créée le : {{date}}", {
@@ -808,7 +975,7 @@ export function DriverOrderDetailsScreen() {
             }}
           >
             <Text style={{ color: badge.text, fontSize: 12, fontWeight: "700" }}>
-              {formatStatusLabel(order.status)}
+              {formatStatusLabel(order)}
             </Text>
           </View>
         </View>
@@ -824,10 +991,12 @@ export function DriverOrderDetailsScreen() {
           }}
         >
           <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
-            {t("driver.orderDetails.steps.title", "Étapes")}
+            {isPickupDropoff
+              ? t("driver.orderDetails.steps.stops", "Stops")
+              : t("driver.orderDetails.steps.title", "Étapes")}
           </Text>
 
-          {order.restaurant_name && (
+          {!!order.restaurant_name && !isPickupDropoff && (
             <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 8 }}>
               {t("driver.orderDetails.steps.restaurant", "Restaurant : ")}
               <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
@@ -838,7 +1007,9 @@ export function DriverOrderDetailsScreen() {
 
           <View style={{ marginBottom: 10 }}>
             <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {t("driver.orderDetails.steps.pickup", "Retrait ")}
+              {isPickupDropoff
+                ? t("driver.orderDetails.steps.pickupPoint", "Pickup ")
+                : t("driver.orderDetails.steps.pickup", "Retrait ")}
               <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
                 {order.pickup_address ?? "—"}
               </Text>
@@ -847,7 +1018,9 @@ export function DriverOrderDetailsScreen() {
 
           <View style={{ marginBottom: 12 }}>
             <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {t("driver.orderDetails.steps.dropoff", "Livraison ")}
+              {isPickupDropoff
+                ? t("driver.orderDetails.steps.dropoffPoint", "Dropoff ")
+                : t("driver.orderDetails.steps.dropoff", "Livraison ")}
               <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
                 {order.dropoff_address ?? "—"}
               </Text>
@@ -868,7 +1041,9 @@ export function DriverOrderDetailsScreen() {
               }}
             >
               <Text style={{ color: "#BFDBFE", fontSize: 12, fontWeight: "800" }}>
-                {t("driver.orderDetails.actions.goPickup", "Aller au retrait")}
+                {isPickupDropoff
+                  ? t("driver.orderDetails.actions.goPickupGeneric", "Go to pickup")
+                  : t("driver.orderDetails.actions.goPickup", "Aller au retrait")}
               </Text>
             </TouchableOpacity>
 
@@ -884,7 +1059,9 @@ export function DriverOrderDetailsScreen() {
               }}
             >
               <Text style={{ color: "#BBF7D0", fontSize: 12, fontWeight: "800" }}>
-                {t("driver.orderDetails.actions.goDropoff", "Aller à la livraison")}
+                {isPickupDropoff
+                  ? t("driver.orderDetails.actions.goDropoffGeneric", "Go to dropoff")
+                  : t("driver.orderDetails.actions.goDropoff", "Aller à la livraison")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -901,7 +1078,9 @@ export function DriverOrderDetailsScreen() {
           }}
         >
           <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
-            {t("driver.orderDetails.summary.title", "Résumé transport")}
+            {isPickupDropoff
+              ? t("driver.orderDetails.summary.transportTitle", "Summary")
+              : t("driver.orderDetails.summary.title", "Résumé transport")}
           </Text>
 
           <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -955,7 +1134,9 @@ export function DriverOrderDetailsScreen() {
           }}
         >
           <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
-            {t("driver.orderDetails.earnings.title", "Rémunération (transport)")}
+            {isPickupDropoff
+              ? t("driver.orderDetails.earnings.estimateTitle", "Earnings (estimate)")
+              : t("driver.orderDetails.earnings.title", "Rémunération (transport)")}
           </Text>
 
           <View
@@ -1016,7 +1197,9 @@ export function DriverOrderDetailsScreen() {
                 fontWeight: "800",
               }}
             >
-              {t("driver.orderDetails.verify.pickupBtn", "Valider retrait (code)")}
+              {isPickupDropoff
+                ? t("driver.orderDetails.verify.pickupBtnPd", "Verify pickup (code + photo)")
+                : t("driver.orderDetails.verify.pickupBtn", "Valider retrait (code + photo)")}
             </Text>
           </TouchableOpacity>
 
@@ -1040,15 +1223,22 @@ export function DriverOrderDetailsScreen() {
                 fontWeight: "800",
               }}
             >
-              {t("driver.orderDetails.verify.dropoffBtn", "Valider livraison (code)")}
+              {isPickupDropoff
+                ? t("driver.orderDetails.verify.dropoffBtnPd", "Verify dropoff (code + photo)")
+                : t("driver.orderDetails.verify.dropoffBtn", "Valider livraison (code + photo)")}
             </Text>
           </TouchableOpacity>
 
           <Text style={{ marginTop: 10, color: "#6B7280", fontSize: 11 }}>
-            {t(
-              "driver.orderDetails.verify.autoHint",
-              "Les boutons s’activent automatiquement au bon moment selon le statut."
-            )}
+            {isPickupDropoff
+              ? t(
+                  "driver.orderDetails.verify.autoHintPd",
+                  "Pour les courses pickup/dropoff, le code et la photo sont obligatoires au pickup et au dropoff."
+                )
+              : t(
+                  "driver.orderDetails.verify.autoHint",
+                  "Les boutons s’activent automatiquement au bon moment selon le statut."
+                )}
           </Text>
         </View>
 
@@ -1147,15 +1337,29 @@ export function DriverOrderDetailsScreen() {
           >
             <Text style={{ color: "#F9FAFB", fontSize: 16, fontWeight: "900", marginBottom: 8 }}>
               {verifyingKind === "pickup"
-                ? t("driver.orderDetails.modal.pickupTitle", "Code de retrait")
+                ? isPickupDropoff
+                  ? t("driver.orderDetails.modal.pickupTitlePd", "Pickup verification")
+                  : t("driver.orderDetails.modal.pickupTitle", "Code de retrait")
+                : isPickupDropoff
+                ? t("driver.orderDetails.modal.dropoffTitlePd", "Dropoff verification")
                 : t("driver.orderDetails.modal.dropoffTitle", "Code de livraison")}
             </Text>
 
             <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 10 }}>
-              {t(
-                "driver.orderDetails.modal.hint",
-                "Demande le code à la personne (restaurant ou client) et saisis-le."
-              )}
+              {isPickupDropoff
+                ? verifyingKind === "pickup"
+                  ? t(
+                      "driver.orderDetails.modal.hintPickupPd",
+                      "Demande le code à la personne qui remet le colis, puis prends une photo de preuve."
+                    )
+                  : t(
+                      "driver.orderDetails.modal.hintDropoffPd",
+                      "Demande le code au destinataire, puis prends une photo de preuve de remise."
+                    )
+                : t(
+                    "driver.orderDetails.modal.hint",
+                    "Demande le code à la personne (restaurant ou client) et saisis-le."
+                  )}
             </Text>
 
             <TextInput
@@ -1175,10 +1379,55 @@ export function DriverOrderDetailsScreen() {
               }}
             />
 
+            <TouchableOpacity
+              onPress={takeProofPhoto}
+              disabled={submittingCode || proofUploading}
+              style={{
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "#334155",
+                backgroundColor: "#0F172A",
+                paddingVertical: 12,
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ color: "#BFDBFE", fontSize: 13, fontWeight: "800" }}>
+                {proofPhotoUri
+                  ? t("driver.orderDetails.photo.retake", "Reprendre la photo")
+                  : t("driver.orderDetails.photo.take", "Prendre la photo de preuve")}
+              </Text>
+            </TouchableOpacity>
+
+            {proofPhotoUri ? (
+              <View
+                style={{
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  borderWidth: 1,
+                  borderColor: "#1F2937",
+                  marginBottom: 12,
+                }}
+              >
+                <Image
+                  source={{ uri: proofPhotoUri }}
+                  style={{ width: "100%", height: 180, backgroundColor: "#111827" }}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
+
+            <Text style={{ color: "#6B7280", fontSize: 11, marginBottom: 12 }}>
+              {t(
+                "driver.orderDetails.photo.requiredHint",
+                "Le code et la photo sont obligatoires pour valider cette étape."
+              )}
+            </Text>
+
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <TouchableOpacity
                 onPress={closeCodeModal}
-                disabled={submittingCode}
+                disabled={submittingCode || proofUploading}
                 style={{
                   paddingVertical: 10,
                   paddingHorizontal: 14,
@@ -1195,17 +1444,17 @@ export function DriverOrderDetailsScreen() {
 
               <TouchableOpacity
                 onPress={handleSubmitCode}
-                disabled={submittingCode}
+                disabled={submittingCode || proofUploading}
                 style={{
                   paddingVertical: 10,
                   paddingHorizontal: 16,
                   borderRadius: 999,
                   backgroundColor: "#22C55E",
-                  opacity: submittingCode ? 0.6 : 1,
+                  opacity: submittingCode || proofUploading ? 0.6 : 1,
                 }}
               >
                 <Text style={{ color: "white", fontSize: 13, fontWeight: "900" }}>
-                  {submittingCode
+                  {submittingCode || proofUploading
                     ? t("driver.orderDetails.modal.verifying", "Vérification...")
                     : t("driver.orderDetails.modal.submit", "Valider")}
                 </Text>
