@@ -14,8 +14,11 @@ type OrderStatus =
   | "delivered"
   | "canceled";
 
+type OrderKind = "pickup_dropoff" | "food" | string;
+
 type OrderRow = {
   id: string;
+  kind: OrderKind | null;
   status: OrderStatus;
   created_at: string;
   restaurant_name: string | null;
@@ -25,17 +28,16 @@ type OrderRow = {
   distance_miles?: number | null;
   eta_minutes?: number | null;
   delivery_fee?: number | null;
+  driver_id?: string | null;
+  pickup_address?: string | null;
+  dropoff_address?: string | null;
+  client_user_id?: string | null;
+  created_by?: string | null;
 };
 
 type Me = {
   id: string;
   full_name: string | null;
-};
-
-type MemberRow = {
-  order_id: string;
-  user_id: string;
-  role: string;
 };
 
 type ClientProfile = {
@@ -94,8 +96,28 @@ const ACTIVE_STATUSES: OrderStatus[] = [
   "dispatched",
 ];
 
-function driverStatusLabel(s: OrderStatus): string {
-  switch (s) {
+function driverStatusLabel(order: OrderRow): string {
+  if (order.kind === "pickup_dropoff") {
+    switch (order.status) {
+      case "pending":
+        return "Course transport en attente";
+      case "accepted":
+      case "prepared":
+        return "Course acceptée";
+      case "ready":
+        return "Prête pour retrait";
+      case "dispatched":
+        return "En livraison";
+      case "delivered":
+        return "Livrée";
+      case "canceled":
+        return "Annulée";
+      default:
+        return order.status;
+    }
+  }
+
+  switch (order.status) {
     case "pending":
       return "En attente (envoi au restaurant)";
     case "accepted":
@@ -111,8 +133,14 @@ function driverStatusLabel(s: OrderStatus): string {
     case "canceled":
       return "Annulée";
     default:
-      return s;
+      return order.status;
   }
+}
+
+function orderKindLabel(kind: OrderKind | null | undefined): string {
+  if (kind === "pickup_dropoff") return "Pickup & dropoff";
+  if (kind === "food") return "Commande restaurant";
+  return "Commande";
 }
 
 function getAvatarSrc(url: string | null): string | null {
@@ -127,6 +155,26 @@ function transportModeLabel(value: string | null | undefined): string {
   if (value === "moto") return "Moto";
   if (value === "car") return "Car";
   return "—";
+}
+
+function isAvailableForDriver(order: OrderRow): boolean {
+  if (order.driver_id) return false;
+  if (order.status === "delivered" || order.status === "canceled") return false;
+
+  if (order.kind === "pickup_dropoff") {
+    return order.status === "pending";
+  }
+
+  if (order.kind === "food") {
+    return order.status === "ready";
+  }
+
+  return false;
+}
+
+function isMineForDriver(order: OrderRow, uid: string): boolean {
+  if (order.driver_id !== uid) return false;
+  return order.status !== "delivered" && order.status !== "canceled";
 }
 
 export default function DriverOrdersDashboardPage() {
@@ -323,6 +371,7 @@ export default function DriverOrdersDashboardPage() {
         .select(
           `
           id,
+          kind,
           status,
           created_at,
           restaurant_name,
@@ -331,7 +380,12 @@ export default function DriverOrdersDashboardPage() {
           total,
           distance_miles,
           eta_minutes,
-          delivery_fee
+          delivery_fee,
+          driver_id,
+          pickup_address,
+          dropoff_address,
+          client_user_id,
+          created_by
         `,
         )
         .in("status", ACTIVE_STATUSES)
@@ -340,48 +394,20 @@ export default function DriverOrdersDashboardPage() {
       if (ordersError) throw ordersError;
 
       const allOrders = (ordersData || []) as OrderRow[];
-      const orderIds = allOrders.map((o) => o.id);
 
-      if (orderIds.length === 0) {
-        setAvailable([]);
-        setMine([]);
-        setClientByOrder({});
-        setLoading(false);
-        return;
-      }
-
-      const { data: membersData, error: membersError } = await supabase
-        .from("order_members")
-        .select("order_id, user_id, role")
-        .in("order_id", orderIds);
-
-      if (membersError) throw membersError;
-
-      const members = (membersData || []) as MemberRow[];
-
-      const mineOrders = allOrders.filter((o) =>
-        members.some(
-          (m) =>
-            m.order_id === o.id &&
-            m.role === "driver" &&
-            m.user_id === uid &&
-            o.status !== "delivered" &&
-            o.status !== "canceled",
-        ),
-      );
-
-      const availableOrders = allOrders.filter(
-        (o) =>
-          o.status !== "delivered" &&
-          o.status !== "canceled" &&
-          !members.some((m) => m.order_id === o.id && m.role === "driver"),
-      );
+      const mineOrders = allOrders.filter((o) => isMineForDriver(o, uid));
+      const availableOrders = allOrders.filter((o) => isAvailableForDriver(o));
 
       setMine(mineOrders);
       setAvailable(availableOrders);
 
-      const clientMembers = members.filter((m) => m.role === "client");
-      const clientIds = Array.from(new Set(clientMembers.map((m) => m.user_id)));
+      const clientIds = Array.from(
+        new Set(
+          allOrders
+            .map((o) => o.client_user_id ?? o.created_by ?? null)
+            .filter((v): v is string => typeof v === "string" && v.length > 0),
+        ),
+      );
 
       if (clientIds.length === 0) {
         setClientByOrder({});
@@ -412,8 +438,9 @@ export default function DriverOrdersDashboardPage() {
       }
 
       const byOrder: Record<string, ClientProfile | null> = {};
-      for (const m of clientMembers) {
-        byOrder[m.order_id] = profilesMap.get(m.user_id) ?? null;
+      for (const order of allOrders) {
+        const clientId = order.client_user_id ?? order.created_by ?? null;
+        byOrder[order.id] = clientId ? profilesMap.get(clientId) ?? null : null;
       }
 
       setClientByOrder(byOrder);
@@ -679,7 +706,7 @@ export default function DriverOrdersDashboardPage() {
           <div>
             <h2 className="text-lg font-semibold">Courses à accepter</h2>
             <p className="text-xs text-gray-500">
-              Commandes prêtes ou en cours sans driver assigné.
+              Courses pickup/dropoff en attente et commandes restaurant prêtes sans driver assigné.
             </p>
           </div>
 
@@ -692,9 +719,7 @@ export default function DriverOrdersDashboardPage() {
               {available.map((order) => {
                 const shortId = order.id.slice(0, 8);
                 const client = clientByOrder[order.id] ?? null;
-                const avatarSrc = client
-                  ? getAvatarSrc(client.avatar_url)
-                  : null;
+                const avatarSrc = client ? getAvatarSrc(client.avatar_url) : null;
 
                 return (
                   <article
@@ -704,17 +729,32 @@ export default function DriverOrdersDashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold">
-                          Commande #{shortId}
+                          {orderKindLabel(order.kind)} #{shortId}
                         </p>
                         <p className="text-xs text-gray-500">
                           Créée le {formatDate(order.created_at)}
                         </p>
+
                         {order.restaurant_name && (
                           <p className="text-xs text-gray-600">
                             Restaurant :{" "}
                             <span className="font-medium">
                               {order.restaurant_name}
                             </span>
+                          </p>
+                        )}
+
+                        {order.pickup_address && (
+                          <p className="text-xs text-gray-600">
+                            Pickup :{" "}
+                            <span className="font-medium">{order.pickup_address}</span>
+                          </p>
+                        )}
+
+                        {order.dropoff_address && (
+                          <p className="text-xs text-gray-600">
+                            Dropoff :{" "}
+                            <span className="font-medium">{order.dropoff_address}</span>
                           </p>
                         )}
 
@@ -728,9 +768,7 @@ export default function DriverOrdersDashboardPage() {
                               />
                             ) : (
                               <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold">
-                                {(client.full_name || "C")
-                                  .charAt(0)
-                                  .toUpperCase()}
+                                {(client.full_name || "C").charAt(0).toUpperCase()}
                               </div>
                             )}
                             <span className="text-xs text-gray-700">
@@ -746,7 +784,7 @@ export default function DriverOrdersDashboardPage() {
                       </div>
 
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium bg-emerald-50 text-emerald-700 border-emerald-200">
-                        {driverStatusLabel(order.status)}
+                        {driverStatusLabel(order)}
                       </span>
                     </div>
 
@@ -754,9 +792,7 @@ export default function DriverOrdersDashboardPage() {
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
                         <p>
                           <span className="text-gray-500 mr-1">Distance :</span>
-                          <span className="font-medium">
-                            {formatDistance(order)}
-                          </span>
+                          <span className="font-medium">{formatDistance(order)}</span>
                         </p>
                         <p>
                           <span className="text-gray-500 mr-1">Temps :</span>
@@ -835,9 +871,7 @@ export default function DriverOrdersDashboardPage() {
               {mine.map((order) => {
                 const shortId = order.id.slice(0, 8);
                 const client = clientByOrder[order.id] ?? null;
-                const avatarSrc = client
-                  ? getAvatarSrc(client.avatar_url)
-                  : null;
+                const avatarSrc = client ? getAvatarSrc(client.avatar_url) : null;
 
                 return (
                   <article
@@ -847,17 +881,32 @@ export default function DriverOrdersDashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold">
-                          Commande #{shortId}
+                          {orderKindLabel(order.kind)} #{shortId}
                         </p>
                         <p className="text-xs text-gray-500">
                           Créée le {formatDate(order.created_at)}
                         </p>
+
                         {order.restaurant_name && (
                           <p className="text-xs text-gray-600">
                             Restaurant :{" "}
                             <span className="font-medium">
                               {order.restaurant_name}
                             </span>
+                          </p>
+                        )}
+
+                        {order.pickup_address && (
+                          <p className="text-xs text-gray-600">
+                            Pickup :{" "}
+                            <span className="font-medium">{order.pickup_address}</span>
+                          </p>
+                        )}
+
+                        {order.dropoff_address && (
+                          <p className="text-xs text-gray-600">
+                            Dropoff :{" "}
+                            <span className="font-medium">{order.dropoff_address}</span>
                           </p>
                         )}
 
@@ -871,9 +920,7 @@ export default function DriverOrdersDashboardPage() {
                               />
                             ) : (
                               <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold">
-                                {(client.full_name || "C")
-                                  .charAt(0)
-                                  .toUpperCase()}
+                                {(client.full_name || "C").charAt(0).toUpperCase()}
                               </div>
                             )}
                             <span className="text-xs text-gray-700">
@@ -889,16 +936,14 @@ export default function DriverOrdersDashboardPage() {
                       </div>
 
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium bg-blue-50 text-blue-700 border-blue-200">
-                        {driverStatusLabel(order.status)}
+                        {driverStatusLabel(order)}
                       </span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-4 text-xs text-gray-700">
                       <p>
                         <span className="text-gray-500 mr-1">Distance :</span>
-                        <span className="font-medium">
-                          {formatDistance(order)}
-                        </span>
+                        <span className="font-medium">{formatDistance(order)}</span>
                       </p>
                       <p>
                         <span className="text-gray-500 mr-1">Temps :</span>
