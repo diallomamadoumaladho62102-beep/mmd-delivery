@@ -31,6 +31,26 @@ function isSameLocalDay(a: Date, b: Date) {
   );
 }
 
+function getFunctionErrorMessage(error: any) {
+  const contextBody = error?.context?.body;
+
+  if (typeof contextBody === "string" && contextBody.trim()) {
+    try {
+      const parsed = JSON.parse(contextBody);
+      if (typeof parsed?.error === "string") return parsed.error;
+      if (typeof parsed?.message === "string") return parsed.message;
+    } catch {
+      return contextBody;
+    }
+  }
+
+  if (typeof error?.message === "string" && error.message.trim()) {
+    return error.message;
+  }
+
+  return "Unable to request cash out.";
+}
+
 export function DriverWalletScreen() {
   const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
@@ -40,15 +60,12 @@ export function DriverWalletScreen() {
   const [loading, setLoading] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
 
-  // Stripe status
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean>(false);
 
-  // Wallet amounts
-  const [availableAmount, setAvailableAmount] = useState<number>(0); // Available
-  const [pendingAmount, setPendingAmount] = useState<number>(0); // Pending
+  const [availableAmount, setAvailableAmount] = useState<number>(0);
+  const [pendingAmount, setPendingAmount] = useState<number>(0);
 
-  // Cashout rules
   const [cashoutBlockedToday, setCashoutBlockedToday] = useState<boolean>(false);
   const [lastCashoutAt, setLastCashoutAt] = useState<string | null>(null);
 
@@ -67,7 +84,8 @@ export function DriverWalletScreen() {
       try {
         setLoading(true);
 
-        const { data: sessionData, error: sErr } = await supabase.auth.getSession();
+        const { data: sessionData, error: sErr } =
+          await supabase.auth.getSession();
         if (sErr) console.log("getSession error:", sErr);
 
         const session = sessionData?.session;
@@ -89,11 +107,11 @@ export function DriverWalletScreen() {
         if (aliveRef && !aliveRef.alive) return;
         setDriverId(uid);
 
-        // 🔄 IMPORTANT: resync Stripe (updates driver_profiles)
-        const { error: syncErr } = await supabase.functions.invoke("check_connect_status");
+        const { error: syncErr } = await supabase.functions.invoke(
+          "check_connect_status"
+        );
         if (syncErr) console.log("check_connect_status error:", syncErr);
 
-        // 0) Stripe status from driver_profiles
         const { data: dp, error: dpErr } = await supabase
           .from("driver_profiles")
           .select("stripe_account_id, stripe_onboarded")
@@ -111,8 +129,6 @@ export function DriverWalletScreen() {
           setStripeOnboarded(Boolean((dp as any)?.stripe_onboarded));
         }
 
-        // 1) Available = delivered & driver_paid_out=false
-        // ✅ Include tip_cents to count tips too
         const { data: delivered, error: delErr } = await supabase
           .from("orders")
           .select("driver_delivery_payout, delivery_fee, total, tip_cents")
@@ -123,10 +139,8 @@ export function DriverWalletScreen() {
         if (delErr) throw delErr;
 
         const available = (delivered ?? []).reduce((sum, o: any) => {
-          // base driver payout
-          const base = o?.driver_delivery_payout ?? o?.delivery_fee ?? o?.total ?? 0;
-
-          // tip in dollars (tip_cents) — clamp >= 0
+          const base =
+            o?.driver_delivery_payout ?? o?.delivery_fee ?? o?.total ?? 0;
           const tipCents = toNumber(o?.tip_cents ?? 0);
           const tip = Math.max(0, tipCents) / 100;
 
@@ -136,7 +150,6 @@ export function DriverWalletScreen() {
         if (aliveRef && !aliveRef.alive) return;
         setAvailableAmount(Math.floor(available * 100) / 100);
 
-        // 2) Pending = payouts scheduled/processing
         const { data: pendPayouts, error: pendErr } = await supabase
           .from("driver_payouts")
           .select("amount")
@@ -156,7 +169,6 @@ export function DriverWalletScreen() {
           setPendingAmount(Math.floor(pending * 100) / 100);
         }
 
-        // 3) 1 cashout / day (last payout)
         const { data: lastPayoutRows, error: lpErr } = await supabase
           .from("driver_payouts")
           .select("created_at, status")
@@ -175,12 +187,9 @@ export function DriverWalletScreen() {
           const row = lastPayoutRows?.[0] ?? null;
           const createdAt = row?.created_at ? new Date(row.created_at) : null;
           setLastCashoutAt(row?.created_at ?? null);
-
-          if (createdAt && isSameLocalDay(createdAt, new Date())) {
-            setCashoutBlockedToday(true);
-          } else {
-            setCashoutBlockedToday(false);
-          }
+          setCashoutBlockedToday(
+            Boolean(createdAt && isSameLocalDay(createdAt, new Date()))
+          );
         }
       } catch (e: any) {
         console.log("fetchWallet error:", e);
@@ -200,6 +209,7 @@ export function DriverWalletScreen() {
     useCallback(() => {
       const aliveRef = { alive: true };
       void fetchWallet(aliveRef);
+
       return () => {
         aliveRef.alive = false;
       };
@@ -221,19 +231,20 @@ export function DriverWalletScreen() {
         "Enable Stripe payouts to cash out."
       );
     }
+
     if (cashoutBlockedToday) {
       return t(
         "driver.wallet.cashoutReason.alreadyToday",
         "You already requested a cash out today. Try again tomorrow."
       );
     }
+
     if (availableAmount < MIN_CASHOUT) {
-      return t(
-        "driver.wallet.cashoutReason.min",
-        "Minimum cash out: {{min}}.",
-        { min: fmtMoney(MIN_CASHOUT) }
-      );
+      return t("driver.wallet.cashoutReason.min", "Minimum cash out: {{min}}.", {
+        min: fmtMoney(MIN_CASHOUT),
+      });
     }
+
     return "";
   }, [stripeAccountId, stripeOnboarded, cashoutBlockedToday, availableAmount, t]);
 
@@ -242,14 +253,16 @@ export function DriverWalletScreen() {
 
     try {
       setLoading(true);
-
       await startStripeOnboarding("driver");
-
       await fetchWallet();
     } catch (e: any) {
       Alert.alert(
         t("driver.wallet.stripe.title", "Stripe"),
-        e?.message ?? t("driver.wallet.stripe.startError", "Unable to start Stripe onboarding.")
+        e?.message ??
+          t(
+            "driver.wallet.stripe.startError",
+            "Unable to start Stripe onboarding."
+          )
       );
     } finally {
       setLoading(false);
@@ -257,12 +270,13 @@ export function DriverWalletScreen() {
   }, [loading, fetchWallet, t]);
 
   const onPressCashout = useCallback(async () => {
-    if (!driverId) return;
+    if (!driverId || loading) return;
 
     if (!canCashout) {
       Alert.alert(
         t("driver.wallet.cashoutUnavailable.title", "Cash out unavailable"),
-        cashoutReason || t("driver.wallet.cashoutUnavailable.body", "Cash out unavailable.")
+        cashoutReason ||
+          t("driver.wallet.cashoutUnavailable.body", "Cash out unavailable.")
       );
       return;
     }
@@ -284,38 +298,56 @@ export function DriverWalletScreen() {
             try {
               setLoading(true);
 
-              const { data, error } = await supabase.functions.invoke("request_driver_cashout", {
-                body: { role: "driver" },
-              });
+              const { data, error } = await supabase.functions.invoke(
+                "process_driver_payouts",
+                {
+                  body: {
+                    role: "driver",
+                    source: "mobile_wallet_cashout",
+                  },
+                }
+              );
 
               if (error) {
-                console.log("request_driver_cashout error:", error);
-                const msg =
-                  // @ts-ignore
-                  typeof error?.context?.body === "string"
-                    ? // @ts-ignore
-                      error.context.body
-                    : error.message;
+                const msg = getFunctionErrorMessage(error);
+                console.log("process_driver_payouts error:", error);
 
                 Alert.alert(
                   t("driver.wallet.cashout.title", "Cash out"),
-                  msg || t("driver.wallet.cashout.requestError", "Unable to request cash out.")
+                  msg ||
+                    t(
+                      "driver.wallet.cashout.requestError",
+                      "Unable to request cash out."
+                    )
                 );
                 return;
               }
 
-              const scheduledAmount = (data as any)?.amount ?? amountAll;
+              const payload = (data ?? {}) as any;
+              const scheduledAmount =
+                payload?.amount ??
+                payload?.total_amount ??
+                payload?.total ??
+                amountAll;
+
               Alert.alert(
                 t("driver.wallet.cashoutRequested.title", "Cash out requested"),
-                t("driver.wallet.cashoutRequested.body", "Cash out scheduled: {{amount}}.", {
-                  amount: fmtMoney(scheduledAmount),
-                })
+                t(
+                  "driver.wallet.cashoutRequested.body",
+                  "Cash out scheduled: {{amount}}.",
+                  { amount: fmtMoney(scheduledAmount) }
+                )
               );
+
               await fetchWallet();
             } catch (e: any) {
               Alert.alert(
                 t("driver.wallet.cashout.title", "Cash out"),
-                e?.message ?? t("driver.wallet.cashout.runtimeError", "Error during cash out.")
+                e?.message ??
+                  t(
+                    "driver.wallet.cashout.runtimeError",
+                    "Error during cash out."
+                  )
               );
             } finally {
               setLoading(false);
@@ -324,12 +356,19 @@ export function DriverWalletScreen() {
         },
       ]
     );
-  }, [driverId, canCashout, cashoutReason, availableAmount, fetchWallet, t]);
+  }, [
+    driverId,
+    loading,
+    canCashout,
+    cashoutReason,
+    availableAmount,
+    fetchWallet,
+    t,
+  ]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <View style={{ flex: 1 }}>
-        {/* Header */}
         <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
           <View
             style={{
@@ -370,13 +409,19 @@ export function DriverWalletScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={{ color: "white", fontSize: 34, fontWeight: "900", marginTop: 10 }}>
+          <Text
+            style={{
+              color: "white",
+              fontSize: 34,
+              fontWeight: "900",
+              marginTop: 10,
+            }}
+          >
             {t("driver.wallet.title", "Earnings")}
           </Text>
         </View>
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
-          {/* Stripe setup */}
           {!stripeOnboarded ? (
             <View
               style={{
@@ -391,7 +436,14 @@ export function DriverWalletScreen() {
               <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
                 {t("driver.wallet.stripe.activateTitle", "Enable payouts")}
               </Text>
-              <Text style={{ color: "#94A3B8", marginTop: 8, fontWeight: "700" }}>
+
+              <Text
+                style={{
+                  color: "#94A3B8",
+                  marginTop: 8,
+                  fontWeight: "700",
+                }}
+              >
                 {t(
                   "driver.wallet.stripe.activateDesc",
                   "Set up Stripe to receive your payouts."
@@ -422,7 +474,6 @@ export function DriverWalletScreen() {
             </View>
           ) : null}
 
-          {/* Available */}
           <View
             style={{
               borderRadius: 18,
@@ -437,7 +488,14 @@ export function DriverWalletScreen() {
             </Text>
 
             {loading ? (
-              <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View
+                style={{
+                  marginTop: 10,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
                 <ActivityIndicator color="#fff" />
                 <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
                   {t("common.loading", "Loading…")}
@@ -445,25 +503,46 @@ export function DriverWalletScreen() {
               </View>
             ) : (
               <>
-                <Text style={{ color: "white", fontSize: 44, fontWeight: "900", marginTop: 6 }}>
+                <Text
+                  style={{
+                    color: "white",
+                    fontSize: 44,
+                    fontWeight: "900",
+                    marginTop: 6,
+                  }}
+                >
                   {fmtMoney(availableAmount)}
                 </Text>
 
-                <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
-                  {t("driver.wallet.available.rules", "Minimum cash out: {{min}} • 1 cash out / day", {
-                    min: fmtMoney(MIN_CASHOUT),
-                  })}
+                <Text
+                  style={{
+                    color: "#94A3B8",
+                    marginTop: 6,
+                    fontWeight: "800",
+                  }}
+                >
+                  {t(
+                    "driver.wallet.available.rules",
+                    "Minimum cash out: {{min}} • 1 cash out / day",
+                    { min: fmtMoney(MIN_CASHOUT) }
+                  )}
                 </Text>
 
                 {!canCashout && cashoutReason ? (
-                  <Text style={{ color: "#FCA5A5", marginTop: 8, fontWeight: "800" }}>
+                  <Text
+                    style={{
+                      color: "#FCA5A5",
+                      marginTop: 8,
+                      fontWeight: "800",
+                    }}
+                  >
                     {cashoutReason}
                   </Text>
                 ) : null}
 
                 <TouchableOpacity
                   onPress={onPressCashout}
-                  disabled={loading}
+                  disabled={loading || !canCashout}
                   style={{
                     marginTop: 14,
                     height: 52,
@@ -475,7 +554,7 @@ export function DriverWalletScreen() {
                       : "rgba(2,6,23,0.55)",
                     borderWidth: 1,
                     borderColor: canCashout ? "#22C55E" : "#1F2937",
-                    opacity: loading ? 0.6 : 1,
+                    opacity: loading || !canCashout ? 0.6 : 1,
                   }}
                 >
                   <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
@@ -484,16 +563,22 @@ export function DriverWalletScreen() {
                 </TouchableOpacity>
 
                 {cashoutBlockedToday && lastCashoutAt ? (
-                  <Text style={{ color: "#64748B", marginTop: 10, fontWeight: "800", fontSize: 12 }}>
-                    {t("driver.wallet.available.lastCashout", "Last cash out")} :{" "}
-                    {new Date(lastCashoutAt).toLocaleString(localeForDates)}
+                  <Text
+                    style={{
+                      color: "#64748B",
+                      marginTop: 10,
+                      fontWeight: "800",
+                      fontSize: 12,
+                    }}
+                  >
+                    {t("driver.wallet.available.lastCashout", "Last cash out")}{" "}
+                    : {new Date(lastCashoutAt).toLocaleString(localeForDates)}
                   </Text>
                 ) : null}
               </>
             )}
           </View>
 
-          {/* Pending */}
           <View
             style={{
               marginTop: 14,
@@ -507,18 +592,30 @@ export function DriverWalletScreen() {
             <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
               {t("driver.wallet.pending.title", "Pending")}
             </Text>
-            <Text style={{ color: "white", fontSize: 26, fontWeight: "900", marginTop: 6 }}>
+
+            <Text
+              style={{
+                color: "white",
+                fontSize: 26,
+                fontWeight: "900",
+                marginTop: 6,
+              }}
+            >
               {fmtMoney(pendingAmount)}
             </Text>
+
             <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
-              {t("driver.wallet.pending.desc", "Cash outs in progress (scheduled / processing)")}
+              {t(
+                "driver.wallet.pending.desc",
+                "Cash outs in progress (scheduled / processing)"
+              )}
             </Text>
           </View>
 
-          {/* Debug */}
           {driverId ? (
             <Text style={{ color: "#334155", marginTop: 18, fontSize: 11 }}>
-              {t("driver.wallet.debug.driver", "Driver")} : {driverId.slice(0, 8)}…
+              {t("driver.wallet.debug.driver", "Driver")} :{" "}
+              {driverId.slice(0, 8)}…
             </Text>
           ) : null}
         </ScrollView>
