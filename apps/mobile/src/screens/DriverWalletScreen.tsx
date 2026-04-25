@@ -66,7 +66,8 @@ export function DriverWalletScreen() {
   const [availableAmount, setAvailableAmount] = useState<number>(0);
   const [pendingAmount, setPendingAmount] = useState<number>(0);
 
-  const [cashoutBlockedToday, setCashoutBlockedToday] = useState<boolean>(false);
+  const [cashoutBlockedToday, setCashoutBlockedToday] =
+    useState<boolean>(false);
   const [lastCashoutAt, setLastCashoutAt] = useState<string | null>(null);
 
   const localeForDates = useMemo(() => {
@@ -246,7 +247,13 @@ export function DriverWalletScreen() {
     }
 
     return "";
-  }, [stripeAccountId, stripeOnboarded, cashoutBlockedToday, availableAmount, t]);
+  }, [
+    stripeAccountId,
+    stripeOnboarded,
+    cashoutBlockedToday,
+    availableAmount,
+    t,
+  ]);
 
   const onPressActivateStripe = useCallback(async () => {
     if (loading) return;
@@ -299,10 +306,11 @@ export function DriverWalletScreen() {
               setLoading(true);
 
               const { data, error } = await supabase.functions.invoke(
-                "process_driver_payouts",
+                "pay-driver-now",
                 {
                   body: {
-                    role: "driver",
+                    driver_id: driverId,
+                    currency: "USD",
                     source: "mobile_wallet_cashout",
                   },
                 }
@@ -310,7 +318,7 @@ export function DriverWalletScreen() {
 
               if (error) {
                 const msg = getFunctionErrorMessage(error);
-                console.log("process_driver_payouts error:", error);
+                console.log("pay-driver-now error:", error);
 
                 Alert.alert(
                   t("driver.wallet.cashout.title", "Cash out"),
@@ -324,7 +332,8 @@ export function DriverWalletScreen() {
               }
 
               const payload = (data ?? {}) as any;
-              const scheduledAmount =
+              const paidAmount =
+                payload?.payout_amount ??
                 payload?.amount ??
                 payload?.total_amount ??
                 payload?.total ??
@@ -335,7 +344,7 @@ export function DriverWalletScreen() {
                 t(
                   "driver.wallet.cashoutRequested.body",
                   "Cash out scheduled: {{amount}}.",
-                  { amount: fmtMoney(scheduledAmount) }
+                  { amount: fmtMoney(paidAmount) }
                 )
               );
 
