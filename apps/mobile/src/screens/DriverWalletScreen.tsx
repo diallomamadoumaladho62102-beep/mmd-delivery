@@ -59,15 +59,11 @@ export function DriverWalletScreen() {
 
   const [loading, setLoading] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
-
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean>(false);
-
   const [availableAmount, setAvailableAmount] = useState<number>(0);
   const [pendingAmount, setPendingAmount] = useState<number>(0);
-
-  const [cashoutBlockedToday, setCashoutBlockedToday] =
-    useState<boolean>(false);
+  const [cashoutBlockedToday, setCashoutBlockedToday] = useState<boolean>(false);
   const [lastCashoutAt, setLastCashoutAt] = useState<string | null>(null);
 
   const localeForDates = useMemo(() => {
@@ -87,9 +83,11 @@ export function DriverWalletScreen() {
 
         const { data: sessionData, error: sErr } =
           await supabase.auth.getSession();
+
         if (sErr) console.log("getSession error:", sErr);
 
         const session = sessionData?.session;
+
         if (!session) {
           if (aliveRef && !aliveRef.alive) return;
 
@@ -109,8 +107,14 @@ export function DriverWalletScreen() {
         setDriverId(uid);
 
         const { error: syncErr } = await supabase.functions.invoke(
-          "check_connect_status"
+          "check_connect_status",
+          {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
         );
+
         if (syncErr) console.log("check_connect_status error:", syncErr);
 
         const { data: dp, error: dpErr } = await supabase
@@ -187,6 +191,7 @@ export function DriverWalletScreen() {
         } else {
           const row = lastPayoutRows?.[0] ?? null;
           const createdAt = row?.created_at ? new Date(row.created_at) : null;
+
           setLastCashoutAt(row?.created_at ?? null);
           setCashoutBlockedToday(
             Boolean(createdAt && isSameLocalDay(createdAt, new Date()))
@@ -305,6 +310,22 @@ export function DriverWalletScreen() {
             try {
               setLoading(true);
 
+              const { data: sessionData, error: sessionErr } =
+                await supabase.auth.getSession();
+
+              const accessToken = sessionData?.session?.access_token;
+
+              if (sessionErr || !accessToken) {
+                Alert.alert(
+                  t("driver.wallet.cashout.title", "Cash out"),
+                  t(
+                    "driver.wallet.cashout.authError",
+                    "Please sign in again."
+                  )
+                );
+                return;
+              }
+
               const { data, error } = await supabase.functions.invoke(
                 "pay-driver-now",
                 {
@@ -312,6 +333,9 @@ export function DriverWalletScreen() {
                     driver_id: driverId,
                     currency: "USD",
                     source: "mobile_wallet_cashout",
+                  },
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
                   },
                 }
               );
