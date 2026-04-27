@@ -2,157 +2,229 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.25.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-type Result = { payout_id: string; ok: boolean; step?: string; info?: any };
+type ProcessResult = {
+  payout_id: string | null;
+  ok: boolean;
+  transfer_id?: string;
+  amount?: number;
+  currency?: string;
+  error?: string;
+};
 
-serve(async (_req) => {
+function json(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function errMsg(e: unknown) {
+  return e instanceof Error ? e.message : String(e);
+}
+
+serve(async (req) => {
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseService = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+    if (req.method !== "POST") {
+      return json({ ok: false, error: "Method not allowed" }, 405);
+    }
+
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const cronHeader = req.headers.get("x-cron-secret");
+
+    if (!cronSecret || cronHeader !== cronSecret) {
+      return json({ ok: false, error: "Unauthorized" }, 401);
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+
+    if (!supabaseUrl || !serviceKey || !stripeKey) {
+      return json({ ok: false, error: "Missing server env vars" }, 500);
+    }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
 
-    const supabase = createClient(supabaseUrl, supabaseService, {
+    const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false },
     });
 
-    // 0) Lire payouts scheduled
-    const { data: payouts, error: payErr } = await supabase
+    const { data: payouts, error: payoutErr } = await supabase
       .from("driver_payouts")
-      .select("id, driver_id, amount, currency, status, scheduled_at, stripe_payout_id, stripe_transfer_id")
+      .select(
+        "id, driver_id, amount, currency, status, stripe_transfer_id, stripe_payout_id"
+      )
       .eq("status", "scheduled")
+      .is("stripe_transfer_id", null)
       .order("scheduled_at", { ascending: true })
       .limit(20);
 
-    if (payErr) {
-      return new Response(JSON.stringify({ ok: false, step: "select_payouts", error: payErr.message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (payoutErr) {
+      return json(
+        { ok: false, step: "load_payouts", error: payoutErr.message },
+        500
+      );
     }
 
-    if (!payouts || payouts.length === 0) {
-      return new Response(JSON.stringify({ ok: true, processed: 0, debug: "No scheduled payouts" }), {
-        headers: { "Content-Type": "application/json" },
-      });
+    if (!payouts?.length) {
+      return json({ ok: true, processed: 0, message: "No scheduled payouts" });
     }
 
-    let processed = 0;
-    const results: Result[] = [];
+    const results: ProcessResult[] = [];
 
-    for (const p of payouts) {
-      if (!p?.id || !p?.driver_id) {
-        results.push({ payout_id: String(p?.id ?? "null"), ok: false, step: "invalid_row" });
-        continue;
-      }
-
-      // anti double-run (si déjà un payout OU un transfer est enregistré)
-      if (p.stripe_payout_id || p.stripe_transfer_id) {
-        results.push({
-          payout_id: p.id,
-          ok: false,
-          step: "already_has_stripe_refs",
-          info: { stripe_payout_id: p.stripe_payout_id, stripe_transfer_id: p.stripe_transfer_id },
-        });
-        continue;
-      }
-
-      // 1) Vérifier orders attachés
-      const { count, error: cntErr } = await supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("driver_payout_id", p.id);
-
-      if (cntErr) {
-        results.push({ payout_id: p.id, ok: false, step: "count_orders_error", info: cntErr.message });
-        continue;
-      }
-      if (!count || count <= 0) {
-        await supabase.from("driver_payouts").update({ status: "canceled" }).eq("id", p.id);
-        results.push({ payout_id: p.id, ok: false, step: "no_orders_attached", info: { count } });
-        continue;
-      }
-
-      // 2) Charger driver Stripe account
-      const { data: dp, error: dpErr } = await supabase
-        .from("driver_profiles")
-        .select("stripe_account_id, stripe_onboarded, user_id, id")
-        .or(`user_id.eq.${p.driver_id},id.eq.${p.driver_id}`)
-        .single();
-
-      if (dpErr || !dp?.stripe_account_id || dp?.stripe_onboarded === false) {
-        await supabase.from("driver_payouts").update({ status: "canceled" }).eq("id", p.id);
-        results.push({
-          payout_id: p.id,
-          ok: false,
-          step: "driver_not_ready",
-          info: dpErr?.message ?? "missing stripe_account_id or not onboarded",
-        });
-        continue;
-      }
-
-      const cur = (p.currency ?? "USD").toLowerCase();
-      const amountCents = Math.round(Number(p.amount) * 100);
-
-      if (!Number.isFinite(amountCents) || amountCents <= 0) {
-        await supabase.from("driver_payouts").update({ status: "canceled" }).eq("id", p.id);
-        results.push({ payout_id: p.id, ok: false, step: "invalid_amount", info: p.amount });
-        continue;
-      }
-
-      // 3) TRANSFER (platform -> driver connect balance)
-      let transferId: string;
+    for (const payout of payouts) {
       try {
-        const transfer = await stripe.transfers.create({
-          amount: amountCents,
-          currency: cur,
-          destination: dp.stripe_account_id,
-          description: `MMD driver earnings transfer for payout ${p.id}`,
-          metadata: { payout_id: p.id, driver_id: p.driver_id },
+        const payoutId = String(payout.id ?? "");
+        const driverId = String(payout.driver_id ?? "");
+        const amount = Number(payout.amount ?? 0);
+        const currency = String(payout.currency ?? "USD").toLowerCase();
+
+        if (!payoutId || !driverId || !Number.isFinite(amount) || amount <= 0) {
+          results.push({
+            payout_id: payoutId || null,
+            ok: false,
+            error: "Invalid payout row",
+          });
+          continue;
+        }
+
+        const { count, error: orderCountErr } = await supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("driver_payout_id", payoutId)
+          .eq("driver_id", driverId)
+          .eq("driver_paid_out", false);
+
+        if (orderCountErr) {
+          results.push({
+            payout_id: payoutId,
+            ok: false,
+            error: orderCountErr.message,
+          });
+          continue;
+        }
+
+        if (!count || count <= 0) {
+          await supabase
+            .from("driver_payouts")
+            .update({ status: "canceled" })
+            .eq("id", payoutId);
+
+          results.push({
+            payout_id: payoutId,
+            ok: false,
+            error: "No unpaid orders attached",
+          });
+          continue;
+        }
+
+        const { data: profile, error: profileErr } = await supabase
+          .from("driver_profiles")
+          .select("id, user_id, stripe_account_id, stripe_onboarded")
+          .or(`user_id.eq.${driverId},id.eq.${driverId}`)
+          .maybeSingle();
+
+        if (
+          profileErr ||
+          !profile?.stripe_account_id ||
+          profile.stripe_onboarded === false
+        ) {
+          results.push({
+            payout_id: payoutId,
+            ok: false,
+            error: profileErr?.message ?? "Driver Stripe account not ready",
+          });
+          continue;
+        }
+
+        const amountCents = Math.round(amount * 100);
+
+        if (!Number.isFinite(amountCents) || amountCents <= 0) {
+          results.push({
+            payout_id: payoutId,
+            ok: false,
+            error: "Invalid payout amount",
+          });
+          continue;
+        }
+
+        const transfer = await stripe.transfers.create(
+          {
+            amount: amountCents,
+            currency,
+            destination: profile.stripe_account_id,
+            description: `MMD driver payout ${payoutId}`,
+            metadata: {
+              payout_id: payoutId,
+              driver_id: driverId,
+              source: "process_driver_payouts",
+            },
+          },
+          {
+            idempotencyKey: `driver-payout-transfer:${payoutId}`,
+          }
+        );
+
+        const { error: saveTransferErr } = await supabase
+          .from("driver_payouts")
+          .update({
+            stripe_transfer_id: transfer.id,
+          })
+          .eq("id", payoutId);
+
+        if (saveTransferErr) {
+          results.push({
+            payout_id: payoutId,
+            ok: false,
+            transfer_id: transfer.id,
+            error: `Transfer created but save failed: ${saveTransferErr.message}`,
+          });
+          continue;
+        }
+
+        const { error: finalizeErr } = await supabase.rpc(
+          "finalize_driver_payout",
+          {
+            p_payout_id: payoutId,
+            p_stripe_payout_id: transfer.id,
+          }
+        );
+
+        if (finalizeErr) {
+          results.push({
+            payout_id: payoutId,
+            ok: false,
+            transfer_id: transfer.id,
+            error: `Transfer created but finalize failed: ${finalizeErr.message}`,
+          });
+          continue;
+        }
+
+        results.push({
+          payout_id: payoutId,
+          ok: true,
+          transfer_id: transfer.id,
+          amount,
+          currency: currency.toUpperCase(),
         });
-        transferId = transfer.id;
-      } catch (e: any) {
-        await supabase.from("driver_payouts").update({ status: "canceled" }).eq("id", p.id);
-        results.push({ payout_id: p.id, ok: false, step: "stripe_transfer_error", info: e?.message ?? String(e) });
-        continue;
+      } catch (e) {
+        results.push({
+          payout_id: String(payout?.id ?? "") || null,
+          ok: false,
+          error: errMsg(e),
+        });
       }
-
-      // 4) Enregistrer le transferId (pour audit + anti double-run)
-      const { error: saveTrErr } = await supabase
-        .from("driver_payouts")
-        .update({ stripe_transfer_id: transferId })
-        .eq("id", p.id);
-
-      if (saveTrErr) {
-        // IMPORTANT: on ne “canceled” pas si transfer déjà fait => on garde scheduled mais avec transfer_id enregistré (ci-dessus a échoué)
-        results.push({ payout_id: p.id, ok: false, step: "save_transfer_id_error", info: saveTrErr.message });
-        continue;
-      }
-
-      // 5) Finalize DB : status=paid + orders.driver_paid_out=true
-      // Ici, on met stripe_payout_id = transferId (ou mieux: adapte finalize_driver_payout pour accepter transfer_id)
-      const { error: finErr } = await supabase.rpc("finalize_driver_payout", {
-        p_payout_id: p.id,
-        p_stripe_payout_id: transferId,
-      });
-
-      if (finErr) {
-        // Surtout pas canceled => transfer déjà fait.
-        results.push({ payout_id: p.id, ok: false, step: "finalize_error", info: finErr.message });
-        continue;
-      }
-
-      processed++;
-      results.push({ payout_id: p.id, ok: true, step: "transferred" });
     }
 
-    return new Response(JSON.stringify({ ok: true, processed, examined: payouts.length, results }), {
-      headers: { "Content-Type": "application/json" },
+    const processed = results.filter((r) => r.ok).length;
+
+    return json({
+      ok: true,
+      processed,
+      examined: payouts.length,
+      results,
     });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ ok: false, step: "uncaught", error: e?.message ?? String(e) }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+  } catch (e) {
+    return json({ ok: false, error: errMsg(e) }, 500);
   }
 });

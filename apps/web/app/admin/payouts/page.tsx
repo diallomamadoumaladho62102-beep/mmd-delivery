@@ -416,6 +416,7 @@ export default function AdminPayoutsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [processingPayouts, setProcessingPayouts] = useState(false);
 
   const [search, setSearch] = useState("");
   const [dashboardFilter, setDashboardFilter] =
@@ -574,6 +575,32 @@ export default function AdminPayoutsPage() {
     });
   }, [items, search, dashboardFilter, paymentFilter, sortBy]);
 
+  async function runPayoutProcessor() {
+    try {
+      setProcessingPayouts(true);
+
+      const response = await fetch("/api/admin/process-payouts", {
+        method: "POST",
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || !json.ok) {
+        throw new Error(
+          json.error || json.data?.error || "Failed to process payouts"
+        );
+      }
+
+      alert(`Payouts processed: ${json.data?.processed ?? 0}`);
+
+      await loadPage("refresh");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to process payouts");
+    } finally {
+      setProcessingPayouts(false);
+    }
+  }
+
   function exportCsv() {
     const csv = toCsv(filteredItems);
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
@@ -637,6 +664,12 @@ export default function AdminPayoutsPage() {
               label="Export CSV"
               onClick={exportCsv}
               disabled={filteredItems.length === 0}
+            />
+            <ActionButton
+              label={processingPayouts ? "Processing..." : "Run payouts"}
+              onClick={() => void runPayoutProcessor()}
+              variant="primary"
+              disabled={processingPayouts || refreshing}
             />
             <ActionButton
               label={refreshing ? "Refreshing..." : "Refresh"}
