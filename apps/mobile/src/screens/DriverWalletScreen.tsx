@@ -31,22 +31,30 @@ function isSameLocalDay(a: Date, b: Date) {
   );
 }
 
-function getFunctionErrorMessage(error: any) {
-  const contextBody = error?.context?.body;
+async function getFunctionErrorMessage(error: any) {
+  try {
+    const context = error?.context;
 
-  if (typeof contextBody === "string" && contextBody.trim()) {
-    try {
-      const parsed = JSON.parse(contextBody);
+    if (context && typeof context.json === "function") {
+      const parsed = await context.json();
       if (typeof parsed?.error === "string") return parsed.error;
       if (typeof parsed?.message === "string") return parsed.message;
-    } catch {
-      return contextBody;
+      return JSON.stringify(parsed);
     }
-  }
 
-  if (typeof error?.message === "string" && error.message.trim()) {
-    return error.message;
-  }
+    if (context && typeof context.text === "function") {
+      const text = await context.text();
+      if (text?.trim()) return text;
+    }
+
+    if (typeof error?.context?.body === "string") {
+      return error.context.body;
+    }
+
+    if (typeof error?.message === "string") {
+      return error.message;
+    }
+  } catch {}
 
   return "Unable to request cash out.";
 }
@@ -136,10 +144,13 @@ export function DriverWalletScreen() {
 
         const { data: delivered, error: delErr } = await supabase
           .from("orders")
-          .select("driver_delivery_payout, delivery_fee, total, tip_cents")
+          .select(
+            "driver_delivery_payout, delivery_fee, total, tip_cents, driver_payout_id"
+          )
           .eq("driver_id", uid)
           .eq("status", "delivered")
-          .eq("driver_paid_out", false);
+          .eq("driver_paid_out", false)
+          .is("driver_payout_id", null);
 
         if (delErr) throw delErr;
 
@@ -341,7 +352,7 @@ export function DriverWalletScreen() {
               );
 
               if (error) {
-                const msg = getFunctionErrorMessage(error);
+                const msg = await getFunctionErrorMessage(error);
                 console.log("pay-driver-now error:", error);
 
                 Alert.alert(
