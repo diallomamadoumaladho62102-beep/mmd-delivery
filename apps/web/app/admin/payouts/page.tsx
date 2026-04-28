@@ -712,47 +712,37 @@ export default function AdminPayoutsPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Quick actions
-              </div>
+            <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col justify-center">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 text-sm font-semibold text-slate-900">
+                  Quick actions
+                </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                <Link
-                  href="/admin/payouts/reconciliation"
-                  className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
-                >
-                  Reconciliation
-                </Link>
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Link href="/admin/payouts/reconciliation" className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border-2 border-slate-300 bg-white px-4 text-base font-bold text-slate-700 shadow-sm transition hover:bg-slate-100">
+                    Reconciliation
+                  </Link>
 
-                <Link
-                  href="/admin/payouts/audit"
-                  className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
-                >
-                  Audit Logs
-                </Link>
+                  <Link href="/admin/payouts/audit" className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border-2 border-slate-300 bg-white px-4 text-base font-bold text-slate-700 shadow-sm transition hover:bg-slate-100">
+                    Audit Logs
+                  </Link>
 
-                <ActionButton label="Reset filters" onClick={resetFilters} />
+                  <button type="button" onClick={resetFilters} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#ffffff", color: "#334155", border: "2px solid #cbd5e1", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
+                    Reset filters
+                  </button>
 
-                <ActionButton
-                  label="Export CSV"
-                  onClick={exportCsv}
-                  disabled={filteredItems.length === 0}
-                />
+                  <button type="button" onClick={exportCsv} disabled={filteredItems.length === 0} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#ffffff", color: "#334155", border: "2px solid #cbd5e1", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", opacity: filteredItems.length === 0 ? 0.6 : 1 }}>
+                    Export CSV
+                  </button>
 
-                <ActionButton
-                  label={processingPayouts ? "Processing..." : "Run payouts"}
-                  onClick={() => void runPayoutProcessor()}
-                  variant="primary"
-                  disabled={processingPayouts || refreshing}
-                />
+                  <button type="button" onClick={() => void runPayoutProcessor()} disabled={processingPayouts || refreshing} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#111827", color: "#ffffff", border: "2px solid #000000", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.12)", opacity: processingPayouts || refreshing ? 0.6 : 1 }}>
+                    {processingPayouts ? "Processing..." : "Run payouts"}
+                  </button>
 
-                <ActionButton
-                  label={refreshing ? "Refreshing..." : "Refresh"}
-                  onClick={() => void loadPage("refresh")}
-                  variant="primary"
-                  disabled={refreshing}
-                />
+                  <button type="button" onClick={() => void loadPage("refresh")} disabled={refreshing} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#2563eb", color: "#ffffff", border: "2px solid #1e3a8a", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.12)", opacity: refreshing ? 0.6 : 1 }}>
+                    {refreshing ? "Refreshing..." : "Refresh"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
