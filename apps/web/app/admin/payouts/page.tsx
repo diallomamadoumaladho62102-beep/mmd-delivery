@@ -380,17 +380,19 @@ function StatCard({
 }) {
   const toneClass =
     tone === "success"
-      ? "border-green-200 bg-green-50"
+      ? "border-green-200 bg-green-50 text-green-900"
       : tone === "warning"
-      ? "border-amber-200 bg-amber-50"
+      ? "border-amber-200 bg-amber-50 text-amber-900"
       : tone === "danger"
-      ? "border-red-200 bg-red-50"
-      : "border-slate-200 bg-white";
+      ? "border-red-200 bg-red-50 text-red-900"
+      : "border-slate-200 bg-white text-slate-900";
 
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm ${toneClass}`}>
-      <div className="text-sm text-slate-500">{title}</div>
-      <div className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
+    <div
+      className={`min-h-[120px] rounded-2xl border p-6 text-center shadow-sm flex flex-col items-center justify-center ${toneClass}`}
+    >
+      <div className="text-sm font-medium text-slate-500">{title}</div>
+      <div className="mt-3 text-4xl font-extrabold tracking-tight">
         {value}
       </div>
     </div>
