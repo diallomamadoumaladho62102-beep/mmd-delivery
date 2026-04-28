@@ -818,11 +818,11 @@ export default function AdminPayoutsPage() {
             </section>
 
             <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 text-center">
                 <div>
                   <label
                     htmlFor="payout-search"
-                    className="mb-2 block text-sm font-medium text-slate-700"
+                    className="mb-2 block text-sm font-semibold text-slate-700 text-center"
                   >
                     Search
                   </label>
@@ -832,12 +832,12 @@ export default function AdminPayoutsPage() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search by order ID, restaurant name, or transfer ID..."
-                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="h-12 w-full rounded-xl border border-slate-300 text-center bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 text-center">
                     Payment status
                   </label>
                   <select
@@ -845,7 +845,7 @@ export default function AdminPayoutsPage() {
                     onChange={(e) =>
                       setPaymentFilter(e.target.value as PaymentFilter)
                     }
-                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="h-12 w-full rounded-xl border border-slate-300 text-center bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   >
                     <option value="all">All</option>
                     <option value="paid">Paid</option>
@@ -854,13 +854,13 @@ export default function AdminPayoutsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 text-center">
                     Sort
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="h-12 w-full rounded-xl border border-slate-300 text-center bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                   >
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
