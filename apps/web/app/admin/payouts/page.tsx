@@ -937,7 +937,7 @@ export default function AdminPayoutsPage() {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100">
               <div className="border-b border-slate-200 px-5 py-4">
                 <h2 className="text-lg font-semibold text-slate-900">
                   Orders and payouts
@@ -949,26 +949,26 @@ export default function AdminPayoutsPage() {
               </div>
 
               <div className="w-full overflow-x-auto">
-                <table className="w-full table-auto divide-y divide-slate-200 text-sm">
+                <table className="w-full table-fixed divide-y divide-slate-200 text-sm text-center">
                   <thead className="bg-slate-50">
-                    <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                      <th className="px-4 py-3 font-medium">Order</th>
-                      <th className="px-4 py-3 font-medium">Created</th>
-                      <th className="px-4 py-3 font-medium">Last activity</th>
-                      <th className="px-4 py-3 font-medium">Restaurant</th>
-                      <th className="px-4 py-3 font-medium">Order status</th>
-                      <th className="px-4 py-3 font-medium">Payment</th>
-                      <th className="px-4 py-3 font-medium">Total</th>
-                      <th className="px-4 py-3 font-medium">Dashboard</th>
-                      <th className="px-4 py-3 font-medium">
+                    <tr className="text-center text-xs uppercase tracking-wide text-slate-500">
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Order</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Created</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Last activity</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Restaurant</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Order status</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Payment</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Total</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Dashboard</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">
                         Restaurant payout
                       </th>
-                      <th className="px-4 py-3 font-medium">
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">
                         Restaurant transfer
                       </th>
-                      <th className="px-4 py-3 font-medium">Driver payout</th>
-                      <th className="px-4 py-3 font-medium">Driver transfer</th>
-                      <th className="px-4 py-3 font-medium">Errors</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Driver payout</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Driver transfer</th>
+                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Errors</th>
                     </tr>
                   </thead>
 
@@ -1008,9 +1008,7 @@ export default function AdminPayoutsPage() {
                             key={item.order_id}
                             className="align-top transition hover:bg-slate-50"
                           >
-                            <td className="px-4 py-4">
-                              <div className="font-medium text-slate-900">
-                                {truncateMiddle(item.order_id, 10, 8)}
+                            <td className="px-3 py-4 text-left align-middle"><div className="font-semibold text-slate-900 break-words">{truncateMiddle(item.order_id, 10, 8)}
                               </div>
                               <div className="mt-2 flex flex-wrap gap-3">
                                 <button
@@ -1029,24 +1027,22 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4 text-slate-700">
+                            <td className="px-3 py-4 text-center align-middle text-slate-700">
                               {formatDate(item.created_at)}
                             </td>
 
-                            <td className="px-4 py-4 text-slate-700">
+                            <td className="px-3 py-4 text-center align-middle text-slate-700">
                               {formatDate(getLastActivity(item))}
                             </td>
 
-                            <td className="px-4 py-4">
-                              <div className="font-medium text-slate-900">
-                                {item.restaurant_name || "—"}
+                            <td className="px-3 py-4 text-left align-middle"><div className="font-semibold text-slate-900">{item.restaurant_name || "—"}
                               </div>
                               <div className="mt-1 text-xs text-slate-500">
                                 Paid at: {formatDate(item.paid_at)}
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               <div className="text-slate-900">
                                 {item.order_status}
                               </div>
@@ -1056,9 +1052,9 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               <span
-                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
                                   item.payment_status === "paid"
                                     ? "border-green-200 bg-green-100 text-green-800"
                                     : "border-slate-200 bg-slate-100 text-slate-700"
@@ -1068,13 +1064,13 @@ export default function AdminPayoutsPage() {
                               </span>
                             </td>
 
-                            <td className="px-4 py-4 text-slate-900">
+                            <td className="px-3 py-4 text-center align-middle text-slate-900">
                               {formatMoney(item.total, item.currency || "USD")}
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               <span
-                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(
+                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
                                   item.dashboard_status
                                 )}`}
                               >
@@ -1082,9 +1078,9 @@ export default function AdminPayoutsPage() {
                               </span>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               <span
-                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getPayoutBadgeClass(
+                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getPayoutBadgeClass(
                                   item.restaurant_payout_status
                                 )}`}
                               >
@@ -1105,7 +1101,7 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               <div
                                 className="font-mono text-xs text-slate-900"
                                 title={restaurantTransferId || ""}
@@ -1141,9 +1137,9 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               <span
-                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${getPayoutBadgeClass(
+                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getPayoutBadgeClass(
                                   item.driver_payout_status
                                 )}`}
                               >
@@ -1163,7 +1159,7 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               <div
                                 className="font-mono text-xs text-slate-900"
                                 title={driverTransferId || ""}
@@ -1197,7 +1193,7 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-3 py-4 text-center align-middle">
                               {hasError ? (
                                 <div className="space-y-2 text-xs">
                                   {item.restaurant_failure_message && (
