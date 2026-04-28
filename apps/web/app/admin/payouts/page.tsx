@@ -950,7 +950,7 @@ export default function AdminPayoutsPage() {
 
               <div className="w-full overflow-x-auto">
                 <table className="w-full table-auto divide-y divide-slate-200 text-sm text-center">
-                  <thead className="bg-slate-50">
+                  <thead className="bg-slate-50 sticky top-0 z-10">
                     <tr className="text-center text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Order</th>
                       <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Created</th>
@@ -1006,9 +1006,9 @@ export default function AdminPayoutsPage() {
                         return (
                           <tr
                             key={item.order_id}
-                            className="align-top transition hover:bg-slate-50"
+                            className="align-middle transition duration-150 hover:bg-slate-100 hover:shadow-sm"
                           >
-                            <td className="px-3 py-4 text-center align-middle"><div className="font-semibold text-slate-900 break-words">{truncateMiddle(item.order_id, 10, 8)}
+                            <td className="px-4 py-5 text-center align-middle"><div className="font-semibold text-slate-900 break-words">{truncateMiddle(item.order_id, 10, 8)}
                               </div>
                               <div className="mt-2 flex flex-wrap justify-center gap-3">
                                 <button
@@ -1027,22 +1027,22 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle text-slate-700">
+                            <td className="px-4 py-5 text-center align-middle text-slate-700">
                               {formatDate(item.created_at)}
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle text-slate-700">
+                            <td className="px-4 py-5 text-center align-middle text-slate-700">
                               {formatDate(getLastActivity(item))}
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle"><div className="font-semibold text-slate-900">{item.restaurant_name || "—"}
+                            <td className="px-4 py-5 text-center align-middle"><div className="font-semibold text-slate-900">{item.restaurant_name || "—"}
                               </div>
                               <div className="mt-1 text-xs text-slate-500">
                                 Paid at: {formatDate(item.paid_at)}
                               </div>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               <div className="text-slate-900">
                                 {item.order_status}
                               </div>
@@ -1052,9 +1052,9 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${
                                   item.payment_status === "paid"
                                     ? "border-green-200 bg-green-100 text-green-800"
                                     : "border-slate-200 bg-slate-100 text-slate-700"
@@ -1064,13 +1064,13 @@ export default function AdminPayoutsPage() {
                               </span>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle text-slate-900">
+                            <td className="px-4 py-5 text-center align-middle text-slate-900">
                               {formatMoney(item.total, item.currency || "USD")}
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClass(
+                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getStatusBadgeClass(
                                   item.dashboard_status
                                 )}`}
                               >
@@ -1078,9 +1078,9 @@ export default function AdminPayoutsPage() {
                               </span>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getPayoutBadgeClass(
+                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getPayoutBadgeClass(
                                   item.restaurant_payout_status
                                 )}`}
                               >
@@ -1101,7 +1101,7 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               <div
                                 className="font-mono text-xs text-slate-900"
                                 title={restaurantTransferId || ""}
@@ -1137,9 +1137,9 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getPayoutBadgeClass(
+                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getPayoutBadgeClass(
                                   item.driver_payout_status
                                 )}`}
                               >
@@ -1159,7 +1159,7 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               <div
                                 className="font-mono text-xs text-slate-900"
                                 title={driverTransferId || ""}
@@ -1193,7 +1193,7 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-3 py-4 text-center align-middle">
+                            <td className="px-4 py-5 text-center align-middle">
                               {hasError ? (
                                 <div className="space-y-2 text-xs">
                                   {item.restaurant_failure_message && (
