@@ -948,8 +948,8 @@ export default function AdminPayoutsPage() {
                 </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-[1780px] divide-y divide-slate-200 text-sm">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full table-auto divide-y divide-slate-200 text-sm">
                   <thead className="bg-slate-50">
                     <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-4 py-3 font-medium">Order</th>
