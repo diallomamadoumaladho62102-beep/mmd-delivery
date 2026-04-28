@@ -125,9 +125,7 @@ function isPayoutTarget(value: string): value is PayoutTarget {
 }
 
 function getTimestamp(value: string | null | undefined): number {
-  if (!value) {
-    return 0;
-  }
+  if (!value) return 0;
 
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
@@ -150,11 +148,11 @@ function deriveDashboardStatus(
 
   const restaurantSucceeded =
     restaurant?.status === "succeeded" ||
-    (order.restaurant_paid_out === true && !!order.restaurant_transfer_id);
+    (order.restaurant_paid_out === true && Boolean(order.restaurant_transfer_id));
 
   const driverSucceeded =
     driver?.status === "succeeded" ||
-    (order.driver_paid_out === true && !!order.driver_transfer_id);
+    (order.driver_paid_out === true && Boolean(order.driver_transfer_id));
 
   const hasMismatch =
     (order.restaurant_paid_out === true && !order.restaurant_transfer_id) ||
@@ -165,6 +163,7 @@ function deriveDashboardStatus(
   if (order.payment_status !== "paid") return "unpaid";
   if (restaurantSucceeded && driverSucceeded) return "completed";
   if (restaurantSucceeded || driverSucceeded) return "partial";
+
   return "paid_no_payout";
 }
 
@@ -357,6 +356,7 @@ function getLatestPayoutForTarget(
 
   return [...targetRows].sort((a, b) => {
     const byUpdated = getTimestamp(b.updated_at) - getTimestamp(a.updated_at);
+
     if (byUpdated !== 0) {
       return byUpdated;
     }
@@ -366,11 +366,11 @@ function getLatestPayoutForTarget(
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ orderId: string }> }
 ) {
   try {
-    await assertCanAccessPayouts();
+    await assertCanAccessPayouts(request);
 
     const { orderId: rawOrderId } = await context.params;
     const orderId = normalizeOrderId(rawOrderId ?? "");
@@ -425,9 +425,6 @@ export async function GET(
 
     const status = error instanceof AdminAccessError ? error.status : 500;
 
-    return NextResponse.json(
-      { ok: false, error: message },
-      { status }
-    );
+    return NextResponse.json({ ok: false, error: message }, { status });
   }
 }

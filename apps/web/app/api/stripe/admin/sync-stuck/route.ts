@@ -147,10 +147,6 @@ function isExpired(expiresAt: unknown): boolean {
   return new Date(iso).getTime() < Date.now();
 }
 
-/**
- * Convertit un Buffer en Uint8Array compatible strictement avec les typings
- * récents de Node/TypeScript pour timingSafeEqual.
- */
 function toUint8Array(buf: Buffer): Uint8Array {
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
@@ -212,15 +208,8 @@ function hasValidAdminSecret(req: NextRequest): boolean {
   return secureSecretEquals(provided.trim(), expected.trim());
 }
 
-/**
- * IMPORTANT
- * - admin applicatif toujours obligatoire
- * - le secret n'est JAMAIS un bypass
- * - si STRIPE_SYNC_REQUIRE_ADMIN_SECRET=true, alors admin + secret sont requis
- * - sinon le secret reste optionnel et seulement utile pour audit
- */
 async function authorizeRequest(req: NextRequest): Promise<AuthorizeResult> {
-  const admin = await assertCanRetryPayout();
+  const admin = await assertCanRetryPayout(req);
 
   const secretRequired =
     safeLower(process.env.STRIPE_SYNC_REQUIRE_ADMIN_SECRET) === "true";

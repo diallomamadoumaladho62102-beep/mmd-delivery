@@ -113,7 +113,7 @@ async function authorizeRequest(req: NextRequest): Promise<string> {
     return "secret:stripe_sync_admin_secret";
   }
 
-  const admin = await assertCanRetryPayout();
+  const admin = await assertCanRetryPayout(req);
   return admin.userId;
 }
 
@@ -305,9 +305,6 @@ export async function POST(req: NextRequest) {
 
     const nowIso = new Date().toISOString();
 
-    // Production-safe behavior:
-    // - expired => cancel the order
-    // - open / complete / anything else not paid => keep order recoverable as unpaid
     const shouldCancel = sessionStatus === "expired";
 
     const { error: updErr } = await supabaseAdmin

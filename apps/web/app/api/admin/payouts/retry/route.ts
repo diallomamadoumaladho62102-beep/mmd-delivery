@@ -93,7 +93,6 @@ function normalizeOrderId(value: unknown): string {
     throw new Error("Invalid orderId.");
   }
 
-  // Accept UUIDs and internal safe ids only
   if (!/^[A-Za-z0-9_-]+$/.test(raw)) {
     throw new Error("Invalid orderId.");
   }
@@ -219,7 +218,8 @@ async function writeGlobalAdminAuditLog(params: {
   targetId: string;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
-  const { supabase, adminUserId, action, targetType, targetId, metadata } = params;
+  const { supabase, adminUserId, action, targetType, targetId, metadata } =
+    params;
 
   const { error } = await supabase.from("admin_audit_logs").insert({
     admin_user_id: adminUserId,
@@ -560,7 +560,7 @@ async function markRetryFailure(params: {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertCanRetryPayout();
+    const admin = await assertCanRetryPayout(request);
     const actor = admin.userId;
 
     const { orderId, target } = await parseBody(request);

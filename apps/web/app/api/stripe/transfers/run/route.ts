@@ -333,7 +333,7 @@ async function authorizeRequest(req: NextRequest): Promise<string> {
     return "secret:stripe_transfers_admin_secret";
   }
 
-  const admin = await assertCanRetryPayout();
+  const admin = await assertCanRetryPayout(req);
   return admin.userId;
 }
 
@@ -744,9 +744,6 @@ export async function POST(req: NextRequest) {
     const transferGroup = `ORDER_${order.id}`;
     const idempotencyKey = makeIdempotencyKey(order.id, target);
 
-    // IMPORTANT:
-    // dry_run must not create / reserve / lock any payout row in DB.
-    // It validates the whole transfer input set, but leaves no side effects.
     if (dryRun) {
       return json({
         ok: true,

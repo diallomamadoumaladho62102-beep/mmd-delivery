@@ -101,6 +101,7 @@ type SortOption =
 
 function getTimestamp(value: string | null | undefined): number {
   if (!value) return 0;
+
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
@@ -325,6 +326,41 @@ function toCsv(items: DashboardItem[]) {
   ].join("\n");
 }
 
+async function getRequiredSession() {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (session?.user && session.access_token) {
+    return session;
+  }
+
+  const {
+    data: { session: refreshedSession },
+    error: refreshError,
+  } = await supabase.auth.refreshSession();
+
+  if (refreshError) {
+    throw new Error(refreshError.message);
+  }
+
+  if (!refreshedSession?.user || !refreshedSession.access_token) {
+    throw new Error("User not logged in");
+  }
+
+  return refreshedSession;
+}
+
+async function getRequiredAccessToken(): Promise<string> {
+  const session = await getRequiredSession();
+  return session.access_token;
+}
+
 function StatCard({
   title,
   value,
@@ -435,21 +471,9 @@ export default function AdminPayoutsPage() {
 
         setError(null);
 
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError) {
-          throw new Error(userError.message);
-        }
-
-        if (!user) {
-          setIsAdmin(false);
-          setAuthChecked(true);
-          router.push("/auth/login");
-          return;
-        }
+        const session = await getRequiredSession();
+        const user = session.user;
+        const accessToken = session.access_token;
 
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
@@ -474,6 +498,11 @@ export default function AdminPayoutsPage() {
         const response = await fetch("/api/admin/payouts", {
           method: "GET",
           cache: "no-store",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
         });
 
         const json = (await response.json()) as ApiResponse;
@@ -484,7 +513,16 @@ export default function AdminPayoutsPage() {
 
         setData(json);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        const message = err instanceof Error ? err.message : "Unknown error";
+
+        if (message === "User not logged in") {
+          setIsAdmin(false);
+          setAuthChecked(true);
+          router.push("/auth/login");
+          return;
+        }
+
+        setError(message);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -516,7 +554,7 @@ export default function AdminPayoutsPage() {
         setCopied(null);
       }, 1200);
     } catch {
-      // no-op
+      // ignore
     }
   }
 
@@ -579,8 +617,16 @@ export default function AdminPayoutsPage() {
     try {
       setProcessingPayouts(true);
 
+      const accessToken = await getRequiredAccessToken();
+
       const response = await fetch("/api/admin/process-payouts", {
         method: "POST",
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       const json = await response.json();

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   AdminAccessError,
   assertCanAccessPayouts,
@@ -152,42 +152,27 @@ function deriveDashboardStatus(
 
   const restaurantSucceeded =
     restaurant?.status === "succeeded" ||
-    (order.restaurant_paid_out === true && !!order.restaurant_transfer_id);
+    (order.restaurant_paid_out === true && Boolean(order.restaurant_transfer_id));
 
   const driverSucceeded =
     driver?.status === "succeeded" ||
-    (order.driver_paid_out === true && !!order.driver_transfer_id);
+    (order.driver_paid_out === true && Boolean(order.driver_transfer_id));
 
   const hasMismatch =
     (order.restaurant_paid_out === true && !order.restaurant_transfer_id) ||
     (order.driver_paid_out === true && !order.driver_transfer_id);
 
-  if (hasMismatch) {
-    return "data_mismatch";
-  }
-
-  if (restaurantFailed || driverFailed) {
-    return "failed";
-  }
-
-  if (order.payment_status !== "paid") {
-    return "unpaid";
-  }
-
-  if (restaurantSucceeded && driverSucceeded) {
-    return "completed";
-  }
-
-  if (restaurantSucceeded || driverSucceeded) {
-    return "partial";
-  }
+  if (hasMismatch) return "data_mismatch";
+  if (restaurantFailed || driverFailed) return "failed";
+  if (order.payment_status !== "paid") return "unpaid";
+  if (restaurantSucceeded && driverSucceeded) return "completed";
+  if (restaurantSucceeded || driverSucceeded) return "partial";
 
   return "paid_no_payout";
 }
 
 function getPayoutSortTimestamp(payout: OrderPayoutRow): number {
-  const value = payout.updated_at || payout.created_at;
-  const timestamp = Date.parse(value);
+  const timestamp = Date.parse(payout.updated_at || payout.created_at);
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
@@ -195,28 +180,28 @@ function pickLatestPayout(
   current: OrderPayoutRow | undefined,
   candidate: OrderPayoutRow
 ): OrderPayoutRow {
-  if (!current) {
-    return candidate;
-  }
+  if (!current) return candidate;
 
   return getPayoutSortTimestamp(candidate) >= getPayoutSortTimestamp(current)
     ? candidate
     : current;
 }
 
-function buildPayoutsByOrderId(payouts: OrderPayoutRow[]): Map<string, PayoutPair> {
+function buildPayoutsByOrderId(
+  payouts: OrderPayoutRow[]
+): Map<string, PayoutPair> {
   const payoutsByOrderId = new Map<string, PayoutPair>();
 
   for (const payout of payouts) {
-    if (!isPayoutTarget(payout.target)) {
-      continue;
-    }
+    if (!isPayoutTarget(payout.target)) continue;
 
     const current = payoutsByOrderId.get(payout.order_id) ?? {};
 
     if (payout.target === "restaurant") {
       current.restaurant = pickLatestPayout(current.restaurant, payout);
-    } else if (payout.target === "driver") {
+    }
+
+    if (payout.target === "driver") {
       current.driver = pickLatestPayout(current.driver, payout);
     }
 
@@ -232,12 +217,8 @@ function buildDashboardItems(
 ): DashboardItem[] {
   return orders.map((order) => {
     const pair = payoutsByOrderId.get(order.id) ?? {};
-    const restaurant = pair.restaurant;
-    const driver = pair.driver;
-
-    const restaurantSide = toSide(restaurant);
-    const driverSide = toSide(driver);
-    const dashboardStatus = deriveDashboardStatus(order, restaurant, driver);
+    const restaurantSide = toSide(pair.restaurant);
+    const driverSide = toSide(pair.driver);
 
     return {
       order_id: order.id,
@@ -283,7 +264,7 @@ function buildDashboardItems(
       driver_succeeded_at: driverSide.succeeded_at,
       driver_failed_at: driverSide.failed_at,
 
-      dashboard_status: dashboardStatus,
+      dashboard_status: deriveDashboardStatus(order, pair.restaurant, pair.driver),
     };
   });
 }
@@ -317,9 +298,9 @@ function buildSummary(items: DashboardItem[]) {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    await assertCanAccessPayouts();
+    await assertCanAccessPayouts(request);
 
     const supabase = buildSupabaseAdminClient();
 
