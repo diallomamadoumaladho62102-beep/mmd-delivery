@@ -2,17 +2,13 @@ import { type UserRole } from "@/lib/roles";
 
 /**
  * Centralized admin authorization rules.
- *
- * Current production policy:
- * - only "admin" can access admin capabilities
- *
- * Future-ready:
- * - this file is the single place to extend fine-grained permissions
- * - pages and API routes should never hardcode role checks directly
  */
 
 function isAdmin(role: UserRole | null | undefined): boolean {
-  return role === "admin";
+  if (!role) return false;
+
+  // normalise le rôle (évite bug majuscule/minuscule)
+  return role.toLowerCase() === "admin";
 }
 
 /**

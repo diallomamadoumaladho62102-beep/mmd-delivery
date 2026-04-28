@@ -78,6 +78,15 @@ type ApiResponse = {
   items: DashboardItem[];
   summary: Summary;
   error?: string;
+  processed?: number;
+  skipped?: number;
+  failed?: number;
+  data?: {
+    processed?: number;
+    skipped?: number;
+    failed?: number;
+    error?: string;
+  };
 };
 
 type DashboardFilter =
@@ -101,7 +110,6 @@ type SortOption =
 
 function getTimestamp(value: string | null | undefined): number {
   if (!value) return 0;
-
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
@@ -421,19 +429,22 @@ function ActionButton({
 }: {
   label: string;
   onClick: () => void;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "danger";
   disabled?: boolean;
 }) {
+  const variantClass =
+    variant === "primary"
+      ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+      : variant === "danger"
+      ? "border-red-700 bg-red-700 text-white hover:bg-red-800"
+      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100";
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${
-        variant === "primary"
-          ? "border border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
-          : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-      }`}
+      className={`inline-flex h-11 w-full items-center justify-center rounded-xl border px-4 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto ${variantClass}`}
     >
       {label}
     </button>
@@ -629,7 +640,7 @@ export default function AdminPayoutsPage() {
         },
       });
 
-      const json = await response.json();
+      const json = (await response.json()) as ApiResponse;
 
       if (!response.ok || !json.ok) {
         throw new Error(
@@ -637,7 +648,13 @@ export default function AdminPayoutsPage() {
         );
       }
 
-      alert(`Payouts processed: ${json.data?.processed ?? 0}`);
+      const processed = json.processed ?? json.data?.processed ?? 0;
+      const skipped = json.skipped ?? json.data?.skipped ?? 0;
+      const failed = json.failed ?? json.data?.failed ?? 0;
+
+      alert(
+        `Payouts processed: ${processed}\nSkipped: ${skipped}\nFailed: ${failed}`
+      );
 
       await loadPage("refresh");
     } catch (err) {
@@ -676,53 +693,68 @@ export default function AdminPayoutsPage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-              MMD Delivery · Admin Finance Ops
-            </div>
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
-              Admin Payouts Dashboard
-            </h1>
-            <p className="mt-2 max-w-3xl text-sm text-slate-600">
-              Paid orders, restaurant payouts, driver payouts, Stripe transfer
-              IDs, payout health, filtering, export and quick operations in one
-              place.
-            </p>
-          </div>
+      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-5">
+            <div>
+              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+                MMD Delivery · Admin Finance Ops
+              </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/admin/payouts/reconciliation"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
-            >
-              Reconciliation Center
-            </Link>
-            <Link
-              href="/admin/payouts/audit"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
-            >
-              Audit Logs
-            </Link>
-            <ActionButton label="Reset filters" onClick={resetFilters} />
-            <ActionButton
-              label="Export CSV"
-              onClick={exportCsv}
-              disabled={filteredItems.length === 0}
-            />
-            <ActionButton
-              label={processingPayouts ? "Processing..." : "Run payouts"}
-              onClick={() => void runPayoutProcessor()}
-              variant="primary"
-              disabled={processingPayouts || refreshing}
-            />
-            <ActionButton
-              label={refreshing ? "Refreshing..." : "Refresh"}
-              onClick={() => void loadPage("refresh")}
-              variant="primary"
-              disabled={refreshing}
-            />
+              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Admin Payouts Dashboard
+              </h1>
+
+              <p className="mt-2 max-w-3xl text-sm text-slate-600">
+                Paid orders, restaurant payouts, driver payouts, Stripe transfer
+                IDs, payout health, filtering, export and quick operations in
+                one place.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Quick actions
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                <Link
+                  href="/admin/payouts/reconciliation"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+                >
+                  Reconciliation
+                </Link>
+
+                <Link
+                  href="/admin/payouts/audit"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100"
+                >
+                  Audit Logs
+                </Link>
+
+                <ActionButton label="Reset filters" onClick={resetFilters} />
+
+                <ActionButton
+                  label="Export CSV"
+                  onClick={exportCsv}
+                  disabled={filteredItems.length === 0}
+                />
+
+                <ActionButton
+                  label={processingPayouts ? "Processing..." : "Run payouts"}
+                  onClick={() => void runPayoutProcessor()}
+                  variant="primary"
+                  disabled={processingPayouts || refreshing}
+                />
+
+                <ActionButton
+                  label={refreshing ? "Refreshing..." : "Refresh"}
+                  onClick={() => void loadPage("refresh")}
+                  variant="primary"
+                  disabled={refreshing}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
