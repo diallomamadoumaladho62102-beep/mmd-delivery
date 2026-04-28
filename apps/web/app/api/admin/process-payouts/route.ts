@@ -5,8 +5,11 @@ import { AdminAccessError, assertCanRetryPayout } from "@/lib/adminServer";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const WEEKLY_PAYOUT_DAY_UTC = 0; // 0 = Sunday
+
 type OrderRow = {
   id: string;
+  created_at: string | null;
   payment_status: string | null;
   status: string | null;
   restaurant_paid_out: boolean | null;
@@ -54,6 +57,12 @@ function getSupabaseAdmin(): SupabaseClient {
 }
 
 function isCronAuthorized(request: NextRequest): boolean {
+  const vercelCron = request.headers.get("x-vercel-cron");
+
+  if (vercelCron) {
+    return true;
+  }
+
   const expected = process.env.CRON_SECRET;
   const provided = request.headers.get("x-cron-secret");
 
@@ -66,7 +75,7 @@ async function authorize(request: NextRequest): Promise<{
 }> {
   if (isCronAuthorized(request)) {
     return {
-      actor: "cron:process-payouts",
+      actor: "cron:weekly-process-payouts",
       cron: true,
     };
   }
@@ -76,6 +85,31 @@ async function authorize(request: NextRequest): Promise<{
   return {
     actor: admin.userId,
     cron: false,
+  };
+}
+
+function isWeeklyPayoutDay(): boolean {
+  return new Date().getUTCDay() === WEEKLY_PAYOUT_DAY_UTC;
+}
+
+function startOfUtcDay(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  );
+}
+
+function getPreviousWeekWindowUtc(): {
+  weekStartIso: string;
+  weekEndIso: string;
+} {
+  const todayStart = startOfUtcDay(new Date());
+
+  const weekEnd = todayStart;
+  const weekStart = new Date(weekEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  return {
+    weekStartIso: weekStart.toISOString(),
+    weekEndIso: weekEnd.toISOString(),
   };
 }
 
@@ -151,7 +185,8 @@ async function processTarget(params: {
 
   const alreadyPaid =
     target === "restaurant"
-      ? order.restaurant_paid_out === true && Boolean(order.restaurant_transfer_id)
+      ? order.restaurant_paid_out === true &&
+        Boolean(order.restaurant_transfer_id)
       : order.driver_paid_out === true && Boolean(order.driver_transfer_id);
 
   if (alreadyPaid) {
@@ -209,16 +244,34 @@ export async function POST(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     const { searchParams } = request.nextUrl;
+
+    const forceRun =
+      searchParams.get("force") === "true" || searchParams.get("force") === "1";
+
+    if (!forceRun && !isWeeklyPayoutDay()) {
+      return json({
+        ok: true,
+        skipped: true,
+        actor,
+        cron,
+        message: "Weekly payouts only run on Sunday.",
+        weekly_payout_day_utc: "Sunday",
+      });
+    }
+
     const limit = Math.min(
       Math.max(Number(searchParams.get("limit") ?? 25), 1),
       100
     );
+
+    const { weekStartIso, weekEndIso } = getPreviousWeekWindowUtc();
 
     const { data: orders, error } = await supabase
       .from("orders")
       .select(
         `
           id,
+          created_at,
           payment_status,
           status,
           restaurant_paid_out,
@@ -229,6 +282,8 @@ export async function POST(request: NextRequest) {
       )
       .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
+      .gte("created_at", weekStartIso)
+      .lt("created_at", weekEndIso)
       .order("created_at", { ascending: true })
       .limit(limit);
 
@@ -267,6 +322,11 @@ export async function POST(request: NextRequest) {
       ok: true,
       actor,
       cron,
+      weekly: true,
+      force_run: forceRun,
+      payout_day_utc: "Sunday",
+      payout_window_start: weekStartIso,
+      payout_window_end: weekEndIso,
       checked_orders: typedOrders.length,
       processed,
       skipped,
