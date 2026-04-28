@@ -19,14 +19,18 @@ export default function Navbar() {
     let cancelled = false;
 
     async function load() {
-      const { data, error } = await supabase.auth.getUser();
+      // ✅ CORRECTION : utiliser getSession (et pas getUser)
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.getSession();
 
       if (cancelled) return;
 
-      if (!error && data?.user) {
+      if (!error && session?.user) {
         setUser({
-          id: data.user.id,
-          email: data.user.email ?? undefined,
+          id: session.user.id,
+          email: session.user.email ?? undefined,
         });
       } else {
         setUser(null);
@@ -58,8 +62,8 @@ export default function Navbar() {
   async function logout() {
     await supabase.auth.signOut();
 
-    // ✅ redirection propre (pas de flash, pas de reload)
-    router.replace("/signup");
+    // ✅ redirection propre
+    router.replace("/auth/sign-in");
   }
 
   return (
@@ -83,7 +87,7 @@ export default function Navbar() {
               </>
             ) : (
               <Link
-                href="/login"
+                href="/auth/sign-in" // ✅ CORRECTION ici aussi
                 className="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700"
               >
                 Se connecter
