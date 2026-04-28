@@ -949,7 +949,7 @@ export default function AdminPayoutsPage() {
               </div>
 
               <div className="w-full overflow-x-auto">
-                <table className="w-full table-fixed divide-y divide-slate-200 text-sm text-center">
+                <table className="w-full table-auto divide-y divide-slate-200 text-sm text-center">
                   <thead className="bg-slate-50">
                     <tr className="text-center text-xs uppercase tracking-wide text-slate-500">
                       <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Order</th>
@@ -1008,9 +1008,9 @@ export default function AdminPayoutsPage() {
                             key={item.order_id}
                             className="align-top transition hover:bg-slate-50"
                           >
-                            <td className="px-3 py-4 text-left align-middle"><div className="font-semibold text-slate-900 break-words">{truncateMiddle(item.order_id, 10, 8)}
+                            <td className="px-3 py-4 text-center align-middle"><div className="font-semibold text-slate-900 break-words">{truncateMiddle(item.order_id, 10, 8)}
                               </div>
-                              <div className="mt-2 flex flex-wrap gap-3">
+                              <div className="mt-2 flex flex-wrap justify-center gap-3">
                                 <button
                                   type="button"
                                   onClick={() => void copyText(item.order_id)}
@@ -1035,7 +1035,7 @@ export default function AdminPayoutsPage() {
                               {formatDate(getLastActivity(item))}
                             </td>
 
-                            <td className="px-3 py-4 text-left align-middle"><div className="font-semibold text-slate-900">{item.restaurant_name || "—"}
+                            <td className="px-3 py-4 text-center align-middle"><div className="font-semibold text-slate-900">{item.restaurant_name || "—"}
                               </div>
                               <div className="mt-1 text-xs text-slate-500">
                                 Paid at: {formatDate(item.paid_at)}
@@ -1109,7 +1109,7 @@ export default function AdminPayoutsPage() {
                                 {truncateMiddle(restaurantTransferId, 10, 8)}
                               </div>
 
-                              <div className="mt-2 flex flex-wrap gap-3">
+                              <div className="mt-2 flex flex-wrap justify-center gap-3">
                                 {restaurantTransferId && (
                                   <button
                                     type="button"
@@ -1167,7 +1167,7 @@ export default function AdminPayoutsPage() {
                                 {truncateMiddle(driverTransferId, 10, 8)}
                               </div>
 
-                              <div className="mt-2 flex flex-wrap gap-3">
+                              <div className="mt-2 flex flex-wrap justify-center gap-3">
                                 {driverTransferId && (
                                   <button
                                     type="button"
