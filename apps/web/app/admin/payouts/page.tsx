@@ -754,7 +754,7 @@ export default function AdminPayoutsPage() {
                 </p>
               </div>
 
-              <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:max-w-3xl xl:grid-cols-3">
+              <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:max-w-none xl:grid-cols-3">
                 <Link
                   href="/admin/payouts/reconciliation"
                   className="inline-flex min-h-[54px] items-center justify-center rounded-2xl bg-white px-5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-slate-100"
