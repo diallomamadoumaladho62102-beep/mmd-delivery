@@ -12,6 +12,10 @@ type OrderRow = {
   created_at: string | null;
   payment_status: string | null;
   status: string | null;
+
+  restaurant_id: string | null;
+  restaurant_user_id: string | null;
+
   restaurant_paid_out: boolean | null;
   driver_paid_out: boolean | null;
   restaurant_transfer_id: string | null;
@@ -59,9 +63,7 @@ function getSupabaseAdmin(): SupabaseClient {
 function isCronAuthorized(request: NextRequest): boolean {
   const vercelCron = request.headers.get("x-vercel-cron");
 
-  if (vercelCron) {
-    return true;
-  }
+  if (vercelCron) return true;
 
   const expected = process.env.CRON_SECRET;
   const provided = request.headers.get("x-cron-secret");
@@ -123,6 +125,10 @@ function getIncomingBearerToken(request: NextRequest): string | null {
   return authHeader;
 }
 
+function hasRestaurant(order: OrderRow): boolean {
+  return Boolean(order.restaurant_user_id || order.restaurant_id);
+}
+
 async function callTransferRun(params: {
   request: NextRequest;
   orderId: string;
@@ -182,6 +188,16 @@ async function processTarget(params: {
   cron: boolean;
 }): Promise<ProcessResult> {
   const { request, order, target, cron } = params;
+
+  if (target === "restaurant" && !hasRestaurant(order)) {
+    return {
+      order_id: order.id,
+      target,
+      ok: true,
+      skipped: true,
+      data: "Skipped restaurant payout: this order has no restaurant reference.",
+    };
+  }
 
   const alreadyPaid =
     target === "restaurant"
@@ -266,7 +282,7 @@ export async function POST(request: NextRequest) {
 
     const { weekStartIso, weekEndIso } = getPreviousWeekWindowUtc();
 
-    const { data: orders, error } = await supabase
+    let query = supabase
       .from("orders")
       .select(
         `
@@ -274,6 +290,8 @@ export async function POST(request: NextRequest) {
           created_at,
           payment_status,
           status,
+          restaurant_id,
+          restaurant_user_id,
           restaurant_paid_out,
           driver_paid_out,
           restaurant_transfer_id,
@@ -282,10 +300,14 @@ export async function POST(request: NextRequest) {
       )
       .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
-      .gte("created_at", weekStartIso)
-      .lt("created_at", weekEndIso)
       .order("created_at", { ascending: true })
       .limit(limit);
+
+    if (!forceRun) {
+      query = query.gte("created_at", weekStartIso).lt("created_at", weekEndIso);
+    }
+
+    const { data: orders, error } = await query;
 
     if (error) {
       throw new Error(`Failed to load eligible orders: ${error.message}`);
@@ -295,14 +317,24 @@ export async function POST(request: NextRequest) {
     const results: ProcessResult[] = [];
 
     for (const order of typedOrders) {
-      results.push(
-        await processTarget({
-          request,
-          order,
+      if (hasRestaurant(order)) {
+        results.push(
+          await processTarget({
+            request,
+            order,
+            target: "restaurant",
+            cron,
+          })
+        );
+      } else {
+        results.push({
+          order_id: order.id,
           target: "restaurant",
-          cron,
-        })
-      );
+          ok: true,
+          skipped: true,
+          data: "Skipped restaurant payout: errand/simple delivery order.",
+        });
+      }
 
       results.push(
         await processTarget({
@@ -322,11 +354,11 @@ export async function POST(request: NextRequest) {
       ok: true,
       actor,
       cron,
-      weekly: true,
+      weekly: !forceRun,
       force_run: forceRun,
       payout_day_utc: "Sunday",
-      payout_window_start: weekStartIso,
-      payout_window_end: weekEndIso,
+      payout_window_start: forceRun ? null : weekStartIso,
+      payout_window_end: forceRun ? null : weekEndIso,
       checked_orders: typedOrders.length,
       processed,
       skipped,
