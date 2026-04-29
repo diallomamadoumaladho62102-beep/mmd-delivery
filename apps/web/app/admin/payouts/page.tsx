@@ -156,31 +156,31 @@ function truncateMiddle(
 function getStatusBadgeClass(status: DashboardStatus) {
   switch (status) {
     case "completed":
-      return "border-green-200 bg-green-100 text-green-800";
+      return "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 backdrop-blur";
     case "partial":
-      return "border-amber-200 bg-amber-100 text-amber-800";
+      return "bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 backdrop-blur";
     case "failed":
-      return "border-red-200 bg-red-100 text-red-800";
+      return "bg-red-500/10 text-red-600 ring-1 ring-red-500/20 backdrop-blur";
     case "data_mismatch":
-      return "border-rose-200 bg-rose-100 text-rose-800";
+      return "bg-rose-500/10 text-rose-600 ring-1 ring-rose-500/20 backdrop-blur";
     case "paid_no_payout":
-      return "border-blue-200 bg-blue-100 text-blue-800";
+      return "bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20 backdrop-blur";
     case "unpaid":
     default:
-      return "border-slate-200 bg-slate-100 text-slate-700";
+      return "bg-slate-200/60 text-slate-700 ring-1 ring-slate-300 backdrop-blur";
   }
 }
 
 function getPayoutBadgeClass(status: string | null) {
   switch (status) {
     case "succeeded":
-      return "border-green-200 bg-green-100 text-green-800";
+      return "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 backdrop-blur";
     case "failed":
-      return "border-red-200 bg-red-100 text-red-800";
+      return "bg-red-500/10 text-red-600 ring-1 ring-red-500/20 backdrop-blur";
     case "pending":
-      return "border-amber-200 bg-amber-100 text-amber-800";
+      return "bg-amber-500/10 text-amber-600 ring-1 ring-amber-500/20 backdrop-blur";
     default:
-      return "border-slate-200 bg-slate-100 text-slate-700";
+      return "bg-slate-200/60 text-slate-700 ring-1 ring-slate-300 backdrop-blur";
   }
 }
 
@@ -392,20 +392,35 @@ function StatCard({
 }) {
   const toneClass =
     tone === "success"
-      ? "border-green-200 bg-green-50 text-green-900"
+      ? "bg-emerald-50 text-emerald-900 ring-emerald-100"
       : tone === "warning"
-      ? "border-amber-200 bg-amber-50 text-amber-900"
+      ? "bg-amber-50 text-amber-900 ring-amber-100"
       : tone === "danger"
-      ? "border-red-200 bg-red-50 text-red-900"
-      : "border-slate-200 bg-white text-slate-900";
+      ? "bg-red-50 text-red-900 ring-red-100"
+      : "bg-white text-slate-900 ring-slate-200";
+
+  const icon =
+    tone === "success"
+      ? "✓"
+      : tone === "warning"
+      ? "!"
+      : tone === "danger"
+      ? "×"
+      : "•";
 
   return (
     <div
-      className={`min-h-[120px] rounded-2xl border p-6 text-center shadow-sm flex flex-col items-center justify-center ${toneClass}`}
+      className={`min-h-[132px] rounded-3xl p-6 shadow-sm ring-1 transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${toneClass}`}
     >
-      <div className="text-sm font-medium text-slate-500">{title}</div>
-      <div className="mt-3 text-4xl font-extrabold tracking-tight">
-        {value}
+      <div className="flex items-start justify-between gap-4">
+        <div className="text-left">
+          <div className="text-sm font-semibold text-slate-500">{title}</div>
+          <div className="mt-3 text-4xl font-black tracking-tight">{value}</div>
+        </div>
+
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/80 text-lg font-black shadow-sm">
+          {icon}
+        </div>
       </div>
     </div>
   );
@@ -424,10 +439,10 @@ function FilterPill({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
         active
-          ? "border-slate-900 bg-slate-900 text-white"
-          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+          ? "bg-slate-950 text-white shadow-sm"
+          : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
       }`}
     >
       {label}
@@ -443,22 +458,24 @@ function ActionButton({
 }: {
   label: string;
   onClick: () => void;
-  variant?: "primary" | "secondary" | "danger";
+  variant?: "primary" | "secondary" | "danger" | "blue";
   disabled?: boolean;
 }) {
   const variantClass =
     variant === "primary"
-      ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-800"
+      ? "bg-slate-950 text-white hover:bg-slate-800"
+      : variant === "blue"
+      ? "bg-blue-600 text-white hover:bg-blue-700"
       : variant === "danger"
-      ? "border-red-700 bg-red-700 text-white hover:bg-red-800"
-      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100";
+      ? "bg-red-600 text-white hover:bg-red-700"
+      : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50";
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-11 w-full items-center justify-center rounded-xl border px-4 text-sm font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto ${variantClass}`}
+      className={`inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl px-5 text-sm font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 ${variantClass}`}
     >
       {label}
     </button>
@@ -607,7 +624,8 @@ export default function AdminPayoutsPage() {
         (item.driver_payout_transfer_id ?? "").toLowerCase().includes(q);
 
       const matchesDashboard =
-        dashboardFilter === "all" || getDisplayDashboardStatus(item) === dashboardFilter;
+        dashboardFilter === "all" ||
+        getDisplayDashboardStatus(item) === dashboardFilter;
 
       const matchesPayment =
         paymentFilter === "all" || item.payment_status === paymentFilter;
@@ -644,15 +662,18 @@ export default function AdminPayoutsPage() {
 
       const accessToken = await getRequiredAccessToken();
 
-      const response = await fetch("/api/admin/process-payouts?force=true&limit=100", {
-        method: "POST",
-        cache: "no-store",
-        credentials: "include",
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const response = await fetch(
+        "/api/admin/process-payouts?force=true&limit=100",
+        {
+          method: "POST",
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
 
       const json = (await response.json()) as ApiResponse;
 
@@ -696,86 +717,100 @@ export default function AdminPayoutsPage() {
       completed: filteredItems.filter(
         (x) => getDisplayDashboardStatus(x) === "completed"
       ).length,
-      partial: filteredItems.filter((x) => getDisplayDashboardStatus(x) === "partial")
-        .length,
-      failed: filteredItems.filter((x) => getDisplayDashboardStatus(x) === "failed")
-        .length,
-      unpaid: filteredItems.filter((x) => getDisplayDashboardStatus(x) === "unpaid")
-        .length,
+      partial: filteredItems.filter(
+        (x) => getDisplayDashboardStatus(x) === "partial"
+      ).length,
+      failed: filteredItems.filter(
+        (x) => getDisplayDashboardStatus(x) === "failed"
+      ).length,
+      unpaid: filteredItems.filter(
+        (x) => getDisplayDashboardStatus(x) === "unpaid"
+      ).length,
     };
   }, [filteredItems]);
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-5">
-            <div>
-              <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                MMD Delivery · Admin Finance Ops
+    <main className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white">
+      <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-10 overflow-hidden rounded-[2rem] bg-slate-950 shadow-2xl ring-1 ring-slate-900">
+          <div className="relative p-8 sm:p-10">
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-emerald-400/10 blur-2xl" />
+            <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-blue-500/20 blur-3xl" />
+            <div className="absolute bottom-0 left-1/2 h-40 w-40 rounded-full bg-emerald-400/10 blur-3xl" />
+
+            <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+              <div>
+                <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300 ring-1 ring-white/10">
+                  MMD Delivery · Finance Ops
+                </div>
+
+                <h1 className="mt-5 text-4xl font-black tracking-tight text-white sm:text-5xl">
+                  Payout Operations
+                </h1>
+
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+                  Monitor, process, reconcile, and audit restaurant and driver
+                  payouts from one premium finance control center.
+                </p>
               </div>
 
-              <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                Admin Payouts Dashboard
-              </h1>
+              <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:max-w-3xl xl:grid-cols-3">
+                <Link
+                  href="/admin/payouts/reconciliation"
+                  className="inline-flex min-h-[54px] items-center justify-center rounded-2xl bg-white px-5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-slate-100"
+                >
+                  Reconciliation
+                </Link>
 
-              <p className="mt-2 max-w-3xl text-sm text-slate-600">
-                Paid orders, restaurant payouts, driver payouts, Stripe transfer
-                IDs, payout health, filtering, export and quick operations in
-                one place.
-              </p>
-            </div>
+                <Link
+                  href="/admin/payouts/audit"
+                  className="inline-flex min-h-[54px] items-center justify-center rounded-2xl bg-white/10 px-5 text-sm font-bold text-white ring-1 ring-white/15 transition hover:bg-white/15"
+                >
+                  Audit Logs
+                </Link>
 
-            <div className="w-full rounded-2xl border border-slate-100 bg-white/70 p-5 flex flex-col justify-center">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="mb-3 text-sm font-semibold text-slate-900">
-                  Quick actions
-                </div>
+                <ActionButton label="Reset filters" onClick={resetFilters} />
 
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <Link href="/admin/payouts/reconciliation" className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border-2 border-slate-300 bg-white px-4 text-base font-bold text-slate-700 shadow-sm transition hover:bg-slate-100">
-                    Reconciliation
-                  </Link>
+                <ActionButton
+                  label="Export CSV"
+                  onClick={exportCsv}
+                  disabled={filteredItems.length === 0}
+                />
 
-                  <Link href="/admin/payouts/audit" className="inline-flex min-h-[54px] w-full items-center justify-center rounded-xl border-2 border-slate-300 bg-white px-4 text-base font-bold text-slate-700 shadow-sm transition hover:bg-slate-100">
-                    Audit Logs
-                  </Link>
+                <ActionButton
+                  label={processingPayouts ? "Processing..." : "Run payouts"}
+                  onClick={() => void runPayoutProcessor()}
+                  variant="primary"
+                  disabled={processingPayouts || refreshing}
+                />
 
-                  <button type="button" onClick={resetFilters} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#ffffff", color: "#334155", border: "2px solid #cbd5e1", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}>
-                    Reset filters
-                  </button>
-
-                  <button type="button" onClick={exportCsv} disabled={filteredItems.length === 0} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#ffffff", color: "#334155", border: "2px solid #cbd5e1", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", opacity: filteredItems.length === 0 ? 0.6 : 1 }}>
-                    Export CSV
-                  </button>
-
-                  <button type="button" onClick={() => void runPayoutProcessor()} disabled={processingPayouts || refreshing} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#111827", color: "#ffffff", border: "2px solid #000000", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.12)", opacity: processingPayouts || refreshing ? 0.6 : 1 }}>
-                    {processingPayouts ? "Processing..." : "Run payouts"}
-                  </button>
-
-                  <button type="button" onClick={() => void loadPage("refresh")} disabled={refreshing} style={{ minHeight: "54px", width: "100%", borderRadius: "12px", backgroundColor: "#2563eb", color: "#ffffff", border: "2px solid #1e3a8a", fontSize: "16px", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.12)", opacity: refreshing ? 0.6 : 1 }}>
-                    {refreshing ? "Refreshing..." : "Refresh"}
-                  </button>
-                </div>
+                <ActionButton
+                  label={refreshing ? "Refreshing..." : "Refresh"}
+                  onClick={() => void loadPage("refresh")}
+                  variant="blue"
+                  disabled={refreshing}
+                />
               </div>
             </div>
           </div>
         </div>
 
         {loading || !authChecked ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <div className="text-sm text-slate-500">Loading payouts...</div>
+          <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+            <div className="text-sm font-medium text-slate-500">
+              Loading payouts...
+            </div>
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
-            <div className="text-sm font-medium text-red-800">
+          <div className="rounded-3xl bg-red-50 p-6 shadow-sm ring-1 ring-red-200">
+            <div className="text-sm font-bold text-red-800">
               Failed to load admin payouts
             </div>
             <div className="mt-2 text-sm text-red-700">{error}</div>
           </div>
         ) : !isAdmin ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
-            <div className="text-sm font-medium text-amber-800">
+          <div className="rounded-3xl bg-amber-50 p-6 shadow-sm ring-1 ring-amber-200">
+            <div className="text-sm font-bold text-amber-800">
               Access restricted
             </div>
             <div className="mt-2 text-sm text-amber-700">
@@ -784,7 +819,7 @@ export default function AdminPayoutsPage() {
           </div>
         ) : (
           <>
-            <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <section className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <StatCard title="Total orders" value={summary?.total_orders ?? 0} />
               <StatCard
                 title="Paid orders"
@@ -808,7 +843,7 @@ export default function AdminPayoutsPage() {
               />
             </section>
 
-            <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 title="Restaurant paid out"
                 value={summary?.restaurant_paid_out_orders ?? 0}
@@ -829,12 +864,28 @@ export default function AdminPayoutsPage() {
               />
             </section>
 
-            <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3 text-center">
+            <section className="mb-8 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-black tracking-tight text-slate-950">
+                    Filters
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Search by order, restaurant, or transfer ID.
+                  </p>
+                </div>
+
+                <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700">
+                  {filteredSummary.total} result
+                  {filteredSummary.total > 1 ? "s" : ""}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                 <div>
                   <label
                     htmlFor="payout-search"
-                    className="mb-2 block text-sm font-semibold text-slate-700 text-center"
+                    className="mb-2 block text-sm font-bold text-slate-700"
                   >
                     Search
                   </label>
@@ -843,13 +894,13 @@ export default function AdminPayoutsPage() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search by order ID, restaurant name, or transfer ID..."
-                    className="h-12 w-full rounded-xl border border-slate-300 text-center bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    placeholder="Order ID, restaurant, transfer ID..."
+                    className="h-13 w-full rounded-2xl bg-slate-50 px-4 py-4 text-sm font-medium text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-400"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700 text-center">
+                  <label className="mb-2 block text-sm font-bold text-slate-700">
                     Payment status
                   </label>
                   <select
@@ -857,7 +908,7 @@ export default function AdminPayoutsPage() {
                     onChange={(e) =>
                       setPaymentFilter(e.target.value as PaymentFilter)
                     }
-                    className="h-12 w-full rounded-xl border border-slate-300 text-center bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="h-13 w-full rounded-2xl bg-slate-50 px-4 py-4 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-slate-400"
                   >
                     <option value="all">All</option>
                     <option value="paid">Paid</option>
@@ -866,13 +917,13 @@ export default function AdminPayoutsPage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700 text-center">
+                  <label className="mb-2 block text-sm font-bold text-slate-700">
                     Sort
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="h-12 w-full rounded-xl border border-slate-300 text-center bg-white px-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                    className="h-13 w-full rounded-2xl bg-slate-50 px-4 py-4 text-sm font-bold text-slate-900 shadow-sm ring-1 ring-slate-200 outline-none transition focus:bg-white focus:ring-2 focus:ring-slate-400"
                   >
                     <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
@@ -884,7 +935,7 @@ export default function AdminPayoutsPage() {
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2">
                 {(
                   [
                     "all",
@@ -905,10 +956,10 @@ export default function AdminPayoutsPage() {
                 ))}
               </div>
 
-              <div className="mt-4 flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-5 flex flex-col gap-3 rounded-2xl bg-slate-50 px-5 py-4 text-sm font-medium text-slate-600 ring-1 ring-slate-200 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   Showing{" "}
-                  <span className="font-semibold text-slate-900">
+                  <span className="font-black text-slate-950">
                     {filteredSummary.total}
                   </span>{" "}
                   result{filteredSummary.total > 1 ? "s" : ""}
@@ -917,31 +968,31 @@ export default function AdminPayoutsPage() {
                 <div className="flex flex-wrap gap-4">
                   <span>
                     Paid:{" "}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-black text-slate-950">
                       {filteredSummary.paid}
                     </span>
                   </span>
                   <span>
                     Completed:{" "}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-black text-slate-950">
                       {filteredSummary.completed}
                     </span>
                   </span>
                   <span>
                     Partial:{" "}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-black text-slate-950">
                       {filteredSummary.partial}
                     </span>
                   </span>
                   <span>
                     Failed:{" "}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-black text-slate-950">
                       {filteredSummary.failed}
                     </span>
                   </span>
                   <span>
                     Unpaid:{" "}
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-black text-slate-950">
                       {filteredSummary.unpaid}
                     </span>
                   </span>
@@ -949,9 +1000,9 @@ export default function AdminPayoutsPage() {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100">
-              <div className="border-b border-slate-200 px-5 py-4">
-                <h2 className="text-lg font-semibold text-slate-900">
+            <section className="overflow-hidden rounded-[2rem] bg-white shadow-xl ring-1 ring-slate-200">
+              <div className="border-b border-slate-200 px-6 py-5">
+                <h2 className="text-xl font-black tracking-tight text-slate-950">
                   Orders and payouts
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
@@ -961,35 +1012,57 @@ export default function AdminPayoutsPage() {
               </div>
 
               <div className="w-full overflow-x-auto">
-                <table className="w-full table-auto divide-y divide-slate-200 text-sm text-center">
-                  <thead className="bg-slate-50 sticky top-0 z-10">
-                    <tr className="text-center text-xs uppercase tracking-wide text-slate-500">
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Order</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Created</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Last activity</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Restaurant</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Order status</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Payment</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Total</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Dashboard</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">
+                <table className="w-full table-auto divide-y divide-slate-200 text-center text-sm">
+                  <thead className="sticky top-0 z-10 bg-white shadow-sm">
+                    <tr className="text-center text-xs uppercase tracking-[0.14em] text-slate-500">
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Order
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Created
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Last activity
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Restaurant
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Order status
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Payment
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Total
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Dashboard
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
                         Restaurant payout
                       </th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
                         Restaurant transfer
                       </th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Driver payout</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Driver transfer</th>
-                      <th className="px-3 py-3 font-semibold whitespace-nowrap text-center">Errors</th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Driver payout
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Driver transfer
+                      </th>
+                      <th className="whitespace-nowrap px-4 py-4 font-black">
+                        Errors
+                      </th>
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-slate-200 bg-white">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {filteredItems.length === 0 ? (
                       <tr>
                         <td
                           colSpan={13}
-                          className="px-4 py-12 text-center text-sm text-slate-500"
+                          className="px-4 py-14 text-center text-sm font-medium text-slate-500"
                         >
                           No results match the current filters.
                         </td>
@@ -1018,102 +1091,118 @@ export default function AdminPayoutsPage() {
                         return (
                           <tr
                             key={item.order_id}
-                            className="align-middle transition duration-150 hover:bg-slate-100 hover:shadow-sm"
+                            className="align-middle transition-all duration-200 hover:scale-[1.002] hover:bg-slate-50"
                           >
-                            <td className="px-4 py-5 text-center align-middle"><div className="font-semibold text-slate-900 break-words">{truncateMiddle(item.order_id, 10, 8)}
+                            <td className="px-4 py-6 text-center align-middle">
+                              <div className="break-words font-black text-slate-950">
+                                {truncateMiddle(item.order_id, 10, 8)}
                               </div>
                               <div className="mt-2 flex flex-wrap justify-center gap-3">
                                 <button
                                   type="button"
                                   onClick={() => void copyText(item.order_id)}
-                                  className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                                  className="text-xs font-bold text-blue-600 hover:text-blue-800"
                                 >
-                                  {copied === item.order_id ? "Copied" : "Copy ID"}
+                                  {copied === item.order_id
+                                    ? "Copied"
+                                    : "Copy ID"}
                                 </button>
                                 <Link
                                   href={`/admin/payouts/${item.order_id}`}
-                                  className="text-xs font-medium text-slate-700 hover:text-slate-900"
+                                  className="text-xs font-bold text-slate-600 hover:text-slate-950"
                                 >
                                   Open order
                                 </Link>
                               </div>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle text-slate-700">
+                            <td className="px-4 py-6 text-center align-middle text-slate-700">
                               {formatDate(item.created_at)}
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle text-slate-700">
+                            <td className="px-4 py-6 text-center align-middle text-slate-700">
                               {formatDate(getLastActivity(item))}
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle"><div className="font-semibold text-slate-900">{item.restaurant_name || "—"}
+                            <td className="px-4 py-6 text-center align-middle">
+                              <div className="font-black text-slate-950">
+                                {item.restaurant_name || "—"}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500">
+                              <div className="mt-1 text-xs font-medium text-slate-500">
                                 Paid at: {formatDate(item.paid_at)}
                               </div>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
-                              <div className="text-slate-900">
+                            <td className="px-4 py-6 text-center align-middle">
+                              <div className="font-semibold text-slate-900">
                                 {item.order_status}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500">
+                              <div className="mt-1 text-xs font-medium text-slate-500">
                                 Delivered:{" "}
                                 {formatDate(item.delivered_confirmed_at)}
                               </div>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
+                            <td className="px-4 py-6 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${
+                                className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-black ${
                                   item.payment_status === "paid"
-                                    ? "border-green-200 bg-green-100 text-green-800"
-                                    : "border-slate-200 bg-slate-100 text-slate-700"
+                                    ? "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 backdrop-blur"
+                                    : "bg-slate-200/60 text-slate-700 ring-1 ring-slate-300 backdrop-blur"
                                 }`}
                               >
                                 {item.payment_status}
                               </span>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle text-slate-900">
+                            <td className="px-4 py-6 text-center align-middle font-black text-slate-950">
                               {formatMoney(item.total, item.currency || "USD")}
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
+                            <td className="px-4 py-6 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getStatusBadgeClass(getDisplayDashboardStatus(item))}`}
+                                className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-black ${getStatusBadgeClass(
+                                  getDisplayDashboardStatus(item)
+                                )}`}
                               >
-                                {labelForDashboardStatus(getDisplayDashboardStatus(item))}
+                                {labelForDashboardStatus(
+                                  getDisplayDashboardStatus(item)
+                                )}
                               </span>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
+                            <td className="px-4 py-6 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getPayoutBadgeClass(
+                                className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-black ${getPayoutBadgeClass(
                                   item.restaurant_payout_status
                                 )}`}
                               >
-                                {!item.restaurant_name ? "Driver only" : item.restaurant_payout_status || "pending"}
+                                {!item.restaurant_name ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    🚗 Driver only
+                                  </span>
+                                ) : (
+                                  item.restaurant_payout_status || "pending"
+                                )}
                               </span>
-                              <div className="mt-2 text-slate-900">
+                              <div className="mt-2 font-bold text-slate-950">
                                 {formatMoneyFromCents(
                                   item.restaurant_amount_cents,
                                   item.currency || "USD"
                                 )}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500">
+                              <div className="mt-1 text-xs font-medium text-slate-500">
                                 Paid out:{" "}
                                 {item.restaurant_paid_out ? "true" : "false"}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500">
+                              <div className="mt-1 text-xs font-medium text-slate-500">
                                 At: {formatDate(item.restaurant_succeeded_at)}
                               </div>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
+                            <td className="px-4 py-6 text-center align-middle">
                               <div
-                                className="font-mono text-xs text-slate-900"
+                                className="font-mono text-xs font-bold text-slate-900"
                                 title={restaurantTransferId || ""}
                               >
                                 {truncateMiddle(restaurantTransferId, 10, 8)}
@@ -1126,7 +1215,7 @@ export default function AdminPayoutsPage() {
                                     onClick={() =>
                                       void copyText(restaurantTransferId)
                                     }
-                                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                                    className="text-xs font-bold text-blue-600 hover:text-blue-800"
                                   >
                                     {copied === restaurantTransferId
                                       ? "Copied"
@@ -1139,7 +1228,7 @@ export default function AdminPayoutsPage() {
                                     href={restaurantStripeUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-xs font-medium text-slate-700 hover:text-slate-900"
+                                    className="text-xs font-bold text-slate-600 hover:text-slate-950"
                                   >
                                     Open Stripe
                                   </a>
@@ -1147,31 +1236,32 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
+                            <td className="px-4 py-6 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getPayoutBadgeClass(
-                                  item.driver_payout_status
+                                className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-black ${getPayoutBadgeClass(
+                                  item.driver_payout_status || "pending"
                                 )}`}
                               >
-                                {item.driver_payout_status || "none"}
+                                {item.driver_payout_status || "pending"}
                               </span>
-                              <div className="mt-2 text-slate-900">
+                              <div className="mt-2 font-bold text-slate-950">
                                 {formatMoneyFromCents(
                                   item.driver_amount_cents,
                                   item.currency || "USD"
                                 )}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500">
-                                Paid out: {item.driver_paid_out ? "true" : "false"}
+                              <div className="mt-1 text-xs font-medium text-slate-500">
+                                Paid out:{" "}
+                                {item.driver_paid_out ? "true" : "false"}
                               </div>
-                              <div className="mt-1 text-xs text-slate-500">
+                              <div className="mt-1 text-xs font-medium text-slate-500">
                                 At: {formatDate(item.driver_succeeded_at)}
                               </div>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
+                            <td className="px-4 py-6 text-center align-middle">
                               <div
-                                className="font-mono text-xs text-slate-900"
+                                className="font-mono text-xs font-bold text-slate-900"
                                 title={driverTransferId || ""}
                               >
                                 {truncateMiddle(driverTransferId, 10, 8)}
@@ -1181,8 +1271,10 @@ export default function AdminPayoutsPage() {
                                 {driverTransferId && (
                                   <button
                                     type="button"
-                                    onClick={() => void copyText(driverTransferId)}
-                                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                                    onClick={() =>
+                                      void copyText(driverTransferId)
+                                    }
+                                    className="text-xs font-bold text-blue-600 hover:text-blue-800"
                                   >
                                     {copied === driverTransferId
                                       ? "Copied"
@@ -1195,7 +1287,7 @@ export default function AdminPayoutsPage() {
                                     href={driverStripeUrl}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-xs font-medium text-slate-700 hover:text-slate-900"
+                                    className="text-xs font-bold text-slate-600 hover:text-slate-950"
                                   >
                                     Open Stripe
                                   </a>
@@ -1203,12 +1295,12 @@ export default function AdminPayoutsPage() {
                               </div>
                             </td>
 
-                            <td className="px-4 py-5 text-center align-middle">
+                            <td className="px-4 py-6 text-center align-middle">
                               {hasError ? (
                                 <div className="space-y-2 text-xs">
                                   {item.restaurant_failure_message && (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700">
-                                      <span className="font-semibold">
+                                    <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
+                                      <span className="font-black">
                                         Restaurant:
                                       </span>{" "}
                                       {item.restaurant_failure_message}
@@ -1216,8 +1308,8 @@ export default function AdminPayoutsPage() {
                                   )}
 
                                   {item.restaurant_last_error && (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700">
-                                      <span className="font-semibold">
+                                    <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
+                                      <span className="font-black">
                                         Restaurant last error:
                                       </span>{" "}
                                       {item.restaurant_last_error}
@@ -1225,8 +1317,8 @@ export default function AdminPayoutsPage() {
                                   )}
 
                                   {item.driver_failure_message && (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700">
-                                      <span className="font-semibold">
+                                    <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
+                                      <span className="font-black">
                                         Driver:
                                       </span>{" "}
                                       {item.driver_failure_message}
@@ -1234,8 +1326,8 @@ export default function AdminPayoutsPage() {
                                   )}
 
                                   {item.driver_last_error && (
-                                    <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-700">
-                                      <span className="font-semibold">
+                                    <div className="rounded-xl bg-red-50 p-3 font-medium text-red-700 ring-1 ring-red-200">
+                                      <span className="font-black">
                                         Driver last error:
                                       </span>{" "}
                                       {item.driver_last_error}
@@ -1243,7 +1335,9 @@ export default function AdminPayoutsPage() {
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-slate-400">—</span>
+                                <span className="font-bold text-slate-300">
+                                  —
+                                </span>
                               )}
                             </td>
                           </tr>
