@@ -632,7 +632,7 @@ export default function AdminPayoutsPage() {
 
       const accessToken = await getRequiredAccessToken();
 
-      const response = await fetch("/api/admin/process-payouts", {
+      const response = await fetch("/api/admin/process-payouts?force=true&limit=100", {
         method: "POST",
         cache: "no-store",
         credentials: "include",
