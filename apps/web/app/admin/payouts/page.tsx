@@ -738,7 +738,7 @@ export default function AdminPayoutsPage() {
             <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-blue-500/20 blur-3xl" />
             <div className="absolute bottom-0 left-1/2 h-40 w-40 rounded-full bg-emerald-400/10 blur-3xl" />
 
-            <div className="relative flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">
+            <div className="relative flex flex-col gap-8">
               <div>
                 <div className="inline-flex rounded-full bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-slate-300 ring-1 ring-white/10">
                   MMD Delivery · Finance Ops
@@ -754,42 +754,50 @@ export default function AdminPayoutsPage() {
                 </p>
               </div>
 
-              <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:max-w-none xl:grid-cols-3">
-                <Link
-                  href="/admin/payouts/reconciliation"
-                  className="inline-flex min-h-[54px] items-center justify-center rounded-2xl bg-white px-5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-slate-100"
-                >
-                  Reconciliation
-                </Link>
+              <div className="w-full rounded-3xl bg-white/10 p-4 ring-1 ring-white/10 backdrop-blur">
+                <div className="mb-3 text-sm font-bold text-white">
+                  Quick actions
+                </div>
 
-                <Link
-                  href="/admin/payouts/audit"
-                  className="inline-flex min-h-[54px] items-center justify-center rounded-2xl bg-white/10 px-5 text-sm font-bold text-white ring-1 ring-white/15 transition hover:bg-white/15"
-                >
-                  Audit Logs
-                </Link>
+                <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Link
+                    href="/admin/payouts/reconciliation"
+                    className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-white px-5 text-sm font-bold text-slate-950 shadow-sm transition hover:bg-slate-100"
+                  >
+                    Reconciliation
+                  </Link>
 
-                <ActionButton label="Reset filters" onClick={resetFilters} />
+                  <Link
+                    href="/admin/payouts/audit"
+                    className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-white/10 px-5 text-sm font-bold text-white ring-1 ring-white/15 transition hover:bg-white/15"
+                  >
+                    Audit Logs
+                  </Link>
 
-                <ActionButton
-                  label="Export CSV"
-                  onClick={exportCsv}
-                  disabled={filteredItems.length === 0}
-                />
+                  <ActionButton label="Reset filters" onClick={resetFilters} />
 
-                <ActionButton
-                  label={processingPayouts ? "Processing..." : "Run payouts"}
-                  onClick={() => void runPayoutProcessor()}
-                  variant="primary"
-                  disabled={processingPayouts || refreshing}
-                />
+                  <ActionButton
+                    label="Export CSV"
+                    onClick={exportCsv}
+                    disabled={filteredItems.length === 0}
+                  />
 
-                <ActionButton
-                  label={refreshing ? "Refreshing..." : "Refresh"}
-                  onClick={() => void loadPage("refresh")}
-                  variant="blue"
-                  disabled={refreshing}
-                />
+                  <button
+                    type="button"
+                    onClick={() => void runPayoutProcessor()}
+                    disabled={processingPayouts || refreshing}
+                    className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-bold text-white shadow-lg ring-1 ring-white/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {processingPayouts ? "Processing..." : "Run payouts"}
+                  </button>
+
+                  <ActionButton
+                    label={refreshing ? "Refreshing..." : "Refresh"}
+                    onClick={() => void loadPage("refresh")}
+                    variant="blue"
+                    disabled={refreshing}
+                  />
+                </div>
               </div>
             </div>
           </div>
