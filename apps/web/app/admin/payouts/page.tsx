@@ -202,6 +202,18 @@ function labelForDashboardStatus(status: DashboardStatus) {
   }
 }
 
+function getDisplayDashboardStatus(item: DashboardItem): DashboardStatus {
+  const hasRestaurant = Boolean(item.restaurant_name);
+
+  if (!hasRestaurant) {
+    if (item.driver_paid_out) return "completed";
+    if (item.payment_status === "paid") return "paid_no_payout";
+    return "unpaid";
+  }
+
+  return item.dashboard_status;
+}
+
 function getLastActivity(item: DashboardItem): string | null {
   const candidates = [
     item.driver_succeeded_at,
@@ -595,7 +607,7 @@ export default function AdminPayoutsPage() {
         (item.driver_payout_transfer_id ?? "").toLowerCase().includes(q);
 
       const matchesDashboard =
-        dashboardFilter === "all" || item.dashboard_status === dashboardFilter;
+        dashboardFilter === "all" || getDisplayDashboardStatus(item) === dashboardFilter;
 
       const matchesPayment =
         paymentFilter === "all" || item.payment_status === paymentFilter;
@@ -682,13 +694,13 @@ export default function AdminPayoutsPage() {
       total: filteredItems.length,
       paid: filteredItems.filter((x) => x.payment_status === "paid").length,
       completed: filteredItems.filter(
-        (x) => x.dashboard_status === "completed"
+        (x) => getDisplayDashboardStatus(x) === "completed"
       ).length,
-      partial: filteredItems.filter((x) => x.dashboard_status === "partial")
+      partial: filteredItems.filter((x) => getDisplayDashboardStatus(x) === "partial")
         .length,
-      failed: filteredItems.filter((x) => x.dashboard_status === "failed")
+      failed: filteredItems.filter((x) => getDisplayDashboardStatus(x) === "failed")
         .length,
-      unpaid: filteredItems.filter((x) => x.dashboard_status === "unpaid")
+      unpaid: filteredItems.filter((x) => getDisplayDashboardStatus(x) === "unpaid")
         .length,
     };
   }, [filteredItems]);
@@ -1070,11 +1082,9 @@ export default function AdminPayoutsPage() {
 
                             <td className="px-4 py-5 text-center align-middle">
                               <span
-                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getStatusBadgeClass(
-                                  item.dashboard_status
-                                )}`}
+                                className={`inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm ${getStatusBadgeClass(getDisplayDashboardStatus(item))}`}
                               >
-                                {labelForDashboardStatus(item.dashboard_status)}
+                                {labelForDashboardStatus(getDisplayDashboardStatus(item))}
                               </span>
                             </td>
 
