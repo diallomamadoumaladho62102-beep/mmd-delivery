@@ -51,6 +51,13 @@ type OrderPayoutRow = {
   failed_at: string | null;
 };
 
+type OrderCommissionRow = {
+  order_id: string;
+  restaurant_cents: number | null;
+  driver_cents: number | null;
+  platform_cents: number | null;
+};
+
 type DashboardStatus =
   | "completed"
   | "partial"
@@ -213,10 +220,13 @@ function buildPayoutsByOrderId(
 
 function buildDashboardItems(
   orders: OrderRow[],
-  payoutsByOrderId: Map<string, PayoutPair>
+  payoutsByOrderId: Map<string, PayoutPair>,
+  commissionsByOrderId: Map<string, OrderCommissionRow>
 ): DashboardItem[] {
   return orders.map((order) => {
     const pair = payoutsByOrderId.get(order.id) ?? {};
+    const commission = commissionsByOrderId.get(order.id);
+
     const restaurantSide = toSide(pair.restaurant);
     const driverSide = toSide(pair.driver);
 
@@ -242,7 +252,8 @@ function buildDashboardItems(
       driver_transfer_id: order.driver_transfer_id,
 
       restaurant_payout_status: restaurantSide.payout_status,
-      restaurant_amount_cents: restaurantSide.amount_cents,
+      restaurant_amount_cents:
+        commission?.restaurant_cents ?? restaurantSide.amount_cents,
       restaurant_destination_account_id:
         restaurantSide.destination_account_id,
       restaurant_source_charge_id: restaurantSide.source_charge_id,
@@ -254,7 +265,7 @@ function buildDashboardItems(
       restaurant_failed_at: restaurantSide.failed_at,
 
       driver_payout_status: driverSide.payout_status,
-      driver_amount_cents: driverSide.amount_cents,
+      driver_amount_cents: commission?.driver_cents ?? driverSide.amount_cents,
       driver_destination_account_id: driverSide.destination_account_id,
       driver_source_charge_id: driverSide.source_charge_id,
       driver_payout_transfer_id: driverSide.payout_transfer_id,
@@ -338,6 +349,7 @@ export async function GET(request: NextRequest) {
     const orderIds = typedOrders.map((order) => order.id);
 
     let payouts: OrderPayoutRow[] = [];
+    let commissions: OrderCommissionRow[] = [];
 
     if (orderIds.length > 0) {
       const { data: payoutsData, error: payoutsError } = await supabase
@@ -370,10 +382,32 @@ export async function GET(request: NextRequest) {
       }
 
       payouts = (payoutsData ?? []) as OrderPayoutRow[];
+
+      const { data: commissionsData, error: commissionsError } = await supabase
+        .from("order_commissions")
+        .select("order_id, restaurant_cents, driver_cents, platform_cents")
+        .in("order_id", orderIds);
+
+      if (commissionsError) {
+        throw new Error(
+          `Failed to load order_commissions: ${commissionsError.message}`
+        );
+      }
+
+      commissions = (commissionsData ?? []) as OrderCommissionRow[];
     }
 
     const payoutsByOrderId = buildPayoutsByOrderId(payouts);
-    const items = buildDashboardItems(typedOrders, payoutsByOrderId);
+    const commissionsByOrderId = new Map(
+      commissions.map((commission) => [commission.order_id, commission])
+    );
+
+    const items = buildDashboardItems(
+      typedOrders,
+      payoutsByOrderId,
+      commissionsByOrderId
+    );
+
     const summary = buildSummary(items);
 
     return NextResponse.json(
