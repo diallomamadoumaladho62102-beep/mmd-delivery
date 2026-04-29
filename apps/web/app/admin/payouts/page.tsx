@@ -56,7 +56,7 @@ type DashboardItem = {
   driver_last_error: string | null;
   driver_succeeded_at: string | null;
   driver_failed_at: string | null;
-
+  platform_amount_cents: number;
   dashboard_status: DashboardStatus;
 };
 
@@ -295,12 +295,8 @@ function getDriverPayoutCents(item: DashboardItem): number {
 }
 
 function getPlatformRevenueCents(item: DashboardItem): number {
-  return (
-    getOrderGrossRevenueCents(item) -
-    getRestaurantPayoutCents(item) -
-    getDriverPayoutCents(item)
-  );
-}
+  return item.platform_amount_cents ?? 0;
+} 
 
 function getPercent(value: number, total: number): number {
   if (total <= 0) return 0;

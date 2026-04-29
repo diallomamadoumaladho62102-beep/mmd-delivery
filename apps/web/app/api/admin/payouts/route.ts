@@ -10,6 +10,7 @@ export const revalidate = 0;
 
 type PayoutTarget = "restaurant" | "driver";
 type PayoutStatus = "pending" | "processing" | "succeeded" | "failed" | string;
+type OrderType = "restaurant" | "errand";
 
 type OrderRow = {
   id: string;
@@ -81,6 +82,7 @@ type PayoutSide = {
 
 type DashboardItem = {
   order_id: string;
+  order_type: OrderType;
   created_at: string;
   order_status: string;
   payment_status: string;
@@ -122,6 +124,8 @@ type DashboardItem = {
   driver_succeeded_at: string | null;
   driver_failed_at: string | null;
 
+  platform_amount_cents: number;
+
   dashboard_status: DashboardStatus;
 };
 
@@ -149,29 +153,46 @@ function toSide(payout?: OrderPayoutRow): PayoutSide {
   };
 }
 
+function getOrderType(order: OrderRow): OrderType {
+  return order.restaurant_name ? "restaurant" : "errand";
+}
+
 function deriveDashboardStatus(
   order: OrderRow,
   restaurant?: OrderPayoutRow,
   driver?: OrderPayoutRow
 ): DashboardStatus {
-  const restaurantFailed = restaurant?.status === "failed";
+  const orderType = getOrderType(order);
+  const isErrand = orderType === "errand";
+
+  const restaurantFailed = !isErrand && restaurant?.status === "failed";
   const driverFailed = driver?.status === "failed";
 
   const restaurantSucceeded =
-    restaurant?.status === "succeeded" ||
-    (order.restaurant_paid_out === true && Boolean(order.restaurant_transfer_id));
+    !isErrand &&
+    (restaurant?.status === "succeeded" ||
+      (order.restaurant_paid_out === true &&
+        Boolean(order.restaurant_transfer_id)));
 
   const driverSucceeded =
     driver?.status === "succeeded" ||
     (order.driver_paid_out === true && Boolean(order.driver_transfer_id));
 
   const hasMismatch =
-    (order.restaurant_paid_out === true && !order.restaurant_transfer_id) ||
+    (!isErrand &&
+      order.restaurant_paid_out === true &&
+      !order.restaurant_transfer_id) ||
     (order.driver_paid_out === true && !order.driver_transfer_id);
 
   if (hasMismatch) return "data_mismatch";
   if (restaurantFailed || driverFailed) return "failed";
   if (order.payment_status !== "paid") return "unpaid";
+
+  if (isErrand) {
+    if (driverSucceeded) return "completed";
+    return "paid_no_payout";
+  }
+
   if (restaurantSucceeded && driverSucceeded) return "completed";
   if (restaurantSucceeded || driverSucceeded) return "partial";
 
@@ -218,6 +239,27 @@ function buildPayoutsByOrderId(
   return payoutsByOrderId;
 }
 
+function cents(value: number | null | undefined): number {
+  return Number.isFinite(value) ? Number(value) : 0;
+}
+
+function calculatePlatformAmountCents(params: {
+  totalCents: number | null;
+  restaurantAmountCents: number | null;
+  driverAmountCents: number | null;
+  commissionPlatformCents: number | null | undefined;
+}): number {
+  if (params.commissionPlatformCents != null) {
+    return Math.max(0, cents(params.commissionPlatformCents));
+  }
+
+  const total = cents(params.totalCents);
+  const restaurant = cents(params.restaurantAmountCents);
+  const driver = cents(params.driverAmountCents);
+
+  return Math.max(0, total - restaurant - driver);
+}
+
 function buildDashboardItems(
   orders: OrderRow[],
   payoutsByOrderId: Map<string, PayoutPair>,
@@ -227,11 +269,29 @@ function buildDashboardItems(
     const pair = payoutsByOrderId.get(order.id) ?? {};
     const commission = commissionsByOrderId.get(order.id);
 
+    const orderType = getOrderType(order);
+    const isErrand = orderType === "errand";
+
     const restaurantSide = toSide(pair.restaurant);
     const driverSide = toSide(pair.driver);
 
+    const restaurantAmountCents = isErrand
+      ? 0
+      : commission?.restaurant_cents ?? restaurantSide.amount_cents;
+
+    const driverAmountCents =
+      commission?.driver_cents ?? driverSide.amount_cents;
+
+    const platformAmountCents = calculatePlatformAmountCents({
+      totalCents: order.total_cents,
+      restaurantAmountCents,
+      driverAmountCents,
+      commissionPlatformCents: commission?.platform_cents,
+    });
+
     return {
       order_id: order.id,
+      order_type: orderType,
       created_at: order.created_at,
       order_status: order.status,
       payment_status: order.payment_status,
@@ -243,29 +303,35 @@ function buildDashboardItems(
       picked_up_at: order.picked_up_at,
       delivered_confirmed_at: order.delivered_confirmed_at,
 
-      restaurant_paid_out: order.restaurant_paid_out,
-      restaurant_paid_out_at: order.restaurant_paid_out_at,
-      restaurant_transfer_id: order.restaurant_transfer_id,
+      restaurant_paid_out: isErrand ? false : order.restaurant_paid_out,
+      restaurant_paid_out_at: isErrand ? null : order.restaurant_paid_out_at,
+      restaurant_transfer_id: isErrand ? null : order.restaurant_transfer_id,
 
       driver_paid_out: order.driver_paid_out,
       driver_paid_out_at: order.driver_paid_out_at,
       driver_transfer_id: order.driver_transfer_id,
 
-      restaurant_payout_status: restaurantSide.payout_status,
-      restaurant_amount_cents:
-        commission?.restaurant_cents ?? restaurantSide.amount_cents,
-      restaurant_destination_account_id:
-        restaurantSide.destination_account_id,
-      restaurant_source_charge_id: restaurantSide.source_charge_id,
-      restaurant_payout_transfer_id: restaurantSide.payout_transfer_id,
-      restaurant_failure_code: restaurantSide.failure_code,
-      restaurant_failure_message: restaurantSide.failure_message,
-      restaurant_last_error: restaurantSide.last_error,
-      restaurant_succeeded_at: restaurantSide.succeeded_at,
-      restaurant_failed_at: restaurantSide.failed_at,
+      restaurant_payout_status: isErrand ? null : restaurantSide.payout_status,
+      restaurant_amount_cents: restaurantAmountCents,
+      restaurant_destination_account_id: isErrand
+        ? null
+        : restaurantSide.destination_account_id,
+      restaurant_source_charge_id: isErrand
+        ? null
+        : restaurantSide.source_charge_id,
+      restaurant_payout_transfer_id: isErrand
+        ? null
+        : restaurantSide.payout_transfer_id,
+      restaurant_failure_code: isErrand ? null : restaurantSide.failure_code,
+      restaurant_failure_message: isErrand
+        ? null
+        : restaurantSide.failure_message,
+      restaurant_last_error: isErrand ? null : restaurantSide.last_error,
+      restaurant_succeeded_at: isErrand ? null : restaurantSide.succeeded_at,
+      restaurant_failed_at: isErrand ? null : restaurantSide.failed_at,
 
       driver_payout_status: driverSide.payout_status,
-      driver_amount_cents: commission?.driver_cents ?? driverSide.amount_cents,
+      driver_amount_cents: driverAmountCents,
       driver_destination_account_id: driverSide.destination_account_id,
       driver_source_charge_id: driverSide.source_charge_id,
       driver_payout_transfer_id: driverSide.payout_transfer_id,
@@ -274,6 +340,8 @@ function buildDashboardItems(
       driver_last_error: driverSide.last_error,
       driver_succeeded_at: driverSide.succeeded_at,
       driver_failed_at: driverSide.failed_at,
+
+      platform_amount_cents: platformAmountCents,
 
       dashboard_status: deriveDashboardStatus(order, pair.restaurant, pair.driver),
     };
