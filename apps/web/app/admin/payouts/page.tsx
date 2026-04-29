@@ -1084,7 +1084,7 @@ export default function AdminPayoutsPage() {
                                   item.restaurant_payout_status
                                 )}`}
                               >
-                                {item.restaurant_payout_status || "none"}
+                                {!item.restaurant_name ? "Driver only" : item.restaurant_payout_status || "pending"}
                               </span>
                               <div className="mt-2 text-slate-900">
                                 {formatMoneyFromCents(
