@@ -786,7 +786,7 @@ export default function AdminPayoutsPage() {
                     type="button"
                     onClick={() => void runPayoutProcessor()}
                     disabled={processingPayouts || refreshing}
-                    className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-bold text-white shadow-lg ring-1 ring-white/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex min-h-[54px] w-full items-center justify-center rounded-2xl bg-emerald-600 px-5 text-sm font-extrabold text-white shadow-lg ring-1 ring-emerald-500/30 transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {processingPayouts ? "Processing..." : "Run payouts"}
                   </button>
