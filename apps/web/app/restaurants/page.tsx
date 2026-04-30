@@ -30,6 +30,10 @@ export default function RestaurantsPage() {
         .select("user_id, restaurant_name, address, phone")
         .order("restaurant_name", { ascending: true });
 
+      console.log("🍔 RESTAURANTS RAW DATA =", data);
+      console.log("🍔 RESTAURANTS COUNT =", data?.length);
+      console.log("🍔 RESTAURANTS ERROR =", error);
+
       if (error) throw error;
 
       const list: Restaurant[] = (data ?? []).map((r: any) => ({
@@ -39,11 +43,15 @@ export default function RestaurantsPage() {
         phone: r.phone ?? null,
       }));
 
+      console.log("🍔 RESTAURANTS LIST MAPPED =", list);
+      console.log("🍔 RESTAURANTS LIST COUNT =", list.length);
+
       setRestaurants(list);
 
       // 🎯 Comme sur mobile : s'il n'y a QU'UN restaurant, on va direct sur son menu
       if (list.length === 1) {
         const only = list[0];
+        console.log("➡️ REDIRECT SINGLE RESTAURANT =", only);
         router.push(`/restaurants/${only.id}`);
       }
     } catch (err: any) {
@@ -117,9 +125,7 @@ export default function RestaurantsPage() {
       {loading && restaurants.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 gap-2">
           <div className="h-5 w-5 animate-spin rounded-full border border-emerald-500 border-t-transparent" />
-          <p className="text-xs text-gray-500">
-            Chargement des restaurants…
-          </p>
+          <p className="text-xs text-gray-500">Chargement des restaurants…</p>
         </div>
       ) : restaurants.length === 0 ? (
         <div className="border rounded-xl px-4 py-3 bg-slate-950/90 text-sm text-slate-100">

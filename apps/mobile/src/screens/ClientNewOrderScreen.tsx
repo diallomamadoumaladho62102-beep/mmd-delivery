@@ -223,10 +223,6 @@ export function ClientNewOrderScreen() {
 
   const canPay = !paying && !!newOrderId;
 
-  /**
-   * ✅ Totaux venant éventuellement de l’écran précédent
-   * On accepte plusieurs noms possibles pour éviter de casser le flow existant.
-   */
   const itemsSubtotalFromParams = useMemo(
     () =>
       toSafeMoney(
@@ -298,42 +294,34 @@ export function ClientNewOrderScreen() {
     restaurant_id: string;
     restaurant_user_id: string | null;
   }> {
-    if (restaurantIdFromParams) {
-      const { data: rp, error } = await supabase
-        .from("restaurant_profiles")
-        .select("user_id")
-        .eq("user_id", restaurantIdFromParams)
-        .maybeSingle();
-
-      if (error) {
-        console.log("resolveRestaurant user_id fetch error:", error);
-      }
-
-      return {
-        restaurant_id: restaurantIdFromParams,
-        restaurant_user_id: (rp as any)?.user_id ?? restaurantIdFromParams,
-      };
+    if (!restaurantIdFromParams) {
+      throw new Error(
+        "Aucun restaurant sélectionné. Retourne à la liste des restaurants et choisis un restaurant."
+      );
     }
 
-    const { data, error } = await supabase
+    const { data: rp, error } = await supabase
       .from("restaurant_profiles")
-      .select("user_id,status")
+      .select("user_id, restaurant_name, status, is_accepting_orders")
+      .eq("user_id", restaurantIdFromParams)
       .eq("status", "approved")
-      .limit(1)
+      .eq("is_accepting_orders", true)
       .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      console.log("resolveRestaurant fetch error:", error);
+      throw error;
+    }
+
+    if (!rp) {
       throw new Error(
-        t(
-          "client.newOrder.errors.noApprovedRestaurant",
-          "Aucun restaurant approuvé trouvé. Va approuver un restaurant dans Supabase (restaurant_profiles.status='approved')."
-        )
+        "Ce restaurant n’est pas disponible pour les commandes actuellement."
       );
     }
 
     return {
-      restaurant_id: (data as any).user_id,
-      restaurant_user_id: (data as any).user_id,
+      restaurant_id: restaurantIdFromParams,
+      restaurant_user_id: (rp as any).user_id,
     };
   }
 

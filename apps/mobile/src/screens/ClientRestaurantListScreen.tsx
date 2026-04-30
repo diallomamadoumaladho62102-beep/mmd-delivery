@@ -38,37 +38,42 @@ export function ClientRestaurantListScreen() {
         if (showSpinner) setLoading(true);
 
         const { data, error } = await supabase
-          .from("restaurants")
-          .select("id, name, address, created_at")
-          .eq("is_active", true)
-          .eq("is_verified", true)
-          .order("name", { ascending: true });
+          .from("restaurant_profiles")
+          .select("user_id, restaurant_name, address, phone, status, is_accepting_orders")
+          .eq("status", "approved")
+          .eq("is_accepting_orders", true)
+          .order("restaurant_name", { ascending: true });
 
         if (error) throw error;
 
-        const list: Restaurant[] = (data ?? []).map((r: any) => ({
-          id: r.id,
-          name: r.name ?? null,
-          address: r.address ?? null,
-          phone: null,
-        }));
+        const list: Restaurant[] = (data ?? [])
+          .filter((r: any) => !!r.user_id)
+          .map((r: any) => ({
+            id: r.user_id,
+            name: r.restaurant_name ?? null,
+            address: r.address ?? null,
+            phone: r.phone ?? null,
+          }));
 
         setRestaurants(list);
 
         if (list.length === 1) {
           const only = list[0];
+
           navigation.navigate(
             "ClientRestaurantMenu",
             {
               restaurantId: only.id,
               restaurantName:
-                only.name ?? t("client.restaurants.defaultRestaurantName", "Restaurant"),
+                only.name ??
+                t("client.restaurants.defaultRestaurantName", "Restaurant"),
               restaurantAddress: only.address ?? "",
             } as any
           );
         }
       } catch (err) {
         console.error("Erreur fetch restaurants (mobile):", err);
+        setRestaurants([]);
       } finally {
         if (showSpinner) setLoading(false);
       }
@@ -122,6 +127,7 @@ export function ClientRestaurantListScreen() {
         >
           {t("client.restaurants.header.spaceClient", "Espace client")}
         </Text>
+
         <Text
           style={{
             color: "white",
@@ -132,6 +138,7 @@ export function ClientRestaurantListScreen() {
         >
           {t("client.restaurants.header.title", "Restaurants partenaires")}
         </Text>
+
         <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
           {t(
             "client.restaurants.header.subtitle",
@@ -149,6 +156,7 @@ export function ClientRestaurantListScreen() {
           }}
         >
           <ActivityIndicator size="large" color="#22C55E" />
+
           <Text
             style={{
               marginTop: 8,
@@ -194,6 +202,7 @@ export function ClientRestaurantListScreen() {
               >
                 {t("client.restaurants.empty.title", "Aucun restaurant disponible")}
               </Text>
+
               <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
                 {t(
                   "client.restaurants.empty.body",
@@ -224,7 +233,8 @@ export function ClientRestaurantListScreen() {
                   marginBottom: 4,
                 }}
               >
-                {r.name ?? t("client.restaurants.defaultRestaurantLabel", "Restaurant MMD")}
+                {r.name ??
+                  t("client.restaurants.defaultRestaurantLabel", "Restaurant MMD")}
               </Text>
 
               {r.address && (
@@ -236,6 +246,18 @@ export function ClientRestaurantListScreen() {
                   }}
                 >
                   {r.address}
+                </Text>
+              )}
+
+              {r.phone && (
+                <Text
+                  style={{
+                    color: "#6B7280",
+                    fontSize: 12,
+                    marginTop: 2,
+                  }}
+                >
+                  Téléphone : {r.phone}
                 </Text>
               )}
 

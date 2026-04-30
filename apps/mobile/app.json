@@ -18,7 +18,8 @@
         {
           "merchantIdentifier": "merchant.com.mmd.delivery"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "android": {
       "notification": {
