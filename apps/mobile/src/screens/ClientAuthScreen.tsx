@@ -23,6 +23,9 @@ import { useTranslation } from "react-i18next";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientAuth">;
 
+const RESET_PASSWORD_URL =
+  "https://mmd-delivery.vercel.app/auth/reset-password";
+
 function cleanPhone(v: string) {
   const s = (v || "").trim();
   return s.replace(/[^\d+]/g, "");
@@ -223,6 +226,41 @@ export function ClientAuthScreen() {
       Alert.alert(
         t("client.auth.errorTitle"),
         e instanceof Error ? e.message : t("client.auth.cannotLogin")
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    const e = email.trim().toLowerCase();
+
+    if (!e) {
+      Alert.alert(
+        t("client.auth.missingTitle"),
+        "Entre ton email, puis appuie sur mot de passe oublié."
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(e, {
+        redirectTo: RESET_PASSWORD_URL,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      Alert.alert(
+        "Email envoyé",
+        "Vérifie ta boîte email. Clique sur le lien reçu pour modifier ton mot de passe."
+      );
+    } catch (err: unknown) {
+      Alert.alert(
+        t("client.auth.errorTitle"),
+        err instanceof Error ? err.message : "Impossible d’envoyer l’email."
       );
     } finally {
       setLoading(false);
@@ -775,6 +813,18 @@ export function ClientAuthScreen() {
               }}
             />
 
+            {mode === "login" ? (
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                disabled={loading}
+                style={{ alignItems: "flex-end", marginTop: -12, marginBottom: 18 }}
+              >
+                <Text style={{ color: "#93C5FD", fontWeight: "800" }}>
+                  Mot de passe oublié ?
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
               onPress={mode === "login" ? handleLogin : handleSignup}
               disabled={loading}
@@ -815,4 +865,4 @@ export function ClientAuthScreen() {
   );
 }
 
-export default ClientAuthScreen
+export default ClientAuthScreen;
