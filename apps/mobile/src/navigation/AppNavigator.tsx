@@ -1,58 +1,38 @@
 import * as React from "react";
 import { AppState } from "react-native";
+import * as Linking from "expo-linking";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 
-// ✅ Guard global
 import { supabase } from "../lib/supabase";
 import { getSelectedRole } from "../lib/authRole";
 
-// ✅ Driver Tabs (bottom navigation)
 import { DriverTabs } from "./DriverTabs";
 
-// Écrans principaux
 import { HomeScreen } from "../screens/HomeScreen";
 import { RoleSelectScreen } from "../screens/RoleSelectScreen";
+import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 
-// ✅ Delivery request
 import DeliveryRequestScreen from "../screens/DeliveryRequestScreen";
 
-// Client
 import { ClientHomeScreen } from "../screens/ClientHomeScreen";
 import { ClientNewOrderScreen } from "../screens/ClientNewOrderScreen";
 import { ClientRestaurantListScreen } from "../screens/ClientRestaurantListScreen";
 import { ClientRestaurantMenuScreen } from "../screens/ClientRestaurantMenuScreen";
 import { ClientOrderDetailsScreen } from "../screens/ClientOrderDetailsScreen";
 import { ClientDeliveryRequestDetailsScreen } from "../screens/ClientDeliveryRequestDetailsScreen";
-
-// ✅ Client Auth
 import { ClientAuthScreen } from "../screens/ClientAuthScreen";
-
-// ✅ Client Profile
 import { ClientProfileScreen } from "../screens/ClientProfileScreen";
-
-// Client Inbox + Chat
 import { ClientInboxScreen } from "../screens/ClientInboxScreen";
 import { ClientChatScreen } from "../screens/ClientChatScreen";
 
-// Driver (stack screens hors tabs)
 import { DriverOrderDetailsScreen } from "../screens/DriverOrderDetailsScreen";
 import DriverMapScreen from "../screens/DriverMapScreen";
-
-// ✅ Onboarding
 import { DriverOnboardingScreen } from "../screens/DriverOnboardingScreen";
-
-// ✅ Driver Auth
 import { DriverAuthScreen } from "../screens/DriverAuthScreen";
-
-// ✅ Restaurant Auth
-import { RestaurantAuthScreen } from "../screens/RestaurantAuthScreen";
-
-// Driver Chat
 import { DriverChatScreen } from "../screens/DriverChatScreen";
 
-// Driver Menu screens
 import { DriverProfileScreen } from "../screens/DriverProfileScreen";
 import { DriverReferralsScreen } from "../screens/DriverReferralsScreen";
 import { DriverOpportunitiesScreen } from "../screens/DriverOpportunitiesScreen";
@@ -62,17 +42,15 @@ import { DriverWorkAccountScreen } from "../screens/DriverWorkAccountScreen";
 import { DriverSecurityScreen } from "../screens/DriverSecurityScreen";
 import { DriverLanguageScreen } from "../screens/DriverLanguageScreen";
 
-// ✅ NEW: Driver Tax Screen
 import DriverTaxScreen from "../screens/DriverTaxScreen";
 import DriverW9Screen from "../screens/DriverW9Screen";
 
-// Revenus pages
 import { DriverRevenueDetailsScreen } from "../screens/DriverRevenueDetailsScreen";
 import { DriverRevenueHistoryScreen } from "../screens/DriverRevenueHistoryScreen";
 import { DriverWalletScreen } from "../screens/DriverWalletScreen";
 import { DriverBenefitsScreen } from "../screens/DriverBenefitsScreen";
 
-// Restaurant
+import { RestaurantAuthScreen } from "../screens/RestaurantAuthScreen";
 import { RestaurantHomeScreen } from "../screens/RestaurantHomeScreen";
 import { RestaurantOrdersScreen } from "../screens/RestaurantOrdersScreen";
 import { RestaurantOrderDetailsScreen } from "../screens/RestaurantOrderDetailsScreen";
@@ -80,59 +58,43 @@ import { RestaurantEarningsScreen } from "../screens/RestaurantEarningsScreen";
 import RestaurantTaxScreen from "../screens/RestaurantTaxScreen";
 import { RestaurantLanguageScreen } from "../screens/RestaurantLanguageScreen";
 import { RestaurantSecurityScreen } from "../screens/RestaurantSecurityScreen";
-
-// ✅ Restaurant Setup Flow (Uber-like)
 import RestaurantGateScreen from "../screens/restaurant/RestaurantGateScreen";
 import RestaurantSetupScreen from "../screens/restaurant/RestaurantSetupScreen";
 import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
-
-// Restaurant Chat
 import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
 
 export type RootStackParamList = {
   Home: undefined;
   RoleSelect: undefined;
+  ResetPassword: undefined;
 
-  // ✅ Delivery request
   DeliveryRequest: undefined;
 
-  // ✅ Auth
   ClientAuth: undefined;
   DriverAuth: undefined;
   RestaurantAuth: undefined;
 
-  // ✅ Client Profile
   ClientProfile: undefined;
 
-  // ✅ Restaurant Setup Flow
   RestaurantGate: undefined;
   RestaurantSetup: undefined;
   RestaurantMenu: undefined;
 
-  // Client
   ClientHome: undefined;
   ClientNewOrder: undefined;
   ClientRestaurantList: undefined;
   ClientRestaurantMenu: { restaurantId: string; restaurantName: string };
   ClientOrderDetails: { orderId: string };
   ClientDeliveryRequestDetails: { requestId: string };
-
-  // Client Inbox + Chat
   ClientInbox: undefined;
   ClientChat: { orderId: string };
 
-  // ✅ Driver (Tabs root)
   DriverTabs: undefined;
-
-  // Driver stack screens (hors tabs)
   DriverOrderDetails: { orderId: string };
   DriverMap: undefined;
   DriverChat: { orderId: string };
-
-  // ✅ Onboarding
   DriverOnboarding: undefined;
 
-  // Driver Menu
   DriverProfile: undefined;
   DriverReferrals: undefined;
   DriverOpportunities: undefined;
@@ -142,17 +104,14 @@ export type RootStackParamList = {
   DriverSecurity: undefined;
   DriverLanguage: undefined;
 
-  // ✅ NEW: Tax
   DriverTax: undefined;
   DriverW9: undefined;
 
-  // Revenus details
   DriverRevenueDetails: { range: "week" | "today" | "month" };
   DriverRevenueHistory: { range: "week" | "today" | "month" };
   DriverWallet: undefined;
   DriverBenefits: undefined;
 
-  // Restaurant
   RestaurantHome: undefined;
   RestaurantOrders: undefined;
   RestaurantOrderDetails: { orderId: string };
@@ -160,8 +119,6 @@ export type RootStackParamList = {
   RestaurantTax: undefined;
   RestaurantLanguage: undefined;
   RestaurantSecurity: undefined;
-
-  // Restaurant Chat
   RestaurantChat: { orderId: string };
 };
 
@@ -171,12 +128,22 @@ type AppNavigatorProps = {
   initialRouteName?: keyof RootStackParamList;
 };
 
+function isResetPasswordUrl(url: string | null | undefined) {
+  if (!url) return false;
+  const normalized = url.toLowerCase();
+
+  return (
+    normalized.includes("reset-password") ||
+    normalized.includes("type=recovery") ||
+    normalized.includes("type%3drecovery")
+  );
+}
+
 export function AppNavigator({
   initialRouteName = "RoleSelect",
 }: AppNavigatorProps) {
   const { i18n } = useTranslation();
 
-  // ✅ On garde la valeur (debug / tracking), MAIS on ne remount pas la navigation
   const langKey =
     (i18n.resolvedLanguage || i18n.language || "en").toLowerCase();
 
@@ -186,9 +153,20 @@ export function AppNavigator({
   const navRef = React.useRef<any>(null);
   const bootedRef = React.useRef(false);
   const syncingRef = React.useRef(false);
-
-  // ✅ Coalescing: évite plusieurs sync() en rafale
   const pendingRef = React.useRef(false);
+  const resetPasswordFlowRef = React.useRef(false);
+
+  const linking = React.useMemo(
+    () => ({
+      prefixes: ["mmd://", Linking.createURL("/")],
+      config: {
+        screens: {
+          ResetPassword: "reset-password",
+        },
+      },
+    }),
+    []
+  );
 
   const navReady = React.useCallback(() => {
     return !!navRef.current?.isReady?.();
@@ -217,6 +195,20 @@ export function AppNavigator({
     },
     [currentRoute, navReady]
   );
+
+  const openResetPassword = React.useCallback(() => {
+    resetPasswordFlowRef.current = true;
+
+    if (!navReady()) return;
+
+    const cur = currentRoute();
+    if (cur === "ResetPassword") return;
+
+    navRef.current?.reset({
+      index: 0,
+      routes: [{ name: "ResetPassword" }],
+    });
+  }, [currentRoute, navReady]);
 
   const isInClientArea = React.useCallback((r?: keyof RootStackParamList) => {
     if (!r) return false;
@@ -343,11 +335,16 @@ export function AppNavigator({
     try {
       if (!navReady()) return;
 
+      const cur = currentRoute();
+
+      if (cur === "ResetPassword" || resetPasswordFlowRef.current) {
+        if (cur !== "ResetPassword") openResetPassword();
+        return;
+      }
+
       const { data } = await supabase.auth.getSession();
       const session = data.session ?? null;
       const role = await getSelectedRole();
-
-      const cur = currentRoute();
 
       if (!session) {
         if (
@@ -358,6 +355,7 @@ export function AppNavigator({
         ) {
           return;
         }
+
         resetTo("RoleSelect");
         return;
       }
@@ -396,6 +394,7 @@ export function AppNavigator({
     navReady,
     currentRoute,
     resetTo,
+    openResetPassword,
     isClientProfileComplete,
     isRestaurantProfileComplete,
     isInClientArea,
@@ -416,6 +415,33 @@ export function AppNavigator({
   React.useEffect(() => {
     let alive = true;
 
+    const handleUrl = (url: string | null) => {
+      if (!alive) return;
+      if (!isResetPasswordUrl(url)) return;
+
+      console.log("RESET PASSWORD DEEP LINK RECEIVED =", url);
+      openResetPassword();
+    };
+
+    Linking.getInitialURL()
+      .then(handleUrl)
+      .catch((e) => console.log("getInitialURL error", e));
+
+    const linkingSub = Linking.addEventListener("url", (event) => {
+      handleUrl(event.url);
+    });
+
+    return () => {
+      alive = false;
+      try {
+        linkingSub?.remove?.();
+      } catch {}
+    };
+  }, [openResetPassword]);
+
+  React.useEffect(() => {
+    let alive = true;
+
     if (!bootedRef.current) {
       bootedRef.current = true;
       setTimeout(() => {
@@ -425,8 +451,15 @@ export function AppNavigator({
       scheduleSync();
     }
 
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (!alive) return;
+
+      if (event === "PASSWORD_RECOVERY") {
+        resetPasswordFlowRef.current = true;
+        openResetPassword();
+        return;
+      }
+
       scheduleSync();
     });
 
@@ -444,10 +477,21 @@ export function AppNavigator({
         appStateSub?.remove?.();
       } catch {}
     };
-  }, [scheduleSync]);
+  }, [openResetPassword, scheduleSync]);
 
   return (
-    <NavigationContainer ref={navRef} onReady={scheduleSync}>
+    <NavigationContainer
+      ref={navRef}
+      onReady={() => {
+        scheduleSync();
+        Linking.getInitialURL()
+          .then((url) => {
+            if (isResetPasswordUrl(url)) openResetPassword();
+          })
+          .catch((e) => console.log("onReady getInitialURL error", e));
+      }}
+      linking={linking}
+    >
       <Stack.Navigator
         id="root-stack"
         initialRouteName={initialRouteName}
@@ -455,22 +499,19 @@ export function AppNavigator({
       >
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
 
-        {/* ✅ Delivery request */}
         <Stack.Screen
           name="DeliveryRequest"
           component={DeliveryRequestScreen}
         />
 
-        {/* ✅ Auth */}
         <Stack.Screen name="ClientAuth" component={ClientAuthScreen} />
         <Stack.Screen name="DriverAuth" component={DriverAuthScreen} />
         <Stack.Screen name="RestaurantAuth" component={RestaurantAuthScreen} />
 
-        {/* ✅ Client Profile */}
         <Stack.Screen name="ClientProfile" component={ClientProfileScreen} />
 
-        {/* ✅ Restaurant Setup Flow */}
         <Stack.Screen name="RestaurantGate" component={RestaurantGateScreen} />
         <Stack.Screen
           name="RestaurantSetup"
@@ -478,7 +519,6 @@ export function AppNavigator({
         />
         <Stack.Screen name="RestaurantMenu" component={RestaurantMenuScreen} />
 
-        {/* Client */}
         <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
         <Stack.Screen name="ClientNewOrder" component={ClientNewOrderScreen} />
         <Stack.Screen
@@ -500,7 +540,6 @@ export function AppNavigator({
         <Stack.Screen name="ClientInbox" component={ClientInboxScreen} />
         <Stack.Screen name="ClientChat" component={ClientChatScreen} />
 
-        {/* ✅ Driver */}
         <Stack.Screen name="DriverTabs" component={DriverTabs} />
         <Stack.Screen
           name="DriverOrderDetails"
@@ -513,7 +552,6 @@ export function AppNavigator({
           component={DriverOnboardingScreen}
         />
 
-        {/* Driver Menu */}
         <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
         <Stack.Screen
           name="DriverReferrals"
@@ -538,11 +576,9 @@ export function AppNavigator({
           component={DriverLanguageScreen}
         />
 
-        {/* ✅ NEW: Driver Tax */}
         <Stack.Screen name="DriverTax" component={DriverTaxScreen} />
         <Stack.Screen name="DriverW9" component={DriverW9Screen} />
 
-        {/* Revenus */}
         <Stack.Screen
           name="DriverRevenueDetails"
           component={DriverRevenueDetailsScreen}
@@ -554,7 +590,6 @@ export function AppNavigator({
         <Stack.Screen name="DriverWallet" component={DriverWalletScreen} />
         <Stack.Screen name="DriverBenefits" component={DriverBenefitsScreen} />
 
-        {/* Restaurant */}
         <Stack.Screen name="RestaurantHome" component={RestaurantHomeScreen} />
         <Stack.Screen
           name="RestaurantOrders"

@@ -40,7 +40,8 @@ function toRole(value: unknown): Role {
 }
 
 function isExpoGo(): boolean {
-  const ownership = (Constants as { appOwnership?: string } | undefined)?.appOwnership;
+  const ownership = (Constants as { appOwnership?: string } | undefined)
+    ?.appOwnership;
   return ownership === "expo";
 }
 
@@ -54,7 +55,14 @@ function Splash(): React.JSX.Element {
 
 function FatalFallback({ message }: { message: string }): React.JSX.Element {
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+    <View
+      style={{
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
       <Text style={{ textAlign: "center" }}>{message}</Text>
     </View>
   );
@@ -62,12 +70,11 @@ function FatalFallback({ message }: { message: string }): React.JSX.Element {
 
 async function getDeviceIdSafe(): Promise<string> {
   try {
-    const androidIdFn = (Application as { getAndroidId?: () => string | null }).getAndroidId;
+    const androidIdFn = (Application as { getAndroidId?: () => string | null })
+      .getAndroidId;
     if (typeof androidIdFn === "function") {
       const androidId = androidIdFn();
-      if (androidId) {
-        return String(androidId);
-      }
+      if (androidId) return String(androidId);
     }
 
     const iosIdFn = (
@@ -76,18 +83,18 @@ async function getDeviceIdSafe(): Promise<string> {
 
     if (typeof iosIdFn === "function") {
       const iosId = await iosIdFn();
-      if (iosId) {
-        return String(iosId);
-      }
+      if (iosId) return String(iosId);
     }
-  } catch {
-    // fallback below
-  }
+  } catch {}
 
-  return `${Device.modelName ?? "device"}-${Device.osName ?? "os"}-${Device.osVersion ?? "0"}`;
+  return `${Device.modelName ?? "device"}-${Device.osName ?? "os"}-${
+    Device.osVersion ?? "0"
+  }`;
 }
 
-function getStripeGateSafe(): React.ComponentType<{ initialRouteName: string }> | null {
+function getStripeGateSafe(): React.ComponentType<{
+  initialRouteName: string;
+}> | null {
   try {
     const stripeGateModule = require("./src/lib/StripeGate");
     const StripeGate = stripeGateModule?.default ?? stripeGateModule;
@@ -129,15 +136,11 @@ export default function App(): React.JSX.Element {
     try {
       setupNotifications();
     } catch (error) {
-      if (__DEV__) {
-        console.log("[App] setupNotifications error:", error);
-      }
+      if (__DEV__) console.log("[App] setupNotifications error:", error);
     }
 
     const syncLocale = async (): Promise<void> => {
-      if (!isMounted || syncingLocaleRef.current) {
-        return;
-      }
+      if (!isMounted || syncingLocaleRef.current) return;
 
       syncingLocaleRef.current = true;
 
@@ -146,16 +149,12 @@ export default function App(): React.JSX.Element {
         await syncLocaleForRole(role as never);
         lastRoleRef.current = role;
       } catch (error) {
-        if (__DEV__) {
-          console.log("[App] syncLocale error:", error);
-        }
+        if (__DEV__) console.log("[App] syncLocale error:", error);
 
         try {
           await syncLocaleForRole("client" as never);
           lastRoleRef.current = "client";
-        } catch {
-          // ignore fallback failure
-        }
+        } catch {}
       } finally {
         syncingLocaleRef.current = false;
       }
@@ -163,32 +162,30 @@ export default function App(): React.JSX.Element {
 
     const registerToken = async (userId: string): Promise<void> => {
       try {
-        if (!isMounted || registerInFlightRef.current) {
-          return;
-        }
+        if (!isMounted || registerInFlightRef.current) return;
 
         registerInFlightRef.current = true;
 
-        if (__DEV__) {
-          console.log("👤 USER ID (session):", userId);
-        }
+        if (__DEV__) console.log("👤 USER ID (session):", userId);
 
         const expoToken = await getExpoPushToken();
 
-        if (__DEV__) {
-          console.log("📲 EXPO PUSH TOKEN:", expoToken);
-        }
+        if (__DEV__) console.log("📲 EXPO PUSH TOKEN:", expoToken);
 
         if (!expoToken) {
           if (__DEV__) {
-            console.log("❌ Pas de token (permissions refusées / simulateur / limitation)");
+            console.log(
+              "❌ Pas de token (permissions refusées / simulateur / limitation)"
+            );
           }
           return;
         }
 
         const deviceId = await getDeviceIdSafe();
         const role = toRole((await getSelectedRole()) ?? "client");
-        const platform = `${Device.osName ?? ""} ${Device.osVersion ?? ""}`.trim();
+        const platform = `${Device.osName ?? ""} ${
+          Device.osVersion ?? ""
+        }`.trim();
         const appVersion = Application.nativeApplicationVersion ?? "unknown";
 
         if (
@@ -214,9 +211,7 @@ export default function App(): React.JSX.Element {
         });
 
         if (error) {
-          if (__DEV__) {
-            console.log("❌ Save token error:", error);
-          }
+          if (__DEV__) console.log("❌ Save token error:", error);
           return;
         }
 
@@ -241,47 +236,37 @@ export default function App(): React.JSX.Element {
       try {
         const { data } = await supabase.auth.getSession();
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         const currentSession = (data.session ?? null) as SessionLike;
         setSession(currentSession);
         setAuthLoading(false);
 
         const userId = currentSession?.user?.id;
-        if (userId) {
-          void registerToken(userId);
-        }
+        if (userId) void registerToken(userId);
       } catch (error) {
-        if (__DEV__) {
-          console.log("[App] getSession error:", error);
-        }
+        if (__DEV__) console.log("[App] getSession error:", error);
 
-        if (!isMounted) {
-          return;
-        }
+        if (!isMounted) return;
 
         setAuthLoading(false);
       }
     })();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!isMounted) {
-        return;
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        if (!isMounted) return;
+
+        const currentSession = (newSession ?? null) as SessionLike;
+        setSession(currentSession);
+        setAuthLoading(false);
+
+        void syncLocale();
+
+        const userId = currentSession?.user?.id;
+        if (userId) void registerToken(userId);
       }
-
-      const currentSession = (newSession ?? null) as SessionLike;
-      setSession(currentSession);
-      setAuthLoading(false);
-
-      void syncLocale();
-
-      const userId = currentSession?.user?.id;
-      if (userId) {
-        void registerToken(userId);
-      }
-    });
+    );
 
     const rolePoll = setInterval(() => {
       void (async () => {
@@ -290,9 +275,7 @@ export default function App(): React.JSX.Element {
           if (lastRoleRef.current !== role) {
             await syncLocale();
           }
-        } catch {
-          // ignore polling errors
-        }
+        } catch {}
       })();
     }, 1500);
 
@@ -302,9 +285,7 @@ export default function App(): React.JSX.Element {
 
       try {
         authListener?.subscription?.unsubscribe?.();
-      } catch {
-        // ignore unsubscribe errors
-      }
+      } catch {}
     };
   }, []);
 

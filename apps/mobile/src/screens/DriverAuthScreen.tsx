@@ -21,6 +21,19 @@ import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
 
 type TransportMode = "bike" | "moto" | "car";
+type DriverStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "incomplete"
+  | "suspended";
+
+const EXPO_GO_RESET_PASSWORD_URL = "exp://192.168.1.203:8081/--/reset-password";
+const APP_RESET_PASSWORD_URL = "mmd:///reset-password";
+
+function getResetPasswordRedirectUrl() {
+  return __DEV__ ? EXPO_GO_RESET_PASSWORD_URL : APP_RESET_PASSWORD_URL;
+}
 
 function extractReferralCode(url: string | null): string | null {
   if (!url) return null;
@@ -33,13 +46,7 @@ function extractReferralCode(url: string | null): string | null {
   }
 }
 
-function Card({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View
       style={{
@@ -117,6 +124,7 @@ function PrimaryButton({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
+      activeOpacity={0.85}
       style={{
         paddingVertical: 12,
         borderRadius: 14,
@@ -130,16 +138,11 @@ function PrimaryButton({
   );
 }
 
-function GhostButton({
-  label,
-  onPress,
-}: {
-  label: string;
-  onPress: () => void;
-}) {
+function GhostButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={0.85}
       style={{
         paddingVertical: 12,
         borderRadius: 14,
@@ -155,13 +158,7 @@ function GhostButton({
   );
 }
 
-function LinkButton({
-  label,
-  onPress,
-}: {
-  label: string;
-  onPress: () => void;
-}) {
+function LinkButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
       <Text style={{ color: "#93C5FD", fontWeight: "900" }}>{label}</Text>
@@ -207,6 +204,21 @@ function isValidYear(y: string) {
   return yr >= 1980 && yr <= 2035;
 }
 
+function isValidDateYYYYMMDD(value: string) {
+  const t = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return false;
+
+  const date = new Date(`${t}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const [year, month, day] = t.split("-").map(Number);
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() + 1 === month &&
+    date.getUTCDate() === day
+  );
+}
+
 function initialsFromName(name: string) {
   const t = name.trim();
   if (!t) return "D";
@@ -217,9 +229,7 @@ function initialsFromName(name: string) {
 }
 
 function decodeBase64(base64: string) {
-  if (typeof globalThis.atob === "function") {
-    return globalThis.atob(base64);
-  }
+  if (typeof globalThis.atob === "function") return globalThis.atob(base64);
 
   const chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -268,6 +278,13 @@ export function DriverAuthScreen() {
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("New York");
+  const [stateValue, setStateValue] = useState("NY");
+  const [zipCode, setZipCode] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+
   const [transportMode, setTransportMode] = useState<TransportMode>("car");
 
   const [vehicleBrand, setVehicleBrand] = useState("");
@@ -275,6 +292,7 @@ export function DriverAuthScreen() {
   const [vehicleYear, setVehicleYear] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
 
   const [avatarLocalUri, setAvatarLocalUri] = useState<string | null>(null);
 
@@ -291,6 +309,12 @@ export function DriverAuthScreen() {
     if (mode === "signup") {
       if (!fullName.trim()) return false;
       if (!phone.trim()) return false;
+      if (!emergencyPhone.trim()) return false;
+      if (!address.trim()) return false;
+      if (!city.trim()) return false;
+      if (!zipCode.trim()) return false;
+      if (!dateOfBirth.trim()) return false;
+      if (!isValidDateYYYYMMDD(dateOfBirth)) return false;
 
       if (!isValidYear(vehicleYear)) return false;
 
@@ -298,6 +322,7 @@ export function DriverAuthScreen() {
         if (!vehicleBrand.trim()) return false;
         if (!vehicleModel.trim()) return false;
         if (!plateNumber.trim()) return false;
+        if (!licenseNumber.trim()) return false;
       }
     }
 
@@ -308,10 +333,16 @@ export function DriverAuthScreen() {
     mode,
     fullName,
     phone,
+    emergencyPhone,
+    address,
+    city,
+    zipCode,
+    dateOfBirth,
     vehicleBrand,
     vehicleModel,
     vehicleYear,
     plateNumber,
+    licenseNumber,
     needsVehicle,
   ]);
 
@@ -360,21 +391,39 @@ export function DriverAuthScreen() {
 
     const { data: prof, error } = await supabase
       .from("driver_profiles")
-      .select("user_id")
+      .select("user_id,status")
       .eq("user_id", uid)
       .maybeSingle();
 
     if (error) {
       console.log("driver_profiles check error", error);
+      navigation.replace("DriverOnboarding");
+      return;
+    }
+
+    const status = (prof as { user_id?: string; status?: DriverStatus } | null)
+      ?.status;
+
+    if (status === "approved") {
       navigation.replace("DriverHome");
       return;
     }
 
-    if ((prof as { user_id?: string } | null)?.user_id) {
-      navigation.replace("DriverHome");
-    } else {
+    if (status === "pending" || status === "incomplete" || status === "rejected") {
       navigation.replace("DriverOnboarding");
+      return;
     }
+
+    if (status === "suspended") {
+      Alert.alert(
+        "Compte suspendu",
+        "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery."
+      );
+      await supabase.auth.signOut();
+      return;
+    }
+
+    navigation.replace("DriverOnboarding");
   }, [navigation]);
 
   useEffect(() => {
@@ -402,11 +451,13 @@ export function DriverAuthScreen() {
   }, [applyReferralIfAny, routeAfterAuth]);
 
   const onLogin = useCallback(async () => {
+    if (loading) return;
+
     try {
       setLoading(true);
 
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password: password.trim(),
       });
 
@@ -415,12 +466,60 @@ export function DriverAuthScreen() {
         return;
       }
 
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData.user?.email_confirmed_at) {
+        Alert.alert(
+          "Email non vérifié",
+          "Confirme ton email avant de te connecter."
+        );
+        await supabase.auth.signOut();
+        return;
+      }
+
       await applyReferralIfAny();
       await routeAfterAuth();
     } finally {
       setLoading(false);
     }
-  }, [email, password, routeAfterAuth, applyReferralIfAny, t]);
+  }, [email, password, routeAfterAuth, applyReferralIfAny, t, loading]);
+
+  const onForgotPassword = useCallback(async () => {
+    if (loading) return;
+
+    const cleanedEmail = email.trim().toLowerCase();
+
+    if (!cleanedEmail) {
+      Alert.alert(
+        "Email requis",
+        "Entre ton email, puis appuie sur mot de passe oublié."
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const redirectTo = getResetPasswordRedirectUrl();
+      console.log("RESET PASSWORD REDIRECT_TO =", redirectTo);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanedEmail, {
+        redirectTo,
+      });
+
+      if (error) {
+        Alert.alert("Erreur", error.message);
+        return;
+      }
+
+      Alert.alert(
+        "Email envoyé",
+        "Vérifie ta boîte email. Clique sur le lien reçu pour modifier ton mot de passe."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [email, loading]);
 
   const pickAvatarFromCamera = useCallback(async () => {
     try {
@@ -568,15 +667,45 @@ export function DriverAuthScreen() {
   );
 
   const onSignup = useCallback(async () => {
+    if (loading) return;
+
     try {
       setLoading(true);
 
+      if (mode !== "signup") return;
+
+      if (!canSubmit) {
+        Alert.alert(
+          "Informations incomplètes",
+          "Remplis tous les champs obligatoires avant de créer le compte."
+        );
+        return;
+      }
+
+      const cleanedEmail = email.trim().toLowerCase();
+      const cleanedPassword = password.trim();
+      const cleanedFullName = fullName.trim();
+      const cleanedPhone = phone.trim();
+      const cleanedEmergencyPhone = emergencyPhone.trim();
+      const cleanedAddress = address.trim();
+      const cleanedCity = city.trim();
+      const cleanedState = stateValue.trim().toUpperCase() || null;
+      const cleanedZipCode = zipCode.trim();
+      const cleanedDateOfBirth = dateOfBirth.trim();
+
+      const cleanedVehicleBrand = vehicleBrand.trim();
+      const cleanedVehicleModel = vehicleModel.trim();
+      const cleanedVehicleColor = vehicleColor.trim();
+      const cleanedPlateNumber = plateNumber.trim().toUpperCase();
+      const cleanedLicenseNumber = licenseNumber.trim().toUpperCase();
+
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password: password.trim(),
+        email: cleanedEmail,
+        password: cleanedPassword,
         options: {
           data: {
-            full_name: fullName.trim() || null,
+            full_name: cleanedFullName,
+            role: "driver",
           },
         },
       });
@@ -586,11 +715,21 @@ export function DriverAuthScreen() {
         return;
       }
 
+      const identities = (data?.user as any)?.identities;
+      if (Array.isArray(identities) && identities.length === 0) {
+        Alert.alert(
+          "Compte déjà existant",
+          "Un compte existe déjà avec cet email."
+        );
+        setMode("login");
+        return;
+      }
+
       const user = data?.user;
       if (!user) {
         Alert.alert(
-          t("driver.auth.alert.verifyEmailTitle"),
-          t("driver.auth.alert.verifyEmailBody")
+          "Vérifie ton email",
+          "Confirme ton email avant de te connecter."
         );
         setMode("login");
         return;
@@ -601,60 +740,88 @@ export function DriverAuthScreen() {
       await applyReferralIfAny();
       await uploadAvatarIfAny(uid);
 
-      const { error: pErr } = await supabase.from("profiles").upsert(
+      await supabase.from("profiles").upsert(
         {
           id: uid,
           role: "livreur",
-          full_name: fullName.trim() || null,
-          phone: phone.trim() || null,
+          full_name: cleanedFullName,
+          phone: cleanedPhone,
         },
         { onConflict: "id" }
       );
 
-      if (pErr) console.log("profiles upsert error", pErr);
-
       const yearNum = vehicleYear.trim() ? Number(vehicleYear.trim()) : null;
-      const safeYear =
-        yearNum && Number.isFinite(yearNum) ? Math.round(yearNum) : null;
 
       const payload = {
+        id: uid,
         user_id: uid,
-        full_name: fullName.trim() || null,
-        phone: phone.trim() || null,
+
+        full_name: cleanedFullName,
+        phone: cleanedPhone,
+        emergency_phone: cleanedEmergencyPhone,
+        address: cleanedAddress,
+        city: cleanedCity,
+        state: cleanedState,
+        zip_code: cleanedZipCode,
+        date_of_birth: cleanedDateOfBirth,
+
         transport_mode: transportMode,
-        vehicle_brand: isBike ? null : vehicleBrand.trim() || null,
-        vehicle_model: isBike ? null : vehicleModel.trim() || null,
-        vehicle_year: isBike ? null : safeYear,
-        vehicle_color: isBike ? null : vehicleColor.trim() || null,
-        plate_number: isBike ? null : plateNumber.trim() || null,
+        status: "pending",
+        is_online: false,
+
+        vehicle_type: transportMode,
+        license_number: isBike ? null : cleanedLicenseNumber,
+        vehicle_brand: isBike ? null : cleanedVehicleBrand,
+        vehicle_model: isBike ? null : cleanedVehicleModel,
+        vehicle_year: isBike ? null : yearNum,
+        vehicle_color: isBike ? null : cleanedVehicleColor || null,
+        plate_number: isBike ? null : cleanedPlateNumber,
       };
 
       const { error: dErr } = await supabase
         .from("driver_profiles")
         .upsert(payload, { onConflict: "user_id" });
 
-      if (dErr) console.log("driver_profiles upsert error", dErr);
+      if (dErr) {
+        Alert.alert("Erreur profil", dErr.message);
+        return;
+      }
+
+      Alert.alert(
+        "Demande envoyée",
+        "Ton compte chauffeur est en attente de validation."
+      );
 
       navigation.replace("DriverOnboarding");
     } finally {
       setLoading(false);
     }
   }, [
-    applyReferralIfAny,
+    mode,
+    canSubmit,
     email,
     password,
     fullName,
     phone,
+    emergencyPhone,
+    address,
+    city,
+    stateValue,
+    zipCode,
+    dateOfBirth,
     transportMode,
     vehicleBrand,
     vehicleModel,
     vehicleYear,
     vehicleColor,
     plateNumber,
+    licenseNumber,
     isBike,
+    applyReferralIfAny,
     uploadAvatarIfAny,
     navigation,
     t,
+    loading,
   ]);
 
   useEffect(() => {
@@ -664,6 +831,7 @@ export function DriverAuthScreen() {
       setVehicleYear("");
       setVehicleColor("");
       setPlateNumber("");
+      setLicenseNumber("");
     }
   }, [transportMode]);
 
@@ -766,6 +934,21 @@ export function DriverAuthScreen() {
             autoCapitalize="none"
           />
 
+          {mode === "login" ? (
+            <View
+              style={{
+                alignItems: "flex-end",
+                marginTop: -4,
+                marginBottom: 12,
+              }}
+            >
+              <LinkButton
+                label="Mot de passe oublié ?"
+                onPress={() => void onForgotPassword()}
+              />
+            </View>
+          ) : null}
+
           {mode === "signup" ? (
             <>
               <View style={{ height: 6 }} />
@@ -848,6 +1031,72 @@ export function DriverAuthScreen() {
                 keyboardType="phone-pad"
               />
 
+              <Input
+                label="Emergency phone"
+                value={emergencyPhone}
+                onChangeText={setEmergencyPhone}
+                placeholder="Ex: 9297408722"
+                autoCapitalize="none"
+                keyboardType="phone-pad"
+              />
+
+              <Input
+                label="Address"
+                value={address}
+                onChangeText={setAddress}
+                placeholder="Ex: 1112 Flatbush Ave"
+                autoCapitalize="words"
+              />
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="City"
+                    value={city}
+                    onChangeText={setCity}
+                    placeholder="New York"
+                    autoCapitalize="words"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="State"
+                    value={stateValue}
+                    onChangeText={setStateValue}
+                    placeholder="NY"
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="Zip code"
+                    value={zipCode}
+                    onChangeText={setZipCode}
+                    placeholder="11226"
+                    autoCapitalize="none"
+                    keyboardType="number-pad"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label="Date of birth"
+                    value={dateOfBirth}
+                    onChangeText={setDateOfBirth}
+                    placeholder="YYYY-MM-DD"
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
+
+              {dateOfBirth.trim() && !isValidDateYYYYMMDD(dateOfBirth) ? (
+                <Text style={{ color: "#FCA5A5", fontWeight: "800" }}>
+                  Date format required: YYYY-MM-DD
+                </Text>
+              ) : null}
+
               <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
                 {t("driver.auth.transport.title")}
               </Text>
@@ -894,6 +1143,14 @@ export function DriverAuthScreen() {
                     onChangeText={setVehicleModel}
                     placeholder={t("driver.auth.vehicle.modelPlaceholder")}
                     autoCapitalize="words"
+                  />
+
+                  <Input
+                    label="License number"
+                    value={licenseNumber}
+                    onChangeText={setLicenseNumber}
+                    placeholder="Driver license number"
+                    autoCapitalize="characters"
                   />
 
                   <View style={{ flexDirection: "row", gap: 10 }}>
@@ -1012,8 +1269,10 @@ export function DriverAuthScreen() {
                     ? t("driver.auth.actions.createMyAccount")
                     : t("driver.auth.actions.login")
                 }
-                onPress={mode === "signup" ? () => void onSignup() : () => void onLogin()}
-                disabled={!canSubmit}
+                onPress={
+                  mode === "signup" ? () => void onSignup() : () => void onLogin()
+                }
+                disabled={!canSubmit || loading}
               />
 
               <View style={{ height: 12 }} />
