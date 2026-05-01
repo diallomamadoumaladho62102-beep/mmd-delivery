@@ -17,11 +17,19 @@ import { supabase } from "../lib/supabase";
 const RESET_PASSWORD_URL =
   "https://mmd-delivery.vercel.app/auth/reset-password";
 
+function cleanEmail(v: string) {
+  return (v || "").trim().toLowerCase();
+}
+
+function getErrorMessage(err: unknown, fallback: string) {
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 export function RestaurantAuthScreen() {
   const { t } = useTranslation();
 
   const [mode, setMode] = useState<"login" | "signup">("login");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -45,18 +53,58 @@ export function RestaurantAuthScreen() {
           )
         : t(
             "restaurant.auth.subtitleSignup",
-            "Crée ton compte restaurant puis connecte-toi."
+            "Crée ton compte restaurant puis complète ton profil."
           ),
     [mode, t]
   );
 
-  const cleanEmail = (v: string) => (v || "").trim().toLowerCase();
+  async function ensureRestaurantProfile(params: {
+    userId: string;
+    email: string;
+  }) {
+    const { userId, email: userEmail } = params;
 
-  const signIn = async () => {
+    const { error: profileError } = await supabase.from("profiles").upsert(
+      {
+        id: userId,
+        role: "restaurant",
+        email: userEmail,
+      },
+      { onConflict: "id" }
+    );
+
+    if (profileError) {
+      throw new Error(profileError.message);
+    }
+
+    const { error: restaurantError } = await supabase
+      .from("restaurant_profiles")
+      .upsert(
+        {
+          user_id: userId,
+          email: userEmail,
+          restaurant_name: "",
+          address: "",
+          phone: "",
+          status: "pending",
+          offers_delivery: true,
+          offers_pickup: true,
+          offers_dine_in: false,
+          is_accepting_orders: false,
+        },
+        { onConflict: "user_id" }
+      );
+
+    if (restaurantError) {
+      throw new Error(restaurantError.message);
+    }
+  }
+
+  async function signIn() {
     if (loading) return;
 
     const e = cleanEmail(email);
-    const p = (password || "").trim();
+    const p = password.trim();
 
     if (!e) {
       setMsg(t("restaurant.auth.errors.emailRequired", "❌ Email obligatoire"));
@@ -80,39 +128,39 @@ export function RestaurantAuthScreen() {
       });
 
       if (error) {
-        setMsg(
-          t("restaurant.auth.errors.signinFailed", "❌ ") +
-            (error.message || "")
-        );
-        return;
+        throw new Error(error.message);
       }
 
       if (!data.session) {
-        setMsg(
+        throw new Error(
           t(
             "restaurant.auth.errors.sessionNotCreated",
-            "❌ Session non créée. Réessaie."
+            "Session non créée. Réessaie."
           )
         );
-        return;
+      }
+
+      const userId = data.user?.id;
+      if (userId) {
+        await ensureRestaurantProfile({ userId, email: e });
       }
 
       setMsg(t("restaurant.auth.success.signedIn", "✅ Connecté !"));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMsg(
-        t("restaurant.auth.errors.unknown", "❌ ") +
-          (err?.message ?? "Erreur inconnue")
+        t("restaurant.auth.errors.signinFailed", "❌ Connexion impossible : ") +
+          getErrorMessage(err, "Erreur inconnue")
       );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const signUp = async () => {
+  async function signUp() {
     if (loading) return;
 
     const e = cleanEmail(email);
-    const p = (password || "").trim();
+    const p = password.trim();
 
     if (!e) {
       setMsg(t("restaurant.auth.errors.emailRequired", "❌ Email obligatoire"));
@@ -151,11 +199,23 @@ export function RestaurantAuthScreen() {
       });
 
       if (error) {
-        setMsg(t("restaurant.auth.errors.signupFailed", "❌ ") + error.message);
-        return;
+        throw new Error(error.message);
       }
 
-      if (!data?.session) {
+      const userId = data.user?.id;
+
+      if (!userId) {
+        throw new Error(
+          t(
+            "restaurant.auth.errors.userNotCreated",
+            "Compte créé, mais impossible de récupérer l’utilisateur."
+          )
+        );
+      }
+
+      await ensureRestaurantProfile({ userId, email: e });
+
+      if (!data.session) {
         setMsg(
           t(
             "restaurant.auth.success.createdCheckEmail",
@@ -169,20 +229,22 @@ export function RestaurantAuthScreen() {
       setMsg(
         t(
           "restaurant.auth.success.createdAndSignedIn",
-          "✅ Compte créé et connecté !"
+          "✅ Compte restaurant créé et connecté !"
         )
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMsg(
-        t("restaurant.auth.errors.unknown", "❌ ") +
-          (err?.message ?? "Erreur inconnue")
+        t(
+          "restaurant.auth.errors.signupFailed",
+          "❌ Création du compte impossible : "
+        ) + getErrorMessage(err, "Erreur inconnue")
       );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const forgotPassword = async () => {
+  async function forgotPassword() {
     if (loading) return;
 
     const e = cleanEmail(email);
@@ -206,10 +268,7 @@ export function RestaurantAuthScreen() {
       });
 
       if (error) {
-        setMsg(
-          t("restaurant.auth.errors.resetFailed", "❌ ") + error.message
-        );
-        return;
+        throw new Error(error.message);
       }
 
       setMsg(
@@ -218,15 +277,17 @@ export function RestaurantAuthScreen() {
           "✅ Email envoyé. Clique sur le lien reçu pour modifier ton mot de passe."
         )
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMsg(
-        t("restaurant.auth.errors.unknown", "❌ ") +
-          (err?.message ?? "Erreur inconnue")
+        t(
+          "restaurant.auth.errors.resetFailed",
+          "❌ Impossible d’envoyer l’email : "
+        ) + getErrorMessage(err, "Erreur inconnue")
       );
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const primaryLabel = useMemo(
     () =>
@@ -316,6 +377,7 @@ export function RestaurantAuthScreen() {
               autoCapitalize="none"
               keyboardType="email-address"
               autoCorrect={false}
+              editable={!loading}
               style={{
                 backgroundColor: "#111827",
                 color: "white",
@@ -324,6 +386,7 @@ export function RestaurantAuthScreen() {
                 marginBottom: 12,
                 borderWidth: 1,
                 borderColor: "#1f2937",
+                opacity: loading ? 0.8 : 1,
               }}
             />
 
@@ -344,6 +407,7 @@ export function RestaurantAuthScreen() {
               placeholderTextColor="#94A3B8"
               secureTextEntry
               autoCorrect={false}
+              editable={!loading}
               style={{
                 backgroundColor: "#111827",
                 color: "white",
@@ -352,6 +416,7 @@ export function RestaurantAuthScreen() {
                 marginBottom: mode === "login" ? 8 : 12,
                 borderWidth: 1,
                 borderColor: "#1f2937",
+                opacity: loading ? 0.8 : 1,
               }}
             />
 
@@ -363,6 +428,7 @@ export function RestaurantAuthScreen() {
                   alignItems: "flex-end",
                   marginBottom: 12,
                   paddingVertical: 4,
+                  opacity: loading ? 0.6 : 1,
                 }}
               >
                 <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
@@ -377,9 +443,10 @@ export function RestaurantAuthScreen() {
             {!!msg && (
               <Text
                 style={{
-                  color: "#93C5FD",
+                  color: msg.startsWith("❌") ? "#FCA5A5" : "#93C5FD",
                   marginBottom: 12,
                   fontWeight: "700",
+                  lineHeight: 18,
                 }}
               >
                 {msg}
@@ -413,7 +480,11 @@ export function RestaurantAuthScreen() {
                 setMsg(null);
                 setMode((m) => (m === "login" ? "signup" : "login"));
               }}
-              style={{ paddingVertical: 10, alignItems: "center" }}
+              style={{
+                paddingVertical: 10,
+                alignItems: "center",
+                opacity: loading ? 0.6 : 1,
+              }}
             >
               <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
                 {secondaryLabel}
@@ -421,6 +492,7 @@ export function RestaurantAuthScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              disabled={loading}
               onPress={() =>
                 Alert.alert(
                   t("restaurant.auth.debug.title", "Info"),
@@ -430,7 +502,11 @@ export function RestaurantAuthScreen() {
                   )
                 )
               }
-              style={{ marginTop: 8, alignItems: "center" }}
+              style={{
+                marginTop: 8,
+                alignItems: "center",
+                opacity: loading ? 0.6 : 1,
+              }}
             >
               <Text
                 style={{
@@ -448,3 +524,5 @@ export function RestaurantAuthScreen() {
     </SafeAreaView>
   );
 }
+
+export default RestaurantAuthScreen;
