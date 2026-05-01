@@ -14,6 +14,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 
+const RESET_PASSWORD_URL =
+  "https://mmd-delivery.vercel.app/auth/reset-password";
+
 export function RestaurantAuthScreen() {
   const { t } = useTranslation();
 
@@ -59,6 +62,7 @@ export function RestaurantAuthScreen() {
       setMsg(t("restaurant.auth.errors.emailRequired", "❌ Email obligatoire"));
       return;
     }
+
     if (!p) {
       setMsg(
         t("restaurant.auth.errors.passwordRequired", "❌ Mot de passe obligatoire")
@@ -70,25 +74,31 @@ export function RestaurantAuthScreen() {
     setMsg(null);
 
     try {
-      console.log("🟩 SIGNIN start", e);
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email: e,
         password: p,
       });
 
-      console.log("🟩 SIGNIN data:", data);
-      console.log("🟥 SIGNIN error:", error);
-
       if (error) {
         setMsg(
-          t("restaurant.auth.errors.signinFailed", "❌ ") + (error.message || "")
+          t("restaurant.auth.errors.signinFailed", "❌ ") +
+            (error.message || "")
         );
-      } else {
-        setMsg(t("restaurant.auth.success.signedIn", "✅ Connecté !"));
+        return;
       }
+
+      if (!data.session) {
+        setMsg(
+          t(
+            "restaurant.auth.errors.sessionNotCreated",
+            "❌ Session non créée. Réessaie."
+          )
+        );
+        return;
+      }
+
+      setMsg(t("restaurant.auth.success.signedIn", "✅ Connecté !"));
     } catch (err: any) {
-      console.log("🟥 SIGNIN exception:", err);
       setMsg(
         t("restaurant.auth.errors.unknown", "❌ ") +
           (err?.message ?? "Erreur inconnue")
@@ -108,12 +118,14 @@ export function RestaurantAuthScreen() {
       setMsg(t("restaurant.auth.errors.emailRequired", "❌ Email obligatoire"));
       return;
     }
+
     if (!p) {
       setMsg(
         t("restaurant.auth.errors.passwordRequired", "❌ Mot de passe obligatoire")
       );
       return;
     }
+
     if (p.length < 6) {
       setMsg(
         t(
@@ -128,8 +140,6 @@ export function RestaurantAuthScreen() {
     setMsg(null);
 
     try {
-      console.log("🟦 SIGNUP start", e);
-
       const { data, error } = await supabase.auth.signUp({
         email: e,
         password: p,
@@ -140,28 +150,75 @@ export function RestaurantAuthScreen() {
         },
       });
 
-      console.log("🟦 SIGNUP data:", data);
-      console.log("🟥 SIGNUP error:", error);
-
       if (error) {
         setMsg(t("restaurant.auth.errors.signupFailed", "❌ ") + error.message);
         return;
       }
 
-      // Si Confirm Email est ON, Supabase renvoie souvent session=null
       if (!data?.session) {
         setMsg(
           t(
             "restaurant.auth.success.createdCheckEmail",
-            "✅ Compte créé. Vérifie ton email (confirmation) puis connecte-toi."
+            "✅ Compte créé. Vérifie ton email puis connecte-toi."
           )
         );
         setMode("login");
-      } else {
-        setMsg(t("restaurant.auth.success.createdAndSignedIn", "✅ Compte créé et connecté !"));
+        return;
       }
+
+      setMsg(
+        t(
+          "restaurant.auth.success.createdAndSignedIn",
+          "✅ Compte créé et connecté !"
+        )
+      );
     } catch (err: any) {
-      console.log("🟥 SIGNUP exception:", err);
+      setMsg(
+        t("restaurant.auth.errors.unknown", "❌ ") +
+          (err?.message ?? "Erreur inconnue")
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const forgotPassword = async () => {
+    if (loading) return;
+
+    const e = cleanEmail(email);
+
+    if (!e) {
+      setMsg(
+        t(
+          "restaurant.auth.errors.emailRequiredForReset",
+          "❌ Entre ton email avant de demander la réinitialisation."
+        )
+      );
+      return;
+    }
+
+    setLoading(true);
+    setMsg(null);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(e, {
+        redirectTo: RESET_PASSWORD_URL,
+      });
+
+      if (error) {
+        setMsg(
+          t("restaurant.auth.errors.resetFailed", "❌ ") + error.message
+        );
+        return;
+      }
+
+      setMsg(
+        t(
+          "restaurant.auth.success.resetEmailSent",
+          "✅ Email envoyé. Clique sur le lien reçu pour modifier ton mot de passe."
+        )
+      );
+    } catch (err: any) {
       setMsg(
         t("restaurant.auth.errors.unknown", "❌ ") +
           (err?.message ?? "Erreur inconnue")
@@ -182,8 +239,14 @@ export function RestaurantAuthScreen() {
   const secondaryLabel = useMemo(
     () =>
       mode === "login"
-        ? t("restaurant.auth.actions.switchToSignup", "Je n’ai pas de compte → Créer un compte")
-        : t("restaurant.auth.actions.switchToLogin", "J’ai déjà un compte → Se connecter"),
+        ? t(
+            "restaurant.auth.actions.switchToSignup",
+            "Je n’ai pas de compte → Créer un compte"
+          )
+        : t(
+            "restaurant.auth.actions.switchToLogin",
+            "J’ai déjà un compte → Se connecter"
+          ),
     [mode, t]
   );
 
@@ -203,7 +266,11 @@ export function RestaurantAuthScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1, padding: 24, justifyContent: "center" }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            padding: 24,
+            justifyContent: "center",
+          }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -231,9 +298,16 @@ export function RestaurantAuthScreen() {
               {subtitle}
             </Text>
 
-            <Text style={{ color: "#9CA3AF", fontWeight: "900", marginBottom: 8 }}>
+            <Text
+              style={{
+                color: "#9CA3AF",
+                fontWeight: "900",
+                marginBottom: 8,
+              }}
+            >
               {emailLabel}
             </Text>
+
             <TextInput
               value={email}
               onChangeText={setEmail}
@@ -253,9 +327,16 @@ export function RestaurantAuthScreen() {
               }}
             />
 
-            <Text style={{ color: "#9CA3AF", fontWeight: "900", marginBottom: 8 }}>
+            <Text
+              style={{
+                color: "#9CA3AF",
+                fontWeight: "900",
+                marginBottom: 8,
+              }}
+            >
               {passwordLabel}
             </Text>
+
             <TextInput
               value={password}
               onChangeText={setPassword}
@@ -268,14 +349,39 @@ export function RestaurantAuthScreen() {
                 color: "white",
                 padding: 12,
                 borderRadius: 10,
-                marginBottom: 12,
+                marginBottom: mode === "login" ? 8 : 12,
                 borderWidth: 1,
                 borderColor: "#1f2937",
               }}
             />
 
+            {mode === "login" ? (
+              <TouchableOpacity
+                disabled={loading}
+                onPress={forgotPassword}
+                style={{
+                  alignItems: "flex-end",
+                  marginBottom: 12,
+                  paddingVertical: 4,
+                }}
+              >
+                <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+                  {t(
+                    "restaurant.auth.actions.forgotPassword",
+                    "Mot de passe oublié ?"
+                  )}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
             {!!msg && (
-              <Text style={{ color: "#93C5FD", marginBottom: 12, fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: "#93C5FD",
+                  marginBottom: 12,
+                  fontWeight: "700",
+                }}
+              >
                 {msg}
               </Text>
             )}
@@ -314,7 +420,6 @@ export function RestaurantAuthScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Petit rappel pour dev/debug */}
             <TouchableOpacity
               onPress={() =>
                 Alert.alert(
@@ -327,7 +432,13 @@ export function RestaurantAuthScreen() {
               }
               style={{ marginTop: 8, alignItems: "center" }}
             >
-              <Text style={{ color: "#64748B", fontWeight: "800", fontSize: 12 }}>
+              <Text
+                style={{
+                  color: "#64748B",
+                  fontWeight: "800",
+                  fontSize: 12,
+                }}
+              >
                 {t("restaurant.auth.debug.help", "Besoin d’aide ?")}
               </Text>
             </TouchableOpacity>
