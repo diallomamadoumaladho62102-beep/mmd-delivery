@@ -28,11 +28,11 @@ type DriverStatus =
   | "incomplete"
   | "suspended";
 
-const EXPO_GO_RESET_PASSWORD_URL = "exp://192.168.1.203:8081/--/reset-password";
-const APP_RESET_PASSWORD_URL = "mmd:///reset-password";
+const RESET_PASSWORD_URL =
+  "https://mmd-delivery.vercel.app/auth/reset-password";
 
 function getResetPasswordRedirectUrl() {
-  return __DEV__ ? EXPO_GO_RESET_PASSWORD_URL : APP_RESET_PASSWORD_URL;
+  return RESET_PASSWORD_URL;
 }
 
 function extractReferralCode(url: string | null): string | null {
