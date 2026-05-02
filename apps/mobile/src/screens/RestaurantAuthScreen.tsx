@@ -17,12 +17,12 @@ import { supabase } from "../lib/supabase";
 const RESET_PASSWORD_URL =
   "https://mmd-delivery.vercel.app/auth/reset-password";
 
-function cleanEmail(v: string) {
-  return (v || "").trim().toLowerCase();
+function cleanEmail(value: string) {
+  return (value || "").trim().toLowerCase();
 }
 
-function getErrorMessage(err: unknown, fallback: string) {
-  if (err instanceof Error) return err.message;
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
   return fallback;
 }
 
@@ -58,11 +58,13 @@ export function RestaurantAuthScreen() {
     [mode, t]
   );
 
-  async function ensureRestaurantProfile(params: {
+  async function ensureRestaurantAccount(params: {
     userId: string;
     email: string;
+    createRestaurantProfileIfMissing?: boolean;
   }) {
-    const { userId, email: userEmail } = params;
+    const { userId, email: userEmail, createRestaurantProfileIfMissing = true } =
+      params;
 
     const { error: profileError } = await supabase.from("profiles").upsert(
       {
@@ -77,26 +79,33 @@ export function RestaurantAuthScreen() {
       throw new Error(profileError.message);
     }
 
-    const { error: restaurantError } = await supabase
-      .from("restaurant_profiles")
-      .upsert(
-        {
+    const { data: existingRestaurantProfile, error: existingError } =
+      await supabase
+        .from("restaurant_profiles")
+        .select("user_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+    if (existingError) {
+      throw new Error(existingError.message);
+    }
+
+    if (!existingRestaurantProfile && createRestaurantProfileIfMissing) {
+      const { error: restaurantError } = await supabase
+        .from("restaurant_profiles")
+        .insert({
           user_id: userId,
           email: userEmail,
-          restaurant_name: "",
-          address: "",
-          phone: "",
           status: "pending",
           offers_delivery: true,
           offers_pickup: true,
           offers_dine_in: false,
           is_accepting_orders: false,
-        },
-        { onConflict: "user_id" }
-      );
+        });
 
-    if (restaurantError) {
-      throw new Error(restaurantError.message);
+      if (restaurantError) {
+        throw new Error(restaurantError.message);
+      }
     }
   }
 
@@ -113,7 +122,10 @@ export function RestaurantAuthScreen() {
 
     if (!p) {
       setMsg(
-        t("restaurant.auth.errors.passwordRequired", "❌ Mot de passe obligatoire")
+        t(
+          "restaurant.auth.errors.passwordRequired",
+          "❌ Mot de passe obligatoire"
+        )
       );
       return;
     }
@@ -141,15 +153,20 @@ export function RestaurantAuthScreen() {
       }
 
       const userId = data.user?.id;
+
       if (userId) {
-        await ensureRestaurantProfile({ userId, email: e });
+        await ensureRestaurantAccount({
+          userId,
+          email: e,
+          createRestaurantProfileIfMissing: false,
+        });
       }
 
       setMsg(t("restaurant.auth.success.signedIn", "✅ Connecté !"));
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       setMsg(
         t("restaurant.auth.errors.signinFailed", "❌ Connexion impossible : ") +
-          getErrorMessage(err, "Erreur inconnue")
+          getErrorMessage(error, "Erreur inconnue")
       );
     } finally {
       setLoading(false);
@@ -169,7 +186,10 @@ export function RestaurantAuthScreen() {
 
     if (!p) {
       setMsg(
-        t("restaurant.auth.errors.passwordRequired", "❌ Mot de passe obligatoire")
+        t(
+          "restaurant.auth.errors.passwordRequired",
+          "❌ Mot de passe obligatoire"
+        )
       );
       return;
     }
@@ -213,7 +233,11 @@ export function RestaurantAuthScreen() {
         );
       }
 
-      await ensureRestaurantProfile({ userId, email: e });
+      await ensureRestaurantAccount({
+        userId,
+        email: e,
+        createRestaurantProfileIfMissing: true,
+      });
 
       if (!data.session) {
         setMsg(
@@ -232,12 +256,12 @@ export function RestaurantAuthScreen() {
           "✅ Compte restaurant créé et connecté !"
         )
       );
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       setMsg(
         t(
           "restaurant.auth.errors.signupFailed",
           "❌ Création du compte impossible : "
-        ) + getErrorMessage(err, "Erreur inconnue")
+        ) + getErrorMessage(error, "Erreur inconnue")
       );
     } finally {
       setLoading(false);
@@ -277,12 +301,12 @@ export function RestaurantAuthScreen() {
           "✅ Email envoyé. Clique sur le lien reçu pour modifier ton mot de passe."
         )
       );
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       setMsg(
         t(
           "restaurant.auth.errors.resetFailed",
           "❌ Impossible d’envoyer l’email : "
-        ) + getErrorMessage(err, "Erreur inconnue")
+        ) + getErrorMessage(error, "Erreur inconnue")
       );
     } finally {
       setLoading(false);
@@ -478,7 +502,9 @@ export function RestaurantAuthScreen() {
               disabled={loading}
               onPress={() => {
                 setMsg(null);
-                setMode((m) => (m === "login" ? "signup" : "login"));
+                setMode((currentMode) =>
+                  currentMode === "login" ? "signup" : "login"
+                );
               }}
               style={{
                 paddingVertical: 10,
