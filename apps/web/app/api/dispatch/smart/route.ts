@@ -1,8 +1,11 @@
+// apps/web/app/api/dispatch/smart/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const DEFAULT_COOLDOWN_SECONDS = 60;
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -51,14 +54,15 @@ async function sendExpoPush(messages: any[]) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const orderId = String(body.orderId ?? body.order_id ?? "").trim();
 
     const maxDrivers = Math.min(Number(body.maxDrivers ?? 5), 15);
     const maxMiles = Math.min(Number(body.maxMiles ?? 12), 50);
-    const locationFreshMinutes = Math.min(
-      Number(body.locationFreshMinutes ?? 20),
-      120
+    const locationFreshMinutes = Math.min(Number(body.locationFreshMinutes ?? 20), 120);
+    const cooldownSeconds = Math.min(
+      Math.max(Number(body.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS), 10),
+      600
     );
 
     if (!orderId) {
@@ -97,19 +101,10 @@ export async function POST(req: NextRequest) {
       (kind === "pickup_dropoff" && status === "pending");
 
     if (!isDispatchable) {
-      return json(
-        {
-          error: "Order is not dispatchable",
-          status,
-          kind,
-        },
-        400
-      );
+      return json({ error: "Order is not dispatchable", status, kind }, 400);
     }
 
-    const freshSince = new Date(
-      Date.now() - locationFreshMinutes * 60 * 1000
-    ).toISOString();
+    const freshSince = new Date(Date.now() - locationFreshMinutes * 60 * 1000).toISOString();
 
     const { data: locations, error: locError } = await supabase
       .from("driver_locations")
@@ -128,9 +123,24 @@ export async function POST(req: NextRequest) {
         orderId,
         notified: 0,
         candidates: 0,
+        skippedCooldown: 0,
         message: "No fresh driver locations found",
       });
     }
+
+    const cooldownSince = new Date(Date.now() - cooldownSeconds * 1000).toISOString();
+
+    const { data: recentDispatches, error: recentError } = await supabase
+      .from("driver_dispatch_notifications")
+      .select("driver_id,sent_at")
+      .in("driver_id", driverIds)
+      .gte("sent_at", cooldownSince);
+
+    if (recentError) return json({ error: recentError.message }, 500);
+
+    const recentlyNotifiedDriverIds = new Set(
+      (recentDispatches ?? []).map((r: any) => String(r.driver_id))
+    );
 
     const { data: profiles, error: profilesError } = await supabase
       .from("driver_profiles")
@@ -147,7 +157,7 @@ export async function POST(req: NextRequest) {
       profileByUserId.set(String((p as any).user_id), p);
     }
 
-    const candidates = (locations ?? [])
+    const allCandidates = (locations ?? [])
       .map((loc: any) => {
         const driverId = String(loc.driver_id);
         const profile = profileByUserId.get(driverId);
@@ -180,10 +190,14 @@ export async function POST(req: NextRequest) {
           tier,
           cancellationRate,
           priorityScore: Math.round(priorityScore * 100) / 100,
+          skippedByCooldown: recentlyNotifiedDriverIds.has(driverId),
         };
       })
       .filter(Boolean)
-      .sort((a: any, b: any) => a.priorityScore - b.priorityScore)
+      .sort((a: any, b: any) => a.priorityScore - b.priorityScore);
+
+    const candidates = allCandidates
+      .filter((c: any) => !c.skippedByCooldown)
       .slice(0, maxDrivers);
 
     if (candidates.length === 0) {
@@ -192,7 +206,9 @@ export async function POST(req: NextRequest) {
         orderId,
         notified: 0,
         candidates: 0,
-        message: "No nearby online drivers found",
+        skippedCooldown: allCandidates.filter((c: any) => c.skippedByCooldown).length,
+        cooldownSeconds,
+        message: "No nearby online drivers available outside cooldown",
       });
     }
 
@@ -236,11 +252,35 @@ export async function POST(req: NextRequest) {
 
     const pushResult = await sendExpoPush(messages);
 
+    const notifiedDriverIds = Array.from(
+      new Set(uniqueTokens.map((t: any) => String(t.user_id)).filter(Boolean))
+    );
+
+    if (notifiedDriverIds.length > 0) {
+      const now = new Date().toISOString();
+
+      const { error: insertError } = await supabase
+        .from("driver_dispatch_notifications")
+        .insert(
+          notifiedDriverIds.map((driverId) => ({
+            order_id: order.id,
+            driver_id: driverId,
+            sent_at: now,
+          }))
+        );
+
+      if (insertError) {
+        console.log("driver_dispatch_notifications insert error:", insertError.message);
+      }
+    }
+
     return json({
       ok: true,
       orderId,
       candidates: candidates.length,
       notified: messages.length,
+      skippedCooldown: allCandidates.filter((c: any) => c.skippedByCooldown).length,
+      cooldownSeconds,
       selectedDrivers: candidates,
       pushResult,
     });
