@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_COOLDOWN_SECONDS = 60;
 const MAX_DISPATCH_MILES = 5;
+const AUTO_RETRY_DELAY_MS = 20_000;
 
 const DISPATCH_WAVES: Record<number, { maxDrivers: number; maxMiles: number }> = {
   1: { maxDrivers: 3, maxMiles: MAX_DISPATCH_MILES },
@@ -21,6 +22,20 @@ function json(body: Record<string, unknown>, status = 200) {
 function toNumber(v: unknown): number | null {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function normalize(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isDispatchableOrder(order: any) {
+  const status = normalize(order?.status);
+  const kind = normalize(order?.kind);
+
+  return (
+    (kind === "food" && status === "ready") ||
+    (kind === "pickup_dropoff" && status === "pending")
+  );
 }
 
 function milesBetween(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -84,6 +99,90 @@ async function recordDispatchAttempt(params: {
   }
 }
 
+function scheduleNextWave(params: {
+  origin: string;
+  supabase: any;
+  orderId: string;
+  currentWave: number;
+  locationFreshMinutes: number;
+  cooldownSeconds: number;
+}) {
+  const { origin, supabase, orderId, currentWave, locationFreshMinutes, cooldownSeconds } = params;
+
+  if (currentWave >= 3) return;
+
+  setTimeout(async () => {
+    try {
+      const nextWave = currentWave + 1;
+      const waveConfig = DISPATCH_WAVES[nextWave] ?? DISPATCH_WAVES[3];
+
+      const { data: latestOrder, error: latestError } = await supabase
+        .from("orders")
+        .select("id,kind,status,driver_id")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (latestError) {
+        console.log("auto retry read error:", latestError.message);
+        return;
+      }
+
+      if (!latestOrder) {
+        await recordDispatchAttempt({
+          supabase,
+          orderId,
+          wave: nextWave,
+          maxDrivers: waveConfig.maxDrivers,
+          maxMiles: waveConfig.maxMiles,
+          notifiedCount: 0,
+          status: "retry_stopped_order_not_found",
+        });
+        return;
+      }
+
+      if (latestOrder.driver_id) {
+        await recordDispatchAttempt({
+          supabase,
+          orderId,
+          wave: nextWave,
+          maxDrivers: waveConfig.maxDrivers,
+          maxMiles: waveConfig.maxMiles,
+          notifiedCount: 0,
+          status: "retry_stopped_driver_assigned",
+        });
+        return;
+      }
+
+      if (!isDispatchableOrder(latestOrder)) {
+        await recordDispatchAttempt({
+          supabase,
+          orderId,
+          wave: nextWave,
+          maxDrivers: waveConfig.maxDrivers,
+          maxMiles: waveConfig.maxMiles,
+          notifiedCount: 0,
+          status: "retry_stopped_not_dispatchable",
+        });
+        return;
+      }
+
+      await fetch(`${origin}/api/dispatch/smart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          wave: nextWave,
+          locationFreshMinutes,
+          cooldownSeconds,
+          autoRetry: true,
+        }),
+      });
+    } catch (err) {
+      console.log("auto retry dispatch error:", err);
+    }
+  }, AUTO_RETRY_DELAY_MS);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
@@ -114,13 +213,36 @@ export async function POST(req: NextRequest) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select(
-        "id,kind,status,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total"
+        "id,kind,status,driver_id,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total"
       )
       .eq("id", orderId)
       .maybeSingle();
 
     if (orderError) return json({ error: orderError.message }, 500);
     if (!order) return json({ error: "Order not found" }, 404);
+
+    if (order.driver_id) {
+      await recordDispatchAttempt({
+        supabase,
+        orderId: order.id,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
+        notifiedCount: 0,
+        status: "already_assigned",
+      });
+
+      return json({
+        ok: true,
+        orderId,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
+        notified: 0,
+        candidates: 0,
+        message: "Order already assigned to a driver",
+      });
+    }
 
     const pickupLat = toNumber(order.pickup_lat);
     const pickupLng = toNumber(order.pickup_lng);
@@ -139,14 +261,10 @@ export async function POST(req: NextRequest) {
       return json({ error: "Order missing pickup coordinates" }, 400);
     }
 
-    const status = String(order.status ?? "").toLowerCase();
-    const kind = String(order.kind ?? "").toLowerCase();
+    const status = normalize(order.status);
+    const kind = normalize(order.kind);
 
-    const isDispatchable =
-      (kind === "food" && status === "ready") ||
-      (kind === "pickup_dropoff" && status === "pending");
-
-    if (!isDispatchable) {
+    if (!isDispatchableOrder(order)) {
       await recordDispatchAttempt({
         supabase,
         orderId: order.id,
@@ -182,6 +300,15 @@ export async function POST(req: NextRequest) {
         maxMiles,
         notifiedCount: 0,
         status: "no_fresh_locations",
+      });
+
+      scheduleNextWave({
+        origin: req.nextUrl.origin,
+        supabase,
+        orderId: order.id,
+        currentWave: requestedWave,
+        locationFreshMinutes,
+        cooldownSeconds,
       });
 
       return json({
@@ -280,6 +407,15 @@ export async function POST(req: NextRequest) {
         status: "no_candidates_outside_cooldown",
       });
 
+      scheduleNextWave({
+        origin: req.nextUrl.origin,
+        supabase,
+        orderId: order.id,
+        currentWave: requestedWave,
+        locationFreshMinutes,
+        cooldownSeconds,
+      });
+
       return json({
         ok: true,
         orderId,
@@ -365,6 +501,15 @@ export async function POST(req: NextRequest) {
       maxMiles,
       notifiedCount: messages.length,
       status: messages.length > 0 ? "sent" : "no_tokens",
+    });
+
+    scheduleNextWave({
+      origin: req.nextUrl.origin,
+      supabase,
+      orderId: order.id,
+      currentWave: requestedWave,
+      locationFreshMinutes,
+      cooldownSeconds,
     });
 
     return json({
