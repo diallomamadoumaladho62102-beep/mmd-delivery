@@ -10,8 +10,21 @@ function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
 }
 
+function getEnv(name: string) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing env: ${name}`);
+  return value;
+}
+
 function normalizeStatus(value: unknown) {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizeKind(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
 }
 
 function normalizeRole(value: unknown): CancelRole {
@@ -29,6 +42,41 @@ function sameId(a: unknown, b: string) {
   return String(a ?? "").trim() === b;
 }
 
+async function safeReadJson(req: NextRequest) {
+  try {
+    return await req.json();
+  } catch {
+    return {};
+  }
+}
+
+async function triggerSmartDispatch(req: NextRequest, orderId: string) {
+  try {
+    const url = new URL("/api/dispatch/smart", req.nextUrl.origin);
+
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId, order_id: orderId }),
+      cache: "no-store",
+    });
+
+    const out = await res.json().catch(() => null);
+
+    return {
+      ok: res.ok,
+      status: res.status,
+      result: out,
+    };
+  } catch (e: any) {
+    console.log("Smart dispatch error:", e?.message ?? e);
+    return {
+      ok: false,
+      error: e?.message ?? "Smart dispatch failed",
+    };
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const token = extractBearerToken(req);
@@ -37,7 +85,7 @@ export async function POST(req: NextRequest) {
       return json({ error: "Missing Authorization Bearer token" }, 401);
     }
 
-    const body = await req.json();
+    const body = await safeReadJson(req);
     const orderId = String(body.orderId ?? body.order_id ?? "").trim();
     const role = normalizeRole(body.role);
 
@@ -45,14 +93,14 @@ export async function POST(req: NextRequest) {
       return json({ error: "Missing orderId" }, 400);
     }
 
-    const supabaseUser = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: { persistSession: false },
-        global: { headers: { Authorization: `Bearer ${token}` } },
-      }
-    );
+    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
+    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
 
     const { data: userData, error: userError } =
       await supabaseUser.auth.getUser();
@@ -63,16 +111,14 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid token" }, 401);
     }
 
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    );
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+    });
 
     const { data: order, error: readError } = await supabaseAdmin
       .from("orders")
       .select(
-        "id,status,driver_id,client_id,client_user_id,created_by,user_id"
+        "id,kind,status,driver_id,client_id,client_user_id,created_by,user_id"
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -86,6 +132,7 @@ export async function POST(req: NextRequest) {
     }
 
     const status = normalizeStatus(order.status);
+    const kind = normalizeKind(order.kind);
 
     if (role === "client") {
       const isOwner =
@@ -114,7 +161,12 @@ export async function POST(req: NextRequest) {
           return json({ error: updateError.message }, 500);
         }
 
-        return json({ ok: true, cancelled: true, by: "client", refund: "FULL" });
+        return json({
+          ok: true,
+          cancelled: true,
+          by: "client",
+          refund: "FULL",
+        });
       }
 
       if (status === "accepted") {
@@ -133,7 +185,12 @@ export async function POST(req: NextRequest) {
           return json({ error: updateError.message }, 500);
         }
 
-        return json({ ok: true, cancelled: true, by: "client", refund: "NONE" });
+        return json({
+          ok: true,
+          cancelled: true,
+          by: "client",
+          refund: "NONE",
+        });
       }
 
       return json(
@@ -148,26 +205,41 @@ export async function POST(req: NextRequest) {
       }
 
       if (status === "accepted" || status === "ready") {
+        const nextStatus =
+          kind === "pickup_dropoff"
+            ? "pending"
+            : kind === "food"
+              ? "ready"
+              : status === "ready"
+                ? "ready"
+                : "pending";
+
         const { error: updateError } = await supabaseAdmin
           .from("orders")
           .update({
+            status: nextStatus,
             driver_id: null,
             cancel_reason: "driver_cancelled_before_pickup",
             cancelled_by: "driver",
             cancelled_at: new Date().toISOString(),
             refund_status: null,
           })
-          .eq("id", orderId);
+          .eq("id", orderId)
+          .eq("driver_id", user.id);
 
         if (updateError) {
           return json({ error: updateError.message }, 500);
         }
+
+        const smartDispatch = await triggerSmartDispatch(req, orderId);
 
         return json({
           ok: true,
           cancelled: true,
           by: "driver",
           reassigned: true,
+          status: nextStatus,
+          smartDispatch,
           message: "Driver removed. Order is available for another driver.",
         });
       }
@@ -180,6 +252,7 @@ export async function POST(req: NextRequest) {
 
     return json({ error: "Invalid role" }, 400);
   } catch (e: any) {
+    console.log("Cancel order route error:", e?.message ?? e);
     return json({ error: e?.message ?? "Server error" }, 500);
   }
 }
