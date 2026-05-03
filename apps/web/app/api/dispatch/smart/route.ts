@@ -6,6 +6,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_COOLDOWN_SECONDS = 60;
+const MAX_DISPATCH_MILES = 5;
+
+const DISPATCH_WAVES: Record<number, { maxDrivers: number; maxMiles: number }> = {
+  1: { maxDrivers: 3, maxMiles: MAX_DISPATCH_MILES },
+  2: { maxDrivers: 6, maxMiles: MAX_DISPATCH_MILES },
+  3: { maxDrivers: 10, maxMiles: MAX_DISPATCH_MILES },
+};
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -52,13 +59,42 @@ async function sendExpoPush(messages: any[]) {
   return out;
 }
 
+async function recordDispatchAttempt(params: {
+  supabase: any;
+  orderId: string;
+  wave: number;
+  maxDrivers: number;
+  maxMiles: number;
+  notifiedCount: number;
+  status: string;
+}) {
+  const { supabase, orderId, wave, maxDrivers, maxMiles, notifiedCount, status } = params;
+
+  const { error } = await supabase.from("order_dispatch_attempts").insert({
+    order_id: orderId,
+    wave,
+    max_drivers: maxDrivers,
+    max_miles: maxMiles,
+    notified_count: notifiedCount,
+    status,
+  });
+
+  if (error) {
+    console.log("order_dispatch_attempts insert error:", error.message);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const orderId = String(body.orderId ?? body.order_id ?? "").trim();
 
-    const maxDrivers = Math.min(Number(body.maxDrivers ?? 5), 15);
-    const maxMiles = Math.min(Number(body.maxMiles ?? 12), 50);
+    const requestedWave = Math.min(Math.max(Number(body.wave ?? 1), 1), 3);
+    const waveConfig = DISPATCH_WAVES[requestedWave] ?? DISPATCH_WAVES[1];
+
+    const maxDrivers = waveConfig.maxDrivers;
+    const maxMiles = waveConfig.maxMiles;
+
     const locationFreshMinutes = Math.min(Number(body.locationFreshMinutes ?? 20), 120);
     const cooldownSeconds = Math.min(
       Math.max(Number(body.cooldownSeconds ?? DEFAULT_COOLDOWN_SECONDS), 10),
@@ -90,6 +126,16 @@ export async function POST(req: NextRequest) {
     const pickupLng = toNumber(order.pickup_lng);
 
     if (pickupLat == null || pickupLng == null) {
+      await recordDispatchAttempt({
+        supabase,
+        orderId: order.id,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
+        notifiedCount: 0,
+        status: "missing_pickup_coordinates",
+      });
+
       return json({ error: "Order missing pickup coordinates" }, 400);
     }
 
@@ -101,6 +147,16 @@ export async function POST(req: NextRequest) {
       (kind === "pickup_dropoff" && status === "pending");
 
     if (!isDispatchable) {
+      await recordDispatchAttempt({
+        supabase,
+        orderId: order.id,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
+        notifiedCount: 0,
+        status: "not_dispatchable",
+      });
+
       return json({ error: "Order is not dispatchable", status, kind }, 400);
     }
 
@@ -118,9 +174,22 @@ export async function POST(req: NextRequest) {
     );
 
     if (driverIds.length === 0) {
+      await recordDispatchAttempt({
+        supabase,
+        orderId: order.id,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
+        notifiedCount: 0,
+        status: "no_fresh_locations",
+      });
+
       return json({
         ok: true,
         orderId,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
         notified: 0,
         candidates: 0,
         skippedCooldown: 0,
@@ -201,9 +270,22 @@ export async function POST(req: NextRequest) {
       .slice(0, maxDrivers);
 
     if (candidates.length === 0) {
+      await recordDispatchAttempt({
+        supabase,
+        orderId: order.id,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
+        notifiedCount: 0,
+        status: "no_candidates_outside_cooldown",
+      });
+
       return json({
         ok: true,
         orderId,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
         notified: 0,
         candidates: 0,
         skippedCooldown: allCandidates.filter((c: any) => c.skippedByCooldown).length,
@@ -245,6 +327,7 @@ export async function POST(req: NextRequest) {
       data: {
         type: "smart_dispatch",
         orderId: order.id,
+        wave: requestedWave,
         screen: "DriverHome",
       },
       priority: "high",
@@ -274,9 +357,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    await recordDispatchAttempt({
+      supabase,
+      orderId: order.id,
+      wave: requestedWave,
+      maxDrivers,
+      maxMiles,
+      notifiedCount: messages.length,
+      status: messages.length > 0 ? "sent" : "no_tokens",
+    });
+
     return json({
       ok: true,
       orderId,
+      wave: requestedWave,
+      maxDrivers,
+      maxMiles,
       candidates: candidates.length,
       notified: messages.length,
       skippedCooldown: allCandidates.filter((c: any) => c.skippedByCooldown).length,
