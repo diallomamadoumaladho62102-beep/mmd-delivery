@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -7,9 +7,16 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
+
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL ||
+  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_WEB_BASE_URL;
 
 type DeliveryRequestRecord = {
   id: string;
@@ -79,6 +86,14 @@ type ScreenData = {
   driver_id: string | null;
 };
 
+type CancelOrderResponse = {
+  ok?: boolean;
+  cancelled?: boolean;
+  by?: string;
+  refund?: "FULL" | "NONE" | string;
+  error?: string;
+};
+
 function toSafeString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
@@ -120,6 +135,12 @@ function normalizeKind(value: unknown): string {
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
+}
+
+function normalizeStatus(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 function shortRef(value: string | null | undefined) {
@@ -340,22 +361,26 @@ export function ClientDeliveryRequestDetailsScreen() {
   const requestId = route?.params?.requestId as string | undefined;
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [data, setData] = useState<ScreenData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let alive = true;
+  const loadDetails = useCallback(
+    async (options?: { silent?: boolean }) => {
+      let alive = true;
 
-    const load = async () => {
       if (!requestId) {
-        if (!alive) return;
         setError("Missing requestId.");
         setLoading(false);
-        return;
+        return () => {
+          alive = false;
+        };
       }
 
       try {
-        setLoading(true);
+        if (options?.silent) setRefreshing(true);
+        else setLoading(true);
         setError(null);
 
         const { data: directOrder, error: directOrderError } = await supabase
@@ -559,16 +584,30 @@ export function ClientDeliveryRequestDetailsScreen() {
         console.log("load delivery request details error:", e);
         setError(e?.message ?? "Unable to load delivery request.");
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
-    };
 
-    load();
+      return () => {
+        alive = false;
+      };
+    },
+    [requestId]
+  );
+
+  useEffect(() => {
+    let cleanup: void | (() => void);
+
+    (async () => {
+      cleanup = await loadDetails();
+    })();
 
     return () => {
-      alive = false;
+      if (typeof cleanup === "function") cleanup();
     };
-  }, [requestId]);
+  }, [loadDetails]);
 
   const primaryReference = useMemo(() => {
     if (data?.orderId) return shortRef(data.orderId);
@@ -592,6 +631,92 @@ export function ClientDeliveryRequestDetailsScreen() {
   }, [data?.driver_id, data?.status]);
 
   const codesAvailable = !!(data?.pickup_code || data?.dropoff_code);
+
+  const canCancel = useMemo(() => {
+    const status = normalizeStatus(data?.status);
+    return !!data && (status === "pending" || status === "accepted") && !canceling;
+  }, [data, canceling]);
+
+  async function handleCancelDeliveryRequest() {
+    if (!data) return;
+
+    const targetId = data.orderId || data.requestId;
+    if (!targetId) return;
+
+    const status = normalizeStatus(data.status);
+    if (!(status === "pending" || status === "accepted")) {
+      Alert.alert("Cancel trip", "This delivery can no longer be cancelled from this screen.");
+      return;
+    }
+
+    if (!API_URL) {
+      Alert.alert("Cancel trip", "EXPO_PUBLIC_API_URL is missing. Set it to your web API URL.");
+      return;
+    }
+
+    const message =
+      status === "pending"
+        ? "Because the trip is still pending, this cancellation should be eligible for a full refund review."
+        : "A driver or system may already be assigned. Cancelling now may not be refundable.";
+
+    Alert.alert("Cancel trip", message, [
+      {
+        text: "Keep trip",
+        style: "cancel",
+      },
+      {
+        text: "Cancel trip",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setCanceling(true);
+
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError) console.log("getSession error (cancel delivery request):", sessionError.message);
+
+            const accessToken = sessionData.session?.access_token;
+            if (!accessToken) {
+              throw new Error("You must be logged in.");
+            }
+
+            const endpoint = `${String(API_URL).replace(/\/$/, "")}/api/orders/cancel`;
+
+            const res = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                orderId: targetId,
+                order_id: targetId,
+                role: "client",
+              }),
+            });
+
+            const out = (await res.json().catch(() => ({}))) as CancelOrderResponse;
+
+            if (!res.ok || !out?.ok) {
+              throw new Error(out?.error || `Cancel failed (${res.status})`);
+            }
+
+            await loadDetails({ silent: true });
+
+            Alert.alert(
+              "Trip cancelled",
+              out.refund === "FULL"
+                ? "Cancellation completed. Refund status: full refund required."
+                : "Cancellation completed. Refund status: no refund."
+            );
+          } catch (e: any) {
+            Alert.alert("Cancel trip", e?.message ?? "Unable to cancel this trip.");
+          } finally {
+            setCanceling(false);
+          }
+        },
+      },
+    ]);
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }}>
@@ -826,6 +951,37 @@ export function ClientDeliveryRequestDetailsScreen() {
               </Text>
             </View>
           </View>
+
+          {canCancel && (
+            <View style={{ marginBottom: 14 }}>
+              <TouchableOpacity
+                onPress={handleCancelDeliveryRequest}
+                disabled={canceling || refreshing}
+                activeOpacity={0.85}
+                style={{
+                  backgroundColor: canceling ? "rgba(148,163,184,0.18)" : "rgba(248,113,113,0.92)",
+                  paddingVertical: 15,
+                  borderRadius: 16,
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: canceling ? "rgba(148,163,184,0.18)" : "rgba(248,113,113,0.35)",
+                }}
+              >
+                {canceling ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={{ color: "white", fontWeight: "900", fontSize: 15 }}>
+                    ❌ Cancel trip
+                  </Text>
+                )}
+              </TouchableOpacity>
+              <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 9, lineHeight: 17 }}>
+                {normalizeStatus(data.status) === "pending"
+                  ? "You can cancel while this trip is still pending."
+                  : "Cancelling after assignment may not be refundable."}
+              </Text>
+            </View>
+          )}
 
           <CodeCard
             title="Pickup code"

@@ -83,6 +83,14 @@ type CreateCheckoutResponse = {
   error?: string;
 };
 
+type CancelOrderResponse = {
+  ok?: boolean;
+  cancelled?: boolean;
+  by?: string;
+  refund?: "FULL" | "NONE" | string;
+  error?: string;
+};
+
 // =========================
 // ✅ Helpers
 // =========================
@@ -252,6 +260,7 @@ export function ClientOrderDetailsScreen() {
   const [paying, setPaying] = useState(false);
   const [verifyingPay, setVerifyingPay] = useState(false);
   const [paymentPending, setPaymentPending] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState("");
@@ -563,6 +572,97 @@ export function ClientOrderDetailsScreen() {
     }
   }
 
+  async function handleCancelOrder() {
+    if (!order?.id) return;
+
+    if (!API_URL) {
+      Alert.alert(
+        ts("common.error", "Error"),
+        "EXPO_PUBLIC_API_URL is missing. Set it to your web API URL."
+      );
+      return;
+    }
+
+    if (!(order.status === "pending" || order.status === "accepted")) {
+      Alert.alert(
+        ts("client.orderDetails.cancelTitle", "Cancel order"),
+        ts("client.orderDetails.cancelUnavailable", "This order can no longer be cancelled from this screen.")
+      );
+      return;
+    }
+
+    const refundMessage =
+      order.status === "pending"
+        ? ts("client.orderDetails.cancelFullRefundHint", "Because the restaurant has not accepted yet, this cancellation should be eligible for a full refund review.")
+        : ts("client.orderDetails.cancelNoRefundHint", "The restaurant has already accepted this order. Cancelling now may not be refundable.");
+
+    Alert.alert(
+      ts("client.orderDetails.cancelTitle", "Cancel order"),
+      refundMessage,
+      [
+        {
+          text: ts("common.keepOrder", "Keep order"),
+          style: "cancel",
+        },
+        {
+          text: ts("client.orderDetails.confirmCancel", "Cancel order"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setCanceling(true);
+
+              const { data, error } = await supabase.auth.getSession();
+              const accessToken = data.session?.access_token;
+
+              if (error) console.log("getSession error (handleCancelOrder) =", error.message);
+
+              if (!accessToken) {
+                throw new Error(ts("common.mustBeLoggedIn", "You must be logged in."));
+              }
+
+              const endpoint = `${String(API_URL).replace(/\/$/, "")}/api/orders/cancel`;
+
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                  orderId: order.id,
+                  order_id: order.id,
+                  role: "client",
+                }),
+              });
+
+              const out = (await res.json().catch(() => ({}))) as CancelOrderResponse;
+
+              if (!res.ok || !out?.ok) {
+                throw new Error(out?.error || `Cancel failed (${res.status})`);
+              }
+
+              await fetchOrder();
+
+              const refundText =
+                out.refund === "FULL"
+                  ? ts("client.orderDetails.cancelRefundFull", "Cancellation completed. Refund status: full refund required.")
+                  : ts("client.orderDetails.cancelRefundNone", "Cancellation completed. Refund status: no refund.");
+
+              Alert.alert(ts("client.orderDetails.cancelSuccess", "Order cancelled"), refundText);
+            } catch (e: any) {
+              Alert.alert(
+                ts("client.orderDetails.cancelTitle", "Cancel order"),
+                e?.message ?? ts("client.orderDetails.cancelError", "Unable to cancel this order.")
+              );
+            } finally {
+              if (isMountedRef.current) setCanceling(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
   function formatStatus(status: OrderStatus) {
     switch (status) {
       case "pending":
@@ -607,6 +707,16 @@ export function ClientOrderDetailsScreen() {
     !loading &&
     !errorMsg &&
     !isPaid &&
+    !paymentPending &&
+    !canceling;
+
+  const canCancel =
+    !!order &&
+    (order.status === "pending" || order.status === "accepted") &&
+    !loading &&
+    !errorMsg &&
+    !canceling &&
+    !verifyingPay &&
     !paymentPending;
 
   const driverId = order?.driver_id ?? null;
@@ -1169,6 +1279,43 @@ export function ClientOrderDetailsScreen() {
                 />
               </Card>
             </View>
+
+            {canCancel && (
+              <View style={{ marginTop: 2, marginBottom: 16 }}>
+                <TouchableOpacity
+                  onPress={handleCancelOrder}
+                  disabled={canceling}
+                  style={{
+                    backgroundColor: canceling ? "rgba(148,163,184,0.18)" : "rgba(248,113,113,0.92)",
+                    paddingVertical: 15,
+                    borderRadius: 14,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: canceling ? "rgba(148,163,184,0.18)" : "rgba(248,113,113,0.35)",
+                  }}
+                >
+                  {canceling ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={{ color: "white", fontSize: 15, fontWeight: "900" }}>
+                      ❌ {ts("client.orderDetails.cancelOrder", "Cancel order")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 10, lineHeight: 16 }}>
+                  {order.status === "pending"
+                    ? ts(
+                        "client.orderDetails.cancelPendingHint",
+                        "You can cancel while the order is still pending restaurant acceptance."
+                      )
+                    : ts(
+                        "client.orderDetails.cancelAcceptedHint",
+                        "The restaurant has accepted this order. Cancelling may not be refundable."
+                      )}
+                </Text>
+              </View>
+            )}
 
             {order.status === "delivered" && (
               <Card>
