@@ -63,6 +63,15 @@ type Order = {
 
 type VerifyKind = "pickup" | "dropoff";
 
+type CancelOrderResponse = {
+  ok?: boolean;
+  cancelled?: boolean;
+  by?: string;
+  reassigned?: boolean;
+  message?: string;
+  error?: string;
+};
+
 const PROOF_BUCKET = "delivery-proofs";
 
 function formatMoneyUSD(v: number | null) {
@@ -120,6 +129,7 @@ export function DriverOrderDetailsScreen() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [canceling, setCanceling] = useState(false);
   const [verifyingKind, setVerifyingKind] = useState<VerifyKind | null>(null);
   const [codeInput, setCodeInput] = useState("");
   const [submittingCode, setSubmittingCode] = useState(false);
@@ -467,6 +477,14 @@ export function DriverOrderDetailsScreen() {
       (order.kind === "food" && order.status === "ready")
     );
 
+  const canCancelAsDriver =
+    !!order &&
+    isAssignedDriver &&
+    !canceling &&
+    !submittingCode &&
+    !proofUploading &&
+    (order.status === "accepted" || order.status === "ready");
+
   function openCodeModal(kind: VerifyKind) {
     if (kind === "pickup" && !canPickup) return;
     if (kind === "dropoff" && !canDeliver) return;
@@ -691,6 +709,104 @@ export function DriverOrderDetailsScreen() {
     } finally {
       setAccepting(false);
     }
+  }
+
+  async function handleCancelAsDriver() {
+    if (!order) return;
+
+    if (!canCancelAsDriver) {
+      Alert.alert(
+        t("driver.orderDetails.cancel.unavailableTitle", "Annulation indisponible"),
+        t(
+          "driver.orderDetails.cancel.unavailableBody",
+          "Tu peux annuler seulement avant le pickup, quand la course est encore acceptée ou prête."
+        )
+      );
+      return;
+    }
+
+    Alert.alert(
+      t("driver.orderDetails.cancel.title", "Annuler la course ?"),
+      t(
+        "driver.orderDetails.cancel.body",
+        "Si tu annules maintenant, tu seras retiré de cette course et elle pourra être proposée à un autre chauffeur."
+      ),
+      [
+        {
+          text: t("common.no", "Non"),
+          style: "cancel",
+        },
+        {
+          text: t("driver.orderDetails.cancel.confirm", "Oui, annuler"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setCanceling(true);
+
+              const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+              if (sessionError) {
+                throw new Error(sessionError.message);
+              }
+
+              const token = sessionData?.session?.access_token;
+              if (!token) {
+                throw new Error(
+                  t("driver.orderDetails.tokenMissing", "Token de session manquant.")
+                );
+              }
+
+              const apiBaseUrl = getApiBaseUrl();
+              const endpoint = `${apiBaseUrl}/api/orders/cancel`;
+
+              const response = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  orderId: order.id,
+                  order_id: order.id,
+                  role: "driver",
+                }),
+              });
+
+              const result = (await response.json().catch(() => ({}))) as CancelOrderResponse;
+
+              if (!response.ok || !result?.ok) {
+                throw new Error(
+                  result?.error ??
+                    t("driver.orderDetails.cancel.error", "Impossible d'annuler cette course.")
+                );
+              }
+
+              stopDriverLocationTracking();
+              await fetchOrder();
+
+              Alert.alert(
+                t("driver.orderDetails.cancel.successTitle", "Course annulée"),
+                result?.message ??
+                  t(
+                    "driver.orderDetails.cancel.successBody",
+                    "Tu as été retiré de cette course. Elle peut maintenant être prise par un autre chauffeur."
+                  )
+              );
+
+              navigation.goBack();
+            } catch (e: any) {
+              Alert.alert(
+                t("common.error", "Erreur"),
+                e?.message ??
+                  t("driver.orderDetails.cancel.error", "Impossible d'annuler cette course.")
+              );
+            } finally {
+              setCanceling(false);
+            }
+          },
+        },
+      ]
+    );
   }
 
   async function handleSubmitCode() {
@@ -1161,6 +1277,49 @@ export function DriverOrderDetailsScreen() {
             )}
           </Text>
         </View>
+
+        {canCancelAsDriver && (
+          <View
+            style={{
+              marginTop: 12,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "rgba(248,113,113,0.35)",
+              backgroundColor: "rgba(127,29,29,0.14)",
+              padding: 14,
+            }}
+          >
+            <Text style={{ color: "#FECACA", fontSize: 15, fontWeight: "900", marginBottom: 8 }}>
+              {t("driver.orderDetails.cancel.cardTitle", "Besoin d’annuler ?")}
+            </Text>
+            <Text style={{ color: "#FCA5A5", fontSize: 12, lineHeight: 17, marginBottom: 12 }}>
+              {t(
+                "driver.orderDetails.cancel.cardBody",
+                "Tu peux annuler avant le pickup. La course sera remise disponible pour un autre chauffeur."
+              )}
+            </Text>
+            <TouchableOpacity
+              onPress={handleCancelAsDriver}
+              disabled={canceling}
+              style={{
+                borderRadius: 999,
+                paddingVertical: 12,
+                alignItems: "center",
+                backgroundColor: canceling ? "rgba(148,163,184,0.25)" : "rgba(248,113,113,0.95)",
+                borderWidth: 1,
+                borderColor: canceling ? "rgba(148,163,184,0.20)" : "rgba(248,113,113,0.55)",
+              }}
+            >
+              {canceling ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={{ color: "white", fontSize: 13, fontWeight: "900" }}>
+                  {t("driver.orderDetails.cancel.button", "Annuler cette course")}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View
           style={{
