@@ -154,6 +154,7 @@ function getZoneInfoFromLocation(
 
 const SHEET_MIN_TRANSLATE_Y = 0;
 const SHEET_MAX_TRANSLATE_Y = 160;
+const MAX_VISIBLE_ORDER_MILES = 5;
 
 function normalizeKind(value: unknown): string {
   return String(value ?? "")
@@ -164,6 +165,20 @@ function normalizeKind(value: unknown): string {
 
 function normalizeStatus(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function milesBetween(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined): boolean {
@@ -215,6 +230,7 @@ export function DriverHomeScreen() {
   });
   const [hasLocation, setHasLocation] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(true);
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const [zoneStatus, setZoneStatus] = useState<ZoneDemand>("calm");
   const [zoneName, setZoneName] = useState<string>(t("driver.home.zone.current", "Zone actuelle"));
@@ -407,6 +423,8 @@ export function DriverHomeScreen() {
 
         const current = await Location.getCurrentPositionAsync({});
 
+        setDriverLocation({ lat: current.coords.latitude, lng: current.coords.longitude });
+
         const zoneInfo = getZoneInfoFromLocation(current.coords.latitude, current.coords.longitude);
         setZoneName(zoneInfo.name || t("driver.home.zone.current", "Zone actuelle"));
         setZoneStatus(zoneInfo.demand);
@@ -428,6 +446,8 @@ export function DriverHomeScreen() {
             distanceInterval: 10,
           },
           (pos) => {
+            setDriverLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+
             const info = getZoneInfoFromLocation(pos.coords.latitude, pos.coords.longitude);
             setZoneName(info.name || t("driver.home.zone.current", "Zone actuelle"));
             setZoneStatus(info.demand);
@@ -509,7 +529,26 @@ export function DriverHomeScreen() {
         const myList = (mine ?? []) as DriverOrder[];
 
         const visibleAvailable = allAvailable.filter((o) => {
-          const visible = isOrderVisibleForDriver(o);
+          const statusVisible = isOrderVisibleForDriver(o);
+          const pickupLat = typeof o.pickup_lat === "number" ? o.pickup_lat : null;
+          const pickupLng = typeof o.pickup_lng === "number" ? o.pickup_lng : null;
+          const hasPickupCoordinates = pickupLat != null && pickupLng != null;
+
+          let distanceFromDriverMiles: number | null = null;
+          let withinFiveMiles = false;
+
+          if (driverLocation && hasPickupCoordinates) {
+            distanceFromDriverMiles = milesBetween(
+              driverLocation.lat,
+              driverLocation.lng,
+              pickupLat,
+              pickupLng
+            );
+            withinFiveMiles = distanceFromDriverMiles <= MAX_VISIBLE_ORDER_MILES;
+          }
+
+          const visible =
+            statusVisible && hasPickupCoordinates && (!driverLocation || withinFiveMiles);
 
           console.log("DRIVER_HOME_AVAILABLE_DEBUG", {
             id: o.id,
@@ -517,7 +556,16 @@ export function DriverHomeScreen() {
             normalized_kind: normalizeKind(o.kind),
             raw_status: o.status,
             normalized_status: normalizeStatus(o.status),
+            statusVisible,
             visible,
+            max_visible_miles: MAX_VISIBLE_ORDER_MILES,
+            distance_from_driver_miles:
+              distanceFromDriverMiles == null
+                ? null
+                : Math.round(distanceFromDriverMiles * 100) / 100,
+            has_driver_location: !!driverLocation,
+            has_pickup_coordinates: hasPickupCoordinates,
+            distance_filter_applied: !!driverLocation,
             driver_id_expected_null: true,
           });
 
@@ -568,7 +616,7 @@ export function DriverHomeScreen() {
         }
       }
     },
-    [isOnline, getUserIdOrThrow, t]
+    [isOnline, getUserIdOrThrow, t, driverLocation]
   );
 
   const scheduleDriverOrdersRefresh = useCallback(
