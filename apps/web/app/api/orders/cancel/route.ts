@@ -6,13 +6,19 @@ export const dynamic = "force-dynamic";
 
 type CancelRole = "client" | "driver" | "restaurant";
 
+type CancelRefund = "FULL" | "NONE" | "NOT_APPLICABLE";
+
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
 }
 
 function getEnv(name: string) {
   const value = process.env[name];
-  if (!value) throw new Error(`Missing env: ${name}`);
+
+  if (!value) {
+    throw new Error(`Missing env: ${name}`);
+  }
+
   return value;
 }
 
@@ -38,11 +44,20 @@ function normalizeRole(value: unknown): CancelRole {
 
 function extractBearerToken(req: NextRequest) {
   const auth = req.headers.get("authorization") || "";
-  return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+
+  if (!auth.startsWith("Bearer ")) {
+    return "";
+  }
+
+  return auth.slice(7).trim();
 }
 
 function sameId(a: unknown, b: string) {
   return String(a ?? "").trim() === b;
+}
+
+function nowIso() {
+  return new Date().toISOString();
 }
 
 async function safeReadJson(req: NextRequest) {
@@ -51,6 +66,19 @@ async function safeReadJson(req: NextRequest) {
   } catch {
     return {};
   }
+}
+
+function isTerminalStatus(status: string) {
+  return status === "delivered" || status === "canceled";
+}
+
+function isClientOrderOwner(order: any, userId: string) {
+  return (
+    sameId(order.client_id, userId) ||
+    sameId(order.client_user_id, userId) ||
+    sameId(order.created_by, userId) ||
+    sameId(order.user_id, userId)
+  );
 }
 
 async function triggerSmartDispatch(req: NextRequest, orderId: string) {
@@ -73,11 +101,32 @@ async function triggerSmartDispatch(req: NextRequest, orderId: string) {
     };
   } catch (e: any) {
     console.log("Smart dispatch error:", e?.message ?? e);
+
     return {
       ok: false,
       error: e?.message ?? "Smart dispatch failed",
     };
   }
+}
+
+function successResponse(params: {
+  by: CancelRole;
+  refund: CancelRefund;
+  status?: string;
+  reassigned?: boolean;
+  smartDispatch?: unknown;
+  message?: string;
+}) {
+  return json({
+    ok: true,
+    cancelled: true,
+    by: params.by,
+    refund: params.refund,
+    status: params.status,
+    reassigned: params.reassigned ?? false,
+    smartDispatch: params.smartDispatch,
+    message: params.message,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -89,6 +138,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await safeReadJson(req);
+
     const orderId = String(body.orderId ?? body.order_id ?? "").trim();
     const role = normalizeRole(body.role);
 
@@ -102,7 +152,11 @@ export async function POST(req: NextRequest) {
 
     const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false },
-      global: { headers: { Authorization: `Bearer ${token}` } },
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
     });
 
     const { data: userData, error: userError } =
@@ -157,71 +211,108 @@ export async function POST(req: NextRequest) {
     }
 
     if (status === "delivered") {
-      return json({ error: "Delivered order cannot be cancelled", status }, 400);
+      return json(
+        {
+          error: "Delivered order cannot be cancelled",
+          status,
+        },
+        400
+      );
+    }
+
+    if (isTerminalStatus(status)) {
+      return json(
+        {
+          error: "This order can no longer be cancelled",
+          status,
+        },
+        400
+      );
     }
 
     // CLIENT CANCEL
     if (role === "client") {
-      const isOwner =
-        sameId(order.client_id, user.id) ||
-        sameId(order.client_user_id, user.id) ||
-        sameId(order.created_by, user.id) ||
-        sameId(order.user_id, user.id);
-
-      if (!isOwner) {
+      if (!isClientOrderOwner(order, user.id)) {
         return json({ error: "Forbidden: not order owner" }, 403);
       }
 
       if (status === "pending") {
-        const { error: updateError } = await supabaseAdmin
+        const { data: updated, error: updateError } = await supabaseAdmin
           .from("orders")
           .update({
             status: "canceled",
             cancel_reason: "client_cancelled_before_restaurant_accept",
             cancelled_by: "client",
-            cancelled_at: new Date().toISOString(),
+            cancelled_at: nowIso(),
             refund_status: "full_refund_required",
           })
-          .eq("id", orderId);
+          .eq("id", orderId)
+          .eq("status", order.status)
+          .select("id,status")
+          .maybeSingle();
 
         if (updateError) {
           return json({ error: updateError.message }, 500);
         }
 
-        return json({
-          ok: true,
-          cancelled: true,
+        if (!updated) {
+          return json(
+            {
+              error: "Order status changed. Please refresh and try again.",
+            },
+            409
+          );
+        }
+
+        return successResponse({
           by: "client",
           refund: "FULL",
+          status: "canceled",
+          message: "Client cancelled before restaurant acceptance.",
         });
       }
 
       if (status === "accepted") {
-        const { error: updateError } = await supabaseAdmin
+        const { data: updated, error: updateError } = await supabaseAdmin
           .from("orders")
           .update({
             status: "canceled",
             cancel_reason: "client_cancelled_after_restaurant_accept",
             cancelled_by: "client",
-            cancelled_at: new Date().toISOString(),
+            cancelled_at: nowIso(),
             refund_status: "no_refund",
           })
-          .eq("id", orderId);
+          .eq("id", orderId)
+          .eq("status", order.status)
+          .select("id,status")
+          .maybeSingle();
 
         if (updateError) {
           return json({ error: updateError.message }, 500);
         }
 
-        return json({
-          ok: true,
-          cancelled: true,
+        if (!updated) {
+          return json(
+            {
+              error: "Order status changed. Please refresh and try again.",
+            },
+            409
+          );
+        }
+
+        return successResponse({
           by: "client",
           refund: "NONE",
+          status: "canceled",
+          message: "Client cancelled after restaurant acceptance.",
         });
       }
 
       return json(
-        { error: "Client cannot cancel this order at this stage", status },
+        {
+          error: "Client cannot cancel this order at this stage",
+          status,
+        },
         400
       );
     }
@@ -232,53 +323,63 @@ export async function POST(req: NextRequest) {
         return json({ error: "Forbidden: not order restaurant" }, 403);
       }
 
-      if (
-        status === "pending" ||
-        status === "accepted" ||
-        status === "prepared"
-      ) {
-        const reason =
-          status === "pending"
-            ? "restaurant_refused_order"
-            : "restaurant_cancelled_before_ready";
+      const restaurantCanCancel =
+        status === "pending" || status === "accepted" || status === "prepared";
 
-        const { error: updateError } = await supabaseAdmin
-          .from("orders")
-          .update({
-            status: "canceled",
-            driver_id: null,
-            cancel_reason: reason,
-            cancelled_by: "restaurant",
-            cancelled_at: new Date().toISOString(),
-            refund_status: "full_refund_required",
-          })
-          .eq("id", orderId)
-          .eq("restaurant_id", user.id);
-
-        if (updateError) {
-          return json({ error: updateError.message }, 500);
-        }
-
-        return json({
-          ok: true,
-          cancelled: true,
-          by: "restaurant",
-          refund: "FULL",
-          message:
-            status === "pending"
-              ? "Order refused by restaurant. Full refund required."
-              : "Order cancelled by restaurant. Full refund required.",
-        });
+      if (!restaurantCanCancel) {
+        return json(
+          {
+            error:
+              "Restaurant cannot cancel this order after it is ready, dispatched, or delivered",
+            status,
+          },
+          400
+        );
       }
 
-      return json(
-        {
-          error:
-            "Restaurant cannot cancel this order after it is ready, dispatched, or delivered",
-          status,
-        },
-        400
-      );
+      const reason =
+        status === "pending"
+          ? "restaurant_refused_order"
+          : "restaurant_cancelled_before_ready";
+
+      const { data: updated, error: updateError } = await supabaseAdmin
+        .from("orders")
+        .update({
+          status: "canceled",
+          driver_id: null,
+          cancel_reason: reason,
+          cancelled_by: "restaurant",
+          cancelled_at: nowIso(),
+          refund_status: "full_refund_required",
+        })
+        .eq("id", orderId)
+        .eq("restaurant_id", user.id)
+        .eq("status", order.status)
+        .select("id,status")
+        .maybeSingle();
+
+      if (updateError) {
+        return json({ error: updateError.message }, 500);
+      }
+
+      if (!updated) {
+        return json(
+          {
+            error: "Order status changed. Please refresh and try again.",
+          },
+          409
+        );
+      }
+
+      return successResponse({
+        by: "restaurant",
+        refund: "FULL",
+        status: "canceled",
+        message:
+          status === "pending"
+            ? "Order refused by restaurant. Full refund required."
+            : "Order cancelled by restaurant. Full refund required.",
+      });
     }
 
     // DRIVER CANCEL
@@ -287,56 +388,78 @@ export async function POST(req: NextRequest) {
         return json({ error: "Forbidden: not assigned driver" }, 403);
       }
 
-      if (status === "accepted" || status === "ready") {
-        const nextStatus =
-          kind === "pickup_dropoff"
-            ? "pending"
-            : kind === "food"
-              ? "ready"
-              : status === "ready"
-                ? "ready"
-                : "pending";
+      const driverCanCancel = status === "accepted" || status === "ready";
 
-        const { error: updateError } = await supabaseAdmin
-          .from("orders")
-          .update({
-            status: nextStatus,
-            driver_id: null,
-            cancel_reason: "driver_cancelled_before_pickup",
-            cancelled_by: "driver",
-            cancelled_at: new Date().toISOString(),
-            refund_status: null,
-          })
-          .eq("id", orderId)
-          .eq("driver_id", user.id);
-
-        if (updateError) {
-          return json({ error: updateError.message }, 500);
-        }
-
-        const smartDispatch = await triggerSmartDispatch(req, orderId);
-
-        return json({
-          ok: true,
-          cancelled: true,
-          by: "driver",
-          reassigned: true,
-          status: nextStatus,
-          smartDispatch,
-          message: "Driver removed. Order is available for another driver.",
-        });
+      if (!driverCanCancel) {
+        return json(
+          {
+            error: "Driver cannot cancel this order at this stage",
+            status,
+          },
+          400
+        );
       }
 
-      return json(
-        { error: "Driver cannot cancel this order at this stage", status },
-        400
-      );
+      const nextStatus =
+        kind === "pickup_dropoff"
+          ? "pending"
+          : kind === "food"
+            ? "ready"
+            : status === "ready"
+              ? "ready"
+              : "pending";
+
+      const { data: updated, error: updateError } = await supabaseAdmin
+        .from("orders")
+        .update({
+          status: nextStatus,
+          driver_id: null,
+          cancel_reason: "driver_cancelled_before_pickup",
+          cancelled_by: "driver",
+          cancelled_at: nowIso(),
+          refund_status: null,
+        })
+        .eq("id", orderId)
+        .eq("driver_id", user.id)
+        .eq("status", order.status)
+        .select("id,status")
+        .maybeSingle();
+
+      if (updateError) {
+        return json({ error: updateError.message }, 500);
+      }
+
+      if (!updated) {
+        return json(
+          {
+            error: "Order status changed. Please refresh and try again.",
+          },
+          409
+        );
+      }
+
+      const smartDispatch = await triggerSmartDispatch(req, orderId);
+
+      return successResponse({
+        by: "driver",
+        refund: "NOT_APPLICABLE",
+        reassigned: true,
+        status: nextStatus,
+        smartDispatch,
+        message: "Driver removed. Order is available for another driver.",
+      });
     }
 
     return json({ error: "Invalid role" }, 400);
   } catch (e: any) {
     console.log("Cancel order route error:", e?.message ?? e);
-    return json({ error: e?.message ?? "Server error" }, 500);
+
+    return json(
+      {
+        error: e?.message ?? "Server error",
+      },
+      500
+    );
   }
 }
 

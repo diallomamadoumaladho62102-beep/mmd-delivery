@@ -14,8 +14,9 @@ import {
   ScrollView,
   Image,
 } from "react-native";
-import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import { API_BASE_URL } from "../lib/apiBase";
+import { supabase } from "../lib/supabase";
 
 type OrderStatus =
   | "pending"
@@ -38,29 +39,21 @@ type Order = {
   id: string;
   status: OrderStatus;
   created_at: string | null;
-
   restaurant_name: string | null;
   currency: string | null;
-
   subtotal: number | null;
   tax: number | null;
   total: number | null;
-
   restaurant_commission_rate: number | null;
   restaurant_commission_amount: number | null;
   restaurant_net_amount: number | null;
-
   pickup_address: string | null;
   dropoff_address: string | null;
-
   distance_miles: number | null;
   eta_minutes: number | null;
   delivery_fee: number | null;
-
   pickup_code: string | null;
-
   driver_id: string | null;
-
   items_json: any;
 };
 
@@ -70,9 +63,26 @@ type DriverProfile = {
   avatar_url: string | null;
 };
 
+function getApiUrl(path: string) {
+  const raw = String(API_BASE_URL || "")
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (!raw) {
+    throw new Error("API_BASE_URL manquant.");
+  }
+
+  if (!/^https?:\/\//i.test(raw)) {
+    throw new Error("API_BASE_URL doit être une URL absolue.");
+  }
+
+  return `${raw}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 function parseItems(items_json: any): OrderItem[] {
   if (!items_json) return [];
   if (Array.isArray(items_json)) return items_json as OrderItem[];
+
   if (typeof items_json === "string") {
     try {
       const parsed = JSON.parse(items_json);
@@ -81,6 +91,7 @@ function parseItems(items_json: any): OrderItem[] {
       return [];
     }
   }
+
   return [];
 }
 
@@ -91,17 +102,22 @@ function initials(name: string) {
   return (a + b).toUpperCase() || "DR";
 }
 
+function canRestaurantCancel(status: OrderStatus) {
+  return status === "pending" || status === "accepted" || status === "prepared";
+}
+
+function isFinalStatus(status: OrderStatus) {
+  return status === "delivered" || status === "canceled";
+}
+
 export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const { t, i18n } = useTranslation();
-
   const { orderId } = route.params as { orderId: string };
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-
   const [pickupCode, setPickupCode] = useState("");
-
   const [driver, setDriver] = useState<DriverProfile | null>(null);
   const [driverLoading, setDriverLoading] = useState(false);
 
@@ -114,6 +130,32 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     if (lng.startsWith("ff")) return "ff";
     return "en-US";
   }, [i18n.language]);
+
+  const selectFields = useMemo(
+    () =>
+      [
+        "id",
+        "status",
+        "created_at",
+        "restaurant_name",
+        "currency",
+        "subtotal",
+        "tax",
+        "total",
+        "restaurant_commission_rate",
+        "restaurant_commission_amount",
+        "restaurant_net_amount",
+        "pickup_address",
+        "dropoff_address",
+        "distance_miles",
+        "eta_minutes",
+        "delivery_fee",
+        "pickup_code",
+        "driver_id",
+        "items_json",
+      ].join(","),
+    []
+  );
 
   const fmtDateTime = useCallback(
     (iso?: string | null) => {
@@ -132,19 +174,15 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     [t]
   );
 
-  // ✅ Statut restaurant (ready dépend de driver_id)
   const restaurantStatusLabel = useCallback(
     (status: OrderStatus, driverId: string | null) => {
       if (status === "ready") {
-        if (!driverId)
-          return t(
-            "order.status.readyWaitingDriver",
-            "Prête – en attente d’un chauffeur"
-          );
-        return t(
-          "order.status.readyDriverAssigned",
-          "Prête – chauffeur assigné"
-        );
+        return driverId
+          ? t("order.status.readyDriverAssigned", "Prête – chauffeur assigné")
+          : t(
+              "order.status.readyWaitingDriver",
+              "Prête – en attente d’un chauffeur"
+            );
       }
 
       switch (status) {
@@ -167,30 +205,9 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     [t]
   );
 
-  const selectFields = [
-    "id",
-    "status",
-    "created_at",
-    "restaurant_name",
-    "currency",
-    "subtotal",
-    "tax",
-    "total",
-    "restaurant_commission_rate",
-    "restaurant_commission_amount",
-    "restaurant_net_amount",
-    "pickup_address",
-    "dropoff_address",
-    "distance_miles",
-    "eta_minutes",
-    "delivery_fee",
-    "pickup_code",
-    "driver_id",
-    "items_json",
-  ].join(",");
-
   const fetchOrder = useCallback(async () => {
     setLoading(true);
+
     try {
       const { data, error } = await supabase
         .from("orders")
@@ -205,11 +222,10 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
         );
       }
 
-      // ✅ FIX TS2352: cast via unknown (évite GenericStringError -> Order)
-      const o = data as unknown as Order;
+      const nextOrder = data as unknown as Order;
 
-      setOrder(o);
-      setPickupCode((o as any).pickup_code ?? "");
+      setOrder(nextOrder);
+      setPickupCode(nextOrder.pickup_code ?? "");
     } catch (e: any) {
       Alert.alert(
         t("common.errorTitle", "Erreur"),
@@ -221,8 +237,30 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     }
   }, [orderId, selectFields, t]);
 
+  const refetchOrderSilent = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select(selectFields)
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (error || !data) {
+      throw (
+        error ?? new Error(t("order.errors.notFound", "Commande introuvable."))
+      );
+    }
+
+    const nextOrder = data as unknown as Order;
+
+    setOrder(nextOrder);
+    setPickupCode(nextOrder.pickup_code ?? "");
+
+    return nextOrder;
+  }, [orderId, selectFields, t]);
+
   const fetchDriver = useCallback(async (driverId: string) => {
     setDriverLoading(true);
+
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -232,7 +270,6 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
 
       if (error) throw error;
 
-      // ✅ safe cast via unknown
       setDriver((data as unknown as DriverProfile) ?? null);
     } catch {
       setDriver(null);
@@ -245,7 +282,6 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     void fetchOrder();
   }, [fetchOrder]);
 
-  // ✅ Realtime sur cette commande
   useEffect(() => {
     const ch = supabase
       .channel(`restaurant-order:${orderId}`)
@@ -258,7 +294,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
           filter: `id=eq.${orderId}`,
         },
         () => {
-          void fetchOrder();
+          void refetchOrderSilent().catch(() => {});
         }
       )
       .subscribe();
@@ -266,15 +302,16 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [orderId, fetchOrder]);
+  }, [orderId, refetchOrderSilent]);
 
-  // ✅ charger driver quand driver_id change
   useEffect(() => {
     const id = order?.driver_id ?? null;
+
     if (!id) {
       setDriver(null);
       return;
     }
+
     void fetchDriver(id);
   }, [order?.driver_id, fetchDriver]);
 
@@ -282,29 +319,59 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     async (next: OrderStatus) => {
       if (!order) return;
 
+      if (isFinalStatus(order.status)) {
+        Alert.alert(
+          t("common.errorTitle", "Erreur"),
+          t(
+            "order.errors.finalStatus",
+            "Cette commande est déjà terminée. Le statut ne peut plus changer."
+          )
+        );
+        return;
+      }
+
+      const allowed =
+        (order.status === "pending" && next === "accepted") ||
+        (order.status === "accepted" && next === "prepared") ||
+        (order.status === "prepared" && next === "ready");
+
+      if (!allowed) {
+        Alert.alert(
+          t("common.errorTitle", "Erreur"),
+          t(
+            "order.errors.statusTransition",
+            "Transition de statut non autorisée."
+          )
+        );
+        return;
+      }
+
       setUpdating(true);
+
       try {
         const { data, error } = await supabase
           .from("orders")
           .update({ status: next })
           .eq("id", order.id)
+          .eq("status", order.status)
           .select(selectFields)
-          .single();
+          .maybeSingle();
 
-        if (error || !data) {
-          throw (
-            error ??
-            new Error(
-              t("order.errors.updateStatus", "Update status failed.")
+        if (error) throw error;
+
+        if (!data) {
+          throw new Error(
+            t(
+              "order.errors.statusChanged",
+              "Le statut a changé. Recharge la commande puis réessaie."
             )
           );
         }
 
-        // ✅ FIX TS2352: cast via unknown
-        const o = data as unknown as Order;
+        const nextOrder = data as unknown as Order;
 
-        setOrder(o);
-        setPickupCode((o as any).pickup_code ?? "");
+        setOrder(nextOrder);
+        setPickupCode(nextOrder.pickup_code ?? "");
       } catch (e: any) {
         Alert.alert(
           t("common.errorTitle", "Erreur"),
@@ -317,6 +384,121 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     },
     [order, selectFields, t]
   );
+
+  const cancelOrderByRestaurant = useCallback(async () => {
+    if (!order) return;
+
+    if (!canRestaurantCancel(order.status)) {
+      Alert.alert(
+        t("common.errorTitle", "Erreur"),
+        t(
+          "order.errors.restaurantCancelNotAllowed",
+          "Cette commande ne peut plus être annulée par le restaurant."
+        )
+      );
+      return;
+    }
+
+    setUpdating(true);
+
+    try {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(sessionError.message || "Session invalide.");
+      }
+
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        throw new Error(
+          t(
+            "auth.errors.sessionExpired",
+            "Session expirée. Reconnecte-toi puis réessaie."
+          )
+        );
+      }
+
+      const response = await fetch(getApiUrl("/api/orders/cancel"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          role: "restaurant",
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ??
+            t("order.errors.cancel", "Impossible d’annuler cette commande.")
+        );
+      }
+
+      await refetchOrderSilent();
+
+      Alert.alert(
+        t("common.successTitle", "Succès"),
+        order.status === "pending"
+          ? t(
+              "order.actions.rejectSuccess",
+              "Commande refusée. Refund client requis selon la règle."
+            )
+          : t(
+              "order.actions.cancelSuccess",
+              "Commande annulée. Refund client requis selon la règle."
+            )
+      );
+    } catch (e: any) {
+      Alert.alert(
+        t("common.errorTitle", "Erreur"),
+        e?.message ??
+          t("order.errors.cancel", "Impossible d’annuler cette commande.")
+      );
+    } finally {
+      setUpdating(false);
+    }
+  }, [order, refetchOrderSilent, t]);
+
+  const confirmRestaurantCancel = useCallback(() => {
+    if (!order) return;
+
+    const title =
+      order.status === "pending"
+        ? t("order.actions.rejectTitle", "Refuser la commande")
+        : t("order.actions.cancelTitle", "Annuler la commande");
+
+    const message =
+      order.status === "pending"
+        ? t(
+            "order.actions.rejectConfirm",
+            "Confirmer le refus de cette commande ? Le client devra être remboursé selon la règle."
+          )
+        : t(
+            "order.actions.cancelConfirm",
+            "Confirmer l’annulation ? Le client devra être remboursé selon la règle."
+          );
+
+    Alert.alert(title, message, [
+      { text: t("common.cancel", "Non"), style: "cancel" },
+      {
+        text:
+          order.status === "pending"
+            ? t("order.actions.reject", "Refuser")
+            : t("order.actions.cancel", "Annuler"),
+        style: "destructive",
+        onPress: () => {
+          void cancelOrderByRestaurant();
+        },
+      },
+    ]);
+  }, [cancelOrderByRestaurant, order, t]);
 
   const currency = order?.currency ?? "USD";
 
@@ -331,9 +513,6 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     return s + tx;
   }, [order?.subtotal, order?.tax]);
 
-  // ----------------------------
-  // RENDERS
-  // ----------------------------
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
@@ -372,6 +551,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const canAccept = order.status === "pending";
   const canPrepare = order.status === "accepted";
   const canReady = order.status === "prepared";
+  const canCancel = canRestaurantCancel(order.status);
 
   const driverName =
     driver?.full_name?.trim() ||
@@ -400,7 +580,6 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             </Text>
           </TouchableOpacity>
 
-          {/* HEADER */}
           <View
             style={{
               backgroundColor: "#020617",
@@ -446,7 +625,6 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             </Text>
           </View>
 
-          {/* ACTIONS */}
           <View style={{ marginTop: 12, gap: 10 }}>
             {canAccept && (
               <TouchableOpacity
@@ -459,13 +637,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
                   opacity: updating ? 0.5 : 1,
                 }}
               >
-                <Text
-                  style={{
-                    color: "white",
-                    textAlign: "center",
-                    fontWeight: "800",
-                  }}
-                >
+                <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
                   {updating
                     ? t("common.updating", "Mise à jour…")
                     : t("order.actions.accept", "Accepter la commande")}
@@ -484,13 +656,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
                   opacity: updating ? 0.5 : 1,
                 }}
               >
-                <Text
-                  style={{
-                    color: "white",
-                    textAlign: "center",
-                    fontWeight: "800",
-                  }}
-                >
+                <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
                   {updating
                     ? t("common.updating", "Mise à jour…")
                     : t("order.actions.toPreparing", "Passer en préparation")}
@@ -509,13 +675,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
                   opacity: updating ? 0.5 : 1,
                 }}
               >
-                <Text
-                  style={{
-                    color: "white",
-                    textAlign: "center",
-                    fontWeight: "800",
-                  }}
-                >
+                <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
                   {updating
                     ? t("common.updating", "Mise à jour…")
                     : t("order.actions.ready", "Commande prête (READY)")}
@@ -523,7 +683,28 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
               </TouchableOpacity>
             )}
 
-            {!canAccept && !canPrepare && !canReady && (
+            {canCancel && (
+              <TouchableOpacity
+                disabled={updating}
+                onPress={confirmRestaurantCancel}
+                style={{
+                  backgroundColor: "#DC2626",
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  opacity: updating ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+                  {updating
+                    ? t("common.updating", "Mise à jour…")
+                    : order.status === "pending"
+                      ? t("order.actions.reject", "Refuser la commande")
+                      : t("order.actions.cancel", "Annuler la commande")}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {!canAccept && !canPrepare && !canReady && !canCancel && (
               <View
                 style={{
                   backgroundColor: "#0B1220",
@@ -543,17 +724,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             )}
           </View>
 
-          {/* BLOC RESTAURANT */}
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#020617",
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
+          <View style={{ marginTop: 12, backgroundColor: "#020617", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#1F2937" }}>
             <Text style={{ color: "white", fontWeight: "800", marginBottom: 8 }}>
               {t("order.details.restaurantSection", "Restaurant")}
             </Text>
@@ -563,21 +734,14 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             </Text>
 
             <Text style={{ color: "#9CA3AF", marginTop: 8 }}>
-              {t(
-                "order.details.pickupAddress",
-                "Adresse de récupération"
-              )}{" "}
-              :{" "}
+              {t("order.details.pickupAddress", "Adresse de récupération")} :{" "}
               <Text style={{ color: "#E5E7EB" }}>
                 {order.pickup_address ?? t("common.na", "—")}
               </Text>
             </Text>
 
             <Text style={{ color: "#9CA3AF", marginTop: 10, fontWeight: "700" }}>
-              {t(
-                "order.details.pickupCodeHelp",
-                "Code pickup à donner au chauffeur :"
-              )}
+              {t("order.details.pickupCodeHelp", "Code pickup à donner au chauffeur :")}
             </Text>
 
             <TextInput
@@ -597,27 +761,14 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             />
           </View>
 
-          {/* CHAUFFEUR */}
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#020617",
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
+          <View style={{ marginTop: 12, backgroundColor: "#020617", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#1F2937" }}>
             <Text style={{ color: "white", fontWeight: "800", marginBottom: 8 }}>
               {t("order.details.driverSection", "Chauffeur")}
             </Text>
 
             {!order.driver_id ? (
               <Text style={{ color: "#9CA3AF" }}>
-                {t(
-                  "order.driver.none",
-                  "Aucun chauffeur n’est encore assigné à cette commande."
-                )}
+                {t("order.driver.none", "Aucun chauffeur n’est encore assigné à cette commande.")}
               </Text>
             ) : (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -646,26 +797,14 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
                       justifyContent: "center",
                     }}
                   >
-                    <Text
-                      style={{
-                        color: "#E5E7EB",
-                        fontWeight: "900",
-                        fontSize: 16,
-                      }}
-                    >
+                    <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 16 }}>
                       {initials(driverName ?? "Driver")}
                     </Text>
                   </View>
                 )}
 
                 <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: "#E5E7EB",
-                      fontWeight: "900",
-                      fontSize: 16,
-                    }}
-                  >
+                  <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 16 }}>
                     {driverName ?? t("order.driver.title", "Chauffeur")}
                   </Text>
                   <Text style={{ color: "#9CA3AF", marginTop: 4 }}>
@@ -678,17 +817,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             )}
           </View>
 
-          {/* RÉCAP */}
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#020617",
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
+          <View style={{ marginTop: 12, backgroundColor: "#020617", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#1F2937" }}>
             <Text style={{ color: "white", fontWeight: "800", marginBottom: 8 }}>
               {t("order.details.summary", "Récapitulatif de la commande")}
             </Text>
@@ -700,6 +829,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             ) : (
               items.map((it, idx) => {
                 const line = it.line_total ?? it.unit_price * it.quantity;
+
                 return (
                   <View
                     key={`${it.name}-${idx}`}
@@ -728,15 +858,8 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
                       {t("order.details.perUnit", " / unité")}
                     </Text>
 
-                    <Text
-                      style={{
-                        color: "#F9FAFB",
-                        marginTop: 4,
-                        fontWeight: "800",
-                      }}
-                    >
-                      {t("order.details.line", "Ligne")} :{" "}
-                      {money(line, currency)}
+                    <Text style={{ color: "#F9FAFB", marginTop: 4, fontWeight: "800" }}>
+                      {t("order.details.line", "Ligne")} : {money(line, currency)}
                     </Text>
                   </View>
                 );
@@ -744,26 +867,14 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
             )}
           </View>
 
-          {/* TOTAUX + NET RESTAURANT */}
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#020617",
-              borderRadius: 12,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
-          >
+          <View style={{ marginTop: 12, backgroundColor: "#020617", borderRadius: 12, padding: 16, borderWidth: 1, borderColor: "#1F2937" }}>
             <Text style={{ color: "white", fontWeight: "800", marginBottom: 8 }}>
               {t("order.details.totalsRestaurant", "Totaux (restaurant)")}
             </Text>
 
             <Text style={{ color: "#9CA3AF", marginTop: 2 }}>
               {t("order.details.subtotal", "Subtotal (plats)")} :{" "}
-              <Text style={{ color: "#E5E7EB" }}>
-                {money(order.subtotal, currency)}
-              </Text>
+              <Text style={{ color: "#E5E7EB" }}>{money(order.subtotal, currency)}</Text>
             </Text>
 
             <Text style={{ color: "#9CA3AF", marginTop: 6 }}>
@@ -796,13 +907,6 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
               <Text style={{ color: "#22C55E", fontWeight: "900" }}>
                 {money(order.restaurant_net_amount, currency)}
               </Text>
-            </Text>
-
-            <Text style={{ color: "#64748B", marginTop: 10, fontSize: 12 }}>
-              {t("order.details.debugTotalDb", {
-                defaultValue: "(Debug) total DB : {{v}}",
-                v: money(order.total, currency),
-              })}
             </Text>
           </View>
         </ScrollView>
