@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import AdminCancelRefundPanel from "@/components/AdminCancelRefundPanel";
 
 type PricingRow = {
   id: string;
@@ -29,7 +30,9 @@ function getAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY."
+    );
   }
 
   return createClient(supabaseUrl, serviceRoleKey, {
@@ -73,6 +76,8 @@ export default async function AdminPricingPage() {
           Modifie les commissions, promos et frais sans toucher au code.
         </p>
       </div>
+
+      <AdminCancelRefundPanel />
 
       <div className="grid gap-6">
         {rows.map((row) => (
@@ -176,7 +181,9 @@ export default async function AdminPricingPage() {
               <div className="text-sm font-semibold">Delivery split</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="space-y-1">
-                  <div className="text-sm font-medium">Delivery platform %</div>
+                  <div className="text-sm font-medium">
+                    Delivery platform %
+                  </div>
                   <input
                     type="number"
                     step="0.01"
@@ -204,7 +211,9 @@ export default async function AdminPricingPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="text-sm font-semibold">Delivery pricing inputs</div>
+              <div className="text-sm font-semibold">
+                Delivery pricing inputs
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <label className="space-y-1">
                   <div className="text-sm font-medium">Delivery fee base</div>
@@ -248,7 +257,9 @@ export default async function AdminPricingPage() {
               <div className="text-sm font-semibold">Order floor</div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="space-y-1">
-                  <div className="text-sm font-medium">Minimum order amount</div>
+                  <div className="text-sm font-medium">
+                    Minimum order amount
+                  </div>
                   <input
                     type="number"
                     step="0.01"

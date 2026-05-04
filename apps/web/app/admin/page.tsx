@@ -29,6 +29,11 @@ const adminLinks = [
     title: "📊 Audit Logs",
     description: "Historique global des actions administrateur",
   },
+  {
+    href: "/admin/pricing",
+    title: "⚙️ Pricing",
+    description: "Configurer les commissions, frais et promos",
+  },
 ];
 
 export default function AdminPage() {
@@ -53,7 +58,6 @@ export default function AdminPage() {
             </div>
           </header>
 
-          {/* 🔗 Liens admin */}
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {adminLinks.map((link) => (
               <Link
@@ -69,10 +73,8 @@ export default function AdminPage() {
             ))}
           </section>
 
-          {/* 🧾 NOUVEAU : Refunds anciens */}
           <AdminRefundBackfillPanel />
 
-          {/* 💰 Commissions */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4">
               <h2 className="text-base font-semibold text-slate-900">
