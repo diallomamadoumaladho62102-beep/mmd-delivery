@@ -10,6 +10,20 @@ export default function AdminCancelRefundPanel() {
   const [result, setResult] = useState<any>(null);
 
   async function submit() {
+    const trimmedOrderId = orderId.trim();
+    const trimmedReason = reason.trim() || "admin_cancel_refund";
+
+    if (!trimmedOrderId) {
+      setResult({ error: "Order ID obligatoire." });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `⚠️ CONFIRMATION IMPORTANTE\n\nTu vas ANNULER et REMBOURSER cette commande :\n\n${trimmedOrderId}\n\nRaison : ${trimmedReason}\n\nCette action peut déclencher un vrai remboursement Stripe.\n\nContinuer ?`
+    );
+
+    if (!confirmed) return;
+
     setLoading(true);
     setResult(null);
 
@@ -17,8 +31,9 @@ export default function AdminCancelRefundPanel() {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;
 
-      if (!token) throw new Error("Session admin expirée. Reconnecte-toi.");
-      if (!orderId.trim()) throw new Error("Order ID obligatoire.");
+      if (!token) {
+        throw new Error("Session admin expirée. Reconnecte-toi.");
+      }
 
       const res = await fetch("/api/admin/orders/cancel-refund", {
         method: "POST",
@@ -27,8 +42,8 @@ export default function AdminCancelRefundPanel() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          orderId: orderId.trim(),
-          reason: reason.trim() || "admin_cancel_refund",
+          orderId: trimmedOrderId,
+          reason: trimmedReason,
         }),
       });
 
