@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { OrderTimeline } from "@/components/orders/OrderTimeline";
 import { canAccessAdminDashboard } from "@/lib/adminAccess";
+import AdminCancelRefundPanel from "@/components/AdminCancelRefundPanel";
 
 type OrderStatus =
   | "pending"
@@ -244,7 +245,9 @@ export default function AdminOrderPage() {
           .maybeSingle();
 
         if (error) {
-          throw new Error(error.message || "Erreur lors du chargement de la commande.");
+          throw new Error(
+            error.message || "Erreur lors du chargement de la commande."
+          );
         }
 
         if (!data) {
@@ -353,7 +356,8 @@ export default function AdminOrderPage() {
           </h1>
 
           <p className="text-sm text-slate-600">
-            Détail complet de la commande pour l&apos;administration MMD Delivery.
+            Détail complet de la commande pour l&apos;administration MMD
+            Delivery.
           </p>
 
           <div className="pt-1">
@@ -370,6 +374,12 @@ export default function AdminOrderPage() {
             Créée le : {formatDate(order.created_at)}
           </p>
         </header>
+
+        <AdminCancelRefundPanel
+          defaultOrderId={order.id}
+          defaultReason="admin_cancel_refund_from_order_detail"
+          onCompleted={() => void loadPage("refresh")}
+        />
 
         <SectionCard title="Informations générales">
           <InfoRow label="Type" value={order.kind || "—"} />
@@ -395,10 +405,13 @@ export default function AdminOrderPage() {
                   <div>
                     <p className="font-medium text-slate-900">{item.name}</p>
                     {item.category ? (
-                      <p className="text-[11px] text-slate-500">{item.category}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {item.category}
+                      </p>
                     ) : null}
                     <p className="text-[11px] text-slate-500">
-                      Qté {item.quantity} — {formatMoney(item.unit_price, currency)} / unité
+                      Qté {item.quantity} —{" "}
+                      {formatMoney(item.unit_price, currency)} / unité
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-slate-900">
@@ -414,9 +427,15 @@ export default function AdminOrderPage() {
           )}
 
           <div className="mt-3 space-y-1 border-t border-slate-200 pt-3">
-            <InfoRow label="Montant (plats)" value={formatMoney(order.subtotal, currency)} />
+            <InfoRow
+              label="Montant (plats)"
+              value={formatMoney(order.subtotal, currency)}
+            />
             <InfoRow label="Taxes" value={formatMoney(order.tax, currency)} />
-            <InfoRow label="Total client" value={formatMoney(order.total, currency)} />
+            <InfoRow
+              label="Total client"
+              value={formatMoney(order.total, currency)}
+            />
           </div>
         </SectionCard>
 
@@ -507,8 +526,8 @@ export default function AdminOrderPage() {
 
           <p className="mt-3 text-[11px] text-slate-500">
             Marge brute MMD ≈ (commission sur plats + commission sur livraison)
-            - rémunération chauffeur. Les frais de carte, taxes, marketing,
-            etc. viendront encore réduire cette marge.
+            - rémunération chauffeur. Les frais de carte, taxes, marketing, etc.
+            viendront encore réduire cette marge.
           </p>
         </SectionCard>
 

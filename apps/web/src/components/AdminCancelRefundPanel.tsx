@@ -3,9 +3,19 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
-export default function AdminCancelRefundPanel() {
-  const [orderId, setOrderId] = useState("");
-  const [reason, setReason] = useState("admin_cancel_refund");
+type AdminCancelRefundPanelProps = {
+  defaultOrderId?: string;
+  defaultReason?: string;
+  onCompleted?: () => void;
+};
+
+export default function AdminCancelRefundPanel({
+  defaultOrderId = "",
+  defaultReason = "admin_cancel_refund",
+  onCompleted,
+}: AdminCancelRefundPanelProps) {
+  const [orderId, setOrderId] = useState(defaultOrderId);
+  const [reason, setReason] = useState(defaultReason);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
@@ -49,6 +59,10 @@ export default function AdminCancelRefundPanel() {
 
       const json = await res.json();
       setResult(json);
+
+      if (res.ok && json?.ok) {
+        onCompleted?.();
+      }
     } catch (e: any) {
       setResult({ error: e?.message ?? "Erreur inconnue" });
     } finally {
