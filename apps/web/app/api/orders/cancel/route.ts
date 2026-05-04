@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type CancelRole = "client" | "driver" | "restaurant";
-
 type CancelRefund = "FULL" | "NONE" | "NOT_APPLICABLE";
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -20,6 +20,12 @@ function getEnv(name: string) {
   }
 
   return value;
+}
+
+function getStripe() {
+  return new Stripe(getEnv("STRIPE_SECRET_KEY"), {
+    apiVersion: "2023-10-16",
+  });
 }
 
 function normalizeStatus(value: unknown) {
@@ -44,11 +50,7 @@ function normalizeRole(value: unknown): CancelRole {
 
 function extractBearerToken(req: NextRequest) {
   const auth = req.headers.get("authorization") || "";
-
-  if (!auth.startsWith("Bearer ")) {
-    return "";
-  }
-
+  if (!auth.startsWith("Bearer ")) return "";
   return auth.slice(7).trim();
 }
 
@@ -109,12 +111,90 @@ async function triggerSmartDispatch(req: NextRequest, orderId: string) {
   }
 }
 
+async function refundStripePayment(params: {
+  order: any;
+  supabaseAdmin: any;
+  orderId: string;
+  reason: string;
+}) {
+  const { order, supabaseAdmin, orderId, reason } = params;
+
+  if (order.stripe_refunded_at || order.stripe_refund_id) {
+    return {
+      refunded: false,
+      alreadyRefunded: true,
+      refundId: order.stripe_refund_id ?? null,
+    };
+  }
+
+  const paymentIntentId = String(order.stripe_payment_intent_id ?? "").trim();
+
+  if (!paymentIntentId) {
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        refund_status: "missing_payment_intent",
+      })
+      .eq("id", orderId);
+
+    return {
+      refunded: false,
+      missingPaymentIntent: true,
+    };
+  }
+
+  try {
+    const stripe = getStripe();
+
+    const refund = await stripe.refunds.create(
+      {
+        payment_intent: paymentIntentId,
+        reason: "requested_by_customer",
+        metadata: {
+          order_id: orderId,
+          cancel_reason: reason,
+        },
+      },
+      {
+        idempotencyKey: `refund_order_${orderId}`,
+      }
+    );
+
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        refund_status: "refunded",
+        stripe_refund_id: refund.id,
+        stripe_refunded_at: nowIso(),
+      })
+      .eq("id", orderId);
+
+    return {
+      refunded: true,
+      refundId: refund.id,
+      status: refund.status,
+    };
+  } catch (e: any) {
+    console.log("Stripe refund error:", e?.message ?? e);
+
+    await supabaseAdmin
+      .from("orders")
+      .update({
+        refund_status: "refund_failed",
+      })
+      .eq("id", orderId);
+
+    throw new Error(e?.message ?? "Stripe refund failed");
+  }
+}
+
 function successResponse(params: {
   by: CancelRole;
   refund: CancelRefund;
   status?: string;
   reassigned?: boolean;
   smartDispatch?: unknown;
+  stripeRefund?: unknown;
   message?: string;
 }) {
   return json({
@@ -125,6 +205,7 @@ function successResponse(params: {
     status: params.status,
     reassigned: params.reassigned ?? false,
     smartDispatch: params.smartDispatch,
+    stripeRefund: params.stripeRefund,
     message: params.message,
   });
 }
@@ -184,7 +265,13 @@ export async function POST(req: NextRequest) {
         client_id,
         client_user_id,
         created_by,
-        user_id
+        user_id,
+        payment_status,
+        refund_status,
+        stripe_session_id,
+        stripe_payment_intent_id,
+        stripe_refund_id,
+        stripe_refunded_at
       `
       )
       .eq("id", orderId)
@@ -207,6 +294,8 @@ export async function POST(req: NextRequest) {
         cancelled: true,
         alreadyCancelled: true,
         status,
+        refund_status: order.refund_status ?? null,
+        stripe_refund_id: order.stripe_refund_id ?? null,
       });
     }
 
@@ -237,11 +326,13 @@ export async function POST(req: NextRequest) {
       }
 
       if (status === "pending") {
+        const reason = "client_cancelled_before_restaurant_accept";
+
         const { data: updated, error: updateError } = await supabaseAdmin
           .from("orders")
           .update({
             status: "canceled",
-            cancel_reason: "client_cancelled_before_restaurant_accept",
+            cancel_reason: reason,
             cancelled_by: "client",
             cancelled_at: nowIso(),
             refund_status: "full_refund_required",
@@ -264,10 +355,18 @@ export async function POST(req: NextRequest) {
           );
         }
 
+        const stripeRefund = await refundStripePayment({
+          order,
+          supabaseAdmin,
+          orderId,
+          reason,
+        });
+
         return successResponse({
           by: "client",
           refund: "FULL",
           status: "canceled",
+          stripeRefund,
           message: "Client cancelled before restaurant acceptance.",
         });
       }
@@ -371,14 +470,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const stripeRefund = await refundStripePayment({
+        order,
+        supabaseAdmin,
+        orderId,
+        reason,
+      });
+
       return successResponse({
         by: "restaurant",
         refund: "FULL",
         status: "canceled",
+        stripeRefund,
         message:
           status === "pending"
-            ? "Order refused by restaurant. Full refund required."
-            : "Order cancelled by restaurant. Full refund required.",
+            ? "Order refused by restaurant. Full refund processed."
+            : "Order cancelled by restaurant. Full refund processed.",
       });
     }
 
