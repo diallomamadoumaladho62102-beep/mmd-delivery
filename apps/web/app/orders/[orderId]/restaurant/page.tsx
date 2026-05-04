@@ -31,17 +31,11 @@ type OrderRow = {
   total: number | null;
   currency: string | null;
   items_json: OrderItem[] | null;
-
-  // On garde ces champs pour éventuellement les utiliser ailleurs,
-  // mais on NE LES AFFICHE PLUS côté restaurant :
   distance_miles: number | null;
   eta_minutes: number | null;
   delivery_fee: number | null;
-
   pickup_code: string | null;
   dropoff_code: string | null;
-
-  // ✅ pour charger le driver directement
   driver_id?: string | null;
 };
 
@@ -75,14 +69,12 @@ function statusLabelForRestaurant(s: OrderStatus): string {
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
-    const d = new Date(iso);
-    return d.toLocaleString();
+    return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
 }
 
-// 👉 avatar seulement si URL complète
 function getAvatarSrc(url: string | null): string | null {
   if (!url) return null;
   const u = url.trim();
@@ -96,11 +88,8 @@ export default function RestaurantOrderPage() {
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<OrderRow | null>(null);
-
-  // ✅ driver + loader (comme demandé)
   const [driver, setDriver] = useState<DriverProfile | null>(null);
   const [driverLoading, setDriverLoading] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState<false | OrderStatus>(false);
@@ -125,10 +114,10 @@ export default function RestaurantOrderPage() {
 
   async function loadOrder() {
     if (!orderId) return;
+
     setLoading(true);
     setErr(null);
 
-    // 1️⃣ Charger la commande (RLS doit déjà filtrer restaurant_id = user_id)
     const { data, error } = await supabase
       .from("orders")
       .select(
@@ -169,7 +158,6 @@ export default function RestaurantOrderPage() {
     const typedOrder = data as OrderRow;
     setOrder(typedOrder);
 
-    // 2️⃣ Charger le driver via order.driver_id (plus simple + fiable)
     if (typedOrder.driver_id) {
       await loadDriver(typedOrder.driver_id);
     } else {
@@ -184,26 +172,25 @@ export default function RestaurantOrderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
-  // ✅ si driver_id change en realtime/refresh
   useEffect(() => {
     if (!order?.driver_id) {
       setDriver(null);
       return;
     }
+
     loadDriver(order.driver_id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.driver_id]);
 
   async function updateStatus(nextStatus: OrderStatus) {
     if (!order) return;
+
     setSaving(nextStatus);
     setErr(null);
 
     const { error } = await supabase
       .from("orders")
-      .update({
-        status: nextStatus,
-      })
+      .update({ status: nextStatus })
       .eq("id", order.id);
 
     if (error) {
@@ -215,6 +202,68 @@ export default function RestaurantOrderPage() {
 
     await loadOrder();
     setSaving(false);
+  }
+
+  async function handleCancel() {
+    if (!order) return;
+
+    const canCancel =
+      order.status === "pending" ||
+      order.status === "accepted" ||
+      order.status === "prepared";
+
+    if (!canCancel) {
+      setErr("Cette commande ne peut plus être annulée par le restaurant.");
+      return;
+    }
+
+    const ok = window.confirm(
+      "Confirmer l’annulation ? Le client devra être remboursé selon la règle."
+    );
+
+    if (!ok) return;
+
+    setSaving("canceled");
+    setErr(null);
+
+    try {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw new Error(sessionError.message);
+      }
+
+      const token = data.session?.access_token;
+
+      if (!token) {
+        throw new Error("Session expirée. Reconnecte-toi puis réessaie.");
+      }
+
+      const res = await fetch("/api/orders/cancel", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          role: "restaurant",
+        }),
+      });
+
+      const out = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(out?.error || "Impossible d’annuler la commande.");
+      }
+
+      await loadOrder();
+    } catch (e: any) {
+      console.error(e);
+      setErr(e?.message || "Impossible d’annuler la commande.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {
@@ -261,6 +310,10 @@ export default function RestaurantOrderPage() {
   const canAccept = order.status === "pending";
   const canPrepared = order.status === "accepted";
   const canReady = order.status === "prepared";
+  const canCancel =
+    order.status === "pending" ||
+    order.status === "accepted" ||
+    order.status === "prepared";
 
   const driverAvatarSrc = driver ? getAvatarSrc(driver.avatar_url) : null;
 
@@ -274,28 +327,26 @@ export default function RestaurantOrderPage() {
         ← Retour aux commandes du restaurant
       </button>
 
-      {/* HEADER */}
       <header className="space-y-1">
         <h1 className="text-xl font-bold">Commande #{shortId}</h1>
         <p className="text-sm text-gray-600">
-          Gestion de la commande côté restaurant (accepter, préparation, mise à
-          disposition pour le chauffeur).
+          Gestion de la commande côté restaurant.
         </p>
+
         <div className="inline-flex items-center rounded-full border bg-blue-50 border-blue-200 px-3 py-1 text-xs font-medium text-blue-700 mt-2">
           Statut : {statusLabelForRestaurant(order.status)}
         </div>
+
         <p className="text-xs text-gray-500">
           Créée le : {formatDate(order.created_at)}
         </p>
       </header>
 
-      {/* RESTAURANT */}
       <section className="border rounded-xl bg-white p-4 space-y-1 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">Restaurant</h2>
         <p>{order.restaurant_name || "Nom de restaurant non renseigné"}</p>
       </section>
 
-      {/* 🚖 CHAUFFEUR ASSIGNÉ – À LA PLACE DE “LIVRAISON” */}
       <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">Chauffeur</h2>
 
@@ -327,30 +378,26 @@ export default function RestaurantOrderPage() {
                 {driverLoading ? "Chargement du profil…" : "Profil chauffeur"}
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                La livraison est entièrement gérée par le chauffeur. Le
-                restaurant n&apos;a pas besoin de gérer l&apos;adresse client.
+                La livraison est entièrement gérée par le chauffeur.
               </div>
             </div>
           </div>
         )}
       </section>
 
-      {/* CODE DE VÉRIFICATION (PICKUP SEULEMENT) */}
       <section className="border rounded-xl bg-gray-50 p-4 space-y-2 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">
           Code de vérification
         </h2>
         <p>
-          <span className="font-medium">Code de ramassage (pickup) :</span>{" "}
+          <span className="font-medium">Code de ramassage :</span>{" "}
           {order.pickup_code ?? "—"}
         </p>
         <p className="text-xs text-gray-500">
-          Le restaurant doit montrer ce code au chauffeur au moment où il
-          récupère la commande.
+          Le restaurant doit montrer ce code au chauffeur au moment du pickup.
         </p>
       </section>
 
-      {/* RÉCAP COMMANDE */}
       <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">
           Récapitulatif de la commande
@@ -369,8 +416,8 @@ export default function RestaurantOrderPage() {
                     <p className="text-xs text-gray-500">{item.category}</p>
                   ) : null}
                   <p className="text-xs text-gray-500">
-                    Qté {item.quantity} —{" "}
-                    {item.unit_price.toFixed(2)} {currency} / unité
+                    Qté {item.quantity} — {item.unit_price.toFixed(2)}{" "}
+                    {currency} / unité
                   </p>
                 </div>
                 <div className="text-sm font-medium">
@@ -387,7 +434,7 @@ export default function RestaurantOrderPage() {
 
         <div className="border-t pt-3 space-y-1 text-sm">
           <p>
-            Montant (plats) :{" "}
+            Montant :{" "}
             <span className="font-semibold">
               {order.subtotal != null
                 ? `${order.subtotal.toFixed(2)} ${currency}`
@@ -411,19 +458,16 @@ export default function RestaurantOrderPage() {
         </div>
       </section>
 
-      {/* ACTIONS RESTAURANT */}
       <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
         <h2 className="text-sm font-semibold text-gray-800">
           Actions restaurant
         </h2>
 
         <p className="text-xs text-gray-500">
-          Utilise ces boutons pour faire avancer la commande dans le flux normal
-          : acceptation → préparation → prête pour le chauffeur.
+          Flux normal : acceptation → préparation → prête pour le chauffeur.
         </p>
 
         <div className="flex flex-col gap-2">
-          {/* Accepter */}
           <button
             type="button"
             disabled={!canAccept || !!saving}
@@ -437,7 +481,6 @@ export default function RestaurantOrderPage() {
             {saving === "accepted" ? "Mise à jour..." : "Accepter la commande"}
           </button>
 
-          {/* Passer en préparation */}
           <button
             type="button"
             disabled={!canPrepared || !!saving}
@@ -451,7 +494,6 @@ export default function RestaurantOrderPage() {
             {saving === "prepared" ? "Mise à jour..." : "Passer en préparation"}
           </button>
 
-          {/* Marquer comme prête pour le driver */}
           <button
             type="button"
             disabled={!canReady || !!saving}
@@ -466,10 +508,26 @@ export default function RestaurantOrderPage() {
               ? "Mise à jour..."
               : "Marquer comme prête pour le chauffeur"}
           </button>
+
+          <button
+            type="button"
+            disabled={!canCancel || !!saving}
+            onClick={handleCancel}
+            className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
+              canCancel && !saving
+                ? "bg-red-600 text-white hover:bg-red-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {saving === "canceled"
+              ? "Annulation..."
+              : order.status === "pending"
+                ? "Refuser la commande"
+                : "Annuler la commande"}
+          </button>
         </div>
       </section>
 
-      {/* CHAT */}
       <div className="flex flex-wrap gap-3 pt-2">
         <button
           type="button"

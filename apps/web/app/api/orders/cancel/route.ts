@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type CancelRole = "client" | "driver";
+type CancelRole = "client" | "driver" | "restaurant";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -28,9 +28,12 @@ function normalizeKind(value: unknown) {
 }
 
 function normalizeRole(value: unknown): CancelRole {
-  return String(value ?? "client").trim().toLowerCase() === "driver"
-    ? "driver"
-    : "client";
+  const role = String(value ?? "client").trim().toLowerCase();
+
+  if (role === "driver") return "driver";
+  if (role === "restaurant") return "restaurant";
+
+  return "client";
 }
 
 function extractBearerToken(req: NextRequest) {
@@ -118,7 +121,17 @@ export async function POST(req: NextRequest) {
     const { data: order, error: readError } = await supabaseAdmin
       .from("orders")
       .select(
-        "id,kind,status,driver_id,client_id,client_user_id,created_by,user_id"
+        `
+        id,
+        kind,
+        status,
+        driver_id,
+        restaurant_id,
+        client_id,
+        client_user_id,
+        created_by,
+        user_id
+      `
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -134,6 +147,20 @@ export async function POST(req: NextRequest) {
     const status = normalizeStatus(order.status);
     const kind = normalizeKind(order.kind);
 
+    if (status === "canceled") {
+      return json({
+        ok: true,
+        cancelled: true,
+        alreadyCancelled: true,
+        status,
+      });
+    }
+
+    if (status === "delivered") {
+      return json({ error: "Delivered order cannot be cancelled", status }, 400);
+    }
+
+    // CLIENT CANCEL
     if (role === "client") {
       const isOwner =
         sameId(order.client_id, user.id) ||
@@ -199,6 +226,62 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // RESTAURANT CANCEL / REFUSE
+    if (role === "restaurant") {
+      if (!sameId(order.restaurant_id, user.id)) {
+        return json({ error: "Forbidden: not order restaurant" }, 403);
+      }
+
+      if (
+        status === "pending" ||
+        status === "accepted" ||
+        status === "prepared"
+      ) {
+        const reason =
+          status === "pending"
+            ? "restaurant_refused_order"
+            : "restaurant_cancelled_before_ready";
+
+        const { error: updateError } = await supabaseAdmin
+          .from("orders")
+          .update({
+            status: "canceled",
+            driver_id: null,
+            cancel_reason: reason,
+            cancelled_by: "restaurant",
+            cancelled_at: new Date().toISOString(),
+            refund_status: "full_refund_required",
+          })
+          .eq("id", orderId)
+          .eq("restaurant_id", user.id);
+
+        if (updateError) {
+          return json({ error: updateError.message }, 500);
+        }
+
+        return json({
+          ok: true,
+          cancelled: true,
+          by: "restaurant",
+          refund: "FULL",
+          message:
+            status === "pending"
+              ? "Order refused by restaurant. Full refund required."
+              : "Order cancelled by restaurant. Full refund required.",
+        });
+      }
+
+      return json(
+        {
+          error:
+            "Restaurant cannot cancel this order after it is ready, dispatched, or delivered",
+          status,
+        },
+        400
+      );
+    }
+
+    // DRIVER CANCEL
     if (role === "driver") {
       if (!sameId(order.driver_id, user.id)) {
         return json({ error: "Forbidden: not assigned driver" }, 403);

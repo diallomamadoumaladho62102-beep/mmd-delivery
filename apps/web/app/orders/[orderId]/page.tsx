@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -15,6 +15,8 @@ type OrderStatus =
   | "delivered"
   | "canceled";
 
+type Role = "client" | "restaurant" | "driver" | "admin" | "unknown";
+
 type OrderItem = {
   name: string;
   category?: string | null;
@@ -26,10 +28,10 @@ type OrderItem = {
 type Order = {
   id: string;
   status: OrderStatus;
-  subtotal: number;
+  subtotal: number | null;
   tax: number | null;
   total: number | null;
-  currency: string;
+  currency: string | null;
   restaurant_name?: string | null;
   created_at?: string | null;
   items_json?: OrderItem[] | null;
@@ -45,12 +47,55 @@ type Order = {
   driver_id?: string | null;
 };
 
-type Role = "client" | "restaurant" | "driver" | "admin" | "unknown";
-
 type DriverProfile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
+};
+
+type VerifyCodeResponse = {
+  success?: boolean;
+  message?: string;
+};
+
+const ORDER_SELECT = `
+  id,
+  status,
+  subtotal,
+  tax,
+  total,
+  currency,
+  restaurant_name,
+  created_at,
+  items_json,
+  pickup_address,
+  dropoff_address,
+  distance_miles,
+  eta_minutes,
+  delivery_fee,
+  pickup_code,
+  dropoff_code,
+  user_id,
+  restaurant_id,
+  driver_id
+`;
+
+const statusLabel: Record<OrderStatus, string> = {
+  pending: "En attente",
+  accepted: "Acceptée par le restaurant",
+  prepared: "En préparation",
+  ready: "Prête à récupérer",
+  dispatched: "En livraison",
+  delivered: "Livrée",
+  canceled: "Annulée",
+};
+
+const roleLabel: Record<Role, string> = {
+  client: "Client",
+  restaurant: "Restaurant",
+  driver: "Chauffeur / livreur",
+  admin: "Admin",
+  unknown: "Inconnu",
 };
 
 function getAvatarSrc(url: string | null): string | null {
@@ -58,6 +103,34 @@ function getAvatarSrc(url: string | null): string | null {
   const u = url.trim();
   if (u.startsWith("http://") || u.startsWith("https://")) return u;
   return null;
+}
+
+function formatMoney(value: number | null | undefined, currency = "USD") {
+  if (value == null || Number.isNaN(value)) return "—";
+
+  return `${value.toFixed(2)} ${currency}`;
+}
+
+function canRestaurantCancel(status: OrderStatus) {
+  return status === "pending" || status === "accepted" || status === "prepared";
+}
+
+function getRestaurantNextActions(status: OrderStatus) {
+  const actions: { label: string; next: OrderStatus }[] = [];
+
+  if (status === "pending") {
+    actions.push({ label: "Accepter la commande", next: "accepted" });
+  }
+
+  if (status === "accepted") {
+    actions.push({ label: "Passer en préparation", next: "prepared" });
+  }
+
+  if (status === "prepared") {
+    actions.push({ label: "Commande prête pour pickup", next: "ready" });
+  }
+
+  return actions;
 }
 
 export default function OrderPage() {
@@ -68,23 +141,56 @@ export default function OrderPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [role, setRole] = useState<Role>("unknown");
   const [err, setErr] = useState<string | null>(null);
-  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const [pickupCodeInput, setPickupCodeInput] = useState("");
   const [dropoffCodeInput, setDropoffCodeInput] = useState("");
   const [verifyingPickup, setVerifyingPickup] = useState(false);
   const [verifyingDropoff, setVerifyingDropoff] = useState(false);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const [driverId, setDriverId] = useState<string | null>(null);
-
   const [driver, setDriver] = useState<DriverProfile | null>(null);
   const [driverLoading, setDriverLoading] = useState(false);
 
-  async function loadDriver(driverIdToLoad: string) {
+  const isClient = role === "client";
+  const isRestaurant = role === "restaurant";
+  const isDriver = role === "driver";
+  const isAdmin = role === "admin";
+
+  const isAssignedDriver =
+    !!order && !!currentUserId && order.driver_id === currentUserId;
+
+  const canDriverAct = (isDriver && isAssignedDriver) || isAdmin;
+  const canRestaurantAct = (isRestaurant || isAdmin) && !!order;
+
+  const shortId = useMemo(() => orderId?.slice(0, 8) ?? "", [orderId]);
+
+  const currency = order?.currency || "USD";
+  const items = order?.items_json ?? [];
+  const driverAvatarSrc = driver ? getAvatarSrc(driver.avatar_url) : null;
+
+  const formattedDate = useMemo(() => {
+    if (!order?.created_at) return null;
+
+    try {
+      return new Date(order.created_at).toLocaleString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return order.created_at;
+    }
+  }, [order?.created_at]);
+
+  const loadDriver = useCallback(async (driverIdToLoad: string) => {
     setDriverLoading(true);
+
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -93,42 +199,22 @@ export default function OrderPage() {
         .maybeSingle();
 
       if (error) throw error;
+
       setDriver((data as DriverProfile) ?? null);
-    } catch {
+    } catch (e) {
+      console.error("loadDriver error", e);
       setDriver(null);
     } finally {
       setDriverLoading(false);
     }
-  }
+  }, []);
 
-  async function refetchOrder() {
+  const refetchOrder = useCallback(async () => {
     if (!orderId) return;
 
     const { data, error } = await supabase
       .from("orders")
-      .select(
-        `
-        id,
-        status,
-        subtotal,
-        tax,
-        total,
-        currency,
-        restaurant_name,
-        created_at,
-        items_json,
-        pickup_address,
-        dropoff_address,
-        distance_miles,
-        eta_minutes,
-        delivery_fee,
-        pickup_code,
-        dropoff_code,
-        user_id,
-        restaurant_id,
-        driver_id
-      `
-      )
+      .select(ORDER_SELECT)
       .eq("id", orderId)
       .maybeSingle();
 
@@ -138,18 +224,32 @@ export default function OrderPage() {
       return;
     }
 
-    setOrder(data as Order);
-    setDriverId((data as any).driver_id ?? null);
-  }
+    const nextOrder = data as Order;
+
+    setOrder(nextOrder);
+    setDriverId(nextOrder.driver_id ?? null);
+
+    if (!nextOrder.driver_id) {
+      setDriver(null);
+    }
+  }, [orderId]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      if (!orderId) {
+        setErr("ID de commande manquant.");
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setErr(null);
+      setSuccessMsg(null);
 
       const { data: userData, error: userError } = await supabase.auth.getUser();
+
       if (userError || !userData.user) {
         if (!cancelled) {
           setErr("Tu dois être connecté pour voir cette commande.");
@@ -163,29 +263,7 @@ export default function OrderPage() {
 
       const { data: orderRow, error: orderError } = await supabase
         .from("orders")
-        .select(
-          `
-          id,
-          status,
-          subtotal,
-          tax,
-          total,
-          currency,
-          restaurant_name,
-          created_at,
-          items_json,
-          pickup_address,
-          dropoff_address,
-          distance_miles,
-          eta_minutes,
-          delivery_fee,
-          pickup_code,
-          dropoff_code,
-          user_id,
-          restaurant_id,
-          driver_id
-        `
-        )
+        .select(ORDER_SELECT)
         .eq("id", orderId)
         .maybeSingle();
 
@@ -199,52 +277,54 @@ export default function OrderPage() {
         return;
       }
 
+      const typedOrder = orderRow as Order;
+
       const { data: membershipRows, error: membershipError } = await supabase
         .from("order_members")
         .select("role")
         .eq("order_id", orderId)
         .eq("user_id", userId);
 
-      if (!cancelled) {
-        if (membershipError) {
-          console.error("membershipError", membershipError);
-        }
+      if (cancelled) return;
 
-        let detectedRole: Role = "unknown";
-
-        if (membershipRows && membershipRows.length > 0) {
-          const roles = membershipRows
-            .map((m) => m.role as Role)
-            .filter(Boolean);
-
-          if (roles.includes("admin")) detectedRole = "admin";
-          else if (roles.includes("driver")) detectedRole = "driver";
-          else if (roles.includes("restaurant")) detectedRole = "restaurant";
-          else if (roles.includes("client")) detectedRole = "client";
-        }
-
-        if (
-          orderRow.restaurant_id &&
-          orderRow.restaurant_id === userId &&
-          detectedRole !== "admin" &&
-          detectedRole !== "driver"
-        ) {
-          detectedRole = "restaurant";
-        }
-
-        if (
-          orderRow.user_id &&
-          orderRow.user_id === userId &&
-          detectedRole === "unknown"
-        ) {
-          detectedRole = "client";
-        }
-
-        setRole(detectedRole);
-        setOrder(orderRow as Order);
-        setDriverId((orderRow as any).driver_id ?? null);
-        setLoading(false);
+      if (membershipError) {
+        console.error("membershipError", membershipError);
       }
+
+      let detectedRole: Role = "unknown";
+
+      if (membershipRows && membershipRows.length > 0) {
+        const roles = membershipRows
+          .map((m) => m.role as Role)
+          .filter(Boolean);
+
+        if (roles.includes("admin")) detectedRole = "admin";
+        else if (roles.includes("driver")) detectedRole = "driver";
+        else if (roles.includes("restaurant")) detectedRole = "restaurant";
+        else if (roles.includes("client")) detectedRole = "client";
+      }
+
+      if (
+        typedOrder.restaurant_id &&
+        typedOrder.restaurant_id === userId &&
+        detectedRole !== "admin" &&
+        detectedRole !== "driver"
+      ) {
+        detectedRole = "restaurant";
+      }
+
+      if (
+        typedOrder.user_id &&
+        typedOrder.user_id === userId &&
+        detectedRole === "unknown"
+      ) {
+        detectedRole = "client";
+      }
+
+      setRole(detectedRole);
+      setOrder(typedOrder);
+      setDriverId(typedOrder.driver_id ?? null);
+      setLoading(false);
     }
 
     load();
@@ -259,74 +339,32 @@ export default function OrderPage() {
       setDriver(null);
       return;
     }
+
     loadDriver(order.driver_id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.driver_id]);
+  }, [order?.driver_id, loadDriver]);
 
-  const shortId = useMemo(() => orderId?.slice(0, 8) ?? "", [orderId]);
+  async function getAccessToken() {
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
 
-  const formattedDate = useMemo(() => {
-    if (!order?.created_at) return null;
-    try {
-      const d = new Date(order.created_at);
-      return d.toLocaleString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return order.created_at;
+    if (sessionError) {
+      throw new Error(sessionError.message || "Session invalide.");
     }
-  }, [order?.created_at]);
 
-  const statusLabel: Record<OrderStatus, string> = {
-    pending: "En attente",
-    accepted: "Acceptée par le restaurant",
-    prepared: "En préparation",
-    ready: "Prête à récupérer",
-    dispatched: "En livraison",
-    delivered: "Livrée",
-    canceled: "Annulée",
-  };
+    const token = sessionData.session?.access_token;
 
-  const roleLabel: Record<Role, string> = {
-    client: "Client",
-    restaurant: "Restaurant",
-    driver: "Chauffeur / livreur",
-    admin: "Admin",
-    unknown: "Inconnu",
-  };
+    if (!token) {
+      throw new Error("Session expirée. Reconnecte-toi puis réessaie.");
+    }
 
-  const isClient = role === "client";
-  const isRestaurant = role === "restaurant";
-  const isDriver = role === "driver";
-  const isAdmin = role === "admin";
-
-  const isAssignedDriver =
-    !!order && !!currentUserId && order.driver_id === currentUserId;
-
-  const canDriverAct = (isDriver && isAssignedDriver) || isAdmin;
-  const canRestaurantAct = (isRestaurant || isAdmin) && order != null;
+    return token;
+  }
 
   async function callConfirmRoute(
     endpoint: "/api/orders/pickup-confirm" | "/api/orders/delivered-confirm",
     orderIdToConfirm: string
   ) {
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.getSession();
-
-    if (sessionError) {
-      throw new Error(
-        sessionError.message || "Impossible de récupérer la session."
-      );
-    }
-
-    const token = sessionData?.session?.access_token;
-    if (!token) {
-      throw new Error("Token de session manquant.");
-    }
+    const token = await getAccessToken();
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -335,6 +373,7 @@ export default function OrderPage() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ order_id: orderIdToConfirm }),
+      cache: "no-store",
     });
 
     const result = await response.json().catch(() => null);
@@ -351,8 +390,49 @@ export default function OrderPage() {
     return result;
   }
 
+  async function verifyOrderCode(codeType: "pickup" | "dropoff", input: string) {
+    if (!order) throw new Error("Commande introuvable.");
+
+    const { data, error } = await supabase.rpc("verify_order_code", {
+      p_order_id: order.id,
+      p_input_code: input.trim(),
+      p_code_type: codeType,
+    });
+
+    if (error) {
+      console.error(`verify_order_code ${codeType} error`, error);
+      throw new Error(
+        error.message || "Erreur serveur pendant la vérification du code."
+      );
+    }
+
+    const result = data as VerifyCodeResponse;
+
+    if (!result?.success) {
+      throw new Error(
+        result?.message ??
+          (codeType === "pickup"
+            ? "Code pickup incorrect ou non défini pour cette commande."
+            : "Code de livraison incorrect ou non défini pour cette commande.")
+      );
+    }
+
+    return result;
+  }
+
   async function handleVerifyPickupCode() {
     if (!order) return;
+
+    if (!isAssignedDriver && !isAdmin) {
+      setErr("Seul le chauffeur assigné peut valider le pickup.");
+      return;
+    }
+
+    if (order.status !== "ready" && !isAdmin) {
+      setErr("Le pickup est disponible seulement quand la commande est READY.");
+      return;
+    }
+
     if (!pickupCodeInput.trim()) {
       setErr("Merci de saisir le code pickup.");
       return;
@@ -363,41 +443,18 @@ export default function OrderPage() {
     setSuccessMsg(null);
 
     try {
-      const { data, error } = await supabase.rpc("verify_order_code", {
-        p_order_id: order.id,
-        p_input_code: pickupCodeInput.trim(),
-        p_code_type: "pickup",
-      });
-
-      if (error) {
-        console.error("verify_order_code pickup error", error);
-        setErr(error.message || "Erreur serveur pendant la vérification du code.");
-        return;
-      }
-
-      if (!data || (data as any).success !== true) {
-        console.log("verify_order_code pickup data", data);
-        const msg =
-          (data as any)?.message ??
-          "Code pickup incorrect ou non défini pour cette commande.";
-        setErr(msg);
-        return;
-      }
-
+      const result = await verifyOrderCode("pickup", pickupCodeInput);
       await callConfirmRoute("/api/orders/pickup-confirm", order.id);
 
       setPickupCodeInput("");
       setSuccessMsg(
-        (data as any).message ??
-          "Code pickup validé. Pickup confirmé avec succès."
+        result.message ?? "Code pickup validé. Pickup confirmé avec succès."
       );
+
       await refetchOrder();
     } catch (e: any) {
       console.error("handleVerifyPickupCode error", e);
-      setErr(
-        e?.message ??
-          "Erreur inattendue pendant la confirmation du pickup."
-      );
+      setErr(e?.message ?? "Erreur inattendue pendant la confirmation du pickup.");
     } finally {
       setVerifyingPickup(false);
     }
@@ -405,6 +462,17 @@ export default function OrderPage() {
 
   async function handleVerifyDropoffCode() {
     if (!order) return;
+
+    if (!isAssignedDriver && !isAdmin) {
+      setErr("Seul le chauffeur assigné peut valider la livraison.");
+      return;
+    }
+
+    if (order.status !== "dispatched" && !isAdmin) {
+      setErr("La livraison peut être validée seulement après le pickup.");
+      return;
+    }
+
     if (!dropoffCodeInput.trim()) {
       setErr("Merci de saisir le code de livraison.");
       return;
@@ -415,44 +483,257 @@ export default function OrderPage() {
     setSuccessMsg(null);
 
     try {
-      const { data, error } = await supabase.rpc("verify_order_code", {
-        p_order_id: order.id,
-        p_input_code: dropoffCodeInput.trim(),
-        p_code_type: "dropoff",
-      });
-
-      if (error) {
-        console.error("verify_order_code dropoff error", error);
-        setErr(error.message || "Erreur serveur pendant la vérification du code.");
-        return;
-      }
-
-      if (!data || (data as any).success !== true) {
-        console.log("verify_order_code dropoff data", data);
-        const msg =
-          (data as any)?.message ??
-          "Code de livraison incorrect ou non défini pour cette commande.";
-        setErr(msg);
-        return;
-      }
-
+      const result = await verifyOrderCode("dropoff", dropoffCodeInput);
       await callConfirmRoute("/api/orders/delivered-confirm", order.id);
 
       setDropoffCodeInput("");
       setSuccessMsg(
-        (data as any).message ??
+        result.message ??
           "Code de livraison validé. Livraison confirmée avec succès."
       );
+
       await refetchOrder();
     } catch (e: any) {
       console.error("handleVerifyDropoffCode error", e);
       setErr(
-        e?.message ??
-          "Erreur inattendue pendant la confirmation de la livraison."
+        e?.message ?? "Erreur inattendue pendant la confirmation de la livraison."
       );
     } finally {
       setVerifyingDropoff(false);
     }
+  }
+
+  async function handleRestaurantCancel() {
+    if (!order) return;
+
+    const current = order.status;
+
+    if (!canRestaurantAct || !canRestaurantCancel(current)) {
+      setErr("Cette commande ne peut plus être annulée par le restaurant.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      current === "pending"
+        ? "Confirmer le refus de cette commande ? Le client devra être remboursé selon la règle."
+        : "Confirmer l’annulation ? Le client devra être remboursé selon la règle."
+    );
+
+    if (!confirmed) return;
+
+    setUpdatingStatus(true);
+    setErr(null);
+    setSuccessMsg(null);
+
+    try {
+      const token = await getAccessToken();
+
+      const response = await fetch("/api/orders/cancel", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          role: "restaurant",
+        }),
+        cache: "no-store",
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Impossible d’annuler cette commande.");
+      }
+
+      await refetchOrder();
+
+      setSuccessMsg(
+        current === "pending"
+          ? "Commande refusée avec succès. Refund client requis selon la règle."
+          : "Commande annulée avec succès. Refund client requis selon la règle."
+      );
+    } catch (e: any) {
+      console.error("handleRestaurantCancel error", e);
+      setErr(e?.message ?? "Erreur inattendue pendant l’annulation.");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }
+
+  async function handleRestaurantStatusChange(nextStatus: OrderStatus) {
+    if (!order) return;
+
+    if (!canRestaurantAct) {
+      setErr("Tu n’as pas l’autorisation de modifier cette commande.");
+      return;
+    }
+
+    if (order.status === "delivered" || order.status === "canceled") {
+      setErr("Cette commande est déjà terminée. Le statut ne peut plus changer.");
+      return;
+    }
+
+    const allowedTransitions: Record<OrderStatus, OrderStatus[]> = {
+      pending: ["accepted"],
+      accepted: ["prepared", "ready"],
+      prepared: ["ready"],
+      ready: [],
+      dispatched: [],
+      delivered: [],
+      canceled: [],
+    };
+
+    const allowed =
+      allowedTransitions[order.status]?.includes(nextStatus) ||
+      (nextStatus === "ready" &&
+        !!order.driver_id &&
+        (order.status === "accepted" || order.status === "prepared"));
+
+    if (!allowed && !isAdmin) {
+      setErr("Transition de statut non autorisée.");
+      return;
+    }
+
+    setUpdatingStatus(true);
+    setErr(null);
+    setSuccessMsg(null);
+
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .update({ status: nextStatus })
+        .eq("id", order.id)
+        .select(ORDER_SELECT)
+        .single();
+
+      if (error || !data) {
+        console.error("update status error restaurant", error);
+        throw error ?? new Error("Mise à jour du statut échouée.");
+      }
+
+      const nextOrder = data as Order;
+
+      setOrder(nextOrder);
+      setDriverId(nextOrder.driver_id ?? null);
+      setSuccessMsg("Statut mis à jour avec succès.");
+    } catch (e: any) {
+      console.error(e);
+      setErr(e?.message ?? "Erreur inattendue lors de la mise à jour du statut.");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  }
+
+  function renderRestaurantActions() {
+    if (!canRestaurantAct || !order) return null;
+
+    const current = order.status;
+    const actions = getRestaurantNextActions(current);
+    const restaurantCanCancel = canRestaurantCancel(current);
+
+    if (order.driver_id && (current === "accepted" || current === "prepared")) {
+      return (
+        <div className="border rounded-lg p-3 bg-orange-50 space-y-2">
+          <p className="text-xs font-semibold text-orange-800">
+            Zone restaurant
+          </p>
+
+          <p className="text-xs text-orange-900">
+            Statut actuel :{" "}
+            <span className="font-semibold">
+              {statusLabel[order.status] ?? order.status}
+            </span>
+          </p>
+
+          <div className="text-[11px] text-orange-900">
+            ⚠️ Un chauffeur est déjà assigné à cette commande. Elle devrait
+            rester en <b>READY</b> ou avancer vers la livraison.
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={updatingStatus}
+              onClick={() => handleRestaurantStatusChange("ready")}
+              className="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold disabled:opacity-50"
+            >
+              {updatingStatus ? "Mise à jour…" : "✅ Remettre en READY"}
+            </button>
+
+            {restaurantCanCancel && (
+              <button
+                type="button"
+                disabled={updatingStatus}
+                onClick={handleRestaurantCancel}
+                className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-50"
+              >
+                {updatingStatus ? "Traitement…" : "Annuler la commande"}
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (actions.length === 0 && !restaurantCanCancel) {
+      return (
+        <div className="border rounded-lg p-3 bg-orange-50 text-xs text-orange-700">
+          Aucune action requise pour le moment pour le restaurant sur cette
+          commande.
+        </div>
+      );
+    }
+
+    return (
+      <div className="border rounded-lg p-3 bg-orange-50 space-y-2">
+        <p className="text-xs font-semibold text-orange-800">
+          Zone restaurant
+        </p>
+
+        <p className="text-xs text-orange-900">
+          Statut actuel :{" "}
+          <span className="font-semibold">
+            {statusLabel[order.status] ?? order.status}
+          </span>
+        </p>
+
+        <div className="flex flex-wrap gap-2">
+          {actions.map((btn) => (
+            <button
+              key={btn.next}
+              type="button"
+              disabled={updatingStatus}
+              onClick={() => handleRestaurantStatusChange(btn.next)}
+              className="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold disabled:opacity-50"
+            >
+              {updatingStatus ? "Mise à jour…" : btn.label}
+            </button>
+          ))}
+
+          {restaurantCanCancel && (
+            <button
+              type="button"
+              disabled={updatingStatus}
+              onClick={handleRestaurantCancel}
+              className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold disabled:opacity-50"
+            >
+              {updatingStatus
+                ? "Traitement…"
+                : current === "pending"
+                  ? "Refuser la commande"
+                  : "Annuler la commande"}
+            </button>
+          )}
+        </div>
+
+        <p className="text-[11px] text-orange-900">
+          Le bouton rouge passe par l’API sécurisée d’annulation. Le refund réel
+          Stripe doit rester côté backend.
+        </p>
+      </div>
+    );
   }
 
   function renderDriverActions() {
@@ -469,17 +750,17 @@ export default function OrderPage() {
     if (!canDriverAct) return null;
 
     const current = order.status;
-
-    const canDoPickup = current === "ready" && isAssignedDriver;
-    const canDoDropoff = current === "dispatched" && isAssignedDriver;
+    const canDoPickup = current === "ready" && (isAssignedDriver || isAdmin);
+    const canDoDropoff =
+      current === "dispatched" && (isAssignedDriver || isAdmin);
 
     if (!canDoPickup && !canDoDropoff && !isAdmin) {
       return (
         <div className="border rounded-lg p-3 bg-emerald-50 text-xs text-emerald-900">
           Zone chauffeur : aucune action disponible maintenant.
           <div className="mt-1 text-[11px] text-emerald-800">
-            (Astuce : le pickup est disponible seulement quand le restaurant met
-            la commande en <b>READY</b>.)
+            Le pickup est disponible seulement quand le restaurant met la
+            commande en <b>READY</b>.
           </div>
         </div>
       );
@@ -490,6 +771,7 @@ export default function OrderPage() {
         <p className="text-xs font-semibold text-emerald-800">
           Zone chauffeur / livreur
         </p>
+
         <p className="text-xs text-emerald-900">
           Statut actuel :{" "}
           <span className="font-semibold">
@@ -497,13 +779,13 @@ export default function OrderPage() {
           </span>
         </p>
 
-        {(current === "ready" && (isAssignedDriver || isAdmin)) && (
+        {canDoPickup && (
           <div className="space-y-2">
             <p className="text-[11px] text-emerald-900">
-              Quand tu arrives au restaurant, demande le{" "}
-              <span className="font-semibold">code pickup</span> (ou QR) et
-              saisis-le ici pour confirmer que tu as récupéré la commande.
+              Demande le <span className="font-semibold">code pickup</span> au
+              restaurant et saisis-le ici.
             </p>
+
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
@@ -512,6 +794,7 @@ export default function OrderPage() {
                 placeholder="Code pickup"
                 className="flex-1 border rounded-md px-2 py-1 text-xs"
               />
+
               <button
                 type="button"
                 disabled={verifyingPickup}
@@ -524,13 +807,13 @@ export default function OrderPage() {
           </div>
         )}
 
-        {(current === "dispatched" && (isAssignedDriver || isAdmin)) && (
+        {canDoDropoff && (
           <div className="space-y-2">
             <p className="text-[11px] text-emerald-900">
               À la livraison, demande au client son{" "}
-              <span className="font-semibold">code de confirmation</span>{" "}
-              (dropoff). Saisis-le ici pour terminer la course.
+              <span className="font-semibold">code de confirmation</span>.
             </p>
+
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
@@ -539,6 +822,7 @@ export default function OrderPage() {
                 placeholder="Code de livraison"
                 className="flex-1 border rounded-md px-2 py-1 text-xs"
               />
+
               <button
                 type="button"
                 disabled={verifyingDropoff}
@@ -554,118 +838,6 @@ export default function OrderPage() {
     );
   }
 
-  async function handleRestaurantStatusChange(nextStatus: OrderStatus) {
-    if (!order) return;
-    setUpdatingStatus(true);
-    setErr(null);
-    setSuccessMsg(null);
-
-    try {
-      const { data, error } = await supabase
-        .from("orders")
-        .update({ status: nextStatus })
-        .eq("id", order.id)
-        .select()
-        .single();
-
-      if (error || !data) {
-        console.error("update status error (restaurant)", error);
-        throw error ?? new Error("Mise à jour du statut échouée.");
-      }
-
-      setOrder(data as Order);
-      setDriverId((data as any).driver_id ?? null);
-    } catch (e: any) {
-      console.error(e);
-      setErr(e?.message ?? "Erreur inattendue lors de la mise à jour du statut.");
-    } finally {
-      setUpdatingStatus(false);
-    }
-  }
-
-  function renderRestaurantActions() {
-    if (!canRestaurantAct || !order) return null;
-
-    const current = order.status;
-    const buttons: { label: string; next: OrderStatus }[] = [];
-
-    if (order.driver_id && (current === "accepted" || current === "prepared")) {
-      return (
-        <div className="border rounded-lg p-3 bg-orange-50 space-y-2">
-          <p className="text-xs font-semibold text-orange-800">Zone restaurant</p>
-          <p className="text-xs text-orange-900">
-            Statut actuel :{" "}
-            <span className="font-semibold">
-              {statusLabel[order.status] ?? order.status}
-            </span>
-          </p>
-
-          <div className="text-[11px] text-orange-900">
-            ⚠️ Un chauffeur est déjà assigné à cette commande, donc elle devrait
-            rester en <b>READY</b> (ou avancer), pas revenir en préparation.
-            <br />
-            Clique sur le bouton ci-dessous pour remettre le bon statut.
-          </div>
-
-          <button
-            type="button"
-            disabled={updatingStatus}
-            onClick={() => handleRestaurantStatusChange("ready")}
-            className="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold disabled:opacity-50"
-          >
-            {updatingStatus ? "Mise à jour…" : "✅ Remettre en READY (fix)"}
-          </button>
-        </div>
-      );
-    }
-
-    if (current === "pending") {
-      buttons.push({ label: "Accepter la commande", next: "accepted" });
-    } else if (current === "accepted") {
-      buttons.push({ label: "Passer en préparation", next: "prepared" });
-    } else if (current === "prepared") {
-      buttons.push({ label: "Commande prête pour pickup", next: "ready" });
-    }
-
-    if (buttons.length === 0) {
-      return (
-        <div className="border rounded-lg p-3 bg-orange-50 text-xs text-orange-700">
-          Aucune action requise pour le moment pour le restaurant sur cette
-          commande.
-        </div>
-      );
-    }
-
-    return (
-      <div className="border rounded-lg p-3 bg-orange-50 space-y-2">
-        <p className="text-xs font-semibold text-orange-800">Zone restaurant</p>
-        <p className="text-xs text-orange-900">
-          Statut actuel :{" "}
-          <span className="font-semibold">
-            {statusLabel[order.status] ?? order.status}
-          </span>
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {buttons.map((btn) => (
-            <button
-              key={btn.next}
-              type="button"
-              disabled={updatingStatus}
-              onClick={() => handleRestaurantStatusChange(btn.next)}
-              className="px-3 py-1.5 rounded-lg bg-orange-600 text-white text-xs font-semibold disabled:opacity-50"
-            >
-              {updatingStatus ? "Mise à jour…" : btn.label}
-            </button>
-          ))}
-        </div>
-        <p className="text-[11px] text-orange-900">
-          Utilise ces boutons pour gérer la commande : accepter, préparer, puis
-          déclarer la commande prête.
-        </p>
-      </div>
-    );
-  }
-
   function renderClientSection() {
     if (!isClient || !order) return null;
 
@@ -674,30 +846,25 @@ export default function OrderPage() {
         <p className="text-xs font-semibold text-sky-800">Zone client</p>
 
         <p className="text-xs text-sky-900">
-          Quand ton chauffeur arrive, il te demandera ton{" "}
-          <span className="font-semibold">code de confirmation</span>. Donne-lui
-          ce code uniquement quand tu as bien reçu ta commande.
+          Donne le code de confirmation uniquement quand tu as bien reçu ta
+          commande.
         </p>
 
         <div className="space-y-1">
           <p className="text-[11px] text-sky-800 font-semibold">
-            Code de livraison (à montrer au chauffeur) :
+            Code de livraison :
           </p>
+
           <div className="inline-flex px-4 py-2 rounded-md bg-white border border-sky-200">
             <span className="font-mono text-base tracking-[0.35em]">
               {order.dropoff_code ?? "———"}
             </span>
           </div>
-          {!order.dropoff_code && (
-            <p className="text-[11px] text-sky-700 mt-1">
-              Le code de livraison n’est pas encore généré pour cette commande.
-            </p>
-          )}
         </div>
 
         <p className="text-[11px] text-sky-900">
-          Tu peux suivre le chauffeur en temps réel plus bas sur la carte si un
-          driver est assigné.
+          Tu peux suivre le chauffeur en temps réel plus bas si un driver est
+          assigné.
         </p>
       </section>
     );
@@ -718,9 +885,11 @@ export default function OrderPage() {
     return (
       <main className="max-w-3xl mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold">Commande</h1>
+
         <p className="text-sm text-red-600 mt-2">
           {err ?? "Commande introuvable."}
         </p>
+
         <Link
           href="/orders"
           className="inline-flex mt-4 text-sm text-emerald-700 underline"
@@ -731,10 +900,6 @@ export default function OrderPage() {
     );
   }
 
-  const items = order.items_json ?? [];
-  const currency = order.currency || "USD";
-  const driverAvatarSrc = driver ? getAvatarSrc(driver.avatar_url) : null;
-
   return (
     <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -743,15 +908,18 @@ export default function OrderPage() {
             {isClient ? "Espace client — " : ""}
             Commande #{shortId || order.id}
           </h1>
+
           <p className="text-xs text-gray-600">
             Statut :{" "}
             <span className="font-semibold">
               {statusLabel[order.status] ?? order.status}
             </span>
           </p>
+
           {formattedDate && (
             <p className="text-xs text-gray-500">Créée le : {formattedDate}</p>
           )}
+
           {role !== "unknown" && (
             <p className="text-xs text-gray-500 mt-1">
               Ton rôle :{" "}
@@ -776,6 +944,7 @@ export default function OrderPage() {
               ← Retour au tableau de bord chauffeur
             </Link>
           )}
+
           {isRestaurant && (
             <Link
               href="/orders/restaurant"
@@ -784,6 +953,7 @@ export default function OrderPage() {
               ← Retour aux commandes du restaurant
             </Link>
           )}
+
           {isClient && (
             <Link
               href="/orders"
@@ -792,12 +962,13 @@ export default function OrderPage() {
               ← Retour à mes commandes
             </Link>
           )}
+
           {isAdmin && (
             <Link
               href="/admin/orders"
               className="inline-flex items-center px-3 py-1.5 rounded-lg border text-xs hover:bg-gray-50"
             >
-              ← Retour aux commandes (admin)
+              ← Retour aux commandes admin
             </Link>
           )}
         </div>
@@ -808,6 +979,7 @@ export default function OrderPage() {
           {err}
         </div>
       )}
+
       {successMsg && (
         <div className="border rounded-lg p-3 bg-emerald-50 text-xs text-emerald-800">
           {successMsg}
@@ -821,6 +993,7 @@ export default function OrderPage() {
       <section className="grid gap-3 md:grid-cols-2">
         <div className="border rounded-lg p-3 bg-white space-y-1 text-sm">
           <h2 className="text-sm font-semibold mb-1">Restaurant</h2>
+
           <p className="text-sm font-medium">
             {order.restaurant_name ?? "Restaurant inconnu"}
           </p>
@@ -828,12 +1001,6 @@ export default function OrderPage() {
           {(isRestaurant || isDriver || isAdmin) && order.pickup_address && (
             <p className="text-xs text-gray-600">
               Adresse de récupération : {order.pickup_address}
-            </p>
-          )}
-
-          {isClient && !order.pickup_address && (
-            <p className="text-xs text-gray-500">
-              L&apos;adresse du restaurant sera visible au chauffeur.
             </p>
           )}
 
@@ -845,8 +1012,7 @@ export default function OrderPage() {
 
           {isDriver && (
             <p className="text-[11px] text-gray-500 mt-1">
-              Pour le ramassage : demande au restaurant le code/QR sur son écran
-              MMD Delivery.
+              Pour le ramassage : demande au restaurant le code/QR.
             </p>
           )}
         </div>
@@ -862,6 +1028,7 @@ export default function OrderPage() {
             ) : (
               <div className="flex items-center gap-3">
                 {driverAvatarSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={driverAvatarSrc}
                     alt={driver?.full_name ?? "Chauffeur"}
@@ -882,6 +1049,7 @@ export default function OrderPage() {
                     {driver?.full_name?.trim() ||
                       `Chauffeur ${order.driver_id.slice(0, 8)}`}
                   </div>
+
                   <div className="text-xs text-gray-500">
                     {driverLoading ? "Chargement du profil…" : "Profil chauffeur"}
                   </div>
@@ -911,25 +1079,25 @@ export default function OrderPage() {
                 ? `${order.distance_miles.toFixed(2)} mi`
                 : "—"}
             </p>
+
             <p className="text-xs text-gray-600">
-              Temps estimé : {order.eta_minutes != null ? `${order.eta_minutes} min` : "—"}
+              Temps estimé :{" "}
+              {order.eta_minutes != null ? `${order.eta_minutes} min` : "—"}
             </p>
+
             <p className="text-xs text-gray-600">
-              Frais de livraison :{" "}
-              {order.delivery_fee != null
-                ? `${order.delivery_fee.toFixed(2)} ${currency}`
-                : "—"}
+              Frais de livraison : {formatMoney(order.delivery_fee, currency)}
             </p>
 
             {order.dropoff_code && isAdmin && (
               <p className="text-xs font-semibold text-emerald-700 mt-2">
-                Code de confirmation (dropoff) : {order.dropoff_code}
+                Code de confirmation dropoff : {order.dropoff_code}
               </p>
             )}
 
             {isDriver && (
               <p className="text-[11px] text-gray-500 mt-2">
-                Pour la livraison : demande au client son code/QR uniquement quand
+                Pour la livraison : demande au client son code uniquement quand
                 il a bien reçu la commande.
               </p>
             )}
@@ -939,10 +1107,10 @@ export default function OrderPage() {
 
       {(isClient || isAdmin || isRestaurant) && (
         <section className="mt-2 border rounded-lg p-3 bg-white space-y-2">
-          <h2 className="text-sm font-semibold">Suivi du chauffeur (live)</h2>
+          <h2 className="text-sm font-semibold">Suivi du chauffeur live</h2>
+
           <p className="text-xs text-gray-600">
-            Position temps réel du chauffeur. La carte se met à jour quand il se
-            déplace avec l&apos;app MMD Delivery.
+            Position temps réel du chauffeur.
           </p>
 
           <DriverLiveMap driverId={driverId} />
@@ -967,15 +1135,19 @@ export default function OrderPage() {
               >
                 <div>
                   <p className="font-medium">{item.name}</p>
+
                   {item.category && (
                     <p className="text-[11px] text-gray-500">{item.category}</p>
                   )}
+
                   <p className="text-[11px] text-gray-500">
-                    Qté {item.quantity} — {item.unit_price.toFixed(2)} {currency} / unité
+                    Qté {item.quantity} —{" "}
+                    {formatMoney(item.unit_price, currency)} / unité
                   </p>
                 </div>
+
                 <p className="text-xs font-semibold">
-                  {item.line_total.toFixed(2)} {currency}
+                  {formatMoney(item.line_total, currency)}
                 </p>
               </div>
             ))}
@@ -984,16 +1156,21 @@ export default function OrderPage() {
 
         <div className="pt-2 border-t mt-2 space-y-1 text-sm">
           <p>
-            <span className="font-medium">Montant (plats) :</span>{" "}
-            {order.subtotal.toFixed(2)} {currency}
+            <span className="font-medium">Montant plats :</span>{" "}
+            {formatMoney(order.subtotal, currency)}
           </p>
+
           <p>
             <span className="font-medium">Taxes :</span>{" "}
-            {(order.tax ?? 0).toFixed(2)} {currency}
+            {formatMoney(order.tax ?? 0, currency)}
           </p>
+
           <p>
             <span className="font-medium">Total :</span>{" "}
-            {(order.total ?? order.subtotal + (order.tax ?? 0)).toFixed(2)} {currency}
+            {formatMoney(
+              order.total ?? (order.subtotal ?? 0) + (order.tax ?? 0),
+              currency
+            )}
           </p>
         </div>
       </section>
