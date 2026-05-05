@@ -75,6 +75,7 @@ export default ({ config }: { config: AppConfigInput }) => {
       ...existingAndroid,
       package: "com.maladho2025.mmddelivery",
       versionCode: 1,
+      permissions: ["INTERNET"],
       adaptiveIcon: {
         foregroundImage: "./assets/icon.png",
         backgroundColor: "#ffffff",
