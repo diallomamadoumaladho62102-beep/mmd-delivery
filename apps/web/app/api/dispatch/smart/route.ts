@@ -464,7 +464,7 @@ export async function POST(req: NextRequest) {
         type: "smart_dispatch",
         orderId: order.id,
         wave: requestedWave,
-        screen: "DriverHome",
+        screen: "DriverTabs",
       },
       priority: "high",
     }));

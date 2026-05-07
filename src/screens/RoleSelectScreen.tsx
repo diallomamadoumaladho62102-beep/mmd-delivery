@@ -2,53 +2,51 @@ import React from "react";
 import { View, Text, TouchableOpacity, SafeAreaView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
-import { supabase } from "../lib/supabase";
-import { setSelectedRole } from "../lib/authRole";
+import { supabase } from "../../apps/mobile/src/lib/supabase";
+import { setSelectedRole } from "../../apps/mobile/src/lib/authRole";
 
 export function RoleSelectScreen() {
   const navigation = useNavigation<any>();
 
   async function go(role: "client" | "driver" | "restaurant") {
-    // 1) mémoriser le rôle
     await setSelectedRole(role);
 
-    // 2) checker session
     const { data } = await supabase.auth.getSession();
     const hasSession = !!data.session;
 
     if (!hasSession) {
-      // pas connecté -> vers Auth (si disponible)
       if (role === "client") {
-        // ⚠️ nécessite que "ClientAuth" existe dans AppNavigator (on le fait juste après)
         navigation.navigate("ClientAuth");
         return;
       }
+
       if (role === "driver") {
         navigation.navigate("DriverAuth");
         return;
       }
+
       if (role === "restaurant") {
-        // si tu n'as pas RestaurantAuth, on envoie vers RestaurantHome (tu peux ensuite protéger)
-        navigation.navigate("RestaurantHome");
+        navigation.navigate("RestaurantAuth");
         return;
       }
     }
 
-    // connecté -> vers Home correspondant
-    if (role === "client") navigation.navigate("ClientHome");
-    if (role === "driver") navigation.navigate("DriverHome");
-    if (role === "restaurant") navigation.navigate("RestaurantHome");
+    if (role === "client") {
+      navigation.navigate("ClientHome");
+      return;
+    }
+
+    if (role === "driver") {
+      navigation.navigate("DriverTabs");
+      return;
+    }
+
+    navigation.navigate("RestaurantGate");
   }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
-      <View
-        style={{
-          flex: 1,
-          padding: 24,
-          justifyContent: "center",
-        }}
-      >
+      <View style={{ flex: 1, padding: 24, justifyContent: "center" }}>
         <Text
           style={{
             fontSize: 26,

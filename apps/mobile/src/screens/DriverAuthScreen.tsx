@@ -405,7 +405,7 @@ export function DriverAuthScreen() {
       ?.status;
 
     if (status === "approved") {
-      navigation.replace("DriverHome");
+      navigation.replace("DriverTabs");
       return;
     }
 
