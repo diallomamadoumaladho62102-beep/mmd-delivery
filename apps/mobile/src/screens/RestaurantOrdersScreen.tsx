@@ -379,7 +379,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     if (soundRef.current) return;
 
     const { sound } = await Audio.Sound.createAsync(
-      require("../../assets/sounds/new-order.wav"),
+      require("../../assets/sounds/new_order.wav"),
       { shouldPlay: false, volume: 1 }
     );
 
