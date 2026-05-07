@@ -6,14 +6,14 @@ import * as Device from "expo-device";
 
 /**
  * 🔔 Handler global
- * Permet d’afficher les notifications même quand l’app est ouverte
- *
- * NOTE (SDK 53+): NotificationBehavior inclut shouldShowBanner / shouldShowList
+ * Permet d’afficher les notifications quand l’app est ouverte.
+ * Compatible avec expo-notifications SDK 54.
  */
 let handlerInstalled = false;
 
-export function setupNotifications() {
+export function setupNotifications(): void {
   if (handlerInstalled) return;
+
   handlerInstalled = true;
 
   Notifications.setNotificationHandler({
@@ -28,24 +28,26 @@ export function setupNotifications() {
 }
 
 /**
- * ✅ Récupère un Expo Push Token (dev build / Expo Go / prod)
- * Retourne null si pas possible (permissions refusées / simulateur / config manquante)
+ * ✅ Récupère un Expo Push Token.
+ * Retourne null si ce n’est pas possible :
+ * - simulateur
+ * - permissions refusées
+ * - projectId manquant
+ * - erreur native Android/iOS
  */
 export async function getExpoPushToken(): Promise<string | null> {
   try {
-    // Simulateur iOS / environnements sans device physique
     if (!Device.isDevice) {
-      console.log("ℹ️ Push token: Device.isDevice=false (simulateur?)");
+      console.log("ℹ️ Push token: appareil non physique / simulateur");
       return null;
     }
 
-    // Permissions
-    const perm = await Notifications.getPermissionsAsync();
-    let granted = perm.granted;
+    const currentPermission = await Notifications.getPermissionsAsync();
+    let granted = currentPermission.granted;
 
     if (!granted) {
-      const req = await Notifications.requestPermissionsAsync();
-      granted = req.granted;
+      const requestedPermission = await Notifications.requestPermissionsAsync();
+      granted = requestedPermission.granted;
     }
 
     if (!granted) {
@@ -53,7 +55,6 @@ export async function getExpoPushToken(): Promise<string | null> {
       return null;
     }
 
-    // Android channel (recommandé)
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
         name: "default",
@@ -63,19 +64,21 @@ export async function getExpoPushToken(): Promise<string | null> {
       });
     }
 
-    // ProjectId (EAS / Expo) — nécessaire sur certaines configs
     const projectId =
       (Constants as any)?.expoConfig?.extra?.eas?.projectId ??
       (Constants as any)?.easConfig?.projectId ??
-      undefined;
+      null;
 
-    const token = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined
-    );
+    if (!projectId) {
+      console.log("❌ Push token: projectId EAS manquant");
+      return null;
+    }
+
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
 
     return token?.data ?? null;
-  } catch (e) {
-    console.log("❌ getExpoPushToken error:", e);
+  } catch (error) {
+    console.log("❌ getExpoPushToken error:", error);
     return null;
   }
 }
