@@ -2,41 +2,50 @@
   "expo": {
     "name": "MMD Delivery",
     "slug": "mmd-delivery",
-    "scheme": "mmd",
+    "scheme": "mmddelivery",
     "version": "1.0.0",
+    "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
     "plugins": [
       [
         "expo-notifications",
         {
-          "sounds": ["./assets/sounds/new-order.wav"]
+          "sounds": ["./assets/sounds/new_order.wav"]
         }
       ],
       [
         "@stripe/stripe-react-native",
         {
-          "merchantIdentifier": "merchant.com.mmd.delivery"
+          "merchantIdentifier": "merchant.com.maladho2025.mmddelivery"
         }
       ],
       "expo-web-browser"
     ],
     "android": {
-      "notification": {
-        "sound": "new-order.wav"
+      "package": "com.maladho2025.mmddelivery",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FF8C00"
       },
-      "package": "com.maladho.mmdelivery"
+      "notification": {
+        "icon": "./assets/icon.png",
+        "color": "#FF8C00",
+        "sound": "new_order.wav"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.maladho2025.mmddelivery",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "extra": {
       "EXPO_PUBLIC_WEB_BASE_URL": "https://mmd-delivery.vercel.app",
       "EXPO_PUBLIC_STRIPE_PK": "pk_test_51SiVEKARYL6CPXX2vkJ7PP2gQ8HhajpgV3Q05D6Bs3aeo9owwmjUlJMvbWGYBbcwm2EMLLhinNcLk0unSK0MmOhc00jpgYyAFA",
       "eas": {
         "projectId": "127751ea-33ce-4f67-98ce-a9b29a46b838"
-      }
-    },
-    "ios": {
-      "bundleIdentifier": "com.maladho2025.mmddelivery",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
       }
     }
   }
