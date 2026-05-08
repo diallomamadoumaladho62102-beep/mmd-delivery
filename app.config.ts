@@ -57,7 +57,7 @@ export default ({ config }: { config: AppConfigInput }) => {
     version: "1.0.0",
     orientation: "portrait",
     scheme: "mmddelivery",
-    icon: "./assets/icon.png",
+    icon: "./apps/mobile/assets/icon.png",
     userInterfaceStyle: "automatic",
     assetBundlePatterns: ["**/*"],
 
@@ -65,7 +65,7 @@ export default ({ config }: { config: AppConfigInput }) => {
       [
         "expo-notifications",
         {
-          sounds: ["./assets/sounds/new_order.wav"],
+          sounds: ["./apps/mobile/assets/sounds/new_order.wav"],
         },
       ],
       [
@@ -78,7 +78,7 @@ export default ({ config }: { config: AppConfigInput }) => {
     ],
 
     splash: {
-      image: "./assets/brand/mmd-logo.png",
+      image: "./apps/mobile/assets/brand/mmd-logo.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff",
     },
@@ -100,11 +100,11 @@ export default ({ config }: { config: AppConfigInput }) => {
       versionCode: 1,
       permissions: ["INTERNET", "POST_NOTIFICATIONS"],
       adaptiveIcon: {
-        foregroundImage: "./assets/icon.png",
+        foregroundImage: "./apps/mobile/assets/icon.png",
         backgroundColor: "#FF8C00",
       },
       notification: {
-        icon: "./assets/icon.png",
+        icon: "./apps/mobile/assets/icon.png",
         color: "#FF8C00",
         sound: "new_order.wav",
       },

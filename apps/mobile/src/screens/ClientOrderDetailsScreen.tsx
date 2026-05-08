@@ -12,7 +12,6 @@ import {
   AppState,
   type AppStateStatus,
   TextInput,
-  Platform,
 } from "react-native";
 import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -23,17 +22,9 @@ import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { openStripeCheckout } from "../lib/stripe";
 import { useTranslation } from "react-i18next";
+import Mapbox from "@rnmapbox/maps";
 
-// ✅ Map + live driver location (react-native-maps requires a Dev Build; Expo Go may crash)
-// We load it dynamically to avoid "Cannot read property 'default' of undefined" in Expo Go.
-type MapsModule = typeof import("react-native-maps");
-let Maps: MapsModule | null = null;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  Maps = require("react-native-maps");
-} catch {
-  Maps = null;
-}
+Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
 
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
@@ -241,6 +232,59 @@ function statusProgress(status: OrderStatus) {
       return 0.25;
   }
 }
+type LatLng = {
+  latitude: number;
+  longitude: number;
+};
+
+function toMapboxCoord(coord: LatLng): [number, number] {
+  return [coord.longitude, coord.latitude];
+}
+
+function makeLineFeature(coords: LatLng[]) {
+  return {
+    type: "Feature" as const,
+    properties: {},
+    geometry: {
+      type: "LineString" as const,
+      coordinates: coords.map(toMapboxCoord),
+    },
+  };
+}
+
+function getCameraForCoords(coords: LatLng[]) {
+  const fallback = {
+    centerCoordinate: [-73.949997, 40.650002] as [number, number],
+    zoomLevel: 11,
+  };
+
+  if (coords.length === 0) return fallback;
+
+  if (coords.length === 1) {
+    return {
+      centerCoordinate: toMapboxCoord(coords[0]),
+      zoomLevel: 14,
+    };
+  }
+
+  const lats = coords.map((c) => c.latitude);
+  const lngs = coords.map((c) => c.longitude);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+  const delta = Math.max(maxLat - minLat, maxLng - minLng, 0.01);
+  const zoomLevel = Math.max(10, Math.min(15, Math.log2(360 / (delta * 3.2))));
+
+  return {
+    centerCoordinate: [centerLng, centerLat] as [number, number],
+    zoomLevel,
+  };
+}
+
 
 export function ClientOrderDetailsScreen() {
   const { t, i18n } = useTranslation();
@@ -274,10 +318,8 @@ export function ClientOrderDetailsScreen() {
   const isMountedRef = useRef(true);
   const backgroundPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const mapRef = useRef<any>(null);
+  const cameraRef = useRef<Mapbox.Camera | null>(null);
   const didFitRef = useRef(false);
-
-  const mapsAvailable = !!Maps?.default;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -298,7 +340,6 @@ export function ClientOrderDetailsScreen() {
       console.log("API_URL (resolved) =", API_URL);
       console.log("SUPABASE_URL =", process.env.EXPO_PUBLIC_SUPABASE_URL);
       console.log("ACCESS_TOKEN (mount, masked) =", maskToken(token));
-      console.log("MAPS_AVAILABLE =", mapsAvailable, "Platform =", Platform.OS);
       console.log("I18N_LANGUAGE =", i18n.language);
       if (error) console.log("getSession error (mount) =", error.message);
     })();
@@ -745,63 +786,43 @@ export function ClientOrderDetailsScreen() {
     return coords;
   }, [pickupCoord, dropoffCoord]);
 
-  const fallbackRegion = useMemo(() => {
-    return {
-      latitude: 40.650002,
-      longitude: -73.949997,
-      latitudeDelta: 0.08,
-      longitudeDelta: 0.08,
-    };
-  }, []);
-
-  const fitMapToTrip = useCallback(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const pts: { latitude: number; longitude: number }[] = [];
+  const mapPoints = useMemo(() => {
+    const pts: LatLng[] = [];
     if (pickupCoord) pts.push(pickupCoord);
     if (dropoffCoord) pts.push(dropoffCoord);
     if (driverCoord) pts.push(driverCoord);
-
-    if (pts.length >= 2 && typeof map.fitToCoordinates === "function") {
-      map.fitToCoordinates(pts, {
-        edgePadding: { top: 70, right: 70, bottom: 70, left: 70 },
-        animated: true,
-      });
-      return;
-    }
-
-    const only = pts[0] ?? null;
-    if (only && typeof map.animateToRegion === "function") {
-      map.animateToRegion(
-        {
-          latitude: only.latitude,
-          longitude: only.longitude,
-          latitudeDelta: 0.03,
-          longitudeDelta: 0.03,
-        },
-        600
-      );
-    }
+    return pts;
   }, [pickupCoord, dropoffCoord, driverCoord]);
+
+  const routeLineFeature = useMemo(() => makeLineFeature(polylineCoords), [polylineCoords]);
+
+  const initialCamera = useMemo(() => getCameraForCoords(mapPoints), [mapPoints]);
+
+  const fitMapToTrip = useCallback(() => {
+    if (mapPoints.length === 0) return;
+
+    const camera = getCameraForCoords(mapPoints);
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: camera.centerCoordinate,
+      zoomLevel: camera.zoomLevel,
+      animationDuration: 650,
+      animationMode: "flyTo",
+    });
+  }, [mapPoints]);
 
   useEffect(() => {
     if (!order) return;
-    if (!mapsAvailable) return;
     if (didFitRef.current) return;
 
-    if (pickupCoord || dropoffCoord || driverCoord) {
+    if (mapPoints.length > 0) {
       const tt = setTimeout(() => {
         fitMapToTrip();
         didFitRef.current = true;
-      }, 250);
+      }, 350);
       return () => clearTimeout(tt);
     }
-  }, [order, pickupCoord, dropoffCoord, driverCoord, fitMapToTrip, mapsAvailable]);
-
-  const MapViewComp: any = Maps?.default ?? null;
-  const MarkerComp: any = (Maps as any)?.Marker ?? null;
-  const PolylineComp: any = (Maps as any)?.Polyline ?? null;
+  }, [order, mapPoints, fitMapToTrip]);
 
   const meta = statusMeta(order?.status ?? "pending");
   const progress = statusProgress(order?.status ?? "pending");
@@ -967,8 +988,7 @@ export function ClientOrderDetailsScreen() {
 
         {!loading && !errorMsg && order && (pickupCoord || dropoffCoord) && (
           <>
-            {mapsAvailable && MapViewComp ? (
-              <View
+            <View
                 style={{
                   height: 250,
                   marginTop: 12,
@@ -980,54 +1000,96 @@ export function ClientOrderDetailsScreen() {
                   backgroundColor: "rgba(2,6,23,0.7)",
                 }}
               >
-                <MapViewComp
-                  ref={(r: any) => (mapRef.current = r)}
+                <Mapbox.MapView
                   style={{ flex: 1 }}
-                  initialRegion={fallbackRegion}
-                  onMapReady={() => {
-                    if (!didFitRef.current) {
-                      fitMapToTrip();
-                      didFitRef.current = true;
-                    }
-                  }}
+                  styleURL={Mapbox.StyleURL.Street}
+                  logoEnabled={false}
+                  attributionEnabled={false}
                 >
-                  {pickupCoord && MarkerComp && (
-                    <MarkerComp
-                      coordinate={pickupCoord}
-                      title={ts("client.orderDetails.map.pickupTitle", "Pickup")}
-                      description={order.pickup_address ?? undefined}
-                    />
+                  <Mapbox.Camera
+                    ref={cameraRef}
+                    centerCoordinate={initialCamera.centerCoordinate}
+                    zoomLevel={initialCamera.zoomLevel}
+                    animationMode="flyTo"
+                    animationDuration={650}
+                  />
+
+                  {pickupCoord && (
+                    <Mapbox.PointAnnotation id="client-pickup" coordinate={toMapboxCoord(pickupCoord)}>
+                      <View
+                        style={{
+                          paddingHorizontal: 9,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "#2563EB",
+                          borderWidth: 2,
+                          borderColor: "#FFFFFF",
+                        }}
+                      >
+                        <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "900" }}>PICKUP</Text>
+                      </View>
+                    </Mapbox.PointAnnotation>
                   )}
 
-                  {dropoffCoord && MarkerComp && (
-                    <MarkerComp
-                      coordinate={dropoffCoord}
-                      title={ts("client.orderDetails.map.dropoffTitle", "Dropoff")}
-                      description={order.dropoff_address ?? undefined}
-                    />
+                  {dropoffCoord && (
+                    <Mapbox.PointAnnotation id="client-dropoff" coordinate={toMapboxCoord(dropoffCoord)}>
+                      <View
+                        style={{
+                          paddingHorizontal: 9,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "#16A34A",
+                          borderWidth: 2,
+                          borderColor: "#FFFFFF",
+                        }}
+                      >
+                        <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "900" }}>DROPOFF</Text>
+                      </View>
+                    </Mapbox.PointAnnotation>
                   )}
 
-                  {driverCoord && MarkerComp && (
-                    <MarkerComp
-                      coordinate={driverCoord}
-                      title={ts("client.orderDetails.map.driverTitle", "Driver")}
-                      description={
-                        liveDriver?.updated_at
-                          ? `${ts("client.orderDetails.map.lastUpdate", "Last update:")} ${new Date(
-                              liveDriver.updated_at
-                            ).toLocaleTimeString()}`
-                          : undefined
-                      }
-                    />
+                  {driverCoord && (
+                    <Mapbox.PointAnnotation id="client-live-driver" coordinate={toMapboxCoord(driverCoord)}>
+                      <View
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 17,
+                          backgroundColor: "#F97316",
+                          borderWidth: 3,
+                          borderColor: "#FFFFFF",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "900" }}>D</Text>
+                      </View>
+                    </Mapbox.PointAnnotation>
                   )}
 
-                  {polylineCoords.length === 2 && PolylineComp && (
-                    <>
-                      <PolylineComp coordinates={polylineCoords} strokeWidth={8} strokeColor="rgba(59,130,246,0.18)" />
-                      <PolylineComp coordinates={polylineCoords} strokeWidth={3} strokeColor="rgba(147,197,253,0.95)" />
-                    </>
+                  {polylineCoords.length === 2 && (
+                    <Mapbox.ShapeSource id="client-route-source" shape={routeLineFeature}>
+                      <Mapbox.LineLayer
+                        id="client-route-shadow"
+                        style={{
+                          lineColor: "rgba(59,130,246,0.18)",
+                          lineWidth: 8,
+                          lineCap: "round",
+                          lineJoin: "round",
+                        }}
+                      />
+                      <Mapbox.LineLayer
+                        id="client-route-line"
+                        style={{
+                          lineColor: "rgba(147,197,253,0.95)",
+                          lineWidth: 3,
+                          lineCap: "round",
+                          lineJoin: "round",
+                        }}
+                      />
+                    </Mapbox.ShapeSource>
                   )}
-                </MapViewComp>
+                </Mapbox.MapView>
 
                 <View style={{ position: "absolute", top: 12, right: 12 }}>
                   <TouchableOpacity
@@ -1071,24 +1133,14 @@ export function ClientOrderDetailsScreen() {
                         ⏳ {ts("client.orderDetails.waitingDriverLocation", "Waiting for driver location…")}
                       </Text>
                     )}
+                    {!!driverCoord && liveDriver?.updated_at && (
+                      <Text style={{ color: "#93C5FD", marginTop: 4, fontSize: 11, fontWeight: "800" }}>
+                        {ts("client.orderDetails.map.lastUpdate", "Last update:")} {new Date(liveDriver.updated_at).toLocaleTimeString()}
+                      </Text>
+                    )}
                   </View>
                 </View>
               </View>
-            ) : (
-              <View style={{ paddingHorizontal: 20, marginTop: 12 }}>
-                <Card>
-                  <Text style={{ color: "#FBBF24", fontWeight: "900" }}>
-                    🗺️ {ts("client.orderDetails.mapUnavailableTitle", "Map unavailable")}
-                  </Text>
-                  <Text style={{ color: "#94A3B8", marginTop: 6, fontSize: 12, lineHeight: 16 }}>
-                    {ts(
-                      "client.orderDetails.mapUnavailableBody",
-                      "You are probably on Expo Go. For react-native-maps, use a Dev Build (expo-dev-client / EAS)."
-                    )}
-                  </Text>
-                </Card>
-              </View>
-            )}
           </>
         )}
 

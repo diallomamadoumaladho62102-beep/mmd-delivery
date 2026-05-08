@@ -19,16 +19,13 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 
-import MapView, { Marker, Region } from "react-native-maps";
+import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
 import { Audio } from "expo-av";
 import { useTranslation } from "react-i18next";
 
-/**
- * ✅ IMPORTANT:
- * Ton erreur TS venait du fait que "DriverHome" n'est pas déclaré dans RootStackParamList.
- * Pour ne rien casser, on évite de contraindre le type avec un nom de route qui peut varier.
- */
+Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
+
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type AnyNav = NativeStackNavigationProp<any>;
 
@@ -187,13 +184,8 @@ function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined)
   const kind = normalizeKind(order.kind);
   const status = normalizeStatus(order.status);
 
-  if (kind === "food") {
-    return status === "ready";
-  }
-
-  if (kind === "pickup_dropoff") {
-    return status === "pending";
-  }
+  if (kind === "food") return status === "ready";
+  if (kind === "pickup_dropoff") return status === "pending";
 
   return false;
 }
@@ -218,16 +210,16 @@ export function DriverHomeScreen() {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   const [isOnline, setIsOnline] = useState<boolean>(false);
-
   const [activeOffer, setActiveOffer] = useState<DriverOrder | null>(null);
   const [countdown, setCountdown] = useState<number>(60);
 
-  const [region, setRegion] = useState<Region>({
+  const [region, setRegion] = useState({
     latitude: 40.650002,
     longitude: -73.949997,
     latitudeDelta: 0.08,
     longitudeDelta: 0.08,
   });
+
   const [hasLocation, setHasLocation] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(true);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -235,7 +227,6 @@ export function DriverHomeScreen() {
   const [zoneStatus, setZoneStatus] = useState<ZoneDemand>("calm");
   const [zoneName, setZoneName] = useState<string>(t("driver.home.zone.current", "Zone actuelle"));
   const [zoneMultiplier, setZoneMultiplier] = useState<number>(1.0);
-
   const [searchMessageIndex, setSearchMessageIndex] = useState(0);
 
   const searchMessages = useMemo(
@@ -250,7 +241,6 @@ export function DriverHomeScreen() {
 
   const sheetOffset = useRef(new Animated.Value(SHEET_MAX_TRANSLATE_Y)).current;
   const sheetStartOffset = useRef(0);
-
   const lastOfferIdRef = useRef<string | null>(null);
 
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -258,7 +248,6 @@ export function DriverHomeScreen() {
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const searchingAnim = useRef(new Animated.Value(0)).current;
-
   const gpsDbIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeqRef = useRef(0);
@@ -266,8 +255,10 @@ export function DriverHomeScreen() {
 
   useEffect(() => {
     mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
+
       if (refreshDebounceRef.current) {
         clearTimeout(refreshDebounceRef.current);
         refreshDebounceRef.current = null;
@@ -300,10 +291,13 @@ export function DriverHomeScreen() {
   const getUserIdOrThrow = useCallback(async (): Promise<string> => {
     const { data: sessionData, error: sErr } = await supabase.auth.getSession();
     if (sErr) throw sErr;
+
     const userId = sessionData.session?.user?.id;
+
     if (!userId) {
       throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
     }
+
     return userId;
   }, [t]);
 
@@ -318,6 +312,7 @@ export function DriverHomeScreen() {
       if (gpsDbIntervalRef.current) return;
 
       const ok = await ensureGpsPermission();
+
       if (!ok) {
         Alert.alert(
           t("driver.home.gps.title", "GPS"),
@@ -378,24 +373,27 @@ export function DriverHomeScreen() {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 4,
+
       onPanResponderGrant: () => {
         // @ts-ignore
-        sheetStartOffset.current = sheetOffset.__getValue
-          ? // @ts-ignore
-            sheetOffset.__getValue()
-          : 0;
+        sheetStartOffset.current = sheetOffset.__getValue ? sheetOffset.__getValue() : 0;
       },
+
       onPanResponderMove: (_, gestureState) => {
         const dy = gestureState.dy;
         const raw = sheetStartOffset.current + dy;
         const clamped = Math.max(SHEET_MIN_TRANSLATE_Y, Math.min(SHEET_MAX_TRANSLATE_Y, raw));
         sheetOffset.setValue(clamped);
       },
+
       onPanResponderRelease: (_, gestureState) => {
         const goingUp = gestureState.dy < 0;
         const final = goingUp ? SHEET_MIN_TRANSLATE_Y : SHEET_MAX_TRANSLATE_Y;
 
-        Animated.spring(sheetOffset, { toValue: final, useNativeDriver: true }).start();
+        Animated.spring(sheetOffset, {
+          toValue: final,
+          useNativeDriver: true,
+        }).start();
       },
     })
   ).current;
@@ -404,9 +402,11 @@ export function DriverHomeScreen() {
     if (zoneStatus === "very_busy") {
       return { label: t("driver.home.zone.very_busy", "Très chargé"), color: "#EF4444" };
     }
+
     if (zoneStatus === "busy") {
       return { label: t("driver.home.zone.busy", "Occupé"), color: "#F97316" };
     }
+
     return { label: t("driver.home.zone.calm", "Calme"), color: "#22C55E" };
   }, [zoneStatus, t]);
 
@@ -416,6 +416,7 @@ export function DriverHomeScreen() {
     (async () => {
       try {
         const ok = await ensureGpsPermission();
+
         if (!ok) {
           setGpsLoading(false);
           return;
@@ -423,9 +424,13 @@ export function DriverHomeScreen() {
 
         const current = await Location.getCurrentPositionAsync({});
 
-        setDriverLocation({ lat: current.coords.latitude, lng: current.coords.longitude });
+        setDriverLocation({
+          lat: current.coords.latitude,
+          lng: current.coords.longitude,
+        });
 
         const zoneInfo = getZoneInfoFromLocation(current.coords.latitude, current.coords.longitude);
+
         setZoneName(zoneInfo.name || t("driver.home.zone.current", "Zone actuelle"));
         setZoneStatus(zoneInfo.demand);
         setZoneMultiplier(zoneInfo.multiplier);
@@ -436,6 +441,7 @@ export function DriverHomeScreen() {
           latitudeDelta: zoneInfo.zoomDelta,
           longitudeDelta: zoneInfo.zoomDelta,
         });
+
         setHasLocation(true);
         setGpsLoading(false);
 
@@ -446,9 +452,13 @@ export function DriverHomeScreen() {
             distanceInterval: 10,
           },
           (pos) => {
-            setDriverLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setDriverLocation({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            });
 
             const info = getZoneInfoFromLocation(pos.coords.latitude, pos.coords.longitude);
+
             setZoneName(info.name || t("driver.home.zone.current", "Zone actuelle"));
             setZoneStatus(info.demand);
             setZoneMultiplier(info.multiplier);
@@ -459,6 +469,7 @@ export function DriverHomeScreen() {
               latitudeDelta: info.zoomDelta,
               longitudeDelta: info.zoomDelta,
             });
+
             setHasLocation(true);
           }
         );
@@ -482,11 +493,13 @@ export function DriverHomeScreen() {
 
         if (!canLoad) {
           if (!mountedRef.current) return;
+
           setAvailableOrders([]);
           setMyOrders([]);
           setActiveOffer(null);
           setCountdown(60);
           lastOfferIdRef.current = null;
+
           return;
         }
 
@@ -544,6 +557,7 @@ export function DriverHomeScreen() {
               pickupLat,
               pickupLng
             );
+
             withinFiveMiles = distanceFromDriverMiles <= MAX_VISIBLE_ORDER_MILES;
           }
 
@@ -588,25 +602,30 @@ export function DriverHomeScreen() {
             if (prev) {
               lastOfferIdRef.current = null;
             }
+
             setCountdown(60);
             return null;
           }
 
           if (prev) {
             const stillExists = visibleAvailable.find((o) => o.id === prev.id);
+
             if (stillExists) {
               return stillExists;
             }
           }
 
           const nextOffer = visibleAvailable[0] ?? null;
+
           if (!prev || prev.id !== nextOffer?.id) {
             setCountdown(60);
           }
+
           return nextOffer;
         });
       } catch (e: any) {
         console.log("Erreur chargement commandes driver:", e);
+
         if (mountedRef.current) {
           setError(t("driver.home.errors.loadOrders", "Impossible de charger les commandes."));
         }
@@ -703,6 +722,7 @@ export function DriverHomeScreen() {
         clearTimeout(refreshDebounceRef.current);
         refreshDebounceRef.current = null;
       }
+
       supabase.removeChannel(channel);
     };
   }, [isOnline, scheduleDriverOrdersRefresh]);
@@ -747,7 +767,9 @@ export function DriverHomeScreen() {
 
       if (normalizedKind === "food") {
         return restaurantName
-          ? t("driver.home.kind.foodWithName", "Commande restaurant · {{name}}", { name: restaurantName })
+          ? t("driver.home.kind.foodWithName", "Commande restaurant · {{name}}", {
+              name: restaurantName,
+            })
           : t("driver.home.kind.food", "Commande restaurant");
       }
 
@@ -762,8 +784,13 @@ export function DriverHomeScreen() {
 
   const formatDate = useCallback((iso: string | null) => {
     if (!iso) return "—";
+
     const d = new Date(iso);
-    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`;
   }, []);
 
   const handleOpenOrder = useCallback(
@@ -779,6 +806,7 @@ export function DriverHomeScreen() {
         setAcceptingId(orderId);
 
         const { data: sessionData } = await supabase.auth.getSession();
+
         if (!sessionData.session) {
           throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
         }
@@ -786,9 +814,13 @@ export function DriverHomeScreen() {
         const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", {
           p_order_id: orderId,
         });
+
         if (rpcError) throw rpcError;
 
-        await supabase.rpc("join_order", { p_order_id: orderId, p_role: "driver" });
+        await supabase.rpc("join_order", {
+          p_order_id: orderId,
+          p_role: "driver",
+        });
 
         Alert.alert(
           t("driver.home.accept.title", "Course acceptée"),
@@ -806,6 +838,7 @@ export function DriverHomeScreen() {
         navAny.navigate("DriverOrderDetails", { orderId });
       } catch (e: any) {
         console.log("Erreur acceptation course:", e);
+
         Alert.alert(
           t("shared.orderChat.alerts.errorTitle", "Erreur"),
           e?.message ?? t("driver.home.errors.accept", "Impossible d'accepter la course.")
@@ -835,14 +868,21 @@ export function DriverHomeScreen() {
     }
 
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+
     return () => clearTimeout(timer);
   }, [activeOffer, countdown]);
 
   useEffect(() => {
     const anim = Animated.loop(
-      Animated.timing(searchingAnim, { toValue: 1, duration: 1200, useNativeDriver: true })
+      Animated.timing(searchingAnim, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: true,
+      })
     );
+
     anim.start();
+
     return () => anim.stop();
   }, [searchingAnim]);
 
@@ -863,6 +903,7 @@ export function DriverHomeScreen() {
     }
 
     if (lastOfferIdRef.current === activeOffer.id) return;
+
     lastOfferIdRef.current = activeOffer.id;
 
     (async () => {
@@ -871,10 +912,15 @@ export function DriverHomeScreen() {
 
         const { sound } = await Audio.Sound.createAsync(
           require("../../assets/sounds/new_order.wav"),
-          { shouldPlay: true, isLooping: true, volume: 0.2 }
+          {
+            shouldPlay: true,
+            isLooping: true,
+            volume: 0.2,
+          }
         );
 
         soundRef.current = sound;
+
         await sound.playAsync();
 
         const rampTimeout = setTimeout(() => {
@@ -884,8 +930,10 @@ export function DriverHomeScreen() {
             if (!soundRef.current) return;
 
             volume += 0.1;
+
             if (volume >= 1) {
               volume = 1;
+
               if (volumeIntervalRef.current) {
                 clearInterval(volumeIntervalRef.current);
                 volumeIntervalRef.current = null;
@@ -936,9 +984,7 @@ export function DriverHomeScreen() {
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      if (docsErr) {
-        throw docsErr;
-      }
+      if (docsErr) throw docsErr;
 
       const latestByType = new Map<string, any>();
 
@@ -953,9 +999,7 @@ export function DriverHomeScreen() {
       const documents = Array.from(latestByType.values());
 
       const docTypeSet = new Set(
-        documents.map((d: any) =>
-          String(d?.doc_type ?? d?.type ?? "").trim().toLowerCase()
-        )
+        documents.map((d: any) => String(d?.doc_type ?? d?.type ?? "").trim().toLowerCase())
       );
 
       const hasDoc = (docType: string) => docTypeSet.has(docType.toLowerCase());
@@ -984,6 +1028,7 @@ export function DriverHomeScreen() {
         if (!driver.plate_number) missing.push("Plaque");
 
         if (!driver.license_number) missing.push("Numéro permis");
+
         if (!driver.license_expiration && !driver.license_expiry) {
           missing.push("Expiration permis");
         }
@@ -1000,11 +1045,13 @@ export function DriverHomeScreen() {
           "Complète ton profil avant de passer en ligne :\n\n" +
             missing.map((m) => "• " + m).join("\n")
         );
+
         return;
       }
 
       if (next) {
         const ok = await ensureGpsPermission();
+
         if (!ok) {
           Alert.alert("GPS", "Active le GPS pour passer en ligne.");
           return;
@@ -1021,6 +1068,7 @@ export function DriverHomeScreen() {
 
         await startDbGpsTracking(userId);
         await fetchDriverOrders(true);
+
         return;
       }
 
@@ -1043,6 +1091,7 @@ export function DriverHomeScreen() {
       lastOfferIdRef.current = null;
     } catch (e: any) {
       console.log("toggleOnline error:", e);
+
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
         e?.message ?? "Impossible de changer le statut."
@@ -1059,7 +1108,10 @@ export function DriverHomeScreen() {
     t,
   ]);
 
-  const onlineLabel = isOnline ? t("driver.home.online", "EN LIGNE") : t("driver.home.offline", "HORS LIGNE");
+  const onlineLabel = isOnline
+    ? t("driver.home.online", "EN LIGNE")
+    : t("driver.home.offline", "HORS LIGNE");
+
   const onlineColorBg = isOnline ? "#22C55E" : "#EF4444";
   const onlineColorText = "#F9FAFB";
 
@@ -1124,9 +1176,19 @@ export function DriverHomeScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={{ flex: 1 }}>
-        <MapView style={{ flex: 1 }} region={region} onRegionChangeComplete={(r) => setRegion(r)}>
+        <Mapbox.MapView style={{ flex: 1 }} styleURL={Mapbox.StyleURL.Street}>
+          <Mapbox.Camera
+            zoomLevel={12}
+            centerCoordinate={[region.longitude, region.latitude]}
+            animationMode="flyTo"
+            animationDuration={1200}
+          />
+
           {hasLocation && (
-            <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }}>
+            <Mapbox.PointAnnotation
+              id="driver-location"
+              coordinate={[region.longitude, region.latitude]}
+            >
               <View
                 style={{
                   height: 28,
@@ -1141,31 +1203,53 @@ export function DriverHomeScreen() {
               >
                 <Text style={{ color: "white", fontSize: 11, fontWeight: "700" }}>D</Text>
               </View>
-            </Marker>
+            </Mapbox.PointAnnotation>
           )}
 
           {activeOffer && hasOfferPickup && (
-            <Marker
-              coordinate={{
-                latitude: activeOffer.pickup_lat as number,
-                longitude: offerPickupLng as number,
-              }}
-              title={t("driver.home.map.pickupTitle", "Pickup")}
-              description={activeOffer.pickup_address ?? undefined}
-            />
+            <Mapbox.PointAnnotation
+              id="pickup-location"
+              coordinate={[offerPickupLng as number, activeOffer.pickup_lat as number]}
+            >
+              <View
+                style={{
+                  backgroundColor: "#F97316",
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  borderWidth: 2,
+                  borderColor: "white",
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 11 }}>
+                  PICKUP
+                </Text>
+              </View>
+            </Mapbox.PointAnnotation>
           )}
 
           {activeOffer && hasOfferDropoff && (
-            <Marker
-              coordinate={{
-                latitude: activeOffer.dropoff_lat as number,
-                longitude: offerDropoffLng as number,
-              }}
-              title={t("driver.home.map.dropoffTitle", "Dropoff")}
-              description={activeOffer.dropoff_address ?? undefined}
-            />
+            <Mapbox.PointAnnotation
+              id="dropoff-location"
+              coordinate={[offerDropoffLng as number, activeOffer.dropoff_lat as number]}
+            >
+              <View
+                style={{
+                  backgroundColor: "#3B82F6",
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  borderWidth: 2,
+                  borderColor: "white",
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 11 }}>
+                  DROPOFF
+                </Text>
+              </View>
+            </Mapbox.PointAnnotation>
           )}
-        </MapView>
+        </Mapbox.MapView>
 
         {gpsLoading && (
           <View
@@ -1188,11 +1272,18 @@ export function DriverHomeScreen() {
         )}
 
         <View style={{ position: "absolute", top: 16, left: 16, right: 16 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <View>
               <Text style={{ fontSize: 20, fontWeight: "800", color: "white" }}>
                 {t("driver.home.header.title", "Tableau de bord chauffeur")}
               </Text>
+
               <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 2 }}>
                 {t("driver.home.header.subtitle", "La carte reste toujours active.")}
               </Text>
@@ -1227,9 +1318,11 @@ export function DriverHomeScreen() {
               <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
                 {t("driver.home.zone.title", "Activité dans ta zone")}
               </Text>
+
               <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "600" }}>
                 {zoneName}
               </Text>
+
               <Text style={{ color: zoneLabelAndColor.color, fontSize: 13, fontWeight: "700" }}>
                 {zoneLabelAndColor.label}
                 {zoneMultiplier > 1 ? ` · x${zoneMultiplier.toFixed(1)}` : ""}
@@ -1266,20 +1359,40 @@ export function DriverHomeScreen() {
                 paddingHorizontal: 10,
               }}
             >
-              <TouchableOpacity style={{ flex: 1, alignItems: "center", paddingVertical: 10 }} onPress={() => go("DriverHome")}>
-                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>{t("driver.home.tabs.home", "Accueil")}</Text>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={() => go("DriverHome")}
+              >
+                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
+                  {t("driver.home.tabs.home", "Accueil")}
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={{ flex: 1, alignItems: "center", paddingVertical: 10 }} onPress={() => go("DriverRevenue")}>
-                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>{t("driver.home.tabs.revenue", "Revenus")}</Text>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={() => go("DriverRevenue")}
+              >
+                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
+                  {t("driver.home.tabs.revenue", "Revenus")}
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={{ flex: 1, alignItems: "center", paddingVertical: 10 }} onPress={() => go("DriverInbox")}>
-                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>{t("driver.home.tabs.inbox", "Boîte")}</Text>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={() => go("DriverInbox")}
+              >
+                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
+                  {t("driver.home.tabs.inbox", "Boîte")}
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={{ flex: 1, alignItems: "center", paddingVertical: 10 }} onPress={() => go("DriverMenu")}>
-                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>{t("driver.home.tabs.menu", "Menu")}</Text>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={() => go("DriverMenu")}
+              >
+                <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
+                  {t("driver.home.tabs.menu", "Menu")}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1293,7 +1406,10 @@ export function DriverHomeScreen() {
                   <Text style={{ color: "#E5E7EB", fontSize: 18, fontWeight: "800", marginBottom: 4 }}>
                     {t("driver.home.offer.title", "Nouvelle course disponible")}
                   </Text>
-                  <Text style={{ color: "#F97316", fontSize: 28, fontWeight: "800" }}>{countdown}s</Text>
+
+                  <Text style={{ color: "#F97316", fontSize: 28, fontWeight: "800" }}>
+                    {countdown}s
+                  </Text>
                 </View>
 
                 <View
@@ -1313,26 +1429,47 @@ export function DriverHomeScreen() {
                     <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 2 }}>
                       {t("driver.home.offer.pickup", "Pickup :")}
                     </Text>
-                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "500" }}>{activeOffer.pickup_address ?? "—"}</Text>
+
+                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "500" }}>
+                      {activeOffer.pickup_address ?? "—"}
+                    </Text>
                   </View>
 
                   <View style={{ marginBottom: 8 }}>
                     <Text style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 2 }}>
                       {t("driver.home.offer.dropoff", "Dropoff :")}
                     </Text>
-                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "500" }}>{activeOffer.dropoff_address ?? "—"}</Text>
+
+                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "500" }}>
+                      {activeOffer.dropoff_address ?? "—"}
+                    </Text>
                   </View>
 
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4, marginBottom: 4 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginTop: 4,
+                      marginBottom: 4,
+                    }}
+                  >
                     <View>
-                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }}>{t("driver.home.offer.distance", "Distance estimée")}</Text>
+                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }}>
+                        {t("driver.home.offer.distance", "Distance estimée")}
+                      </Text>
+
                       <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "700" }}>
-                        {activeOffer.distance_miles != null ? `${activeOffer.distance_miles.toFixed(2)} mi` : "—"}
+                        {activeOffer.distance_miles != null
+                          ? `${activeOffer.distance_miles.toFixed(2)} mi`
+                          : "—"}
                       </Text>
                     </View>
 
                     <View style={{ alignItems: "flex-end" }}>
-                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }}>{t("driver.home.offer.earnings", "Gain estimé")}</Text>
+                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }}>
+                        {t("driver.home.offer.earnings", "Gain estimé")}
+                      </Text>
+
                       <Text style={{ color: "#4ADE80", fontSize: 15, fontWeight: "800" }}>
                         {(() => {
                           const gain = getBestDriverAmount(activeOffer);
@@ -1343,7 +1480,8 @@ export function DriverHomeScreen() {
                   </View>
 
                   <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 2 }}>
-                    {t("driver.home.offer.createdAt", "Créée :")} {formatDate(activeOffer.created_at)}
+                    {t("driver.home.offer.createdAt", "Créée :")}{" "}
+                    {formatDate(activeOffer.created_at)}
                   </Text>
                 </View>
 
@@ -1360,7 +1498,9 @@ export function DriverHomeScreen() {
                       backgroundColor: "#020617",
                     }}
                   >
-                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "600" }}>{t("driver.home.offer.decline", "Refuser")}</Text>
+                    <Text style={{ color: "#E5E7EB", fontSize: 14, fontWeight: "600" }}>
+                      {t("driver.home.offer.decline", "Refuser")}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -1376,7 +1516,9 @@ export function DriverHomeScreen() {
                     }}
                   >
                     <Text style={{ color: "#022C22", fontSize: 14, fontWeight: "700" }}>
-                      {acceptingId === activeOffer.id ? t("driver.home.offer.accepting", "Acceptation...") : t("driver.home.offer.accept", "Accepter")}
+                      {acceptingId === activeOffer.id
+                        ? t("driver.home.offer.accepting", "Acceptation...")
+                        : t("driver.home.offer.accept", "Accepter")}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1449,13 +1591,24 @@ export function DriverHomeScreen() {
                             borderColor: "rgba(255,140,0,0.5)",
                           }}
                         >
-                          <Image source={require("../../assets/brand/mmd-logo.png")} style={{ width: "100%", height: "100%" }} resizeMode="contain" />
+                          <Image
+                            source={require("../../assets/brand/mmd-logo.png")}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="contain"
+                          />
                         </View>
                       </Animated.View>
 
                       <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3 }}>
-                          <Text style={{ color: "#F8FAFC", fontSize: 15, fontWeight: "900", letterSpacing: 0.2 }}>
+                          <Text
+                            style={{
+                              color: "#F8FAFC",
+                              fontSize: 15,
+                              fontWeight: "900",
+                              letterSpacing: 0.2,
+                            }}
+                          >
                             {t("driver.home.searching.title", "Premium detection mode")}
                           </Text>
 
@@ -1470,25 +1623,69 @@ export function DriverHomeScreen() {
                               borderColor: "rgba(34,197,94,0.28)",
                             }}
                           >
-                            <Text style={{ color: "#4ADE80", fontSize: 10, fontWeight: "900", letterSpacing: 0.4 }}>LIVE</Text>
+                            <Text
+                              style={{
+                                color: "#4ADE80",
+                                fontSize: 10,
+                                fontWeight: "900",
+                                letterSpacing: 0.4,
+                              }}
+                            >
+                              LIVE
+                            </Text>
                           </View>
                         </View>
 
-                        <Text style={{ color: "#93C5FD", fontSize: 12.5, fontWeight: "600" }}>{searchMessages[searchMessageIndex]}</Text>
+                        <Text style={{ color: "#93C5FD", fontSize: 12.5, fontWeight: "600" }}>
+                          {searchMessages[searchMessageIndex]}
+                        </Text>
                       </View>
                     </View>
 
                     <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 12, gap: 8 }}>
-                      <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(59,130,246,0.12)", borderWidth: 1, borderColor: "rgba(59,130,246,0.24)" }}>
-                        <Text style={{ color: "#BFDBFE", fontSize: 11, fontWeight: "700" }}>{t("driver.home.searching.chip1", "Nearby trips")}</Text>
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(59,130,246,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(59,130,246,0.24)",
+                        }}
+                      >
+                        <Text style={{ color: "#BFDBFE", fontSize: 11, fontWeight: "700" }}>
+                          {t("driver.home.searching.chip1", "Nearby trips")}
+                        </Text>
                       </View>
 
-                      <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(34,197,94,0.12)", borderWidth: 1, borderColor: "rgba(34,197,94,0.24)" }}>
-                        <Text style={{ color: "#86EFAC", fontSize: 11, fontWeight: "700" }}>{t("driver.home.searching.chip2", "Optimized earnings")}</Text>
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(34,197,94,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(34,197,94,0.24)",
+                        }}
+                      >
+                        <Text style={{ color: "#86EFAC", fontSize: 11, fontWeight: "700" }}>
+                          {t("driver.home.searching.chip2", "Optimized earnings")}
+                        </Text>
                       </View>
 
-                      <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(249,115,22,0.12)", borderWidth: 1, borderColor: "rgba(249,115,22,0.24)" }}>
-                        <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "700" }}>{t("driver.home.searching.chip3", "Priority zone")}</Text>
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(249,115,22,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(249,115,22,0.24)",
+                        }}
+                      >
+                        <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "700" }}>
+                          {t("driver.home.searching.chip3", "Priority zone")}
+                        </Text>
                       </View>
                     </View>
                   </View>
@@ -1500,7 +1697,10 @@ export function DriverHomeScreen() {
                       top: 0,
                       bottom: 0,
                       width: 140,
-                      transform: [{ translateX: searchShimmerTranslate }, { skewX: "-18deg" }],
+                      transform: [
+                        { translateX: searchShimmerTranslate },
+                        { skewX: "-18deg" },
+                      ],
                       backgroundColor: "rgba(255,255,255,0.08)",
                     }}
                   />
@@ -1517,36 +1717,80 @@ export function DriverHomeScreen() {
                   }}
                 >
                   <View style={{ alignItems: "center", marginBottom: 8 }}>
-                    <View style={{ width: 40, height: 4, borderRadius: 999, backgroundColor: "#4B5563" }} />
+                    <View
+                      style={{
+                        width: 40,
+                        height: 4,
+                        borderRadius: 999,
+                        backgroundColor: "#4B5563",
+                      }}
+                    />
                   </View>
 
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
                     <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "600" }}>
                       {t("driver.home.myOrders.title", "My active deliveries")}
                     </Text>
 
                     <TouchableOpacity onPress={() => void fetchDriverOrders(true)}>
-                      <Text style={{ color: "#3B82F6", fontSize: 12, fontWeight: "500" }}>{t("shared.common.refresh", "Refresh")}</Text>
+                      <Text style={{ color: "#3B82F6", fontSize: 12, fontWeight: "500" }}>
+                        {t("shared.common.refresh", "Refresh")}
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
                   {loading && (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 6,
+                      }}
+                    >
                       <ActivityIndicator color="#ffffff" />
-                      <Text style={{ color: "#9CA3AF", fontSize: 12 }}>{t("driver.home.myOrders.loading", "Loading your deliveries…")}</Text>
+
+                      <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
+                        {t("driver.home.myOrders.loading", "Loading your deliveries…")}
+                      </Text>
                     </View>
                   )}
 
-                  {error && <Text style={{ color: "#F97373", fontSize: 12, marginBottom: 6 }}>{error}</Text>}
+                  {error && (
+                    <Text style={{ color: "#F97373", fontSize: 12, marginBottom: 6 }}>
+                      {error}
+                    </Text>
+                  )}
 
                   <ScrollView style={{ maxHeight: 260 }} contentContainerStyle={{ paddingBottom: 8 }}>
                     {myOrders.length === 0 && !loading ? (
                       <View style={{ paddingVertical: 12, alignItems: "center" }}>
                         <Text style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center" }}>
-                          {t("driver.home.myOrders.emptyTitle", "You don’t have any active deliveries yet.")}
+                          {t(
+                            "driver.home.myOrders.emptyTitle",
+                            "You don’t have any active deliveries yet."
+                          )}
                         </Text>
-                        <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 2, textAlign: "center" }}>
-                          {t("driver.home.myOrders.emptySubtitle", "As soon as a trip is accepted, it will appear here.")}
+
+                        <Text
+                          style={{
+                            color: "#6B7280",
+                            fontSize: 11,
+                            marginTop: 2,
+                            textAlign: "center",
+                          }}
+                        >
+                          {t(
+                            "driver.home.myOrders.emptySubtitle",
+                            "As soon as a trip is accepted, it will appear here."
+                          )}
                         </Text>
                       </View>
                     ) : (
@@ -1563,11 +1807,25 @@ export function DriverHomeScreen() {
                             marginBottom: 8,
                           }}
                         >
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
-                            <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "600" }}>#{order.id.slice(0, 8)}</Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              marginBottom: 3,
+                            }}
+                          >
+                            <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "600" }}>
+                              #{order.id.slice(0, 8)}
+                            </Text>
+
                             <Text
                               style={{
-                                color: order.status === "delivered" ? "#22C55E" : order.status === "dispatched" ? "#FBBF24" : "#93C5FD",
+                                color:
+                                  order.status === "delivered"
+                                    ? "#22C55E"
+                                    : order.status === "dispatched"
+                                      ? "#FBBF24"
+                                      : "#93C5FD",
                                 fontSize: 11,
                                 fontWeight: "600",
                               }}
@@ -1576,31 +1834,64 @@ export function DriverHomeScreen() {
                             </Text>
                           </View>
 
-                          <Text style={{ color: "#93C5FD", fontSize: 11, marginBottom: 2 }}>{formatKind(order.kind, order.restaurant_name)}</Text>
+                          <Text style={{ color: "#93C5FD", fontSize: 11, marginBottom: 2 }}>
+                            {formatKind(order.kind, order.restaurant_name)}
+                          </Text>
 
-                          <Text style={{ color: "#6B7280", fontSize: 10, marginBottom: 4 }}>{formatDate(order.created_at)}</Text>
+                          <Text style={{ color: "#6B7280", fontSize: 10, marginBottom: 4 }}>
+                            {formatDate(order.created_at)}
+                          </Text>
 
                           <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }}>
-                            {t("driver.home.labels.pickup", "Pickup:")} <Text style={{ color: "#E5E7EB", fontWeight: "500" }} numberOfLines={1}>{order.pickup_address ?? "—"}</Text>
-                          </Text>
-                          <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 4 }}>
-                            {t("driver.home.labels.dropoff", "Dropoff:")} <Text style={{ color: "#E5E7EB", fontWeight: "500" }} numberOfLines={1}>{order.dropoff_address ?? "—"}</Text>
+                            {t("driver.home.labels.pickup", "Pickup:")}{" "}
+                            <Text style={{ color: "#E5E7EB", fontWeight: "500" }}>
+                              {order.pickup_address ?? "—"}
+                            </Text>
                           </Text>
 
-                          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+                          <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 4 }}>
+                            {t("driver.home.labels.dropoff", "Dropoff:")}{" "}
+                            <Text style={{ color: "#E5E7EB", fontWeight: "500" }}>
+                              {order.dropoff_address ?? "—"}
+                            </Text>
+                          </Text>
+
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              marginTop: 2,
+                            }}
+                          >
                             <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
-                              {t("driver.home.labels.distance", "Distance:")} <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>{order.distance_miles != null ? `${order.distance_miles.toFixed(2)} mi` : "—"}</Text>
+                              {t("driver.home.labels.distance", "Distance:")}{" "}
+                              <Text style={{ color: "#E5E7EB", fontWeight: "600" }}>
+                                {order.distance_miles != null
+                                  ? `${order.distance_miles.toFixed(2)} mi`
+                                  : "—"}
+                              </Text>
                             </Text>
 
                             <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
-                              {t("driver.home.labels.driverEarnings", "Driver earnings:")} <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>{(() => {
-                                const amount = getBestDriverAmount(order);
-                                return amount != null ? `${amount.toFixed(2)} USD` : "—";
-                              })()}</Text>
+                              {t("driver.home.labels.driverEarnings", "Driver earnings:")}{" "}
+                              <Text style={{ color: "#E5E7EB", fontWeight: "700" }}>
+                                {(() => {
+                                  const amount = getBestDriverAmount(order);
+                                  return amount != null ? `${amount.toFixed(2)} USD` : "—";
+                                })()}
+                              </Text>
                             </Text>
                           </View>
 
-                          <Text style={{ marginTop: 4, color: "#3B82F6", fontSize: 11, fontWeight: "600", textAlign: "right" }}>
+                          <Text
+                            style={{
+                              marginTop: 4,
+                              color: "#3B82F6",
+                              fontSize: 11,
+                              fontWeight: "600",
+                              textAlign: "right",
+                            }}
+                          >
                             {t("driver.home.myOrders.viewDetails", "View details →")}
                           </Text>
                         </TouchableOpacity>

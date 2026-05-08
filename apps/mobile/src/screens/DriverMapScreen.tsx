@@ -13,8 +13,7 @@ import {
   Dimensions,
   ScrollView,
 } from "react-native";
-import MapView, { Marker, Polygon } from "react-native-maps";
-import type { Region } from "react-native-maps";
+import Mapbox from "@rnmapbox/maps";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -30,7 +29,16 @@ import {
 } from "../lib/driverStatus";
 import { supabase } from "../lib/supabase";
 
+Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
+
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverMap">;
+
+type MapRegion = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
 
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SHEET_EXPANDED_TOP = SCREEN_HEIGHT - 500;
@@ -208,17 +216,6 @@ const DRIVER_ZONES: DriverZone[] = [
   },
 ];
 
-const DARK_MAP_STYLE = [
-  { elementType: "geometry", stylers: [{ color: "#06111F" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#9CA3AF" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#07121F" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#0F172A" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#1E293B" }] },
-  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#020617" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#020617" }] },
-  { featureType: "transit", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-];
-
 function getZoneColors(activity: ZoneActivity) {
   switch (activity) {
     case "very_busy":
@@ -257,12 +254,14 @@ function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number):
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -277,11 +276,43 @@ function formatMiles(value: number | null | undefined) {
   return `${value.toFixed(2)} mi`;
 }
 
+function regionToZoom(region: MapRegion): number {
+  const delta = Math.max(region.latitudeDelta, region.longitudeDelta);
+  const zoom = Math.log2(360 / Math.max(delta, 0.0001));
+  return Math.max(3, Math.min(18, zoom));
+}
+
+function zonePolygonToFeature(zone: DriverZone) {
+  const ring = zone.polygon.map((point) => [point.longitude, point.latitude]);
+
+  if (ring.length > 0) {
+    const first = ring[0];
+    const last = ring[ring.length - 1];
+
+    if (first[0] !== last[0] || first[1] !== last[1]) {
+      ring.push(first);
+    }
+  }
+
+  return {
+    type: "Feature" as const,
+    properties: {
+      id: zone.id,
+      name: zone.name,
+      activity: zone.activity,
+    },
+    geometry: {
+      type: "Polygon" as const,
+      coordinates: [ring],
+    },
+  };
+}
+
 export default function DriverMapScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
 
-  const [region, setRegion] = useState<Region>({
+  const [region, setRegion] = useState<MapRegion>({
     latitude: 40.73061,
     longitude: -73.935242,
     latitudeDelta: 0.06,
@@ -311,7 +342,7 @@ export default function DriverMapScreen() {
 
   const [isNightMode, setIsNightMode] = useState(false);
 
-  const mapRef = useRef<MapView | null>(null);
+  const cameraRef = useRef<Mapbox.Camera | null>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
 
   const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
@@ -321,6 +352,8 @@ export default function DriverMapScreen() {
   const goHalo = useRef(new Animated.Value(0.22)).current;
   const incomingTranslateY = useRef(new Animated.Value(-18)).current;
   const incomingOpacity = useRef(new Animated.Value(0)).current;
+
+  const mapStyleURL = isNightMode ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Street;
 
   const animateSheet = useCallback(
     (target: "collapsed" | "expanded") => {
@@ -370,6 +403,7 @@ export default function DriverMapScreen() {
 
   const nearbyRestaurantCount = useMemo(() => {
     if (!hasLocation) return 0;
+
     return restaurants.filter((r) => {
       const dist = distanceMeters(region.latitude, region.longitude, r.latitude, r.longitude);
       return dist < 2500;
@@ -436,6 +470,7 @@ export default function DriverMapScreen() {
       setErrorMsg(null);
 
       const { status } = await Location.requestForegroundPermissionsAsync();
+
       if (status !== "granted") {
         setErrorMsg(t("driver.map.permissionDenied"));
         setLoading(false);
@@ -451,6 +486,7 @@ export default function DriverMapScreen() {
         latitudeDelta: 0.04,
         longitudeDelta: 0.04,
       }));
+
       setHasLocation(true);
       setLoading(false);
 
@@ -463,11 +499,13 @@ export default function DriverMapScreen() {
         },
         (pos) => {
           const { latitude, longitude } = pos.coords;
+
           setRegion((prev) => ({
             ...prev,
             latitude,
             longitude,
           }));
+
           setHasLocation(true);
         }
       );
@@ -576,6 +614,7 @@ export default function DriverMapScreen() {
     if (error) throw error;
 
     const uid = data.session?.user?.id;
+
     if (!uid) {
       throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
     }
@@ -588,90 +627,89 @@ export default function DriverMapScreen() {
     return status === "granted";
   }
 
-async function validateDriverProfileForOnline(userId: string): Promise<string[]> {
-  const missing: string[] = [];
+  async function validateDriverProfileForOnline(userId: string): Promise<string[]> {
+    const missing: string[] = [];
 
-  const { data: driver, error: driverErr } = await supabase
-    .from("driver_profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+    const { data: driver, error: driverErr } = await supabase
+      .from("driver_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
 
-  if (driverErr || !driver) {
-    return ["Profil chauffeur introuvable"];
-  }
-
-  const { data, error } = await supabase
-    .from("driver_documents")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.log("driver_documents error", error);
-  }
-
-  const latestByType = new Map<string, any>();
-
-  for (const row of data ?? []) {
-    const key = String(row.doc_type);
-    if (!latestByType.has(key)) {
-      latestByType.set(key, row);
+    if (driverErr || !driver) {
+      return ["Profil chauffeur introuvable"];
     }
+
+    const { data, error } = await supabase
+      .from("driver_documents")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.log("driver_documents error", error);
+    }
+
+    const latestByType = new Map<string, any>();
+
+    for (const row of data ?? []) {
+      const key = String(row.doc_type);
+
+      if (!latestByType.has(key)) {
+        latestByType.set(key, row);
+      }
+    }
+
+    const documents = Array.from(latestByType.values());
+
+    const docTypeSet = new Set(
+      documents.map((d: any) =>
+        String(d?.doc_type ?? "")
+          .trim()
+          .toLowerCase()
+      )
+    );
+
+    const hasDoc = (docType: string) => docTypeSet.has(docType.toLowerCase());
+
+    console.log("DriverMap FIX docs check", {
+      userId,
+      docsCount: documents.length,
+      docTypes: documents.map((d: any) => d.doc_type),
+    });
+
+    if (!driver.full_name) missing.push("Nom complet");
+    if (!driver.phone) missing.push("Téléphone");
+    if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
+    if (!driver.address) missing.push("Adresse");
+    if (!driver.city) missing.push("Ville");
+    if (!driver.state) missing.push("État");
+    if (!driver.zip_code) missing.push("ZIP code");
+    if (!driver.date_of_birth) missing.push("Date de naissance");
+
+    if (!hasDoc("profile_photo")) missing.push("Photo personnelle");
+    if (!hasDoc("id_card_front")) missing.push("Pièce identité recto");
+    if (!hasDoc("id_card_back")) missing.push("Pièce identité verso");
+
+    const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
+
+    if (isVehicle) {
+      if (!driver.vehicle_brand) missing.push("Marque véhicule");
+      if (!driver.vehicle_model) missing.push("Modèle véhicule");
+      if (!driver.vehicle_year) missing.push("Année véhicule");
+      if (!driver.vehicle_color) missing.push("Couleur véhicule");
+      if (!driver.plate_number) missing.push("Plaque");
+      if (!driver.license_number) missing.push("Numéro permis");
+      if (!driver.license_expiry) missing.push("Expiration permis");
+
+      if (!hasDoc("license_front")) missing.push("Permis recto");
+      if (!hasDoc("license_back")) missing.push("Permis verso");
+      if (!hasDoc("insurance")) missing.push("Assurance");
+      if (!hasDoc("registration")) missing.push("Registration");
+    }
+
+    return missing;
   }
-
-  const documents = Array.from(latestByType.values());
-
-  const docTypeSet = new Set(
-    documents.map((d: any) =>
-      String(d?.doc_type ?? "")
-        .trim()
-        .toLowerCase()
-    )
-  );
-
-  const hasDoc = (docType: string) =>
-    docTypeSet.has(docType.toLowerCase());
-
-  console.log("DriverMap FIX docs check", {
-    userId,
-    docsCount: documents.length,
-    docTypes: documents.map((d: any) => d.doc_type),
-  });
-
-  if (!driver.full_name) missing.push("Nom complet");
-  if (!driver.phone) missing.push("Téléphone");
-  if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
-  if (!driver.address) missing.push("Adresse");
-  if (!driver.city) missing.push("Ville");
-  if (!driver.state) missing.push("État");
-  if (!driver.zip_code) missing.push("ZIP code");
-  if (!driver.date_of_birth) missing.push("Date de naissance");
-
-  if (!hasDoc("profile_photo")) missing.push("Photo personnelle");
-  if (!hasDoc("id_card_front")) missing.push("Pièce identité recto");
-  if (!hasDoc("id_card_back")) missing.push("Pièce identité verso");
-
-  const isVehicle =
-    driver.transport_mode === "car" || driver.transport_mode === "moto";
-
-  if (isVehicle) {
-    if (!driver.vehicle_brand) missing.push("Marque véhicule");
-    if (!driver.vehicle_model) missing.push("Modèle véhicule");
-    if (!driver.vehicle_year) missing.push("Année véhicule");
-    if (!driver.vehicle_color) missing.push("Couleur véhicule");
-    if (!driver.plate_number) missing.push("Plaque");
-    if (!driver.license_number) missing.push("Numéro permis");
-    if (!driver.license_expiry) missing.push("Expiration permis");
-
-    if (!hasDoc("license_front")) missing.push("Permis recto");
-    if (!hasDoc("license_back")) missing.push("Permis verso");
-    if (!hasDoc("insurance")) missing.push("Assurance");
-    if (!hasDoc("registration")) missing.push("Registration");
-  }
-
-  return missing;
-}
 
   useEffect(() => {
     let cancelled = false;
@@ -690,10 +728,10 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
           console.log("Erreur chargement statut DB:", error);
         }
 
-        const dbOnline =
-          typeof driver?.is_online === "boolean" ? !!driver.is_online : null;
+        const dbOnline = typeof driver?.is_online === "boolean" ? !!driver.is_online : null;
 
         const localOnline = await getDriverOnlineStatus();
+
         if (cancelled) return;
 
         const resolvedOnline = dbOnline !== null ? dbOnline : !!localOnline;
@@ -725,6 +763,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
     async function loadDriver() {
       try {
         const { data, error } = await supabase.auth.getUser();
+
         if (error || !data?.user) {
           console.log("🚫 Impossible de récupérer l'utilisateur (driver)", error);
           return;
@@ -818,7 +857,11 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
 
         if (error) {
           console.log("Erreur chargement restaurants:", error);
-          if (!cancelled) setRestaurants([]);
+
+          if (!cancelled) {
+            setRestaurants([]);
+          }
+
           return;
         }
 
@@ -836,9 +879,14 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
         setRestaurants(mapped);
       } catch (e) {
         console.log("Exception loadRestaurants:", e);
-        if (!cancelled) setRestaurants([]);
+
+        if (!cancelled) {
+          setRestaurants([]);
+        }
       } finally {
-        if (!cancelled) setRestaurantsLoading(false);
+        if (!cancelled) {
+          setRestaurantsLoading(false);
+        }
       }
     }
 
@@ -860,6 +908,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
 
     for (const zone of DRIVER_ZONES) {
       const d = distanceMeters(region.latitude, region.longitude, zone.center.lat, zone.center.lng);
+
       if (d < zone.radiusMeters && d < bestDist) {
         bestDist = d;
         bestZone = zone;
@@ -946,10 +995,12 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
               .map((m) => `• ${m}`)
               .join("\n")}`
           );
+
           return;
         }
 
         const ok = await ensureGpsPermission();
+
         if (!ok) {
           Alert.alert("GPS", "Active le GPS pour passer en ligne.");
           return;
@@ -983,6 +1034,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
       }
     } catch (e: any) {
       console.log("Erreur toggle online:", e);
+
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
         e?.message ?? "Impossible de changer le statut."
@@ -993,17 +1045,14 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
   }, [isOnline, isTogglingOnline, t]);
 
   function centerOnDriver() {
-    if (!hasLocation || !mapRef.current) return;
+    if (!hasLocation) return;
 
-    mapRef.current.animateToRegion(
-      {
-        latitude: region.latitude,
-        longitude: region.longitude,
-        latitudeDelta: 0.04,
-        longitudeDelta: 0.04,
-      },
-      400
-    );
+    cameraRef.current?.setCamera({
+      centerCoordinate: [region.longitude, region.latitude],
+      zoomLevel: 14,
+      animationDuration: 450,
+      animationMode: "flyTo",
+    });
   }
 
   function handleAcceptIncomingOrder() {
@@ -1047,7 +1096,9 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";
+
     const d = new Date(iso);
+
     return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -1081,7 +1132,9 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
         ? t("driver.map.kind.foodWithName", { name: restaurantName })
         : t("driver.map.kind.food");
     }
+
     if (kind === "pickup_dropoff") return t("driver.map.kind.pickup_dropoff");
+
     return kind;
   }
 
@@ -1279,6 +1332,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
           <Text style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "800" }}>
             {t("driver.map.headerTitle")}
           </Text>
+
           <Text style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}>
             Live driver control center
           </Text>
@@ -1336,9 +1390,11 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
               }}
             >
               <ActivityIndicator size="large" color="#60A5FA" />
+
               <Text style={{ color: "#E2E8F0", fontSize: 13, marginTop: 10, fontWeight: "700" }}>
                 {t("driver.map.locating")}
               </Text>
+
               <Text style={{ color: "#94A3B8", fontSize: 11, marginTop: 4 }}>
                 Positionnement sécurisé en cours...
               </Text>
@@ -1346,15 +1402,20 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
           </View>
         ) : (
           <>
-            <MapView
-              ref={mapRef}
-              style={{ flex: 1 }}
-              region={region}
-              onRegionChangeComplete={(r) => setRegion(r)}
-              customMapStyle={isNightMode ? DARK_MAP_STYLE : []}
-            >
+            <Mapbox.MapView style={{ flex: 1 }} styleURL={mapStyleURL}>
+              <Mapbox.Camera
+                ref={cameraRef}
+                zoomLevel={regionToZoom(region)}
+                centerCoordinate={[region.longitude, region.latitude]}
+                animationMode="flyTo"
+                animationDuration={650}
+              />
+
               {hasLocation && (
-                <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }}>
+                <Mapbox.PointAnnotation
+                  id="driver-location"
+                  coordinate={[region.longitude, region.latitude]}
+                >
                   <View
                     style={{
                       width: 34,
@@ -1373,7 +1434,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                   >
                     <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>D</Text>
                   </View>
-                </Marker>
+                </Mapbox.PointAnnotation>
               )}
 
               {DRIVER_ZONES.map((zone) => {
@@ -1383,13 +1444,31 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
 
                 return (
                   <React.Fragment key={zone.id}>
-                    <Polygon
-                      coordinates={zone.polygon}
-                      strokeColor={strokeColor}
-                      strokeWidth={2}
-                      fillColor={fillColor}
-                    />
-                    <Marker coordinate={{ latitude: zone.center.lat, longitude: zone.center.lng }}>
+                    <Mapbox.ShapeSource
+                      id={`zone-source-${zone.id}`}
+                      shape={zonePolygonToFeature(zone)}
+                    >
+                      <Mapbox.FillLayer
+                        id={`zone-fill-${zone.id}`}
+                        style={{
+                          fillColor,
+                          fillOpacity: 1,
+                        }}
+                      />
+
+                      <Mapbox.LineLayer
+                        id={`zone-line-${zone.id}`}
+                        style={{
+                          lineColor: strokeColor,
+                          lineWidth: 2,
+                        }}
+                      />
+                    </Mapbox.ShapeSource>
+
+                    <Mapbox.PointAnnotation
+                      id={`zone-label-${zone.id}`}
+                      coordinate={[zone.center.lng, zone.center.lat]}
+                    >
                       <View
                         style={{
                           paddingHorizontal: 10,
@@ -1407,11 +1486,12 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                         <Text style={{ color: "#F8FAFC", fontSize: 11, fontWeight: "700" }}>
                           {zone.name}
                         </Text>
+
                         <Text style={{ color: labelColor, fontSize: 10, marginTop: 2 }}>
                           {getActivityLabel(zone.activity)}
                         </Text>
                       </View>
-                    </Marker>
+                    </Mapbox.PointAnnotation>
                   </React.Fragment>
                 );
               })}
@@ -1436,9 +1516,10 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     : null;
 
                 return (
-                  <Marker
+                  <Mapbox.PointAnnotation
                     key={resto.id}
-                    coordinate={{ latitude: resto.latitude, longitude: resto.longitude }}
+                    id={`restaurant-${resto.id}`}
+                    coordinate={[resto.longitude, resto.latitude]}
                   >
                     <View
                       style={{
@@ -1500,10 +1581,10 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                         </View>
                       )}
                     </View>
-                  </Marker>
+                  </Mapbox.PointAnnotation>
                 );
               })}
-            </MapView>
+            </Mapbox.MapView>
 
             <View
               pointerEvents="none"
@@ -1537,9 +1618,8 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     borderColor: "rgba(71,85,105,0.8)",
                   }}
                 >
-                  <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
-                    ZONE
-                  </Text>
+                  <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>ZONE</Text>
+
                   <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
                     {currentZone?.name ?? "Live area"}
                   </Text>
@@ -1558,6 +1638,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                   <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
                     OPPORTUNITY
                   </Text>
+
                   <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
                     {zoneOpportunityLabel} · {zoneOpportunityScore}%
                   </Text>
@@ -1574,9 +1655,8 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                       borderColor: "rgba(251,191,36,0.28)",
                     }}
                   >
-                    <Text style={{ color: "#FCD34D", fontSize: 10, fontWeight: "700" }}>
-                      BOOST
-                    </Text>
+                    <Text style={{ color: "#FCD34D", fontSize: 10, fontWeight: "700" }}>BOOST</Text>
+
                     <Text style={{ color: "#FEF3C7", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
                       {boostLabelGlobal}
                     </Text>
@@ -1593,9 +1673,8 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     borderColor: "rgba(71,85,105,0.8)",
                   }}
                 >
-                  <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
-                    NEARBY
-                  </Text>
+                  <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>NEARBY</Text>
+
                   <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
                     {nearbyRestaurantCount} restos
                   </Text>
@@ -1641,6 +1720,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                       <Text style={{ color: "#F8FAFC", fontSize: 14, fontWeight: "900" }}>
                         {t("driver.map.incoming.title")}
                       </Text>
+
                       <Text style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}>
                         Nouvelle opportunité premium
                       </Text>
@@ -1670,10 +1750,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     {t("driver.map.incoming.pickup")} {incomingOrder.pickupAddress}
                   </Text>
 
-                  <Text
-                    style={{ color: "#9CA3AF", fontSize: 11, marginTop: 2 }}
-                    numberOfLines={1}
-                  >
+                  <Text style={{ color: "#9CA3AF", fontSize: 11, marginTop: 2 }} numberOfLines={1}>
                     {t("driver.map.incoming.dropoff")} {incomingOrder.dropoffAddress}
                   </Text>
 
@@ -1816,6 +1893,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     transform: [{ scale: goPulse }],
                   }}
                 />
+
                 <Animated.View
                   style={{
                     transform: [{ scale: goPulse }],
@@ -1855,6 +1933,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                         >
                           GO
                         </Text>
+
                         <Text
                           style={{
                             color: "#DBEAFE",
@@ -1888,7 +1967,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     borderWidth: 1,
                     borderColor: "rgba(59,130,246,0.85)",
                     shadowColor: "#000",
-                    shadowOpacity: 0.30,
+                    shadowOpacity: 0.3,
                     shadowRadius: 10,
                     shadowOffset: { width: 0, height: 4 },
                   }}
@@ -1954,6 +2033,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800" }}>
                       {t("driver.map.statusTitle")}
                     </Text>
+
                     <Text style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}>
                       Command center
                     </Text>
@@ -2030,9 +2110,11 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
                       OPPORTUNITY SCORE
                     </Text>
+
                     <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "900", marginTop: 4 }}>
                       {zoneOpportunityScore}%
                     </Text>
+
                     <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "700", marginTop: 2 }}>
                       {zoneOpportunityLabel}
                     </Text>
@@ -2051,9 +2133,11 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                     <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
                       ACTIVE AREA
                     </Text>
+
                     <Text style={{ color: "#F8FAFC", fontSize: 16, fontWeight: "900", marginTop: 4 }}>
                       {currentZone?.name ?? "Live area"}
                     </Text>
+
                     <Text
                       style={{
                         color: currentZone
@@ -2064,9 +2148,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                         marginTop: 2,
                       }}
                     >
-                      {currentZone
-                        ? getActivityLabel(currentZone.activity)
-                        : t("driver.map.zoneUnknown")}
+                      {currentZone ? getActivityLabel(currentZone.activity) : t("driver.map.zoneUnknown")}
                     </Text>
                   </View>
                 </View>
@@ -2103,9 +2185,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                           marginTop: 3,
                         }}
                       >
-                        {currentZone
-                          ? getActivityLabel(currentZone.activity)
-                          : t("driver.map.zoneUnknown")}
+                        {currentZone ? getActivityLabel(currentZone.activity) : t("driver.map.zoneUnknown")}
                       </Text>
 
                       {boostLabelGlobal && (
@@ -2145,6 +2225,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                       >
                         {t("driver.map.nextUpdateTitle")}
                       </Text>
+
                       <Text
                         style={{
                           color: "#F8FAFC",
@@ -2235,6 +2316,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                       <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800" }}>
                         {t("driver.map.myOrders.title")}
                       </Text>
+
                       <Text style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}>
                         Historique et commandes assignées
                       </Text>
@@ -2271,6 +2353,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                       }}
                     >
                       <ActivityIndicator size="small" color="#FFFFFF" />
+
                       <Text style={{ color: "#9CA3AF", fontSize: 11, marginLeft: 8 }}>
                         {t("driver.map.myOrders.loading")}
                       </Text>
@@ -2312,6 +2395,7 @@ async function validateDriverProfileForOnline(userId: string): Promise<string[]>
                         <Text style={{ color: "#CBD5E1", fontSize: 12, fontWeight: "700" }}>
                           {t("driver.map.myOrders.emptyTitle")}
                         </Text>
+
                         <Text style={{ color: "#6B7280", fontSize: 10, marginTop: 4 }}>
                           {t("driver.map.myOrders.emptySubtitle")}
                         </Text>

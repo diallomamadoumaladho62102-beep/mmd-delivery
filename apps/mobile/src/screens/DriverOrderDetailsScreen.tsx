@@ -14,7 +14,7 @@ import {
   Linking,
   Image,
 } from "react-native";
-import MapView, { Marker, Polyline, Region } from "react-native-maps";
+import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
@@ -28,6 +28,8 @@ import {
   startDriverLocationTracking,
   stopDriverLocationTracking,
 } from "../lib/driverLocationTracker";
+
+Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -73,6 +75,70 @@ type CancelOrderResponse = {
 };
 
 const PROOF_BUCKET = "delivery-proofs";
+
+type MapRegion = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+type MapCoordinate = {
+  latitude: number;
+  longitude: number;
+};
+
+function coordinateToMapbox(coord: MapCoordinate): [number, number] {
+  return [coord.longitude, coord.latitude];
+}
+
+function getTripLineFeature(coords: MapCoordinate[]) {
+  return {
+    type: "Feature" as const,
+    properties: {},
+    geometry: {
+      type: "LineString" as const,
+      coordinates: coords.map(coordinateToMapbox),
+    },
+  };
+}
+
+function getRegionForTrip(
+  pickupCoord: MapCoordinate | null,
+  dropoffCoord: MapCoordinate | null,
+  fallbackRegion: MapRegion
+): { centerCoordinate: [number, number]; zoomLevel: number } {
+  const coords = [pickupCoord, dropoffCoord].filter(Boolean) as MapCoordinate[];
+
+  if (coords.length === 0) {
+    return {
+      centerCoordinate: [fallbackRegion.longitude, fallbackRegion.latitude],
+      zoomLevel: 11,
+    };
+  }
+
+  if (coords.length === 1) {
+    return {
+      centerCoordinate: coordinateToMapbox(coords[0]),
+      zoomLevel: 14,
+    };
+  }
+
+  const minLat = Math.min(...coords.map((c) => c.latitude));
+  const maxLat = Math.max(...coords.map((c) => c.latitude));
+  const minLng = Math.min(...coords.map((c) => c.longitude));
+  const maxLng = Math.max(...coords.map((c) => c.longitude));
+
+  const latDelta = Math.max(maxLat - minLat, 0.015);
+  const lngDelta = Math.max(maxLng - minLng, 0.015);
+  const maxDelta = Math.max(latDelta, lngDelta) * 1.8;
+  const zoomLevel = Math.max(8, Math.min(15, Math.log2(360 / maxDelta)));
+
+  return {
+    centerCoordinate: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
+    zoomLevel,
+  };
+}
 
 function formatMoneyUSD(v: number | null) {
   if (v == null) return "—";
@@ -137,7 +203,7 @@ export function DriverOrderDetailsScreen() {
   const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
 
-  const mapRef = useRef<MapView | null>(null);
+  const cameraRef = useRef<Mapbox.Camera | null>(null);
   const didFitRef = useRef(false);
 
   const normalizedKind = useMemo(() => normalizeKind(order?.kind), [order?.kind]);
@@ -160,7 +226,7 @@ export function DriverOrderDetailsScreen() {
     return coords;
   }, [pickupCoord, dropoffCoord]);
 
-  const fallbackRegion: Region = useMemo(
+  const fallbackRegion: MapRegion = useMemo(
     () => ({
       latitude: 40.650002,
       longitude: -73.949997,
@@ -170,31 +236,21 @@ export function DriverOrderDetailsScreen() {
     []
   );
 
+  const tripCamera = useMemo(
+    () => getRegionForTrip(pickupCoord, dropoffCoord, fallbackRegion),
+    [pickupCoord, dropoffCoord, fallbackRegion]
+  );
+
+  const tripLineFeature = useMemo(() => getTripLineFeature(polylineCoords), [polylineCoords]);
+
   const fitMapToTrip = useCallback(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    if (pickupCoord && dropoffCoord) {
-      map.fitToCoordinates([pickupCoord, dropoffCoord], {
-        edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
-        animated: true,
-      });
-      return;
-    }
-
-    const only = pickupCoord ?? dropoffCoord;
-    if (only) {
-      map.animateToRegion(
-        {
-          latitude: only.latitude,
-          longitude: only.longitude,
-          latitudeDelta: 0.03,
-          longitudeDelta: 0.03,
-        },
-        600
-      );
-    }
-  }, [pickupCoord, dropoffCoord]);
+    cameraRef.current?.setCamera({
+      centerCoordinate: tripCamera.centerCoordinate,
+      zoomLevel: tripCamera.zoomLevel,
+      animationDuration: 600,
+      animationMode: "flyTo",
+    });
+  }, [tripCamera.centerCoordinate, tripCamera.zoomLevel]);
 
   function formatStatusLabel(currentOrder: Order) {
     const kind = normalizeKind(currentOrder.kind);
@@ -969,48 +1025,76 @@ export function DriverOrderDetailsScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={{ height: 240, width: "100%" }}>
-        <MapView
-          ref={(r) => {
-            mapRef.current = r;
-          }}
-          style={{ flex: 1 }}
-          initialRegion={fallbackRegion}
-          onMapReady={() => {
-            if ((pickupCoord || dropoffCoord) && !didFitRef.current) {
-              fitMapToTrip();
-              didFitRef.current = true;
-            }
-          }}
-        >
+        <Mapbox.MapView style={{ flex: 1 }} styleURL={Mapbox.StyleURL.Street}>
+          <Mapbox.Camera
+            ref={cameraRef}
+            centerCoordinate={tripCamera.centerCoordinate}
+            zoomLevel={tripCamera.zoomLevel}
+            animationMode="flyTo"
+            animationDuration={650}
+          />
+
           {pickupCoord && (
-            <Marker
-              coordinate={pickupCoord}
-              title={
-                isPickupDropoff
-                  ? t("driver.orderDetails.map.pickupGeneric", "Pickup")
-                  : t("driver.orderDetails.map.pickupTitle", "Restaurant")
-              }
-              description={order.pickup_address ?? undefined}
-            />
+            <Mapbox.PointAnnotation
+              id={`pickup-${order.id}`}
+              coordinate={coordinateToMapbox(pickupCoord)}
+            >
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: "#1D4ED8",
+                  borderWidth: 2,
+                  borderColor: "#FFFFFF",
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>
+                  {isPickupDropoff
+                    ? t("driver.orderDetails.map.pickupGeneric", "Pickup")
+                    : t("driver.orderDetails.map.pickupTitle", "Restaurant")}
+                </Text>
+              </View>
+            </Mapbox.PointAnnotation>
           )}
 
           {dropoffCoord && (
-            <Marker
-              coordinate={dropoffCoord}
-              title={
-                isPickupDropoff
-                  ? t("driver.orderDetails.map.dropoffGeneric", "Dropoff")
-                  : t("driver.orderDetails.map.dropoffTitle", "Client")
-              }
-              description={order.dropoff_address ?? undefined}
-            />
+            <Mapbox.PointAnnotation
+              id={`dropoff-${order.id}`}
+              coordinate={coordinateToMapbox(dropoffCoord)}
+            >
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: "#16A34A",
+                  borderWidth: 2,
+                  borderColor: "#FFFFFF",
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>
+                  {isPickupDropoff
+                    ? t("driver.orderDetails.map.dropoffGeneric", "Dropoff")
+                    : t("driver.orderDetails.map.dropoffTitle", "Client")}
+                </Text>
+              </View>
+            </Mapbox.PointAnnotation>
           )}
 
           {polylineCoords.length === 2 && (
-            <Polyline coordinates={polylineCoords} strokeWidth={3} />
+            <Mapbox.ShapeSource id={`trip-line-${order.id}`} shape={tripLineFeature}>
+              <Mapbox.LineLayer
+                id={`trip-line-layer-${order.id}`}
+                style={{
+                  lineColor: "#60A5FA",
+                  lineWidth: 4,
+                  lineOpacity: 0.95,
+                }}
+              />
+            </Mapbox.ShapeSource>
           )}
-        </MapView>
-
+        </Mapbox.MapView>
         <View style={{ position: "absolute", top: 10, right: 10 }}>
           <TouchableOpacity
             onPress={() => {
