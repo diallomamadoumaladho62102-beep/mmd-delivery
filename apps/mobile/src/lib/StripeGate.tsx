@@ -7,21 +7,19 @@ type StripeGateProps = {
   initialRouteName?: string;
 };
 
-const publishableKey =
-  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_STRIPE_PK ?? "";
+const publishableKey = String(
+  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_STRIPE_PK ?? ""
+).trim();
 
 export default function StripeGate({ initialRouteName }: StripeGateProps) {
-  // ❌ Pas de clé Stripe → on continue SANS Stripe
   if (!publishableKey) {
-    console.log("❌ Missing EXPO_PUBLIC_STRIPE_PK in app.json extra");
+    console.log("Missing EXPO_PUBLIC_STRIPE_PK in app.json extra");
     return <AppNavigator initialRouteName={initialRouteName as any} />;
   }
 
-  // ✅ Build natif avec Stripe
   return (
     <StripeProvider publishableKey={publishableKey}>
       <AppNavigator initialRouteName={initialRouteName as any} />
     </StripeProvider>
   );
 }
-
