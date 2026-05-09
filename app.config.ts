@@ -101,6 +101,12 @@ export default ({ config }: { config: AppConfigInput }) => {
       infoPlist: {
         ...existingInfoPlist,
         ITSAppUsesNonExemptEncryption: false,
+        NSLocationWhenInUseUsageDescription:
+          "MMD Delivery utilise votre position pour localiser le chauffeur et afficher les livraisons proches.",
+        NSLocationAlwaysAndWhenInUseUsageDescription:
+          "MMD Delivery utilise votre position pour les livraisons en temps réel.",
+        NSLocationAlwaysUsageDescription:
+          "MMD Delivery utilise votre position pour suivre les livraisons en temps réel lorsque vous êtes en ligne.",
       },
     },
 
