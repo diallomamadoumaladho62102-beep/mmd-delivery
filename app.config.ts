@@ -36,6 +36,9 @@ export default ({ config }: { config: AppConfigInput }) => {
   );
   const EXPO_PUBLIC_MAPBOX_TOKEN = cleanEnv(env.EXPO_PUBLIC_MAPBOX_TOKEN);
   const EXPO_PUBLIC_STRIPE_PK = cleanEnv(env.EXPO_PUBLIC_STRIPE_PK);
+  const RNMAPBOX_MAPS_DOWNLOAD_TOKEN = cleanEnv(
+    env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN
+  );
 
   const API_URL =
     APP_ENV === "production"
@@ -72,6 +75,13 @@ export default ({ config }: { config: AppConfigInput }) => {
         "@stripe/stripe-react-native",
         {
           merchantIdentifier: STRIPE_MERCHANT_ID,
+        },
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          RNMapboxMapsDownloadToken:
+            RNMAPBOX_MAPS_DOWNLOAD_TOKEN || "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN",
         },
       ],
       "expo-web-browser",
