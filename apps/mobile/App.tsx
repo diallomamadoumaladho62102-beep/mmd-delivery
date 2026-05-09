@@ -4,9 +4,9 @@ import Constants from "expo-constants";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
 import { Text, View } from "react-native";
+import Mapbox from "@rnmapbox/maps";
 
-// i18n boot (side effect global)
-// Important: garder cet import pour initialiser i18n au démarrage.
+// i18n boot
 import "./src/i18n";
 
 import { AppNavigator } from "./src/navigation/AppNavigator";
@@ -15,6 +15,14 @@ import { getSelectedRole } from "./src/lib/authRole";
 import { API_BASE_URL } from "./lib/apiBase";
 import { setupNotifications, getExpoPushToken } from "./src/lib/notifications";
 import { syncLocaleForRole } from "./src/i18n";
+
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
+
+if (MAPBOX_TOKEN) {
+  Mapbox.setAccessToken(MAPBOX_TOKEN);
+} else if (__DEV__) {
+  console.log("[App] EXPO_PUBLIC_MAPBOX_TOKEN manquant");
+}
 
 type Role = "client" | "driver" | "restaurant";
 
@@ -40,8 +48,7 @@ function toRole(value: unknown): Role {
 }
 
 function isExpoGo(): boolean {
-  const ownership = (Constants as { appOwnership?: string } | undefined)
-    ?.appOwnership;
+  const ownership = (Constants as { appOwnership?: string } | undefined)?.appOwnership;
   return ownership === "expo";
 }
 
@@ -70,8 +77,8 @@ function FatalFallback({ message }: { message: string }): React.JSX.Element {
 
 async function getDeviceIdSafe(): Promise<string> {
   try {
-    const androidIdFn = (Application as { getAndroidId?: () => string | null })
-      .getAndroidId;
+    const androidIdFn = (Application as { getAndroidId?: () => string | null }).getAndroidId;
+
     if (typeof androidIdFn === "function") {
       const androidId = androidIdFn();
       if (androidId) return String(androidId);
@@ -87,9 +94,7 @@ async function getDeviceIdSafe(): Promise<string> {
     }
   } catch {}
 
-  return `${Device.modelName ?? "device"}-${Device.osName ?? "os"}-${
-    Device.osVersion ?? "0"
-  }`;
+  return `${Device.modelName ?? "device"}-${Device.osName ?? "os"}-${Device.osVersion ?? "0"}`;
 }
 
 function getStripeGateSafe(): React.ComponentType<{
@@ -128,6 +133,7 @@ export default function App(): React.JSX.Element {
     console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
     console.log("SUPABASE_URL =", process.env.EXPO_PUBLIC_SUPABASE_URL);
     console.log("SUPABASE_KEY_OK =", !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+    console.log("MAPBOX_TOKEN_OK =", !!MAPBOX_TOKEN);
   }
 
   useEffect(() => {
@@ -174,18 +180,14 @@ export default function App(): React.JSX.Element {
 
         if (!expoToken) {
           if (__DEV__) {
-            console.log(
-              "❌ Pas de token (permissions refusées / simulateur / limitation)"
-            );
+            console.log("❌ Pas de token push disponible");
           }
           return;
         }
 
         const deviceId = await getDeviceIdSafe();
         const role = toRole((await getSelectedRole()) ?? "client");
-        const platform = `${Device.osName ?? ""} ${
-          Device.osVersion ?? ""
-        }`.trim();
+        const platform = `${Device.osName ?? ""} ${Device.osVersion ?? ""}`.trim();
         const appVersion = Application.nativeApplicationVersion ?? "unknown";
 
         if (
@@ -195,7 +197,7 @@ export default function App(): React.JSX.Element {
           lastSavedRef.current?.deviceId === deviceId
         ) {
           if (__DEV__) {
-            console.log("↩️ Token déjà enregistré (même device/role), skip");
+            console.log("↩️ Token déjà enregistré, skip");
           }
           return;
         }
@@ -223,7 +225,7 @@ export default function App(): React.JSX.Element {
         };
 
         if (__DEV__) {
-          console.log("✅ Token enregistré dans user_push_tokens (multi-device)");
+          console.log("✅ Token enregistré dans user_push_tokens");
         }
       } finally {
         registerInFlightRef.current = false;

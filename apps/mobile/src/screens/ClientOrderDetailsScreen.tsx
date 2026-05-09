@@ -23,8 +23,11 @@ import Constants from "expo-constants";
 import { openStripeCheckout } from "../lib/stripe";
 import { useTranslation } from "react-i18next";
 import Mapbox from "@rnmapbox/maps";
+<<<<<<< HEAD
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
+=======
+>>>>>>> 12902a4 (Update mobile app screens and EAS configuration)
 
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";

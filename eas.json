@@ -10,21 +10,27 @@
       "env": {
         "APP_ENV": "development",
         "EXPO_PUBLIC_API_URL_LOCAL": "http://192.168.1.203:3000",
-        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "$EXPO_PUBLIC_MAPBOX_TOKEN",
+        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "$EXPO_PUBLIC_MAPBOX_TOKEN",
+        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app",
+        "EXPO_PUBLIC_MAPBOX_TOKEN": "$EXPO_PUBLIC_MAPBOX_TOKEN",
+        "RNMAPBOX_MAPS_DOWNLOAD_TOKEN": "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN"
       }
     }
   },

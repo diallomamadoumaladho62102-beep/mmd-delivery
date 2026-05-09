@@ -23,7 +23,11 @@
       [
         "@rnmapbox/maps",
         {
+<<<<<<< HEAD
           "RNMapboxMapsDownloadToken": "MAPBOX_DOWNLOADS_TOKEN"
+=======
+          "RNMapboxMapsDownloadToken": "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN"
+>>>>>>> 12902a4 (Update mobile app screens and EAS configuration)
         }
       ],
       "expo-web-browser"
