@@ -238,7 +238,7 @@ export function DriverHomeScreen() {
   });
 
   const [hasLocation, setHasLocation] = useState(false);
-  const [gpsLoading, setGpsLoading] = useState(true);
+  const [gpsLoading, setGpsLoading] = useState(false);
   const [driverLocation, setDriverLocation] = useState<{
     lat: number;
     lng: number;
@@ -523,6 +523,19 @@ export function DriverHomeScreen() {
     let sub: Location.LocationSubscription | null = null;
     let cancelled = false;
 
+    if (!isOnline) {
+      setGpsLoading(false);
+      setHasLocation(false);
+      setDriverLocation(null);
+      return () => {
+        cancelled = true;
+
+        if (sub) {
+          sub.remove();
+        }
+      };
+    }
+
     const startLocationWatch = async () => {
       try {
         setGpsLoading(true);
@@ -533,8 +546,22 @@ export function DriverHomeScreen() {
 
         if (!ok) {
           setHasLocation(false);
+          setDriverLocation(null);
           setGpsLoading(false);
           return;
+        }
+
+        const lastKnown = await Location.getLastKnownPositionAsync({
+          maxAge: 60000,
+          requiredAccuracy: 200,
+        });
+
+        if (lastKnown && !cancelled && mountedRef.current) {
+          applyDriverCoordinates(
+            lastKnown.coords.latitude,
+            lastKnown.coords.longitude,
+          );
+          setGpsLoading(false);
         }
 
         const current = await Location.getCurrentPositionAsync({
@@ -578,7 +605,7 @@ export function DriverHomeScreen() {
         sub.remove();
       }
     };
-  }, [applyDriverCoordinates, ensureGpsPermission]);
+  }, [applyDriverCoordinates, ensureGpsPermission, isOnline]);
 
   const fetchDriverOrders = useCallback(
     async (forceOnline = false) => {
