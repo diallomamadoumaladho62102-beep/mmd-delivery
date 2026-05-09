@@ -24,11 +24,7 @@ import * as Location from "expo-location";
 import { Audio } from "expo-av";
 import { useTranslation } from "react-i18next";
 
-<<<<<<< HEAD
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
-
-=======
->>>>>>> 12902a4 (Update mobile app screens and EAS configuration)
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type AnyNav = NativeStackNavigationProp<any>;
 

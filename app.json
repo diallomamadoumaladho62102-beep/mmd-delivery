@@ -5,15 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-
     "splash": {
       "image": "./apps/mobile/assets/brand/mmd-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "assetBundlePatterns": ["**/*"],
-
     "android": {
       "package": "com.maladho2025.mmddelivery",
       "versionCode": 1,
@@ -23,7 +20,6 @@
         "backgroundColor": "#ffffff"
       }
     },
-
     "ios": {
       "bundleIdentifier": "com.maladho2025.mmddelivery",
       "buildNumber": "1.0.0",
@@ -32,7 +28,6 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-
     "extra": {
       "eas": {
         "projectId": "127751ea-33ce-4f67-98ce-a9b29a46b838"

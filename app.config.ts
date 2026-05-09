@@ -103,11 +103,6 @@ export default ({ config }: { config: AppConfigInput }) => {
         foregroundImage: "./apps/mobile/assets/icon.png",
         backgroundColor: "#FF8C00",
       },
-      notification: {
-        icon: "./apps/mobile/assets/icon.png",
-        color: "#FF8C00",
-        sound: "new_order.wav",
-      },
     },
 
     extra: {
