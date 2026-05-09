@@ -1337,7 +1337,13 @@ export function DriverHomeScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={{ flex: 1 }}>
-        <Mapbox.MapView style={{ flex: 1 }} styleURL={Mapbox.StyleURL.Street}>
+        <Mapbox.MapView
+          style={{ flex: 1 }}
+          styleURL="mapbox://styles/mapbox/streets-v12"
+          logoEnabled={false}
+          attributionEnabled={false}
+          compassEnabled={true}
+        >
           <Mapbox.Camera
             zoomLevel={12}
             centerCoordinate={[region.longitude, region.latitude]}
