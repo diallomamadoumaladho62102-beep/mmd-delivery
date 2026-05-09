@@ -1345,10 +1345,10 @@ export function DriverHomeScreen() {
           compassEnabled={true}
         >
           <Mapbox.Camera
-            zoomLevel={12}
-            centerCoordinate={[region.longitude, region.latitude]}
+            zoomLevel={13}
+            centerCoordinate={[Number(region.longitude), Number(region.latitude)]}
             animationMode="flyTo"
-            animationDuration={1200}
+            animationDuration={800}
           />
 
           {hasLocation && (
