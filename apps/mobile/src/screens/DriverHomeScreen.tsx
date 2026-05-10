@@ -1339,7 +1339,7 @@ export function DriverHomeScreen() {
       <View style={{ flex: 1 }}>
         <Mapbox.MapView
           style={{ flex: 1 }}
-          styleURL="mapbox://styles/mapbox/streets-v12"
+          styleURL={Mapbox.StyleURL.Street}
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={true}
