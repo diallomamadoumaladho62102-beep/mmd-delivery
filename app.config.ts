@@ -80,8 +80,7 @@ export default ({ config }: { config: AppConfigInput }) => {
       [
         "@rnmapbox/maps",
         {
-          RNMapboxMapsDownloadToken:
-            RNMAPBOX_MAPS_DOWNLOAD_TOKEN || "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN",
+          RNMapboxMapsDownloadToken: RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
         },
       ],
       "expo-web-browser",
