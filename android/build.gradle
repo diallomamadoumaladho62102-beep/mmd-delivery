@@ -22,9 +22,17 @@ allprojects {
       url 'https://api.mapbox.com/downloads/v2/releases/maven'
 
       def mapboxDownloadsToken =
-        project.properties['MAPBOX_DOWNLOADS_TOKEN']
-          ?: System.getenv('MAPBOX_DOWNLOADS_TOKEN')
+        System.getenv('MAPBOX_DOWNLOADS_TOKEN')
           ?: System.getenv('RNMAPBOX_MAPS_DOWNLOAD_TOKEN')
+          ?: project.properties['MAPBOX_DOWNLOADS_TOKEN']
+
+      mapboxDownloadsToken = mapboxDownloadsToken?.trim()
+
+      if (!mapboxDownloadsToken) {
+        throw new GradleException(
+          "MAPBOX TOKEN MISSING: MAPBOX_DOWNLOADS_TOKEN or RNMAPBOX_MAPS_DOWNLOAD_TOKEN is not available in Gradle"
+        )
+      }
 
       authentication {
         basic(BasicAuthentication)
@@ -32,7 +40,7 @@ allprojects {
 
       credentials {
         username = 'mapbox'
-        password = mapboxDownloadsToken ?: ''
+        password = mapboxDownloadsToken
       }
     }
   }
