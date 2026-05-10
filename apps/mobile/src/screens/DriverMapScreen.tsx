@@ -1293,88 +1293,6 @@ export default function DriverMapScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar barStyle="light-content" />
 
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 10,
-          paddingBottom: 10,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          backgroundColor: "rgba(2,6,23,0.96)",
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.85}
-          style={{
-            height: 42,
-            minWidth: 42,
-            paddingHorizontal: 14,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: "rgba(71,85,105,0.95)",
-            backgroundColor: "rgba(15,23,42,0.85)",
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: "#000",
-            shadowOpacity: 0.16,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
-          }}
-        >
-          <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "700" }}>
-            {t("common.back", "← Retour")}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ alignItems: "center" }}>
-          <Text style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "800" }}>
-            {t("driver.map.headerTitle")}
-          </Text>
-
-          <Text style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}>
-            Live driver control center
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={handleToggleOnline}
-          activeOpacity={0.9}
-          disabled={isTogglingOnline}
-          style={{
-            minWidth: 96,
-            height: 42,
-            paddingHorizontal: 12,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: onlinePillColors.borderColor,
-            backgroundColor: onlinePillColors.bgColor,
-            alignItems: "center",
-            justifyContent: "center",
-            shadowColor: "#000",
-            shadowOpacity: 0.18,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 4 },
-          }}
-        >
-          {isTogglingOnline ? (
-            <ActivityIndicator size="small" color={onlinePillColors.textColor} />
-          ) : (
-            <Text
-              style={{
-                color: onlinePillColors.textColor,
-                fontSize: 11,
-                fontWeight: "900",
-                letterSpacing: 0.6,
-              }}
-            >
-              {statusTitle}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
       <View style={{ flex: 1 }}>
         {loading && !hasLocation ? (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -1411,28 +1329,68 @@ export default function DriverMapScreen() {
                 animationDuration={650}
               />
 
+              <Mapbox.UserLocation
+                visible={false}
+                showsUserHeadingIndicator={true}
+              />
+
               {hasLocation && (
                 <Mapbox.PointAnnotation
                   id="driver-location"
-                  coordinate={[region.longitude, region.latitude]}
+                  coordinate={[Number(region.longitude), Number(region.latitude)]}
+                  anchor={{ x: 0.5, y: 0.5 }}
                 >
                   <View
                     style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      backgroundColor: "#22C55E",
-                      borderWidth: 3,
-                      borderColor: "#FFFFFF",
+                      width: 78,
+                      height: 78,
+                      borderRadius: 39,
+                      backgroundColor: "rgba(59,130,246,0.18)",
                       alignItems: "center",
                       justifyContent: "center",
-                      shadowColor: "#22C55E",
-                      shadowOpacity: 0.45,
-                      shadowRadius: 12,
-                      shadowOffset: { width: 0, height: 4 },
                     }}
                   >
-                    <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>D</Text>
+                    <Animated.View
+                      style={{
+                        transform: [{ scale: goPulse }],
+                        width: 50,
+                        height: 50,
+                        borderRadius: 25,
+                        backgroundColor: "rgba(96,165,250,0.24)",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: "#2563EB",
+                          borderWidth: 3,
+                          borderColor: "#FFFFFF",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          shadowColor: "#2563EB",
+                          shadowOpacity: 0.65,
+                          shadowRadius: 12,
+                          shadowOffset: { width: 0, height: 4 },
+                          elevation: 12,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#FFFFFF",
+                            fontSize: 21,
+                            fontWeight: "900",
+                            transform: [{ rotate: "-45deg" }],
+                            marginTop: -1,
+                          }}
+                        >
+                          ▲
+                        </Text>
+                      </View>
+                    </Animated.View>
                   </View>
                 </Mapbox.PointAnnotation>
               )}
@@ -1599,87 +1557,204 @@ export default function DriverMapScreen() {
             />
 
             <View
-              pointerEvents="none"
+              pointerEvents="box-none"
               style={{
                 position: "absolute",
                 top: 16,
-                left: 12,
-                right: 12,
+                left: 16,
+                right: 16,
+                height: 56,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 7,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(15,23,42,0.92)",
-                    borderWidth: 1,
-                    borderColor: "rgba(71,85,105,0.8)",
-                  }}
-                >
-                  <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>ZONE</Text>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.86}
+                style={{
+                  height: 48,
+                  width: 48,
+                  borderRadius: 24,
+                  backgroundColor: "rgba(2,6,23,0.94)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.16)",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.26,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 12,
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "900" }}>‹</Text>
+              </TouchableOpacity>
 
-                  <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
-                    {currentZone?.name ?? "Live area"}
-                  </Text>
-                </View>
+              <TouchableOpacity
+                onPress={handleToggleOnline}
+                activeOpacity={0.9}
+                disabled={isTogglingOnline}
+                style={{
+                  minWidth: 156,
+                  height: 48,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(2,6,23,0.94)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexDirection: "row",
+                  paddingHorizontal: 18,
+                  borderWidth: 1,
+                  borderColor: isOnline
+                    ? "rgba(34,197,94,0.28)"
+                    : "rgba(239,68,68,0.28)",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.28,
+                  shadowRadius: 14,
+                  shadowOffset: { width: 0, height: 7 },
+                  elevation: 14,
+                }}
+              >
+                {isTogglingOnline ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <View
+                      style={{
+                        width: 11,
+                        height: 11,
+                        borderRadius: 5.5,
+                        backgroundColor: isOnline ? "#22C55E" : "#EF4444",
+                        marginRight: 12,
+                        shadowColor: isOnline ? "#22C55E" : "#EF4444",
+                        shadowOpacity: 0.75,
+                        shadowRadius: 8,
+                        shadowOffset: { width: 0, height: 0 },
+                        elevation: 6,
+                      }}
+                    />
 
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 7,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(15,23,42,0.92)",
-                    borderWidth: 1,
-                    borderColor: "rgba(71,85,105,0.8)",
-                  }}
-                >
-                  <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
-                    OPPORTUNITY
-                  </Text>
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 16,
+                        fontWeight: "900",
+                        letterSpacing: 0.4,
+                      }}
+                    >
+                      {statusTitle}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-                  <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
-                    {zoneOpportunityLabel} · {zoneOpportunityScore}%
-                  </Text>
-                </View>
-
-                {boostLabelGlobal && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate("DriverInbox" as never)}
+                activeOpacity={0.86}
+                style={{
+                  height: 48,
+                  width: 48,
+                  borderRadius: 24,
+                  backgroundColor: "rgba(2,6,23,0.94)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.16)",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.26,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 12,
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 21 }}>🔔</Text>
+                {driverOrders.length > 0 && (
                   <View
                     style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 7,
-                      borderRadius: 999,
-                      backgroundColor: "rgba(120,53,15,0.34)",
-                      borderWidth: 1,
-                      borderColor: "rgba(251,191,36,0.28)",
+                      position: "absolute",
+                      top: -2,
+                      right: -2,
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      backgroundColor: "#EF4444",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 2,
+                      borderColor: "#020617",
                     }}
                   >
-                    <Text style={{ color: "#FCD34D", fontSize: 10, fontWeight: "700" }}>BOOST</Text>
-
-                    <Text style={{ color: "#FEF3C7", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
-                      {boostLabelGlobal}
+                    <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "900" }}>
+                      {Math.min(driverOrders.length, 9)}
                     </Text>
                   </View>
                 )}
+              </TouchableOpacity>
+            </View>
 
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 82,
+                left: 16,
+                right: 16,
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 7,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(15,23,42,0.86)",
+                  borderWidth: 1,
+                  borderColor: "rgba(71,85,105,0.55)",
+                }}
+              >
+                <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}>ZONE</Text>
+                <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
+                  {currentZone?.name ?? "Live area"}
+                </Text>
+              </View>
+
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 7,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(15,23,42,0.86)",
+                  borderWidth: 1,
+                  borderColor: "rgba(71,85,105,0.55)",
+                }}
+              >
+                <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}>
+                  PREMIUM
+                </Text>
+                <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
+                  {zoneOpportunityLabel} · {zoneOpportunityScore}%
+                </Text>
+              </View>
+
+              {boostLabelGlobal && (
                 <View
                   style={{
                     paddingHorizontal: 10,
                     paddingVertical: 7,
                     borderRadius: 999,
-                    backgroundColor: "rgba(15,23,42,0.92)",
+                    backgroundColor: "rgba(120,53,15,0.34)",
                     borderWidth: 1,
-                    borderColor: "rgba(71,85,105,0.8)",
+                    borderColor: "rgba(251,191,36,0.28)",
                   }}
                 >
-                  <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>NEARBY</Text>
-
-                  <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
-                    {nearbyRestaurantCount} restos
+                  <Text style={{ color: "#FCD34D", fontSize: 10, fontWeight: "800" }}>BOOST</Text>
+                  <Text style={{ color: "#FEF3C7", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
+                    {boostLabelGlobal}
                   </Text>
                 </View>
-              </View>
+              )}
             </View>
 
             <Animated.View
@@ -1958,21 +2033,30 @@ export default function DriverMapScreen() {
                   onPress={centerOnDriver}
                   activeOpacity={0.9}
                   style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 26,
-                    backgroundColor: "rgba(15,23,42,0.96)",
+                    width: 54,
+                    height: 54,
+                    borderRadius: 27,
+                    backgroundColor: "rgba(255,255,255,0.96)",
                     alignItems: "center",
                     justifyContent: "center",
-                    borderWidth: 1,
-                    borderColor: "rgba(59,130,246,0.85)",
                     shadowColor: "#000",
-                    shadowOpacity: 0.3,
-                    shadowRadius: 10,
-                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.18,
+                    shadowRadius: 14,
+                    shadowOffset: { width: 0, height: 6 },
+                    elevation: 12,
                   }}
                 >
-                  <Text style={{ color: "#BFDBFE", fontSize: 21, fontWeight: "900" }}>◎</Text>
+                  <Text
+                    style={{
+                      color: "#020617",
+                      fontSize: 28,
+                      fontWeight: "900",
+                      transform: [{ rotate: "-45deg" }],
+                      marginTop: -2,
+                    }}
+                  >
+                    ➤
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -2035,7 +2119,7 @@ export default function DriverMapScreen() {
                     </Text>
 
                     <Text style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}>
-                      Command center
+                      Mode détection premium
                     </Text>
                   </View>
 
