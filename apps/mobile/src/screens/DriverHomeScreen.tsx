@@ -253,13 +253,22 @@ export function DriverHomeScreen() {
 
   const searchMessages = useMemo(
     () => [
-      t("driver.home.searching.msg1", "Searching for the best trips near you"),
-      t("driver.home.searching.msg2", "Analyzing the most profitable routes"),
+      t(
+        "driver.home.searching.msg1",
+        "Recherche des meilleures courses autour de vous",
+      ),
+      t(
+        "driver.home.searching.msg2",
+        "Analyse des routes les plus profitables",
+      ),
       t(
         "driver.home.searching.msg3",
-        "Prioritizing nearby and urgent requests",
+        "Priorité aux demandes proches et urgentes",
       ),
-      t("driver.home.searching.msg4", "Live sync with your current zone"),
+      t(
+        "driver.home.searching.msg4",
+        "Synchronisation en direct avec votre zone",
+      ),
     ],
     [t],
   );
@@ -1344,6 +1353,11 @@ export function DriverHomeScreen() {
           attributionEnabled={false}
           compassEnabled={true}
         >
+          <Mapbox.UserLocation
+            visible={false}
+            showsUserHeadingIndicator={true}
+          />
+
           <Mapbox.Camera
             zoomLevel={13}
             centerCoordinate={[Number(region.longitude), Number(region.latitude)]}
@@ -1354,25 +1368,59 @@ export function DriverHomeScreen() {
           {hasLocation && (
             <Mapbox.PointAnnotation
               id="driver-location"
-              coordinate={[region.longitude, region.latitude]}
+              coordinate={[Number(region.longitude), Number(region.latitude)]}
+              anchor={{ x: 0.5, y: 0.5 }}
             >
               <View
                 style={{
-                  height: 28,
-                  width: 28,
-                  borderRadius: 14,
-                  backgroundColor: "#22C55E",
-                  borderWidth: 2,
-                  borderColor: "#FFFFFF",
+                  height: 78,
+                  width: 78,
+                  borderRadius: 39,
+                  backgroundColor: "rgba(59,130,246,0.18)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Text
-                  style={{ color: "white", fontSize: 11, fontWeight: "700" }}
+                <View
+                  style={{
+                    height: 46,
+                    width: 46,
+                    borderRadius: 23,
+                    backgroundColor: "rgba(59,130,246,0.24)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  D
-                </Text>
+                  <View
+                    style={{
+                      height: 34,
+                      width: 34,
+                      borderRadius: 17,
+                      backgroundColor: "#2563EB",
+                      borderWidth: 3,
+                      borderColor: "#FFFFFF",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      shadowColor: "#2563EB",
+                      shadowOpacity: 0.6,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 3 },
+                      elevation: 10,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 20,
+                        fontWeight: "900",
+                        transform: [{ rotate: "-45deg" }],
+                        marginTop: -1,
+                      }}
+                    >
+                      ▲
+                    </Text>
+                  </View>
+                </View>
               </View>
             </Mapbox.PointAnnotation>
           )}
@@ -1432,6 +1480,244 @@ export function DriverHomeScreen() {
           )}
         </Mapbox.MapView>
 
+        {hasLocation && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: "38%",
+              left: "50%",
+              marginLeft: -39,
+              marginTop: -39,
+              height: 78,
+              width: 78,
+              borderRadius: 39,
+              backgroundColor: "rgba(59,130,246,0.16)",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Animated.View
+              style={{
+                transform: [{ scale: radarInnerScale }],
+                height: 56,
+                width: 56,
+                borderRadius: 28,
+                backgroundColor: "rgba(96,165,250,0.22)",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#2563EB",
+                shadowOpacity: 0.55,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 16,
+              }}
+            >
+              <View
+                style={{
+                  height: 38,
+                  width: 38,
+                  borderRadius: 19,
+                  backgroundColor: "#2563EB",
+                  borderWidth: 3,
+                  borderColor: "#FFFFFF",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 22,
+                    fontWeight: "900",
+                    transform: [{ rotate: "-45deg" }],
+                    marginTop: -1,
+                  }}
+                >
+                  ▲
+                </Text>
+              </View>
+            </Animated.View>
+          </View>
+        )}
+
+        <View
+          pointerEvents="box-none"
+          style={{
+            position: "absolute",
+            top: 14,
+            left: 16,
+            right: 16,
+            height: 56,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => go("DriverMenu")}
+            activeOpacity={0.85}
+            style={{
+              height: 48,
+              width: 48,
+              borderRadius: 24,
+              backgroundColor: "rgba(2,6,23,0.94)",
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: "rgba(148,163,184,0.16)",
+              shadowColor: "#000",
+              shadowOpacity: 0.26,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 12,
+            }}
+          >
+            <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "900" }}>
+              ≡
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={toggleOnline}
+            activeOpacity={0.9}
+            style={{
+              minWidth: 150,
+              height: 48,
+              borderRadius: 999,
+              backgroundColor: "rgba(2,6,23,0.94)",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              paddingHorizontal: 18,
+              borderWidth: 1,
+              borderColor: isOnline
+                ? "rgba(34,197,94,0.28)"
+                : "rgba(239,68,68,0.28)",
+              shadowColor: "#000",
+              shadowOpacity: 0.28,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 7 },
+              elevation: 14,
+            }}
+          >
+            <View
+              style={{
+                width: 11,
+                height: 11,
+                borderRadius: 5.5,
+                backgroundColor: onlineColorBg,
+                marginRight: 12,
+                shadowColor: onlineColorBg,
+                shadowOpacity: 0.75,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: 6,
+              }}
+            />
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 16,
+                fontWeight: "900",
+                letterSpacing: 0.4,
+              }}
+            >
+              {onlineLabel}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => go("DriverInbox")}
+            activeOpacity={0.85}
+            style={{
+              height: 48,
+              width: 48,
+              borderRadius: 24,
+              backgroundColor: "rgba(2,6,23,0.94)",
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: "rgba(148,163,184,0.16)",
+              shadowColor: "#000",
+              shadowOpacity: 0.26,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 12,
+            }}
+          >
+            <Text style={{ color: "#FFFFFF", fontSize: 22 }}>🔔</Text>
+            {myOrders.length > 0 && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -2,
+                  right: -2,
+                  minWidth: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  backgroundColor: "#EF4444",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 2,
+                  borderColor: "#020617",
+                }}
+              >
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 10,
+                    fontWeight: "900",
+                  }}
+                >
+                  {Math.min(myOrders.length, 9)}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {hasLocation && (
+          <TouchableOpacity
+            onPress={() => {
+              setRegion((prev) => ({
+                ...prev,
+                latitude: driverLocation?.lat ?? prev.latitude,
+                longitude: driverLocation?.lng ?? prev.longitude,
+              }));
+            }}
+            activeOpacity={0.86}
+            style={{
+              position: "absolute",
+              right: 18,
+              bottom: isOnline ? 340 : 104,
+              height: 54,
+              width: 54,
+              borderRadius: 27,
+              backgroundColor: "rgba(255,255,255,0.96)",
+              alignItems: "center",
+              justifyContent: "center",
+              shadowColor: "#000",
+              shadowOpacity: 0.18,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 6 },
+              elevation: 12,
+            }}
+          >
+            <Text
+              style={{
+                color: "#020617",
+                fontSize: 28,
+                fontWeight: "900",
+                transform: [{ rotate: "-45deg" }],
+                marginTop: -2,
+              }}
+            >
+              ➤
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {gpsLoading && (
           <View
             style={{
@@ -1452,89 +1738,6 @@ export function DriverHomeScreen() {
           </View>
         )}
 
-        <View style={{ position: "absolute", top: 16, left: 16, right: 16 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <View>
-              <Text style={{ fontSize: 20, fontWeight: "800", color: "white" }}>
-                {t("driver.home.header.title", "Tableau de bord chauffeur")}
-              </Text>
-
-              <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 2 }}>
-                {t(
-                  "driver.home.header.subtitle",
-                  "La carte reste toujours active.",
-                )}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={toggleOnline}
-              style={{
-                paddingVertical: 6,
-                paddingHorizontal: 14,
-                borderRadius: 999,
-                backgroundColor: onlineColorBg,
-              }}
-            >
-              <Text
-                style={{
-                  color: onlineColorText,
-                  fontSize: 12,
-                  fontWeight: "700",
-                }}
-              >
-                {onlineLabel}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View
-            style={{
-              marginTop: 10,
-              flexDirection: "row",
-              justifyContent: "flex-start",
-            }}
-          >
-            <View
-              style={{
-                borderRadius: 999,
-                paddingVertical: 4,
-                paddingHorizontal: 12,
-                backgroundColor: "#020617",
-                borderWidth: 1,
-                borderColor: "#1E293B",
-              }}
-            >
-              <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
-                {t("driver.home.zone.title", "Activité dans ta zone")}
-              </Text>
-
-              <Text
-                style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "600" }}
-              >
-                {zoneName}
-              </Text>
-
-              <Text
-                style={{
-                  color: zoneLabelAndColor.color,
-                  fontSize: 13,
-                  fontWeight: "700",
-                }}
-              >
-                {zoneLabelAndColor.label}
-                {zoneMultiplier > 1 ? ` · x${zoneMultiplier.toFixed(1)}` : ""}
-              </Text>
-            </View>
-          </View>
-        </View>
-
         {!isOnline && (
           <View
             style={{
@@ -1542,25 +1745,28 @@ export function DriverHomeScreen() {
               left: 0,
               right: 0,
               bottom: 0,
-              paddingBottom: 18,
+              paddingBottom: 16,
               paddingTop: 10,
-              paddingHorizontal: 18,
-              backgroundColor: "rgba(2,6,23,0.92)",
-              borderTopWidth: 1,
-              borderTopColor: "#1F2937",
+              paddingHorizontal: 14,
+              backgroundColor: "transparent",
             }}
           >
             <View
               style={{
-                height: 64,
-                borderRadius: 18,
-                backgroundColor: "rgba(15,23,42,0.95)",
+                height: 82,
+                borderRadius: 28,
+                backgroundColor: "rgba(255,255,255,0.97)",
                 borderWidth: 1,
-                borderColor: "#1F2937",
+                borderColor: "rgba(226,232,240,0.95)",
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
                 paddingHorizontal: 10,
+                shadowColor: "#000",
+                shadowOpacity: 0.12,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: -4 },
+                elevation: 16,
               }}
             >
               <TouchableOpacity
@@ -1568,7 +1774,7 @@ export function DriverHomeScreen() {
                 onPress={() => go("DriverHome")}
               >
                 <Text
-                  style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#2563EB", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.home", "Accueil")}
                 </Text>
@@ -1579,7 +1785,7 @@ export function DriverHomeScreen() {
                 onPress={() => go("DriverRevenue")}
               >
                 <Text
-                  style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.revenue", "Revenus")}
                 </Text>
@@ -1590,7 +1796,7 @@ export function DriverHomeScreen() {
                 onPress={() => go("DriverInbox")}
               >
                 <Text
-                  style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.inbox", "Boîte")}
                 </Text>
@@ -1601,7 +1807,7 @@ export function DriverHomeScreen() {
                 onPress={() => go("DriverMenu")}
               >
                 <Text
-                  style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.menu", "Menu")}
                 </Text>
@@ -1816,7 +2022,7 @@ export function DriverHomeScreen() {
               <Animated.View
                 style={{
                   transform: [{ translateY: sheetOffset }],
-                  paddingHorizontal: 12,
+                  paddingHorizontal: 16,
                   paddingBottom: 0,
                 }}
                 {...panResponder.panHandlers}
@@ -1914,7 +2120,7 @@ export function DriverHomeScreen() {
                           >
                             {t(
                               "driver.home.searching.title",
-                              "Premium detection mode",
+                              "Mode détection premium",
                             )}
                           </Text>
 
@@ -1979,7 +2185,7 @@ export function DriverHomeScreen() {
                             fontWeight: "700",
                           }}
                         >
-                          {t("driver.home.searching.chip1", "Nearby trips")}
+                          {t("driver.home.searching.chip1", "Courses à proximité")}
                         </Text>
                       </View>
 
@@ -2002,7 +2208,7 @@ export function DriverHomeScreen() {
                         >
                           {t(
                             "driver.home.searching.chip2",
-                            "Optimized earnings",
+                            "Gains optimisés",
                           )}
                         </Text>
                       </View>
@@ -2024,7 +2230,7 @@ export function DriverHomeScreen() {
                             fontWeight: "700",
                           }}
                         >
-                          {t("driver.home.searching.chip3", "Priority zone")}
+                          {t("driver.home.searching.chip3", "Zone prioritaire")}
                         </Text>
                       </View>
                     </View>
@@ -2082,7 +2288,7 @@ export function DriverHomeScreen() {
                         fontWeight: "600",
                       }}
                     >
-                      {t("driver.home.myOrders.title", "My active deliveries")}
+                      {t("driver.home.myOrders.title", "Mes livraisons actives")}
                     </Text>
 
                     <TouchableOpacity
