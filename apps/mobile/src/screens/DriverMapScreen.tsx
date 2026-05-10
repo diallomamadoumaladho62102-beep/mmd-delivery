@@ -19,6 +19,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
+import { useKeepAwake } from "expo-keep-awake";
 import {
   startDriverLocationTracking,
   stopDriverLocationTracking,
@@ -312,6 +313,8 @@ export default function DriverMapScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
 
+  useKeepAwake();
+
   const [region, setRegion] = useState<MapRegion>({
     latitude: 40.73061,
     longitude: -73.935242,
@@ -344,6 +347,7 @@ export default function DriverMapScreen() {
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const hasCenteredOnDriverRef = useRef(false);
 
   const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
   const sheetState = useRef<"collapsed" | "expanded">("collapsed");
@@ -524,6 +528,18 @@ export default function DriverMapScreen() {
       stopDriverLocationTracking();
     };
   }, [locateDriver]);
+
+  useEffect(() => {
+    if (!hasLocation || hasCenteredOnDriverRef.current) return;
+
+    hasCenteredOnDriverRef.current = true;
+
+    const timer = setTimeout(() => {
+      centerOnDriver();
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [hasLocation, region.latitude, region.longitude]);
 
   useEffect(() => {
     if (isOnline || isTogglingOnline) {
@@ -1324,76 +1340,14 @@ export default function DriverMapScreen() {
               <Mapbox.Camera
                 ref={cameraRef}
                 zoomLevel={regionToZoom(region)}
-                centerCoordinate={[region.longitude, region.latitude]}
                 animationMode="flyTo"
                 animationDuration={650}
               />
 
               <Mapbox.UserLocation
-                visible={false}
+                visible={true}
                 showsUserHeadingIndicator={true}
               />
-
-              {hasLocation && (
-                <Mapbox.PointAnnotation
-                  id="driver-location"
-                  coordinate={[Number(region.longitude), Number(region.latitude)]}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                >
-                  <View
-                    style={{
-                      width: 78,
-                      height: 78,
-                      borderRadius: 39,
-                      backgroundColor: "rgba(59,130,246,0.18)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Animated.View
-                      style={{
-                        transform: [{ scale: goPulse }],
-                        width: 50,
-                        height: 50,
-                        borderRadius: 25,
-                        backgroundColor: "rgba(96,165,250,0.24)",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: "#2563EB",
-                          borderWidth: 3,
-                          borderColor: "#FFFFFF",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          shadowColor: "#2563EB",
-                          shadowOpacity: 0.65,
-                          shadowRadius: 12,
-                          shadowOffset: { width: 0, height: 4 },
-                          elevation: 12,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#FFFFFF",
-                            fontSize: 21,
-                            fontWeight: "900",
-                            transform: [{ rotate: "-45deg" }],
-                            marginTop: -1,
-                          }}
-                        >
-                          ▲
-                        </Text>
-                      </View>
-                    </Animated.View>
-                  </View>
-                </Mapbox.PointAnnotation>
-              )}
 
               {DRIVER_ZONES.map((zone) => {
                 const { strokeColor, fillColor, labelColor, haloColor } = getZoneColors(
@@ -1570,7 +1524,7 @@ export default function DriverMapScreen() {
               }}
             >
               <TouchableOpacity
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.navigate("DriverMenu" as never)}
                 activeOpacity={0.86}
                 style={{
                   height: 48,
@@ -1588,7 +1542,7 @@ export default function DriverMapScreen() {
                   elevation: 12,
                 }}
               >
-                <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "900" }}>‹</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 27, fontWeight: "900" }}>☰</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1667,7 +1621,7 @@ export default function DriverMapScreen() {
                   elevation: 12,
                 }}
               >
-                <Text style={{ color: "#FFFFFF", fontSize: 21 }}>🔔</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 21 }}>💬</Text>
                 {driverOrders.length > 0 && (
                   <View
                     style={{
