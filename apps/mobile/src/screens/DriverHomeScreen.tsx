@@ -216,6 +216,40 @@ function getBestDriverAmount(
   return null;
 }
 
+function getZoneAccent(demand: ZoneDemand) {
+  if (demand === "very_busy") {
+    return {
+      main: "#FF2BD6",
+      soft: "rgba(255,43,214,0.22)",
+      border: "rgba(255,43,214,0.72)",
+      label: "Très fréquentée",
+    };
+  }
+
+  if (demand === "busy") {
+    return {
+      main: "#FF9F1C",
+      soft: "rgba(255,159,28,0.22)",
+      border: "rgba(255,159,28,0.72)",
+      label: "Fréquenté",
+    };
+  }
+
+  return {
+    main: "#FACC15",
+    soft: "rgba(250,204,21,0.18)",
+    border: "rgba(250,204,21,0.58)",
+    label: "Actif",
+  };
+}
+
+function getZoneCenter(zone: ZoneDef): [number, number] {
+  return [
+    (zone.bounds.minLon + zone.bounds.maxLon) / 2,
+    (zone.bounds.minLat + zone.bounds.maxLat) / 2,
+  ];
+}
+
 export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const navAny = navigation as unknown as AnyNav;
@@ -1397,13 +1431,13 @@ export function DriverHomeScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#02040A" }}>
       <StatusBar barStyle="light-content" />
 
       <View style={{ flex: 1 }}>
         <Mapbox.MapView
           style={{ flex: 1 }}
-          styleURL={Mapbox.StyleURL.Street}
+          styleURL={Mapbox.StyleURL.Dark}
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
@@ -1411,7 +1445,7 @@ export function DriverHomeScreen() {
         >
           <Mapbox.UserLocation
             visible={false}
-            showsUserHeadingIndicator={true}
+            showsUserHeadingIndicator={false}
           />
 
           <Mapbox.Camera
@@ -1430,32 +1464,32 @@ export function DriverHomeScreen() {
             >
               <View
                 style={{
-                  height: 78,
-                  width: 78,
-                  borderRadius: 39,
-                  backgroundColor: "rgba(59,130,246,0.18)",
+                  height: 92,
+                  width: 92,
+                  borderRadius: 46,
+                  backgroundColor: "rgba(0,186,255,0.16)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
                 <View
                   style={{
-                    height: 46,
-                    width: 46,
-                    borderRadius: 23,
-                    backgroundColor: "rgba(59,130,246,0.24)",
+                    height: 60,
+                    width: 60,
+                    borderRadius: 30,
+                    backgroundColor: "rgba(37,99,235,0.28)",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
                   <View
                     style={{
-                      height: 34,
-                      width: 34,
-                      borderRadius: 17,
-                      backgroundColor: "#2563EB",
+                      height: 44,
+                      width: 44,
+                      borderRadius: 22,
+                      backgroundColor: "#0EA5E9",
                       borderWidth: 3,
-                      borderColor: "#FFFFFF",
+                      borderColor: "#DBEAFE",
                       alignItems: "center",
                       justifyContent: "center",
                       shadowColor: "#2563EB",
@@ -1481,6 +1515,45 @@ export function DriverHomeScreen() {
               </View>
             </Mapbox.PointAnnotation>
           )}
+
+          {isOnline && ZONES.map((zone) => {
+            const accent = getZoneAccent(zone.demand);
+            return (
+              <Mapbox.PointAnnotation
+                key={`zone-${zone.name}`}
+                id={`zone-${zone.name.replace(/\s+/g, "-").toLowerCase()}`}
+                coordinate={getZoneCenter(zone)}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={{ alignItems: "center", justifyContent: "center" }}>
+                  <View
+                    style={{
+                      width: zone.demand === "very_busy" ? 138 : 118,
+                      height: zone.demand === "very_busy" ? 138 : 118,
+                      borderRadius: zone.demand === "very_busy" ? 69 : 59,
+                      backgroundColor: accent.soft,
+                      borderWidth: 2,
+                      borderColor: accent.border,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      shadowColor: accent.main,
+                      shadowOpacity: 0.75,
+                      shadowRadius: 18,
+                      shadowOffset: { width: 0, height: 0 },
+                      elevation: 12,
+                    }}
+                  >
+                    <Text style={{ color: "#FFFFFF", fontSize: 26, fontWeight: "900" }}>
+                      {zone.multiplier.toFixed(1)}x
+                    </Text>
+                    <Text style={{ color: "#F8FAFC", fontSize: 11, fontWeight: "800" }}>
+                      {accent.label}
+                    </Text>
+                  </View>
+                </View>
+              </Mapbox.PointAnnotation>
+            );
+          })}
 
           {activeOffer && hasOfferPickup && (
             <Mapbox.PointAnnotation
@@ -1542,10 +1615,10 @@ export function DriverHomeScreen() {
           collapsable={false}
           style={{
             position: "absolute",
-            top: 14,
-            left: 16,
-            right: 16,
-            height: 56,
+            top: 18,
+            left: 18,
+            right: 18,
+            height: 58,
             zIndex: 100000,
             elevation: 100000,
             flexDirection: "row",
@@ -1558,17 +1631,17 @@ export function DriverHomeScreen() {
             activeOpacity={0.85}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
-              height: 48,
-              width: 48,
-              borderRadius: 24,
-              backgroundColor: "rgba(2,6,23,0.94)",
+              height: 54,
+              width: 54,
+              borderRadius: 27,
+              backgroundColor: "rgba(2,6,23,0.92)",
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1,
-              borderColor: "rgba(148,163,184,0.16)",
+              borderColor: "rgba(96,165,250,0.32)",
               shadowColor: "#000",
-              shadowOpacity: 0.26,
-              shadowRadius: 12,
+              shadowOpacity: 0.42,
+              shadowRadius: 18,
               shadowOffset: { width: 0, height: 6 },
               zIndex: 100001,
               elevation: 100001,
@@ -1584,21 +1657,21 @@ export function DriverHomeScreen() {
             activeOpacity={0.9}
             hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
             style={{
-              minWidth: 150,
-              height: 48,
+              minWidth: 178,
+              height: 58,
               borderRadius: 999,
-              backgroundColor: "rgba(2,6,23,0.94)",
+              backgroundColor: "rgba(2,6,23,0.92)",
               alignItems: "center",
               justifyContent: "center",
               flexDirection: "row",
               paddingHorizontal: 18,
               borderWidth: 1,
               borderColor: isOnline
-                ? "rgba(34,197,94,0.28)"
-                : "rgba(239,68,68,0.28)",
+                ? "rgba(34,197,94,0.68)"
+                : "rgba(239,68,68,0.5)",
               shadowColor: "#000",
-              shadowOpacity: 0.28,
-              shadowRadius: 14,
+              shadowOpacity: 0.5,
+              shadowRadius: 22,
               shadowOffset: { width: 0, height: 7 },
               zIndex: 100001,
               elevation: 100001,
@@ -1635,17 +1708,17 @@ export function DriverHomeScreen() {
             activeOpacity={0.85}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
-              height: 48,
-              width: 48,
-              borderRadius: 24,
-              backgroundColor: "rgba(2,6,23,0.94)",
+              height: 54,
+              width: 54,
+              borderRadius: 27,
+              backgroundColor: "rgba(2,6,23,0.92)",
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1,
-              borderColor: "rgba(148,163,184,0.16)",
+              borderColor: "rgba(96,165,250,0.32)",
               shadowColor: "#000",
-              shadowOpacity: 0.26,
-              shadowRadius: 12,
+              shadowOpacity: 0.42,
+              shadowRadius: 18,
               shadowOffset: { width: 0, height: 6 },
               zIndex: 100001,
               elevation: 100001,
@@ -1689,15 +1762,15 @@ export function DriverHomeScreen() {
           style={{
             position: "absolute",
             right: 18,
-            top: 82,
-            height: 44,
-            width: 44,
-            borderRadius: 22,
-            backgroundColor: "rgba(2,6,23,0.88)",
+            top: 96,
+            height: 58,
+            width: 58,
+            borderRadius: 29,
+            backgroundColor: "rgba(2,6,23,0.94)",
             alignItems: "center",
             justifyContent: "center",
             borderWidth: 1,
-            borderColor: "rgba(148,163,184,0.18)",
+            borderColor: "rgba(0,186,255,0.46)",
             shadowColor: "#000",
             shadowOpacity: 0.2,
             shadowRadius: 10,
@@ -1737,10 +1810,10 @@ export function DriverHomeScreen() {
               position: "absolute",
               right: 18,
               bottom: isOnline ? 340 : 104,
-              height: 54,
-              width: 54,
-              borderRadius: 27,
-              backgroundColor: "rgba(255,255,255,0.96)",
+              height: 62,
+              width: 62,
+              borderRadius: 31,
+              backgroundColor: "rgba(14,165,233,0.92)",
               alignItems: "center",
               justifyContent: "center",
               shadowColor: "#000",
@@ -1753,8 +1826,8 @@ export function DriverHomeScreen() {
           >
             <Text
               style={{
-                color: "#020617",
-                fontSize: 28,
+                color: "#FFFFFF",
+                fontSize: 30,
                 fontWeight: "900",
                 transform: [{ rotate: "-45deg" }],
                 marginTop: -2,
@@ -1805,9 +1878,9 @@ export function DriverHomeScreen() {
               style={{
                 height: 82,
                 borderRadius: 28,
-                backgroundColor: "rgba(255,255,255,0.97)",
+                backgroundColor: "rgba(2,6,23,0.96)",
                 borderWidth: 1,
-                borderColor: "rgba(226,232,240,0.95)",
+                borderColor: "rgba(59,130,246,0.28)",
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -1824,7 +1897,7 @@ export function DriverHomeScreen() {
                 onPress={() => go("DriverHome")}
               >
                 <Text
-                  style={{ color: "#2563EB", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#38BDF8", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.home", "Accueil")}
                 </Text>
@@ -1835,7 +1908,7 @@ export function DriverHomeScreen() {
                 onPress={() => go("DriverRevenue")}
               >
                 <Text
-                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#94A3B8", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.revenue", "Revenus")}
                 </Text>
@@ -1846,7 +1919,7 @@ export function DriverHomeScreen() {
                 onPress={openDriverInbox}
               >
                 <Text
-                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#94A3B8", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.inbox", "Boîte")}
                 </Text>
@@ -1857,7 +1930,7 @@ export function DriverHomeScreen() {
                 onPress={openDriverMenu}
               >
                 <Text
-                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
+                  style={{ color: "#94A3B8", fontSize: 12, fontWeight: "900" }}
                 >
                   {t("driver.home.tabs.menu", "Menu")}
                 </Text>
@@ -1869,7 +1942,7 @@ export function DriverHomeScreen() {
         {isOnline && (
           <View
             pointerEvents="box-none"
-            style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60, elevation: 60 }}
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 80, elevation: 80 }}
           >
             {activeOffer ? (
               <View style={{ paddingHorizontal: 16, paddingBottom: 20 }}>
@@ -1898,10 +1971,10 @@ export function DriverHomeScreen() {
 
                 <View
                   style={{
-                    backgroundColor: "#020617",
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: "#1F2937",
+                    backgroundColor: "rgba(2,6,23,0.96)",
+                    borderRadius: 28,
+                    borderWidth: 1.5,
+                    borderColor: "rgba(249,115,22,0.72)",
                     padding: 14,
                   }}
                 >
@@ -2052,14 +2125,14 @@ export function DriverHomeScreen() {
                       flex: 1,
                       paddingVertical: 10,
                       borderRadius: 999,
-                      backgroundColor: "#22C55E",
+                      backgroundColor: "#F59E0B",
                       alignItems: "center",
                       opacity: acceptingId === activeOffer.id ? 0.6 : 1,
                     }}
                   >
                     <Text
                       style={{
-                        color: "#022C22",
+                        color: "#111827",
                         fontSize: 14,
                         fontWeight: "700",
                       }}
@@ -2085,12 +2158,12 @@ export function DriverHomeScreen() {
                     transform: [{ scale: searchPulseScale }],
                     opacity: searchOpacity,
                     marginBottom: 0,
-                    borderRadius: 24,
+                    borderRadius: 30,
                     overflow: "hidden",
-                    backgroundColor: "rgba(2,6,23,0.97)",
-                    borderWidth: 1,
-                    borderColor: "rgba(96,165,250,0.22)",
-                    shadowColor: "#60A5FA",
+                    backgroundColor: "rgba(2,6,23,0.94)",
+                    borderWidth: 1.5,
+                    borderColor: "rgba(168,85,247,0.58)",
+                    shadowColor: "#A855F7",
                     shadowOpacity: 0.24,
                     shadowRadius: 18,
                     shadowOffset: { width: 0, height: 8 },
@@ -2307,9 +2380,11 @@ export function DriverHomeScreen() {
 
                 <View
                   style={{
-                    backgroundColor: "rgba(15,23,42,0.96)",
-                    borderTopLeftRadius: 16,
-                    borderTopRightRadius: 16,
+                    backgroundColor: "rgba(2,6,23,0.96)",
+                    borderTopLeftRadius: 28,
+                    borderTopRightRadius: 28,
+                    borderWidth: 1,
+                    borderColor: "rgba(59,130,246,0.28)",
                     paddingHorizontal: 16,
                     paddingTop: 4,
                     paddingBottom: 16,
@@ -2432,10 +2507,10 @@ export function DriverHomeScreen() {
                           key={order.id}
                           onPress={() => handleOpenOrder(order.id)}
                           style={{
-                            backgroundColor: "#020617",
-                            borderRadius: 12,
+                            backgroundColor: "rgba(2,8,23,0.94)",
+                            borderRadius: 20,
                             borderWidth: 1,
-                            borderColor: "#1F2937",
+                            borderColor: "rgba(59,130,246,0.32)",
                             padding: 10,
                             marginBottom: 8,
                           }}
