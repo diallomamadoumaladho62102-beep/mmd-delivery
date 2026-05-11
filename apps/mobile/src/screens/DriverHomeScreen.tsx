@@ -29,6 +29,7 @@ import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
 import { Audio } from "expo-av";
 import { useTranslation } from "react-i18next";
+import { useKeepAwake } from "expo-keep-awake";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -219,6 +220,8 @@ export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const navAny = navigation as unknown as AnyNav;
   const { t } = useTranslation();
+
+  useKeepAwake();
 
   const [loading, setLoading] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<DriverOrder[]>([]);
@@ -1310,6 +1313,29 @@ export function DriverHomeScreen() {
     [navAny],
   );
 
+  const navigateFromRoot = useCallback(
+    (routeName: string) => {
+      const parent = (navigation as any).getParent?.();
+      const root = parent?.getParent?.() ?? parent ?? navAny;
+
+      if (root?.navigate) {
+        root.navigate(routeName as never);
+        return;
+      }
+
+      navAny.navigate(routeName);
+    },
+    [navigation, navAny],
+  );
+
+  const openDriverMenu = useCallback(() => {
+    navigateFromRoot("DriverMenu");
+  }, [navigateFromRoot]);
+
+  const openDriverInbox = useCallback(() => {
+    navigateFromRoot("DriverInbox");
+  }, [navigateFromRoot]);
+
   const centerOnDriver = useCallback(() => {
     const latitude = driverLocation?.lat ?? region.latitude;
     const longitude = driverLocation?.lng ?? region.longitude;
@@ -1329,6 +1355,14 @@ export function DriverHomeScreen() {
       animationDuration: 650,
     });
   }, [driverLocation?.lat, driverLocation?.lng, region.latitude, region.longitude]);
+
+  const resetMapBearing = useCallback(() => {
+    (cameraRef.current as any)?.setCamera({
+      heading: 0,
+      animationMode: "easeTo",
+      animationDuration: 450,
+    });
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -1372,7 +1406,7 @@ export function DriverHomeScreen() {
           styleURL={Mapbox.StyleURL.Street}
           logoEnabled={false}
           attributionEnabled={false}
-          compassEnabled={true}
+          compassEnabled={false}
           surfaceView={false}
         >
           <Mapbox.UserLocation
@@ -1520,7 +1554,7 @@ export function DriverHomeScreen() {
           }}
         >
           <TouchableOpacity
-            onPress={() => go("DriverMenu")}
+            onPress={openDriverMenu}
             activeOpacity={0.85}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
@@ -1597,7 +1631,7 @@ export function DriverHomeScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => go("DriverInbox")}
+            onPress={openDriverInbox}
             activeOpacity={0.85}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
@@ -1647,6 +1681,52 @@ export function DriverHomeScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          onPress={resetMapBearing}
+          activeOpacity={0.86}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{
+            position: "absolute",
+            right: 18,
+            top: 82,
+            height: 44,
+            width: 44,
+            borderRadius: 22,
+            backgroundColor: "rgba(2,6,23,0.88)",
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: "rgba(148,163,184,0.18)",
+            shadowColor: "#000",
+            shadowOpacity: 0.2,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
+            zIndex: 99990,
+            elevation: 99990,
+          }}
+        >
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 18,
+              fontWeight: "900",
+              letterSpacing: 0.4,
+            }}
+          >
+            N
+          </Text>
+          <Text
+            style={{
+              color: "#93C5FD",
+              fontSize: 13,
+              fontWeight: "900",
+              marginTop: -5,
+            }}
+          >
+            ▲
+          </Text>
+        </TouchableOpacity>
 
         {hasLocation && (
           <TouchableOpacity
@@ -1763,7 +1843,7 @@ export function DriverHomeScreen() {
 
               <TouchableOpacity
                 style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
-                onPress={() => go("DriverInbox")}
+                onPress={openDriverInbox}
               >
                 <Text
                   style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
@@ -1774,7 +1854,7 @@ export function DriverHomeScreen() {
 
               <TouchableOpacity
                 style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
-                onPress={() => go("DriverMenu")}
+                onPress={openDriverMenu}
               >
                 <Text
                   style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
