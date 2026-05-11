@@ -5,7 +5,6 @@ import {
   Text,
   StatusBar,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Animated,
   Easing,
@@ -21,14 +20,6 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
-import {
-  startDriverLocationTracking,
-  stopDriverLocationTracking,
-} from "../lib/location";
-import {
-  getDriverOnlineStatus,
-  setDriverOnlineStatus,
-} from "../lib/driverStatus";
 import { supabase } from "../lib/supabase";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
@@ -328,8 +319,9 @@ export default function DriverMapScreen() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [isOnline, setIsOnline] = useState(false);
-  const [isTogglingOnline, setIsTogglingOnline] = useState(false);
+  // DriverHomeScreen is the only place that controls online/offline, GPS tracking,
+  // live offers, and sounds. DriverMapScreen stays passive to avoid duplicate listeners.
+  const isOnline = false;
 
   const [restaurants, setRestaurants] = useState<RestaurantPin[]>([]);
   const [restaurantsLoading, setRestaurantsLoading] = useState(false);
@@ -354,8 +346,6 @@ export default function DriverMapScreen() {
   const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
   const sheetState = useRef<"collapsed" | "expanded">("collapsed");
 
-  const goPulse = useRef(new Animated.Value(1)).current;
-  const goHalo = useRef(new Animated.Value(0.22)).current;
   const incomingTranslateY = useRef(new Animated.Value(-18)).current;
   const incomingOpacity = useRef(new Animated.Value(0)).current;
 
@@ -470,22 +460,6 @@ export default function DriverMapScreen() {
 
   const boostLabelGlobal = boostMultiplier > 1 ? `x${boostMultiplier.toFixed(1)}` : null;
 
-  const onlinePillColors = useMemo(
-    () =>
-      isOnline
-        ? {
-            borderColor: "#22C55E",
-            textColor: "#BBF7D0",
-            bgColor: "rgba(4,120,87,0.22)",
-          }
-        : {
-            borderColor: "#FB7185",
-            textColor: "#FECDD3",
-            bgColor: "rgba(127,29,29,0.22)",
-          },
-    [isOnline]
-  );
-
   const sheetSummaryCardColor = isOnline ? "#031A12" : "#1A0B0F";
 
   const locateDriver = useCallback(async () => {
@@ -545,7 +519,6 @@ export default function DriverMapScreen() {
 
     return () => {
       locationSubscriptionRef.current?.remove();
-      stopDriverLocationTracking();
     };
   }, [locateDriver]);
 
@@ -560,55 +533,6 @@ export default function DriverMapScreen() {
 
     return () => clearTimeout(timer);
   }, [hasLocation, region.latitude, region.longitude]);
-
-  useEffect(() => {
-    if (isOnline || isTogglingOnline) {
-      goPulse.stopAnimation();
-      goHalo.stopAnimation();
-      goPulse.setValue(1);
-      goHalo.setValue(0.22);
-      return;
-    }
-
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(goPulse, {
-            toValue: 1.06,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(goHalo, {
-            toValue: 0.38,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: false,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(goPulse, {
-            toValue: 1,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(goHalo, {
-            toValue: 0.18,
-            duration: 900,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: false,
-          }),
-        ]),
-      ])
-    );
-
-    pulseLoop.start();
-
-    return () => {
-      pulseLoop.stop();
-    };
-  }, [goHalo, goPulse, isOnline, isTogglingOnline]);
 
   useEffect(() => {
     if (incomingOrder) {
@@ -644,154 +568,6 @@ export default function DriverMapScreen() {
       }),
     ]).start();
   }, [incomingOpacity, incomingOrder, incomingTranslateY]);
-
-  async function getUserIdOrThrow(): Promise<string> {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-
-    const uid = data.session?.user?.id;
-
-    if (!uid) {
-      throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
-    }
-
-    return uid;
-  }
-
-  async function ensureGpsPermission(): Promise<boolean> {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    return status === "granted";
-  }
-
-  async function validateDriverProfileForOnline(userId: string): Promise<string[]> {
-    const missing: string[] = [];
-
-    const { data: driver, error: driverErr } = await supabase
-      .from("driver_profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-
-    if (driverErr || !driver) {
-      return ["Profil chauffeur introuvable"];
-    }
-
-    const { data, error } = await supabase
-      .from("driver_documents")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.log("driver_documents error", error);
-    }
-
-    const latestByType = new Map<string, any>();
-
-    for (const row of data ?? []) {
-      const key = String(row.doc_type);
-
-      if (!latestByType.has(key)) {
-        latestByType.set(key, row);
-      }
-    }
-
-    const documents = Array.from(latestByType.values());
-
-    const docTypeSet = new Set(
-      documents.map((d: any) =>
-        String(d?.doc_type ?? "")
-          .trim()
-          .toLowerCase()
-      )
-    );
-
-    const hasDoc = (docType: string) => docTypeSet.has(docType.toLowerCase());
-
-    console.log("DriverMap FIX docs check", {
-      userId,
-      docsCount: documents.length,
-      docTypes: documents.map((d: any) => d.doc_type),
-    });
-
-    if (!driver.full_name) missing.push("Nom complet");
-    if (!driver.phone) missing.push("Téléphone");
-    if (!driver.emergency_phone) missing.push("Téléphone d’urgence");
-    if (!driver.address) missing.push("Adresse");
-    if (!driver.city) missing.push("Ville");
-    if (!driver.state) missing.push("État");
-    if (!driver.zip_code) missing.push("ZIP code");
-    if (!driver.date_of_birth) missing.push("Date de naissance");
-
-    if (!hasDoc("profile_photo")) missing.push("Photo personnelle");
-    if (!hasDoc("id_card_front")) missing.push("Pièce identité recto");
-    if (!hasDoc("id_card_back")) missing.push("Pièce identité verso");
-
-    const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
-
-    if (isVehicle) {
-      if (!driver.vehicle_brand) missing.push("Marque véhicule");
-      if (!driver.vehicle_model) missing.push("Modèle véhicule");
-      if (!driver.vehicle_year) missing.push("Année véhicule");
-      if (!driver.vehicle_color) missing.push("Couleur véhicule");
-      if (!driver.plate_number) missing.push("Plaque");
-      if (!driver.license_number) missing.push("Numéro permis");
-      if (!driver.license_expiry) missing.push("Expiration permis");
-
-      if (!hasDoc("license_front")) missing.push("Permis recto");
-      if (!hasDoc("license_back")) missing.push("Permis verso");
-      if (!hasDoc("insurance")) missing.push("Assurance");
-      if (!hasDoc("registration")) missing.push("Registration");
-    }
-
-    return missing;
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadStatus() {
-      try {
-        const uid = await getUserIdOrThrow();
-
-        const { data: driver, error } = await supabase
-          .from("driver_profiles")
-          .select("is_online")
-          .eq("user_id", uid)
-          .maybeSingle();
-
-        if (error) {
-          console.log("Erreur chargement statut DB:", error);
-        }
-
-        const dbOnline = typeof driver?.is_online === "boolean" ? !!driver.is_online : null;
-
-        const localOnline = await getDriverOnlineStatus();
-
-        if (cancelled) return;
-
-        const resolvedOnline = dbOnline !== null ? dbOnline : !!localOnline;
-
-        setIsOnline(resolvedOnline);
-
-        if (resolvedOnline) {
-          await setDriverOnlineStatus(true);
-          await startDriverLocationTracking({ intervalMs: 2000 });
-        } else {
-          await setDriverOnlineStatus(false);
-          stopDriverLocationTracking();
-        }
-      } catch (e) {
-        console.log("Erreur loadStatus DriverMap:", e);
-      }
-    }
-
-    void loadStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -972,114 +748,6 @@ export default function DriverMapScreen() {
     const id = setTimeout(() => setIncomingTimer((prev) => prev - 1), 1000);
     return () => clearTimeout(id);
   }, [incomingOrder, incomingTimer]);
-
-  useEffect(() => {
-    if (!driverId || !isOnline) return;
-
-    const channel = supabase
-      .channel(`driver-offers-${driverId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "driver_order_offers",
-          filter: `driver_id=eq.${driverId}`,
-        },
-        (payload) => {
-          const row: any = payload.new;
-
-          const price = row.driver_price_cents != null ? row.driver_price_cents / 100 : 0;
-
-          const banner: IncomingOrderBanner = {
-            id: row.order_id ?? row.id ?? "unknown-order",
-            restaurantName: row.restaurant_name ?? "Restaurant",
-            pickupAddress: row.pickup_address ?? "—",
-            dropoffAddress: row.dropoff_address ?? "—",
-            price,
-            distanceMiles: Number(row.distance_miles ?? 0),
-            etaMinutes: row.eta_minutes ?? 0,
-            surgeLabel: row.surge_label ?? null,
-          };
-
-          setIncomingOrder(banner);
-          setIncomingTimer(60);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [driverId, isOnline]);
-
-  const handleToggleOnline = useCallback(async () => {
-    if (isTogglingOnline) return;
-
-    try {
-      setIsTogglingOnline(true);
-
-      const next = !isOnline;
-      const userId = await getUserIdOrThrow();
-
-      if (next) {
-        const missing = await validateDriverProfileForOnline(userId);
-
-        if (missing.length > 0) {
-          Alert.alert(
-            "Profil incomplet",
-            `Complète ton profil avant de passer en ligne :\n\n${missing
-              .map((m) => `• ${m}`)
-              .join("\n")}`
-          );
-
-          return;
-        }
-
-        const ok = await ensureGpsPermission();
-
-        if (!ok) {
-          Alert.alert("GPS", "Active le GPS pour passer en ligne.");
-          return;
-        }
-      }
-
-      const { error: updateErr } = await supabase
-        .from("driver_profiles")
-        .update({ is_online: next })
-        .eq("user_id", userId);
-
-      if (updateErr) throw updateErr;
-
-      const { data: refreshed, error: refreshErr } = await supabase
-        .from("driver_profiles")
-        .select("is_online")
-        .eq("user_id", userId)
-        .single();
-
-      if (refreshErr) throw refreshErr;
-
-      const confirmedOnline = !!refreshed?.is_online;
-
-      setIsOnline(confirmedOnline);
-      await setDriverOnlineStatus(confirmedOnline);
-
-      if (confirmedOnline) {
-        await startDriverLocationTracking({ intervalMs: 2000 });
-      } else {
-        stopDriverLocationTracking();
-      }
-    } catch (e: any) {
-      console.log("Erreur toggle online:", e);
-
-      Alert.alert(
-        t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        e?.message ?? "Impossible de changer le statut."
-      );
-    } finally {
-      setIsTogglingOnline(false);
-    }
-  }, [isOnline, isTogglingOnline, t]);
 
   function centerOnDriver() {
     if (!hasLocation) return;
@@ -1822,87 +1490,6 @@ export default function DriverMapScreen() {
               </View>
             )}
 
-            {!isOnline && (
-              <View
-                pointerEvents="box-none"
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: "43%",
-                  alignItems: "center",
-                }}
-              >
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    width: 162,
-                    height: 162,
-                    borderRadius: 81,
-                    backgroundColor: `rgba(37,99,235,${0.15})`,
-                    opacity: goHalo,
-                    transform: [{ scale: goPulse }],
-                  }}
-                />
-
-                <Animated.View
-                  style={{
-                    transform: [{ scale: goPulse }],
-                  }}
-                >
-                  <TouchableOpacity
-                    onPress={handleToggleOnline}
-                    activeOpacity={0.92}
-                    disabled={isTogglingOnline}
-                    style={{
-                      width: 134,
-                      height: 134,
-                      borderRadius: 67,
-                      backgroundColor: "#2563EB",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 6,
-                      borderColor: "rgba(191,219,254,0.18)",
-                      shadowColor: "#2563EB",
-                      shadowOpacity: 0.35,
-                      shadowRadius: 18,
-                      shadowOffset: { width: 0, height: 10 },
-                      elevation: 12,
-                    }}
-                  >
-                    {isTogglingOnline ? (
-                      <ActivityIndicator size="large" color="#FFFFFF" />
-                    ) : (
-                      <>
-                        <Text
-                          style={{
-                            color: "white",
-                            fontSize: 30,
-                            fontWeight: "900",
-                            letterSpacing: 1.1,
-                          }}
-                        >
-                          GO
-                        </Text>
-
-                        <Text
-                          style={{
-                            color: "#DBEAFE",
-                            fontSize: 10,
-                            marginTop: 4,
-                            fontWeight: "700",
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          READY TO DRIVE
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-              </View>
-            )}
-
             {hasLocation && (
               <View pointerEvents="box-none" style={{ position: "absolute", right: 18, bottom: 214, zIndex: 9998, elevation: 9998 }}>
                 <TouchableOpacity
@@ -2199,31 +1786,6 @@ export default function DriverMapScreen() {
                       </Text>
                     </View>
                   </View>
-
-                  {isOnline && (
-                    <TouchableOpacity
-                      onPress={handleToggleOnline}
-                      activeOpacity={0.9}
-                      disabled={isTogglingOnline}
-                      style={{
-                        marginTop: 2,
-                        paddingVertical: 12,
-                        borderRadius: 999,
-                        backgroundColor: "rgba(17,24,39,0.98)",
-                        borderWidth: 1,
-                        borderColor: "#FB7185",
-                        alignItems: "center",
-                      }}
-                    >
-                      {isTogglingOnline ? (
-                        <ActivityIndicator size="small" color="#FECACA" />
-                      ) : (
-                        <Text style={{ color: "#FECACA", fontWeight: "900", fontSize: 13 }}>
-                          {t("driver.map.goOffline")}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
 
                   {IS_DEV && (
                     <View
