@@ -216,40 +216,6 @@ function getBestDriverAmount(
   return null;
 }
 
-function getZoneAccent(demand: ZoneDemand) {
-  if (demand === "very_busy") {
-    return {
-      main: "#FF2BD6",
-      soft: "rgba(255,43,214,0.22)",
-      border: "rgba(255,43,214,0.72)",
-      label: "Très fréquentée",
-    };
-  }
-
-  if (demand === "busy") {
-    return {
-      main: "#FF9F1C",
-      soft: "rgba(255,159,28,0.22)",
-      border: "rgba(255,159,28,0.72)",
-      label: "Fréquenté",
-    };
-  }
-
-  return {
-    main: "#FACC15",
-    soft: "rgba(250,204,21,0.18)",
-    border: "rgba(250,204,21,0.58)",
-    label: "Actif",
-  };
-}
-
-function getZoneCenter(zone: ZoneDef): [number, number] {
-  return [
-    (zone.bounds.minLon + zone.bounds.maxLon) / 2,
-    (zone.bounds.minLat + zone.bounds.maxLat) / 2,
-  ];
-}
-
 export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const navAny = navigation as unknown as AnyNav;
@@ -1342,33 +1308,18 @@ export function DriverHomeScreen() {
 
   const go = useCallback(
     (routeName: string) => {
-      navAny.navigate(routeName);
+      navAny.navigate(routeName as never);
     },
     [navAny],
   );
 
-  const navigateFromRoot = useCallback(
-    (routeName: string) => {
-      const parent = (navigation as any).getParent?.();
-      const root = parent?.getParent?.() ?? parent ?? navAny;
-
-      if (root?.navigate) {
-        root.navigate(routeName as never);
-        return;
-      }
-
-      navAny.navigate(routeName);
-    },
-    [navigation, navAny],
-  );
-
   const openDriverMenu = useCallback(() => {
-    navigateFromRoot("DriverMenu");
-  }, [navigateFromRoot]);
+    navAny.navigate("DriverMenu" as never);
+  }, [navAny]);
 
   const openDriverInbox = useCallback(() => {
-    navigateFromRoot("DriverInbox");
-  }, [navigateFromRoot]);
+    navAny.navigate("DriverInbox" as never);
+  }, [navAny]);
 
   const centerOnDriver = useCallback(() => {
     const latitude = driverLocation?.lat ?? region.latitude;
@@ -1431,25 +1382,26 @@ export function DriverHomeScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#02040A" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar barStyle="light-content" />
 
-      <View style={{ flex: 1, backgroundColor: "#02040A" }}>
+      <View style={{ flex: 1 }}>
         <Mapbox.MapView
           style={{ flex: 1 }}
-          styleURL={Mapbox.StyleURL.Dark}
+          styleURL={Mapbox.StyleURL.Street}
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
           surfaceView={false}
         >
-          <Mapbox.UserLocation visible={false} showsUserHeadingIndicator={false} />
+          <Mapbox.UserLocation
+            visible={false}
+            showsUserHeadingIndicator={true}
+          />
 
           <Mapbox.Camera
             ref={cameraRef}
-            zoomLevel={14.2}
-            pitch={58}
-            heading={isOnline ? 18 : 0}
+            zoomLevel={13}
             centerCoordinate={[Number(region.longitude), Number(region.latitude)]}
             animationMode="flyTo"
             animationDuration={800}
@@ -1461,111 +1413,67 @@ export function DriverHomeScreen() {
               coordinate={[Number(region.longitude), Number(region.latitude)]}
               anchor={{ x: 0.5, y: 0.5 }}
             >
-              <View style={{ alignItems: "center", justifyContent: "center" }}>
+              <View
+                style={{
+                  height: 78,
+                  width: 78,
+                  borderRadius: 39,
+                  backgroundColor: "rgba(59,130,246,0.18)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 <View
                   style={{
-                    height: 104,
-                    width: 104,
-                    borderRadius: 52,
-                    backgroundColor: "rgba(0,186,255,0.16)",
+                    height: 46,
+                    width: 46,
+                    borderRadius: 23,
+                    backgroundColor: "rgba(59,130,246,0.24)",
                     alignItems: "center",
                     justifyContent: "center",
-                    borderWidth: 1,
-                    borderColor: "rgba(56,189,248,0.26)",
                   }}
                 >
                   <View
                     style={{
-                      height: 64,
-                      width: 64,
-                      borderRadius: 32,
-                      backgroundColor: "rgba(14,165,233,0.26)",
+                      height: 34,
+                      width: 34,
+                      borderRadius: 17,
+                      backgroundColor: "#2563EB",
+                      borderWidth: 3,
+                      borderColor: "#FFFFFF",
                       alignItems: "center",
                       justifyContent: "center",
-                      shadowColor: "#00BFFF",
-                      shadowOpacity: 0.8,
-                      shadowRadius: 20,
-                      shadowOffset: { width: 0, height: 0 },
-                      elevation: 18,
+                      shadowColor: "#2563EB",
+                      shadowOpacity: 0.6,
+                      shadowRadius: 10,
+                      shadowOffset: { width: 0, height: 3 },
+                      elevation: 10,
                     }}
                   >
-                    <View
+                    <Text
                       style={{
-                        height: 48,
-                        width: 48,
-                        borderRadius: 24,
-                        backgroundColor: "#0284C7",
-                        borderWidth: 3,
-                        borderColor: "#BAE6FD",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        color: "#FFFFFF",
+                        fontSize: 20,
+                        fontWeight: "900",
+                        transform: [{ rotate: "-45deg" }],
+                        marginTop: -1,
                       }}
                     >
-                      <Text
-                        style={{
-                          color: "#FFFFFF",
-                          fontSize: 24,
-                          fontWeight: "900",
-                          transform: [{ rotate: "-45deg" }],
-                          marginTop: -1,
-                        }}
-                      >
-                        ▲
-                      </Text>
-                    </View>
+                      ▲
+                    </Text>
                   </View>
                 </View>
               </View>
             </Mapbox.PointAnnotation>
           )}
 
-          {isOnline &&
-            ZONES.map((zone) => {
-              const accent = getZoneAccent(zone.demand);
-              return (
-                <Mapbox.PointAnnotation
-                  key={`zone-${zone.name}`}
-                  id={`zone-${zone.name.replace(/\s+/g, "-").toLowerCase()}`}
-                  coordinate={getZoneCenter(zone)}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                >
-                  <View style={{ alignItems: "center", justifyContent: "center" }}>
-                    <View
-                      style={{
-                        width: zone.demand === "very_busy" ? 150 : 124,
-                        height: zone.demand === "very_busy" ? 150 : 124,
-                        borderRadius: zone.demand === "very_busy" ? 75 : 62,
-                        backgroundColor: accent.soft,
-                        borderWidth: 2,
-                        borderColor: accent.border,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        shadowColor: accent.main,
-                        shadowOpacity: 0.95,
-                        shadowRadius: 24,
-                        shadowOffset: { width: 0, height: 0 },
-                        elevation: 16,
-                      }}
-                    >
-                      <Text style={{ color: "#FFFFFF", fontSize: 30, fontWeight: "900" }}>
-                        {zone.multiplier.toFixed(1)}x
-                      </Text>
-                      <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "800" }}>
-                        {accent.label}
-                      </Text>
-                    </View>
-                    {zone.demand === "very_busy" && (
-                      <Text style={{ marginTop: -112, color: "#FDE68A", fontSize: 22 }}>♛</Text>
-                    )}
-                  </View>
-                </Mapbox.PointAnnotation>
-              );
-            })}
-
           {activeOffer && hasOfferPickup && (
             <Mapbox.PointAnnotation
               id="pickup-location"
-              coordinate={[offerPickupLng as number, activeOffer.pickup_lat as number]}
+              coordinate={[
+                offerPickupLng as number,
+                activeOffer.pickup_lat as number,
+              ]}
             >
               <View
                 style={{
@@ -1577,7 +1485,11 @@ export function DriverHomeScreen() {
                   borderColor: "white",
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "900", fontSize: 11 }}>PICKUP</Text>
+                <Text
+                  style={{ color: "white", fontWeight: "700", fontSize: 11 }}
+                >
+                  PICKUP
+                </Text>
               </View>
             </Mapbox.PointAnnotation>
           )}
@@ -1585,7 +1497,10 @@ export function DriverHomeScreen() {
           {activeOffer && hasOfferDropoff && (
             <Mapbox.PointAnnotation
               id="dropoff-location"
-              coordinate={[offerDropoffLng as number, activeOffer.dropoff_lat as number]}
+              coordinate={[
+                offerDropoffLng as number,
+                activeOffer.dropoff_lat as number,
+              ]}
             >
               <View
                 style={{
@@ -1597,33 +1512,25 @@ export function DriverHomeScreen() {
                   borderColor: "white",
                 }}
               >
-                <Text style={{ color: "white", fontWeight: "900", fontSize: 11 }}>DROPOFF</Text>
+                <Text
+                  style={{ color: "white", fontWeight: "700", fontSize: 11 }}
+                >
+                  DROPOFF
+                </Text>
               </View>
             </Mapbox.PointAnnotation>
           )}
         </Mapbox.MapView>
 
         <View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: isOnline ? "rgba(2,4,10,0.18)" : "rgba(255,255,255,0.02)",
-          }}
-        />
-
-        <View
           pointerEvents="box-none"
           collapsable={false}
           style={{
             position: "absolute",
-            top: 18,
-            left: 18,
-            right: 18,
-            height: 62,
+            top: 14,
+            left: 16,
+            right: 16,
+            height: 56,
             zIndex: 100000,
             elevation: 100000,
             flexDirection: "row",
@@ -1636,22 +1543,23 @@ export function DriverHomeScreen() {
             activeOpacity={0.85}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
-              height: 56,
-              width: 56,
-              borderRadius: 28,
-              backgroundColor: "rgba(2,6,23,0.92)",
+              height: 48,
+              width: 48,
+              borderRadius: 24,
+              backgroundColor: "rgba(2,6,23,0.94)",
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1,
-              borderColor: "rgba(148,163,184,0.42)",
-              shadowColor: "#38BDF8",
-              shadowOpacity: 0.32,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 0 },
-              elevation: 14,
+              borderColor: "rgba(148,163,184,0.16)",
+              shadowColor: "#000",
+              shadowOpacity: 0.26,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 6 },
+              zIndex: 100001,
+              elevation: 100001,
             }}
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 30, fontWeight: "900", marginTop: -2 }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "900" }}>
               ≡
             </Text>
           </TouchableOpacity>
@@ -1661,53 +1569,50 @@ export function DriverHomeScreen() {
             activeOpacity={0.9}
             hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
             style={{
-              minWidth: 190,
-              height: 62,
+              minWidth: 150,
+              height: 48,
               borderRadius: 999,
               backgroundColor: "rgba(2,6,23,0.94)",
               alignItems: "center",
               justifyContent: "center",
-              paddingHorizontal: 16,
-              borderWidth: 1.3,
-              borderColor: isOnline ? "rgba(34,197,94,0.82)" : "rgba(239,68,68,0.65)",
-              shadowColor: isOnline ? "#22C55E" : "#EF4444",
+              flexDirection: "row",
+              paddingHorizontal: 18,
+              borderWidth: 1,
+              borderColor: isOnline
+                ? "rgba(34,197,94,0.28)"
+                : "rgba(239,68,68,0.28)",
+              shadowColor: "#000",
               shadowOpacity: 0.28,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 0 },
-              elevation: 16,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 7 },
+              zIndex: 100001,
+              elevation: 100001,
             }}
           >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <View
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  backgroundColor: onlineColorBg,
-                  marginRight: 12,
-                  shadowColor: onlineColorBg,
-                  shadowOpacity: 0.9,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 0 },
-                  elevation: 8,
-                }}
-              />
-              <Text
-                style={{
-                  color: onlineColorText,
-                  fontSize: 17,
-                  fontWeight: "900",
-                  letterSpacing: 0.5,
-                }}
-              >
-                {onlineLabel}
-              </Text>
-            </View>
-            {isOnline && (
-              <Text style={{ color: "#86EFAC", fontSize: 12, fontWeight: "800", marginTop: 2 }}>
-                Zone très active 🔥 {Math.max(zoneMultiplier, 1.3).toFixed(1)}x
-              </Text>
-            )}
+            <View
+              style={{
+                width: 11,
+                height: 11,
+                borderRadius: 5.5,
+                backgroundColor: onlineColorBg,
+                marginRight: 12,
+                shadowColor: onlineColorBg,
+                shadowOpacity: 0.75,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: 6,
+              }}
+            />
+            <Text
+              style={{
+                color: "#FFFFFF",
+                fontSize: 16,
+                fontWeight: "900",
+                letterSpacing: 0.4,
+              }}
+            >
+              {onlineLabel}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1715,62 +1620,25 @@ export function DriverHomeScreen() {
             activeOpacity={0.85}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
-              height: 56,
-              width: 56,
-              borderRadius: 28,
-              backgroundColor: "rgba(2,6,23,0.92)",
+              height: 48,
+              width: 48,
+              borderRadius: 24,
+              backgroundColor: "rgba(2,6,23,0.94)",
               alignItems: "center",
               justifyContent: "center",
               borderWidth: 1,
-              borderColor: "rgba(148,163,184,0.42)",
-              shadowColor: "#38BDF8",
-              shadowOpacity: 0.32,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 0 },
-              elevation: 14,
+              borderColor: "rgba(148,163,184,0.16)",
+              shadowColor: "#000",
+              shadowOpacity: 0.26,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 6 },
+              zIndex: 100001,
+              elevation: 100001,
             }}
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 23 }}>🔔</Text>
-            {myOrders.length > 0 && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: -2,
-                  right: -2,
-                  minWidth: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  backgroundColor: "#EF4444",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 2,
-                  borderColor: "#020617",
-                }}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>
-                  {Math.min(myOrders.length, 9)}
-                </Text>
-              </View>
-            )}
+            <Text style={{ color: "#FFFFFF", fontSize: 22 }}>🔔</Text>
           </TouchableOpacity>
         </View>
-
-        {isOnline && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              left: 26,
-              top: 168,
-              zIndex: 20,
-              elevation: 20,
-            }}
-          >
-            <Text style={{ color: "rgba(255,255,255,0.92)", fontSize: 15, fontWeight: "900" }}>
-              {zoneName.toUpperCase()}
-            </Text>
-          </View>
-        )}
 
         <TouchableOpacity
           onPress={resetMapBearing}
@@ -1779,25 +1647,43 @@ export function DriverHomeScreen() {
           style={{
             position: "absolute",
             right: 18,
-            top: 96,
-            height: 60,
-            width: 60,
-            borderRadius: 30,
-            backgroundColor: "rgba(2,6,23,0.94)",
+            top: 82,
+            height: 44,
+            width: 44,
+            borderRadius: 22,
+            backgroundColor: "rgba(2,6,23,0.88)",
             alignItems: "center",
             justifyContent: "center",
-            borderWidth: 1.4,
-            borderColor: "rgba(56,189,248,0.58)",
-            shadowColor: "#38BDF8",
-            shadowOpacity: 0.44,
-            shadowRadius: 14,
-            shadowOffset: { width: 0, height: 0 },
+            borderWidth: 1,
+            borderColor: "rgba(148,163,184,0.18)",
+            shadowColor: "#000",
+            shadowOpacity: 0.2,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
             zIndex: 99990,
             elevation: 99990,
           }}
         >
-          <Text style={{ color: "#EF4444", fontSize: 18, fontWeight: "900" }}>▲</Text>
-          <Text style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "900", marginTop: -5 }}>N</Text>
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: 18,
+              fontWeight: "900",
+              letterSpacing: 0.4,
+            }}
+          >
+            N
+          </Text>
+          <Text
+            style={{
+              color: "#93C5FD",
+              fontSize: 13,
+              fontWeight: "900",
+              marginTop: -5,
+            }}
+          >
+            ▲
+          </Text>
         </TouchableOpacity>
 
         {hasLocation && (
@@ -1808,45 +1694,32 @@ export function DriverHomeScreen() {
             style={{
               position: "absolute",
               right: 18,
-              top: 166,
-              height: 64,
-              width: 64,
-              borderRadius: 32,
-              backgroundColor: "rgba(2,6,23,0.92)",
+              bottom: isOnline ? 340 : 104,
+              height: 54,
+              width: 54,
+              borderRadius: 27,
+              backgroundColor: "rgba(255,255,255,0.96)",
               alignItems: "center",
               justifyContent: "center",
-              borderWidth: 1.4,
-              borderColor: "rgba(14,165,233,0.72)",
-              shadowColor: "#0EA5E9",
-              shadowOpacity: 0.95,
-              shadowRadius: 18,
-              shadowOffset: { width: 0, height: 0 },
+              shadowColor: "#000",
+              shadowOpacity: 0.18,
+              shadowRadius: 14,
+              shadowOffset: { width: 0, height: 6 },
               zIndex: 100000,
               elevation: 100000,
             }}
           >
-            <View
+            <Text
               style={{
-                height: 44,
-                width: 44,
-                borderRadius: 22,
-                backgroundColor: "rgba(14,165,233,0.34)",
-                alignItems: "center",
-                justifyContent: "center",
+                color: "#020617",
+                fontSize: 28,
+                fontWeight: "900",
+                transform: [{ rotate: "-45deg" }],
+                marginTop: -2,
               }}
             >
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 26,
-                  fontWeight: "900",
-                  transform: [{ rotate: "-45deg" }],
-                  marginTop: -2,
-                }}
-              >
-                ➤
-              </Text>
-            </View>
+              ➤
+            </Text>
           </TouchableOpacity>
         )}
 
@@ -1861,8 +1734,6 @@ export function DriverHomeScreen() {
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: "rgba(15,23,42,0.4)",
-              zIndex: 200000,
-              elevation: 200000,
             }}
           >
             <ActivityIndicator color="#ffffff" />
@@ -1872,648 +1743,803 @@ export function DriverHomeScreen() {
           </View>
         )}
 
-        {isOnline && activeOffer && (
+        {!isOnline && (
           <View
             pointerEvents="box-none"
             style={{
               position: "absolute",
               left: 0,
               right: 0,
-              bottom: 116,
+              bottom: 0,
+              paddingBottom: 16,
+              paddingTop: 10,
               paddingHorizontal: 14,
-              zIndex: 100,
-              elevation: 100,
+              backgroundColor: "transparent",
+              zIndex: 50,
+              elevation: 50,
             }}
           >
             <View
               style={{
-                borderRadius: 30,
-                backgroundColor: "rgba(2,6,23,0.96)",
-                borderWidth: 1.5,
-                borderColor: "rgba(217,70,239,0.72)",
-                padding: 14,
-                shadowColor: "#D946EF",
-                shadowOpacity: 0.45,
-                shadowRadius: 22,
-                shadowOffset: { width: 0, height: 0 },
-                elevation: 20,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900" }}>
-                  🛵 {t("driver.home.offer.title", "Nouvelle course disponible")}
-                </Text>
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 6,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(249,115,22,0.14)",
-                    borderWidth: 1,
-                    borderColor: "rgba(249,115,22,0.38)",
-                  }}
-                >
-                  <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "900" }}>
-                    🔥 Opportunité Premium
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: "row", marginTop: 14 }}>
-                <View
-                  style={{
-                    width: 98,
-                    height: 98,
-                    borderRadius: 18,
-                    backgroundColor: "rgba(249,115,22,0.16)",
-                    borderWidth: 1,
-                    borderColor: "rgba(251,146,60,0.62)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: 12,
-                    overflow: "hidden",
-                  }}
-                >
-                  <Image
-                    source={require("../../assets/brand/mmd-logo.png")}
-                    style={{ width: "86%", height: "86%" }}
-                    resizeMode="contain"
-                  />
-                </View>
-
-                <View style={{ flex: 1, minHeight: 98 }}>
-                  <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }} numberOfLines={1}>
-                    {activeOffer.restaurant_name || "Restaurant MMD"} ✓
-                  </Text>
-                  <Text style={{ color: "#E5E7EB", fontSize: 13, marginTop: 6 }} numberOfLines={1}>
-                    ⬇ {activeOffer.pickup_address ?? "—"}
-                  </Text>
-                  <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 7 }}>
-                    ◷ {activeOffer.distance_miles != null ? `${activeOffer.distance_miles.toFixed(1)} mi` : "—"}  ·  ⏱ 12 min
-                  </Text>
-                </View>
-
-                <View
-                  style={{
-                    width: 104,
-                    borderRadius: 18,
-                    backgroundColor: "rgba(2,6,23,0.82)",
-                    borderWidth: 1,
-                    borderColor: "rgba(56,189,248,0.28)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingVertical: 10,
-                  }}
-                >
-                  <Text style={{ color: "#4ADE80", fontSize: 26, fontWeight: "900" }}>
-                    ${(() => {
-                      const gain = getBestDriverAmount(activeOffer);
-                      return gain != null ? gain.toFixed(2) : "—";
-                    })()}
-                  </Text>
-                  <View
-                    style={{
-                      marginTop: 8,
-                      paddingHorizontal: 9,
-                      paddingVertical: 5,
-                      borderRadius: 999,
-                      backgroundColor: "rgba(168,85,247,0.86)",
-                    }}
-                  >
-                    <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>
-                      ⚡ {Math.max(zoneMultiplier, 1.3).toFixed(1)}x boost
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={{ flexDirection: "row", marginTop: 16, gap: 12, alignItems: "center" }}>
-                <TouchableOpacity
-                  onPress={handleDeclineActiveOffer}
-                  activeOpacity={0.88}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 14,
-                    borderRadius: 999,
-                    borderWidth: 1.2,
-                    borderColor: "rgba(248,113,113,0.8)",
-                    alignItems: "center",
-                    backgroundColor: "rgba(127,29,29,0.86)",
-                    shadowColor: "#EF4444",
-                    shadowOpacity: 0.26,
-                    shadowRadius: 12,
-                    shadowOffset: { width: 0, height: 0 },
-                  }}
-                >
-                  <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "900" }}>
-                    IGNORER
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => handleAccept(activeOffer.id)}
-                  disabled={acceptingId === activeOffer.id}
-                  activeOpacity={0.9}
-                  style={{
-                    flex: 1.6,
-                    paddingVertical: 14,
-                    borderRadius: 999,
-                    backgroundColor: "#22C55E",
-                    alignItems: "center",
-                    opacity: acceptingId === activeOffer.id ? 0.6 : 1,
-                    borderWidth: 1.2,
-                    borderColor: "rgba(187,247,208,0.85)",
-                    shadowColor: "#22C55E",
-                    shadowOpacity: 0.42,
-                    shadowRadius: 18,
-                    shadowOffset: { width: 0, height: 0 },
-                    elevation: 18,
-                  }}
-                >
-                  <Text style={{ color: "#052E16", fontSize: 17, fontWeight: "900" }}>
-                    {acceptingId === activeOffer.id
-                      ? t("driver.home.offer.accepting", "ACCEPTATION...")
-                      : "ACCEPTER"}
-                  </Text>
-                </TouchableOpacity>
-
-                <View
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    backgroundColor: "rgba(2,6,23,0.96)",
-                    borderWidth: 2,
-                    borderColor: "rgba(251,191,36,0.82)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    shadowColor: "#F59E0B",
-                    shadowOpacity: 0.55,
-                    shadowRadius: 16,
-                    shadowOffset: { width: 0, height: 0 },
-                  }}
-                >
-                  <Text style={{ color: "#FDE68A", fontSize: 17, fontWeight: "900" }}>
-                    {countdown}s
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {isOnline && !activeOffer && (
-          <Animated.View
-            pointerEvents="box-none"
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 112,
-              transform: [{ translateY: sheetOffset }],
-              paddingHorizontal: 14,
-              zIndex: 90,
-              elevation: 90,
-            }}
-            {...panResponder.panHandlers}
-          >
-            <Animated.View
-              style={{
-                transform: [{ scale: searchPulseScale }],
-                opacity: searchOpacity,
-                borderRadius: 30,
-                overflow: "hidden",
-                backgroundColor: "rgba(20,24,74,0.86)",
-                borderWidth: 1.5,
-                borderColor: "rgba(168,85,247,0.68)",
-                shadowColor: "#A855F7",
-                shadowOpacity: 0.44,
-                shadowRadius: 22,
-                shadowOffset: { width: 0, height: 0 },
+                height: 82,
+                borderRadius: 28,
+                backgroundColor: "rgba(255,255,255,0.97)",
+                borderWidth: 1,
+                borderColor: "rgba(226,232,240,0.95)",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingHorizontal: 10,
+                shadowColor: "#000",
+                shadowOpacity: 0.12,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: -4 },
                 elevation: 16,
               }}
             >
-              <Animated.View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  top: -20,
-                  left: -20,
-                  right: -20,
-                  bottom: -20,
-                  opacity: glowOpacity,
-                  backgroundColor: "#312E81",
-                }}
-              />
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={() => go("DriverHome")}
+              >
+                <Text
+                  style={{ color: "#2563EB", fontSize: 12, fontWeight: "900" }}
+                >
+                  {t("driver.home.tabs.home", "Accueil")}
+                </Text>
+              </TouchableOpacity>
 
-              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 }}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Animated.View
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={() => go("DriverRevenue")}
+              >
+                <Text
+                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
+                >
+                  {t("driver.home.tabs.revenue", "Revenus")}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={openDriverInbox}
+              >
+                <Text
+                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
+                >
+                  {t("driver.home.tabs.inbox", "Boîte")}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: "center", paddingVertical: 10 }}
+                onPress={openDriverMenu}
+              >
+                <Text
+                  style={{ color: "#64748B", fontSize: 12, fontWeight: "900" }}
+                >
+                  {t("driver.home.tabs.menu", "Menu")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {isOnline && (
+          <View
+            pointerEvents="box-none"
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60, elevation: 60 }}
+          >
+            {activeOffer ? (
+              <View style={{ paddingHorizontal: 16, paddingBottom: 20 }}>
+                <View style={{ alignItems: "center", marginBottom: 8 }}>
+                  <Text
                     style={{
-                      transform: [{ scale: radarInnerScale }],
-                      width: 56,
-                      height: 56,
-                      borderRadius: 17,
-                      marginRight: 12,
-                      justifyContent: "center",
+                      color: "#E5E7EB",
+                      fontSize: 18,
+                      fontWeight: "800",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {t("driver.home.offer.title", "Nouvelle course disponible")}
+                  </Text>
+
+                  <Text
+                    style={{
+                      color: "#F97316",
+                      fontSize: 28,
+                      fontWeight: "800",
+                    }}
+                  >
+                    {countdown}s
+                  </Text>
+                </View>
+
+                <View
+                  style={{
+                    backgroundColor: "#020617",
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: "#1F2937",
+                    padding: 14,
+                  }}
+                >
+                  <Text
+                    style={{ color: "#93C5FD", fontSize: 13, marginBottom: 6 }}
+                  >
+                    {formatKind(activeOffer.kind, activeOffer.restaurant_name)}
+                  </Text>
+
+                  <View style={{ marginBottom: 8 }}>
+                    <Text
+                      style={{
+                        color: "#9CA3AF",
+                        fontSize: 12,
+                        marginBottom: 2,
+                      }}
+                    >
+                      {t("driver.home.offer.pickup", "Pickup :")}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#E5E7EB",
+                        fontSize: 14,
+                        fontWeight: "500",
+                      }}
+                    >
+                      {activeOffer.pickup_address ?? "—"}
+                    </Text>
+                  </View>
+
+                  <View style={{ marginBottom: 8 }}>
+                    <Text
+                      style={{
+                        color: "#9CA3AF",
+                        fontSize: 12,
+                        marginBottom: 2,
+                      }}
+                    >
+                      {t("driver.home.offer.dropoff", "Dropoff :")}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#E5E7EB",
+                        fontSize: 14,
+                        fontWeight: "500",
+                      }}
+                    >
+                      {activeOffer.dropoff_address ?? "—"}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginTop: 4,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <View>
+                      <Text
+                        style={{
+                          color: "#9CA3AF",
+                          fontSize: 11,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {t("driver.home.offer.distance", "Distance estimée")}
+                      </Text>
+
+                      <Text
+                        style={{
+                          color: "#E5E7EB",
+                          fontSize: 15,
+                          fontWeight: "700",
+                        }}
+                      >
+                        {activeOffer.distance_miles != null
+                          ? `${activeOffer.distance_miles.toFixed(2)} mi`
+                          : "—"}
+                      </Text>
+                    </View>
+
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text
+                        style={{
+                          color: "#9CA3AF",
+                          fontSize: 11,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {t("driver.home.offer.earnings", "Gain estimé")}
+                      </Text>
+
+                      <Text
+                        style={{
+                          color: "#4ADE80",
+                          fontSize: 15,
+                          fontWeight: "800",
+                        }}
+                      >
+                        {(() => {
+                          const gain = getBestDriverAmount(activeOffer);
+                          return gain != null ? `${gain.toFixed(2)} USD` : "—";
+                        })()}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text
+                    style={{ color: "#6B7280", fontSize: 11, marginTop: 2 }}
+                  >
+                    {t("driver.home.offer.createdAt", "Créée :")}{" "}
+                    {formatDate(activeOffer.created_at)}
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: "row", marginTop: 12, gap: 10 }}>
+                  <TouchableOpacity
+                    onPress={handleDeclineActiveOffer}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: "#FCA5A5",
                       alignItems: "center",
-                      backgroundColor: "#0B0F1A",
-                      shadowColor: "#FF6A00",
-                      shadowOpacity: 0.9,
-                      shadowRadius: 18,
-                      shadowOffset: { width: 0, height: 6 },
-                      elevation: 18,
+                      backgroundColor: "#EF4444",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 14,
+                        fontWeight: "800",
+                      }}
+                    >
+                      {t("driver.home.offer.decline", "Ignorer")}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => handleAccept(activeOffer.id)}
+                    disabled={acceptingId === activeOffer.id}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 999,
+                      backgroundColor: "#22C55E",
+                      alignItems: "center",
+                      opacity: acceptingId === activeOffer.id ? 0.6 : 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#022C22",
+                        fontSize: 14,
+                        fontWeight: "700",
+                      }}
+                    >
+                      {acceptingId === activeOffer.id
+                        ? t("driver.home.offer.accepting", "Acceptation...")
+                        : t("driver.home.offer.accept", "Accepter")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <Animated.View
+                style={{
+                  transform: [{ translateY: sheetOffset }],
+                  paddingHorizontal: 16,
+                  paddingBottom: 0,
+                }}
+                {...panResponder.panHandlers}
+              >
+                <Animated.View
+                  style={{
+                    transform: [{ scale: searchPulseScale }],
+                    opacity: searchOpacity,
+                    marginBottom: 0,
+                    borderRadius: 24,
+                    overflow: "hidden",
+                    backgroundColor: "rgba(2,6,23,0.97)",
+                    borderWidth: 1,
+                    borderColor: "rgba(96,165,250,0.22)",
+                    shadowColor: "#60A5FA",
+                    shadowOpacity: 0.24,
+                    shadowRadius: 18,
+                    shadowOffset: { width: 0, height: 8 },
+                    elevation: 10,
+                  }}
+                >
+                  <Animated.View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      top: -20,
+                      left: -20,
+                      right: -20,
+                      bottom: -20,
+                      opacity: glowOpacity,
+                      backgroundColor: "#0F172A",
+                    }}
+                  />
+
+                  <View
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingTop: 14,
+                      paddingBottom: 14,
                     }}
                   >
                     <View
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        borderRadius: 17,
-                        overflow: "hidden",
-                        borderWidth: 1.5,
-                        borderColor: "rgba(255,140,0,0.58)",
-                      }}
+                      style={{ flexDirection: "row", alignItems: "center" }}
                     >
-                      <Image
-                        source={require("../../assets/brand/mmd-logo.png")}
-                        style={{ width: "100%", height: "100%" }}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </Animated.View>
-
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3 }}>
-                      <Text style={{ color: "#F8FAFC", fontSize: 15.5, fontWeight: "900" }}>
-                        {t("driver.home.searching.title", "Mode détection premium")}
-                      </Text>
-                      <View
+                      <Animated.View
                         style={{
-                          marginLeft: 8,
-                          paddingHorizontal: 9,
-                          paddingVertical: 3,
-                          borderRadius: 999,
-                          backgroundColor: "rgba(34,197,94,0.18)",
-                          borderWidth: 1,
-                          borderColor: "rgba(34,197,94,0.34)",
+                          transform: [{ scale: radarInnerScale }],
+                          width: 54,
+                          height: 54,
+                          borderRadius: 16,
+                          marginRight: 12,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          backgroundColor: "#0B0F1A",
+                          shadowColor: "#FF6A00",
+                          shadowOpacity: 0.85,
+                          shadowRadius: 18,
+                          shadowOffset: { width: 0, height: 6 },
+                          elevation: 16,
                         }}
                       >
-                        <Text style={{ color: "#4ADE80", fontSize: 10, fontWeight: "900" }}>LIVE</Text>
+                        <View
+                          style={{
+                            width: "100%",
+                            height: "100%",
+                            borderRadius: 16,
+                            overflow: "hidden",
+                            borderWidth: 1.5,
+                            borderColor: "rgba(255,140,0,0.5)",
+                          }}
+                        >
+                          <Image
+                            source={require("../../assets/brand/mmd-logo.png")}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="contain"
+                          />
+                        </View>
+                      </Animated.View>
+
+                      <View style={{ flex: 1 }}>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginBottom: 3,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#F8FAFC",
+                              fontSize: 15,
+                              fontWeight: "900",
+                              letterSpacing: 0.2,
+                            }}
+                          >
+                            {t(
+                              "driver.home.searching.title",
+                              "Mode détection premium",
+                            )}
+                          </Text>
+
+                          <View
+                            style={{
+                              marginLeft: 8,
+                              paddingHorizontal: 9,
+                              paddingVertical: 3,
+                              borderRadius: 999,
+                              backgroundColor: "rgba(34,197,94,0.14)",
+                              borderWidth: 1,
+                              borderColor: "rgba(34,197,94,0.28)",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#4ADE80",
+                                fontSize: 10,
+                                fontWeight: "900",
+                                letterSpacing: 0.4,
+                              }}
+                            >
+                              LIVE
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text
+                          style={{
+                            color: "#93C5FD",
+                            fontSize: 12.5,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {searchMessages[searchMessageIndex]}
+                        </Text>
                       </View>
                     </View>
 
-                    <Text style={{ color: "#BFDBFE", fontSize: 12.5, fontWeight: "700" }}>
-                      {searchMessages[searchMessageIndex]}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 13, gap: 8 }}>
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: "rgba(59,130,246,0.16)",
-                      borderWidth: 1,
-                      borderColor: "rgba(59,130,246,0.34)",
-                    }}
-                  >
-                    <Text style={{ color: "#BFDBFE", fontSize: 11, fontWeight: "800" }}>
-                      {t("driver.home.searching.chip1", "Courses à proximité")}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: "rgba(34,197,94,0.16)",
-                      borderWidth: 1,
-                      borderColor: "rgba(34,197,94,0.34)",
-                    }}
-                  >
-                    <Text style={{ color: "#86EFAC", fontSize: 11, fontWeight: "800" }}>
-                      {t("driver.home.searching.chip2", "Gains optimisés")}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: "rgba(249,115,22,0.16)",
-                      borderWidth: 1,
-                      borderColor: "rgba(249,115,22,0.34)",
-                    }}
-                  >
-                    <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "800" }}>
-                      {t("driver.home.searching.chip3", "Zone prioritaire")}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <Animated.View
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  bottom: 0,
-                  width: 140,
-                  transform: [{ translateX: searchShimmerTranslate }, { skewX: "-18deg" }],
-                  backgroundColor: "rgba(255,255,255,0.09)",
-                }}
-              />
-            </Animated.View>
-
-            <View
-              style={{
-                marginTop: 8,
-                borderRadius: 28,
-                backgroundColor: "rgba(2,6,23,0.96)",
-                borderWidth: 1,
-                borderColor: "rgba(59,130,246,0.32)",
-                paddingHorizontal: 15,
-                paddingTop: 8,
-                paddingBottom: 15,
-              }}
-            >
-              <View style={{ alignItems: "center", marginBottom: 8 }}>
-                <View style={{ width: 42, height: 4, borderRadius: 999, backgroundColor: "#475569" }} />
-              </View>
-
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }}>
-                  {t("driver.home.myOrders.title", "My active deliveries")}
-                </Text>
-                <TouchableOpacity onPress={() => void fetchDriverOrders(true)}>
-                  <Text style={{ color: "#38BDF8", fontSize: 12, fontWeight: "800" }}>
-                    {t("shared.common.refresh", "Refresh")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {loading && (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <ActivityIndicator color="#ffffff" />
-                  <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                    {t("driver.home.myOrders.loading", "Loading your deliveries…")}
-                  </Text>
-                </View>
-              )}
-
-              {error && <Text style={{ color: "#F97373", fontSize: 12, marginBottom: 6 }}>{error}</Text>}
-
-              <ScrollView style={{ maxHeight: 188 }} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
-                {myOrders.length === 0 && !loading ? (
-                  <View style={{ paddingVertical: 12, alignItems: "center" }}>
-                    <Text style={{ color: "#CBD5E1", fontSize: 13, textAlign: "center", fontWeight: "700" }}>
-                      {t("driver.home.myOrders.emptyTitle", "You don’t have any active deliveries yet.")}
-                    </Text>
-                    <Text style={{ color: "#64748B", fontSize: 11, marginTop: 2, textAlign: "center" }}>
-                      {t("driver.home.myOrders.emptySubtitle", "As soon as a trip is accepted, it will appear here.")}
-                    </Text>
-                  </View>
-                ) : (
-                  myOrders.map((order) => (
-                    <TouchableOpacity
-                      key={order.id}
-                      onPress={() => handleOpenOrder(order.id)}
-                      activeOpacity={0.9}
+                    <View
                       style={{
-                        backgroundColor: "rgba(6,12,32,0.96)",
-                        borderRadius: 20,
-                        borderWidth: 1,
-                        borderColor: "rgba(59,130,246,0.42)",
-                        padding: 10,
-                        marginBottom: 8,
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        marginTop: 12,
+                        gap: 8,
                       }}
                     >
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
-                        <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "800" }}>#{order.id.slice(0, 8)}</Text>
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(59,130,246,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(59,130,246,0.24)",
+                        }}
+                      >
                         <Text
                           style={{
-                            color:
-                              order.status === "delivered"
-                                ? "#22C55E"
-                                : order.status === "dispatched"
-                                  ? "#FBBF24"
-                                  : "#93C5FD",
+                            color: "#BFDBFE",
                             fontSize: 11,
-                            fontWeight: "800",
+                            fontWeight: "700",
                           }}
                         >
-                          {formatStatus(order.status)}
+                          {t("driver.home.searching.chip1", "Courses à proximité")}
                         </Text>
                       </View>
-                      <Text style={{ color: "#93C5FD", fontSize: 11, marginBottom: 2 }}>
-                        {formatKind(order.kind, order.restaurant_name)}
-                      </Text>
-                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
-                        {t("driver.home.labels.pickup", "Pickup:")} {order.pickup_address ?? "—"}
-                      </Text>
-                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginBottom: 4 }} numberOfLines={1}>
-                        {t("driver.home.labels.dropoff", "Dropoff:")} {order.dropoff_address ?? "—"}
-                      </Text>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-                        <Text style={{ color: "#CBD5E1", fontSize: 11 }}>
-                          {order.distance_miles != null ? `${order.distance_miles.toFixed(2)} mi` : "—"}
-                        </Text>
-                        <Text style={{ color: "#E5E7EB", fontSize: 11, fontWeight: "900" }}>
-                          {(() => {
-                            const amount = getBestDriverAmount(order);
-                            return amount != null ? `${amount.toFixed(2)} USD` : "—";
-                          })()}
+
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(34,197,94,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(34,197,94,0.24)",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#86EFAC",
+                            fontSize: 11,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {t(
+                            "driver.home.searching.chip2",
+                            "Gains optimisés",
+                          )}
                         </Text>
                       </View>
-                      <Text style={{ marginTop: 5, color: "#38BDF8", fontSize: 11, fontWeight: "800", textAlign: "right" }}>
-                        {t("driver.home.myOrders.viewDetails", "View details →")}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </ScrollView>
-            </View>
-          </Animated.View>
-        )}
 
-        {isOnline && !activeOffer && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              left: 16,
-              right: 16,
-              bottom: 98,
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              zIndex: 70,
-              elevation: 70,
-            }}
-          >
-            <View
-              style={{
-                width: "31%",
-                borderRadius: 18,
-                backgroundColor: "rgba(2,6,23,0.86)",
-                borderWidth: 1,
-                borderColor: "rgba(59,130,246,0.32)",
-                padding: 10,
-                minHeight: 78,
-              }}
-            >
-              <Text style={{ color: "#CBD5E1", fontSize: 11, fontWeight: "700" }}>Mes gains du jour</Text>
-              <Text style={{ color: "#FFFFFF", fontSize: 19, fontWeight: "900", marginTop: 8 }}>$84.60</Text>
-              <Text style={{ color: "#4ADE80", fontSize: 11, fontWeight: "800", marginTop: 2 }}>+ $24.30</Text>
-            </View>
+                      <View
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(249,115,22,0.12)",
+                          borderWidth: 1,
+                          borderColor: "rgba(249,115,22,0.24)",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: "#FDBA74",
+                            fontSize: 11,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {t("driver.home.searching.chip3", "Zone prioritaire")}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
 
-            <View
-              style={{
-                width: 98,
-                height: 98,
-                borderRadius: 49,
-                backgroundColor: "rgba(2,6,23,0.92)",
-                borderWidth: 1.5,
-                borderColor: "rgba(251,146,60,0.82)",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#F97316",
-                shadowOpacity: 0.58,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 0 },
-              }}
-            >
-              <Text style={{ color: "#FBBF24", fontSize: 19 }}>♛</Text>
-              <Text style={{ color: "#FDE68A", fontSize: 15, fontWeight: "900" }}>MMD</Text>
-              <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>Driver Pro</Text>
-            </View>
-
-            <View
-              style={{
-                width: "31%",
-                borderRadius: 18,
-                backgroundColor: "rgba(2,6,23,0.86)",
-                borderWidth: 1,
-                borderColor: "rgba(59,130,246,0.32)",
-                padding: 10,
-                minHeight: 78,
-              }}
-            >
-              <Text style={{ color: "#CBD5E1", fontSize: 11, fontWeight: "700" }}>Prochaine opportunité</Text>
-              <Text style={{ color: "#FBBF24", fontSize: 15, fontWeight: "900", marginTop: 8 }}>Dans 3–5 min</Text>
-              <Text style={{ color: "#CBD5E1", fontSize: 11, marginTop: 2 }}>Restez dans la zone</Text>
-            </View>
-          </View>
-        )}
-
-        <View
-          pointerEvents="box-none"
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            paddingBottom: 16,
-            paddingHorizontal: 14,
-            zIndex: 120,
-            elevation: 120,
-          }}
-        >
-          <View
-            style={{
-              height: 88,
-              borderRadius: 32,
-              backgroundColor: "rgba(2,6,23,0.97)",
-              borderWidth: 1,
-              borderColor: "rgba(59,130,246,0.24)",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingHorizontal: 10,
-              shadowColor: "#0EA5E9",
-              shadowOpacity: 0.18,
-              shadowRadius: 18,
-              shadowOffset: { width: 0, height: -4 },
-              elevation: 18,
-            }}
-          >
-            <TouchableOpacity style={{ flex: 1, alignItems: "center" }} onPress={() => go("DriverHome")}>
-              <Text style={{ color: "#0EA5E9", fontSize: 24 }}>⌂</Text>
-              <Text style={{ color: "#38BDF8", fontSize: 12, fontWeight: "900", marginTop: 3 }}>
-                {t("driver.home.tabs.home", "Accueil")}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={{ flex: 1, alignItems: "center" }} onPress={() => go("DriverRevenue")}>
-              <Text style={{ color: "#94A3B8", fontSize: 22 }}>＄</Text>
-              <Text style={{ color: "#94A3B8", fontSize: 12, fontWeight: "900", marginTop: 4 }}>
-                {t("driver.home.tabs.revenue", "Gains")}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={centerOnDriver}
-              style={{
-                width: 76,
-                height: 76,
-                borderRadius: 38,
-                backgroundColor: "rgba(0,82,255,0.86)",
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 2,
-                borderColor: "rgba(56,189,248,0.9)",
-                shadowColor: "#0EA5E9",
-                shadowOpacity: 0.92,
-                shadowRadius: 20,
-                shadowOffset: { width: 0, height: 0 },
-                marginTop: -34,
-              }}
-            >
-              <Text style={{ color: "#FFFFFF", fontSize: 33, fontWeight: "900", transform: [{ rotate: "-45deg" }] }}>
-                ▲
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={{ flex: 1, alignItems: "center" }} onPress={openDriverInbox}>
-              <View>
-                <Text style={{ color: "#94A3B8", fontSize: 22 }}>☵</Text>
-                {myOrders.length > 0 && (
-                  <View
+                  <Animated.View
+                    pointerEvents="none"
                     style={{
                       position: "absolute",
-                      right: -8,
-                      top: -6,
-                      minWidth: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      backgroundColor: "#EF4444",
+                      top: 0,
+                      bottom: 0,
+                      width: 140,
+                      transform: [
+                        { translateX: searchShimmerTranslate },
+                        { skewX: "-18deg" },
+                      ],
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    }}
+                  />
+                </Animated.View>
+
+                <View
+                  style={{
+                    backgroundColor: "rgba(15,23,42,0.96)",
+                    borderTopLeftRadius: 16,
+                    borderTopRightRadius: 16,
+                    paddingHorizontal: 16,
+                    paddingTop: 4,
+                    paddingBottom: 16,
+                  }}
+                >
+                  <View style={{ alignItems: "center", marginBottom: 8 }}>
+                    <View
+                      style={{
+                        width: 40,
+                        height: 4,
+                        borderRadius: 999,
+                        backgroundColor: "#4B5563",
+                      }}
+                    />
+                  </View>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
                       alignItems: "center",
-                      justifyContent: "center",
+                      marginBottom: 6,
                     }}
                   >
-                    <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>
-                      {Math.min(myOrders.length, 9)}
+                    <Text
+                      style={{
+                        color: "#E5E7EB",
+                        fontSize: 15,
+                        fontWeight: "600",
+                      }}
+                    >
+                      {t("driver.home.myOrders.title", "Mes livraisons actives")}
                     </Text>
-                  </View>
-                )}
-              </View>
-              <Text style={{ color: "#94A3B8", fontSize: 12, fontWeight: "900", marginTop: 4 }}>
-                {t("driver.home.tabs.inbox", "Messages")}
-              </Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity style={{ flex: 1, alignItems: "center" }} onPress={openDriverMenu}>
-              <Text style={{ color: "#94A3B8", fontSize: 23 }}>▦</Text>
-              <Text style={{ color: "#94A3B8", fontSize: 12, fontWeight: "900", marginTop: 3 }}>
-                {t("driver.home.tabs.menu", "Menu")}
-              </Text>
-            </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => void fetchDriverOrders(true)}
+                    >
+                      <Text
+                        style={{
+                          color: "#3B82F6",
+                          fontSize: 12,
+                          fontWeight: "500",
+                        }}
+                      >
+                        {t("shared.common.refresh", "Refresh")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {loading && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <ActivityIndicator color="#ffffff" />
+
+                      <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
+                        {t(
+                          "driver.home.myOrders.loading",
+                          "Loading your deliveries…",
+                        )}
+                      </Text>
+                    </View>
+                  )}
+
+                  {error && (
+                    <Text
+                      style={{
+                        color: "#F97373",
+                        fontSize: 12,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {error}
+                    </Text>
+                  )}
+
+                  <ScrollView
+                    style={{ maxHeight: 260 }}
+                    contentContainerStyle={{ paddingBottom: 8 }}
+                  >
+                    {myOrders.length === 0 && !loading ? (
+                      <View
+                        style={{ paddingVertical: 12, alignItems: "center" }}
+                      >
+                        <Text
+                          style={{
+                            color: "#9CA3AF",
+                            fontSize: 13,
+                            textAlign: "center",
+                          }}
+                        >
+                          {t(
+                            "driver.home.myOrders.emptyTitle",
+                            "You don’t have any active deliveries yet.",
+                          )}
+                        </Text>
+
+                        <Text
+                          style={{
+                            color: "#6B7280",
+                            fontSize: 11,
+                            marginTop: 2,
+                            textAlign: "center",
+                          }}
+                        >
+                          {t(
+                            "driver.home.myOrders.emptySubtitle",
+                            "As soon as a trip is accepted, it will appear here.",
+                          )}
+                        </Text>
+                      </View>
+                    ) : (
+                      myOrders.map((order) => (
+                        <TouchableOpacity
+                          key={order.id}
+                          onPress={() => handleOpenOrder(order.id)}
+                          style={{
+                            backgroundColor: "#020617",
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#1F2937",
+                            padding: 10,
+                            marginBottom: 8,
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              marginBottom: 3,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#E5E7EB",
+                                fontSize: 13,
+                                fontWeight: "600",
+                              }}
+                            >
+                              #{order.id.slice(0, 8)}
+                            </Text>
+
+                            <Text
+                              style={{
+                                color:
+                                  order.status === "delivered"
+                                    ? "#22C55E"
+                                    : order.status === "dispatched"
+                                      ? "#FBBF24"
+                                      : "#93C5FD",
+                                fontSize: 11,
+                                fontWeight: "600",
+                              }}
+                            >
+                              {formatStatus(order.status)}
+                            </Text>
+                          </View>
+
+                          <Text
+                            style={{
+                              color: "#93C5FD",
+                              fontSize: 11,
+                              marginBottom: 2,
+                            }}
+                          >
+                            {formatKind(order.kind, order.restaurant_name)}
+                          </Text>
+
+                          <Text
+                            style={{
+                              color: "#6B7280",
+                              fontSize: 10,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {formatDate(order.created_at)}
+                          </Text>
+
+                          <Text
+                            style={{
+                              color: "#9CA3AF",
+                              fontSize: 11,
+                              marginBottom: 2,
+                            }}
+                          >
+                            {t("driver.home.labels.pickup", "Pickup:")}{" "}
+                            <Text
+                              style={{ color: "#E5E7EB", fontWeight: "500" }}
+                            >
+                              {order.pickup_address ?? "—"}
+                            </Text>
+                          </Text>
+
+                          <Text
+                            style={{
+                              color: "#9CA3AF",
+                              fontSize: 11,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {t("driver.home.labels.dropoff", "Dropoff:")}{" "}
+                            <Text
+                              style={{ color: "#E5E7EB", fontWeight: "500" }}
+                            >
+                              {order.dropoff_address ?? "—"}
+                            </Text>
+                          </Text>
+
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              marginTop: 2,
+                            }}
+                          >
+                            <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
+                              {t("driver.home.labels.distance", "Distance:")}{" "}
+                              <Text
+                                style={{ color: "#E5E7EB", fontWeight: "600" }}
+                              >
+                                {order.distance_miles != null
+                                  ? `${order.distance_miles.toFixed(2)} mi`
+                                  : "—"}
+                              </Text>
+                            </Text>
+
+                            <Text style={{ color: "#9CA3AF", fontSize: 11 }}>
+                              {t(
+                                "driver.home.labels.driverEarnings",
+                                "Driver earnings:",
+                              )}{" "}
+                              <Text
+                                style={{ color: "#E5E7EB", fontWeight: "700" }}
+                              >
+                                {(() => {
+                                  const amount = getBestDriverAmount(order);
+                                  return amount != null
+                                    ? `${amount.toFixed(2)} USD`
+                                    : "—";
+                                })()}
+                              </Text>
+                            </Text>
+                          </View>
+
+                          <Text
+                            style={{
+                              marginTop: 4,
+                              color: "#3B82F6",
+                              fontSize: 11,
+                              fontWeight: "600",
+                              textAlign: "right",
+                            }}
+                          >
+                            {t(
+                              "driver.home.myOrders.viewDetails",
+                              "View details →",
+                            )}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </ScrollView>
+                </View>
+              </Animated.View>
+            )}
           </View>
-        </View>
+        )}
       </View>
     </SafeAreaView>
   );
