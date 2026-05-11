@@ -12,6 +12,7 @@ import {
   PanResponder,
   Dimensions,
   ScrollView,
+  Image,
 } from "react-native";
 import Mapbox from "@rnmapbox/maps";
 import { useNavigation } from "@react-navigation/native";
@@ -88,6 +89,7 @@ type RestaurantPin = {
   name: string;
   latitude: number;
   longitude: number;
+  logoUrl: string | null;
 };
 
 type IncomingOrderBanner = {
@@ -412,6 +414,24 @@ export default function DriverMapScreen() {
       const dist = distanceMeters(region.latitude, region.longitude, r.latitude, r.longitude);
       return dist < 2500;
     }).length;
+  }, [hasLocation, restaurants, region.latitude, region.longitude]);
+
+  const nearbyRestaurants = useMemo(() => {
+    if (!hasLocation) return [];
+
+    return restaurants
+      .map((restaurant) => ({
+        ...restaurant,
+        distanceFromDriver: distanceMeters(
+          region.latitude,
+          region.longitude,
+          restaurant.latitude,
+          restaurant.longitude
+        ),
+      }))
+      .filter((restaurant) => restaurant.distanceFromDriver < 2500)
+      .sort((a, b) => a.distanceFromDriver - b.distanceFromDriver)
+      .slice(0, 20);
   }, [hasLocation, restaurants, region.latitude, region.longitude]);
 
   const zoneOpportunityScore = useMemo(() => {
@@ -865,14 +885,14 @@ export default function DriverMapScreen() {
       try {
         setRestaurantsLoading(true);
 
-        const { data, error } = await supabase
+        const response = await supabase
           .from("restaurant_profiles")
           .select("user_id, restaurant_name, location_lat, location_lng, status")
           .eq("status", "approved")
           .limit(150);
 
-        if (error) {
-          console.log("Erreur chargement restaurants:", error);
+        if (response.error) {
+          console.log("Erreur chargement restaurants:", response.error);
 
           if (!cancelled) {
             setRestaurants([]);
@@ -881,15 +901,16 @@ export default function DriverMapScreen() {
           return;
         }
 
-        if (!data || cancelled) return;
+        if (!response.data || cancelled) return;
 
-        const mapped: RestaurantPin[] = (data as any[])
+        const mapped: RestaurantPin[] = (response.data as any[])
           .filter((row) => row.location_lat != null && row.location_lng != null)
           .map((row) => ({
             id: row.user_id,
             name: row.restaurant_name ?? "Restaurant",
-            latitude: row.location_lat,
-            longitude: row.location_lng,
+            latitude: Number(row.location_lat),
+            longitude: Number(row.location_lng),
+            logoUrl: null,
           }));
 
         setRestaurants(mapped);
@@ -1065,8 +1086,8 @@ export default function DriverMapScreen() {
 
     cameraRef.current?.setCamera({
       centerCoordinate: [region.longitude, region.latitude],
-      zoomLevel: 14,
-      animationDuration: 450,
+      zoomLevel: 16,
+      animationDuration: 650,
       animationMode: "flyTo",
     });
   }
@@ -1345,9 +1366,46 @@ export default function DriverMapScreen() {
               />
 
               <Mapbox.UserLocation
-                visible={true}
-                showsUserHeadingIndicator={true}
+                visible={false}
+                showsUserHeadingIndicator={false}
               />
+
+              {hasLocation && (
+                <Mapbox.PointAnnotation
+                  id="driver-live-marker"
+                  coordinate={[region.longitude, region.latitude]}
+                >
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24,
+                      backgroundColor: "#2563EB",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 4,
+                      borderColor: "#FFFFFF",
+                      shadowColor: "#2563EB",
+                      shadowOpacity: 0.45,
+                      shadowRadius: 12,
+                      shadowOffset: { width: 0, height: 5 },
+                      elevation: 10,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 23,
+                        fontWeight: "900",
+                        transform: [{ rotate: "-45deg" }],
+                        marginTop: -1,
+                      }}
+                    >
+                      ➤
+                    </Text>
+                  </View>
+                </Mapbox.PointAnnotation>
+              )}
 
               {DRIVER_ZONES.map((zone) => {
                 const { strokeColor, fillColor, labelColor, haloColor } = getZoneColors(
@@ -1377,38 +1435,11 @@ export default function DriverMapScreen() {
                       />
                     </Mapbox.ShapeSource>
 
-                    <Mapbox.PointAnnotation
-                      id={`zone-label-${zone.id}`}
-                      coordinate={[zone.center.lng, zone.center.lat]}
-                    >
-                      <View
-                        style={{
-                          paddingHorizontal: 10,
-                          paddingVertical: 6,
-                          borderRadius: 16,
-                          backgroundColor: "rgba(15,23,42,0.96)",
-                          borderWidth: 1,
-                          borderColor: haloColor,
-                          shadowColor: "#000",
-                          shadowOpacity: 0.22,
-                          shadowRadius: 8,
-                          shadowOffset: { width: 0, height: 4 },
-                        }}
-                      >
-                        <Text style={{ color: "#F8FAFC", fontSize: 11, fontWeight: "700" }}>
-                          {zone.name}
-                        </Text>
-
-                        <Text style={{ color: labelColor, fontSize: 10, marginTop: 2 }}>
-                          {getActivityLabel(zone.activity)}
-                        </Text>
-                      </View>
-                    </Mapbox.PointAnnotation>
                   </React.Fragment>
                 );
               })}
 
-              {restaurants.map((resto) => {
+              {nearbyRestaurants.map((resto) => {
                 const dist = hasLocation
                   ? distanceMeters(region.latitude, region.longitude, resto.latitude, resto.longitude)
                   : Infinity;
@@ -1435,63 +1466,90 @@ export default function DriverMapScreen() {
                   >
                     <View
                       style={{
-                        paddingHorizontal: 7,
-                        paddingVertical: 5,
-                        borderRadius: 999,
-                        backgroundColor: "#FFFFFF",
-                        borderWidth: 1.5,
-                        borderColor: isBoosted ? "#EA580C" : "#F97316",
-                        flexDirection: "row",
                         alignItems: "center",
-                        shadowColor: "#000",
-                        shadowOpacity: isBoosted ? 0.34 : 0.18,
-                        shadowRadius: isBoosted ? 10 : 6,
-                        shadowOffset: { width: 0, height: 3 },
+                        justifyContent: "center",
                       }}
                     >
                       <View
                         style={{
-                          width: isBoosted ? 19 : 16,
-                          height: isBoosted ? 19 : 16,
-                          borderRadius: 10,
-                          backgroundColor: isBoosted ? "#EA580C" : "#F97316",
+                          width: isBoosted ? 48 : 42,
+                          height: isBoosted ? 48 : 42,
+                          borderRadius: isBoosted ? 24 : 21,
+                          backgroundColor: "#FFFFFF",
+                          borderWidth: isBoosted ? 3 : 2,
+                          borderColor: isBoosted ? "#EA580C" : "#F97316",
                           alignItems: "center",
                           justifyContent: "center",
-                          marginRight: 5,
+                          shadowColor: "#000",
+                          shadowOpacity: isBoosted ? 0.34 : 0.2,
+                          shadowRadius: isBoosted ? 10 : 7,
+                          shadowOffset: { width: 0, height: 4 },
+                          elevation: isBoosted ? 9 : 6,
+                          overflow: "hidden",
                         }}
                       >
-                        <Text style={{ color: "#FFF", fontSize: 10, fontWeight: "800" }}>
-                          {isBoosted ? "🔥" : "R"}
-                        </Text>
+                        {resto.logoUrl ? (
+                          <Image
+                            source={{ uri: resto.logoUrl }}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: isBoosted ? "#EA580C" : "#F97316",
+                            }}
+                          >
+                            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
+                              {isBoosted ? "🔥" : "R"}
+                            </Text>
+                          </View>
+                        )}
                       </View>
 
-                      <Text
+                      <View
                         style={{
-                          color: "#111827",
-                          fontSize: 10,
-                          maxWidth: 96,
-                          fontWeight: isBoosted ? "700" : "600",
+                          marginTop: 4,
+                          maxWidth: 110,
+                          paddingHorizontal: 7,
+                          paddingVertical: 3,
+                          borderRadius: 999,
+                          backgroundColor: "rgba(2,6,23,0.9)",
+                          borderWidth: 1,
+                          borderColor: isBoosted ? "rgba(249,115,22,0.55)" : "rgba(148,163,184,0.25)",
+                          flexDirection: "row",
+                          alignItems: "center",
                         }}
-                        numberOfLines={1}
                       >
-                        {resto.name}
-                      </Text>
-
-                      {boostLabel && (
-                        <View
+                        <Text
                           style={{
-                            marginLeft: 5,
-                            paddingHorizontal: 5,
-                            paddingVertical: 2,
-                            borderRadius: 999,
-                            backgroundColor: "#FEF3C7",
+                            color: "#FFFFFF",
+                            fontSize: 9,
+                            fontWeight: "800",
+                            maxWidth: boostLabel ? 72 : 96,
                           }}
+                          numberOfLines={1}
                         >
-                          <Text style={{ color: "#B45309", fontSize: 9, fontWeight: "800" }}>
+                          {resto.name}
+                        </Text>
+
+                        {boostLabel && (
+                          <Text
+                            style={{
+                              marginLeft: 4,
+                              color: "#FDBA74",
+                              fontSize: 9,
+                              fontWeight: "900",
+                            }}
+                          >
                             {boostLabel}
                           </Text>
-                        </View>
-                      )}
+                        )}
+                      </View>
                     </View>
                   </Mapbox.PointAnnotation>
                 );
@@ -1518,6 +1576,8 @@ export default function DriverMapScreen() {
                 left: 16,
                 right: 16,
                 height: 56,
+                zIndex: 9999,
+                elevation: 9999,
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -1621,7 +1681,7 @@ export default function DriverMapScreen() {
                   elevation: 12,
                 }}
               >
-                <Text style={{ color: "#FFFFFF", fontSize: 21 }}>💬</Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 21 }}>🔔</Text>
                 {driverOrders.length > 0 && (
                   <View
                     style={{
@@ -1982,7 +2042,7 @@ export default function DriverMapScreen() {
             )}
 
             {hasLocation && (
-              <View pointerEvents="box-none" style={{ position: "absolute", right: 18, bottom: 214 }}>
+              <View pointerEvents="box-none" style={{ position: "absolute", right: 18, bottom: 214, zIndex: 9998, elevation: 9998 }}>
                 <TouchableOpacity
                   onPress={centerOnDriver}
                   activeOpacity={0.9}
