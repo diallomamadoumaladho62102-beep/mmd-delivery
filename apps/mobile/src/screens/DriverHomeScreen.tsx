@@ -276,6 +276,7 @@ export function DriverHomeScreen() {
   const sheetOffset = useRef(new Animated.Value(SHEET_MAX_TRANSLATE_Y)).current;
   const sheetStartOffset = useRef(0);
   const lastOfferIdRef = useRef<string | null>(null);
+  const cameraRef = useRef<Mapbox.Camera | null>(null);
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const volumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -1309,6 +1310,26 @@ export function DriverHomeScreen() {
     [navAny],
   );
 
+  const centerOnDriver = useCallback(() => {
+    const latitude = driverLocation?.lat ?? region.latitude;
+    const longitude = driverLocation?.lng ?? region.longitude;
+
+    setRegion((prev) => ({
+      ...prev,
+      latitude,
+      longitude,
+      latitudeDelta: 0.035,
+      longitudeDelta: 0.035,
+    }));
+
+    cameraRef.current?.setCamera({
+      centerCoordinate: [Number(longitude), Number(latitude)],
+      zoomLevel: 16,
+      animationMode: "flyTo",
+      animationDuration: 650,
+    });
+  }, [driverLocation?.lat, driverLocation?.lng, region.latitude, region.longitude]);
+
   useEffect(() => {
     return () => {
       void stopDbGpsTracking();
@@ -1352,6 +1373,7 @@ export function DriverHomeScreen() {
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={true}
+          surfaceView={false}
         >
           <Mapbox.UserLocation
             visible={false}
@@ -1359,6 +1381,7 @@ export function DriverHomeScreen() {
           />
 
           <Mapbox.Camera
+            ref={cameraRef}
             zoomLevel={13}
             centerCoordinate={[Number(region.longitude), Number(region.latitude)]}
             animationMode="flyTo"
@@ -1482,14 +1505,15 @@ export function DriverHomeScreen() {
 
         <View
           pointerEvents="box-none"
+          collapsable={false}
           style={{
             position: "absolute",
             top: 14,
             left: 16,
             right: 16,
             height: 56,
-            zIndex: 9999,
-            elevation: 9999,
+            zIndex: 100000,
+            elevation: 100000,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
@@ -1498,6 +1522,7 @@ export function DriverHomeScreen() {
           <TouchableOpacity
             onPress={() => go("DriverMenu")}
             activeOpacity={0.85}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
               height: 48,
               width: 48,
@@ -1511,7 +1536,8 @@ export function DriverHomeScreen() {
               shadowOpacity: 0.26,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 6 },
-              elevation: 12,
+              zIndex: 100001,
+              elevation: 100001,
             }}
           >
             <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "900" }}>
@@ -1522,6 +1548,7 @@ export function DriverHomeScreen() {
           <TouchableOpacity
             onPress={toggleOnline}
             activeOpacity={0.9}
+            hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
             style={{
               minWidth: 150,
               height: 48,
@@ -1539,7 +1566,8 @@ export function DriverHomeScreen() {
               shadowOpacity: 0.28,
               shadowRadius: 14,
               shadowOffset: { width: 0, height: 7 },
-              elevation: 14,
+              zIndex: 100001,
+              elevation: 100001,
             }}
           >
             <View
@@ -1571,6 +1599,7 @@ export function DriverHomeScreen() {
           <TouchableOpacity
             onPress={() => go("DriverInbox")}
             activeOpacity={0.85}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
               height: 48,
               width: 48,
@@ -1584,7 +1613,8 @@ export function DriverHomeScreen() {
               shadowOpacity: 0.26,
               shadowRadius: 12,
               shadowOffset: { width: 0, height: 6 },
-              elevation: 12,
+              zIndex: 100001,
+              elevation: 100001,
             }}
           >
             <Text style={{ color: "#FFFFFF", fontSize: 22 }}>🔔</Text>
@@ -1620,14 +1650,9 @@ export function DriverHomeScreen() {
 
         {hasLocation && (
           <TouchableOpacity
-            onPress={() => {
-              setRegion((prev) => ({
-                ...prev,
-                latitude: driverLocation?.lat ?? prev.latitude,
-                longitude: driverLocation?.lng ?? prev.longitude,
-              }));
-            }}
+            onPress={centerOnDriver}
             activeOpacity={0.86}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
               position: "absolute",
               right: 18,
@@ -1642,8 +1667,8 @@ export function DriverHomeScreen() {
               shadowOpacity: 0.18,
               shadowRadius: 14,
               shadowOffset: { width: 0, height: 6 },
-              zIndex: 9998,
-              elevation: 9998,
+              zIndex: 100000,
+              elevation: 100000,
             }}
           >
             <Text
@@ -1682,6 +1707,7 @@ export function DriverHomeScreen() {
 
         {!isOnline && (
           <View
+            pointerEvents="box-none"
             style={{
               position: "absolute",
               left: 0,
@@ -1691,6 +1717,8 @@ export function DriverHomeScreen() {
               paddingTop: 10,
               paddingHorizontal: 14,
               backgroundColor: "transparent",
+              zIndex: 50,
+              elevation: 50,
             }}
           >
             <View
@@ -1759,7 +1787,10 @@ export function DriverHomeScreen() {
         )}
 
         {isOnline && (
-          <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
+          <View
+            pointerEvents="box-none"
+            style={{ position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60, elevation: 60 }}
+          >
             {activeOffer ? (
               <View style={{ paddingHorizontal: 16, paddingBottom: 20 }}>
                 <View style={{ alignItems: "center", marginBottom: 8 }}>
