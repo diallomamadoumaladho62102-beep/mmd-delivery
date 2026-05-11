@@ -20,18 +20,39 @@ const Tab = createBottomTabNavigator<DriverTabParamList>();
 export function DriverTabs() {
   const { t, i18n } = useTranslation();
 
-  // ✅ Remount des tabs quand la langue change (met à jour les labels/options)
-  const tabKey = useMemo(() => `driver-tabs-${i18n.language}`, [i18n.language]);
+  // ✅ Remount des tabs quand la langue change
+  const tabKey = useMemo(
+    () => `driver-tabs-${i18n.language}`,
+    [i18n.language]
+  );
 
   return (
     <Tab.Navigator
-      // ✅ React Navigation v7: Navigator "id" est requis
       id="driver-tabs"
-      // ✅ On garde ton remount clean quand la langue change
       key={tabKey}
       initialRouteName="DriverHomeTab"
       screenOptions={{
         headerShown: false,
+
+        // ✅ Style premium sombre MMD
+        tabBarStyle: {
+          backgroundColor: "rgba(2,6,23,0.98)",
+          borderTopColor: "rgba(139,92,246,0.22)",
+          borderTopWidth: 1,
+          height: 72,
+          paddingTop: 8,
+          paddingBottom: 10,
+        },
+
+        // ✅ Couleurs
+        tabBarActiveTintColor: "#A78BFA",
+        tabBarInactiveTintColor: "#94A3B8",
+
+        // ✅ Texte
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "800",
+        },
       }}
     >
       <Tab.Screen
@@ -41,6 +62,7 @@ export function DriverTabs() {
           tabBarLabel: t("driver.tabs.home", "Home"),
         }}
       />
+
       <Tab.Screen
         name="DriverRevenueTab"
         component={DriverRevenueScreen}
@@ -48,6 +70,7 @@ export function DriverTabs() {
           tabBarLabel: t("driver.tabs.revenue", "Earnings"),
         }}
       />
+
       <Tab.Screen
         name="DriverInboxTab"
         component={DriverInboxScreen}
@@ -55,6 +78,7 @@ export function DriverTabs() {
           tabBarLabel: t("driver.tabs.inbox", "Inbox"),
         }}
       />
+
       <Tab.Screen
         name="DriverMenuTab"
         component={DriverMenuScreen}
