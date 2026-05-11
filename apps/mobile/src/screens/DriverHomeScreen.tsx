@@ -1480,67 +1480,6 @@ export function DriverHomeScreen() {
           )}
         </Mapbox.MapView>
 
-        {hasLocation && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: "absolute",
-              top: "38%",
-              left: "50%",
-              marginLeft: -39,
-              marginTop: -39,
-              height: 78,
-              width: 78,
-              borderRadius: 39,
-              backgroundColor: "rgba(59,130,246,0.16)",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Animated.View
-              style={{
-                transform: [{ scale: radarInnerScale }],
-                height: 56,
-                width: 56,
-                borderRadius: 28,
-                backgroundColor: "rgba(96,165,250,0.22)",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#2563EB",
-                shadowOpacity: 0.55,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 6 },
-                elevation: 16,
-              }}
-            >
-              <View
-                style={{
-                  height: 38,
-                  width: 38,
-                  borderRadius: 19,
-                  backgroundColor: "#2563EB",
-                  borderWidth: 3,
-                  borderColor: "#FFFFFF",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#FFFFFF",
-                    fontSize: 22,
-                    fontWeight: "900",
-                    transform: [{ rotate: "-45deg" }],
-                    marginTop: -1,
-                  }}
-                >
-                  ▲
-                </Text>
-              </View>
-            </Animated.View>
-          </View>
-        )}
-
         <View
           pointerEvents="box-none"
           style={{
@@ -1549,6 +1488,8 @@ export function DriverHomeScreen() {
             left: 16,
             right: 16,
             height: 56,
+            zIndex: 9999,
+            elevation: 9999,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
@@ -1701,7 +1642,8 @@ export function DriverHomeScreen() {
               shadowOpacity: 0.18,
               shadowRadius: 14,
               shadowOffset: { width: 0, height: 6 },
-              elevation: 12,
+              zIndex: 9998,
+              elevation: 9998,
             }}
           >
             <Text
