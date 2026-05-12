@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -60,12 +61,18 @@ function fmtMoney(n: number) {
 function fmtShortDate(iso: string | null, locale: string) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleDateString(locale || "en-US", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString(locale || "en-US", {
+    day: "2-digit",
+    month: "short",
+  });
 }
 function fmtTime(iso: string | null, locale: string) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleTimeString(locale || "en-US", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(locale || "en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 function getGain(o: OrderRow) {
   const g = o.driver_delivery_payout ?? o.delivery_fee ?? o.total ?? 0;
@@ -140,7 +147,10 @@ export function DriverRevenueHistoryScreen() {
         setOrders([]);
         Alert.alert(
           t("driver.revenue.history.auth.title", "Login"),
-          t("driver.revenue.history.auth.body", "Log in as a driver to view your earnings history.")
+          t(
+            "driver.revenue.history.auth.body",
+            "Log in as a driver to view your earnings history.",
+          ),
         );
         return;
       }
@@ -151,7 +161,7 @@ export function DriverRevenueHistoryScreen() {
         .from("orders")
         .select(
           // ✅ A1: tip_cents dans le SELECT
-          "id, created_at, status, driver_id, driver_delivery_payout, delivery_fee, total, tip_cents, kind, restaurant_name"
+          "id, created_at, status, driver_id, driver_delivery_payout, delivery_fee, total, tip_cents, kind, restaurant_name",
         )
         .eq("driver_id", uid)
         .eq("status", "delivered")
@@ -166,7 +176,8 @@ export function DriverRevenueHistoryScreen() {
       console.log("fetchOrders history error:", e);
       Alert.alert(
         t("common.errorTitle", "Error"),
-        e?.message ?? t("driver.revenue.history.loadError", "Unable to load history.")
+        e?.message ??
+          t("driver.revenue.history.loadError", "Unable to load history."),
       );
       setOrders([]);
     } finally {
@@ -188,91 +199,62 @@ export function DriverRevenueHistoryScreen() {
   }, [orders]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.headerWrap}>
+        <View style={styles.headerRow}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={{ paddingVertical: 8, paddingRight: 10 }}
+            style={styles.roundButton}
+            activeOpacity={0.85}
           >
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>←</Text>
+            <Text style={styles.backText}>‹</Text>
           </TouchableOpacity>
 
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>
               {t("driver.revenue.history.title", "History")}
             </Text>
-            <Text
-              style={{
-                color: "#9CA3AF",
-                marginTop: 2,
-                fontWeight: "800",
-                fontSize: 12,
-              }}
-            >
-              {label}
-            </Text>
+            <Text style={styles.headerSubtitle}>{label}</Text>
           </View>
 
           <TouchableOpacity
             onPress={() => void fetchOrders()}
-            style={{
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-              borderRadius: 999,
-              backgroundColor: "rgba(15,23,42,0.7)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-              opacity: loading ? 0.65 : 1,
-            }}
+            style={[styles.refreshButton, loading && styles.disabled]}
             disabled={loading}
+            activeOpacity={0.85}
           >
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-              {loading ? t("shared.common.loadingEllipsis", "…") : t("common.refresh", "Refresh")}
+            <Text style={styles.refreshText}>
+              {loading
+                ? t("shared.common.loadingEllipsis", "…")
+                : t("common.refresh", "Refresh")}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
-        {/* Filtres */}
-        <View style={{ flexDirection: "row", gap: 10 }}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.filtersRow}>
           {(["today", "week", "month"] as RangeKey[]).map((k) => {
             const active = k === range;
             const text =
               k === "today"
                 ? t("driver.revenue.history.filters.today", "Today")
                 : k === "week"
-                ? t("driver.revenue.history.filters.week", "Week")
-                : t("driver.revenue.history.filters.month", "Month");
+                  ? t("driver.revenue.history.filters.week", "Week")
+                  : t("driver.revenue.history.filters.month", "Month");
 
             return (
               <TouchableOpacity
                 key={k}
                 onPress={() => setRange(k)}
-                style={{
-                  flex: 1,
-                  height: 44,
-                  borderRadius: 999,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  backgroundColor: active ? "rgba(59,130,246,0.25)" : "rgba(15,23,42,0.65)",
-                  borderWidth: 1,
-                  borderColor: active ? "#60A5FA" : "#1F2937",
-                }}
+                style={[styles.filterPill, active && styles.filterPillActive]}
+                activeOpacity={0.86}
               >
                 <Text
-                  style={{
-                    color: active ? "#BFDBFE" : "#E5E7EB",
-                    fontWeight: "900",
-                    fontSize: 12,
-                  }}
+                  style={[styles.filterText, active && styles.filterTextActive]}
                 >
                   {text}
                 </Text>
@@ -281,62 +263,75 @@ export function DriverRevenueHistoryScreen() {
           })}
         </View>
 
-        {/* Résumé */}
-        <View
-          style={{
-            marginTop: 14,
-            borderRadius: 18,
-            backgroundColor: "rgba(15,23,42,0.65)",
-            borderWidth: 1,
-            borderColor: "#1F2937",
-            padding: 16,
-          }}
-        >
-          <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryTopRow}>
+            <View style={styles.summaryIconBox}>
+              <Text style={styles.summaryIcon}>$</Text>
+            </View>
+            <View style={styles.livePill}>
+              <Text style={styles.liveText}>{orders.length} trips</Text>
+            </View>
+          </View>
+
+          <Text style={styles.summaryLabel}>
             {t("driver.revenue.history.summary.totalLabel", "Total")}
           </Text>
-          <Text
-            style={{
-              color: "white",
-              fontSize: 34,
-              fontWeight: "900",
-              marginTop: 6,
-            }}
-          >
+          <Text style={styles.summaryAmount}>
             {fmtMoney(totals.totalEarnings)}
           </Text>
 
-          <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
-            {t(
-              "driver.revenue.history.summary.netAndTips",
-              "Net price: {{net}} · Tips: {{tips}}",
-              { net: fmtMoney(totals.baseEarnings), tips: fmtMoney(totals.tipsTotal) }
-            )}
-          </Text>
+          <View style={styles.splitRow}>
+            <View style={styles.splitCard}>
+              <Text style={styles.splitLabel}>
+                {t("driver.revenue.history.summary.net", "Net price")}
+              </Text>
+              <Text style={styles.splitValue}>
+                {fmtMoney(totals.baseEarnings)}
+              </Text>
+            </View>
 
-          <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
-            {t("driver.revenue.history.summary.trips", "Trips")} : {orders.length}
-          </Text>
+            <View style={styles.splitCard}>
+              <Text style={styles.splitLabel}>
+                {t("driver.revenue.history.summary.tips", "Tips")}
+              </Text>
+              <Text style={styles.splitValueGreen}>
+                {fmtMoney(totals.tipsTotal)}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Liste */}
-        <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginTop: 18 }}>
-          {t("driver.revenue.history.list.title", "Delivered trips")}
-        </Text>
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>
+            {t("driver.revenue.history.list.title", "Delivered trips")}
+          </Text>
+          <Text style={styles.sectionMeta}>{label}</Text>
+        </View>
 
         {loading ? (
-          <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <ActivityIndicator color="#fff" />
-            <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color="#FFFFFF" />
+            <Text style={styles.loadingText}>
               {t("common.loading", "Loading…")}
             </Text>
           </View>
         ) : orders.length === 0 ? (
-          <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
-            {t("driver.revenue.history.list.empty", "No delivered trips in this period.")}
-          </Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>
+              {t(
+                "driver.revenue.history.list.empty",
+                "No delivered trips in this period.",
+              )}
+            </Text>
+            <Text style={styles.emptySub}>
+              {t(
+                "driver.revenue.history.list.emptySub",
+                "Completed deliveries will appear here.",
+              )}
+            </Text>
+          </View>
         ) : (
-          <View style={{ marginTop: 10, gap: 10 }}>
+          <View style={styles.listWrap}>
             {orders.map((o) => {
               const base = getGain(o);
               const tip = getTip(o);
@@ -345,38 +340,47 @@ export function DriverRevenueHistoryScreen() {
               return (
                 <TouchableOpacity
                   key={o.id}
-                  onPress={() => navigation.navigate("DriverOrderDetails", { orderId: o.id })}
-                  style={{
-                    borderRadius: 18,
-                    padding: 14,
-                    backgroundColor: "rgba(15,23,42,0.65)",
-                    borderWidth: 1,
-                    borderColor: "#1F2937",
-                  }}
+                  onPress={() =>
+                    navigation.navigate("DriverOrderDetails", { orderId: o.id })
+                  }
+                  style={styles.tripCard}
+                  activeOpacity={0.86}
                 >
-                  <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>
-                      {fmtMoney(total)}
-                    </Text>
-                    <Text style={{ color: "#94A3B8", fontWeight: "900" }}>
-                      {fmtShortDate(o.created_at, localeForDates)}
-                    </Text>
+                  <View style={styles.tripTopRow}>
+                    <View>
+                      <Text style={styles.tripAmount}>{fmtMoney(total)}</Text>
+                      <Text style={styles.tripMeta}>
+                        {fmtTime(o.created_at, localeForDates)} · #
+                        {o.id.slice(0, 8)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.datePill}>
+                      <Text style={styles.datePillText}>
+                        {fmtShortDate(o.created_at, localeForDates)}
+                      </Text>
+                    </View>
                   </View>
 
-                  <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
-                    {fmtTime(o.created_at, localeForDates)} · #{o.id.slice(0, 8)}
-                    {o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
-                  </Text>
+                  {o.restaurant_name ? (
+                    <Text style={styles.restaurantName}>
+                      {o.restaurant_name}
+                    </Text>
+                  ) : null}
 
-                  <Text
-                    style={{ color: "#64748B", marginTop: 6, fontWeight: "800", fontSize: 12 }}
-                  >
-                    {t(
-                      "driver.revenue.history.list.netTipLine",
-                      "Net price: {{net}} · Tip: {{tip}}",
-                      { net: fmtMoney(base), tip: fmtMoney(tip) }
-                    )}
-                  </Text>
+                  <View style={styles.tripBreakdownRow}>
+                    <Text style={styles.tripBreakdownText}>
+                      {t(
+                        "driver.revenue.history.list.netTipLine",
+                        "Net price: {{net}} · Tip: {{tip}}",
+                        {
+                          net: fmtMoney(base),
+                          tip: fmtMoney(tip),
+                        },
+                      )}
+                    </Text>
+                    <Text style={styles.chevron}>›</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -386,3 +390,206 @@ export function DriverRevenueHistoryScreen() {
     </SafeAreaView>
   );
 }
+
+const BG = "#020617";
+const CARD = "rgba(15,23,42,0.86)";
+const CARD_SOFT = "rgba(2,6,23,0.72)";
+const BORDER = "rgba(148,163,184,0.14)";
+const PURPLE = "#A78BFA";
+const PURPLE_DARK = "#8B5CF6";
+const GREEN = "#22C55E";
+const TEXT = "#F8FAFC";
+const MUTED = "#94A3B8";
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: BG },
+  headerWrap: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 8 },
+  headerRow: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerCenter: { alignItems: "center", flex: 1, paddingHorizontal: 12 },
+  headerTitle: { color: TEXT, fontSize: 17, fontWeight: "900" },
+  headerSubtitle: {
+    color: MUTED,
+    marginTop: 3,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  roundButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: CARD_SOFT,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backText: {
+    color: "#BFDBFE",
+    fontSize: 34,
+    fontWeight: "700",
+    marginTop: -2,
+  },
+  refreshButton: {
+    minWidth: 82,
+    height: 42,
+    borderRadius: 999,
+    backgroundColor: CARD_SOFT,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  disabled: { opacity: 0.65 },
+  refreshText: { color: TEXT, fontWeight: "900", fontSize: 12 },
+  content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 32 },
+  filtersRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  filterPill: {
+    flex: 1,
+    height: 44,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: CARD_SOFT,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  filterPillActive: {
+    backgroundColor: "rgba(139,92,246,0.18)",
+    borderColor: "rgba(167,139,250,0.5)",
+  },
+  filterText: { color: "#CBD5E1", fontWeight: "900", fontSize: 12 },
+  filterTextActive: { color: "#DDD6FE" },
+  summaryCard: {
+    borderRadius: 28,
+    padding: 18,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.18)",
+    shadowColor: PURPLE_DARK,
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
+  },
+  summaryTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  summaryIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(139,92,246,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.28)",
+  },
+  summaryIcon: { color: PURPLE, fontSize: 22, fontWeight: "900" },
+  livePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "rgba(34,197,94,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.22)",
+  },
+  liveText: { color: GREEN, fontWeight: "900", fontSize: 12 },
+  summaryLabel: { color: MUTED, fontWeight: "900" },
+  summaryAmount: { color: TEXT, fontSize: 40, fontWeight: "900", marginTop: 6 },
+  splitRow: { flexDirection: "row", gap: 10, marginTop: 16 },
+  splitCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 12,
+    backgroundColor: "rgba(2,6,23,0.55)",
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  splitLabel: { color: MUTED, fontSize: 12, fontWeight: "800" },
+  splitValue: { color: TEXT, marginTop: 5, fontSize: 17, fontWeight: "900" },
+  splitValueGreen: {
+    color: GREEN,
+    marginTop: 5,
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginTop: 22,
+    marginBottom: 10,
+  },
+  sectionTitle: { color: TEXT, fontSize: 21, fontWeight: "900" },
+  sectionMeta: { color: MUTED, fontSize: 12, fontWeight: "800" },
+  loadingRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  loadingText: { color: MUTED, fontWeight: "800" },
+  emptyCard: {
+    borderRadius: 22,
+    padding: 18,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+  },
+  emptyTitle: { color: "#CBD5E1", fontWeight: "900", textAlign: "center" },
+  emptySub: {
+    color: "#64748B",
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 6,
+  },
+  listWrap: { gap: 10 },
+  tripCard: {
+    borderRadius: 22,
+    padding: 15,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  tripTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  tripAmount: { color: TEXT, fontSize: 22, fontWeight: "900" },
+  tripMeta: { color: MUTED, marginTop: 6, fontWeight: "800" },
+  datePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(139,92,246,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.22)",
+  },
+  datePillText: { color: "#DDD6FE", fontSize: 11, fontWeight: "900" },
+  restaurantName: { color: "#CBD5E1", marginTop: 9, fontWeight: "800" },
+  tripBreakdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+  tripBreakdownText: {
+    color: "#64748B",
+    fontWeight: "800",
+    fontSize: 12,
+    flex: 1,
+    paddingRight: 10,
+  },
+  chevron: { color: "#CBD5E1", fontSize: 28, fontWeight: "600", marginTop: -2 },
+});

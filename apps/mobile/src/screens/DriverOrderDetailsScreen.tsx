@@ -1024,8 +1024,12 @@ export function DriverOrderDetailsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar barStyle="light-content" />
 
-      <View style={{ height: 240, width: "100%" }}>
-        <Mapbox.MapView style={{ flex: 1 }} styleURL={Mapbox.StyleURL.Street}>
+      <View style={{ height: 265, width: "100%" }}>
+        <Mapbox.MapView style={{ flex: 1 }} styleURL="mapbox://styles/mapbox/streets-v12"
+          logoEnabled={false}
+          attributionEnabled={false}
+          compassEnabled={false}
+          surfaceView={false}>
           <Mapbox.Camera
             ref={cameraRef}
             centerCoordinate={tripCamera.centerCoordinate}
@@ -1183,10 +1187,10 @@ export function DriverOrderDetailsScreen() {
         <View
           style={{
             marginTop: 14,
-            borderRadius: 16,
+            borderRadius: 22,
             borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#020617",
+            borderColor: "rgba(148,163,184,0.14)",
+            backgroundColor: "rgba(15,23,42,0.78)",
             padding: 14,
           }}
         >
@@ -1270,10 +1274,10 @@ export function DriverOrderDetailsScreen() {
         <View
           style={{
             marginTop: 12,
-            borderRadius: 16,
+            borderRadius: 22,
             borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#020617",
+            borderColor: "rgba(148,163,184,0.14)",
+            backgroundColor: "rgba(15,23,42,0.78)",
             padding: 14,
           }}
         >
@@ -1326,10 +1330,10 @@ export function DriverOrderDetailsScreen() {
         <View
           style={{
             marginTop: 12,
-            borderRadius: 16,
+            borderRadius: 22,
             borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#020617",
+            borderColor: "rgba(148,163,184,0.14)",
+            backgroundColor: "rgba(15,23,42,0.78)",
             padding: 14,
           }}
         >
@@ -1408,10 +1412,10 @@ export function DriverOrderDetailsScreen() {
         <View
           style={{
             marginTop: 12,
-            borderRadius: 16,
+            borderRadius: 22,
             borderWidth: 1,
-            borderColor: "#111827",
-            backgroundColor: "#020617",
+            borderColor: "rgba(148,163,184,0.14)",
+            backgroundColor: "rgba(15,23,42,0.78)",
             padding: 14,
           }}
         >
@@ -1495,10 +1499,10 @@ export function DriverOrderDetailsScreen() {
             borderColor: "#1F2937",
             paddingVertical: 12,
             alignItems: "center",
-            backgroundColor: "rgba(15,23,42,0.7)",
+            backgroundColor: "rgba(139,92,246,0.16)",
           }}
         >
-          <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "800" }}>
+          <Text style={{ color: "#C4B5FD", fontSize: 13, fontWeight: "900" }}>
             {t("driver.orderDetails.chat.open", "Ouvrir le chat 💬")}
           </Text>
         </TouchableOpacity>
@@ -1513,9 +1517,9 @@ export function DriverOrderDetailsScreen() {
             bottom: 16,
             borderRadius: 18,
             padding: 12,
-            backgroundColor: "rgba(15,23,42,0.98)",
+            backgroundColor: "rgba(2,6,23,0.985)",
             borderWidth: 1,
-            borderColor: "#14532D",
+            borderColor: "rgba(34,197,94,0.35)",
           }}
         >
           <TouchableOpacity
@@ -1571,10 +1575,10 @@ export function DriverOrderDetailsScreen() {
           <View
             style={{
               width: "100%",
-              borderRadius: 16,
-              backgroundColor: "#020617",
+              borderRadius: 24,
+              backgroundColor: "rgba(2,6,23,0.98)",
               borderWidth: 1,
-              borderColor: "#111827",
+              borderColor: "rgba(167,139,250,0.22)",
               padding: 16,
             }}
           >

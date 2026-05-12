@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  StyleSheet,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -31,6 +32,16 @@ type MsgRow = {
   text: string | null;
   created_at: string;
 };
+
+const BG = "#020617";
+const CARD = "rgba(15,23,42,0.78)";
+const CARD_DEEP = "rgba(2,6,23,0.72)";
+const BORDER = "rgba(148,163,184,0.14)";
+const PURPLE = "#A78BFA";
+const BLUE = "#60A5FA";
+const GREEN = "#22C55E";
+const TEXT = "#F8FAFC";
+const MUTED = "#94A3B8";
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -76,7 +87,6 @@ export function DriverInboxScreen() {
     if (mountedRef.current) fn();
   }, []);
 
-  // ✅ locale dynamique selon i18n
   const locale = useMemo(() => {
     const lng = (i18n.language || "en").toLowerCase();
     if (lng.startsWith("fr")) return "fr-FR";
@@ -189,7 +199,6 @@ export function DriverInboxScreen() {
         return;
       }
 
-      // ✅ dernier message par order
       const { data: msgs, error: e3 } = await supabase
         .from("order_messages")
         .select("order_id, user_id, text, created_at")
@@ -208,7 +217,6 @@ export function DriverInboxScreen() {
         safeSet(() => setLastMsgByOrder(map));
       }
 
-      // ✅ last_read_at
       const { data: reads, error: e4 } = await supabase
         .from("order_chat_reads")
         .select("order_id, user_id, last_read_at")
@@ -311,73 +319,46 @@ export function DriverInboxScreen() {
       ? {
           text: t("driver.inbox.badge.delivered", "Delivered"),
           bg: "rgba(34,197,94,0.12)",
-          border: "#14532D",
+          border: "rgba(34,197,94,0.3)",
           color: "#BBF7D0",
         }
       : {
           text: t("driver.inbox.badge.in_progress", "In progress"),
-          bg: "rgba(59,130,246,0.12)",
-          border: "#1D4ED8",
+          bg: "rgba(96,165,250,0.12)",
+          border: "rgba(96,165,250,0.36)",
           color: "#BFDBFE",
         };
 
     return (
       <TouchableOpacity
         onPress={() => openChat(o.id)}
-        style={{
-          borderRadius: 18,
-          padding: 14,
-          backgroundColor: "rgba(15,23,42,0.65)",
-          borderWidth: 1,
-          borderColor: unread ? "rgba(59,130,246,0.8)" : "#1F2937",
-        }}
-        activeOpacity={0.85}
+        style={[styles.orderCard, unread && styles.orderCardUnread]}
+        activeOpacity={0.86}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <View style={{ flex: 1, paddingRight: 10 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }} numberOfLines={1}>
-                {title}
-              </Text>
+        <View style={styles.orderTopRow}>
+          <View style={styles.orderIconBox}>
+            <Text style={styles.orderIcon}>{delivered ? "✓" : "✉"}</Text>
+          </View>
 
-              {unread && (
-                <View
-                  style={{
-                    paddingHorizontal: 8,
-                    paddingVertical: 3,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(239,68,68,0.14)",
-                    borderWidth: 1,
-                    borderColor: "#7F1D1D",
-                  }}
-                >
-                  <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 11 }}>
-                    {t("driver.inbox.badge.unread", "Unread")}
-                  </Text>
+          <View style={styles.orderContent}>
+            <View style={styles.titleRow}>
+              <Text style={styles.orderTitle} numberOfLines={1}>{title}</Text>
+              {unread ? (
+                <View style={styles.unreadPill}>
+                  <Text style={styles.unreadText}>{t("driver.inbox.badge.unread", "Unread")}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
-            <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "700", lineHeight: 18 }} numberOfLines={2}>
-              {subtitle}
-            </Text>
+            <Text style={styles.messagePreview} numberOfLines={2}>{subtitle}</Text>
 
-            <Text style={{ color: "#64748B", marginTop: 8, fontSize: 12, fontWeight: "800" }}>
+            <Text style={styles.metaLine} numberOfLines={1}>
               #{o.id.slice(0, 8)} • {fmtShortDateTime(o.created_at)} • {(o.status ?? "—").toUpperCase()}
             </Text>
           </View>
 
-          <View
-            style={{
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 999,
-              backgroundColor: badge.bg,
-              borderWidth: 1,
-              borderColor: badge.border,
-            }}
-          >
-            <Text style={{ color: badge.color, fontWeight: "900", fontSize: 12 }}>{badge.text}</Text>
+          <View style={[styles.statusPill, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+            <Text style={[styles.statusText, { color: badge.color }]}>{badge.text}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -385,119 +366,289 @@ export function DriverInboxScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingVertical: 8, paddingRight: 10 }}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-              {t("shared.common.backArrowOnly", "←")}
-            </Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.headerWrap}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton} activeOpacity={0.85}>
+            <Text style={styles.backText}>{t("shared.common.backArrowOnly", "←")}</Text>
           </TouchableOpacity>
 
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-              {t("driver.inbox.title", "Inbox")}
-            </Text>
-            <Text style={{ color: "#9CA3AF", marginTop: 2, fontWeight: "800", fontSize: 12 }}>
-              {headerSub}
-            </Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>{t("driver.inbox.title", "Inbox")}</Text>
+            <Text style={styles.headerSub} numberOfLines={1}>{headerSub}</Text>
           </View>
 
           <TouchableOpacity
             onPress={() => void fetchInbox()}
-            style={{
-              paddingVertical: 8,
-              paddingHorizontal: 12,
-              borderRadius: 999,
-              backgroundColor: "rgba(15,23,42,0.7)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-            }}
+            style={[styles.refreshButton, loading && { opacity: 0.65 }]}
+            disabled={loading}
+            activeOpacity={0.85}
           >
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+            <Text style={styles.refreshText}>
               {loading ? t("shared.common.loadingEllipsis", "…") : t("shared.common.refresh", "Refresh")}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={{ marginTop: 10 }}>
+        <View style={styles.heroCard}>
+          <View>
+            <Text style={styles.heroLabel}>{t("driver.inbox.hero.label", "Driver messages")}</Text>
+            <Text style={styles.heroTitle}>{unreadCount > 0 ? `${unreadCount}` : "0"}</Text>
+            <Text style={styles.heroSub}>{t("driver.inbox.hero.unread", "unread conversation(s)")}</Text>
+          </View>
+
+          <View style={styles.heroIconWrap}>
+            <Text style={styles.heroIcon}>✉</Text>
+          </View>
+        </View>
+
+        <View style={styles.searchBox}>
+          <Text style={styles.searchIcon}>⌕</Text>
           <TextInput
             value={q}
             onChangeText={setQ}
             placeholder={t("driver.inbox.search_placeholder", "Search (#id, restaurant, status)…")}
             placeholderTextColor="#64748B"
-            style={{
-              height: 46,
-              borderRadius: 16,
-              paddingHorizontal: 12,
-              backgroundColor: "rgba(15,23,42,0.65)",
-              borderWidth: 1,
-              borderColor: "#1F2937",
-              color: "white",
-              fontWeight: "700",
-            }}
+            style={styles.searchInput}
           />
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {loading ? (
-          <View style={{ marginTop: 12, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={styles.loadingRow}>
             <ActivityIndicator color="#fff" />
-            <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-              {t("shared.common.loading", "Loading…")}
-            </Text>
+            <Text style={styles.loadingText}>{t("shared.common.loading", "Loading…")}</Text>
           </View>
         ) : me == null ? (
-          <Text style={{ color: "#9CA3AF", marginTop: 12 }}>
-            {t("driver.inbox.not_logged_in", "Log in as a driver to view your conversations.")}
-          </Text>
+          <EmptyState text={t("driver.inbox.not_logged_in", "Log in as a driver to view your conversations.")} />
         ) : filtered.length === 0 ? (
-          <Text style={{ color: "#9CA3AF", marginTop: 12 }}>
-            {t("driver.inbox.empty", "No orders found (in progress / delivered last 7 days).")}
-          </Text>
+          <EmptyState text={t("driver.inbox.empty", "No orders found (in progress / delivered last 7 days).")} />
         ) : (
-          <View style={{ gap: 14 }}>
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>
-              {t("driver.inbox.sections.in_progress", "In progress")}
-            </Text>
+          <View style={styles.sectionsWrap}>
+            <SectionHeader
+              title={t("driver.inbox.sections.in_progress", "In progress")}
+              count={inProgressOrders.length}
+            />
 
             {inProgressOrders.length === 0 ? (
-              <Text style={{ color: "#9CA3AF" }}>
-                {t("driver.inbox.sections.in_progress_empty", "No in-progress orders.")}
-              </Text>
+              <EmptyState compact text={t("driver.inbox.sections.in_progress_empty", "No in-progress orders.")} />
             ) : (
-              <View style={{ gap: 10 }}>
-                {inProgressOrders.map((o) => (
-                  <OrderCard key={o.id} o={o} />
-                ))}
+              <View style={styles.listGap}>
+                {inProgressOrders.map((o) => <OrderCard key={o.id} o={o} />)}
               </View>
             )}
 
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginTop: 8 }}>
-              {t("driver.inbox.sections.delivered_7d", "Delivered (7 days)")}
-            </Text>
+            <SectionHeader
+              title={t("driver.inbox.sections.delivered_7d", "Delivered (7 days)")}
+              count={deliveredOrders.length}
+            />
 
             {deliveredOrders.length === 0 ? (
-              <Text style={{ color: "#9CA3AF" }}>
-                {t("driver.inbox.sections.delivered_empty", "No delivered orders in the last 7 days.")}
-              </Text>
+              <EmptyState compact text={t("driver.inbox.sections.delivered_empty", "No delivered orders in the last 7 days.")} />
             ) : (
-              <View style={{ gap: 10 }}>
-                {deliveredOrders.map((o) => (
-                  <OrderCard key={o.id} o={o} />
-                ))}
+              <View style={styles.listGap}>
+                {deliveredOrders.map((o) => <OrderCard key={o.id} o={o} />)}
               </View>
             )}
           </View>
         )}
 
-        {me && (
-          <Text style={{ color: "#334155", marginTop: 18, fontSize: 11 }}>
-            {t("driver.inbox.driver_label", "Driver")}: {me.slice(0, 8)}…
-          </Text>
-        )}
+        {me ? (
+          <Text style={styles.driverDebug}>{t("driver.inbox.driver_label", "Driver")}: {me.slice(0, 8)}…</Text>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+function SectionHeader({ title, count }: { title: string; count: number }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.countPill}>
+        <Text style={styles.countText}>{count}</Text>
+      </View>
+    </View>
+  );
+}
+
+function EmptyState({ text, compact }: { text: string; compact?: boolean }) {
+  return (
+    <View style={[styles.emptyState, compact && styles.emptyStateCompact]}>
+      <Text style={styles.emptyIcon}>◇</Text>
+      <Text style={styles.emptyText}>{text}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: BG },
+  headerWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
+  },
+  headerRow: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  roundButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: CARD_DEEP,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backText: { color: "#BFDBFE", fontSize: 18, fontWeight: "900" },
+  headerCenter: { flex: 1, alignItems: "center", paddingHorizontal: 10 },
+  headerTitle: { color: TEXT, fontWeight: "900", fontSize: 17, letterSpacing: 0.2 },
+  headerSub: { color: MUTED, marginTop: 2, fontWeight: "800", fontSize: 11, maxWidth: 210 },
+  refreshButton: {
+    height: 42,
+    paddingHorizontal: 13,
+    borderRadius: 999,
+    backgroundColor: CARD_DEEP,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  refreshText: { color: TEXT, fontWeight: "900", fontSize: 12 },
+  heroCard: {
+    marginTop: 14,
+    borderRadius: 28,
+    padding: 16,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.2)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowColor: "#8B5CF6",
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
+  },
+  heroLabel: { color: MUTED, fontWeight: "900", fontSize: 12 },
+  heroTitle: { color: TEXT, fontWeight: "900", fontSize: 38, marginTop: 2 },
+  heroSub: { color: "#CBD5E1", fontWeight: "800", marginTop: 2 },
+  heroIconWrap: {
+    width: 62,
+    height: 62,
+    borderRadius: 22,
+    backgroundColor: "rgba(139,92,246,0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.28)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroIcon: { color: PURPLE, fontSize: 28, fontWeight: "900" },
+  searchBox: {
+    marginTop: 12,
+    height: 50,
+    borderRadius: 18,
+    paddingHorizontal: 13,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchIcon: { color: "#64748B", fontSize: 18, fontWeight: "900", marginRight: 8 },
+  searchInput: { flex: 1, color: TEXT, fontWeight: "800", height: "100%" },
+  content: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 30 },
+  loadingRow: { marginTop: 12, flexDirection: "row", alignItems: "center" },
+  loadingText: { color: MUTED, fontWeight: "800", marginLeft: 10 },
+  sectionsWrap: { gap: 12 },
+  sectionHeader: {
+    marginTop: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sectionTitle: { color: TEXT, fontSize: 22, fontWeight: "900" },
+  countPill: {
+    minWidth: 34,
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(139,92,246,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countText: { color: PURPLE, fontSize: 12, fontWeight: "900" },
+  listGap: { gap: 10 },
+  orderCard: {
+    borderRadius: 22,
+    padding: 14,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  orderCardUnread: {
+    borderColor: "rgba(96,165,250,0.75)",
+    shadowColor: BLUE,
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  orderTopRow: { flexDirection: "row", alignItems: "flex-start" },
+  orderIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    marginRight: 12,
+    backgroundColor: "rgba(139,92,246,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orderIcon: { color: PURPLE, fontSize: 18, fontWeight: "900" },
+  orderContent: { flex: 1, minWidth: 0, paddingRight: 8 },
+  titleRow: { flexDirection: "row", alignItems: "center", minWidth: 0 },
+  orderTitle: { flex: 1, color: TEXT, fontSize: 17, fontWeight: "900" },
+  unreadPill: {
+    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: "rgba(239,68,68,0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.3)",
+  },
+  unreadText: { color: "#FCA5A5", fontWeight: "900", fontSize: 10 },
+  messagePreview: { color: MUTED, marginTop: 6, fontWeight: "700", lineHeight: 18 },
+  metaLine: { color: "#64748B", marginTop: 8, fontSize: 12, fontWeight: "800" },
+  statusPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+  },
+  statusText: { fontWeight: "900", fontSize: 11 },
+  emptyState: {
+    marginTop: 12,
+    borderRadius: 22,
+    padding: 18,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+  },
+  emptyStateCompact: { marginTop: 0, padding: 14 },
+  emptyIcon: { color: PURPLE, fontSize: 24, fontWeight: "900", marginBottom: 6 },
+  emptyText: { color: MUTED, fontWeight: "800", textAlign: "center", lineHeight: 20 },
+  driverDebug: { color: "#334155", marginTop: 18, fontSize: 11 },
+});

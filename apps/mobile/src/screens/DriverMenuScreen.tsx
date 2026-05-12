@@ -9,44 +9,59 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { startStripeOnboarding } from "../utils/stripe";
 
+type MenuIconName =
+  | "gift"
+  | "spark"
+  | "shield"
+  | "wallet"
+  | "account"
+  | "card"
+  | "help"
+  | "profile";
+
 type MenuItemProps = {
   label: string;
   onPress?: () => void;
   badge?: boolean;
+  icon: MenuIconName;
+  subtitle?: string;
 };
 
-function MenuItem({ label, onPress, badge }: MenuItemProps) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={{
-        paddingVertical: 16,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}
-      activeOpacity={0.8}
-    >
-      <Text style={{ color: "white", fontSize: 18, fontWeight: "600" }}>
-        {label}
-      </Text>
+const BG = "#020617";
+const CARD = "rgba(15,23,42,0.86)";
+const CARD_2 = "rgba(2,6,23,0.72)";
+const BORDER = "rgba(148,163,184,0.14)";
+const PURPLE = "#A78BFA";
+const PURPLE_DARK = "#8B5CF6";
+const GREEN = "#22C55E";
+const TEXT = "#F8FAFC";
+const MUTED = "#94A3B8";
 
-      {badge ? (
-        <View
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: "#3B82F6",
-          }}
-        />
-      ) : null}
+function MenuItem({ label, onPress, badge, icon, subtitle }: MenuItemProps) {
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.menuItem} activeOpacity={0.84}>
+      <View style={styles.menuLeft}>
+        <View style={styles.menuIconBox}>
+          <MenuIcon name={icon} />
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.menuLabel}>{label}</Text>
+          {subtitle ? <Text style={styles.menuSub}>{subtitle}</Text> : null}
+        </View>
+      </View>
+
+      <View style={styles.menuRight}>
+        {badge ? <View style={styles.dotBadge} /> : null}
+        <Text style={styles.chevron}>›</Text>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -424,120 +439,523 @@ export function DriverMenuScreen() {
   }, [t]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <ScrollView
-        contentContainerStyle={{ padding: 16 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", fontWeight: "700" }}>
-            ← {t("common.back", "Back")}
-          </Text>
-        </TouchableOpacity>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton} activeOpacity={0.85}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.screenTitle}>{t("driver.menu.title", "Menu")}</Text>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate("DriverAccount")}
+            style={styles.roundButton}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.settingsIcon}>⚙</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginTop: 24,
-            marginBottom: 32,
-          }}
+          style={styles.profileCard}
           onPress={() => navigation.navigate("DriverProfile")}
           disabled={loading}
-          activeOpacity={0.85}
+          activeOpacity={0.88}
         >
-          <Image
-            source={{ uri: avatarUri }}
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              marginRight: 16,
-              backgroundColor: "#111827",
-            }}
-          />
+          <View style={styles.avatarWrap}>
+            <Image source={{ uri: avatarUri }} style={styles.avatar} />
+            <View style={styles.avatarGlow} />
+          </View>
 
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Text style={{ color: "white", fontSize: 20, fontWeight: "800" }}>
+          <View style={styles.profileTextBlock}>
+            <View style={styles.nameRow}>
+              <Text style={styles.nameText} numberOfLines={1}>
                 {displayName}
               </Text>
-
-              {loading ? <ActivityIndicator color="#93C5FD" /> : null}
+              {loading ? <ActivityIndicator color={PURPLE} size="small" /> : null}
             </View>
 
-            <View
-              style={{
-                marginTop: 6,
-                flexDirection: "row",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 10,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <StarsRow rating={avgRating} count={ratingCount} size={14} />
-                <Text style={{ color: "#9CA3AF", fontWeight: "800" }}>
-                  {ratingLabel}
-                  {ratingCount > 0 ? ` (${ratingCount})` : ""}
-                </Text>
-              </View>
+            <View style={styles.ratingRow}>
+              <StarsRow rating={avgRating} count={ratingCount} size={14} />
+              <Text style={styles.ratingText}>
+                {ratingLabel}
+                {ratingCount > 0 ? ` (${ratingCount})` : ""}
+              </Text>
+            </View>
 
-              {/* ✅ Tips semaine */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={{ color: "#64748B", fontWeight: "900" }}>•</Text>
-                <Text style={{ color: "#22C55E", fontWeight: "900" }}>
-                  {t("driver.menu.tips_week", "Tips this week")}: {tipsWeekLabel}
-                </Text>
-              </View>
+            <View style={styles.tipsPill}>
+              <Text style={styles.tipsText}>
+                {t("driver.menu.tips_week", "Tips this week")}: {tipsWeekLabel}
+              </Text>
             </View>
           </View>
+
+          <Text style={styles.profileArrow}>›</Text>
         </TouchableOpacity>
 
+        <View style={styles.quickGrid}>
+          <TouchableOpacity
+            activeOpacity={0.86}
+            style={styles.quickCard}
+            onPress={() => navigation.navigate("DriverWallet")}
+          >
+            <View style={styles.quickIcon}>
+              <MenuIcon name="wallet" />
+            </View>
+            <Text style={styles.quickTitle}>{t("driver.menu.wallet", "Wallet")}</Text>
+            <Text style={styles.quickSub}>{t("driver.menu.wallet_sub", "Earnings & payouts")}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.86}
+            style={styles.quickCard}
+            onPress={() => navigation.navigate("DriverBenefits")}
+          >
+            <View style={styles.quickIcon}>
+              <MenuIcon name="shield" />
+            </View>
+            <Text style={styles.quickTitle}>{t("driver.menu.driver_program", "Driver program")}</Text>
+            <Text style={styles.quickSub}>{t("driver.menu.driver_program_sub", "Goals & rewards")}</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>{t("driver.menu.section_growth", "Growth")}</Text>
+
         <MenuItem
+          icon="gift"
           label={t("driver.menu.referrals", "Referrals")}
+          subtitle={t("driver.menu.referrals_sub", "Invite drivers and earn rewards")}
           onPress={() => navigation.navigate("DriverReferrals")}
         />
 
         <MenuItem
+          icon="spark"
           label={t("driver.menu.opportunities", "Opportunities")}
+          subtitle={t("driver.menu.opportunities_sub", "Promotions and new options")}
           badge
           onPress={() => navigation.navigate("DriverOpportunities")}
         />
 
-        <MenuItem
-          label={t("driver.menu.driver_program", "Driver program")}
-          onPress={() => navigation.navigate("DriverBenefits")}
-        />
+        <Text style={styles.sectionTitle}>{t("driver.menu.section_account", "Account & payments")}</Text>
 
         <MenuItem
-          label={t("driver.menu.wallet", "Wallet")}
-          onPress={() => navigation.navigate("DriverWallet")}
-        />
-
-        <MenuItem
+          icon="account"
           label={t("driver.menu.account", "Account")}
+          subtitle={t("driver.menu.account_sub", "Profile, vehicle and documents")}
           onPress={() => navigation.navigate("DriverAccount")}
         />
 
         <MenuItem
+          icon="card"
           label={t("driver.menu.payments_stripe", "Set up payments (Stripe)")}
+          subtitle={t("driver.menu.payments_stripe_sub", "Connect your payout account")}
           onPress={onStripePress}
         />
 
-        <View
-          style={{
-            height: 1,
-            backgroundColor: "#1F2933",
-            marginVertical: 24,
-          }}
-        />
+        <Text style={styles.sectionTitle}>{t("driver.menu.section_support", "Support")}</Text>
 
         <MenuItem
+          icon="help"
           label={t("driver.menu.help", "Help")}
+          subtitle={t("driver.menu.help_sub", "Get support from MMD")}
           onPress={() => navigation.navigate("DriverHelp")}
         />
+
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+function MenuIcon({ name }: { name: MenuIconName }) {
+  if (name === "wallet") {
+    return (
+      <View style={styles.walletIcon}>
+        <View style={styles.walletBody} />
+        <View style={styles.walletLine} />
+      </View>
+    );
+  }
+
+  if (name === "shield") {
+    return (
+      <View style={styles.shieldIcon}>
+        <View style={styles.shieldShape} />
+      </View>
+    );
+  }
+
+  if (name === "gift") {
+    return (
+      <View style={styles.giftIcon}>
+        <View style={styles.giftTop} />
+        <View style={styles.giftBox} />
+        <View style={styles.giftRibbon} />
+      </View>
+    );
+  }
+
+  if (name === "spark") {
+    return <Text style={styles.iconGlyph}>✦</Text>;
+  }
+
+  if (name === "account" || name === "profile") {
+    return (
+      <View style={styles.profileIcon}>
+        <View style={styles.profileHead} />
+        <View style={styles.profileBody} />
+      </View>
+    );
+  }
+
+  if (name === "card") {
+    return (
+      <View style={styles.cardIcon}>
+        <View style={styles.cardStripe} />
+      </View>
+    );
+  }
+
+  return <Text style={styles.iconGlyph}>?</Text>;
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 28,
+  },
+  headerRow: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  screenTitle: {
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+  roundButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: CARD_2,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backIcon: {
+    color: "#BFDBFE",
+    fontSize: 34,
+    fontWeight: "700",
+    marginTop: -2,
+  },
+  settingsIcon: {
+    color: PURPLE,
+    fontSize: 19,
+    fontWeight: "900",
+  },
+  profileCard: {
+    marginTop: 18,
+    marginBottom: 16,
+    borderRadius: 28,
+    padding: 16,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.18)",
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: PURPLE_DARK,
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 10,
+  },
+  avatarWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  avatarGlow: {
+    position: "absolute",
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2,
+    borderColor: "rgba(167,139,250,0.7)",
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#111827",
+  },
+  profileTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  nameText: {
+    color: TEXT,
+    fontSize: 20,
+    fontWeight: "900",
+    flex: 1,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 7,
+    gap: 8,
+  },
+  ratingText: {
+    color: MUTED,
+    fontWeight: "900",
+  },
+  tipsPill: {
+    alignSelf: "flex-start",
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(34,197,94,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.22)",
+  },
+  tipsText: {
+    color: GREEN,
+    fontWeight: "900",
+    fontSize: 12,
+  },
+  profileArrow: {
+    color: "#CBD5E1",
+    fontSize: 28,
+    fontWeight: "700",
+    marginLeft: 8,
+  },
+  quickGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+  quickCard: {
+    flex: 1,
+    minHeight: 118,
+    borderRadius: 24,
+    padding: 15,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    justifyContent: "space-between",
+  },
+  quickIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    backgroundColor: "rgba(139,92,246,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickTitle: {
+    color: TEXT,
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 10,
+  },
+  quickSub: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  sectionTitle: {
+    color: "#CBD5E1",
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 14,
+    marginBottom: 10,
+    letterSpacing: 0.3,
+  },
+  menuItem: {
+    minHeight: 72,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  menuLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+  menuIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: "rgba(139,92,246,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  menuLabel: {
+    color: TEXT,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  menuSub: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+  menuRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+  dotBadge: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#60A5FA",
+    marginRight: 10,
+    shadowColor: "#60A5FA",
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+  },
+  chevron: {
+    color: "#CBD5E1",
+    fontSize: 28,
+    fontWeight: "600",
+    marginTop: -2,
+  },
+
+  walletIcon: {
+    width: 24,
+    height: 20,
+    justifyContent: "center",
+  },
+  walletBody: {
+    position: "absolute",
+    width: 23,
+    height: 17,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: PURPLE,
+  },
+  walletLine: {
+    position: "absolute",
+    right: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: PURPLE,
+  },
+  shieldIcon: {
+    width: 24,
+    height: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shieldShape: {
+    width: 20,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: PURPLE,
+    transform: [{ rotate: "45deg" }],
+  },
+  giftIcon: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  giftTop: {
+    position: "absolute",
+    top: 2,
+    width: 22,
+    height: 7,
+    borderRadius: 3,
+    borderWidth: 2,
+    borderColor: PURPLE,
+  },
+  giftBox: {
+    position: "absolute",
+    bottom: 2,
+    width: 20,
+    height: 15,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: PURPLE,
+  },
+  giftRibbon: {
+    width: 2,
+    height: 21,
+    backgroundColor: PURPLE,
+    borderRadius: 2,
+  },
+  profileIcon: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+  },
+  profileHead: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: PURPLE,
+  },
+  profileBody: {
+    marginTop: 3,
+    width: 20,
+    height: 10,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: PURPLE,
+  },
+  cardIcon: {
+    width: 24,
+    height: 17,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: PURPLE,
+  },
+  cardStripe: {
+    position: "absolute",
+    left: 3,
+    right: 3,
+    top: 4,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: PURPLE,
+  },
+  iconGlyph: {
+    color: PURPLE,
+    fontSize: 22,
+    fontWeight: "900",
+  },
+});

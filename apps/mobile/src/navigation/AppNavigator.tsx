@@ -71,7 +71,7 @@ export type RootStackParamList = {
   DeliveryRequest: undefined;
 
   ClientAuth: undefined;
-  DriverAuth: undefined;
+  DriverAuth: { ref?: string; code?: string } | undefined;
   RestaurantAuth: undefined;
 
   ClientProfile: undefined;
@@ -139,6 +139,49 @@ function isResetPasswordUrl(url: string | null | undefined) {
   );
 }
 
+function cleanReferralCode(value: unknown): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+
+  const cleaned = raw
+    .replace(/^ref=/i, "")
+    .replace(/^code=/i, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .toUpperCase();
+
+  return cleaned.length >= 4 ? cleaned : null;
+}
+
+function extractReferralCodeFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  try {
+    const parsed = Linking.parse(url);
+    const qp = parsed.queryParams ?? {};
+
+    const fromRef = cleanReferralCode((qp as any).ref);
+    if (fromRef) return fromRef;
+
+    const fromCode = cleanReferralCode((qp as any).code);
+    if (fromCode) return fromCode;
+
+    const path = String(parsed.path ?? "").replace(/^\/+/, "");
+    const parts = path.split("/").filter(Boolean);
+
+    if (parts[0]?.toLowerCase() === "r" && parts[1]) {
+      return cleanReferralCode(parts[1]);
+    }
+
+    if (parts[0]?.toLowerCase() === "signup" && parts[1]) {
+      return cleanReferralCode(parts[1]);
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function AppNavigator({
   initialRouteName = "RoleSelect",
 }: AppNavigatorProps) {
@@ -158,10 +201,17 @@ export function AppNavigator({
 
   const linking = React.useMemo(
     () => ({
-      prefixes: ["mmd://", Linking.createURL("/")],
+      prefixes: [
+        "mmd://",
+        Linking.createURL("/"),
+        "https://mmd-delivery.vercel.app",
+        "https://mmdelivery.com",
+        "https://mmd.app",
+      ],
       config: {
         screens: {
           ResetPassword: "reset-password",
+          DriverAuth: "r/:ref",
         },
       },
     }),
@@ -209,6 +259,21 @@ export function AppNavigator({
       routes: [{ name: "ResetPassword" }],
     });
   }, [currentRoute, navReady]);
+
+
+  const openDriverReferralAuth = React.useCallback(
+    (code: string) => {
+      if (!navReady()) return;
+
+      resetPasswordFlowRef.current = false;
+
+      navRef.current?.reset({
+        index: 0,
+        routes: [{ name: "DriverAuth", params: { ref: code } }],
+      });
+    },
+    [navReady]
+  );
 
   const isInClientArea = React.useCallback((r?: keyof RootStackParamList) => {
     if (!r) return false;
@@ -417,10 +482,18 @@ export function AppNavigator({
 
     const handleUrl = (url: string | null) => {
       if (!alive) return;
-      if (!isResetPasswordUrl(url)) return;
 
-      console.log("RESET PASSWORD DEEP LINK RECEIVED =", url);
-      openResetPassword();
+      if (isResetPasswordUrl(url)) {
+        console.log("RESET PASSWORD DEEP LINK RECEIVED =", url);
+        openResetPassword();
+        return;
+      }
+
+      const referralCode = extractReferralCodeFromUrl(url);
+      if (referralCode) {
+        console.log("DRIVER REFERRAL DEEP LINK RECEIVED =", referralCode);
+        openDriverReferralAuth(referralCode);
+      }
     };
 
     Linking.getInitialURL()
@@ -437,7 +510,7 @@ export function AppNavigator({
         linkingSub?.remove?.();
       } catch {}
     };
-  }, [openResetPassword]);
+  }, [openDriverReferralAuth, openResetPassword]);
 
   React.useEffect(() => {
     let alive = true;
@@ -486,7 +559,13 @@ export function AppNavigator({
         scheduleSync();
         Linking.getInitialURL()
           .then((url) => {
-            if (isResetPasswordUrl(url)) openResetPassword();
+            if (isResetPasswordUrl(url)) {
+              openResetPassword();
+              return;
+            }
+
+            const referralCode = extractReferralCodeFromUrl(url);
+            if (referralCode) openDriverReferralAuth(referralCode);
           })
           .catch((e) => console.log("onReady getInitialURL error", e));
       }}

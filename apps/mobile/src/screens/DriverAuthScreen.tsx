@@ -35,12 +35,50 @@ function getResetPasswordRedirectUrl() {
   return RESET_PASSWORD_URL;
 }
 
+function cleanReferralCode(value: unknown): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const code = String(raw ?? "")
+    .trim()
+    .replace(/^ref[:=]/i, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .toUpperCase();
+
+  return code.length >= 4 ? code : null;
+}
+
 function extractReferralCode(url: string | null): string | null {
   if (!url) return null;
+
   try {
     const parsed = Linking.parse(url);
-    const code = (parsed.queryParams?.code as string | undefined) ?? null;
-    return code ? String(code).trim() : null;
+    const q = parsed.queryParams ?? {};
+
+    // ✅ Supporte les liens:
+    // mmd://r/CODE
+    // https://mmdelivery.com/r/CODE
+    // https://mmdelivery.com/signup?ref=CODE
+    // https://mmdelivery.com/signup?code=CODE
+    const fromRef = cleanReferralCode((q as any).ref);
+    if (fromRef) return fromRef;
+
+    const fromCode = cleanReferralCode((q as any).code);
+    if (fromCode) return fromCode;
+
+    const path = String(parsed.path ?? "").replace(/^\/+|\/+$/g, "");
+    const parts = path.split("/").filter(Boolean);
+
+    const rIndex = parts.findIndex((p) => p.toLowerCase() === "r");
+    if (rIndex >= 0 && parts[rIndex + 1]) {
+      const fromPath = cleanReferralCode(parts[rIndex + 1]);
+      if (fromPath) return fromPath;
+    }
+
+    if (parts.length === 1) {
+      const only = cleanReferralCode(parts[0]);
+      if (only) return only;
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -350,14 +388,20 @@ export function DriverAuthScreen() {
     const run = async () => {
       const initialUrl = await Linking.getInitialURL();
       const code = extractReferralCode(initialUrl);
-      if (code) setReferralCode(code);
+      if (code) {
+        setReferralCode(code);
+        setMode("signup");
+      }
     };
 
     void run();
 
     const sub = Linking.addEventListener("url", (event) => {
       const code = extractReferralCode(event.url);
-      if (code) setReferralCode(code);
+      if (code) {
+        setReferralCode(code);
+        setMode("signup");
+      }
     });
 
     return () => sub.remove();
@@ -706,6 +750,7 @@ export function DriverAuthScreen() {
           data: {
             full_name: cleanedFullName,
             role: "driver",
+            referral_code: referralCode.trim().toUpperCase() || null,
           },
         },
       });
@@ -817,6 +862,7 @@ export function DriverAuthScreen() {
     plateNumber,
     licenseNumber,
     isBike,
+    referralCode,
     applyReferralIfAny,
     uploadAvatarIfAny,
     navigation,

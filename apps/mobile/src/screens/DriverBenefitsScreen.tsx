@@ -565,7 +565,7 @@ export function DriverBenefitsScreen() {
               {t("driver.benefits.empty.availableBoosts", "Aucun boost disponible.")}
             </Text>
           ) : (
-            boosts.map((i) => renderCard(i, { canActivate: true }))
+            boosts.map((i) => renderCard(i))
           )}
         </View>
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -19,12 +19,57 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
+import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientAuth">;
 
 const RESET_PASSWORD_URL =
   "https://mmd-delivery.vercel.app/auth/reset-password";
+
+function normalizeReferralCode(value: unknown) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+
+  const cleaned = raw
+    .replace(/^ref=/i, "")
+    .replace(/^code=/i, "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .toUpperCase();
+
+  return cleaned.length >= 4 ? cleaned : null;
+}
+
+function extractReferralCode(url: string | null): string | null {
+  if (!url) return null;
+
+  try {
+    const parsed = Linking.parse(url);
+    const qp = parsed.queryParams ?? {};
+
+    const refFromQuery =
+      normalizeReferralCode(qp.ref) ?? normalizeReferralCode(qp.code);
+
+    if (refFromQuery) return refFromQuery;
+
+    const path = String(parsed.path ?? "").replace(/^\/+|\/+$/g, "");
+    const parts = path.split("/").filter(Boolean);
+
+    const rIndex = parts.findIndex((part) => part.toLowerCase() === "r");
+    if (rIndex >= 0 && parts[rIndex + 1]) {
+      return normalizeReferralCode(parts[rIndex + 1]);
+    }
+
+    if (parts.length >= 2 && parts[0]?.toLowerCase() === "signup") {
+      return normalizeReferralCode(parts[1]);
+    }
+
+    return null;
+  } catch {
+    const match = url.match(/(?:[?&](?:ref|code)=|\/r\/)([a-zA-Z0-9_-]+)/i);
+    return normalizeReferralCode(match?.[1]);
+  }
+}
 
 function cleanPhone(v: string) {
   const s = (v || "").trim();
@@ -158,6 +203,8 @@ export function ClientAuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [referralCode, setReferralCode] = useState("");
+
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -173,6 +220,52 @@ export function ClientAuthScreen() {
   );
 
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const readInitialReferral = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      const code = extractReferralCode(initialUrl);
+
+      if (code) {
+        setReferralCode(code);
+        setMode("signup");
+      }
+    };
+
+    void readInitialReferral();
+
+    const sub = Linking.addEventListener("url", (event) => {
+      const code = extractReferralCode(event.url);
+
+      if (code) {
+        setReferralCode(code);
+        setMode("signup");
+      }
+    });
+
+    return () => sub.remove();
+  }, []);
+
+  const applyReferralIfAny = async () => {
+    const code = normalizeReferralCode(referralCode);
+    if (!code) return;
+
+    const { data, error } = await supabase.rpc("accept_referral_code", {
+      p_code: code,
+    });
+
+    if (error) {
+      console.log("accept_referral_code error", error);
+      return;
+    }
+
+    if (data && (data as { ok?: boolean; error?: string }).ok === false) {
+      console.log(
+        "referral not applied:",
+        (data as { ok?: boolean; error?: string }).error
+      );
+    }
+  };
 
   const title = useMemo(
     () =>
@@ -216,6 +309,8 @@ export function ClientAuthScreen() {
       if (!data.session) {
         throw new Error(t("client.auth.sessionNotCreated"));
       }
+
+      await applyReferralIfAny();
 
       navigation.reset({
         index: 0,
@@ -418,6 +513,7 @@ export function ClientAuthScreen() {
             state: trimOrEmpty(stateRegion),
             postal_code: trimOrEmpty(postalCode),
             country: trimOrEmpty(country || "US"),
+            referral_code: normalizeReferralCode(referralCode),
           },
         },
       });
@@ -457,6 +553,7 @@ export function ClientAuthScreen() {
       }
 
       await saveClientProfile({ userId, email: e, avatarUrl });
+      await applyReferralIfAny();
 
       if (!data.session) {
         Alert.alert(
@@ -766,6 +863,44 @@ export function ClientAuthScreen() {
                   }}
                 >
                   {t("client.auth.tipStateCountry")}
+                </Text>
+
+
+
+                <View style={{ height: 16 }} />
+
+                <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
+                  {t("client.auth.referral.title", "Referral code")}
+                </Text>
+                <TextInput
+                  value={referralCode}
+                  onChangeText={setReferralCode}
+                  placeholder={t("client.auth.referral.placeholder", "MMD referral code")}
+                  placeholderTextColor="#6B7280"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: referralCode ? "#8B5CF6" : "#374151",
+                    borderRadius: 8,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    color: "white",
+                    marginBottom: 8,
+                  }}
+                />
+
+                <Text
+                  style={{
+                    color: "#64748B",
+                    fontSize: 12,
+                    fontWeight: "700",
+                  }}
+                >
+                  {t(
+                    "client.auth.referral.autoFillHint",
+                    "If you opened an MMD referral link, the code appears here automatically."
+                  )}
                 </Text>
 
                 <View style={{ height: 18 }} />

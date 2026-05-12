@@ -7,19 +7,16 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// ✅ A: vrai composant extrait
 import { DriverAccountCard } from "../components/DriverAccountCard";
 
-// ✅ IMPORTANT: clé rôle driver (alignée avec i18n/storage.ts)
 const LOCALE_KEY = "mmd_locale_driver";
 
-// ✅ Seulement 6 langues (comme dans i18n/index.ts)
 const LOCALE_LABELS: Record<string, string> = {
   en: "English",
   fr: "Français",
@@ -28,6 +25,26 @@ const LOCALE_LABELS: Record<string, string> = {
   zh: "中文",
   ff: "Pulaar",
 };
+
+const BG = "#020617";
+const CARD = "rgba(15,23,42,0.88)";
+const CARD_SOFT = "rgba(2,6,23,0.74)";
+const BORDER = "rgba(148,163,184,0.14)";
+const PURPLE = "#A78BFA";
+const PURPLE_DARK = "#8B5CF6";
+const GREEN = "#22C55E";
+const RED = "#FCA5A5";
+const TEXT = "#F8FAFC";
+const MUTED = "#94A3B8";
+
+type AccountIconName =
+  | "work"
+  | "earnings"
+  | "tax"
+  | "security"
+  | "notification"
+  | "language"
+  | "logout";
 
 function Card({
   title,
@@ -39,35 +56,10 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <View
-      style={{
-        backgroundColor: "#0B1220",
-        borderColor: "#111827",
-        borderWidth: 1,
-        borderRadius: 18,
-        padding: 14,
-        marginBottom: 14,
-      }}
-    >
-      <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>
-        {title}
-      </Text>
-
-      {subtitle ? (
-        <Text
-          style={{
-            color: "#9CA3AF",
-            fontWeight: "800",
-            marginTop: 6,
-            lineHeight: 18,
-          }}
-        >
-          {subtitle}
-        </Text>
-      ) : null}
-
-      <View style={{ height: 10 }} />
-      {children}
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
+      <View style={styles.cardBody}>{children}</View>
     </View>
   );
 }
@@ -77,53 +69,33 @@ function Row({
   value,
   onPress,
   danger,
+  icon,
 }: {
   label: string;
   value?: string;
   onPress?: () => void;
   danger?: boolean;
+  icon: AccountIconName;
 }) {
   return (
     <TouchableOpacity
       disabled={!onPress}
       onPress={onPress}
-      style={{
-        paddingVertical: 14,
-        paddingHorizontal: 12,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: "#111827",
-        backgroundColor: "#0A1730",
-        marginBottom: 10,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        opacity: onPress ? 1 : 0.9,
-      }}
-      activeOpacity={0.85}
+      style={[styles.row, danger && styles.rowDanger, !onPress && { opacity: 0.9 }]}
+      activeOpacity={0.86}
     >
-      <View style={{ flex: 1, paddingRight: 10 }}>
-        <Text
-          style={{
-            color: danger ? "#FCA5A5" : "#E5E7EB",
-            fontWeight: "900",
-          }}
-        >
-          {label}
-        </Text>
+      <View style={styles.rowLeft}>
+        <View style={[styles.rowIconBox, danger && styles.rowIconDanger]}>
+          <AccountIcon name={icon} danger={danger} />
+        </View>
 
-        {value ? (
-          <Text style={{ color: "#9CA3AF", fontWeight: "800", marginTop: 4 }}>
-            {value}
-          </Text>
-        ) : null}
+        <View style={styles.rowTextWrap}>
+          <Text style={[styles.rowLabel, danger && styles.dangerText]}>{label}</Text>
+          {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+        </View>
       </View>
 
-      <Text
-        style={{ color: danger ? "#FCA5A5" : "#93C5FD", fontWeight: "900" }}
-      >
-        {onPress ? "›" : ""}
-      </Text>
+      <Text style={[styles.chevron, danger && styles.dangerText]}>{onPress ? "›" : ""}</Text>
     </TouchableOpacity>
   );
 }
@@ -162,7 +134,6 @@ function needsVehicleDetails(tm: any) {
   return x === "car" || x === "moto" || x === "motorcycle" || x === "scooter";
 }
 
-// ✅ Normalise vers les 6 langues
 function normalizeLocale6(locale: string) {
   const x = String(locale || "").trim().toLowerCase();
   if (x.startsWith("zh")) return "zh";
@@ -174,19 +145,15 @@ function normalizeLocale6(locale: string) {
   return x;
 }
 
-// ✅ Typage minimal du profil driver (évite GenericStringError)
 type DriverProfile = {
   id?: string | null;
   user_id?: string | null;
   transport_mode?: string | null;
-
   vehicle_brand?: string | null;
   vehicle_model?: string | null;
   vehicle_year?: number | null;
   plate_number?: string | null;
-
   vehicle_verified?: boolean | null;
-
   payout_enabled?: boolean | null;
   stripe_account_id?: string | null;
   stripe_onboarded?: boolean | null;
@@ -197,7 +164,6 @@ export function DriverAccountScreen() {
   const { t, i18n } = useTranslation();
 
   const [loading, setLoading] = useState(false);
-
   const [p, setP] = useState<DriverProgress>({
     progress: 0,
     vehicleOk: false,
@@ -205,10 +171,7 @@ export function DriverAccountScreen() {
     docsTotal: REQUIRED_DOCS.length,
     payoutOk: false,
   });
-
   const [loadingProgress, setLoadingProgress] = useState(false);
-
-  // ✅ Langue dynamique (affichage) — suit i18n.language
   const [locale, setLocale] = useState<string>(() =>
     normalizeLocale6(i18n.resolvedLanguage || i18n.language || "en")
   );
@@ -225,13 +188,11 @@ export function DriverAccountScreen() {
     if (mountedRef.current) fn();
   }, []);
 
-  // ✅ quand la langue change → update immédiat de l’UI (même sans relire AsyncStorage)
   useEffect(() => {
     const next = normalizeLocale6(i18n.resolvedLanguage || i18n.language || "en");
     safeSetState(() => setLocale(next));
   }, [i18n.language, i18n.resolvedLanguage, safeSetState]);
 
-  // ✅ optionnel: relire AsyncStorage pour montrer le code sauvegardé (compat)
   const loadLocaleFromStorage = useCallback(async () => {
     try {
       const v = await AsyncStorage.getItem(LOCALE_KEY);
@@ -263,7 +224,6 @@ export function DriverAccountScreen() {
         return;
       }
 
-      // ✅ resync Stripe status (soft)
       try {
         const { error: syncErr } = await supabase.functions.invoke(
           "check_connect_status"
@@ -341,9 +301,7 @@ export function DriverAccountScreen() {
         Alert.alert("driver_profiles", pErr.message);
       }
 
-      // ✅ FIX TS2339: caster proprement (GenericStringError -> DriverProfile)
       const dp = (profileRaw as unknown as DriverProfile | null) ?? null;
-
       const tm = dp?.transport_mode ?? "bike";
       const bike = isBike(tm);
       const needsVehicle = needsVehicleDetails(tm);
@@ -361,7 +319,6 @@ export function DriverAccountScreen() {
       const payoutEnabledFallback = Boolean(dp?.payout_enabled);
       const payoutOk = stripeOnboarded || payoutEnabledFallback;
 
-      // ✅ Documents
       let docsDone = 0;
       let docsTotal = 0;
 
@@ -401,8 +358,7 @@ export function DriverAccountScreen() {
         docsTotal = REQUIRED_DOCS.length;
       }
 
-      const docsScore =
-        docsTotal > 0 ? Math.round((docsDone / docsTotal) * 50) : 0;
+      const docsScore = docsTotal > 0 ? Math.round((docsDone / docsTotal) * 50) : 0;
       const score = (vehicleOk ? 25 : 0) + docsScore + (payoutOk ? 25 : 0);
 
       setP({
@@ -426,7 +382,7 @@ export function DriverAccountScreen() {
   useFocusEffect(
     useCallback(() => {
       loadProgress();
-      loadLocaleFromStorage(); // ✅ optionnel (compat)
+      loadLocaleFromStorage();
     }, [loadProgress, loadLocaleFromStorage])
   );
 
@@ -457,52 +413,35 @@ export function DriverAccountScreen() {
     return `🌐 ${name} (${code})`;
   }, [locale]);
 
-  // ✅ NEW: navigation Tax
   const goTax = useCallback(() => {
     navigation.navigate("DriverTax");
   }, [navigation]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 8,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-            {t("common.back", "← Back")}
-          </Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.85}>
+          <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
 
-        {/* ✅ IMPORTANT: ce screen = "Driver account" (pas "Account") */}
-        <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
-          {t("driver.account.title", "Driver account")}
-        </Text>
+        <Text style={styles.headerTitle}>{t("driver.account.title", "Driver account")}</Text>
 
-        <View style={{ width: 60 }} />
+        <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <DriverAccountCard
-          progress={safeProgress.progress}
-          vehicleOk={safeProgress.vehicleOk}
-          docsDone={safeProgress.docsDone}
-          docsTotal={safeProgress.docsTotal}
-          payoutOk={safeProgress.payoutOk}
-          onPress={() => navigation.navigate("DriverWorkAccount")}
-          onAction={() => navigation.navigate("DriverOnboarding")}
-        />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.progressCardWrap}>
+          <DriverAccountCard
+            progress={safeProgress.progress}
+            vehicleOk={safeProgress.vehicleOk}
+            docsDone={safeProgress.docsDone}
+            docsTotal={safeProgress.docsTotal}
+            payoutOk={safeProgress.payoutOk}
+            onPress={() => navigation.navigate("DriverWorkAccount")}
+            onAction={() => navigation.navigate("DriverOnboarding")}
+          />
+        </View>
 
-        {/* ✅ Work section (comme ta capture) */}
         <Card
           title={t("driver.account.workTitle", "Work")}
           subtitle={t(
@@ -511,22 +450,21 @@ export function DriverAccountScreen() {
           )}
         >
           <Row
+            icon="work"
             label={t("driver.account.workCenter", "Work center")}
-            value={t(
-              "driver.account.workCenterHint",
-              "Zone, preferences, availability"
-            )}
+            value={t("driver.account.workCenterHint", "Zone, preferences, availability")}
             onPress={() => navigation.navigate("DriverWorkAccount")}
           />
 
           <Row
+            icon="earnings"
             label={t("driver.account.earnings", "Earnings")}
             value={t("driver.account.earningsHint", "History, payouts, cashouts")}
             onPress={() => navigation.navigate("DriverWallet")}
           />
 
-          {/* ✅ NEW: Tax info -> DriverTax (plus d’Alert Bientôt) */}
           <Row
+            icon="tax"
             label={t("driver.account.taxInfo", "Tax info")}
             value={t("driver.account.taxHint", "W-9 / 1099 (later)")}
             onPress={goTax}
@@ -538,17 +476,16 @@ export function DriverAccountScreen() {
           subtitle={t("driver.settings.subtitle", "Manage your driver account.")}
         >
           <Row
+            icon="security"
             label={t("common.security", "Security")}
             value={t("driver.settings.securityHint", "Change your password.")}
             onPress={() => navigation.navigate("DriverSecurity")}
           />
 
           <Row
+            icon="notification"
             label={t("common.notifications", "Notifications")}
-            value={t(
-              "driver.settings.notificationsHint",
-              "Manage notifications."
-            )}
+            value={t("driver.settings.notificationsHint", "Manage notifications.")}
             onPress={() =>
               Alert.alert(
                 t("common.soon", "Coming soon ✅"),
@@ -558,6 +495,7 @@ export function DriverAccountScreen() {
           />
 
           <Row
+            icon="language"
             label={t("common.language", "Language")}
             value={languageValue}
             onPress={() => navigation.navigate("DriverLanguage")}
@@ -566,20 +504,13 @@ export function DriverAccountScreen() {
 
         <Card title={t("driver.settings.switchAccountTitle", "Switch account")}>
           {loading ? (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                paddingVertical: 10,
-              }}
-            >
-              <ActivityIndicator />
-              <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
-                {t("driver.settings.loggingOut", "Logging out…")}
-              </Text>
+            <View style={styles.loadingBox}>
+              <ActivityIndicator color={PURPLE} />
+              <Text style={styles.loadingText}>{t("driver.settings.loggingOut", "Logging out…")}</Text>
             </View>
           ) : (
             <Row
+              icon="logout"
               label={t("common.logout", "Log out")}
               value={t("driver.settings.logoutHint", "Log out of your account.")}
               onPress={onLogout}
@@ -588,7 +519,7 @@ export function DriverAccountScreen() {
           )}
         </Card>
 
-        <Text style={{ color: "#6B7280", marginTop: 6, fontWeight: "700" }}>
+        <Text style={styles.footerText}>
           {loadingProgress
             ? t("driver.settings.loadingFooter", "Loading…")
             : t("driver.settings.footer", "Need help? Contact support.")}
@@ -597,3 +528,279 @@ export function DriverAccountScreen() {
     </SafeAreaView>
   );
 }
+
+function AccountIcon({ name, danger }: { name: AccountIconName; danger?: boolean }) {
+  const color = danger ? RED : PURPLE;
+
+  if (name === "earnings") {
+    return <Text style={[styles.iconGlyph, { color }]}>$</Text>;
+  }
+
+  if (name === "tax") {
+    return <Text style={[styles.iconGlyph, { color, fontSize: 18 }]}>%</Text>;
+  }
+
+  if (name === "language") {
+    return <Text style={[styles.iconGlyph, { color, fontSize: 17 }]}>文</Text>;
+  }
+
+  if (name === "notification") {
+    return (
+      <View style={styles.bellIcon}>
+        <View style={[styles.bellTop, { borderColor: color }]} />
+        <View style={[styles.bellBody, { borderColor: color }]} />
+        <View style={[styles.bellClapper, { backgroundColor: color }]} />
+      </View>
+    );
+  }
+
+  if (name === "security") {
+    return (
+      <View style={styles.shieldIcon}>
+        <View style={[styles.shieldShape, { borderColor: color }]} />
+      </View>
+    );
+  }
+
+  if (name === "logout") {
+    return <Text style={[styles.iconGlyph, { color, fontSize: 20 }]}>↪</Text>;
+  }
+
+  return (
+    <View style={styles.workIcon}>
+      <View style={[styles.workCase, { borderColor: color }]} />
+      <View style={[styles.workHandle, { borderColor: color }]} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  header: {
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 8,
+    minHeight: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: CARD_SOFT,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backIcon: {
+    color: "#BFDBFE",
+    fontSize: 34,
+    fontWeight: "700",
+    marginTop: -2,
+  },
+  headerTitle: {
+    color: TEXT,
+    fontSize: 17,
+    fontWeight: "900",
+    letterSpacing: 0.2,
+  },
+  headerSpacer: {
+    width: 44,
+    height: 44,
+  },
+  content: {
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 30,
+  },
+  progressCardWrap: {
+    marginBottom: 16,
+    borderRadius: 26,
+    overflow: "hidden",
+    shadowColor: PURPLE_DARK,
+    shadowOpacity: 0.14,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
+  },
+  card: {
+    borderRadius: 26,
+    padding: 15,
+    marginBottom: 16,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  cardTitle: {
+    color: TEXT,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  cardSubtitle: {
+    color: MUTED,
+    fontWeight: "800",
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  cardBody: {
+    marginTop: 12,
+  },
+  row: {
+    minHeight: 72,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: CARD_SOFT,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.11)",
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  rowDanger: {
+    borderColor: "rgba(252,165,165,0.2)",
+    backgroundColor: "rgba(127,29,29,0.14)",
+  },
+  rowLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+  rowIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: "rgba(139,92,246,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  rowIconDanger: {
+    backgroundColor: "rgba(239,68,68,0.12)",
+  },
+  rowTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowLabel: {
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  rowValue: {
+    color: MUTED,
+    fontSize: 12,
+    fontWeight: "800",
+    marginTop: 4,
+  },
+  chevron: {
+    color: "#CBD5E1",
+    fontSize: 28,
+    fontWeight: "600",
+    marginLeft: 10,
+    marginTop: -2,
+  },
+  dangerText: {
+    color: RED,
+  },
+  loadingBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  loadingText: {
+    color: MUTED,
+    marginTop: 10,
+    fontWeight: "800",
+  },
+  footerText: {
+    color: "#64748B",
+    marginTop: 2,
+    fontWeight: "800",
+    paddingHorizontal: 4,
+  },
+  iconGlyph: {
+    color: PURPLE,
+    fontSize: 21,
+    fontWeight: "900",
+  },
+  workIcon: {
+    width: 25,
+    height: 23,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  workHandle: {
+    position: "absolute",
+    top: 2,
+    width: 11,
+    height: 7,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    borderWidth: 2,
+    borderBottomWidth: 0,
+  },
+  workCase: {
+    position: "absolute",
+    bottom: 2,
+    width: 23,
+    height: 16,
+    borderRadius: 5,
+    borderWidth: 2,
+  },
+  shieldIcon: {
+    width: 24,
+    height: 26,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shieldShape: {
+    width: 20,
+    height: 22,
+    borderRadius: 7,
+    borderWidth: 2,
+    transform: [{ rotate: "45deg" }],
+  },
+  bellIcon: {
+    width: 24,
+    height: 25,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bellTop: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "transparent",
+    borderWidth: 2,
+    marginBottom: -2,
+  },
+  bellBody: {
+    width: 18,
+    height: 15,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    borderBottomLeftRadius: 5,
+    borderBottomRightRadius: 5,
+    borderWidth: 2,
+  },
+  bellClapper: {
+    width: 6,
+    height: 3,
+    borderRadius: 3,
+    marginTop: 2,
+  },
+});
