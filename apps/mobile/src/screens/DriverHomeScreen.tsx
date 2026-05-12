@@ -135,7 +135,8 @@ const ZONES: ZoneDef[] = [
 ];
 
 const SHEET_MIN_TRANSLATE_Y = 0;
-const SHEET_MAX_TRANSLATE_Y = 220;
+const SHEET_MID_TRANSLATE_Y = 220;
+const SHEET_MAX_TRANSLATE_Y = 430;
 const MAX_VISIBLE_ORDER_MILES = 5;
 const CARD_BG = "rgba(15,23,42,0.92)";
 const CARD_BORDER = "rgba(148,163,184,0.16)";
@@ -371,21 +372,25 @@ export function DriverHomeScreen() {
       },
 
       onPanResponderRelease: (_, gestureState) => {
-        const shouldOpen = gestureState.dy < -24 || gestureState.vy < -0.35;
-        const shouldClose = gestureState.dy > 24 || gestureState.vy > 0.35;
-        const final = shouldOpen
-          ? SHEET_MIN_TRANSLATE_Y
-          : shouldClose
-            ? SHEET_MAX_TRANSLATE_Y
-            : sheetStartOffset.current < SHEET_MAX_TRANSLATE_Y / 2
-              ? SHEET_MIN_TRANSLATE_Y
-              : SHEET_MAX_TRANSLATE_Y;
+        const projected = sheetStartOffset.current + gestureState.dy + gestureState.vy * 90;
+        const snapPoints = [
+          SHEET_MIN_TRANSLATE_Y,
+          SHEET_MID_TRANSLATE_Y,
+          SHEET_MAX_TRANSLATE_Y,
+        ];
+
+        let final = snapPoints.reduce((closest, point) =>
+          Math.abs(point - projected) < Math.abs(closest - projected) ? point : closest,
+        );
+
+        if (gestureState.vy < -0.75) final = SHEET_MIN_TRANSLATE_Y;
+        if (gestureState.vy > 0.75) final = SHEET_MAX_TRANSLATE_Y;
 
         Animated.spring(sheetOffset, {
           toValue: final,
-          damping: 22,
-          stiffness: 210,
-          mass: 0.75,
+          damping: 24,
+          stiffness: 220,
+          mass: 0.78,
           useNativeDriver: true,
         }).start();
       },
@@ -1155,16 +1160,6 @@ export function DriverHomeScreen() {
           <Text style={styles.compassN}>N</Text>
           <Text style={styles.compassArrow}>▲</Text>
         </TouchableOpacity>
-
-        {isOnline && (
-          <View pointerEvents="none" style={styles.demandFloatingBadge}>
-            <Text style={styles.demandFloatingIcon}>{zoneStatus === "very_busy" ? "🔥" : "▥"}</Text>
-            <View>
-              <Text style={styles.demandFloatingTitle}>{demandLabel(zoneStatus)}</Text>
-              <Text style={styles.demandFloatingSub}>{zoneMultiplier.toFixed(1)}x · {zoneName}</Text>
-            </View>
-          </View>
-        )}
 
         {hasLocation && (
           <TouchableOpacity onPress={centerOnDriver} activeOpacity={0.86} style={styles.centerButton}>
