@@ -11,7 +11,7 @@ import {
   Text,
   StatusBar,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
   Alert,
   Animated,
@@ -19,6 +19,7 @@ import {
   Image,
   AppState,
   StyleSheet,
+  Vibration,
   type AppStateStatus,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -134,12 +135,17 @@ const ZONES: ZoneDef[] = [
 ];
 
 const SHEET_MIN_TRANSLATE_Y = 0;
-const SHEET_MAX_TRANSLATE_Y = 160;
+const SHEET_MAX_TRANSLATE_Y = 220;
 const MAX_VISIBLE_ORDER_MILES = 5;
 const CARD_BG = "rgba(15,23,42,0.92)";
 const CARD_BORDER = "rgba(148,163,184,0.16)";
 const PURPLE = "#8B5CF6";
 const GREEN = "#22C55E";
+const BLUE = "#3B82F6";
+const ORANGE = "#F97316";
+const SURFACE = "rgba(2,6,23,0.96)";
+const SURFACE_SOFT = "rgba(15,23,42,0.86)";
+const SHADOW = "rgba(15,23,42,0.45)";
 
 function getZoneInfoFromLocation(lat: number, lon: number) {
   for (const z of ZONES) {
@@ -211,6 +217,42 @@ function money(amount: number | null | undefined) {
   return typeof amount === "number" ? `$${amount.toFixed(2)}` : "$0.00";
 }
 
+function hapticLight() {
+  try {
+    Vibration.vibrate(8);
+  } catch {
+    // Safe no-op when vibration is unavailable.
+  }
+}
+
+function hapticSuccess() {
+  try {
+    Vibration.vibrate([0, 14, 36, 18]);
+  } catch {
+    // Safe no-op when vibration is unavailable.
+  }
+}
+
+function hapticWarning() {
+  try {
+    Vibration.vibrate([0, 18, 42, 18, 42, 18]);
+  } catch {
+    // Safe no-op when vibration is unavailable.
+  }
+}
+
+function demandLabel(demand: ZoneDemand) {
+  if (demand === "very_busy") return "High demand";
+  if (demand === "busy") return "Busy";
+  return "Calm";
+}
+
+function demandColor(demand: ZoneDemand) {
+  if (demand === "very_busy") return ORANGE;
+  if (demand === "busy") return PURPLE;
+  return BLUE;
+}
+
 export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const navAny = navigation as unknown as AnyNav;
@@ -263,11 +305,41 @@ export function DriverHomeScreen() {
   const searchingAnim = useRef(new Animated.Value(0)).current;
   const sheetOffset = useRef(new Animated.Value(SHEET_MAX_TRANSLATE_Y)).current;
   const sheetStartOffset = useRef(0);
+  const topHudAnim = useRef(new Animated.Value(0)).current;
+  const onlinePulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(topHudAnim, {
+      toValue: 1,
+      duration: 420,
+      useNativeDriver: true,
+    }).start();
+  }, [topHudAnim]);
+
+  useEffect(() => {
+    if (!isOnline) {
+      onlinePulseAnim.setValue(0);
+      return;
+    }
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(onlinePulseAnim, { toValue: 1, duration: 1050, useNativeDriver: true }),
+        Animated.timing(onlinePulseAnim, { toValue: 0, duration: 1050, useNativeDriver: true }),
+      ]),
+    );
+
+    pulse.start();
+    return () => pulse.stop();
+  }, [isOnline, onlinePulseAnim]);
 
   useEffect(() => {
     if (isOnline && !activeOffer) {
       Animated.spring(sheetOffset, {
         toValue: SHEET_MAX_TRANSLATE_Y,
+        damping: 20,
+        stiffness: 190,
+        mass: 0.8,
         useNativeDriver: true,
       }).start();
     }
@@ -311,6 +383,9 @@ export function DriverHomeScreen() {
 
         Animated.spring(sheetOffset, {
           toValue: final,
+          damping: 22,
+          stiffness: 210,
+          mass: 0.75,
           useNativeDriver: true,
         }).start();
       },
@@ -321,6 +396,43 @@ export function DriverHomeScreen() {
     () => myOrders.reduce((sum, order) => sum + (getBestDriverAmount(order) ?? 0), 0),
     [myOrders],
   );
+
+  const activeRideCount = useMemo(() => myOrders.length, [myOrders.length]);
+
+  const waitRangeText = useMemo(() => {
+    if (!isOnline) return t("driver.home.wait.offlineTitle", "You're offline");
+    if (availableOrders.length >= 3 || zoneStatus === "very_busy") return "1 to 4 min";
+    if (availableOrders.length > 0 || zoneStatus === "busy") return "2 to 7 min";
+    return "7 to 15 min";
+  }, [availableOrders.length, isOnline, t, zoneStatus]);
+
+  const waitTitleText = useMemo(() => {
+    if (!isOnline) {
+      return t("driver.home.wait.offlineSub", "You won't receive delivery requests");
+    }
+
+    return t("driver.home.wait.title", "wait in your area");
+  }, [isOnline, t]);
+
+  const waitSubText = useMemo(() => {
+    if (!isOnline) {
+      return t("driver.home.wait.goOnline", "Go online to start receiving nearby requests.");
+    }
+
+    if (availableOrders.length > 0) {
+      return t(
+        "driver.home.wait.connectedDemand",
+        "{{count}} nearby request(s) · {{zone}}",
+        { count: availableOrders.length, zone: zoneName },
+      );
+    }
+
+    return t(
+      "driver.home.wait.connectedZone",
+      "Live estimate based on {{zone}} demand",
+      { zone: zoneName },
+    );
+  }, [availableOrders.length, isOnline, t, zoneName]);
 
   const applyDriverCoordinates = useCallback(
     (latitude: number, longitude: number) => {
@@ -682,11 +794,15 @@ export function DriverHomeScreen() {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }, []);
 
-  const handleOpenOrder = useCallback((orderId: string) => navAny.navigate("DriverOrderDetails", { orderId }), [navAny]);
+  const handleOpenOrder = useCallback((orderId: string) => {
+    hapticLight();
+    navAny.navigate("DriverOrderDetails", { orderId });
+  }, [navAny]);
 
   const handleAccept = useCallback(
     async (orderId: string) => {
       try {
+        hapticSuccess();
         setAcceptingId(orderId);
         const { data: sessionData } = await supabase.auth.getSession();
         if (!sessionData.session) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
@@ -712,6 +828,7 @@ export function DriverHomeScreen() {
   );
 
   const handleDeclineActiveOffer = useCallback(async () => {
+    hapticWarning();
     await stopSound();
     setActiveOffer(null);
     setCountdown(60);
@@ -803,6 +920,7 @@ export function DriverHomeScreen() {
   }, [activeOffer?.id, stopSound]);
 
   const toggleOnline = useCallback(async () => {
+    hapticLight();
     try {
       const next = !isOnline;
       const userId = await getUserIdOrThrow();
@@ -914,10 +1032,18 @@ export function DriverHomeScreen() {
     }
   }, [ensureGpsPermission, fetchDriverOrders, getUserIdOrThrow, isOnline, startDbGpsTracking, stopDbGpsTracking, stopSound, t]);
 
-  const openDriverMenu = useCallback(() => navAny.navigate("DriverMenuTab" as never), [navAny]);
-  const openDriverInbox = useCallback(() => navAny.navigate("DriverInboxTab" as never), [navAny]);
+  const openDriverMenu = useCallback(() => {
+    hapticLight();
+    navAny.navigate("DriverMenuTab" as never);
+  }, [navAny]);
+
+  const openDriverInbox = useCallback(() => {
+    hapticLight();
+    navAny.navigate("DriverInboxTab" as never);
+  }, [navAny]);
 
   const centerOnDriver = useCallback(() => {
+    hapticLight();
     const latitude = driverLocation?.lat ?? region.latitude;
     const longitude = driverLocation?.lng ?? region.longitude;
     setRegion((prev) => ({ ...prev, latitude, longitude, latitudeDelta: 0.035, longitudeDelta: 0.035 }));
@@ -930,6 +1056,7 @@ export function DriverHomeScreen() {
   }, [driverLocation?.lat, driverLocation?.lng, region.latitude, region.longitude]);
 
   const resetMapBearing = useCallback(() => {
+    hapticLight();
     (cameraRef.current as any)?.setCamera({ heading: 0, animationMode: "easeTo", animationDuration: 450 });
   }, []);
 
@@ -959,6 +1086,10 @@ export function DriverHomeScreen() {
 
   const searchPulseScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.02, 1] });
   const radarInnerScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 1] });
+  const driverPulseScale = onlinePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
+  const driverPulseOpacity = onlinePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.62, 0.22] });
+  const topHudTranslateY = topHudAnim.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] });
+  const currentDemandColor = demandColor(zoneStatus);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -966,7 +1097,7 @@ export function DriverHomeScreen() {
       <View style={styles.root}>
         <Mapbox.MapView
           style={styles.map}
-          styleURL={Mapbox.StyleURL.Dark}
+          styleURL="mapbox://styles/mapbox/streets-v12"
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
@@ -983,9 +1114,11 @@ export function DriverHomeScreen() {
 
           {hasLocation && (
             <Mapbox.PointAnnotation id="driver-location" coordinate={[Number(region.longitude), Number(region.latitude)]}>
-              <View style={styles.driverHalo}>
-                <View style={styles.driverDot} />
-              </View>
+              <Animated.View style={[styles.driverHalo, { opacity: driverPulseOpacity, transform: [{ scale: driverPulseScale }] }]}>
+                <View style={styles.driverDotOuter}>
+                  <View style={styles.driverDot} />
+                </View>
+              </Animated.View>
             </Mapbox.PointAnnotation>
           )}
 
@@ -1002,39 +1135,40 @@ export function DriverHomeScreen() {
           )}
         </Mapbox.MapView>
 
-        <View pointerEvents="box-none" style={styles.topBar}>
-          <IconButton label="≡" onPress={openDriverMenu} />
+        <Animated.View pointerEvents="box-none" style={[styles.topBar, { opacity: topHudAnim, transform: [{ translateY: topHudTranslateY }] }]}>
+          <IconButton icon="menu" onPress={openDriverMenu} />
           <TouchableOpacity onPress={toggleOnline} activeOpacity={0.9} style={styles.onlinePill}>
             <View style={[styles.onlineDot, { backgroundColor: onlineColorBg, shadowColor: onlineColorBg }]} />
             <Text style={styles.onlineText}>{onlineLabel}</Text>
             <Text style={styles.onlineArrow}>⌄</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={openDriverInbox} activeOpacity={0.85} style={styles.iconButton}>
-            <Text style={styles.iconText}>♢</Text>
+            <AppIcon name="bell" />
             {availableOrders.length > 0 && (
               <View style={styles.badge}><Text style={styles.badgeText}>{availableOrders.length}</Text></View>
             )}
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
-        {isOnline && (
-          <View style={styles.earningsMiniCard}>
-            <Text style={styles.mutedSmall}>{t("driver.home.earnings.today", "Today's earnings")}</Text>
-            <Text style={styles.earningsAmount}>{money(todayEarnings)}</Text>
-            <TouchableOpacity onPress={() => navAny.navigate("DriverRevenueTab" as never)}>
-              <Text style={styles.linkText}>{t("driver.home.earnings.breakdown", "View breakdown")} ›</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         <TouchableOpacity onPress={resetMapBearing} activeOpacity={0.86} style={styles.compassButton}>
           <Text style={styles.compassN}>N</Text>
           <Text style={styles.compassArrow}>▲</Text>
         </TouchableOpacity>
 
+        {isOnline && (
+          <View pointerEvents="none" style={styles.demandFloatingBadge}>
+            <Text style={styles.demandFloatingIcon}>{zoneStatus === "very_busy" ? "🔥" : "▥"}</Text>
+            <View>
+              <Text style={styles.demandFloatingTitle}>{demandLabel(zoneStatus)}</Text>
+              <Text style={styles.demandFloatingSub}>{zoneMultiplier.toFixed(1)}x · {zoneName}</Text>
+            </View>
+          </View>
+        )}
+
         {hasLocation && (
           <TouchableOpacity onPress={centerOnDriver} activeOpacity={0.86} style={styles.centerButton}>
-            <Text style={styles.centerArrow}>➤</Text>
+            <AppIcon name="locate" />
           </TouchableOpacity>
         )}
 
@@ -1045,27 +1179,6 @@ export function DriverHomeScreen() {
           </View>
         )}
 
-        {isOnline && !activeOffer && (
-          <View pointerEvents="box-none" style={styles.smartModeWrap}>
-            <Animated.View style={[styles.smartCard, { transform: [{ scale: searchPulseScale }] }]}>
-              <Animated.View style={[styles.logoBox, { transform: [{ scale: radarInnerScale }] }]}>
-                <Image source={require("../../assets/brand/mmd-logo.png")} style={styles.logo} resizeMode="contain" />
-              </Animated.View>
-              <View style={styles.smartTextWrap}>
-                <View style={styles.rowCenter}>
-                  <Text style={styles.smartTitle}>MMD Smart Mode</Text>
-                  <View style={styles.livePill}><Text style={styles.liveText}>LIVE</Text></View>
-                </View>
-                <Text style={styles.smartSubtitle}>{searchMessages[searchMessageIndex]}</Text>
-                <View style={styles.chipsRow}>
-                  <Chip label={t("driver.home.searching.chip1", "Nearby")} color="#93C5FD" bg="rgba(59,130,246,0.13)" />
-                  <Chip label={t("driver.home.searching.chip2", "Optimized")} color="#86EFAC" bg="rgba(34,197,94,0.13)" />
-                  <Chip label={`${zoneMultiplier.toFixed(1)}x ${zoneName}`} color="#C4B5FD" bg="rgba(139,92,246,0.13)" />
-                </View>
-              </View>
-            </Animated.View>
-          </View>
-        )}
 
         <View pointerEvents="box-none" style={styles.bottomArea}>
           {activeOffer ? (
@@ -1085,48 +1198,113 @@ export function DriverHomeScreen() {
               {...panResponder.panHandlers}
             >
               <View style={styles.handle} />
+              <View style={styles.sheetStatusRow}>
+                <View style={styles.sheetStatusLeft}>
+                  <View style={[styles.sheetStatusDot, { backgroundColor: currentDemandColor, shadowColor: currentDemandColor }]} />
+                  <Text style={styles.sheetStatusText}>{isOnline ? demandLabel(zoneStatus) : t("driver.home.offline", "OFFLINE")}</Text>
+                </View>
+                <Text style={styles.sheetStatusZone} numberOfLines={1}>{zoneName}</Text>
+              </View>
+
+              {isOnline && (
+                <Animated.View style={[styles.smartCard, styles.sheetSmartCard, { transform: [{ scale: searchPulseScale }] }]}>
+                  <Animated.View style={[styles.logoBox, { transform: [{ scale: radarInnerScale }] }]}>
+                    <Image source={require("../../assets/brand/mmd-logo.png")} style={styles.logo} resizeMode="contain" />
+                  </Animated.View>
+
+                  <View style={styles.smartTextWrap}>
+                    <View style={styles.rowCenter}>
+                      <Text style={styles.smartTitle}>MMD Smart Mode</Text>
+                      <View style={styles.livePill}><Text style={styles.liveText}>LIVE</Text></View>
+                    </View>
+
+                    <Text style={styles.smartSubtitle}>{searchMessages[searchMessageIndex]}</Text>
+
+                    <View style={styles.chipsRow}>
+                      <Chip label={t("driver.home.searching.chip1", "Nearby")} color="#93C5FD" bg="rgba(59,130,246,0.13)" />
+                      <Chip label={t("driver.home.searching.chip2", "Optimized")} color="#86EFAC" bg="rgba(34,197,94,0.13)" />
+                      <Chip label={`${zoneMultiplier.toFixed(1)}x ${zoneName}`} color="#C4B5FD" bg="rgba(139,92,246,0.13)" />
+                    </View>
+                  </View>
+                </Animated.View>
+              )}
+
+              {isOnline && (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    hapticLight();
+                    navAny.navigate("DriverRevenueTab" as never);
+                  }}
+                  style={styles.sheetEarningsRow}
+                >
+                  <View>
+                    <Text style={styles.sheetEarningsLabel}>{t("driver.home.earnings.today", "Today's earnings")}</Text>
+                    <Text style={styles.sheetEarningsSub}>
+                      {t("driver.home.earnings.live", "{{count}} active delivery(s) · live total", { count: activeRideCount })}
+                    </Text>
+                  </View>
+
+                  <View style={styles.sheetEarningsRight}>
+                    <Text style={styles.sheetEarningsAmount}>{money(todayEarnings)}</Text>
+                    <Text style={styles.sheetEarningsLink}>{t("driver.home.earnings.breakdown", "View")} ›</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
               <View style={styles.waitCard}>
-                <View>
-                  <Text style={styles.waitMain}>2 to 7 min</Text>
-                  <Text style={styles.waitTitle}>{t("driver.home.wait.title", "wait in your area")}</Text>
-                  <Text style={styles.waitSub}>{t("driver.home.wait.sub", "Average wait based on nearby demand")}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.waitMain}>{waitRangeText}</Text>
+                  <Text style={styles.waitTitle}>{waitTitleText}</Text>
+                  <Text style={styles.waitSub}>{waitSubText}</Text>
                 </View>
                 <View style={styles.clockCircle}><Text style={styles.clockText}>◷</Text></View>
               </View>
 
               <View style={styles.goalsRow}>
-                <GoalCard icon="◎" title="Unlock Silver" sub="400 / 1,000" progress={0.4} />
-                <GoalCard icon="☆" title="Earnings Goal" sub="$0 of $1,009" progress={0} />
+                <GoalCard icon="medal" title="Unlock Silver" sub="400 / 1,000" progress={0.4} />
+                <GoalCard icon="star" title="Earnings Goal" sub="$0 of $1,009" progress={0} />
               </View>
 
               <View style={styles.ordersPanel}>
                 <View style={styles.panelHeader}>
                   <Text style={styles.panelTitle}>{t("driver.home.myOrders.title", "My active deliveries")}</Text>
-                  <TouchableOpacity onPress={() => void fetchDriverOrders(true)}>
+                  <TouchableOpacity onPress={() => {
+                    hapticLight();
+                    void fetchDriverOrders(true);
+                  }}>
                     <Text style={styles.refreshText}>{t("shared.common.refresh", "Refresh")}</Text>
                   </TouchableOpacity>
                 </View>
                 {loading && <ActivityIndicator color="#FFFFFF" style={{ marginVertical: 8 }} />}
                 {error && <Text style={styles.errorText}>{error}</Text>}
-                <ScrollView style={styles.ordersScroll} contentContainerStyle={{ paddingBottom: 10 }}>
-                  {myOrders.length === 0 && !loading ? (
-                    <View style={styles.emptyBox}>
-                      <Text style={styles.emptyTitle}>{t("driver.home.myOrders.emptyTitle", "No active delivery yet.")}</Text>
-                      <Text style={styles.emptySub}>{t("driver.home.myOrders.emptySubtitle", "Accepted trips will appear here.")}</Text>
-                    </View>
-                  ) : (
-                    myOrders.map((order) => (
+                {myOrders.length === 0 && !loading ? (
+                  <View style={styles.emptyBox}>
+                    <Text style={styles.emptyTitle}>{t("driver.home.myOrders.emptyTitle", "No active delivery yet.")}</Text>
+                    <Text style={styles.emptySub}>{t("driver.home.myOrders.emptySubtitle", "Accepted trips will appear here.")}</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    style={styles.ordersScroll}
+                    data={myOrders}
+                    keyExtractor={(order) => order.id}
+                    renderItem={({ item: order }) => (
                       <OrderRow
-                        key={order.id}
                         order={order}
                         onPress={() => handleOpenOrder(order.id)}
                         formatStatus={formatStatus}
                         formatKind={formatKind}
                         formatDate={formatDate}
                       />
-                    ))
-                  )}
-                </ScrollView>
+                    )}
+                    contentContainerStyle={{ paddingBottom: 10 }}
+                    showsVerticalScrollIndicator={false}
+                    initialNumToRender={6}
+                    maxToRenderPerBatch={8}
+                    windowSize={5}
+                    removeClippedSubviews
+                  />
+                )}
               </View>
             </Animated.View>
           )}
@@ -1136,11 +1314,59 @@ export function DriverHomeScreen() {
   );
 }
 
-function IconButton({ label, onPress }: { label: string; onPress: () => void }) {
+function IconButton({ icon, onPress }: { icon: IconName; onPress: () => void }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.iconButton}>
-      <Text style={styles.iconText}>{label}</Text>
+      <AppIcon name={icon} />
     </TouchableOpacity>
+  );
+}
+
+type IconName = "menu" | "bell" | "locate" | "medal" | "star";
+
+function AppIcon({ name }: { name: IconName }) {
+  if (name === "menu") {
+    return (
+      <View style={styles.menuIcon}>
+        <View style={styles.menuLine} />
+        <View style={styles.menuLine} />
+        <View style={styles.menuLineShort} />
+      </View>
+    );
+  }
+
+  if (name === "bell") {
+    return (
+      <View style={styles.bellIcon}>
+        <View style={styles.bellTop} />
+        <View style={styles.bellBody} />
+        <View style={styles.bellClapper} />
+      </View>
+    );
+  }
+
+  if (name === "locate") {
+    return (
+      <View style={styles.locateIcon}>
+        <View style={styles.locateNeedle} />
+      </View>
+    );
+  }
+
+  if (name === "medal") {
+    return (
+      <View style={styles.medalIcon}>
+        <View style={styles.medalRibbonLeft} />
+        <View style={styles.medalRibbonRight} />
+        <View style={styles.medalCircle} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.starIcon}>
+      <Text style={styles.starGlyph}>★</Text>
+    </View>
   );
 }
 
@@ -1152,10 +1378,10 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
   );
 }
 
-function GoalCard({ icon, title, sub, progress }: { icon: string; title: string; sub: string; progress: number }) {
+function GoalCard({ icon, title, sub, progress }: { icon: IconName; title: string; sub: string; progress: number }) {
   return (
     <View style={styles.goalCard}>
-      <Text style={styles.goalIcon}>{icon}</Text>
+      <AppIcon name={icon} />
       <Text style={styles.goalTitle} numberOfLines={1}>{title}</Text>
       <Text style={styles.goalSub} numberOfLines={1}>{sub}</Text>
       <View style={styles.progressTrack}>
@@ -1275,7 +1501,7 @@ const styles = StyleSheet.create({
     height: 50,
     width: 50,
     borderRadius: 25,
-    backgroundColor: "rgba(2,6,23,0.92)",
+    backgroundColor: "rgba(2,6,23,0.94)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1287,6 +1513,21 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   iconText: { color: "#FFFFFF", fontSize: 24, fontWeight: "900" },
+  menuIcon: { width: 22, height: 18, justifyContent: "space-between" },
+  menuLine: { height: 2.4, borderRadius: 999, backgroundColor: "#F8FAFC", width: 22 },
+  menuLineShort: { height: 2.4, borderRadius: 999, backgroundColor: "#F8FAFC", width: 15 },
+  bellIcon: { width: 24, height: 25, alignItems: "center", justifyContent: "center" },
+  bellTop: { width: 7, height: 7, borderRadius: 4, backgroundColor: "transparent", borderWidth: 2, borderColor: "#F8FAFC", marginBottom: -2 },
+  bellBody: { width: 18, height: 15, borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, borderWidth: 2, borderColor: "#F8FAFC" },
+  bellClapper: { width: 6, height: 3, borderRadius: 3, backgroundColor: "#F8FAFC", marginTop: 2 },
+  locateIcon: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
+  locateNeedle: { width: 0, height: 0, borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 20, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#020617", transform: [{ rotate: "45deg" }] },
+  medalIcon: { width: 30, height: 32, alignItems: "center", justifyContent: "center" },
+  medalRibbonLeft: { position: "absolute", top: 1, left: 7, width: 8, height: 16, borderRadius: 4, backgroundColor: "rgba(167,139,250,0.42)", transform: [{ rotate: "-18deg" }] },
+  medalRibbonRight: { position: "absolute", top: 1, right: 7, width: 8, height: 16, borderRadius: 4, backgroundColor: "rgba(167,139,250,0.28)", transform: [{ rotate: "18deg" }] },
+  medalCircle: { position: "absolute", bottom: 2, width: 22, height: 22, borderRadius: 11, borderWidth: 3, borderColor: "#C4B5FD", backgroundColor: "rgba(139,92,246,0.16)" },
+  starIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(139,92,246,0.14)" },
+  starGlyph: { color: "#C4B5FD", fontSize: 22, fontWeight: "900", marginTop: -2 },
   badge: {
     position: "absolute",
     top: -2,
@@ -1371,6 +1612,30 @@ const styles = StyleSheet.create({
     zIndex: 80,
   },
   centerArrow: { color: "#020617", fontSize: 27, fontWeight: "900", transform: [{ rotate: "-45deg" }] },
+  demandFloatingBadge: {
+    position: "absolute",
+    left: 18,
+    top: 146,
+    minHeight: 48,
+    maxWidth: 218,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: "rgba(2,6,23,0.88)",
+    borderWidth: 1,
+    borderColor: "rgba(139,92,246,0.18)",
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: PURPLE,
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+    zIndex: 72,
+  },
+  demandFloatingIcon: { color: "#C4B5FD", fontSize: 16, fontWeight: "900", marginRight: 10 },
+  demandFloatingTitle: { color: "#F8FAFC", fontSize: 13, fontWeight: "900" },
+  demandFloatingSub: { color: "#94A3B8", fontSize: 11, fontWeight: "800", marginTop: 2 },
   loadingOverlay: {
     position: "absolute",
     top: 0,
@@ -1393,12 +1658,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(167,139,250,0.28)",
   },
+  driverDotOuter: {
+    height: 38,
+    width: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: PURPLE,
+    shadowOpacity: 0.42,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
   driverDot: {
-    height: 30,
-    width: 30,
-    borderRadius: 15,
+    height: 24,
+    width: 24,
+    borderRadius: 12,
     backgroundColor: PURPLE,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: "#FFFFFF",
   },
   pickupPin: { backgroundColor: "#F97316", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
@@ -1414,6 +1691,49 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(139,92,246,0.24)",
   },
+  sheetSmartCard: {
+    marginBottom: 12,
+  },
+  sheetEarningsRow: {
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 12,
+    backgroundColor: "rgba(15,23,42,0.78)",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.14)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sheetEarningsLabel: { color: "#CBD5E1", fontSize: 12, fontWeight: "800" },
+  sheetEarningsSub: { color: "#64748B", fontSize: 11, fontWeight: "700", marginTop: 4 },
+  sheetEarningsRight: { alignItems: "flex-end" },
+  sheetEarningsAmount: { color: "#A78BFA", fontSize: 20, fontWeight: "900" },
+  sheetEarningsLink: { color: "#C4B5FD", fontSize: 12, fontWeight: "900", marginTop: 3 },
+  sheetStatusRow: {
+    minHeight: 34,
+    borderRadius: 999,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "rgba(15,23,42,0.68)",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.12)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sheetStatusLeft: { flexDirection: "row", alignItems: "center", flexShrink: 0 },
+  sheetStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  sheetStatusText: { color: "#F8FAFC", fontSize: 12, fontWeight: "900", letterSpacing: 0.3 },
+  sheetStatusZone: { color: "#94A3B8", fontSize: 12, fontWeight: "800", maxWidth: 170 },
   logoBox: {
     width: 56,
     height: 56,
@@ -1434,17 +1754,27 @@ const styles = StyleSheet.create({
   chipsRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 9 },
   chip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, marginRight: 6, marginBottom: 6 },
   chipText: { fontSize: 10, fontWeight: "800", maxWidth: 120 },
-  bottomArea: { position: "absolute", left: 0, right: 0, bottom: 16, zIndex: 60 },
+  bottomArea: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60 },
   sheet: {
-    marginHorizontal: 16,
-    borderRadius: 28,
-    padding: 14,
-    backgroundColor: "rgba(2,6,23,0.95)",
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.15)",
+    width: "100%",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 20,
+    backgroundColor: "rgba(2,6,23,0.985)",
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "rgba(139,92,246,0.22)",
+    shadowColor: "#000",
+    shadowOpacity: 0.32,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -10 },
+    elevation: 22,
   },
-  handle: { alignSelf: "center", width: 42, height: 4, borderRadius: 999, backgroundColor: "#64748B", marginBottom: 12 },
-  waitCard: { borderRadius: 22, padding: 16, backgroundColor: CARD_BG, borderWidth: 1, borderColor: CARD_BORDER, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  handle: { alignSelf: "center", width: 46, height: 5, borderRadius: 999, backgroundColor: "rgba(203,213,225,0.48)", marginBottom: 10 },
+  waitCard: { borderRadius: 24, padding: 16, backgroundColor: "rgba(15,23,42,0.88)", borderWidth: 1, borderColor: "rgba(139,92,246,0.16)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   waitMain: { color: "#A78BFA", fontSize: 22, fontWeight: "900" },
   waitTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", marginTop: 2 },
   waitSub: { color: "#94A3B8", fontSize: 12, marginTop: 6 },
