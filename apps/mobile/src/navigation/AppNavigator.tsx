@@ -124,6 +124,11 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const MMD_APP_SCHEME = "mmd://";
+const MMD_WEB_DOMAIN = "https://mmddelivery.com";
+const MMD_WEB_WWW_DOMAIN = "https://www.mmddelivery.com";
+const MMD_LEGACY_WEB_DOMAIN = "https://mmd-delivery.vercel.app";
+
 type AppNavigatorProps = {
   initialRouteName?: keyof RootStackParamList;
 };
@@ -202,16 +207,21 @@ export function AppNavigator({
   const linking = React.useMemo(
     () => ({
       prefixes: [
-        "mmd://",
+        MMD_APP_SCHEME,
         Linking.createURL("/"),
-        "https://mmd-delivery.vercel.app",
-        "https://mmdelivery.com",
-        "https://mmd.app",
+        MMD_WEB_DOMAIN,
+        MMD_WEB_WWW_DOMAIN,
+        MMD_LEGACY_WEB_DOMAIN,
       ],
       config: {
         screens: {
           ResetPassword: "reset-password",
-          DriverAuth: "r/:ref",
+          DriverAuth: {
+            path: "r/:ref",
+            parse: {
+              ref: (ref: string) => cleanReferralCode(ref) ?? String(ref),
+            },
+          },
         },
       },
     }),
