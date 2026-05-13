@@ -1,24 +1,36 @@
-const roles = [
+type Role = {
+  title: string;
+  subtitle: string;
+  href: string;
+  color: string;
+  icon: string;
+  access: string;
+};
+
+const roles: Role[] = [
   {
     title: "Client",
     subtitle: "Order food, delivery and services in minutes.",
     href: "/signup?role=client",
     color: "#EF4444",
     icon: "🛍️",
+    access: "Web + Mobile",
   },
   {
     title: "Driver",
     subtitle: "Earn with rides, deliveries and opportunities.",
-    href: "/signup?role=driver",
+    href: "mmd://signup/driver",
     color: "#0EA5E9",
     icon: "🚗",
+    access: "Mobile app only",
   },
   {
     title: "Restaurant",
     subtitle: "Receive orders and grow your business.",
-    href: "/signup?role=restaurant",
+    href: "mmd://signup/restaurant",
     color: "#22C55E",
     icon: "🍽️",
+    access: "Mobile app only",
   },
 ];
 
@@ -42,7 +54,7 @@ export default function HomePage() {
           margin: "0 auto",
           minHeight: "100vh",
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1.05fr) minmax(360px, 0.95fr)",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
           gap: 36,
           alignItems: "center",
         }}
@@ -63,7 +75,7 @@ export default function HomePage() {
             }}
           >
             <span>🚀</span>
-            <span>Fast. Trusted. Built for everyone.</span>
+            <span>Welcome to MMD Delivery</span>
           </div>
 
           <img
@@ -129,24 +141,27 @@ export default function HomePage() {
               marginTop: 30,
             }}
           >
-            {["Real-time tracking", "Secure payments", "Driver earnings", "Restaurant tools"].map(
-              (item) => (
-                <span
-                  key={item}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 999,
-                    background: "rgba(15,23,42,0.82)",
-                    border: "1px solid rgba(148,163,184,0.14)",
-                    color: "#CBD5E1",
-                    fontSize: 14,
-                    fontWeight: 850,
-                  }}
-                >
-                  {item}
-                </span>
-              )
-            )}
+            {[
+              "Real-time tracking",
+              "Secure payments",
+              "Driver earnings",
+              "Restaurant tools",
+            ].map((item) => (
+              <span
+                key={item}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 999,
+                  background: "rgba(15,23,42,0.82)",
+                  border: "1px solid rgba(148,163,184,0.14)",
+                  color: "#CBD5E1",
+                  fontSize: 14,
+                  fontWeight: 850,
+                }}
+              >
+                {item}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -166,6 +181,19 @@ export default function HomePage() {
               padding: "16px 8px 24px",
             }}
           >
+            <p
+              style={{
+                margin: "0 0 12px",
+                color: "#FCA5A5",
+                fontSize: 14,
+                fontWeight: 900,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+              }}
+            >
+              Welcome — choose your access
+            </p>
+
             <h2
               style={{
                 fontSize: "clamp(34px, 5vw, 54px)",
@@ -187,7 +215,8 @@ export default function HomePage() {
                 fontWeight: 700,
               }}
             >
-              Select your role and continue to the right MMD experience.
+              Clients can continue on the web. Drivers and restaurants continue
+              in the MMD mobile app.
             </p>
           </div>
 
@@ -196,6 +225,7 @@ export default function HomePage() {
               <a
                 key={role.title}
                 href={role.href}
+                aria-label={`Continue as ${role.title}`}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -227,14 +257,37 @@ export default function HomePage() {
                 <span style={{ flex: 1, textAlign: "left" }}>
                   <span
                     style={{
-                      display: "block",
-                      fontSize: 28,
-                      fontWeight: 950,
-                      lineHeight: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
                     }}
                   >
-                    {role.title}
+                    <span
+                      style={{
+                        display: "block",
+                        fontSize: 28,
+                        fontWeight: 950,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {role.title}
+                    </span>
+
+                    <span
+                      style={{
+                        padding: "6px 9px",
+                        borderRadius: 999,
+                        background: "rgba(255,255,255,0.2)",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {role.access}
+                    </span>
                   </span>
+
                   <span
                     style={{
                       display: "block",
