@@ -1,49 +1,278 @@
-"use client";
+const roles = [
+  {
+    title: "Client",
+    subtitle: "Order food, delivery and services in minutes.",
+    href: "/signup?role=client",
+    color: "#EF4444",
+    icon: "🛍️",
+  },
+  {
+    title: "Driver",
+    subtitle: "Earn with rides, deliveries and opportunities.",
+    href: "/signup?role=driver",
+    color: "#0EA5E9",
+    icon: "🚗",
+  },
+  {
+    title: "Restaurant",
+    subtitle: "Receive orders and grow your business.",
+    href: "/signup?role=restaurant",
+    color: "#22C55E",
+    icon: "🍽️",
+  },
+];
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
-import Image from "next/image";
-
-export default function Page() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const check = async () => {
-      const { data } = await supabase.auth.getSession();
-
-      if (data.session) {
-        router.replace("/dashboard");
-      } else {
-        router.replace("/auth");
-      }
-    };
-
-    check();
-  }, [router]);
-
+export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white">
-      
-      {/* LOGO */}
-      <Image
-        src="/brand/mmd-logo.png"
-        alt="MMD Delivery Logo"
-        width={120}
-        height={120}
-        priority
-      />
+    <main
+      style={{
+        minHeight: "100vh",
+        background:
+          "radial-gradient(circle at top left, rgba(239,68,68,0.24), transparent 34%), radial-gradient(circle at top right, rgba(14,165,233,0.22), transparent 36%), linear-gradient(180deg, #020617 0%, #050B18 100%)",
+        color: "white",
+        fontFamily:
+          'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        padding: 24,
+      }}
+    >
+      <section
+        style={{
+          width: "100%",
+          maxWidth: 1180,
+          margin: "0 auto",
+          minHeight: "100vh",
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1.05fr) minmax(360px, 0.95fr)",
+          gap: 36,
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "10px 14px",
+              borderRadius: 999,
+              background: "rgba(15,23,42,0.78)",
+              border: "1px solid rgba(148,163,184,0.16)",
+              color: "#CBD5E1",
+              fontWeight: 800,
+              marginBottom: 24,
+            }}
+          >
+            <span>🚀</span>
+            <span>Fast. Trusted. Built for everyone.</span>
+          </div>
 
-      {/* NOM */}
-      <h1 className="text-3xl font-bold text-gray-900">
-        MMD Delivery
-      </h1>
+          <img
+            src="/brand/mmd-logo.png"
+            alt="MMD Delivery"
+            style={{
+              width: 112,
+              height: 112,
+              borderRadius: 30,
+              objectFit: "cover",
+              boxShadow: "0 18px 55px rgba(239,68,68,0.28)",
+              marginBottom: 24,
+            }}
+          />
 
-      {/* LOADING */}
-      <p className="text-sm text-gray-500">
-        Chargement...
-      </p>
+          <h1
+            style={{
+              fontSize: "clamp(48px, 7vw, 86px)",
+              lineHeight: 0.95,
+              letterSpacing: -3,
+              margin: 0,
+              fontWeight: 950,
+            }}
+          >
+            MMD Delivery
+          </h1>
 
+          <p
+            style={{
+              marginTop: 20,
+              fontSize: "clamp(22px, 3vw, 34px)",
+              lineHeight: 1.25,
+              color: "#F8FAFC",
+              fontWeight: 850,
+              maxWidth: 760,
+            }}
+          >
+            We deliver with heart ❤️
+            <br />
+            Fast, simple and reliable.
+          </p>
+
+          <p
+            style={{
+              marginTop: 18,
+              fontSize: 18,
+              lineHeight: 1.7,
+              color: "#94A3B8",
+              maxWidth: 680,
+              fontWeight: 650,
+            }}
+          >
+            One platform for clients, drivers and restaurants. Order faster,
+            earn smarter, and grow your business with a modern delivery
+            experience.
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 12,
+              marginTop: 30,
+            }}
+          >
+            {["Real-time tracking", "Secure payments", "Driver earnings", "Restaurant tools"].map(
+              (item) => (
+                <span
+                  key={item}
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 999,
+                    background: "rgba(15,23,42,0.82)",
+                    border: "1px solid rgba(148,163,184,0.14)",
+                    color: "#CBD5E1",
+                    fontSize: 14,
+                    fontWeight: 850,
+                  }}
+                >
+                  {item}
+                </span>
+              )
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "rgba(15,23,42,0.76)",
+            border: "1px solid rgba(148,163,184,0.16)",
+            borderRadius: 36,
+            padding: 26,
+            boxShadow: "0 28px 80px rgba(0,0,0,0.42)",
+            backdropFilter: "blur(20px)",
+          }}
+        >
+          <div
+            style={{
+              textAlign: "center",
+              padding: "16px 8px 24px",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "clamp(34px, 5vw, 54px)",
+                lineHeight: 1,
+                margin: 0,
+                fontWeight: 950,
+                letterSpacing: -1.5,
+              }}
+            >
+              Choose your mode
+            </h2>
+
+            <p
+              style={{
+                marginTop: 14,
+                color: "#94A3B8",
+                fontSize: 17,
+                lineHeight: 1.55,
+                fontWeight: 700,
+              }}
+            >
+              Select your role and continue to the right MMD experience.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {roles.map((role) => (
+              <a
+                key={role.title}
+                href={role.href}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  padding: "19px 18px",
+                  borderRadius: 24,
+                  background: `linear-gradient(135deg, ${role.color}, ${role.color}CC)`,
+                  color: "white",
+                  textDecoration: "none",
+                  boxShadow: `0 16px 36px ${role.color}33`,
+                }}
+              >
+                <span
+                  style={{
+                    width: 54,
+                    height: 54,
+                    borderRadius: 18,
+                    background: "rgba(255,255,255,0.18)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 28,
+                    flexShrink: 0,
+                  }}
+                >
+                  {role.icon}
+                </span>
+
+                <span style={{ flex: 1, textAlign: "left" }}>
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 28,
+                      fontWeight: 950,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {role.title}
+                  </span>
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: 8,
+                      fontSize: 14,
+                      lineHeight: 1.4,
+                      opacity: 0.92,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {role.subtitle}
+                  </span>
+                </span>
+
+                <span style={{ fontSize: 28, fontWeight: 900 }}>›</span>
+              </a>
+            ))}
+          </div>
+
+          <div
+            style={{
+              marginTop: 24,
+              padding: 18,
+              borderRadius: 22,
+              background: "rgba(2,6,23,0.72)",
+              border: "1px solid rgba(148,163,184,0.12)",
+              color: "#94A3B8",
+              fontSize: 13,
+              lineHeight: 1.6,
+              fontWeight: 700,
+              textAlign: "center",
+            }}
+          >
+            MMD Delivery connects people, work and local businesses with a
+            premium delivery experience.
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
