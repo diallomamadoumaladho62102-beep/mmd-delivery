@@ -11,10 +11,10 @@ const roles: Role[] = [
   {
     title: "Client",
     subtitle: "Order food, delivery and services in minutes.",
-    href: "/signup?role=client",
+    href: "mmd://signup/client",
     color: "#EF4444",
     icon: "🛍️",
-    access: "Web + Mobile",
+    access: "Mobile app",
   },
   {
     title: "Driver",
@@ -215,8 +215,7 @@ export default function HomePage() {
                 fontWeight: 700,
               }}
             >
-              Clients can continue on the web. Drivers and restaurants continue
-              in the MMD mobile app.
+              Clients, drivers and restaurants continue in the MMD mobile app.
             </p>
           </div>
 
@@ -225,7 +224,7 @@ export default function HomePage() {
               <a
                 key={role.title}
                 href={role.href}
-                aria-label={`Continue as ${role.title}`}
+                aria-label={`Continue as ${role.title} in the MMD mobile app`}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -236,6 +235,7 @@ export default function HomePage() {
                   color: "white",
                   textDecoration: "none",
                   boxShadow: `0 16px 36px ${role.color}33`,
+                  cursor: "pointer",
                 }}
               >
                 <span
@@ -322,7 +322,7 @@ export default function HomePage() {
             }}
           >
             MMD Delivery connects people, work and local businesses with a
-            premium delivery experience.
+            premium mobile-first delivery experience.
           </div>
         </div>
       </section>
