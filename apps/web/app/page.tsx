@@ -11,10 +11,10 @@ const roles: Role[] = [
   {
     title: "Client",
     subtitle: "Order food, delivery and services in minutes.",
-    href: "mmd://signup/client",
+    href: "/signup/client",
     color: "#EF4444",
     icon: "🛍️",
-    access: "Mobile app",
+    access: "Web + mobile",
   },
   {
     title: "Driver",
@@ -27,10 +27,10 @@ const roles: Role[] = [
   {
     title: "Restaurant",
     subtitle: "Receive orders and grow your business.",
-    href: "mmd://signup/restaurant",
+    href: "/signup/restaurant",
     color: "#22C55E",
     icon: "🍽️",
-    access: "Mobile app only",
+    access: "Web + mobile",
   },
 ];
 
@@ -215,7 +215,8 @@ export default function HomePage() {
                 fontWeight: 700,
               }}
             >
-              Clients, drivers and restaurants continue in the MMD mobile app.
+              Clients and restaurants can continue on web or mobile. Drivers
+              continue in the MMD mobile app.
             </p>
           </div>
 
@@ -224,7 +225,7 @@ export default function HomePage() {
               <a
                 key={role.title}
                 href={role.href}
-                aria-label={`Continue as ${role.title} in the MMD mobile app`}
+                aria-label={`Continue as ${role.title}`}
                 style={{
                   display: "flex",
                   alignItems: "center",

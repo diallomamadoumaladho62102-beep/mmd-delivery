@@ -12,6 +12,8 @@ import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 
+type RestaurantTaxRange = "weekly" | "monthly" | "yearly";
+
 type RestaurantTaxProfile = {
   restaurantName: string | null;
   email: string | null;
@@ -30,6 +32,10 @@ type RestaurantTaxTotals = {
   restaurantNet: number;
   totalOrders: number;
   year: number;
+  range: RestaurantTaxRange;
+  commissionRate?: number | null;
+  month?: number | null;
+  week?: number | null;
 };
 
 type RestaurantTaxFile = {
@@ -41,6 +47,9 @@ type RestaurantTaxFile = {
 type RestaurantTaxSummary = {
   restaurantUserId: string;
   year: number;
+  range: RestaurantTaxRange;
+  month?: number | null;
+  week?: number | null;
   generatedAt: string;
   profile: RestaurantTaxProfile;
   totals: RestaurantTaxTotals;
@@ -61,12 +70,61 @@ function money(value: number): string {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getInitialWeek(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now.getTime() - start.getTime();
+  const oneWeek = 1000 * 60 * 60 * 24 * 7;
+
+  return clamp(Math.floor(diff / oneWeek) + 1, 1, 53);
+}
+
+function formatCommissionRate(rate?: number | null): string {
+  const safeRate = Number(rate ?? 0);
+
+  if (!Number.isFinite(safeRate) || safeRate <= 0) {
+    return "Platform commission";
+  }
+
+  const percent = Math.round(safeRate * 100);
+  return `Platform commission (${percent}%)`;
+}
+
+function periodLabel(params: {
+  range: RestaurantTaxRange;
+  year: number;
+  month: number;
+  week: number;
+}) {
+  const { range, year, month, week } = params;
+
+  if (range === "weekly") return `Week ${week} • ${year}`;
+  if (range === "monthly") return `Month ${month} • ${year}`;
+  return `Year ${year}`;
+}
+
+function getRangeLabel(range: RestaurantTaxRange) {
+  if (range === "weekly") return "Weekly";
+  if (range === "monthly") return "Monthly";
+  return "Yearly";
+}
+
 export default function RestaurantTaxScreen({
   navigation,
 }: RestaurantTaxScreenProps) {
   const { t } = useTranslation();
 
-  const [year, setYear] = useState<number>(new Date().getFullYear());
+  const now = new Date();
+
+  const [range, setRange] = useState<RestaurantTaxRange>("yearly");
+  const [year, setYear] = useState<number>(now.getFullYear());
+  const [month, setMonth] = useState<number>(now.getMonth() + 1);
+  const [week, setWeek] = useState<number>(getInitialWeek());
+
   const [loading, setLoading] = useState<boolean>(true);
   const [downloading, setDownloading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,11 +132,30 @@ export default function RestaurantTaxScreen({
 
   const apiBase = useMemo(() => {
     const value = process.env.EXPO_PUBLIC_API_BASE_URL;
-
-    if (!value) return null;
-
-    return value.replace(/\/+$/, "");
+    return value ? value.replace(/\/+$/, "") : null;
   }, []);
+
+  const selectedPeriodLabel = useMemo(
+    () => periodLabel({ range, year, month, week }),
+    [range, year, month, week]
+  );
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+
+    params.set("range", range);
+    params.set("year", String(year));
+
+    if (range === "monthly") {
+      params.set("month", String(month));
+    }
+
+    if (range === "weekly") {
+      params.set("week", String(week));
+    }
+
+    return params.toString();
+  }, [range, year, month, week]);
 
   const fetchSummary = useCallback(
     async (download = false) => {
@@ -115,17 +192,16 @@ export default function RestaurantTaxScreen({
           );
         }
 
-        const response = await fetch(
-          `${apiBase}/api/restaurant/tax/summary?year=${year}${
-            download ? "&download=1" : ""
-          }`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-            },
-          }
-        );
+        const url = `${apiBase}/api/restaurant/tax/summary?${queryString}${
+          download ? "&download=1" : ""
+        }`;
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
 
         const json = await response.json().catch(() => null);
 
@@ -180,7 +256,7 @@ export default function RestaurantTaxScreen({
         setDownloading(false);
       }
     },
-    [apiBase, t, year]
+    [apiBase, queryString, t]
   );
 
   useEffect(() => {
@@ -196,6 +272,32 @@ export default function RestaurantTaxScreen({
   }, [missingFields]);
 
   const canDownload = !!summary && !downloading;
+
+  function selectRange(nextRange: RestaurantTaxRange) {
+    setRange(nextRange);
+    setSummary(null);
+    setError(null);
+  }
+
+  function changeYear(delta: number) {
+    setYear((prev) => prev + delta);
+    setSummary(null);
+    setError(null);
+  }
+
+  function changeMonth(delta: number) {
+    setMonth((prev) => clamp(prev + delta, 1, 12));
+    setSummary(null);
+    setError(null);
+  }
+
+  function changeWeek(delta: number) {
+    setWeek((prev) => clamp(prev + delta, 1, 53));
+    setSummary(null);
+    setError(null);
+  }
+
+  const commissionText = formatCommissionRate(summary?.totals?.commissionRate);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }}>
@@ -244,7 +346,7 @@ export default function RestaurantTaxScreen({
             >
               {t(
                 "restaurant.tax.subtitle",
-                "Manage your restaurant tax information, yearly earnings, and downloadable tax documents."
+                "Review weekly, monthly and yearly restaurant earnings, commissions and tax documents."
               )}
             </Text>
           </View>
@@ -263,7 +365,44 @@ export default function RestaurantTaxScreen({
           }}
         >
           <Text style={{ color: "#94A3B8", fontWeight: "800" }}>
-            {t("restaurant.tax.reportingYear", "Reporting year")}
+            {t("restaurant.tax.reportingPeriod", "Reporting period")}
+          </Text>
+
+          <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+            {(["weekly", "monthly", "yearly"] as RestaurantTaxRange[]).map(
+              (item) => {
+                const active = range === item;
+
+                return (
+                  <TouchableOpacity
+                    key={item}
+                    onPress={() => selectRange(item)}
+                    style={{
+                      flex: 1,
+                      borderRadius: 999,
+                      paddingVertical: 10,
+                      alignItems: "center",
+                      backgroundColor: active ? "#2563EB" : "#111827",
+                      borderWidth: 1,
+                      borderColor: active ? "#60A5FA" : "#1F2937",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: active ? "white" : "#94A3B8",
+                        fontWeight: "900",
+                      }}
+                    >
+                      {getRangeLabel(item)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+            )}
+          </View>
+
+          <Text style={{ color: "#94A3B8", fontWeight: "800", marginTop: 16 }}>
+            {selectedPeriodLabel}
           </Text>
 
           <View
@@ -275,7 +414,7 @@ export default function RestaurantTaxScreen({
             }}
           >
             <TouchableOpacity
-              onPress={() => setYear((prev) => prev - 1)}
+              onPress={() => changeYear(-1)}
               style={{
                 backgroundColor: "rgba(15,23,42,0.8)",
                 borderWidth: 1,
@@ -285,7 +424,7 @@ export default function RestaurantTaxScreen({
                 paddingHorizontal: 14,
               }}
             >
-              <Text style={{ color: "white", fontWeight: "900" }}>-1</Text>
+              <Text style={{ color: "white", fontWeight: "900" }}>-1 year</Text>
             </TouchableOpacity>
 
             <Text
@@ -299,7 +438,7 @@ export default function RestaurantTaxScreen({
             </Text>
 
             <TouchableOpacity
-              onPress={() => setYear((prev) => prev + 1)}
+              onPress={() => changeYear(1)}
               style={{
                 backgroundColor: "rgba(15,23,42,0.8)",
                 borderWidth: 1,
@@ -309,9 +448,115 @@ export default function RestaurantTaxScreen({
                 paddingHorizontal: 14,
               }}
             >
-              <Text style={{ color: "white", fontWeight: "900" }}>+1</Text>
+              <Text style={{ color: "white", fontWeight: "900" }}>+1 year</Text>
             </TouchableOpacity>
           </View>
+
+          {range === "monthly" ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginTop: 12,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => changeMonth(-1)}
+                style={{
+                  backgroundColor: "rgba(15,23,42,0.8)",
+                  borderWidth: 1,
+                  borderColor: "#1F2937",
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>
+                  -1 month
+                </Text>
+              </TouchableOpacity>
+
+              <Text
+                style={{
+                  color: "white",
+                  fontWeight: "900",
+                  fontSize: 20,
+                }}
+              >
+                Month {month}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => changeMonth(1)}
+                style={{
+                  backgroundColor: "rgba(15,23,42,0.8)",
+                  borderWidth: 1,
+                  borderColor: "#1F2937",
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>
+                  +1 month
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {range === "weekly" ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginTop: 12,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => changeWeek(-1)}
+                style={{
+                  backgroundColor: "rgba(15,23,42,0.8)",
+                  borderWidth: 1,
+                  borderColor: "#1F2937",
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>
+                  -1 week
+                </Text>
+              </TouchableOpacity>
+
+              <Text
+                style={{
+                  color: "white",
+                  fontWeight: "900",
+                  fontSize: 20,
+                }}
+              >
+                Week {week}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => changeWeek(1)}
+                style={{
+                  backgroundColor: "rgba(15,23,42,0.8)",
+                  borderWidth: 1,
+                  borderColor: "#1F2937",
+                  borderRadius: 12,
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "900" }}>
+                  +1 week
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
             <TouchableOpacity
@@ -350,7 +595,7 @@ export default function RestaurantTaxScreen({
               <Text style={{ color: "#DBEAFE", fontWeight: "900" }}>
                 {downloading
                   ? t("restaurant.tax.downloading", "Downloading…")
-                  : t("restaurant.tax.downloadPdf", "Download tax PDF")}
+                  : t("restaurant.tax.downloadPdf", "Download PDF")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -411,7 +656,14 @@ export default function RestaurantTaxScreen({
               }}
             >
               <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>
-                {t("restaurant.tax.earningsTitle", "Restaurant earnings summary")}
+                {t(
+                  "restaurant.tax.earningsTitle",
+                  "Restaurant earnings summary"
+                )}
+              </Text>
+
+              <Text style={{ color: "#64748B", marginTop: 4 }}>
+                {selectedPeriodLabel}
               </Text>
 
               <View style={{ marginTop: 14, gap: 12 }}>
@@ -433,7 +685,7 @@ export default function RestaurantTaxScreen({
 
                 <View>
                   <Text style={{ color: "#94A3B8", fontWeight: "800" }}>
-                    {t("restaurant.tax.platformCommission", "Platform commission")}
+                    {commissionText}
                   </Text>
                   <Text
                     style={{
@@ -448,7 +700,7 @@ export default function RestaurantTaxScreen({
                   <Text style={{ color: "#64748B", marginTop: 3 }}>
                     {t(
                       "restaurant.tax.platformCommissionNote",
-                      "15% MMD Delivery commission"
+                      "Commission configured from Admin Pricing"
                     )}
                   </Text>
                 </View>
@@ -574,12 +826,12 @@ export default function RestaurantTaxScreen({
                     : t("restaurant.tax.profileIncomplete", "Profile incomplete")}
                 </Text>
 
-                {!profileComplete && (
+                {!profileComplete ? (
                   <>
                     <Text style={{ color: "#FDE68A", marginTop: 8 }}>
                       {t(
                         "restaurant.tax.profileIncompleteNote",
-                        "Complete your restaurant profile before generating official yearly tax documents."
+                        "Complete your restaurant profile before generating official documents."
                       )}
                     </Text>
 
@@ -612,7 +864,7 @@ export default function RestaurantTaxScreen({
                       </Text>
                     </TouchableOpacity>
                   </>
-                )}
+                ) : null}
               </View>
             </View>
 
@@ -626,13 +878,13 @@ export default function RestaurantTaxScreen({
               }}
             >
               <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>
-                {t("restaurant.tax.yearlyDocuments", "Yearly tax documents")}
+                {t("restaurant.tax.documents", "Tax documents")}
               </Text>
 
               <Text style={{ color: "#94A3B8", marginTop: 6 }}>
                 {t(
-                  "restaurant.tax.yearlyDocumentsNote",
-                  "Download your restaurant tax summary PDF for the selected year."
+                  "restaurant.tax.documentsNote",
+                  "Download your restaurant summary PDF for the selected period."
                 )}
               </Text>
 
@@ -646,10 +898,14 @@ export default function RestaurantTaxScreen({
                   borderColor: "#1F2937",
                 }}
               >
-                <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 16 }}>
-                  {t("restaurant.tax.summaryForYear", "Tax summary for {{year}}", {
-                    year: summary.year,
-                  })}
+                <Text
+                  style={{
+                    color: "#E5E7EB",
+                    fontWeight: "900",
+                    fontSize: 16,
+                  }}
+                >
+                  Summary for {selectedPeriodLabel}
                 </Text>
 
                 <Text style={{ color: "#94A3B8", marginTop: 10 }}>
@@ -682,9 +938,7 @@ export default function RestaurantTaxScreen({
                   <Text style={{ color: "white", fontWeight: "900" }}>
                     {downloading
                       ? t("restaurant.tax.downloading", "Downloading…")
-                      : t("restaurant.tax.downloadYearPdf", "Download {{year}} PDF", {
-                          year: summary.year,
-                        })}
+                      : t("restaurant.tax.downloadPdf", "Download PDF")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -692,7 +946,7 @@ export default function RestaurantTaxScreen({
               <Text style={{ color: "#64748B", marginTop: 12 }}>
                 {t(
                   "restaurant.tax.commissionModelNote",
-                  "Connected to your 15% restaurant commission model"
+                  "Connected to your Admin Pricing restaurant commission model"
                 )}
               </Text>
             </View>

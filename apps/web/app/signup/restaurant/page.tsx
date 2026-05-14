@@ -1,495 +1,405 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 
 const ROLE = "restaurant";
+const RESET_PASSWORD_URL = "https://mmd-delivery.vercel.app/auth/reset-password";
 
-type BusinessType = "" | "individual" | "llc" | "corporation" | "nonprofit";
+type Mode = "login" | "signup";
 
-export default function SignupRestaurant() {
-  const [err, setErr] = useState<string | null>(null);
-  const [uid, setUid] = useState<string | null>(null);
+function cleanEmail(value: string): string {
+  return (value || "").trim().toLowerCase();
+}
 
-  // Email pour envoyer le lien
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) return error.message;
+  return fallback;
+}
 
-  // Email réel après connexion (lecture seule)
-  const [authEmail, setAuthEmail] = useState("");
+async function ensureRestaurantAccount(params: {
+  userId: string;
+  email: string;
+  createRestaurantProfileIfMissing?: boolean;
+}) {
+  const { userId, email, createRestaurantProfileIfMissing = true } = params;
 
-  // Infos légales / business
-  const [legalName, setLegalName] = useState("");          // restaurant_legal_name
-  const [displayName, setDisplayName] = useState("");      // restaurant_display_name
-  const [businessType, setBusinessType] = useState<BusinessType>(""); // LLC, etc.
-  const [ein, setEin] = useState("");                      // restaurant_ein
+  const { error: profileError } = await supabase.from("profiles").upsert(
+    {
+      id: userId,
+      role: ROLE,
+      email,
+    },
+    { onConflict: "id" }
+  );
 
-  // Infos restaurant
-  const [cuisineType, setCuisineType] = useState("");      // restaurant_cuisine_type
-  const [description, setDescription] = useState("");      // restaurant_description
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
 
-  // Adresse
-  const [address, setAddress] = useState("");              // restaurant_address
-  const [city, setCity] = useState("");                    // restaurant_city
-  const [state, setState] = useState("");                  // restaurant_state
-  const [zip, setZip] = useState("");                      // restaurant_zip
+  const { data: existingRestaurantProfile, error: existingError } = await supabase
+    .from("restaurant_profiles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-  // Contact / téléphone
-  const [restaurantPhone, setRestaurantPhone] = useState("");   // restaurant_phone
-  const [contactName, setContactName] = useState("");           // restaurant_contact_name
-  const [contactPhone, setContactPhone] = useState("");         // restaurant_contact_phone
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
 
-  // Opérations
-  const [hasPickup, setHasPickup] = useState(true);     // restaurant_has_pickup
-  const [hasDelivery, setHasDelivery] = useState(true); // restaurant_has_delivery
-  const [prepTime, setPrepTime] = useState<number | "">(""); // restaurant_prep_time_minutes
-  const [openingHours, setOpeningHours] = useState("");      // restaurant_opening_hours (texte libre)
-
-  // Logo / photo
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-
-  const [saving, setSaving] = useState(false);
-
-  // Récupérer la session (user connecté)
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data, error }) => {
-      if (error) {
-        console.error(error);
-        return;
-      }
-      const user = data.user;
-      setUid(user?.id ?? null);
-      setAuthEmail(user?.email ?? "");
-    });
-  }, []);
-
-  // Envoi du lien magique pour le restaurant
-  async function sendLink() {
-    setErr(null);
-    try {
-      if (!email) {
-        setErr("Merci de saisir un email.");
-        return;
-      }
-
-      const redirect = `${window.location.origin}/auth/callback?next=/signup/restaurant`;
-
-      const { error } = await supabase.auth.signInWithOtp({
+  if (!existingRestaurantProfile && createRestaurantProfileIfMissing) {
+    const { error: restaurantError } = await supabase
+      .from("restaurant_profiles")
+      .insert({
+        user_id: userId,
         email,
-        options: { emailRedirectTo: redirect },
+        status: "pending",
+        offers_delivery: true,
+        offers_pickup: true,
+        offers_dine_in: false,
+        is_accepting_orders: false,
       });
 
-      if (error) {
-        setErr(error.message);
-      } else {
-        setSent(true);
+    if (restaurantError) {
+      throw new Error(restaurantError.message);
+    }
+  }
+}
+
+export default function SignupRestaurantPage() {
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const title = useMemo(
+    () => (mode === "login" ? "Connexion Restaurant" : "Créer un compte Restaurant"),
+    [mode]
+  );
+
+  const subtitle = useMemo(
+    () =>
+      mode === "login"
+        ? "Connecte-toi avec ton compte restaurant."
+        : "Crée ton compte restaurant puis complète ton profil.",
+    [mode]
+  );
+
+  async function signIn() {
+    if (loading) return;
+
+    setErr(null);
+    setMessage(null);
+
+    const e = cleanEmail(email);
+    const p = password.trim();
+
+    if (!e) {
+      setErr("Email obligatoire.");
+      return;
+    }
+
+    if (!p) {
+      setErr("Mot de passe obligatoire.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: e,
+        password: p,
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data.session) throw new Error("Session non créée. Réessaie.");
+
+      const userId = data.user?.id;
+
+      if (userId) {
+        await ensureRestaurantAccount({
+          userId,
+          email: e,
+          createRestaurantProfileIfMissing: false,
+        });
       }
-    } catch (e: any) {
-      console.error(e);
-      setErr(e?.message ?? "Erreur lors de l'envoi du lien.");
+
+      setMessage("Connecté ✅");
+      window.location.href = "/restaurant/profile";
+    } catch (error: unknown) {
+      setErr("Connexion impossible : " + getErrorMessage(error, "Erreur inconnue"));
+    } finally {
+      setLoading(false);
     }
   }
 
-  // Sauvegarde du profil restaurant (création OU mise à jour)
-  async function saveProfile() {
+  async function signUp() {
+    if (loading) return;
+
     setErr(null);
+    setMessage(null);
 
-    if (!uid) {
-      setErr("Tu dois être connecté pour enregistrer le profil restaurant.");
+    const e = cleanEmail(email);
+    const p = password.trim();
+
+    if (!e) {
+      setErr("Email obligatoire.");
       return;
     }
 
-    // ✅ Validations "sérieuses" façon Uber
-    if (!legalName.trim()) {
-      setErr("Merci de saisir le nom légal du restaurant.");
+    if (!p) {
+      setErr("Mot de passe obligatoire.");
       return;
     }
 
-    if (!displayName.trim()) {
-      setErr("Merci de saisir le nom affiché dans l’app.");
+    if (p.length < 6) {
+      setErr("Mot de passe trop court. Minimum 6 caractères.");
       return;
     }
 
-    if (!businessType) {
-      setErr("Merci de choisir le type de structure (LLC, Corporation…).");
-      return;
-    }
-
-    if (!ein.trim()) {
-      setErr("Merci de saisir l’EIN du restaurant.");
-      return;
-    }
-
-    if (!cuisineType.trim()) {
-      setErr("Merci de préciser le type de cuisine (Africain, Pizza, Fast-food…).");
-      return;
-    }
-
-    if (!address.trim() || !city.trim() || !state.trim() || !zip.trim()) {
-      setErr("Merci de remplir l’adresse complète du restaurant.");
-      return;
-    }
-
-    if (!restaurantPhone.trim()) {
-      setErr("Merci de saisir le téléphone du restaurant.");
-      return;
-    }
-
-    if (!contactName.trim()) {
-      setErr("Merci de saisir le nom du contact principal.");
-      return;
-    }
-
-    if (!contactPhone.trim()) {
-      setErr("Merci de saisir le téléphone du contact principal.");
-      return;
-    }
-
-    if (!prepTime || typeof prepTime !== "number" || prepTime <= 0) {
-      setErr("Merci d’indiquer un temps moyen de préparation (en minutes).");
-      return;
-    }
-
-    setSaving(true);
+    setLoading(true);
 
     try {
-      // 1️⃣ Upload du logo / photo SI un nouveau fichier est choisi
-      let restaurant_logo_url: string | null | undefined = undefined;
+      const { data, error } = await supabase.auth.signUp({
+        email: e,
+        password: p,
+        options: {
+          data: {
+            role: ROLE,
+          },
+        },
+      });
 
-      if (logoFile) {
-        const ext = logoFile.name.split(".").pop() || "jpg";
-        const path = `restaurants/${uid}/${Date.now()}.${ext}`;
+      if (error) throw new Error(error.message);
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(path, logoFile, {
-            upsert: true,
-          });
+      const userId = data.user?.id;
 
-        if (uploadError) {
-          console.error(uploadError);
-          throw uploadError;
-        }
-
-        restaurant_logo_url = uploadData?.path ?? null;
+      if (!userId) {
+        throw new Error("Compte créé, mais impossible de récupérer l’utilisateur.");
       }
 
-      // 2️⃣ UPSERT dans profiles (insert OU update si déjà existant)
-      const payload: any = {
-        id: uid, // = auth.users.id
-        role: ROLE,
+      await ensureRestaurantAccount({
+        userId,
+        email: e,
+        createRestaurantProfileIfMissing: true,
+      });
 
-        restaurant_legal_name: legalName || null,
-        restaurant_display_name: displayName || null,
-        restaurant_business_type: businessType || null,
-        restaurant_ein: ein || null,
-
-        restaurant_cuisine_type: cuisineType || null,
-        restaurant_description: description || null,
-
-        restaurant_address: address || null,
-        restaurant_city: city || null,
-        restaurant_state: state || null,
-        restaurant_zip: zip || null,
-
-        restaurant_phone: restaurantPhone || null,
-        restaurant_contact_name: contactName || null,
-        restaurant_contact_phone: contactPhone || null,
-
-        restaurant_has_pickup: hasPickup,
-        restaurant_has_delivery: hasDelivery,
-        restaurant_prep_time_minutes:
-          typeof prepTime === "number" ? prepTime : null,
-        restaurant_opening_hours: openingHours || null,
-      };
-
-      if (restaurant_logo_url !== undefined) {
-        payload.restaurant_logo_url = restaurant_logo_url;
-      }
-
-      const { error: upsertErr } = await supabase
-        .from("profiles")
-        .upsert(payload, { onConflict: "id" });
-
-      if (upsertErr) {
-        console.error(upsertErr);
-        setErr(
-          upsertErr.message ??
-            "Erreur lors de l'enregistrement du profil restaurant."
-        );
+      if (!data.session) {
+        setMessage("Compte créé ✅ Vérifie ton email puis connecte-toi.");
+        setMode("login");
         return;
       }
 
-      alert("Profil restaurant enregistré / mis à jour ✅");
-    } catch (e: any) {
-      console.error(e);
-      setErr(e?.message ?? "Erreur lors de l'enregistrement du profil restaurant.");
+      setMessage("Compte restaurant créé et connecté ✅");
+      window.location.href = "/restaurant/profile";
+    } catch (error: unknown) {
+      setErr("Création du compte impossible : " + getErrorMessage(error, "Erreur inconnue"));
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   }
 
-  // 👀 Écran 1 : pas connecté → lien magique
-  if (!uid) {
-    return (
-      <div className="max-w-md mx-auto p-6 space-y-4">
-        <h1 className="text-xl font-semibold">Créer un compte — restaurant</h1>
-        <p className="text-sm text-gray-600">
-          Entre l’email du restaurant pour créer le compte et continuer l’inscription.
-        </p>
+  async function forgotPassword() {
+    if (loading) return;
 
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="email du restaurant"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+    setErr(null);
+    setMessage(null);
 
-        <div className="flex flex-wrap items-center gap-2">
+    const e = cleanEmail(email);
+
+    if (!e) {
+      setErr("Entre ton email avant de demander la réinitialisation.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(e, {
+        redirectTo: RESET_PASSWORD_URL,
+      });
+
+      if (error) throw new Error(error.message);
+      setMessage("Email envoyé ✅ Clique sur le lien reçu pour modifier ton mot de passe.");
+    } catch (error: unknown) {
+      setErr("Impossible d’envoyer l’email : " + getErrorMessage(error, "Erreur inconnue"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const primaryLabel = mode === "login" ? "Se connecter" : "Créer un compte";
+
+  return (
+    <main className="min-h-screen bg-slate-950 px-5 py-8 text-white">
+      <section className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl grid-cols-1 items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="hidden lg:block">
+          <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-sm font-extrabold text-slate-300">
+            <span>🍽️</span>
+            <span>MMD Restaurant Access</span>
+          </div>
+
+          <h1 className="mt-6 text-5xl font-black leading-tight tracking-tight xl:text-7xl">
+            Grow your restaurant with MMD Delivery.
+          </h1>
+
+          <p className="mt-5 max-w-xl text-lg font-semibold leading-8 text-slate-400">
+            Create your restaurant account, complete your profile, manage your menu,
+            receive orders and prepare your business for payouts.
+          </p>
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            {[
+              "Restaurant profile",
+              "Menu ready",
+              "Orders dashboard",
+              "Stripe payouts",
+            ].map((item) => (
+              <span
+                key={item}
+                className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm font-extrabold text-slate-300"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/40 backdrop-blur md:p-8">
+          <div className="mb-7 text-center">
+            <p className="mb-3 text-xs font-black uppercase tracking-[0.25em] text-emerald-300">
+              Restaurant account
+            </p>
+            <h2 className="text-3xl font-black tracking-tight md:text-5xl">{title}</h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-400 md:text-base">
+              {subtitle}
+            </p>
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-slate-950/80 p-2">
+            <button
+              type="button"
+              onClick={() => {
+                setErr(null);
+                setMessage(null);
+                setMode("login");
+              }}
+              disabled={loading}
+              className={`rounded-xl px-4 py-3 text-sm font-black transition ${
+                mode === "login"
+                  ? "bg-emerald-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Se connecter
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setErr(null);
+                setMessage(null);
+                setMode("signup");
+              }}
+              disabled={loading}
+              className={`rounded-xl px-4 py-3 text-sm font-black transition ${
+                mode === "signup"
+                  ? "bg-sky-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Créer un compte
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-bold text-slate-200">Email</label>
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="restaurant@email.com"
+                type="email"
+                autoComplete="email"
+                disabled={loading}
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-emerald-500 disabled:opacity-70"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-bold text-slate-200">Mot de passe</label>
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Mot de passe (min 6)"
+                type="password"
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                disabled={loading}
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-emerald-500 disabled:opacity-70"
+              />
+            </div>
+          </div>
+
+          {mode === "login" && (
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={forgotPassword}
+                disabled={loading}
+                className="text-sm font-extrabold text-sky-300 hover:text-sky-200 disabled:opacity-60"
+              >
+                Mot de passe oublié ?
+              </button>
+            </div>
+          )}
+
+          {err && (
+            <div className="mt-5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
+              {err}
+            </div>
+          )}
+
+          {message && (
+            <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-200">
+              {message}
+            </div>
+          )}
+
           <button
-            onClick={sendLink}
-            className="px-3 py-2 rounded bg-black text-white text-sm"
-            disabled={!email || sent}
+            type="button"
+            onClick={mode === "login" ? signIn : signUp}
+            disabled={loading}
+            className={`mt-6 w-full rounded-2xl px-5 py-4 text-base font-black text-white shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70 ${
+              mode === "login"
+                ? "bg-emerald-600 shadow-emerald-950/50 hover:bg-emerald-500"
+                : "bg-sky-600 shadow-sky-950/50 hover:bg-sky-500"
+            }`}
           >
-            {sent ? "Lien envoyé ✅" : "Envoyer le lien magique"}
+            {loading ? "Chargement..." : primaryLabel}
           </button>
 
           <button
             type="button"
-            onClick={async () => {
-              const { data, error } = await supabase.auth.getUser();
-              if (error) {
-                console.error(error);
-                setErr(error.message);
-                return;
-              }
-              const user = data.user;
-              setUid(user?.id ?? null);
-              setAuthEmail(user?.email ?? "");
+            onClick={() => {
+              setErr(null);
+              setMessage(null);
+              setMode(mode === "login" ? "signup" : "login");
             }}
-            className="text-xs underline"
+            disabled={loading}
+            className="mt-4 w-full text-center text-sm font-extrabold text-sky-300 hover:text-sky-200 disabled:opacity-60"
           >
-            Je suis déjà connecté — recharger
+            {mode === "login"
+              ? "Je n’ai pas de compte → Créer un compte"
+              : "J’ai déjà un compte → Se connecter"}
           </button>
-        </div>
 
-        {err && <div className="text-red-600 text-sm">{err}</div>}
-      </div>
-    );
-  }
-
-  // 👤 Écran 2 : connecté → profil restaurant complet
-  return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Profil du restaurant</h1>
-
-      {/* Email (non modifiable) */}
-      {authEmail && (
-        <section className="space-y-1">
-          <h2 className="text-sm font-medium text-gray-700">Compte</h2>
-          <input
-            className="w-full border rounded px-3 py-2 bg-gray-100"
-            value={authEmail}
-            disabled
-          />
-        </section>
-      )}
-
-      {/* Bloc 1 : Informations légales */}
-      <section className="space-y-2 border rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Informations légales
-        </h2>
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Nom légal du restaurant (sur les papiers officiels)"
-          value={legalName}
-          onChange={(e) => setLegalName(e.target.value)}
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Nom affiché dans l’app (ex: MMD African Grill)"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-        />
-
-        <div className="flex flex-col md:flex-row gap-2">
-          <select
-            className="md:w-1/2 border rounded px-3 py-2"
-            value={businessType}
-            onChange={(e) => setBusinessType(e.target.value as BusinessType)}
-          >
-            <option value="">Type de structure</option>
-            <option value="individual">Individuel / Sole proprietor</option>
-            <option value="llc">LLC</option>
-            <option value="corporation">Corporation</option>
-            <option value="nonprofit">Association / Non-profit</option>
-          </select>
-          <input
-            className="md:w-1/2 border rounded px-3 py-2"
-            placeholder="EIN du restaurant"
-            value={ein}
-            onChange={(e) => setEin(e.target.value)}
-          />
+          <p className="mt-5 text-center text-xs font-bold leading-5 text-slate-500">
+            Si la confirmation email est activée dans Supabase, confirme ton email avant de te reconnecter.
+          </p>
         </div>
       </section>
-
-      {/* Bloc 2 : Restaurant & cuisine */}
-      <section className="space-y-2 border rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Détails du restaurant
-        </h2>
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Type de cuisine (Africain, Italien, Pizza, Fast-food…)"
-          value={cuisineType}
-          onChange={(e) => setCuisineType(e.target.value)}
-        />
-        <textarea
-          className="w-full border rounded px-3 py-2 min-h-[70px]"
-          placeholder="Courte description (ex: Spécialités africaines, grillades, plats faits maison…) "
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </section>
-
-      {/* Bloc 3 : Adresse */}
-      <section className="space-y-2 border rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-gray-800">Adresse</h2>
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Adresse (rue, numéro)"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Ville"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-        />
-        <div className="flex gap-2">
-          <input
-            className="w-1/2 border rounded px-3 py-2"
-            placeholder="État (ex: NY)"
-            value={state}
-            onChange={(e) => setState(e.target.value)}
-          />
-          <input
-            className="w-1/2 border rounded px-3 py-2"
-            placeholder="ZIP code"
-            value={zip}
-            onChange={(e) => setZip(e.target.value)}
-          />
-        </div>
-      </section>
-
-      {/* Bloc 4 : Contacts */}
-      <section className="space-y-2 border rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-gray-800">Contacts</h2>
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Téléphone du restaurant"
-          value={restaurantPhone}
-          onChange={(e) => setRestaurantPhone(e.target.value)}
-        />
-        <div className="flex flex-col md:flex-row gap-2">
-          <input
-            className="md:w-1/2 border rounded px-3 py-2"
-            placeholder="Nom du contact principal"
-            value={contactName}
-            onChange={(e) => setContactName(e.target.value)}
-          />
-          <input
-            className="md:w-1/2 border rounded px-3 py-2"
-            placeholder="Téléphone du contact principal"
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-          />
-        </div>
-      </section>
-
-      {/* Bloc 5 : Options de livraison & horaires */}
-      <section className="space-y-2 border rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Livraison & horaires
-        </h2>
-
-        <div className="flex flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={hasPickup}
-              onChange={(e) => setHasPickup(e.target.checked)}
-            />
-            Retrait sur place (pickup)
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={hasDelivery}
-              onChange={(e) => setHasDelivery(e.target.checked)}
-            />
-            Livraison avec MMD Delivery
-          </label>
-        </div>
-
-        <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Temps moyen de préparation (en minutes, ex: 20)"
-          value={prepTime === "" ? "" : String(prepTime)}
-          onChange={(e) =>
-            setPrepTime(e.target.value === "" ? "" : Number(e.target.value))
-          }
-        />
-
-        <textarea
-          className="w-full border rounded px-3 py-2 min-h-[70px]"
-          placeholder="Horaires d’ouverture (ex: Lun–Dim : 11h00–23h00)"
-          value={openingHours}
-          onChange={(e) => setOpeningHours(e.target.value)}
-        />
-      </section>
-
-      {/* Bloc 6 : Logo / Photo */}
-      <section className="space-y-2 border rounded-lg p-4">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Logo / photo du restaurant
-        </h2>
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={(e) => {
-            const file = e.target.files?.[0] ?? null;
-            setLogoFile(file);
-            if (file) {
-              setLogoPreview(URL.createObjectURL(file));
-            } else {
-              setLogoPreview(null);
-            }
-          }}
-        />
-        {logoPreview && (
-          <img
-            src={logoPreview}
-            alt="Aperçu du logo"
-            className="mt-2 h-24 w-24 rounded-full object-cover border"
-          />
-        )}
-      </section>
-
-      <button
-        onClick={saveProfile}
-        className="px-4 py-2 rounded bg-black text-white w-full md:w-auto"
-        disabled={saving}
-      >
-        {saving ? "Enregistrement..." : "Enregistrer le profil restaurant"}
-      </button>
-
-      {err && <div className="text-red-600 text-sm">{err}</div>}
-    </div>
+    </main>
   );
 }

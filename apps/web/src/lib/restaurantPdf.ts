@@ -29,6 +29,39 @@ function formatDate(value: string | null | undefined): string {
   }).format(date);
 }
 
+function getReportTitle(summary: RestaurantTaxSummary): string {
+  if (summary.range === "weekly") {
+    return `Restaurant Weekly Summary • Week ${summary.week ?? "—"}`;
+  }
+
+  if (summary.range === "monthly") {
+    return `Restaurant Monthly Summary • Month ${summary.month ?? "—"}`;
+  }
+
+  return "Restaurant Tax Summary";
+}
+
+function getReportPeriod(summary: RestaurantTaxSummary): string {
+  if (summary.range === "weekly") {
+    return `Week ${summary.week ?? "—"} • ${summary.year}`;
+  }
+
+  if (summary.range === "monthly") {
+    return `Month ${summary.month ?? "—"} • ${summary.year}`;
+  }
+
+  return `Year ${summary.year}`;
+}
+
+function getCommissionLabel(summary: RestaurantTaxSummary): string {
+  const rate = Number(summary.totals.commissionRate ?? 0);
+  const percent = Number.isFinite(rate) ? Math.round(rate * 100) : 0;
+
+  return percent > 0
+    ? `Platform commission (${percent}%)`
+    : "Platform commission";
+}
+
 async function loadLogoPngBytes(): Promise<Uint8Array | null> {
   const cwd = process.cwd();
 
@@ -187,6 +220,10 @@ export async function buildRestaurantTaxPdf(
   const logoBytes = await loadLogoPngBytes();
   const logoImage = logoBytes ? await pdf.embedPng(logoBytes) : null;
 
+  const reportTitle = getReportTitle(summary);
+  const reportPeriod = getReportPeriod(summary);
+  const commissionLabel = getCommissionLabel(summary);
+
   const ctx: DrawContext = {
     page,
     font,
@@ -197,7 +234,6 @@ export async function buildRestaurantTaxPdf(
     y: height - 56,
   };
 
-  // Background frame
   page.drawRectangle({
     x: 28,
     y: 28,
@@ -207,7 +243,6 @@ export async function buildRestaurantTaxPdf(
     borderColor: rgb(0.88, 0.88, 0.9),
   });
 
-  // Header with logo
   if (logoImage) {
     const maxLogoWidth = 42;
     const maxLogoHeight = 42;
@@ -234,7 +269,7 @@ export async function buildRestaurantTaxPdf(
       lineGap: 2,
     });
 
-    drawTextLine(ctx, "Restaurant Tax Summary", {
+    drawTextLine(ctx, reportTitle, {
       x: ctx.marginX + logoWidth + 12,
       size: 18,
       bold: true,
@@ -244,7 +279,7 @@ export async function buildRestaurantTaxPdf(
 
     drawTextLine(
       ctx,
-      `Reporting year ${summary.year} • Generated ${formatDate(summary.generatedAt)}`,
+      `Reporting ${reportPeriod} • Generated ${formatDate(summary.generatedAt)}`,
       {
         x: ctx.marginX + logoWidth + 12,
         size: 10,
@@ -260,7 +295,7 @@ export async function buildRestaurantTaxPdf(
       lineGap: 2,
     });
 
-    drawTextLine(ctx, "Restaurant Tax Summary", {
+    drawTextLine(ctx, reportTitle, {
       size: 18,
       bold: true,
       color: rgb(0.12, 0.12, 0.12),
@@ -269,7 +304,7 @@ export async function buildRestaurantTaxPdf(
 
     drawTextLine(
       ctx,
-      `Reporting year ${summary.year} • Generated ${formatDate(summary.generatedAt)}`,
+      `Reporting ${reportPeriod} • Generated ${formatDate(summary.generatedAt)}`,
       {
         size: 10,
         color: rgb(0.45, 0.45, 0.48),
@@ -280,7 +315,6 @@ export async function buildRestaurantTaxPdf(
 
   drawDivider(ctx);
 
-  // Summary cards
   const cardsTopY = ctx.y - 92;
   const gap = 12;
   const cardWidth = (width - ctx.marginX * 2 - gap) / 2;
@@ -298,7 +332,7 @@ export async function buildRestaurantTaxPdf(
 
   drawSummaryCard(
     ctx,
-    "Platform commission (15%)",
+    commissionLabel,
     money(summary.totals.platformCommission),
     ctx.marginX + cardWidth + gap,
     cardsTopY,
@@ -332,7 +366,6 @@ export async function buildRestaurantTaxPdf(
 
   drawDivider(ctx);
 
-  // Restaurant information
   drawSectionTitle(ctx, "Restaurant information");
 
   drawLabelValue(
@@ -358,7 +391,6 @@ export async function buildRestaurantTaxPdf(
   ctx.y -= 6;
   drawDivider(ctx);
 
-  // Tax profile status
   drawSectionTitle(ctx, "Tax profile status");
 
   drawLabelValue(
@@ -378,7 +410,6 @@ export async function buildRestaurantTaxPdf(
   ctx.y -= 6;
   drawDivider(ctx);
 
-  // Notes
   drawSectionTitle(ctx, "Notes");
 
   drawTextLine(
@@ -393,7 +424,7 @@ export async function buildRestaurantTaxPdf(
 
   drawTextLine(
     ctx,
-    "Amounts reflect your restaurant totals for the selected year using the platform commission model configured in MMD Delivery.",
+    `Amounts reflect your restaurant totals for the selected period (${reportPeriod}) using the platform commission model configured in MMD Delivery.`,
     {
       size: 10,
       color: rgb(0.28, 0.28, 0.32),
@@ -411,7 +442,6 @@ export async function buildRestaurantTaxPdf(
     }
   );
 
-  // Footer
   page.drawLine({
     start: { x: ctx.marginX, y: 56 },
     end: { x: width - ctx.marginX, y: 56 },
@@ -419,7 +449,7 @@ export async function buildRestaurantTaxPdf(
     color: rgb(0.9, 0.9, 0.92),
   });
 
-  page.drawText("MMD Delivery • Restaurant Tax Summary", {
+  page.drawText(`MMD Delivery • ${reportTitle}`, {
     x: ctx.marginX,
     y: 40,
     size: 9,
@@ -427,8 +457,8 @@ export async function buildRestaurantTaxPdf(
     color: rgb(0.5, 0.5, 0.54),
   });
 
-  page.drawText(`Year ${summary.year}`, {
-    x: width - ctx.marginX - 46,
+  page.drawText(reportPeriod, {
+    x: width - ctx.marginX - 90,
     y: 40,
     size: 9,
     font: bold,

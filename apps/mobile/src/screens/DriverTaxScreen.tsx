@@ -12,11 +12,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-
-// ✅ SignedUrl + WebBrowser (apps/mobile/lib/taxPdf.ts)
-// Écran: apps/mobile/src/screens/DriverTaxScreen.tsx
-// => ../../lib/taxPdf
-import { openYearlyTaxPdf } from "../../lib/taxPdf";
+import { openYearlyTaxPdf } from "../lib/taxPdf";
 
 type Row = {
   labelKey: string;
@@ -35,53 +31,45 @@ function currentYearLocal() {
 
 export default function DriverTaxScreen() {
   const navigation = useNavigation<any>();
-
-  const onW9 = useCallback(() => {
-    navigation.navigate("DriverW9");
-  }, [navigation]);
   const { t } = useTranslation();
+
   const [downloading, setDownloading] = useState(false);
 
-  // TODO: Remplacer par de vraies valeurs (profile / tax_profile)
   const country = "US";
   const isVerified = true;
-
   const canSeeYearlySummary = country === "US" && isVerified;
 
-  // ✅ Years dropdown (ex: current, -1, -2, -3)
   const yearOptions: YearOption[] = useMemo(() => {
     const y = currentYearLocal();
-    const list = [y, y - 1, y - 2, y - 3].map((n) => ({
+    return [y, y - 1, y - 2, y - 3].map((n) => ({
       value: n,
       label: String(n),
     }));
-    return list;
   }, []);
 
-  // ✅ Default: previous year
   const [selectedYear, setSelectedYear] = useState<number>(
     yearOptions[1]?.value ?? currentYearLocal() - 1
   );
 
   const rows: Row[] = useMemo(() => {
-    const status = "Not configured";
-    const formType = country === "US" ? "1099-NEC" : "N/A";
-    const withholding = "No";
-
     return [
       {
         labelKey: "driver.tax.overview.status.label",
-        valueText: status,
+        valueText: "Not configured",
         badge: { textKey: "driver.tax.badges.soon", kind: "info" },
       },
-      { labelKey: "driver.tax.overview.formType.label", valueText: formType },
-      { labelKey: "driver.tax.overview.country.label", valueText: country },
       {
-        labelKey: "driver.tax.overview.withholding.label",
-        valueText: withholding,
+        labelKey: "driver.tax.overview.formType.label",
+        valueText: country === "US" ? "1099-NEC" : "N/A",
       },
+      { labelKey: "driver.tax.overview.country.label", valueText: country },
+      { labelKey: "driver.tax.overview.withholding.label", valueText: "No" },
     ];
   }, [country]);
+
+  const onW9 = useCallback(() => {
+    navigation.navigate("DriverW9");
+  }, [navigation]);
 
   const onLearnMore = useCallback(() => {
     Alert.alert(
@@ -93,11 +81,9 @@ export default function DriverTaxScreen() {
     );
   }, [t]);
 
-  // ✅ If user selects a future year, warn + force previous year
   const onSelectYear = useCallback(
     (year: number) => {
       const current = currentYearLocal();
-      const previous = current - 1;
 
       if (year > current) {
         Alert.alert(
@@ -107,7 +93,8 @@ export default function DriverTaxScreen() {
             "This year is not completed yet. We’ll switch to the previous year."
           )
         );
-        setSelectedYear(previous);
+
+        setSelectedYear(current - 1);
         return;
       }
 
@@ -121,24 +108,13 @@ export default function DriverTaxScreen() {
 
     try {
       setDownloading(true);
-
-      // ✅ Use selected year
-      const year = selectedYear;
-
-      await openYearlyTaxPdf(year);
-    } catch (e: any) {
-      console.log("DriverTaxScreen.onYearlySummary error:", e?.message, e);
-      Alert.alert(
-        t("common.error", "Error"),
-        t(
-          "driver.tax.yearlySummary.error",
-          "Unable to download the PDF right now."
-        )
-      );
+      await openYearlyTaxPdf(selectedYear);
+    } catch (error: any) {
+      console.log("DriverTaxScreen.onYearlySummary error:", error?.message, error);
     } finally {
       setDownloading(false);
     }
-  }, [downloading, selectedYear, t]);
+  }, [downloading, selectedYear]);
 
   const onUnavailable = useCallback(() => {
     Alert.alert(
@@ -150,10 +126,10 @@ export default function DriverTaxScreen() {
           )
         : t("driver.tax.verifyFirst", "Please verify your account first.")
     );
-}, [navigation]);
+  }, [country, t]);
+
   return (
     <SafeAreaView style={styles.safe}>
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -174,47 +150,37 @@ export default function DriverTaxScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* OVERVIEW */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
             {t("driver.tax.sections.overview", "Overview")}
           </Text>
 
-          {rows.map((r, idx) => (
+          {rows.map((row, index) => (
             <View
-              key={`${r.labelKey}-${idx}`}
-              style={[styles.row, idx === rows.length - 1 && styles.rowLast]}
+              key={`${row.labelKey}-${index}`}
+              style={[styles.row, index === rows.length - 1 && styles.rowLast]}
             >
-              <Text
-                style={styles.rowLabel}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {t(r.labelKey, r.labelKey)}
+              <Text style={styles.rowLabel} numberOfLines={1}>
+                {t(row.labelKey, row.labelKey)}
               </Text>
 
               <View style={styles.rowRight}>
-                {r.badge && (
-                  <View style={[styles.badge, badgeStyle(r.badge.kind)]}>
+                {row.badge ? (
+                  <View style={[styles.badge, badgeStyle(row.badge.kind)]}>
                     <Text style={styles.badgeText} numberOfLines={1}>
-                      {t(r.badge.textKey, "Soon")}
+                      {t(row.badge.textKey, "Soon")}
                     </Text>
                   </View>
-                )}
+                ) : null}
 
-                <Text
-                  style={styles.rowValue}
-                  numberOfLines={2}
-                  ellipsizeMode="tail"
-                >
-                  {r.valueText}
+                <Text style={styles.rowValue} numberOfLines={2}>
+                  {row.valueText}
                 </Text>
               </View>
             </View>
           ))}
         </View>
 
-        {/* IMPORTANT */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>
             {t("driver.tax.sections.important", "Important")}
@@ -232,19 +198,19 @@ export default function DriverTaxScreen() {
             </Text>
           </View>
 
-          {/* ✅ Year selector */}
           <View style={styles.yearBox}>
             <Text style={styles.yearLabel}>
               {t("driver.tax.year.label", "Year")}
             </Text>
 
             <View style={styles.yearChips}>
-              {yearOptions.map((opt) => {
-                const active = opt.value === selectedYear;
+              {yearOptions.map((option) => {
+                const active = option.value === selectedYear;
+
                 return (
                   <TouchableOpacity
-                    key={opt.value}
-                    onPress={() => onSelectYear(opt.value)}
+                    key={option.value}
+                    onPress={() => onSelectYear(option.value)}
                     disabled={downloading}
                     activeOpacity={0.85}
                     style={[
@@ -261,7 +227,7 @@ export default function DriverTaxScreen() {
                           : styles.yearChipTextInactive,
                       ]}
                     >
-                      {opt.label}
+                      {option.label}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -269,10 +235,7 @@ export default function DriverTaxScreen() {
             </View>
 
             <Text style={styles.yearHint}>
-              {t(
-                "driver.tax.year.hint",
-                "Select the year you want to download."
-              )}
+              {t("driver.tax.year.hint", "Select the year you want to download.")}
             </Text>
           </View>
 
@@ -298,20 +261,20 @@ export default function DriverTaxScreen() {
                 disabled={downloading}
               >
                 <View style={styles.btnRow}>
-                  {downloading && (
+                  {downloading ? (
                     <ActivityIndicator
                       size="small"
                       color="rgba(255,255,255,0.85)"
                     />
-                  )}
+                  ) : null}
+
                   <Text style={styles.secondaryBtnText}>
                     {downloading
                       ? t("common.loading", "Loading…")
-                      : t(
+                      : `${t(
                           "driver.tax.buttons.yearlySummary",
                           "Yearly summary (PDF)"
-                        )}
-                    {!downloading ? ` — ${selectedYear}` : ""}
+                        )} — ${selectedYear}`}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -326,16 +289,16 @@ export default function DriverTaxScreen() {
                 </Text>
               </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              onPress={onW9}
+              style={[styles.secondaryBtn, { marginTop: 10 }]}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.secondaryBtnText}>W-9 (Form + PDF)</Text>
+            </TouchableOpacity>
           </View>
 
-
-          <TouchableOpacity
-            onPress={onW9}
-            style={[styles.secondaryBtn, { marginTop: 10 }]} 
-            activeOpacity={0.85}
-          >
-            <Text style={styles.secondaryBtnText}>W-9 (Form + PDF)</Text>
-          </TouchableOpacity>
           <View style={styles.metaNote}>
             <Text style={styles.metaNoteText}>
               {t(
@@ -431,9 +394,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  rowLast: {
-    borderBottomWidth: 0,
-  },
+  rowLast: { borderBottomWidth: 0 },
 
   rowLabel: {
     flex: 1,
@@ -496,7 +457,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // ✅ Year selector styles
   yearBox: {
     marginTop: 12,
     backgroundColor: "rgba(0,0,0,0.18)",
@@ -541,13 +501,9 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
 
-  yearChipTextActive: {
-    color: "rgba(255,255,255,0.95)",
-  },
+  yearChipTextActive: { color: "rgba(255,255,255,0.95)" },
 
-  yearChipTextInactive: {
-    color: "rgba(255,255,255,0.78)",
-  },
+  yearChipTextInactive: { color: "rgba(255,255,255,0.78)" },
 
   yearHint: {
     marginTop: 10,
@@ -583,9 +539,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  secondaryBtnDisabled: {
-    opacity: 0.7,
-  },
+  secondaryBtnDisabled: { opacity: 0.7 },
 
   secondaryBtnText: {
     color: "rgba(255,255,255,0.78)",
@@ -615,7 +569,3 @@ const styles = StyleSheet.create({
 
   footerSpace: { height: 24 },
 });
-
-
-
-

@@ -19,12 +19,13 @@ type RestaurantProfileRow = {
   website: string | null;
   instagram: string | null;
   facebook: string | null;
+  restaurant_logo_url: string | null;
   offers_delivery: boolean;
   offers_pickup: boolean;
   offers_dine_in: boolean;
 };
 
-type RestaurantDocType = "logo" | "business_license" | "other";
+type RestaurantDocType = "license" | "tax" | "id";
 
 type RestaurantDocumentRow = {
   id?: string;
@@ -72,24 +73,37 @@ function getDefaultOpeningHours(): OpeningHours {
   };
 }
 
+function getFileExtension(file: File): string {
+  const fromName = file.name.split(".").pop()?.toLowerCase();
+  if (fromName) return fromName;
+
+  if (file.type === "application/pdf") return "pdf";
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  return "jpg";
+}
+
+function getLogoPublicUrl(path: string): string | null {
+  return supabase.storage.from("avatars").getPublicUrl(path)?.data?.publicUrl ?? null;
+}
+
 export default function RestaurantProfilePage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [profile, setProfile] = useState<RestaurantProfileRow | null>(null);
-  const [docs, setDocs] = useState<
-    Record<RestaurantDocType, RestaurantDocumentRow | null>
-  >({
-    logo: null,
-    business_license: null,
-    other: null,
+  const [docs, setDocs] = useState<Record<RestaurantDocType, RestaurantDocumentRow | null>>({
+    license: null,
+    tax: null,
+    id: null,
   });
 
-  // fichiers sélectionnés localement
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
-  const [otherFile, setOtherFile] = useState<File | null>(null);
+  const [taxFile, setTaxFile] = useState<File | null>(null);
+  const [idFile, setIdFile] = useState<File | null>(null);
 
   const [openingHours, setOpeningHours] = useState<OpeningHours>(() =>
     getDefaultOpeningHours()
@@ -97,13 +111,16 @@ export default function RestaurantProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingDoc, setUploadingDoc] = useState<RestaurantDocType | null>(
-    null
-  );
+  const [uploadingDoc, setUploadingDoc] = useState<RestaurantDocType | "logo" | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  // 🔹 Charger user + profil restaurant + docs
+  useEffect(() => {
+    return () => {
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
+    };
+  }, [logoPreview]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -129,7 +146,7 @@ export default function RestaurantProfilePage() {
       if (!user) {
         if (!cancelled) {
           setErr("Tu dois te connecter pour accéder au profil restaurant.");
-          router.push("/auth/login");
+          router.push("/signup/restaurant");
         }
         setLoading(false);
         return;
@@ -139,8 +156,7 @@ export default function RestaurantProfilePage() {
       if (cancelled) return;
       setUserId(uid);
 
-      // Compte (nom + email)
-      let initialAccount: AccountInfo = {
+      const initialAccount: AccountInfo = {
         full_name: null,
         email: user.email ?? null,
       };
@@ -157,11 +173,8 @@ export default function RestaurantProfilePage() {
         initialAccount.full_name = profileRow.full_name ?? null;
       }
 
-      if (!cancelled) {
-        setAccount(initialAccount);
-      }
+      if (!cancelled) setAccount(initialAccount);
 
-      // Profil restaurant
       const { data: rpRow, error: rpError } = await supabase
         .from("restaurant_profiles")
         .select("*")
@@ -206,6 +219,7 @@ export default function RestaurantProfilePage() {
         website: rpRow?.website ?? "",
         instagram: rpRow?.instagram ?? "",
         facebook: rpRow?.facebook ?? "",
+        restaurant_logo_url: rpRow?.restaurant_logo_url ?? null,
         offers_delivery:
           rpRow?.offers_delivery === undefined ? true : !!rpRow.offers_delivery,
         offers_pickup:
@@ -214,7 +228,6 @@ export default function RestaurantProfilePage() {
           rpRow?.offers_dine_in === undefined ? false : !!rpRow.offers_dine_in,
       };
 
-      // Documents restaurant existants
       const { data: docsData, error: docsError } = await supabase
         .from("restaurant_documents")
         .select("*")
@@ -225,20 +238,16 @@ export default function RestaurantProfilePage() {
         if (!cancelled) setErr(docsError.message);
       }
 
-      const docState: Record<
-        RestaurantDocType,
-        RestaurantDocumentRow | null
-      > = {
-        logo: null,
-        business_license: null,
-        other: null,
+      const docState: Record<RestaurantDocType, RestaurantDocumentRow | null> = {
+        license: null,
+        tax: null,
+        id: null,
       };
 
       docsData?.forEach((row: any) => {
-        if (row.doc_type === "logo") docState.logo = row;
-        if (row.doc_type === "business_license")
-          docState.business_license = row;
-        if (row.doc_type === "other") docState.other = row;
+        if (row.doc_type === "license") docState.license = row;
+        if (row.doc_type === "tax") docState.tax = row;
+        if (row.doc_type === "id") docState.id = row;
       });
 
       if (!cancelled) {
@@ -256,7 +265,6 @@ export default function RestaurantProfilePage() {
     };
   }, [router]);
 
-  // 🔹 Gestion des champs texte du profil
   function onChangeField(
     field:
       | "restaurant_name"
@@ -275,23 +283,17 @@ export default function RestaurantProfilePage() {
     value: string
   ) {
     if (!profile) return;
-    const updated: RestaurantProfileRow = { ...profile };
-    (updated as any)[field] = value || "";
-    setProfile(updated);
+    setProfile({ ...profile, [field]: value || "" });
   }
 
-  // 🔹 Gestion des booléens (options de livraison)
   function onChangeOption(
     field: "offers_delivery" | "offers_pickup" | "offers_dine_in",
     value: boolean
   ) {
     if (!profile) return;
-    const updated: RestaurantProfileRow = { ...profile };
-    (updated as any)[field] = value;
-    setProfile(updated);
+    setProfile({ ...profile, [field]: value });
   }
 
-  // 🔹 Gestion des horaires
   function onChangeOpeningHours(
     day: DayKey,
     part: "open" | "close",
@@ -303,7 +305,33 @@ export default function RestaurantProfilePage() {
     }));
   }
 
-  // 🔹 Helper upload d’un seul document (utilisé dans onSubmit)
+  async function uploadLogo(file: File): Promise<string | null> {
+    if (!userId) return null;
+    setUploadingDoc("logo");
+
+    try {
+      const ext = getFileExtension(file);
+      const path = `restaurants/${userId}/logo.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, {
+          contentType: file.type || (ext === "png" ? "image/png" : "image/jpeg"),
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error(uploadError);
+        setErr(uploadError.message);
+        return null;
+      }
+
+      return getLogoPublicUrl(path);
+    } finally {
+      setUploadingDoc(null);
+    }
+  }
+
   async function uploadOneDoc(
     docType: RestaurantDocType,
     file: File
@@ -312,12 +340,23 @@ export default function RestaurantProfilePage() {
     setUploadingDoc(docType);
 
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${userId}/${docType}_${Date.now()}.${ext}`;
+      const ext = getFileExtension(file);
+      const path = `${userId}/${docType}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from("restaurant-docs")
-        .upload(path, file);
+        .upload(path, file, {
+          contentType:
+            file.type ||
+            (ext === "pdf"
+              ? "application/pdf"
+              : ext === "png"
+                ? "image/png"
+                : ext === "webp"
+                  ? "image/webp"
+                  : "image/jpeg"),
+          upsert: true,
+        });
 
       if (uploadError) {
         console.error(uploadError);
@@ -333,10 +372,11 @@ export default function RestaurantProfilePage() {
             doc_type: docType,
             file_path: path,
             status: "pending",
+            reviewed_at: null,
+            reviewed_by: null,
+            review_notes: null,
           },
-          {
-            onConflict: "user_id,doc_type",
-          }
+          { onConflict: "user_id,doc_type" }
         )
         .select("*")
         .single();
@@ -353,7 +393,6 @@ export default function RestaurantProfilePage() {
     }
   }
 
-  // 🔹 Sauvegarder le profil restaurant + fichiers
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!userId || !profile) return;
@@ -362,111 +401,122 @@ export default function RestaurantProfilePage() {
     setErr(null);
     setOk(null);
 
-    // 1) Mettre à jour le nom complet dans profiles (optionnel)
-    if (account) {
-      const { error: accError } = await supabase
-        .from("profiles")
-        .update({
-          full_name: account.full_name,
-        })
-        .eq("id", userId);
-
-      if (accError) {
-        console.error(accError);
-        setErr(accError.message);
-        setSaving(false);
-        return;
+    try {
+      if (!profile.restaurant_name.trim()) {
+        throw new Error("Merci de saisir le nom du restaurant.");
       }
-    }
 
-    // 2) Upsert du profil restaurant
-    const payload = {
-      user_id: userId,
-      restaurant_name: profile.restaurant_name || "",
-      phone: profile.phone || null,
-      email: profile.email || null,
-      address: profile.address || null,
-      city: profile.city || null,
-      postal_code: profile.postal_code || null,
-      cuisine_type: profile.cuisine_type || null,
-      description: profile.description || null,
-      license_number: profile.license_number || null,
-      tax_id: profile.tax_id || null,
-      website: profile.website || null,
-      instagram: profile.instagram || null,
-      facebook: profile.facebook || null,
-      offers_delivery: profile.offers_delivery,
-      offers_pickup: profile.offers_pickup,
-      offers_dine_in: profile.offers_dine_in,
-      opening_hours: openingHours,
-    };
+      if (!profile.phone?.trim()) {
+        throw new Error("Merci de saisir le téléphone du restaurant.");
+      }
 
-    const { error } = await supabase
-      .from("restaurant_profiles")
-      .upsert(payload, {
-        onConflict: "user_id",
-      });
+      if (!profile.address?.trim() || !profile.city?.trim() || !profile.postal_code?.trim()) {
+        throw new Error("Merci de saisir l’adresse complète du restaurant.");
+      }
 
-    if (error) {
+      if (!profile.cuisine_type?.trim()) {
+        throw new Error("Merci de saisir le type de cuisine.");
+      }
+
+      if (account) {
+        const { error: accError } = await supabase
+          .from("profiles")
+          .update({ full_name: account.full_name })
+          .eq("id", userId);
+
+        if (accError) throw new Error(accError.message);
+      }
+
+      let nextLogoUrl = profile.restaurant_logo_url;
+
+      if (logoFile) {
+        const uploadedLogoUrl = await uploadLogo(logoFile);
+        if (uploadedLogoUrl) nextLogoUrl = uploadedLogoUrl;
+      }
+
+      const payload = {
+        user_id: userId,
+        restaurant_name: profile.restaurant_name || "",
+        phone: profile.phone || null,
+        email: profile.email || null,
+        address: profile.address || null,
+        city: profile.city || null,
+        postal_code: profile.postal_code || null,
+        cuisine_type: profile.cuisine_type || null,
+        description: profile.description || null,
+        license_number: profile.license_number || null,
+        tax_id: profile.tax_id || null,
+        website: profile.website || null,
+        instagram: profile.instagram || null,
+        facebook: profile.facebook || null,
+        restaurant_logo_url: nextLogoUrl,
+        offers_delivery: profile.offers_delivery,
+        offers_pickup: profile.offers_pickup,
+        offers_dine_in: profile.offers_dine_in,
+        opening_hours: openingHours,
+        status: "pending",
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("restaurant_profiles")
+        .upsert(payload, { onConflict: "user_id" });
+
+      if (error) throw new Error(error.message);
+
+      let hadUploadError = false;
+      const newDocs: Record<RestaurantDocType, RestaurantDocumentRow | null> = {
+        ...docs,
+      };
+
+      if (licenseFile) {
+        const row = await uploadOneDoc("license", licenseFile);
+        if (!row) hadUploadError = true;
+        else newDocs.license = row;
+      }
+
+      if (taxFile) {
+        const row = await uploadOneDoc("tax", taxFile);
+        if (!row) hadUploadError = true;
+        else newDocs.tax = row;
+      }
+
+      if (idFile) {
+        const row = await uploadOneDoc("id", idFile);
+        if (!row) hadUploadError = true;
+        else newDocs.id = row;
+      }
+
+      setDocs(newDocs);
+      setLogoFile(null);
+      setLicenseFile(null);
+      setTaxFile(null);
+      setIdFile(null);
+      setProfile({ ...profile, restaurant_logo_url: nextLogoUrl });
+
+      if (!hadUploadError) {
+        setOk("Profil restaurant enregistré avec succès ✅");
+      } else {
+        setOk("Profil enregistré, mais une erreur est survenue lors de l’envoi de certains documents.");
+      }
+    } catch (error) {
       console.error(error);
-      setErr(error.message);
+      setErr(error instanceof Error ? error.message : "Erreur inconnue.");
+    } finally {
       setSaving(false);
-      return;
     }
+  }
 
-    // 3) Upload des fichiers sélectionnés
-    let hadUploadError = false;
-    const newDocs: Record<RestaurantDocType, RestaurantDocumentRow | null> = {
-      ...docs,
-    };
-
-    if (logoFile) {
-      const row = await uploadOneDoc("logo", logoFile);
-      if (!row) {
-        hadUploadError = true;
-      } else {
-        newDocs.logo = row;
-      }
-    }
-
-    if (licenseFile) {
-      const row = await uploadOneDoc("business_license", licenseFile);
-      if (!row) {
-        hadUploadError = true;
-      } else {
-        newDocs.business_license = row;
-      }
-    }
-
-    if (otherFile) {
-      const row = await uploadOneDoc("other", otherFile);
-      if (!row) {
-        hadUploadError = true;
-      } else {
-        newDocs.other = row;
-      }
-    }
-
-    setDocs(newDocs);
-    setLogoFile(null);
-    setLicenseFile(null);
-    setOtherFile(null);
-
-    if (!hadUploadError) {
-      setOk("Profil restaurant enregistré avec succès ✅");
-    } else {
-      setOk(
-        "Profil enregistré, mais une erreur est survenue lors de l’envoi de certains documents."
-      );
-    }
-
-    setSaving(false);
+  function handleLogoChange(file: File | null) {
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoFile(file);
+    setLogoPreview(file ? URL.createObjectURL(file) : null);
   }
 
   if (loading || !profile) {
     return (
-      <div className="max-w-xl mx-auto p-4">
-        <h1 className="text-xl font-semibold mb-2">Profil restaurant</h1>
+      <div className="mx-auto max-w-xl p-4">
+        <h1 className="mb-2 text-xl font-semibold">Profil restaurant</h1>
         <p>Chargement…</p>
       </div>
     );
@@ -474,22 +524,29 @@ export default function RestaurantProfilePage() {
 
   if (!userId) {
     return (
-      <div className="max-w-xl mx-auto p-4">
-        <h1 className="text-xl font-semibold mb-2">Profil restaurant</h1>
+      <div className="mx-auto max-w-xl p-4">
+        <h1 className="mb-2 text-xl font-semibold">Profil restaurant</h1>
         <p>Tu dois être connecté pour voir cette page.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Profil restaurant</h1>
+    <div className="mx-auto max-w-4xl space-y-6 p-4">
+      <div>
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-slate-500">
+          MMD Restaurant
+        </p>
+        <h1 className="text-2xl font-black tracking-tight">Profil restaurant</h1>
+        <p className="mt-2 text-sm font-semibold text-slate-500">
+          Configure ton restaurant, tes horaires, ton logo et tes documents de vérification.
+        </p>
+      </div>
 
-      {err && <p className="text-red-600 text-sm">{err}</p>}
-      {ok && <p className="text-green-600 text-sm">{ok}</p>}
+      {err && <p className="rounded-lg bg-red-50 p-3 text-sm font-bold text-red-700">{err}</p>}
+      {ok && <p className="rounded-lg bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{ok}</p>}
 
-      <form onSubmit={onSubmit} className="space-y-4 border rounded-lg p-4 bg-white">
-        {/* COMPTE & CONTACT */}
+      <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Compte & contact</h2>
 
@@ -497,16 +554,16 @@ export default function RestaurantProfilePage() {
             Nom complet (propriétaire / contact)
             <input
               type="text"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={account?.full_name ?? ""}
-              onChange={(e) =>
+              onChange={(event) =>
                 setAccount((prev) =>
                   prev
-                    ? { ...prev, full_name: e.target.value }
-                    : { full_name: e.target.value, email: profile.email }
+                    ? { ...prev, full_name: event.target.value }
+                    : { full_name: event.target.value, email: profile.email }
                 )
               }
-              placeholder="Mamadou Maladho Diallo"
+              placeholder="Nom du propriétaire ou contact principal"
             />
           </label>
 
@@ -514,9 +571,9 @@ export default function RestaurantProfilePage() {
             Email de contact
             <input
               type="email"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.email ?? ""}
-              onChange={(e) => onChangeField("email", e.target.value)}
+              onChange={(event) => onChangeField("email", event.target.value)}
               placeholder="contact@monrestaurant.com"
             />
           </label>
@@ -525,27 +582,24 @@ export default function RestaurantProfilePage() {
             Téléphone du restaurant
             <input
               type="tel"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.phone ?? ""}
-              onChange={(e) => onChangeField("phone", e.target.value)}
+              onChange={(event) => onChangeField("phone", event.target.value)}
               placeholder="929 000 0000"
             />
           </label>
         </div>
 
-        {/* DÉTAILS DU RESTAURANT */}
-        <div className="space-y-3 pt-2 border-t pt-4">
+        <div className="space-y-3 border-t pt-4">
           <h2 className="text-lg font-semibold">Détails du restaurant</h2>
 
           <label className="block text-sm font-medium">
             Nom du restaurant
             <input
               type="text"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.restaurant_name}
-              onChange={(e) =>
-                onChangeField("restaurant_name", e.target.value)
-              }
+              onChange={(event) => onChangeField("restaurant_name", event.target.value)}
               placeholder="MMD African Food"
             />
           </label>
@@ -554,21 +608,21 @@ export default function RestaurantProfilePage() {
             Adresse
             <input
               type="text"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.address ?? ""}
-              onChange={(e) => onChangeField("address", e.target.value)}
+              onChange={(event) => onChangeField("address", event.target.value)}
               placeholder="123 Main St"
             />
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium">
               Ville
               <input
                 type="text"
-                className="mt-1 w-full border rounded px-2 py-1"
+                className="mt-1 w-full rounded border px-3 py-2"
                 value={profile.city ?? ""}
-                onChange={(e) => onChangeField("city", e.target.value)}
+                onChange={(event) => onChangeField("city", event.target.value)}
                 placeholder="Brooklyn"
               />
             </label>
@@ -577,9 +631,9 @@ export default function RestaurantProfilePage() {
               Code postal
               <input
                 type="text"
-                className="mt-1 w-full border rounded px-2 py-1"
+                className="mt-1 w-full rounded border px-3 py-2"
                 value={profile.postal_code ?? ""}
-                onChange={(e) => onChangeField("postal_code", e.target.value)}
+                onChange={(event) => onChangeField("postal_code", event.target.value)}
                 placeholder="11226"
               />
             </label>
@@ -589,9 +643,9 @@ export default function RestaurantProfilePage() {
             Type de cuisine
             <input
               type="text"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.cuisine_type ?? ""}
-              onChange={(e) => onChangeField("cuisine_type", e.target.value)}
+              onChange={(event) => onChangeField("cuisine_type", event.target.value)}
               placeholder="Africain, Italien, Fast-food…"
             />
           </label>
@@ -599,50 +653,69 @@ export default function RestaurantProfilePage() {
           <label className="block text-sm font-medium">
             Description (optionnel)
             <textarea
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               rows={3}
               value={profile.description ?? ""}
-              onChange={(e) => onChangeField("description", e.target.value)}
+              onChange={(event) => onChangeField("description", event.target.value)}
               placeholder="Description courte du restaurant, spécialités, etc."
             />
           </label>
         </div>
 
-        {/* HORAIRES D’OUVERTURE */}
-        <div className="space-y-3 pt-2 border-t pt-4">
-          <h2 className="text-lg font-semibold">Horaires d’ouverture</h2>
+        <div className="space-y-3 border-t pt-4">
+          <h2 className="text-lg font-semibold">Logo du restaurant</h2>
+          <p className="text-sm text-gray-600">
+            Le logo est public et sera affiché aux clients dans MMD. Il est stocké dans le profil restaurant, pas comme document légal.
+          </p>
 
-          <div className="space-y-2 text-xs text-gray-600">
-            <p>Indique les heures d'ouverture et de fermeture pour chaque jour.</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border bg-gray-50 text-xl font-black text-gray-400">
+              {logoPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoPreview} alt="Aperçu logo" className="h-full w-full object-cover" />
+              ) : profile.restaurant_logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.restaurant_logo_url} alt="Logo restaurant" className="h-full w-full object-cover" />
+              ) : (
+                "+"
+              )}
+            </div>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                handleLogoChange(event.target.files?.[0] ?? null)
+              }
+            />
           </div>
+          {uploadingDoc === "logo" && <p className="text-xs text-gray-500">Upload logo en cours…</p>}
+        </div>
+
+        <div className="space-y-3 border-t pt-4">
+          <h2 className="text-lg font-semibold">Horaires d’ouverture</h2>
+          <p className="text-xs text-gray-600">Indique les heures d'ouverture et de fermeture pour chaque jour.</p>
 
           <div className="space-y-2">
             {(Object.keys(DAY_LABELS) as DayKey[]).map((day) => (
-              <div
-                key={day}
-                className="grid grid-cols-1 sm:grid-cols-[120px,1fr,1fr] gap-2 items-center"
-              >
+              <div key={day} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[120px,1fr,1fr]">
                 <div className="text-sm font-medium">{DAY_LABELS[day]}</div>
                 <div>
                   <label className="text-xs text-gray-600">Ouverture</label>
                   <input
                     type="time"
-                    className="mt-1 w-full border rounded px-2 py-1 text-sm"
+                    className="mt-1 w-full rounded border px-2 py-1 text-sm"
                     value={openingHours[day].open}
-                    onChange={(e) =>
-                      onChangeOpeningHours(day, "open", e.target.value)
-                    }
+                    onChange={(event) => onChangeOpeningHours(day, "open", event.target.value)}
                   />
                 </div>
                 <div>
                   <label className="text-xs text-gray-600">Fermeture</label>
                   <input
                     type="time"
-                    className="mt-1 w-full border rounded px-2 py-1 text-sm"
+                    className="mt-1 w-full rounded border px-2 py-1 text-sm"
                     value={openingHours[day].close}
-                    onChange={(e) =>
-                      onChangeOpeningHours(day, "close", e.target.value)
-                    }
+                    onChange={(event) => onChangeOpeningHours(day, "close", event.target.value)}
                   />
                 </div>
               </div>
@@ -650,19 +723,16 @@ export default function RestaurantProfilePage() {
           </div>
         </div>
 
-        {/* OPTIONS DE LIVRAISON */}
-        <div className="space-y-3 pt-2 border-t pt-4">
+        <div className="space-y-3 border-t pt-4">
           <h2 className="text-lg font-semibold">Options de service</h2>
 
-          <div className="flex flex-col sm:flex-row gap-3 text-sm">
+          <div className="flex flex-col gap-3 text-sm sm:flex-row">
             <label className="inline-flex items-center gap-2">
               <input
                 type="checkbox"
                 className="h-4 w-4"
                 checked={profile.offers_delivery}
-                onChange={(e) =>
-                  onChangeOption("offers_delivery", e.target.checked)
-                }
+                onChange={(event) => onChangeOption("offers_delivery", event.target.checked)}
               />
               <span>Livraison</span>
             </label>
@@ -672,9 +742,7 @@ export default function RestaurantProfilePage() {
                 type="checkbox"
                 className="h-4 w-4"
                 checked={profile.offers_pickup}
-                onChange={(e) =>
-                  onChangeOption("offers_pickup", e.target.checked)
-                }
+                onChange={(event) => onChangeOption("offers_pickup", event.target.checked)}
               />
               <span>À emporter</span>
             </label>
@@ -684,29 +752,24 @@ export default function RestaurantProfilePage() {
                 type="checkbox"
                 className="h-4 w-4"
                 checked={profile.offers_dine_in}
-                onChange={(e) =>
-                  onChangeOption("offers_dine_in", e.target.checked)
-                }
+                onChange={(event) => onChangeOption("offers_dine_in", event.target.checked)}
               />
               <span>Sur place</span>
             </label>
           </div>
         </div>
 
-        {/* INFOS BUSINESS & PRÉSENCE EN LIGNE */}
-        <div className="space-y-3 pt-2 border-t pt-4">
+        <div className="space-y-3 border-t pt-4">
           <h2 className="text-lg font-semibold">Infos business</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block text-sm font-medium">
               N° de licence
               <input
                 type="text"
-                className="mt-1 w-full border rounded px-2 py-1"
+                className="mt-1 w-full rounded border px-3 py-2"
                 value={profile.license_number ?? ""}
-                onChange={(e) =>
-                  onChangeField("license_number", e.target.value)
-                }
+                onChange={(event) => onChangeField("license_number", event.target.value)}
                 placeholder="Licence du restaurant"
               />
             </label>
@@ -715,23 +778,23 @@ export default function RestaurantProfilePage() {
               N° de Tax ID (EIN)
               <input
                 type="text"
-                className="mt-1 w-full border rounded px-2 py-1"
+                className="mt-1 w-full rounded border px-3 py-2"
                 value={profile.tax_id ?? ""}
-                onChange={(e) => onChangeField("tax_id", e.target.value)}
+                onChange={(event) => onChangeField("tax_id", event.target.value)}
                 placeholder="00-0000000"
               />
             </label>
           </div>
 
-          <h3 className="text-sm font-semibold pt-2">Présence en ligne</h3>
+          <h3 className="pt-2 text-sm font-semibold">Présence en ligne</h3>
 
           <label className="block text-sm font-medium">
             Site web
             <input
               type="url"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.website ?? ""}
-              onChange={(e) => onChangeField("website", e.target.value)}
+              onChange={(event) => onChangeField("website", event.target.value)}
               placeholder="https://monrestaurant.com"
             />
           </label>
@@ -740,9 +803,9 @@ export default function RestaurantProfilePage() {
             Instagram
             <input
               type="url"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.instagram ?? ""}
-              onChange={(e) => onChangeField("instagram", e.target.value)}
+              onChange={(event) => onChangeField("instagram", event.target.value)}
               placeholder="https://instagram.com/monrestaurant"
             />
           </label>
@@ -751,9 +814,9 @@ export default function RestaurantProfilePage() {
             Facebook
             <input
               type="url"
-              className="mt-1 w-full border rounded px-2 py-1"
+              className="mt-1 w-full rounded border px-3 py-2"
               value={profile.facebook ?? ""}
-              onChange={(e) => onChangeField("facebook", e.target.value)}
+              onChange={(event) => onChangeField("facebook", event.target.value)}
               placeholder="https://facebook.com/monrestaurant"
             />
           </label>
@@ -762,85 +825,57 @@ export default function RestaurantProfilePage() {
         <button
           type="submit"
           disabled={saving}
-          className="mt-4 inline-flex items-center px-4 py-2 rounded bg-black text-white text-sm disabled:opacity-60"
+          className="mt-4 inline-flex items-center rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-60"
         >
           {saving ? "Enregistrement…" : "Enregistrer mon profil restaurant"}
         </button>
       </form>
 
-      {/* DOCUMENTS RESTAURANT */}
-      <div className="border rounded-lg p-4 space-y-4 bg-white">
-        <h2 className="text-lg font-semibold">Vérification du restaurant</h2>
-        <p className="text-sm text-gray-600">
-          Ces documents servent à vérifier ton restaurant (logo + licence). Ils
-          ne seront pas partagés avec les clients.
-        </p>
-
-        {/* Logo */}
-        <div className="space-y-1">
-          <label className="block text-sm font-medium">
-            Logo du restaurant
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setLogoFile(e.target.files?.[0] ?? null)
-            }
-          />
-          {docs.logo && (
-            <p className="text-xs text-gray-700">
-              Déjà envoyé • statut : {docs.logo.status ?? "pending"}
-            </p>
-          )}
-          {uploadingDoc === "logo" && (
-            <p className="text-xs text-gray-500">Upload en cours…</p>
-          )}
+      <div className="space-y-4 rounded-2xl border bg-white p-4 shadow-sm">
+        <div>
+          <h2 className="text-lg font-semibold">Documents de vérification</h2>
+          <p className="text-sm text-gray-600">
+            Ces documents servent à vérifier ton restaurant. Ils restent privés et suivent les mêmes types que le backend Supabase : license, tax, id.
+          </p>
         </div>
 
-        {/* Licence */}
         <div className="space-y-1">
-          <label className="block text-sm font-medium">
-            Licence / Business document
-          </label>
+          <label className="block text-sm font-medium">Licence restaurant</label>
           <input
             type="file"
             accept="image/*,application/pdf"
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setLicenseFile(e.target.files?.[0] ?? null)
-            }
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setLicenseFile(event.target.files?.[0] ?? null)}
           />
-          {docs.business_license && (
-            <p className="text-xs text-gray-700">
-              Déjà envoyée • statut :{" "}
-              {docs.business_license.status ?? "pending"}
-            </p>
+          {docs.license && (
+            <p className="text-xs text-gray-700">Déjà envoyée • statut : {docs.license.status ?? "pending"}</p>
           )}
-          {uploadingDoc === "business_license" && (
-            <p className="text-xs text-gray-500">Upload en cours…</p>
-          )}
+          {uploadingDoc === "license" && <p className="text-xs text-gray-500">Upload en cours…</p>}
         </div>
 
-        {/* Autre document */}
         <div className="space-y-1">
-          <label className="block text-sm font-medium">
-            Autre document (optionnel)
-          </label>
+          <label className="block text-sm font-medium">Document fiscal / EIN</label>
           <input
             type="file"
             accept="image/*,application/pdf"
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              setOtherFile(e.target.files?.[0] ?? null)
-            }
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setTaxFile(event.target.files?.[0] ?? null)}
           />
-          {docs.other && (
-            <p className="text-xs text-gray-700">
-              Déjà envoyé • statut : {docs.other.status ?? "pending"}
-            </p>
+          {docs.tax && (
+            <p className="text-xs text-gray-700">Déjà envoyé • statut : {docs.tax.status ?? "pending"}</p>
           )}
-          {uploadingDoc === "other" && (
-            <p className="text-xs text-gray-500">Upload en cours…</p>
+          {uploadingDoc === "tax" && <p className="text-xs text-gray-500">Upload en cours…</p>}
+        </div>
+
+        <div className="space-y-1">
+          <label className="block text-sm font-medium">Pièce d’identité propriétaire</label>
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setIdFile(event.target.files?.[0] ?? null)}
+          />
+          {docs.id && (
+            <p className="text-xs text-gray-700">Déjà envoyée • statut : {docs.id.status ?? "pending"}</p>
           )}
+          {uploadingDoc === "id" && <p className="text-xs text-gray-500">Upload en cours…</p>}
         </div>
       </div>
     </div>

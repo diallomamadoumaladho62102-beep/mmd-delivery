@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   buildRestaurantTaxStoragePath,
   getRestaurantTaxSummary,
+  type RestaurantTaxRange,
 } from "@/lib/restaurantTax";
 import { buildRestaurantTaxPdf } from "@/lib/restaurantPdf";
 
@@ -35,6 +36,61 @@ function getRequestYear(req: NextRequest): number {
   return year;
 }
 
+function getRequestRange(req: NextRequest): RestaurantTaxRange {
+  const url = new URL(req.url);
+  const raw = url.searchParams.get("range")?.trim().toLowerCase();
+
+  if (!raw) {
+    return "yearly";
+  }
+
+  if (raw === "weekly" || raw === "monthly" || raw === "yearly") {
+    return raw;
+  }
+
+  throw new Error("Invalid range");
+}
+
+function getOptionalNumberParam(
+  req: NextRequest,
+  name: "month" | "week"
+): number | null {
+  const url = new URL(req.url);
+  const raw = url.searchParams.get(name);
+
+  if (!raw) {
+    return null;
+  }
+
+  const value = Number(raw);
+
+  if (!Number.isInteger(value)) {
+    throw new Error(`Invalid ${name}`);
+  }
+
+  return value;
+}
+
+function validatePeriod(params: {
+  range: RestaurantTaxRange;
+  month: number | null;
+  week: number | null;
+}) {
+  const { range, month, week } = params;
+
+  if (range === "monthly") {
+    if (!month || month < 1 || month > 12) {
+      throw new Error("Invalid month");
+    }
+  }
+
+  if (range === "weekly") {
+    if (!week || week < 1 || week > 53) {
+      throw new Error("Invalid week");
+    }
+  }
+}
+
 function shouldDownload(req: NextRequest): boolean {
   const url = new URL(req.url);
   const raw = url.searchParams.get("download");
@@ -61,9 +117,13 @@ export async function GET(req: NextRequest) {
     }
 
     const year = getRequestYear(req);
+    const range = getRequestRange(req);
+    const month = getOptionalNumberParam(req, "month");
+    const week = getOptionalNumberParam(req, "week");
     const download = shouldDownload(req);
 
-    // Client auth: vérifie la vraie session utilisateur via bearer token
+    validatePeriod({ range, month, week });
+
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
@@ -80,7 +140,6 @@ export async function GET(req: NextRequest) {
 
     const restaurantUserId = authData.user.id;
 
-    // Admin client: accès DB + storage
     const admin = createClient(supabaseUrl, serviceRoleKey, {
       auth: {
         persistSession: false,
@@ -95,12 +154,21 @@ export async function GET(req: NextRequest) {
         supabase: admin,
         restaurantUserId,
         year,
+        range,
+        month,
+        week,
       });
 
       const pdfBytes = await buildRestaurantTaxPdf(summaryForPdf);
 
       const bucket = "restaurant-docs";
-      const path = buildRestaurantTaxStoragePath(restaurantUserId, year);
+      const path = buildRestaurantTaxStoragePath({
+        restaurantUserId,
+        year,
+        range,
+        month,
+        week,
+      });
 
       const { error: uploadError } = await admin.storage
         .from(bucket)
@@ -135,6 +203,9 @@ export async function GET(req: NextRequest) {
       supabase: admin,
       restaurantUserId,
       year,
+      range,
+      month,
+      week,
       signedUrl,
     });
 
@@ -144,14 +215,18 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: any) {
-    const message =
-      error?.message === "Invalid year"
-        ? "Invalid year"
-        : error?.message || "Unexpected server error";
+    const message = error?.message || "Unexpected server error";
+
+    const badRequestMessages = new Set([
+      "Invalid year",
+      "Invalid range",
+      "Invalid month",
+      "Invalid week",
+    ]);
 
     return NextResponse.json(
       { error: message },
-      { status: message === "Invalid year" ? 400 : 500 }
+      { status: badRequestMessages.has(message) ? 400 : 500 }
     );
   }
 }

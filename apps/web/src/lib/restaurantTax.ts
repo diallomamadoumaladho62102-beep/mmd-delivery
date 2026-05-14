@@ -10,12 +10,18 @@ export type RestaurantTaxProfile = {
   missingFields: string[];
 };
 
+export type RestaurantTaxRange = "weekly" | "monthly" | "yearly";
+
 export type RestaurantTaxTotals = {
   grossSales: number;
   platformCommission: number;
   restaurantNet: number;
   totalOrders: number;
   year: number;
+  range: RestaurantTaxRange;
+  commissionRate: number;
+  month?: number | null;
+  week?: number | null;
 };
 
 export type RestaurantTaxFile = {
@@ -27,6 +33,9 @@ export type RestaurantTaxFile = {
 export type RestaurantTaxSummary = {
   restaurantUserId: string;
   year: number;
+  range: RestaurantTaxRange;
+  month?: number | null;
+  week?: number | null;
   generatedAt: string;
   profile: RestaurantTaxProfile;
   totals: RestaurantTaxTotals;
@@ -46,7 +55,6 @@ type RestaurantProfileRow = {
 
 type GenericRow = Record<string, unknown>;
 
-const RESTAURANT_COMMISSION_RATE = 0.15;
 const RESTAURANT_DOCS_BUCKET = "restaurant-docs";
 
 function roundMoney(value: number): number {
@@ -73,11 +81,31 @@ function pickFirstFiniteNumber(row: GenericRow, keys: readonly string[]): number
   for (const key of keys) {
     const value = row[key];
     const num = asNumber(value);
-    if (Number.isFinite(num) && num > 0) {
-      return num;
-    }
+    if (Number.isFinite(num) && num > 0) return num;
   }
+
   return 0;
+}
+
+async function getRestaurantCommissionRate(supabase: any): Promise<number> {
+  const { data, error } = await supabase
+    .from("pricing_config")
+    .select("restaurant_pct")
+    .eq("active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.log("pricing_config restaurant_pct error:", error);
+  }
+
+  const raw = Number(data?.restaurant_pct);
+
+  if (Number.isFinite(raw) && raw > 0) {
+    return raw > 1 ? raw / 100 : raw;
+  }
+
+  return 0.15;
 }
 
 function isRestaurantOrderForUser(
@@ -104,15 +132,9 @@ function isIncludedOrderStatus(row: GenericRow): boolean {
 
   if (!status) return true;
 
-  const allowed = new Set([
-    "completed",
-    "delivered",
-    "paid",
-    "fulfilled",
-    "closed",
-  ]);
-
-  return allowed.has(status);
+  return new Set(["completed", "delivered", "paid", "fulfilled", "closed"]).has(
+    status
+  );
 }
 
 function getRestaurantGrossAmountFromOrder(row: GenericRow): number {
@@ -135,16 +157,56 @@ function getRestaurantGrossAmountFromOrder(row: GenericRow): number {
     return roundMoney(restaurantSpecificAmount);
   }
 
-  const safeFallbackAmount = pickFirstFiniteNumber(row, [
-    "subtotal",
-    "amount_subtotal",
-    "total_amount",
-    "total",
-    "grand_total",
-    "amount_total",
-  ]);
+  return roundMoney(
+    pickFirstFiniteNumber(row, [
+      "subtotal",
+      "amount_subtotal",
+      "total_amount",
+      "total",
+      "grand_total",
+      "amount_total",
+    ])
+  );
+}
 
-  return roundMoney(safeFallbackAmount);
+function getDateRange(params: {
+  year: number;
+  range: RestaurantTaxRange;
+  month?: number | null;
+  week?: number | null;
+}) {
+  const { year, range, month, week } = params;
+
+  if (range === "monthly") {
+    const safeMonth = Math.min(Math.max(month ?? 1, 1), 12);
+    const start = new Date(Date.UTC(year, safeMonth - 1, 1));
+    const end = new Date(Date.UTC(year, safeMonth, 1));
+
+    return {
+      start: start.toISOString(),
+      end: end.toISOString(),
+    };
+  }
+
+  if (range === "weekly") {
+    const safeWeek = Math.min(Math.max(week ?? 1, 1), 53);
+    const start = new Date(Date.UTC(year, 0, 1));
+
+    start.setUTCDate(start.getUTCDate() + (safeWeek - 1) * 7);
+
+    const end = new Date(start);
+    end.setUTCDate(start.getUTCDate() + 7);
+
+    return {
+      start: start.toISOString(),
+      end: end.toISOString(),
+    };
+  }
+
+  return {
+    start: `${year}-01-01T00:00:00.000Z`,
+    end: `${year + 1}-01-01T00:00:00.000Z`,
+  };
 }
 
 export function buildRestaurantTaxProfile(
@@ -180,11 +242,25 @@ export function buildRestaurantTaxProfile(
   };
 }
 
-export function computeRestaurantTotalsFromOrders(
-  rows: GenericRow[],
-  restaurantUserId: string,
-  year: number
-): RestaurantTaxTotals {
+export function computeRestaurantTotalsFromOrders(params: {
+  rows: GenericRow[];
+  restaurantUserId: string;
+  year: number;
+  range: RestaurantTaxRange;
+  commissionRate: number;
+  month?: number | null;
+  week?: number | null;
+}): RestaurantTaxTotals {
+  const {
+    rows,
+    restaurantUserId,
+    year,
+    range,
+    commissionRate,
+    month,
+    week,
+  } = params;
+
   const restaurantRows = rows.filter(
     (row) =>
       isRestaurantOrderForUser(row, restaurantUserId) &&
@@ -199,10 +275,7 @@ export function computeRestaurantTotalsFromOrders(
 
   grossSales = roundMoney(grossSales);
 
-  const platformCommission = roundMoney(
-    grossSales * RESTAURANT_COMMISSION_RATE
-  );
-
+  const platformCommission = roundMoney(grossSales * commissionRate);
   const restaurantNet = roundMoney(grossSales - platformCommission);
 
   return {
@@ -211,13 +284,30 @@ export function computeRestaurantTotalsFromOrders(
     restaurantNet,
     totalOrders: restaurantRows.length,
     year,
+    range,
+    commissionRate,
+    month,
+    week,
   };
 }
 
-export function buildRestaurantTaxStoragePath(
-  restaurantUserId: string,
-  year: number
-): string {
+export function buildRestaurantTaxStoragePath(params: {
+  restaurantUserId: string;
+  year: number;
+  range?: RestaurantTaxRange;
+  month?: number | null;
+  week?: number | null;
+}): string {
+  const { restaurantUserId, year, range = "yearly", month, week } = params;
+
+  if (range === "monthly") {
+    return `restaurant-tax/${restaurantUserId}/${year}/monthly/month-${month}.pdf`;
+  }
+
+  if (range === "weekly") {
+    return `restaurant-tax/${restaurantUserId}/${year}/weekly/week-${week}.pdf`;
+  }
+
   return `restaurant-tax/${restaurantUserId}/${year}/restaurant-tax-summary-${year}.pdf`;
 }
 
@@ -225,16 +315,27 @@ export async function getRestaurantTaxSummary(params: {
   supabase: any;
   restaurantUserId: string;
   year: number;
+  range?: RestaurantTaxRange;
+  month?: number | null;
+  week?: number | null;
   signedUrl?: string | null;
 }): Promise<RestaurantTaxSummary> {
-  const { supabase, restaurantUserId, year, signedUrl = null } = params;
+  const {
+    supabase,
+    restaurantUserId,
+    year,
+    range = "yearly",
+    month = null,
+    week = null,
+    signedUrl = null,
+  } = params;
 
-  const start = `${year}-01-01T00:00:00.000Z`;
-  const end = `${year + 1}-01-01T00:00:00.000Z`;
+  const dates = getDateRange({ year, range, month, week });
 
   const [
     { data: profileRow, error: profileError },
     { data: ordersData, error: ordersError },
+    commissionRate,
   ] = await Promise.all([
     supabase
       .from("restaurant_profiles")
@@ -244,15 +345,13 @@ export async function getRestaurantTaxSummary(params: {
       .eq("user_id", restaurantUserId)
       .maybeSingle(),
 
-    // IMPORTANT:
-    // on lit toutes les colonnes pour éviter l'erreur
-    // "column orders.vendor_id does not exist"
-    // si certains noms de colonnes changent selon ton schéma.
     supabase
       .from("orders")
       .select("*")
-      .gte("created_at", start)
-      .lt("created_at", end),
+      .gte("created_at", dates.start)
+      .lt("created_at", dates.end),
+
+    getRestaurantCommissionRate(supabase),
   ]);
 
   if (profileError) {
@@ -262,29 +361,40 @@ export async function getRestaurantTaxSummary(params: {
   }
 
   if (ordersError) {
-    throw new Error(
-      ordersError.message || "Failed to load restaurant orders"
-    );
+    throw new Error(ordersError.message || "Failed to load restaurant orders");
   }
 
   const profile = buildRestaurantTaxProfile(profileRow);
 
-  const totals = computeRestaurantTotalsFromOrders(
-    Array.isArray(ordersData) ? ordersData : [],
+  const totals = computeRestaurantTotalsFromOrders({
+    rows: Array.isArray(ordersData) ? ordersData : [],
     restaurantUserId,
-    year
-  );
+    year,
+    range,
+    month,
+    week,
+    commissionRate,
+  });
 
   return {
     restaurantUserId,
     year,
+    range,
+    month,
+    week,
     generatedAt: new Date().toISOString(),
     profile,
     totals,
     file: signedUrl
       ? {
           bucket: RESTAURANT_DOCS_BUCKET,
-          path: buildRestaurantTaxStoragePath(restaurantUserId, year),
+          path: buildRestaurantTaxStoragePath({
+            restaurantUserId,
+            year,
+            range,
+            month,
+            week,
+          }),
           signedUrl,
         }
       : null,
