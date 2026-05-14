@@ -177,10 +177,9 @@ function extractReferralCodeFromUrl(url: string | null | undefined): string | nu
       return cleanReferralCode(parts[1]);
     }
 
-    if (parts[0]?.toLowerCase() === "signup" && parts[1]) {
-      return cleanReferralCode(parts[1]);
-    }
-
+    // Referral links must stay limited to referral-specific paths.
+    // Signup deep links such as mmd://signup/client, mmd://signup/driver,
+    // and mmd://signup/restaurant are handled by React Navigation below.
     return null;
   } catch {
     return null;
@@ -216,12 +215,9 @@ export function AppNavigator({
       config: {
         screens: {
           ResetPassword: "reset-password",
-          DriverAuth: {
-            path: "r/:ref",
-            parse: {
-              ref: (ref: string) => cleanReferralCode(ref) ?? String(ref),
-            },
-          },
+          ClientAuth: "signup/client",
+          DriverAuth: "signup/driver",
+          RestaurantAuth: "signup/restaurant",
         },
       },
     }),
