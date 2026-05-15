@@ -25,11 +25,16 @@ type OrderItem = {
   line_total: number;
 };
 
+type AdminCommunicationTarget = "client" | "driver" | "restaurant";
+
 type OrderRow = {
   id: string;
   status: OrderStatus;
   kind: string | null;
   user_id: string | null;
+  client_id: string | null;
+  client_user_id: string | null;
+  driver_id: string | null;
   restaurant_id: string | null;
   restaurant_name: string | null;
   created_at: string | null;
@@ -165,6 +170,7 @@ export default function AdminOrderPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [callingTarget, setCallingTarget] = useState<AdminCommunicationTarget | null>(null);
 
   const loadPage = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
@@ -223,6 +229,9 @@ export default function AdminOrderPage() {
               status,
               kind,
               user_id,
+              client_id,
+              client_user_id,
+              driver_id,
               restaurant_id,
               restaurant_name,
               created_at,
@@ -289,6 +298,118 @@ export default function AdminOrderPage() {
   const mmdTotalCommission = restaurantCommission + deliveryPlatformFee;
   const driverPayout = order?.driver_delivery_payout ?? 0;
   const mmdGrossMargin = mmdTotalCommission - driverPayout;
+
+  const effectiveClientId =
+    order?.client_id ?? order?.client_user_id ?? order?.user_id ?? null;
+
+  const isFinalOrder = order?.status === "delivered" || order?.status === "canceled";
+
+  const communicationDisabled = refreshing || callingTarget !== null || isFinalOrder;
+
+  const getMissingTargetMessage = useCallback(
+    (targetRole: AdminCommunicationTarget) => {
+      if (targetRole === "client" && !effectiveClientId) {
+        return "Client introuvable pour cette commande.";
+      }
+
+      if (targetRole === "driver" && !order?.driver_id) {
+        return "Aucun chauffeur n’est encore assigné à cette commande.";
+      }
+
+      if (targetRole === "restaurant" && !order?.restaurant_id) {
+        return "Restaurant introuvable pour cette commande.";
+      }
+
+      return null;
+    },
+    [effectiveClientId, order?.driver_id, order?.restaurant_id]
+  );
+
+  const startAdminCall = useCallback(
+    async (targetRole: AdminCommunicationTarget) => {
+      if (!order?.id || callingTarget) return;
+
+      if (isFinalOrder) {
+        alert("Les appels sont désactivés pour une commande terminée ou annulée.");
+        return;
+      }
+
+      const missing = getMissingTargetMessage(targetRole);
+      if (missing) {
+        alert(missing);
+        return;
+      }
+
+      try {
+        setCallingTarget(targetRole);
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+
+        if (!session?.access_token) {
+          throw new Error("Session admin expirée. Reconnecte-toi puis réessaie.");
+        }
+
+        const response = await fetch("/api/twilio/calls/create", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            orderId: order.id,
+            callerRole: "admin",
+            targetRole,
+          }),
+        });
+
+        const json = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(json?.error || "Unable to create call session");
+        }
+
+        const proxyNumber = String(json?.proxyNumber || "").trim();
+
+        if (!proxyNumber) {
+          throw new Error("Numéro proxy manquant.");
+        }
+
+        window.location.href = `tel:${proxyNumber}`;
+      } catch (error) {
+        alert(error instanceof Error ? error.message : "Erreur appel admin.");
+      } finally {
+        setCallingTarget(null);
+      }
+    },
+    [callingTarget, getMissingTargetMessage, isFinalOrder, order?.id]
+  );
+
+  const openAdminChat = useCallback(
+    (targetRole: AdminCommunicationTarget) => {
+      if (!order?.id) return;
+
+      if (isFinalOrder) {
+        alert("Les messages sont désactivés pour une commande terminée ou annulée.");
+        return;
+      }
+
+      const missing = getMissingTargetMessage(targetRole);
+      if (missing) {
+        alert(missing);
+        return;
+      }
+
+      router.push(`/admin/orders/${order.id}/chat?targetRole=${targetRole}`);
+    },
+    [getMissingTargetMessage, isFinalOrder, order?.id, router]
+  );
 
   if (loading || !authChecked) {
     return (
@@ -383,7 +504,9 @@ export default function AdminOrderPage() {
 
         <SectionCard title="Informations générales">
           <InfoRow label="Type" value={order.kind || "—"} />
-          <InfoRow label="Client (user_id)" value={order.user_id || "—"} />
+          <InfoRow label="Client (client_id)" value={effectiveClientId || "—"} />
+          <InfoRow label="Ancien user_id" value={order.user_id || "—"} />
+          <InfoRow label="Chauffeur (driver_id)" value={order.driver_id || "—"} />
           <InfoRow
             label="Restaurant (restaurant_id)"
             value={order.restaurant_id || "—"}
@@ -392,6 +515,62 @@ export default function AdminOrderPage() {
             label="Nom du restaurant"
             value={order.restaurant_name || "—"}
           />
+        </SectionCard>
+
+        <SectionCard
+          title="Communication admin"
+          subtitle="Appeler ou ouvrir une discussion ciblée avec le client, le chauffeur ou le restaurant."
+        >
+          <div className="grid gap-3 md:grid-cols-3">
+            {([
+              ["client", "Client", effectiveClientId],
+              ["driver", "Chauffeur", order.driver_id],
+              ["restaurant", "Restaurant", order.restaurant_id],
+            ] as const).map(([targetRole, label, targetId]) => {
+              const disabled = communicationDisabled || !targetId;
+              const isCalling = callingTarget === targetRole;
+
+              return (
+                <div
+                  key={targetRole}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-slate-900">{label}</p>
+                    <p className="mt-1 break-all text-[11px] text-slate-500">
+                      {targetId || "Non disponible"}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => void startAdminCall(targetRole)}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isCalling ? "Appel..." : "Call"}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => openAdminChat(targetRole)}
+                      className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Message
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {isFinalOrder ? (
+            <p className="mt-3 text-[11px] text-slate-500">
+              Communication désactivée parce que cette commande est terminée ou annulée.
+            </p>
+          ) : null}
         </SectionCard>
 
         <SectionCard title="Récapitulatif de la commande (plats)">

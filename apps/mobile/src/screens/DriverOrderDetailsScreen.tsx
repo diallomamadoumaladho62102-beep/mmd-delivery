@@ -22,6 +22,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../lib/apiBase";
+import { startMaskedCall } from "../lib/maskedCall";
 import * as ImagePicker from "expo-image-picker";
 
 import {
@@ -57,6 +58,9 @@ type Order = {
   platform_delivery_fee: number | null;
   driver_delivery_payout: number | null;
   driver_id: string | null;
+  client_id?: string | null;
+  client_user_id?: string | null;
+  restaurant_id?: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
   dropoff_lat: number | null;
@@ -64,6 +68,7 @@ type Order = {
 };
 
 type VerifyKind = "pickup" | "dropoff";
+type CommunicationTarget = "client" | "restaurant" | "admin";
 
 type CancelOrderResponse = {
   ok?: boolean;
@@ -165,7 +170,7 @@ function formatDate(iso: string | null) {
 }
 
 function getApiBaseUrl() {
-  const raw = API_BASE_URL.trim().replace(/\/+$/, "");
+  const raw = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
 
   if (!raw) {
     throw new Error("API_BASE_URL manquant.");
@@ -185,6 +190,10 @@ function normalizeKind(value: unknown): string {
     .replace(/[\s-]+/g, "_");
 }
 
+function isFinalStatus(status: OrderStatus) {
+  return status === "delivered" || status === "canceled";
+}
+
 export function DriverOrderDetailsScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DriverOrderDetailsRoute>();
@@ -202,6 +211,7 @@ export function DriverOrderDetailsScreen() {
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
+  const [calling, setCalling] = useState<CommunicationTarget | null>(null);
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
   const didFitRef = useRef(false);
@@ -354,6 +364,9 @@ export function DriverOrderDetailsScreen() {
           platform_delivery_fee,
           driver_delivery_payout,
           driver_id,
+          client_id,
+          client_user_id,
+          restaurant_id,
           pickup_lat,
           pickup_lng,
           dropoff_lat,
@@ -419,8 +432,7 @@ export function DriverOrderDetailsScreen() {
   }, [order, pickupCoord, dropoffCoord, fitMapToTrip]);
 
   useEffect(() => {
-    if (!order) return;
-    if (!myUserId) return;
+    if (!order || !myUserId) return;
 
     const isMine = order.driver_id === myUserId;
     const inProgress =
@@ -429,17 +441,19 @@ export function DriverOrderDetailsScreen() {
       order.status === "ready" ||
       order.status === "dispatched";
 
-    if (isMine && inProgress) {
-      startDriverLocationTracking({ driverId: myUserId }).catch((e) => {
-        console.log("startDriverLocationTracking error:", e?.message ?? e);
-      });
+    if (!isMine || !inProgress) {
+      stopDriverLocationTracking();
+      return;
     }
 
-    const isEnded = order.status === "delivered" || order.status === "canceled";
-    if (isMine && isEnded) {
+    startDriverLocationTracking({ driverId: myUserId }).catch((e) => {
+      console.log("startDriverLocationTracking error:", e?.message ?? e);
+    });
+
+    return () => {
       stopDriverLocationTracking();
-    }
-  }, [order?.status, order?.driver_id, myUserId, order]);
+    };
+  }, [order?.status, order?.driver_id, myUserId]);
 
   function openMapsSingle(params: {
     address: string | null;
@@ -529,8 +543,8 @@ export function DriverOrderDetailsScreen() {
     !!order &&
     !order.driver_id &&
     (
-      (order.kind === "pickup_dropoff" && order.status === "pending") ||
-      (order.kind === "food" && order.status === "ready")
+      (isPickupDropoff && order.status === "pending") ||
+      (!isPickupDropoff && order.status === "ready")
     );
 
   const canCancelAsDriver =
@@ -953,13 +967,135 @@ export function DriverOrderDetailsScreen() {
     }
   }
 
+
+  const communicationDisabled =
+    !order ||
+    !!calling ||
+    loading ||
+    accepting ||
+    canceling ||
+    submittingCode ||
+    proofUploading ||
+    !!verifyingKind ||
+    isFinalStatus(order.status) ||
+    !isAssignedDriver;
+
+  const startOrderCall = useCallback(
+    async (targetRole: CommunicationTarget) => {
+      if (!order?.id || communicationDisabled) return;
+
+      if (isFinalStatus(order.status)) {
+        Alert.alert(
+          t("common.error", "Erreur"),
+          t(
+            "driver.orderDetails.communication.callClosed",
+            "Les appels sont désactivés pour cette commande."
+          )
+        );
+        return;
+      }
+
+      if (targetRole === "restaurant" && isPickupDropoff) {
+        Alert.alert(
+          t("common.error", "Erreur"),
+          t(
+            "driver.orderDetails.communication.noRestaurant",
+            "Cette course pickup/dropoff n’a pas de restaurant à appeler."
+          )
+        );
+        return;
+      }
+
+      setCalling(targetRole);
+
+      try {
+        await startMaskedCall({
+          orderId: order.id,
+          callerRole: "driver",
+          targetRole,
+        });
+      } finally {
+        setCalling(null);
+      }
+    },
+    [communicationDisabled, isPickupDropoff, order?.id, order?.status, t]
+  );
+
+  const callClient = useCallback(() => {
+    void startOrderCall("client");
+  }, [startOrderCall]);
+
+  const callRestaurant = useCallback(() => {
+    void startOrderCall("restaurant");
+  }, [startOrderCall]);
+
+  const callAdmin = useCallback(() => {
+    void startOrderCall("admin");
+  }, [startOrderCall]);
+
+  function openOrderChat(targetRole: CommunicationTarget) {
+    if (!order?.id) return;
+
+    if (isFinalStatus(order.status)) {
+      Alert.alert(
+        t("common.error", "Erreur"),
+        t(
+          "driver.orderDetails.communication.chatClosed",
+          "Les messages sont désactivés pour cette commande."
+        )
+      );
+      return;
+    }
+
+    if (targetRole === "restaurant" && isPickupDropoff) {
+      Alert.alert(
+        t("common.error", "Erreur"),
+        t(
+          "driver.orderDetails.communication.noRestaurantMessage",
+          "Cette course pickup/dropoff n’a pas de restaurant à contacter."
+        )
+      );
+      return;
+    }
+
+    try {
+      (navigation as any).navigate("DriverChat", { orderId: order.id, targetRole });
+      return;
+    } catch {}
+
+    try {
+      (navigation as any).navigate("OrderChat", { orderId: order.id, targetRole });
+    } catch (e) {
+      console.error("Navigation chat introuvable:", e);
+      Alert.alert(
+        t("driver.orderDetails.chatTitle", "Chat"),
+        t(
+          "driver.orderDetails.chatRouteMissing",
+          "Route de chat introuvable. Vérifie AppNavigator (DriverChat / OrderChat)."
+        )
+      );
+    }
+  }
+
+  const messageClient = useCallback(() => {
+    openOrderChat("client");
+  }, [order?.id, order?.status, isPickupDropoff]);
+
+  const messageRestaurant = useCallback(() => {
+    openOrderChat("restaurant");
+  }, [order?.id, order?.status, isPickupDropoff]);
+
+  const messageAdmin = useCallback(() => {
+    openOrderChat("admin");
+  }, [order?.id, order?.status, isPickupDropoff]);
+
   function openDriverChat() {
     try {
-      (navigation as any).navigate("DriverChat", { orderId });
+      (navigation as any).navigate("DriverChat", { orderId, targetRole: "admin" });
       return;
     } catch {}
     try {
-      (navigation as any).navigate("OrderChat", { orderId });
+      (navigation as any).navigate("OrderChat", { orderId, targetRole: "admin" });
     } catch (e) {
       console.error("Navigation chat introuvable:", e);
       Alert.alert(
@@ -1036,6 +1172,7 @@ export function DriverOrderDetailsScreen() {
             zoomLevel={tripCamera.zoomLevel}
             animationMode="flyTo"
             animationDuration={650}
+            allowUpdates
           />
 
           {pickupCoord && (
@@ -1487,6 +1624,206 @@ export function DriverOrderDetailsScreen() {
                   "Les boutons s’activent automatiquement au bon moment selon le statut."
                 )}
           </Text>
+        </View>
+
+        <View
+          style={{
+            marginTop: 12,
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: "rgba(148,163,184,0.14)",
+            backgroundColor: "rgba(15,23,42,0.78)",
+            padding: 14,
+          }}
+        >
+          <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800", marginBottom: 8 }}>
+            {t("driver.orderDetails.communication.title", "Communication")}
+          </Text>
+
+          <Text style={{ color: "#9CA3AF", fontSize: 12, lineHeight: 17, marginBottom: 12 }}>
+            {t(
+              "driver.orderDetails.communication.hint",
+              "Appelle ou envoie un message au client, au restaurant ou au support MMD sans exposer ton vrai numéro."
+            )}
+          </Text>
+
+          <View
+            style={{
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "rgba(148,163,184,0.14)",
+              backgroundColor: "rgba(2,6,23,0.35)",
+              padding: 12,
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
+              👤 {t("driver.orderDetails.communication.client", "Client")}
+            </Text>
+
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity
+                disabled={communicationDisabled}
+                onPress={callClient}
+                style={{
+                  flex: 1,
+                  marginRight: 8,
+                  borderRadius: 999,
+                  paddingVertical: 11,
+                  alignItems: "center",
+                  backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(37,99,235,0.95)",
+                  borderWidth: 1,
+                  borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(59,130,246,0.35)",
+                }}
+              >
+                {calling === "client" ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={{ color: "white", fontSize: 12, fontWeight: "900" }}>
+                    📞 {t("driver.orderDetails.communication.call", "Call")}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={communicationDisabled}
+                onPress={messageClient}
+                style={{
+                  flex: 1,
+                  borderRadius: 999,
+                  paddingVertical: 11,
+                  alignItems: "center",
+                  backgroundColor: "rgba(15,23,42,0.95)",
+                  opacity: communicationDisabled ? 0.5 : 1,
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.20)",
+                }}
+              >
+                <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "900" }}>
+                  💬 {t("driver.orderDetails.communication.message", "Message")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {!isPickupDropoff && (
+            <View
+              style={{
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "rgba(148,163,184,0.14)",
+                backgroundColor: "rgba(2,6,23,0.35)",
+                padding: 12,
+                marginBottom: 10,
+              }}
+            >
+              <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
+                🍽️ {t("driver.orderDetails.communication.restaurant", "Restaurant")}
+              </Text>
+
+              <View style={{ flexDirection: "row" }}>
+                <TouchableOpacity
+                  disabled={communicationDisabled}
+                  onPress={callRestaurant}
+                  style={{
+                    flex: 1,
+                    marginRight: 8,
+                    borderRadius: 999,
+                    paddingVertical: 11,
+                    alignItems: "center",
+                    backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(14,165,233,0.95)",
+                    borderWidth: 1,
+                    borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(14,165,233,0.35)",
+                  }}
+                >
+                  {calling === "restaurant" ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={{ color: "white", fontSize: 12, fontWeight: "900" }}>
+                      📞 {t("driver.orderDetails.communication.call", "Call")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  disabled={communicationDisabled}
+                  onPress={messageRestaurant}
+                  style={{
+                    flex: 1,
+                    borderRadius: 999,
+                    paddingVertical: 11,
+                    alignItems: "center",
+                    backgroundColor: "rgba(15,23,42,0.95)",
+                    opacity: communicationDisabled ? 0.5 : 1,
+                    borderWidth: 1,
+                    borderColor: "rgba(148,163,184,0.20)",
+                  }}
+                >
+                  <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "900" }}>
+                    💬 {t("driver.orderDetails.communication.message", "Message")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <View
+            style={{
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "rgba(124,58,237,0.25)",
+              backgroundColor: "rgba(124,58,237,0.08)",
+              padding: 12,
+            }}
+          >
+            <Text style={{ color: "#EDE9FE", fontWeight: "900", marginBottom: 10 }}>
+              🛟 {t("driver.orderDetails.communication.support", "MMD support")}
+            </Text>
+
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity
+                disabled={communicationDisabled}
+                onPress={callAdmin}
+                style={{
+                  flex: 1,
+                  marginRight: 8,
+                  borderRadius: 999,
+                  paddingVertical: 11,
+                  alignItems: "center",
+                  backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(124,58,237,0.95)",
+                  borderWidth: 1,
+                  borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(124,58,237,0.35)",
+                }}
+              >
+                {calling === "admin" ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={{ color: "white", fontSize: 12, fontWeight: "900" }}>
+                    📞 {t("driver.orderDetails.communication.call", "Call")}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={communicationDisabled}
+                onPress={messageAdmin}
+                style={{
+                  flex: 1,
+                  borderRadius: 999,
+                  paddingVertical: 11,
+                  alignItems: "center",
+                  backgroundColor: "rgba(15,23,42,0.95)",
+                  opacity: communicationDisabled ? 0.5 : 1,
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.20)",
+                }}
+              >
+                <Text style={{ color: "#C4B5FD", fontSize: 12, fontWeight: "900" }}>
+                  💬 {t("driver.orderDetails.communication.message", "Message")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         <TouchableOpacity

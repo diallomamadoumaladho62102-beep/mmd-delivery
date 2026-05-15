@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/DriverHelpScreen.tsx
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Linking,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -25,15 +26,23 @@ const RED = "#F87171";
 const TEXT = "#F8FAFC";
 const MUTED = "#94A3B8";
 
+const SUPPORT_EMAIL = "support@mmd-delivery.com";
+const EMERGENCY_NUMBER = "911";
+
+type HelpTone = "purple" | "blue" | "green" | "orange" | "red";
+
 type HelpItemProps = {
   icon: string;
   title: string;
   subtitle: string;
   onPress: () => void;
-  tone?: "purple" | "blue" | "green" | "orange" | "red";
+  tone?: HelpTone;
+  disabled?: boolean;
+  loading?: boolean;
+  accessibilityLabel?: string;
 };
 
-function toneColor(tone?: HelpItemProps["tone"]) {
+function toneColor(tone?: HelpTone) {
   if (tone === "blue") return BLUE;
   if (tone === "green") return GREEN;
   if (tone === "orange") return ORANGE;
@@ -41,13 +50,53 @@ function toneColor(tone?: HelpItemProps["tone"]) {
   return PURPLE;
 }
 
-function HelpItem({ icon, title, subtitle, onPress, tone }: HelpItemProps) {
+async function openSupportedUrl(url: string) {
+  const supported = await Linking.canOpenURL(url);
+
+  if (!supported) {
+    throw new Error("unsupported_url");
+  }
+
+  await Linking.openURL(url);
+}
+
+function HelpItem({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  tone,
+  disabled,
+  loading,
+  accessibilityLabel,
+}: HelpItemProps) {
   const color = toneColor(tone);
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.86} style={styles.helpItem}>
-      <View style={[styles.itemIconBox, { borderColor: `${color}55`, backgroundColor: `${color}18` }]}>
-        <Text style={[styles.itemIcon, { color }]}>{icon}</Text>
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled || loading}
+      activeOpacity={0.86}
+      style={[styles.helpItem, (disabled || loading) && styles.disabledItem]}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={subtitle}
+    >
+      <View
+        style={[
+          styles.itemIconBox,
+          {
+            borderColor: `${color}55`,
+            backgroundColor: `${color}18`,
+          },
+        ]}
+      >
+        {loading ? (
+          <ActivityIndicator color={color} />
+        ) : (
+          <Text style={[styles.itemIcon, { color }]}>{icon}</Text>
+        )}
       </View>
 
       <View style={styles.itemTextWrap}>
@@ -72,72 +121,132 @@ function FaqRow({ question, answer }: { question: string; answer: string }) {
 export function DriverHelpScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const [busyAction, setBusyAction] = useState<"mail" | "emergency" | "chat" | "report" | null>(
+    null
+  );
+
+  const runBusyAction = useCallback(
+    async (key: "mail" | "emergency" | "chat" | "report", action: () => Promise<void> | void) => {
+      if (busyAction) return;
+
+      try {
+        setBusyAction(key);
+        await action();
+      } finally {
+        setBusyAction(null);
+      }
+    },
+    [busyAction]
+  );
 
   const openMail = useCallback(() => {
-    const subject = encodeURIComponent("MMD Delivery Driver Support");
-    const body = encodeURIComponent(
-      "Hello MMD Support,\n\nI need help with:\n\nOrder ID:\nIssue:\nPhone:\n\nThank you."
-    );
-
-    Linking.openURL(`mailto:support@mmd-delivery.com?subject=${subject}&body=${body}`).catch(() => {
-      Alert.alert(
-        t("driver.help.emailErrorTitle", "Email"),
-        t("driver.help.emailErrorBody", "Unable to open email app on this device.")
+    void runBusyAction("mail", async () => {
+      const subject = encodeURIComponent(
+        t("driver.help.emailSubject", "MMD Delivery Driver Support")
       );
+
+      const body = encodeURIComponent(
+        t(
+          "driver.help.emailBody",
+          "Hello MMD Support,\n\nI need help with:\n\nOrder ID:\nIssue:\nPhone:\n\nThank you."
+        )
+      );
+
+      const url = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+
+      try {
+        await openSupportedUrl(url);
+      } catch {
+        Alert.alert(
+          t("driver.help.emailErrorTitle", "Email"),
+          t("driver.help.emailErrorBody", "Unable to open email app on this device.")
+        );
+      }
     });
-  }, [t]);
+  }, [runBusyAction, t]);
 
   const callEmergency = useCallback(() => {
+    if (busyAction) return;
+
     Alert.alert(
       t("driver.help.emergencyConfirmTitle", "Emergency support"),
       t(
         "driver.help.emergencyConfirmBody",
-        "Use this only for urgent delivery, safety, or payment issues."
+        "For immediate danger or medical/police/fire emergency, call 911. For non-emergency delivery issues, use chat or email support."
       ),
       [
-        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("common.cancel", "Cancel"),
+          style: "cancel",
+        },
         {
           text: t("driver.help.callNow", "Call now"),
+          style: "destructive",
           onPress: () => {
-            Linking.openURL("tel:+10000000000").catch(() => {
-              Alert.alert(
-                t("driver.help.callErrorTitle", "Phone"),
-                t("driver.help.callErrorBody", "Unable to open phone app.")
-              );
+            void runBusyAction("emergency", async () => {
+              try {
+                await openSupportedUrl(`tel:${EMERGENCY_NUMBER}`);
+              } catch {
+                Alert.alert(
+                  t("driver.help.callErrorTitle", "Phone"),
+                  t("driver.help.callErrorBody", "Unable to open phone app.")
+                );
+              }
             });
           },
         },
       ]
     );
-  }, [t]);
+  }, [busyAction, runBusyAction, t]);
 
   const openAdminChat = useCallback(() => {
-    try {
-      navigation.navigate("DriverSupportChat");
-    } catch {
-      Alert.alert(
-        t("driver.help.comingSoonTitle", "Coming soon ✅"),
-        t("driver.help.adminChatSoon", "Admin support chat will be available soon.")
-      );
-    }
-  }, [navigation, t]);
+    void runBusyAction("chat", async () => {
+      try {
+        navigation.navigate("DriverChat", {
+          orderId: "support",
+          targetRole: "admin",
+        });
+        return;
+      } catch {
+        Alert.alert(
+          t("driver.help.comingSoonTitle", "Coming soon ✅"),
+          t("driver.help.adminChatSoon", "Admin support chat will be available soon.")
+        );
+      }
+    });
+  }, [navigation, runBusyAction, t]);
 
   const reportIssue = useCallback(() => {
-    try {
-      navigation.navigate("DriverReportIssue");
-    } catch {
-      Alert.alert(
-        t("driver.help.reportIssueTitle", "Report issue"),
-        t("driver.help.reportIssueBody", "For now, please contact support by email with the order ID and details.")
-      );
-    }
-  }, [navigation, t]);
+    void runBusyAction("report", async () => {
+      try {
+        navigation.navigate("DriverReportIssue");
+      } catch {
+        Alert.alert(
+          t("driver.help.reportIssueTitle", "Report issue"),
+          t(
+            "driver.help.reportIssueBody",
+            "For now, please contact support by email with the order ID and details."
+          )
+        );
+      }
+    });
+  }, [navigation, runBusyAction, t]);
+
+  const busy = busyAction !== null;
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.headerWrap}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            disabled={busy}
+            style={[styles.roundButton, busy && styles.disabledItem]}
+            activeOpacity={0.85}
+            accessible
+            accessibilityRole="button"
+            accessibilityLabel={t("common.back", "Back")}
+          >
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
 
@@ -154,7 +263,7 @@ export function DriverHelpScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.flex}>
             <Text style={styles.heroLabel}>{t("driver.help.heroLabel", "MMD DRIVER SUPPORT")}</Text>
             <Text style={styles.heroTitle}>{t("driver.help.heroTitle", "How can we help?")}</Text>
             <Text style={styles.heroSub}>
@@ -178,6 +287,9 @@ export function DriverHelpScreen() {
           subtitle={t("driver.help.chatSupportSub", "Contact MMD admin support.")}
           onPress={openAdminChat}
           tone="purple"
+          disabled={busy}
+          loading={busyAction === "chat"}
+          accessibilityLabel={t("driver.help.chatSupport", "Chat support")}
         />
 
         <HelpItem
@@ -186,14 +298,23 @@ export function DriverHelpScreen() {
           subtitle={t("driver.help.emailSupportSub", "Send details, screenshots, or an order ID.")}
           onPress={openMail}
           tone="blue"
+          disabled={busy}
+          loading={busyAction === "mail"}
+          accessibilityLabel={t("driver.help.emailSupport", "Email support")}
         />
 
         <HelpItem
           icon="⚠"
           title={t("driver.help.reportIssue", "Report an issue")}
-          subtitle={t("driver.help.reportIssueSub", "Problem with order, payment, GPS, customer, or restaurant.")}
+          subtitle={t(
+            "driver.help.reportIssueSub",
+            "Problem with order, payment, GPS, customer, or restaurant."
+          )}
           onPress={reportIssue}
           tone="orange"
+          disabled={busy}
+          loading={busyAction === "report"}
+          accessibilityLabel={t("driver.help.reportIssue", "Report an issue")}
         />
 
         <HelpItem
@@ -202,6 +323,9 @@ export function DriverHelpScreen() {
           subtitle={t("driver.help.emergencySub", "Urgent delivery or safety issue.")}
           onPress={callEmergency}
           tone="red"
+          disabled={busy}
+          loading={busyAction === "emergency"}
+          accessibilityLabel={t("driver.help.emergency", "Emergency")}
         />
 
         <Text style={styles.sectionTitle}>{t("driver.help.faqSection", "FAQ")}</Text>
@@ -241,7 +365,9 @@ export function DriverHelpScreen() {
         </View>
 
         <View style={styles.footerCard}>
-          <Text style={styles.footerTitle}>{t("driver.help.footerTitle", "Before contacting support")}</Text>
+          <Text style={styles.footerTitle}>
+            {t("driver.help.footerTitle", "Before contacting support")}
+          </Text>
           <Text style={styles.footerText}>
             {t(
               "driver.help.footerText",
@@ -256,6 +382,7 @@ export function DriverHelpScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG },
+  flex: { flex: 1 },
   headerWrap: {
     paddingHorizontal: 16,
     paddingTop: 10,
@@ -374,6 +501,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     flexDirection: "row",
     alignItems: "center",
+  },
+  disabledItem: {
+    opacity: 0.62,
   },
   itemIconBox: {
     width: 46,

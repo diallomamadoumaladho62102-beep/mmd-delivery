@@ -706,52 +706,56 @@ export function ClientRestaurantMenuScreen() {
       const safeTax = roundMoney(tax);
       const safeDeliveryFee = roundMoney(deliveryFee ?? 0);
       const safeGrandTotal = roundMoney(safeSubtotal + safeTax + safeDeliveryFee);
-      const totalCents = Math.round(safeGrandTotal * 100);
-
       const { data, error } = await supabase
-  .from("orders")
-  .insert({
-    type: "food",
-    status: "pending",
+        .from("orders")
+        .insert({
+          type: "food",
+          status: "pending",
 
-    restaurant_id: restaurantId,
-    restaurant_user_id: restaurantId,
-    client_user_id: userId,
+          restaurant_id: restaurantId,
+          restaurant_user_id: restaurantId,
 
-    restaurant_name: restaurantName,
-    created_by: userId,
+          // ✅ Canonical production ownership field
+          client_id: userId,
 
-    items_json: cart.map((c) => ({
-      name: c.name,
-      category: c.category,
-      quantity: c.quantity,
-      unit_price: c.unit_price,
-      line_total: roundMoney(c.unit_price * c.quantity),
-    })),
+          // ✅ Backward compatibility with older order/client logic
+          user_id: userId,
+          client_user_id: userId,
 
-    subtotal: safeSubtotal,
-    tax: safeTax,
-    delivery_fee: safeDeliveryFee,
-    total: safeGrandTotal,
-    currency,
+          restaurant_name: restaurantName,
+          created_by: userId,
 
-    pickup_address: normalizeAddress(pickup),
-    dropoff_address: normalizeAddress(dropoff),
-    distance_miles: distanceMiles,
-    eta_minutes: etaMinutesInt,
+          items_json: cart.map((c) => ({
+            name: c.name,
+            category: c.category,
+            quantity: c.quantity,
+            unit_price: c.unit_price,
+            line_total: roundMoney(c.unit_price * c.quantity),
+          })),
 
-    pickup_lat: pickupCoords.lat,
-    pickup_lng: pickupCoords.lng,
-    dropoff_lat: dropoffCoords.lat,
-    dropoff_lng: dropoffCoords.lng,
+          subtotal: safeSubtotal,
+          tax: safeTax,
+          delivery_fee: safeDeliveryFee,
+          total: safeGrandTotal,
+          currency,
 
-    pickup_code: pickupCode,
-    dropoff_code: dropoffCode,
+          pickup_address: normalizeAddress(pickup),
+          dropoff_address: normalizeAddress(dropoff),
+          distance_miles: distanceMiles,
+          eta_minutes: etaMinutesInt,
 
-    payment_status: "unpaid",
-  })
-  .select("id")
-  .single();
+          pickup_lat: pickupCoords.lat,
+          pickup_lng: pickupCoords.lng,
+          dropoff_lat: dropoffCoords.lat,
+          dropoff_lng: dropoffCoords.lng,
+
+          pickup_code: pickupCode,
+          dropoff_code: dropoffCode,
+
+          payment_status: "unpaid",
+        })
+        .select("id")
+        .single();
 
       if (error) {
         console.error("Erreur insert orders (restaurant mobile):", error);

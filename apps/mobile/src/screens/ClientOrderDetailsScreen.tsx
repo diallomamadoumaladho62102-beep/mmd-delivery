@@ -28,6 +28,7 @@ Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
 
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
+import { startMaskedCall } from "../lib/maskedCall";
 
 // ✅ API URL: fallback robuste via expoConfig.extra
 const API_URL =
@@ -65,6 +66,7 @@ type Order = {
   dropoff_lat?: number | null;
   dropoff_lng?: number | null;
   tip_cents?: number | null;
+  client_id?: string | null;
   client_user_id?: string | null;
 };
 
@@ -82,14 +84,11 @@ type CancelOrderResponse = {
   error?: string;
 };
 
+type CommunicationTarget = "restaurant" | "driver" | "admin";
+
 // =========================
 // ✅ Helpers
 // =========================
-function maskToken(t?: string | null) {
-  if (!t) return "null";
-  if (t.length <= 18) return t;
-  return `${t.slice(0, 10)}...${t.slice(-6)}`;
-}
 
 async function readErrorBody(res: Response): Promise<string> {
   try {
@@ -151,53 +150,53 @@ function normalizePaymentStatus(v?: string | null) {
   return String(v ?? "unpaid").trim().toLowerCase();
 }
 
-function statusMeta(status: OrderStatus) {
+function statusMeta(status: OrderStatus, translate: (key: string, fallback: string) => string) {
   switch (status) {
     case "delivered":
       return {
-        title: "Delivered ✅",
+        title: translate("orders.status.delivered", "Delivered") + " ✅",
         pillBg: "rgba(34,197,94,0.14)",
         pillBorder: "rgba(34,197,94,0.32)",
         pillText: "#86EFAC",
       };
     case "dispatched":
       return {
-        title: "On the way 🚚",
+        title: translate("orders.status.dispatched", "On the way") + " 🚚",
         pillBg: "rgba(59,130,246,0.14)",
         pillBorder: "rgba(59,130,246,0.30)",
         pillText: "#93C5FD",
       };
     case "ready":
       return {
-        title: "Ready ✅",
+        title: translate("orders.status.ready", "Ready") + " ✅",
         pillBg: "rgba(251,191,36,0.12)",
         pillBorder: "rgba(251,191,36,0.28)",
         pillText: "#FBBF24",
       };
     case "prepared":
       return {
-        title: "Preparing 🍳",
+        title: translate("orders.status.prepared", "Preparing") + " 🍳",
         pillBg: "rgba(148,163,184,0.10)",
         pillBorder: "rgba(148,163,184,0.20)",
         pillText: "#CBD5E1",
       };
     case "accepted":
       return {
-        title: "Accepted ✅",
+        title: translate("orders.status.acceptedRestaurant", "Accepted") + " ✅",
         pillBg: "rgba(148,163,184,0.10)",
         pillBorder: "rgba(148,163,184,0.20)",
         pillText: "#CBD5E1",
       };
     case "pending":
       return {
-        title: "Pending ⏳",
+        title: translate("orders.status.pendingRestaurant", "Pending") + " ⏳",
         pillBg: "rgba(148,163,184,0.10)",
         pillBorder: "rgba(148,163,184,0.20)",
         pillText: "#CBD5E1",
       };
     case "canceled":
       return {
-        title: "Canceled ✖",
+        title: translate("orders.status.canceled", "Canceled") + " ✖",
         pillBg: "rgba(248,113,113,0.14)",
         pillBorder: "rgba(248,113,113,0.30)",
         pillText: "#FCA5A5",
@@ -231,6 +230,10 @@ function statusProgress(status: OrderStatus) {
     default:
       return 0.25;
   }
+}
+
+function isFinalStatus(status: OrderStatus) {
+  return status === "delivered" || status === "canceled";
 }
 type LatLng = {
   latitude: number;
@@ -305,6 +308,7 @@ export function ClientOrderDetailsScreen() {
   const [verifyingPay, setVerifyingPay] = useState(false);
   const [paymentPending, setPaymentPending] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [calling, setCalling] = useState<CommunicationTarget | null>(null);
 
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState("");
@@ -333,17 +337,9 @@ export function ClientOrderDetailsScreen() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-
-      console.log("API_URL (resolved) =", API_URL);
-      console.log("SUPABASE_URL =", process.env.EXPO_PUBLIC_SUPABASE_URL);
-      console.log("ACCESS_TOKEN (mount, masked) =", maskToken(token));
-      console.log("I18N_LANGUAGE =", i18n.language);
-      if (error) console.log("getSession error (mount) =", error.message);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!API_URL) {
+      console.warn("EXPO_PUBLIC_API_URL is missing.");
+    }
   }, []);
 
   const fetchOrder = useCallback(async () => {
@@ -372,6 +368,7 @@ export function ClientOrderDetailsScreen() {
             "dropoff_lat",
             "dropoff_lng",
             "tip_cents",
+            "client_id",
             "client_user_id",
           ].join(",")
         )
@@ -466,7 +463,7 @@ export function ClientOrderDetailsScreen() {
           setTipCustom(dollars % 1 === 0 ? String(dollars.toFixed(0)) : String(dollars.toFixed(2)));
         }
       } catch (e) {
-        console.log("load alreadyRated/tip error:", (e as any)?.message ?? e);
+        console.warn("load alreadyRated/tip error:", (e as any)?.message ?? e);
       }
     })();
   }, [order?.id, order?.status, order?.tip_cents]);
@@ -492,14 +489,18 @@ export function ClientOrderDetailsScreen() {
     setVerifyingPay(true);
 
     try {
-      while (isMountedRef.current && Date.now() - started < timeoutMs) {
+      while (
+        isMountedRef.current &&
+        !isFinalStatus(order?.status ?? "pending") &&
+        Date.now() - started < timeoutMs
+      ) {
         let status = "unpaid";
 
         try {
           status = await fetchPaymentStatusOnly();
-          console.log("poll payment_status =", status);
+          
         } catch (e) {
-          console.log("poll payment_status error:", (e as any)?.message ?? e);
+          console.warn("poll payment_status error:", (e as any)?.message ?? e);
         }
 
         if (status === "paid") {
@@ -520,7 +521,15 @@ export function ClientOrderDetailsScreen() {
   const paymentTitle = useMemo(() => ts("common.payment.title", "Payment"), [i18n.language, ts]);
 
   async function handlePay() {
-    if (!order?.id) return;
+    if (!order?.id || paying || verifyingPay || paymentPending || canceling) return;
+
+    if (isFinalStatus(order.status)) {
+      Alert.alert(
+        paymentTitle,
+        ts("client.orderDetails.paymentClosed", "Payment is closed for this order.")
+      );
+      return;
+    }
 
     const currentStatus = normalizePaymentStatus(order.payment_status);
     if (currentStatus === "paid") {
@@ -537,8 +546,7 @@ export function ClientOrderDetailsScreen() {
       const { data, error } = await supabase.auth.getSession();
       const accessToken = data.session?.access_token;
 
-      console.log("ACCESS_TOKEN (handlePay, masked) =", maskToken(accessToken));
-      if (error) console.log("getSession error (handlePay) =", error.message);
+      if (error) console.warn("getSession error (handlePay) =", error.message);
 
       if (!accessToken) {
         throw new Error(ts("client.orderDetails.mustBeLoggedInToPay", "You must be logged in to pay."));
@@ -606,7 +614,7 @@ export function ClientOrderDetailsScreen() {
         )
       );
     } catch (e: any) {
-      setPaymentPending(false);
+      if (isMountedRef.current) setPaymentPending(false);
       Alert.alert(paymentTitle, e?.message ?? ts("client.orderDetails.paymentError", "Payment error."));
     } finally {
       if (isMountedRef.current) setPaying(false);
@@ -614,7 +622,7 @@ export function ClientOrderDetailsScreen() {
   }
 
   async function handleCancelOrder() {
-    if (!order?.id) return;
+    if (!order?.id || canceling || paying || verifyingPay || paymentPending) return;
 
     if (!API_URL) {
       Alert.alert(
@@ -655,7 +663,7 @@ export function ClientOrderDetailsScreen() {
               const { data, error } = await supabase.auth.getSession();
               const accessToken = data.session?.access_token;
 
-              if (error) console.log("getSession error (handleCancelOrder) =", error.message);
+              if (error) console.warn("getSession error (handleCancelOrder) =", error.message);
 
               if (!accessToken) {
                 throw new Error(ts("common.mustBeLoggedIn", "You must be logged in."));
@@ -704,6 +712,115 @@ export function ClientOrderDetailsScreen() {
     );
   }
 
+  const communicationDisabled = useMemo(
+    () =>
+      !order ||
+      !!calling ||
+      loading ||
+      !!errorMsg ||
+      canceling ||
+      paying ||
+      verifyingPay ||
+      paymentPending ||
+      isFinalStatus(order.status),
+    [calling, loading, errorMsg, canceling, paying, verifyingPay, paymentPending, order]
+  );
+
+  const startOrderCall = useCallback(
+    async (targetRole: CommunicationTarget) => {
+      if (!order?.id || calling || loading || canceling || paying || verifyingPay || paymentPending || errorMsg) return;
+
+      if (isFinalStatus(order.status)) {
+        Alert.alert(
+          ts("common.error", "Error"),
+          ts("client.orderDetails.callFinalOrder", "Calls are disabled for this order.")
+        );
+        return;
+      }
+
+      if (targetRole === "driver" && !order.driver_id) {
+        Alert.alert(
+          ts("common.error", "Error"),
+          ts("client.orderDetails.driverNotAssignedCall", "No driver is assigned to this order yet.")
+        );
+        return;
+      }
+
+      setCalling(targetRole);
+
+      try {
+        await startMaskedCall({
+          orderId: order.id,
+          callerRole: "client",
+          targetRole,
+        });
+      } finally {
+        if (isMountedRef.current) setCalling(null);
+      }
+    },
+    [calling, loading, canceling, paying, verifyingPay, paymentPending, errorMsg, order, ts]
+  );
+
+  const callRestaurant = useCallback(() => {
+    void startOrderCall("restaurant");
+  }, [startOrderCall]);
+
+  const callDriver = useCallback(() => {
+    void startOrderCall("driver");
+  }, [startOrderCall]);
+
+  const callAdmin = useCallback(() => {
+    void startOrderCall("admin");
+  }, [startOrderCall]);
+
+  const openOrderChat = useCallback(
+    (targetRole: CommunicationTarget) => {
+      if (!orderId || !order) return;
+
+      if (isFinalStatus(order.status)) {
+        Alert.alert(
+          ts("common.error", "Error"),
+          ts("client.orderDetails.chatClosed", "Messaging is disabled for this order.")
+        );
+        return;
+      }
+
+      if (targetRole === "driver" && !order.driver_id) {
+        Alert.alert(
+          ts("common.error", "Error"),
+          ts("client.orderDetails.driverNotAssignedMessage", "No driver is assigned to this order yet.")
+        );
+        return;
+      }
+
+      (navigation as any).navigate("ClientChat", {
+        orderId,
+        targetRole,
+      });
+    },
+    [navigation, orderId, order, ts]
+  );
+
+  const messageRestaurant = useCallback(() => {
+    openOrderChat("restaurant");
+  }, [openOrderChat]);
+
+  const messageDriver = useCallback(() => {
+    if (!order?.driver_id) {
+      Alert.alert(
+        ts("common.error", "Error"),
+        ts("client.orderDetails.driverNotAssignedMessage", "No driver is assigned to this order yet.")
+      );
+      return;
+    }
+
+    openOrderChat("driver");
+  }, [openOrderChat, order?.driver_id, ts]);
+
+  const messageAdmin = useCallback(() => {
+    openOrderChat("admin");
+  }, [openOrderChat]);
+
   function formatStatus(status: OrderStatus) {
     switch (status) {
       case "pending":
@@ -744,19 +861,25 @@ export function ClientOrderDetailsScreen() {
   const canPay =
     !!order &&
     order.status === "pending" &&
+    !isFinalStatus(order.status) &&
     payableAmount > 0 &&
     !loading &&
     !errorMsg &&
     !isPaid &&
     !paymentPending &&
-    !canceling;
+    !canceling &&
+    !paying &&
+    !verifyingPay;
 
   const canCancel =
     !!order &&
     (order.status === "pending" || order.status === "accepted") &&
+    !isFinalStatus(order.status) &&
     !loading &&
     !errorMsg &&
     !canceling &&
+    !calling &&
+    !paying &&
     !verifyingPay &&
     !paymentPending;
 
@@ -824,7 +947,7 @@ export function ClientOrderDetailsScreen() {
     }
   }, [order, mapPoints, fitMapToTrip]);
 
-  const meta = statusMeta(order?.status ?? "pending");
+  const meta = statusMeta(order?.status ?? "pending", ts);
   const progress = statusProgress(order?.status ?? "pending");
   const orderShort = compactId(orderId);
   const createdCompact = formatCompactDate(order?.created_at ?? null);
@@ -842,9 +965,10 @@ export function ClientOrderDetailsScreen() {
   }, [order?.status, rating]);
 
   async function copyDropoffCode() {
+    if (!order?.dropoff_code) return;
+
     try {
-      const code = order?.dropoff_code ?? "";
-      if (!code) return;
+      const code = order.dropoff_code;
 
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -1008,6 +1132,7 @@ export function ClientOrderDetailsScreen() {
                 >
                   <Mapbox.Camera
                     ref={cameraRef}
+                    allowUpdates
                     centerCoordinate={initialCamera.centerCoordinate}
                     zoomLevel={initialCamera.zoomLevel}
                     animationMode="flyTo"
@@ -1332,6 +1457,198 @@ export function ClientOrderDetailsScreen() {
               </Card>
             </View>
 
+            <Card style={{ marginBottom: 14 }}>
+              <Text style={{ color: "white", fontSize: 14, fontWeight: "900", marginBottom: 8 }}>
+                ☎️ {ts("client.orderDetails.communicationTitle", "Communication")}
+              </Text>
+
+              <Text style={{ color: "#94A3B8", fontSize: 12, lineHeight: 16, marginBottom: 12 }}>
+                {ts(
+                  "client.orderDetails.communicationHint",
+                  "Call or message the restaurant, driver, or MMD support without exposing your real phone number."
+                )}
+              </Text>
+
+              <View style={{ gap: 10 }}>
+                <View
+                  style={{
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "rgba(148,163,184,0.14)",
+                    backgroundColor: "rgba(15,23,42,0.45)",
+                    padding: 12,
+                  }}
+                >
+                  <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
+                    🍽️ {ts("client.orderDetails.restaurantContact", "Restaurant")}
+                  </Text>
+
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      disabled={communicationDisabled}
+                      onPress={callRestaurant}
+                      style={{
+                        flex: 1,
+                        backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(37,99,235,0.95)",
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(59,130,246,0.35)",
+                      }}
+                    >
+                      {calling === "restaurant" ? (
+                        <ActivityIndicator color="white" />
+                      ) : (
+                        <Text style={{ color: "white", fontWeight: "900" }}>
+                          📞 {ts("client.orderDetails.callRestaurant", "Call")}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      disabled={communicationDisabled}
+                      onPress={messageRestaurant}
+                      style={{
+                        flex: 1,
+                        opacity: communicationDisabled ? 0.5 : 1,
+                        backgroundColor: "rgba(15,23,42,0.95)",
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: "rgba(148,163,184,0.20)",
+                      }}
+                    >
+                      <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+                        💬 {ts("client.orderDetails.message", "Message")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View
+                  style={{
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "rgba(148,163,184,0.14)",
+                    backgroundColor: "rgba(15,23,42,0.45)",
+                    padding: 12,
+                  }}
+                >
+                  <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
+                    🚚 {ts("client.orderDetails.driverContact", "Driver")}
+                  </Text>
+
+                  {!order.driver_id ? (
+                    <Text style={{ color: "#94A3B8", fontSize: 12 }}>
+                      {ts("client.orderDetails.driverPending", "Not assigned yet")}
+                    </Text>
+                  ) : (
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                      <TouchableOpacity
+                        disabled={communicationDisabled}
+                        onPress={callDriver}
+                        style={{
+                          flex: 1,
+                          backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(14,165,233,0.95)",
+                          paddingVertical: 12,
+                          borderRadius: 12,
+                          alignItems: "center",
+                          borderWidth: 1,
+                          borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(14,165,233,0.35)",
+                        }}
+                      >
+                        {calling === "driver" ? (
+                          <ActivityIndicator color="white" />
+                        ) : (
+                          <Text style={{ color: "white", fontWeight: "900" }}>
+                            📞 {ts("client.orderDetails.callDriver", "Call")}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        disabled={!order.driver_id || communicationDisabled}
+                        onPress={messageDriver}
+                        style={{
+                          flex: 1,
+                          opacity: !order.driver_id || communicationDisabled ? 0.5 : 1,
+                          backgroundColor: "rgba(15,23,42,0.95)",
+                          paddingVertical: 12,
+                          borderRadius: 12,
+                          alignItems: "center",
+                          borderWidth: 1,
+                          borderColor: "rgba(148,163,184,0.20)",
+                        }}
+                      >
+                        <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+                          💬 {ts("client.orderDetails.message", "Message")}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
+                <View
+                  style={{
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "rgba(124,58,237,0.22)",
+                    backgroundColor: "rgba(124,58,237,0.08)",
+                    padding: 12,
+                  }}
+                >
+                  <Text style={{ color: "#EDE9FE", fontWeight: "900", marginBottom: 10 }}>
+                    🛟 {ts("client.orderDetails.supportContact", "MMD support")}
+                  </Text>
+
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      disabled={communicationDisabled}
+                      onPress={callAdmin}
+                      style={{
+                        flex: 1,
+                        backgroundColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(124,58,237,0.95)",
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: communicationDisabled ? "rgba(148,163,184,0.18)" : "rgba(124,58,237,0.35)",
+                      }}
+                    >
+                      {calling === "admin" ? (
+                        <ActivityIndicator color="white" />
+                      ) : (
+                        <Text style={{ color: "white", fontWeight: "900" }}>
+                          📞 {ts("client.orderDetails.callSupport", "Call")}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      disabled={communicationDisabled}
+                      onPress={messageAdmin}
+                      style={{
+                        flex: 1,
+                        opacity: communicationDisabled ? 0.5 : 1,
+                        backgroundColor: "rgba(15,23,42,0.95)",
+                        paddingVertical: 12,
+                        borderRadius: 12,
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: "rgba(148,163,184,0.20)",
+                      }}
+                    >
+                      <Text style={{ color: "#C4B5FD", fontWeight: "900" }}>
+                        💬 {ts("client.orderDetails.message", "Message")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </Card>
+
             {canCancel && (
               <View style={{ marginTop: 2, marginBottom: 16 }}>
                 <TouchableOpacity
@@ -1506,6 +1823,8 @@ export function ClientOrderDetailsScreen() {
                 <TouchableOpacity
                   disabled={submittingReview || alreadyRated}
                   onPress={async () => {
+                    if (submittingReview || alreadyRated || !order?.id) return;
+
                     try {
                       setSubmittingReview(true);
 
@@ -1513,10 +1832,12 @@ export function ClientOrderDetailsScreen() {
                       const uid = s.session?.user?.id;
                       if (!uid) throw new Error(ts("common.mustBeLoggedIn", "You must be logged in."));
 
-                      if (order.client_user_id && uid !== order.client_user_id) {
+                      const orderOwnerId = order.client_id ?? order.client_user_id ?? null;
+
+                      if (orderOwnerId && uid !== orderOwnerId) {
                         throw new Error(
                           ts("client.orderDetails.notOwnerError", "You are not logged in as the order owner.") +
-                            ` (auth=${uid} / owner=${order.client_user_id})`
+                            ` (auth=${uid} / owner=${orderOwnerId})`
                         );
                       }
 
@@ -1552,7 +1873,7 @@ export function ClientOrderDetailsScreen() {
                       if (String(msg).toLowerCase().includes("duplicate")) setAlreadyRated(true);
                       Alert.alert(ts("client.orderDetails.reviewTitle", "Review") as any, String(msg));
                     } finally {
-                      setSubmittingReview(false);
+                      if (isMountedRef.current) setSubmittingReview(false);
                     }
                   }}
                   style={{

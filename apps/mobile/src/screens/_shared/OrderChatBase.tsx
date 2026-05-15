@@ -14,23 +14,29 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import * as FileSystem from "expo-file-system/legacy"; // ✅ FIX SDK54: use legacy API
+import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
 
+type ChatTargetRole = "client" | "driver" | "restaurant" | "admin" | "";
+
 type Row = {
-  id: string; // uuid -> string
+  id: string;
   order_id: string;
   user_id: string | null;
   text: string | null;
-  image_path: string | null; // ex: "chat-images/<orderId>/<file>.<ext>"
+  image_path: string | null;
   created_at: string;
+  sender_role?: ChatTargetRole | null;
+  target_role?: ChatTargetRole | null;
   _signedUrl?: string | null;
 };
 
-const SIGNED_URL_TTL_SECONDS = 60 * 30; // 30 min
+const SIGNED_URL_TTL_SECONDS = 60 * 30;
 const CHAT_BUCKET = "chat-images";
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic", "heif"] as const;
 
 function fmtDateTime(iso: string) {
   try {
@@ -40,26 +46,20 @@ function fmtDateTime(iso: string) {
   }
 }
 
-/**
- * DB image_path stocke comme:
- *   chat-images/<orderId>/<file>
- * Supabase createSignedUrl attend la "key" DANS le bucket:
- *   <orderId>/<file>
- */
 function storageKeyFromImagePath(imagePath: string) {
-  const s = (imagePath ?? "").toString().trim();
+  const s = String(imagePath ?? "").trim();
   if (!s) return "";
   return s.replace(/^chat-images\//, "");
 }
 
 function safeFileExt(fileName: string) {
-  const name = (fileName ?? "").toString();
+  const name = String(fileName ?? "");
   const raw = name.split(".").pop() || "jpg";
   return raw.split("?")[0].split("#")[0].toLowerCase() || "jpg";
 }
 
 function isHeicLike(pathOrName: string) {
-  const s = (pathOrName ?? "").toLowerCase();
+  const s = String(pathOrName ?? "").toLowerCase();
   return (
     s.endsWith(".heic") ||
     s.endsWith(".heif") ||
@@ -69,34 +69,93 @@ function isHeicLike(pathOrName: string) {
 }
 
 function contentTypeFromExt(ext: string) {
-  const e = (ext ?? "").toLowerCase();
+  const e = String(ext ?? "").toLowerCase();
   if (e === "png") return "image/png";
   if (e === "webp") return "image/webp";
   return "image/jpeg";
 }
 
+function isAllowedImageExt(ext: string) {
+  return (ALLOWED_IMAGE_EXTENSIONS as readonly string[]).includes(
+    String(ext ?? "").toLowerCase()
+  );
+}
+
 function guessFileNameFromUri(uri: string) {
   try {
-    const clean = (uri ?? "").split("?")[0].split("#")[0];
+    const clean = String(uri ?? "").split("?")[0].split("#")[0];
     const last = clean.split("/").pop() || "";
     if (last.includes(".")) return last;
   } catch {}
   return `photo_${Date.now()}.jpg`;
 }
 
+function normalizeTargetRole(value: unknown): ChatTargetRole {
+  const role = String(value ?? "").trim().toLowerCase();
+
+  if (
+    role === "client" ||
+    role === "driver" ||
+    role === "restaurant" ||
+    role === "admin"
+  ) {
+    return role;
+  }
+
+  return "";
+}
+
+function normalizeRoleFromTitlePrefix(value?: string): ChatTargetRole {
+  const raw = String(value ?? "").trim().toLowerCase();
+
+  if (raw.includes("client")) return "client";
+  if (raw.includes("driver") || raw.includes("chauffeur")) return "driver";
+  if (raw.includes("restaurant")) return "restaurant";
+  if (raw.includes("admin") || raw.includes("support")) return "admin";
+
+  return "";
+}
+
+function isMissingColumnError(error: unknown) {
+  const message = String((error as any)?.message ?? error ?? "").toLowerCase();
+  return (
+    message.includes("sender_role") ||
+    message.includes("target_role") ||
+    message.includes("column")
+  );
+}
+
+function targetRoleLabel(role: ChatTargetRole) {
+  switch (role) {
+    case "client":
+      return "Client";
+    case "driver":
+      return "Driver";
+    case "restaurant":
+      return "Restaurant";
+    case "admin":
+      return "MMD Support";
+    default:
+      return "";
+  }
+}
+
 export function OrderChatBaseScreen(props: {
   orderId: string;
+  targetRole?: ChatTargetRole | string;
   onBack: () => void;
-  titlePrefix?: string; // ex: "Client", "Driver", "Restaurant"
+  titlePrefix?: string;
 }) {
   const { orderId, onBack, titlePrefix } = props;
   const { t } = useTranslation();
+
+  const targetRole = normalizeTargetRole(props.targetRole);
+  const currentRole = normalizeRoleFromTitlePrefix(titlePrefix);
 
   const [rows, setRows] = useState<Row[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const [pickedImage, setPickedImage] = useState<{ uri: string; fileName: string } | null>(
     null
   );
@@ -109,44 +168,33 @@ export function OrderChatBaseScreen(props: {
     }, 80);
   }, []);
 
-  // ✅ DEBUG PRO + logs createSignedUrl
-  const enrichSignedUrls = useCallback(
-    async (data: Row[]) => {
-      const enriched: Row[] = await Promise.all(
-        data.map(async (r) => {
-          if (!r.image_path) return r;
+  const enrichSignedUrls = useCallback(async (data: Row[]) => {
+    const enriched: Row[] = await Promise.all(
+      data.map(async (r) => {
+        if (!r.image_path) return r;
 
-          const key = storageKeyFromImagePath(r.image_path);
-          if (!key) return { ...r, _signedUrl: null };
+        const key = storageKeyFromImagePath(r.image_path);
+        if (!key) return { ...r, _signedUrl: null };
 
-          const { data: signed, error } = await supabase.storage
-            .from(CHAT_BUCKET)
-            .createSignedUrl(key, SIGNED_URL_TTL_SECONDS);
+        const { data: signed, error } = await supabase.storage
+          .from(CHAT_BUCKET)
+          .createSignedUrl(key, SIGNED_URL_TTL_SECONDS);
 
-          if (error) {
-            console.log("⚠️ createSignedUrl error:", { image_path: r.image_path, key, error });
-            return { ...r, _signedUrl: null };
-          }
+        if (error || !signed?.signedUrl) {
+          console.log("createSignedUrl error:", {
+            image_path: r.image_path,
+            key,
+            error,
+          });
+          return { ...r, _signedUrl: null };
+        }
 
-          if (!signed?.signedUrl) {
-            console.log("⚠️ signedUrl missing:", { image_path: r.image_path, key, signed });
-            return { ...r, _signedUrl: null };
-          }
+        return { ...r, _signedUrl: signed.signedUrl };
+      })
+    );
 
-          if (isHeicLike(r.image_path)) {
-            console.log("⚠️ HEIC detected in message image_path (may not render):", {
-              image_path: r.image_path,
-              key,
-            });
-          }
-
-          return { ...r, _signedUrl: signed.signedUrl };
-        })
-      );
-      return enriched;
-    },
-    [] // ✅ stable
-  );
+    return enriched;
+  }, []);
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -154,62 +202,106 @@ export function OrderChatBaseScreen(props: {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
+      const selectWithRoles =
+        "id, order_id, user_id, text, image_path, created_at, sender_role, target_role";
+      const selectLegacy = "id, order_id, user_id, text, image_path, created_at";
+
+      let query = supabase
         .from("order_messages")
-        .select("id, order_id, user_id, text, image_path, created_at")
+        .select(selectWithRoles)
         .eq("order_id", orderId)
         .order("created_at", { ascending: true });
 
-      if (error) throw error;
+      if (targetRole) {
+        query = query.or(
+          `target_role.eq.${targetRole},sender_role.eq.${targetRole},target_role.is.null`
+        );
+      }
 
-      const base = (data ?? []) as Row[];
-      const enriched = await enrichSignedUrls(base);
+      const result = await query;
+
+      let rawRows: any[] = [];
+      let queryError: unknown = result.error;
+
+      if (result.error && isMissingColumnError(result.error)) {
+        const legacy = await supabase
+          .from("order_messages")
+          .select(selectLegacy)
+          .eq("order_id", orderId)
+          .order("created_at", { ascending: true });
+
+        queryError = legacy.error;
+        rawRows = (legacy.data ?? []) as any[];
+      } else {
+        rawRows = (result.data ?? []) as any[];
+      }
+
+      if (queryError) throw queryError;
+
+      const normalizedRows: Row[] = rawRows.map((r) => ({
+        id: String(r.id),
+        order_id: String(r.order_id),
+        user_id: r.user_id ?? null,
+        text: r.text ?? null,
+        image_path: r.image_path ?? null,
+        created_at: String(r.created_at),
+        sender_role: normalizeTargetRole(r.sender_role),
+        target_role: normalizeTargetRole(r.target_role),
+      }));
+
+      const enriched = await enrichSignedUrls(normalizedRows);
       setRows(enriched);
       scrollToEnd();
     } catch (e: any) {
       console.log("load chat error:", e);
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("shared.orderChat.alerts.loadFailed", "Impossible de charger la discussion.")
+        e?.message ??
+          t("shared.orderChat.alerts.loadFailed", "Impossible de charger la discussion.")
       );
     } finally {
       setLoading(false);
     }
-  }, [orderId, enrichSignedUrls, scrollToEnd, t]);
+  }, [orderId, targetRole, enrichSignedUrls, scrollToEnd, t]);
 
   useEffect(() => {
     void load();
     if (!orderId) return;
 
-    const ch = supabase
+    const channel = supabase
       .channel(`order_messages:${orderId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "order_messages", filter: `order_id=eq.${orderId}` },
+        {
+          event: "*",
+          schema: "public",
+          table: "order_messages",
+          filter: `order_id=eq.${orderId}`,
+        },
         () => void load()
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(ch);
+      void supabase.removeChannel(channel);
     };
   }, [orderId, load]);
 
   const pickImage = useCallback(async () => {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
       if (!perm.granted) {
         Alert.alert(
           t("shared.orderChat.alerts.permissionTitle", "Permission requise"),
           t(
             "shared.orderChat.alerts.permissionGalleryBody",
-            "Autorise l'acces a la galerie pour envoyer une image."
+            "Autorise l'accès à la galerie pour envoyer une image."
           )
         );
         return;
       }
 
-      // ✅ FIX: eviter ImagePicker.MediaType.Images (undefined selon version Expo Go)
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         quality: 0.85,
@@ -220,33 +312,40 @@ export function OrderChatBaseScreen(props: {
       const asset = res.assets?.[0];
       if (!asset?.uri) return;
 
-      const fileName = asset.fileName || guessFileNameFromUri(asset.uri);
-      setPickedImage({ uri: asset.uri, fileName });
+      setPickedImage({
+        uri: asset.uri,
+        fileName: asset.fileName || guessFileNameFromUri(asset.uri),
+      });
     } catch (e: any) {
       console.log("pickImage error:", e);
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("shared.orderChat.alerts.pickImageFailed", "Impossible de selectionner l'image.")
+        e?.message ??
+          t("shared.orderChat.alerts.pickImageFailed", "Impossible de sélectionner l'image.")
       );
     }
   }, [t]);
 
-  /**
-   * ✅ FIX PRO:
-   * - convertit HEIC/HEIF -> JPG
-   * - lit le fichier via FileSystem (base64)
-   * - decode base64 -> ArrayBuffer
-   * - upload ArrayBuffer
-   */
   const uploadPickedImage = useCallback(async () => {
     if (!pickedImage) return null;
-    if (!orderId) throw new Error(t("shared.orderChat.errors.missingOrderId", "orderId manquant"));
+    if (!orderId) {
+      throw new Error(t("shared.orderChat.errors.missingOrderId", "orderId manquant"));
+    }
 
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id ?? "anon";
 
     let uploadUri = pickedImage.uri;
     let ext = safeFileExt(pickedImage.fileName);
+
+    if (!isAllowedImageExt(ext)) {
+      throw new Error(
+        t(
+          "shared.orderChat.errors.unsupportedImage",
+          "Format d'image non supporté."
+        )
+      );
+    }
 
     const isHeic =
       ext === "heic" ||
@@ -255,11 +354,6 @@ export function OrderChatBaseScreen(props: {
       uploadUri.toLowerCase().endsWith(".heif");
 
     if (isHeic) {
-      console.log(t("shared.orderChat.debug.heicDetected", "🟡 HEIC detecte, conversion en JPG..."), {
-        uploadUri,
-        ext,
-      });
-
       const manipulated = await ImageManipulator.manipulateAsync(uploadUri, [], {
         compress: 0.85,
         format: ImageManipulator.SaveFormat.JPEG,
@@ -270,33 +364,32 @@ export function OrderChatBaseScreen(props: {
     }
 
     const contentType = contentTypeFromExt(ext);
-    const key = `${orderId}/${Date.now()}_${Math.random().toString(36).slice(2)}_${uid}.${ext}`;
+    const key = `${orderId}/${Date.now()}_${Math.random()
+      .toString(36)
+      .slice(2)}_${uid}.${ext}`;
 
-    // ✅ Type narrowing: FileInfo est une union => size dispo seulement si exists:true
     const info = await FileSystem.getInfoAsync(uploadUri);
 
     if (!info.exists) {
-      console.log("📦 local file info:", { exists: false, uri: uploadUri, ext, contentType, key });
       throw new Error(
-        t("shared.orderChat.errors.imageNotFoundOnPhone", "Fichier image introuvable sur le telephone.")
+        t("shared.orderChat.errors.imageNotFoundOnPhone", "Fichier image introuvable sur le téléphone.")
       );
     }
 
-    // ici TS sait que exists === true, donc size peut exister selon la version runtime
     const size = (info as any)?.size as number | undefined;
-
-    console.log("📦 local file info:", {
-      exists: true,
-      size,
-      uri: uploadUri,
-      ext,
-      contentType,
-      key,
-    });
 
     if (!size || size <= 0) {
       throw new Error(
-        t("shared.orderChat.errors.imageEmptyOnPhone", "Fichier image vide (0 bytes) sur le telephone.")
+        t("shared.orderChat.errors.imageEmptyOnPhone", "Fichier image vide sur le téléphone.")
+      );
+    }
+
+    if (size > MAX_IMAGE_SIZE_BYTES) {
+      throw new Error(
+        t(
+          "shared.orderChat.errors.imageTooLarge",
+          "L'image est trop volumineuse. Choisis une image plus légère."
+        )
       );
     }
 
@@ -305,55 +398,67 @@ export function OrderChatBaseScreen(props: {
     });
 
     if (!base64 || base64.length < 10) {
-      throw new Error(t("shared.orderChat.errors.base64ReadFailedEmpty", "Lecture base64 echouee (vide)."));
+      throw new Error(
+        t("shared.orderChat.errors.base64ReadFailedEmpty", "Lecture base64 échouée.")
+      );
     }
 
     const bytes = decode(base64);
 
-    console.log("📤 chat upload bytes:", {
-      bytes: bytes.byteLength,
-      key,
-      contentType,
-    });
-
     if (bytes.byteLength <= 0) {
       throw new Error(
-        t("shared.orderChat.errors.arrayBufferZeroBytes", "Conversion ArrayBuffer a produit 0 bytes.")
+        t("shared.orderChat.errors.arrayBufferZeroBytes", "Conversion image invalide.")
       );
     }
 
-    const { error: upErr } = await supabase.storage.from(CHAT_BUCKET).upload(key, bytes, {
-      cacheControl: "3600",
-      upsert: true,
-      contentType,
-    });
+    const { error: uploadError } = await supabase.storage
+      .from(CHAT_BUCKET)
+      .upload(key, bytes, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType,
+      });
 
-    if (upErr) {
-      console.log("❌ storage upload error:", { key, contentType, upErr });
-      throw upErr;
-    }
+    if (uploadError) throw uploadError;
 
     return `chat-images/${key}`;
   }, [pickedImage, orderId, t]);
 
   const send = useCallback(async () => {
+    if (sending) return;
+
     const trimmed = text.trim();
+
     if (!trimmed && !pickedImage) return;
-    if (!orderId) return;
+    if (!orderId || sending) return;
 
     try {
       setSending(true);
 
-      let image_path: string | null = null;
-      if (pickedImage) image_path = await uploadPickedImage();
+      const image_path = pickedImage ? await uploadPickedImage() : null;
 
-      const { error: insErr } = await supabase.from("order_messages").insert({
+      const messagePayload = {
         order_id: orderId,
         text: trimmed || null,
         image_path,
-      } as any);
+        sender_role: currentRole || null,
+        target_role: targetRole || null,
+      };
 
-      if (insErr) throw insErr;
+      let { error } = await supabase.from("order_messages").insert(messagePayload as any);
+
+      if (error && isMissingColumnError(error)) {
+        const legacyPayload = {
+          order_id: orderId,
+          text: trimmed || null,
+          image_path,
+        };
+
+        const legacy = await supabase.from("order_messages").insert(legacyPayload as any);
+        error = legacy.error;
+      }
+
+      if (error) throw error;
 
       setText("");
       setPickedImage(null);
@@ -362,33 +467,46 @@ export function OrderChatBaseScreen(props: {
       console.log("send chat error:", e);
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("shared.orderChat.alerts.sendFailed", "Impossible d'envoyer le message.")
+        e?.message ??
+          t("shared.orderChat.alerts.sendFailed", "Impossible d'envoyer le message.")
       );
     } finally {
       setSending(false);
     }
-  }, [text, pickedImage, orderId, uploadPickedImage, load, t]);
+  }, [text, pickedImage, orderId, targetRole, currentRole, sending, uploadPickedImage, load, t]);
 
   const del = useCallback(
     async (id: string, imagePath: string | null) => {
+      if (!id) return;
+
       try {
         if (imagePath) {
           const key = storageKeyFromImagePath(imagePath);
+
           if (key) {
-            const { error: delObjErr } = await supabase.storage.from(CHAT_BUCKET).remove([key]);
-            if (delObjErr) console.warn("Storage remove failed:", delObjErr.message);
+            const { error: removeError } = await supabase.storage
+              .from(CHAT_BUCKET)
+              .remove([key]);
+
+            if (removeError) {
+              console.warn("Storage remove failed:", removeError.message);
+            }
           }
         }
 
-        const { error: rpcErr } = await supabase.rpc("delete_order_message", { p_msg_id: id });
-        if (rpcErr) throw rpcErr;
+        const { error } = await supabase.rpc("delete_order_message", {
+          p_msg_id: id,
+        });
+
+        if (error) throw error;
 
         setRows((prev) => prev.filter((r) => r.id !== id));
       } catch (e: any) {
         console.log("delete chat error:", e);
         Alert.alert(
           t("shared.orderChat.alerts.errorTitle", "Erreur"),
-          e?.message ?? t("shared.orderChat.alerts.deleteFailed", "Impossible de supprimer le message.")
+          e?.message ??
+            t("shared.orderChat.alerts.deleteFailed", "Impossible de supprimer le message.")
         );
       }
     },
@@ -398,8 +516,9 @@ export function OrderChatBaseScreen(props: {
   const title = useMemo(() => {
     const short = orderId ? orderId.slice(0, 8) : "—";
     const prefix = titlePrefix ? `${titlePrefix} • ` : "";
-    return `${prefix}Chat • #${short}`;
-  }, [orderId, titlePrefix]);
+    const target = targetRole ? ` → ${targetRoleLabel(targetRole)}` : "";
+    return `${prefix}Chat${target} • #${short}`;
+  }, [orderId, titlePrefix, targetRole]);
 
   if (!orderId) {
     return (
@@ -409,6 +528,7 @@ export function OrderChatBaseScreen(props: {
             {t("shared.common.backWithArrow", "← Retour")}
           </Text>
         </TouchableOpacity>
+
         <Text style={{ color: "white", marginTop: 16 }}>
           {t("shared.orderChat.errors.missingOrderIdUi", "Erreur: orderId manquant.")}
         </Text>
@@ -418,24 +538,32 @@ export function OrderChatBaseScreen(props: {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      {/* Header */}
       <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <TouchableOpacity onPress={onBack} style={{ paddingVertical: 8, paddingRight: 10 }}>
             <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
               {t("shared.common.backArrowOnly", "←")}
             </Text>
           </TouchableOpacity>
 
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>{title}</Text>
+          <View style={{ alignItems: "center", flex: 1 }}>
+            <Text style={{ color: "#E5E7EB", fontWeight: "900", textAlign: "center" }}>
+              {title}
+            </Text>
             <Text style={{ color: "#9CA3AF", marginTop: 2, fontWeight: "800", fontSize: 12 }}>
-              {t("shared.orderChat.header.subtitle", "Messages & pieces jointes")}
+              {t("shared.orderChat.header.subtitle", "Messages & pièces jointes")}
             </Text>
           </View>
 
           <TouchableOpacity
             onPress={() => void load()}
+            disabled={loading}
             style={{
               paddingVertical: 8,
               paddingHorizontal: 12,
@@ -443,16 +571,18 @@ export function OrderChatBaseScreen(props: {
               backgroundColor: "rgba(15,23,42,0.7)",
               borderWidth: 1,
               borderColor: "#1F2937",
+              opacity: loading ? 0.6 : 1,
             }}
           >
             <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-              {loading ? t("shared.common.loadingEllipsis", "...") : t("shared.common.refresh", "Rafraichir")}
+              {loading
+                ? t("shared.common.loadingEllipsis", "...")
+                : t("shared.common.refresh", "Rafraîchir")}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Messages */}
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
         {loading ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 }}>
@@ -464,7 +594,6 @@ export function OrderChatBaseScreen(props: {
         ) : null}
 
         <ScrollView
-          // ✅ FIX React 19 types: callback ref must return void
           ref={(r) => {
             scrollRef.current = r;
           }}
@@ -480,14 +609,18 @@ export function OrderChatBaseScreen(props: {
           onContentSizeChange={scrollToEnd}
         >
           {rows.length === 0 ? (
-            <Text style={{ color: "#9CA3AF" }}>{t("shared.orderChat.empty", "Aucun message pour le moment.")}</Text>
+            <Text style={{ color: "#9CA3AF" }}>
+              {t("shared.orderChat.empty", "Aucun message pour le moment.")}
+            </Text>
           ) : (
             rows.map((r) => {
               const isHeicMessage = !!r.image_path && isHeicLike(r.image_path);
 
               return (
                 <View key={r.id} style={{ marginBottom: 14 }}>
-                  <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "800" }}>{fmtDateTime(r.created_at)}</Text>
+                  <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "800" }}>
+                    {fmtDateTime(r.created_at)}
+                  </Text>
 
                   {!!r.text && (
                     <Text style={{ color: "white", marginTop: 6, lineHeight: 18, fontWeight: "700" }}>
@@ -496,21 +629,24 @@ export function OrderChatBaseScreen(props: {
                   )}
 
                   {!!r._signedUrl && (
-                    <TouchableOpacity onPress={() => {}} style={{ marginTop: 10 }}>
-                      <Image
-                        source={{ uri: r._signedUrl }}
-                        style={{ width: "100%", height: 220, borderRadius: 14, backgroundColor: "#0B1220" }}
-                        resizeMode="cover"
-                        onError={(e) => {
-                          console.log("⚠️ chat image render error:", {
-                            image_path: r.image_path,
-                            signedUrl: r._signedUrl,
-                            nativeEvent: e?.nativeEvent,
-                            platform: Platform.OS,
-                          });
-                        }}
-                      />
-                    </TouchableOpacity>
+                    <Image
+                      source={{ uri: r._signedUrl }}
+                      style={{
+                        width: "100%",
+                        height: 220,
+                        borderRadius: 14,
+                        backgroundColor: "#0B1220",
+                        marginTop: 10,
+                      }}
+                      resizeMode="cover"
+                      onError={(e) => {
+                        console.log("chat image render error:", {
+                          image_path: r.image_path,
+                          nativeEvent: e?.nativeEvent,
+                          platform: Platform.OS,
+                        });
+                      }}
+                    />
                   )}
 
                   {!r._signedUrl && isHeicMessage ? (
@@ -518,13 +654,7 @@ export function OrderChatBaseScreen(props: {
                       <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
                         {t(
                           "shared.orderChat.heic.oldMessageTitle",
-                          "Image HEIC detectee (ancien message) — peut ne pas s'afficher sur l'app."
-                        )}
-                      </Text>
-                      <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "700", fontSize: 12 }}>
-                        {t(
-                          "shared.orderChat.heic.oldMessageBody",
-                          "Solution: renvoyer l'image apres la mise a jour (HEIC -> JPG). Pour l'ancienne, il faut conversion/migration."
+                          "Image HEIC détectée — peut ne pas s'afficher."
                         )}
                       </Text>
                     </View>
@@ -557,7 +687,6 @@ export function OrderChatBaseScreen(props: {
           )}
         </ScrollView>
 
-        {/* Composer */}
         <View
           style={{
             marginTop: 10,
@@ -572,15 +701,25 @@ export function OrderChatBaseScreen(props: {
           {pickedImage ? (
             <View style={{ marginBottom: 10 }}>
               <Text style={{ color: "#94A3B8", fontWeight: "800", marginBottom: 8 }}>
-                {t("shared.orderChat.image.selectedPrefix", "Image selectionnee :")} {pickedImage.fileName}
+                {t("shared.orderChat.image.selectedPrefix", "Image sélectionnée :")}{" "}
+                {pickedImage.fileName}
               </Text>
+
               <Image
                 source={{ uri: pickedImage.uri }}
-                style={{ width: "100%", height: 160, borderRadius: 14, backgroundColor: "#0B1220" }}
+                style={{
+                  width: "100%",
+                  height: 160,
+                  borderRadius: 14,
+                  backgroundColor: "#0B1220",
+                }}
                 resizeMode="cover"
               />
+
               <TouchableOpacity onPress={() => setPickedImage(null)} style={{ marginTop: 8 }}>
-                <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>{t("shared.orderChat.image.remove", "Retirer l'image")}</Text>
+                <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
+                  {t("shared.orderChat.image.remove", "Retirer l'image")}
+                </Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -588,7 +727,7 @@ export function OrderChatBaseScreen(props: {
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder={t("shared.orderChat.placeholders.message", "Ecrire un message...")}
+            placeholder={t("shared.orderChat.placeholders.message", "Écrire un message...")}
             placeholderTextColor="#64748B"
             multiline
             style={{
@@ -608,6 +747,7 @@ export function OrderChatBaseScreen(props: {
           <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
             <TouchableOpacity
               onPress={() => void pickImage()}
+              disabled={sending}
               style={{
                 flex: 1,
                 height: 46,
@@ -617,9 +757,12 @@ export function OrderChatBaseScreen(props: {
                 backgroundColor: "rgba(15,23,42,0.35)",
                 borderWidth: 1,
                 borderColor: "#1F2937",
+                opacity: sending ? 0.6 : 1,
               }}
             >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>{t("shared.orderChat.actions.image", "Image")}</Text>
+              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+                {t("shared.orderChat.actions.image", "Image")}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -638,7 +781,9 @@ export function OrderChatBaseScreen(props: {
               }}
             >
               <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {sending ? t("shared.orderChat.actions.sending", "Envoi...") : t("shared.orderChat.actions.send", "Envoyer")}
+                {sending
+                  ? t("shared.orderChat.actions.sending", "Envoi...")
+                  : t("shared.orderChat.actions.send", "Envoyer")}
               </Text>
             </TouchableOpacity>
           </View>

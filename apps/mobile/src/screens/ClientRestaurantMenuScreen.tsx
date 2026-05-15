@@ -125,25 +125,40 @@ function isAddressReady(value: string) {
   return v.length >= 10 && /\d/.test(v) && v.includes(" ");
 }
 
-function getFriendlyEstimateError(message?: string) {
+function getFriendlyEstimateError(
+  message: string | undefined,
+  tr: (key: string, fallback: string) => string
+) {
   const raw = String(message || "").trim();
 
   if (!raw) {
-    return "Unable to estimate delivery right now.";
+    return tr(
+      "clientRestaurantMenu.estimate.errors.generic",
+      "Impossible de calculer la livraison pour le moment."
+    );
   }
 
   const lower = raw.toLowerCase();
 
   if (lower.includes("route exceeds maximum distance limitation")) {
-    return "Destination too far or address not precise enough. Please check the street, ZIP code, city, and state.";
+    return tr(
+      "clientRestaurantMenu.estimate.errors.tooFarOrImprecise",
+      "Destination trop éloignée ou adresse pas assez précise. Vérifie la rue, le ZIP code, la ville et l’État."
+    );
   }
 
-  if (lower.includes("aucune route trouvée")) {
-    return "No delivery route was found for this destination. Please verify the address.";
+  if (lower.includes("aucune route trouvée") || lower.includes("no route")) {
+    return tr(
+      "clientRestaurantMenu.estimate.errors.noRoute",
+      "Aucun itinéraire de livraison trouvé pour cette destination. Vérifie l’adresse."
+    );
   }
 
-  if (lower.includes("abort")) {
-    return "The estimate request took too long. Please try again.";
+  if (lower.includes("abort") || lower.includes("timed out")) {
+    return tr(
+      "clientRestaurantMenu.estimate.errors.timeout",
+      "La demande d’estimation a pris trop de temps. Réessaie."
+    );
   }
 
   return raw;
@@ -196,6 +211,18 @@ export function ClientRestaurantMenuScreen() {
   const activeEstimateRequestIdRef = useRef(0);
 
   const pickupLocked = !!restaurantAddressFromRoute;
+
+  useEffect(() => {
+    if (!restaurantId) {
+      Alert.alert(
+        tr("common.error.title", "Erreur"),
+        tr(
+          "clientRestaurantMenu.errors.missingRestaurantId",
+          "Restaurant introuvable. Retourne à la liste des restaurants puis réessaie."
+        )
+      );
+    }
+  }, [restaurantId, tr]);
 
   function getItemPrice(item: RestaurantItem): number {
     if (item.price_cents != null) return item.price_cents / 100;
@@ -377,7 +404,7 @@ export function ClientRestaurantMenuScreen() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20000);
 
-      const url = `${API_BASE_URL}/api/mapbox/compute-distance`;
+      const url = `${String(API_BASE_URL).replace(/\/+$/, "")}/api/mapbox/compute-distance`;
       console.log("MMD MOBILE fetch distance (restaurant) →", url);
 
       const res = await fetch(url, {
@@ -407,7 +434,7 @@ export function ClientRestaurantMenuScreen() {
         return false;
       }
 
-      const apiErrorMessage = getFriendlyEstimateError(json?.error || rawText);
+      const apiErrorMessage = getFriendlyEstimateError(json?.error || rawText, tr);
 
       if (!res.ok || json?.ok === false) {
         resetEstimateState();
@@ -429,12 +456,20 @@ export function ClientRestaurantMenuScreen() {
 
       if (!json) {
         resetEstimateState();
-        setEstimateError("Invalid response from delivery estimate service.");
+        setEstimateError(
+          tr(
+            "clientRestaurantMenu.estimate.errors.invalidResponse",
+            "Réponse invalide du service d’estimation de livraison."
+          )
+        );
 
         if (!silent) {
           Alert.alert(
             tr("common.error.title", "Erreur"),
+            tr(
+            "clientRestaurantMenu.estimate.errors.invalidApiResponse",
             "Réponse invalide depuis /api/mapbox/compute-distance."
+          )
           );
         }
 
@@ -453,12 +488,20 @@ export function ClientRestaurantMenuScreen() {
         Number.isNaN(tMinutes)
       ) {
         resetEstimateState();
-        setEstimateError("Invalid distance or ETA received from the estimate service.");
+        setEstimateError(
+          tr(
+            "clientRestaurantMenu.estimate.errors.invalidDistanceEta",
+            "Distance ou temps estimé invalide reçu depuis le service d’estimation."
+          )
+        );
 
         if (!silent) {
           Alert.alert(
             tr("common.error.title", "Erreur"),
+            tr(
+            "clientRestaurantMenu.estimate.errors.invalidMapboxDistanceEta",
             "Réponse distance/temps invalide depuis l’API Mapbox."
+          )
           );
         }
         return false;
@@ -468,9 +511,12 @@ export function ClientRestaurantMenuScreen() {
       if (dMiles > BLOCK_MILES) {
         resetEstimateState();
         setEstimateError(
-          `Distance too large (${dMiles.toFixed(
-            2
-          )} mi). Please verify the ZIP code, city, and state.`
+          tr(
+            "clientRestaurantMenu.estimate.errors.distanceTooLarge",
+            `Distance trop grande (${dMiles.toFixed(
+              2
+            )} mi). Vérifie le ZIP code, la ville et l’État.`
+          )
         );
 
         if (!silent) {
@@ -564,13 +610,17 @@ export function ClientRestaurantMenuScreen() {
         String(err?.message || "").toLowerCase().includes("timed out");
 
       const message = timeoutLike
-        ? "The estimate request took too long. Please try again."
+        ? tr(
+          "clientRestaurantMenu.estimate.errors.timeout",
+          "La demande d’estimation a pris trop de temps. Réessaie."
+        )
         : getFriendlyEstimateError(
             err?.message ??
               tr(
                 "clientRestaurantMenu.estimateError",
                 "Impossible de calculer l’estimation de livraison pour le moment."
-              )
+              ),
+            tr
           );
 
       resetEstimateState();
@@ -635,6 +685,17 @@ export function ClientRestaurantMenuScreen() {
   }, []);
 
   async function handleCreateOrder() {
+    if (!restaurantId) {
+      Alert.alert(
+        tr("common.error.title", "Erreur"),
+        tr(
+          "clientRestaurantMenu.errors.missingRestaurantId",
+          "Restaurant introuvable. Retourne à la liste des restaurants puis réessaie."
+        )
+      );
+      return;
+    }
+
     if (cart.length === 0) {
       Alert.alert(
         tr("clientRestaurantMenu.cartEmptyTitle", "Panier vide"),
@@ -709,13 +770,19 @@ export function ClientRestaurantMenuScreen() {
       const totalCents = Math.round(safeGrandTotal * 100);
 
       const { data, error } = await supabase
-  .from("orders")
-  .insert({
+        .from("orders")
+        .insert({
     type: "food",
     status: "pending",
 
     restaurant_id: restaurantId,
     restaurant_user_id: restaurantId,
+
+    // ✅ Production identity fields
+    // client_id is the canonical client owner for orders.
+    // user_id and client_user_id are kept for backward compatibility with older code.
+    client_id: userId,
+    user_id: userId,
     client_user_id: userId,
 
     restaurant_name: restaurantName,
@@ -757,9 +824,9 @@ export function ClientRestaurantMenuScreen() {
     dropoff_code: dropoffCode,
 
     payment_status: "unpaid",
-  })
-  .select("id")
-  .single();
+        })
+        .select("id")
+        .single();
 
       if (error) {
         console.error("Erreur insert orders (restaurant mobile):", error);
@@ -812,6 +879,8 @@ export function ClientRestaurantMenuScreen() {
 
   const canCreateOrder =
     !creating &&
+    !estimating &&
+    !!restaurantId &&
     cart.length > 0 &&
     distanceMiles != null &&
     etaMinutes != null &&
@@ -1000,7 +1069,10 @@ export function ClientRestaurantMenuScreen() {
 
             {pickupLocked && (
               <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 6 }}>
-                Adresse du restaurant remplie automatiquement.
+                {tr(
+                  "clientRestaurantMenu.addresses.pickupLockedHint",
+                  "Adresse du restaurant remplie automatiquement."
+                )}
               </Text>
             )}
           </View>
@@ -1292,7 +1364,7 @@ export function ClientRestaurantMenuScreen() {
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                   <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>
-                    Total final
+                    {tr("clientRestaurantMenu.totals.finalTotal", "Total final")}
                   </Text>
                   <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>
                     {money(finalGrandTotal)} {currency}

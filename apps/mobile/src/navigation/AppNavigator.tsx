@@ -87,12 +87,18 @@ export type RootStackParamList = {
   ClientOrderDetails: { orderId: string };
   ClientDeliveryRequestDetails: { requestId: string };
   ClientInbox: undefined;
-  ClientChat: { orderId: string };
+  ClientChat: {
+    orderId: string;
+    targetRole?: "restaurant" | "driver" | "admin" | "";
+  };
 
   DriverTabs: undefined;
   DriverOrderDetails: { orderId: string };
   DriverMap: undefined;
-  DriverChat: { orderId: string };
+  DriverChat: {
+    orderId: string;
+    targetRole?: "client" | "restaurant" | "admin" | "";
+  };
   DriverOnboarding: undefined;
 
   DriverProfile: undefined;
@@ -119,7 +125,10 @@ export type RootStackParamList = {
   RestaurantTax: undefined;
   RestaurantLanguage: undefined;
   RestaurantSecurity: undefined;
-  RestaurantChat: { orderId: string };
+  RestaurantChat: {
+    orderId: string;
+    targetRole?: "client" | "driver" | "admin" | "";
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

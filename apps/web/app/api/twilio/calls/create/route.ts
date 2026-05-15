@@ -3,6 +3,21 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
+type Role = "client" | "driver" | "restaurant" | "admin";
+
+type OrderRow = {
+  id: string;
+  client_id: string | null;
+  driver_id: string | null;
+  restaurant_id: string | null;
+};
+
+type ProfilePhoneRow = {
+  id: string;
+  phone: string | null;
+  role?: string | null;
+};
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -10,17 +25,84 @@ const supabaseAdmin = createClient(
 
 const MMD_TWILIO_NUMBER = "+19294924563";
 
-const allowedRoles = ["client", "driver", "restaurant", "admin"] as const;
+const allowedRoles: Role[] = ["client", "driver", "restaurant", "admin"];
+
+function jsonError(message: string, status = 400) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+function getBearerToken(req: NextRequest): string | null {
+  const authHeader = req.headers.get("authorization");
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  return token || null;
+}
+
+function isAllowedRole(value: unknown): value is Role {
+  return typeof value === "string" && allowedRoles.includes(value as Role);
+}
+
+function getOrderUserIdByRole(order: OrderRow, role: Role): string | null {
+  if (role === "client") return order.client_id;
+  if (role === "driver") return order.driver_id;
+  if (role === "restaurant") return order.restaurant_id;
+  return null;
+}
+
+function normalizePhone(phone: string | null | undefined): string | null {
+  const value = String(phone ?? "").trim();
+  return value.length > 0 ? value : null;
+}
+
+async function getProfilePhone(userId: string): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("id, phone")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getProfilePhone error", error);
+    return null;
+  }
+
+  return normalizePhone((data as ProfilePhoneRow | null)?.phone);
+}
+
+async function getAdminProfile(): Promise<ProfilePhoneRow | null> {
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("id, phone, role")
+    .eq("role", "admin")
+    .not("phone", "is", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getAdminProfile error", error);
+    return null;
+  }
+
+  const profile = data as ProfilePhoneRow | null;
+
+  if (!profile?.id || !normalizePhone(profile.phone)) {
+    return null;
+  }
+
+  return profile;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("authorization");
+    const token = getBearerToken(req);
 
-    if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!token) {
+      return jsonError("Unauthorized", 401);
     }
-
-    const token = authHeader.replace("Bearer ", "");
 
     const {
       data: { user },
@@ -28,102 +110,99 @@ export async function POST(req: NextRequest) {
     } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
-      return NextResponse.json({ error: "Invalid user token" }, { status: 401 });
+      return jsonError("Invalid user token", 401);
     }
 
-    const body = await req.json();
-
-    const { orderId, callerRole, targetRole } = body;
+    const body = await req.json().catch(() => null);
+    const orderId = String(body?.orderId ?? "").trim();
+    const callerRole = body?.callerRole;
+    const targetRole = body?.targetRole;
 
     if (!orderId || !callerRole || !targetRole) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+      return jsonError("Missing required fields", 400);
     }
 
-    if (!allowedRoles.includes(callerRole) || !allowedRoles.includes(targetRole)) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    if (!isAllowedRole(callerRole) || !isAllowedRole(targetRole)) {
+      return jsonError("Invalid role", 400);
     }
 
     if (callerRole === targetRole) {
-      return NextResponse.json(
-        { error: "Caller and target roles cannot be the same" },
-        { status: 400 }
-      );
+      return jsonError("Caller and target roles cannot be the same", 400);
     }
 
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: orderData, error: orderError } = await supabaseAdmin
       .from("orders")
-      .select(
-        `
-        id,
-        client_id,
-        driver_id,
-        restaurant_id
-      `
-      )
+      .select("id, client_id, driver_id, restaurant_id")
       .eq("id", orderId)
-      .single();
+      .maybeSingle();
 
-    if (orderError || !order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (orderError || !orderData) {
+      return jsonError("Order not found", 404);
     }
+
+    const order = orderData as OrderRow;
 
     const callerUserId =
-      callerRole === "client"
-        ? order.client_id
-        : callerRole === "driver"
-          ? order.driver_id
-          : callerRole === "restaurant"
-            ? order.restaurant_id
-            : user.id;
+      callerRole === "admin"
+        ? user.id
+        : getOrderUserIdByRole(order, callerRole);
+
+    if (!callerUserId) {
+      return jsonError("Caller user not found for this order", 404);
+    }
 
     if (callerRole !== "admin" && callerUserId !== user.id) {
-      return NextResponse.json(
-        { error: "You are not allowed to call from this order" },
-        { status: 403 }
-      );
+      return jsonError("You are not allowed to call from this order", 403);
     }
 
-    const targetUserId =
-      targetRole === "client"
-        ? order.client_id
-        : targetRole === "driver"
-          ? order.driver_id
-          : targetRole === "restaurant"
-            ? order.restaurant_id
-            : null;
+    if (callerRole === "admin") {
+      const { data: adminProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("id, role")
+        .eq("id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
 
-    if (!targetUserId) {
-      return NextResponse.json(
-        { error: "Target user not found for this order" },
-        { status: 404 }
-      );
+      if (!adminProfile) {
+        return jsonError("Admin access required", 403);
+      }
     }
 
-    const { data: targetProfile, error: targetProfileError } = await supabaseAdmin
-      .from("profiles")
-      .select("phone")
-      .eq("id", targetUserId)
-      .single();
+    let targetUserId: string | null = null;
+    let targetPhone: string | null = null;
 
-    if (targetProfileError || !targetProfile?.phone) {
-      return NextResponse.json(
-        { error: "Target phone not found" },
-        { status: 404 }
-      );
+    if (targetRole === "admin") {
+      const adminProfile = await getAdminProfile();
+
+      if (!adminProfile) {
+        return jsonError("Admin phone not found", 404);
+      }
+
+      targetUserId = adminProfile.id;
+      targetPhone = normalizePhone(adminProfile.phone);
+    } else {
+      targetUserId = getOrderUserIdByRole(order, targetRole);
+
+      if (!targetUserId) {
+        return jsonError("Target user not found for this order", 404);
+      }
+
+      targetPhone = await getProfilePhone(targetUserId);
     }
 
-    const { data: callerProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("phone")
-      .eq("id", user.id)
-      .single();
+    if (!targetUserId || !targetPhone) {
+      return jsonError("Target phone not found", 404);
+    }
+
+    const callerPhone = await getProfilePhone(user.id);
+
+    if (!callerPhone) {
+      return jsonError("Caller phone not found", 404);
+    }
 
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30).toISOString();
 
-    const { data, error } = await supabaseAdmin
+    const { data: session, error: insertError } = await supabaseAdmin
       .from("call_sessions")
       .insert({
         order_id: orderId,
@@ -132,23 +211,22 @@ export async function POST(req: NextRequest) {
         target_user_id: targetUserId,
         target_role: targetRole,
         proxy_number: MMD_TWILIO_NUMBER,
-        caller_phone: callerProfile?.phone || null,
-        target_phone: targetProfile.phone,
+        caller_phone: callerPhone,
+        target_phone: targetPhone,
         expires_at: expiresAt,
         status: "active",
       })
       .select()
       .single();
 
-    if (error) {
-      console.error("call session insert error", error);
-
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (insertError) {
+      console.error("call session insert error", insertError);
+      return jsonError(insertError.message, 500);
     }
 
     return NextResponse.json({
       success: true,
-      session: data,
+      session,
       proxyNumber: MMD_TWILIO_NUMBER,
     });
   } catch (error: any) {
