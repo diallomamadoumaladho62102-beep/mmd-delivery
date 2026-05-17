@@ -1014,6 +1014,58 @@ export function DriverOrderDetailsScreen() {
           callerRole: "driver",
           targetRole,
         });
+      } catch (e: any) {
+        const rawMessage = String(e?.message ?? e ?? "").toLowerCase();
+
+        console.log("startMaskedCall driver error:", {
+          orderId: order.id,
+          callerRole: "driver",
+          targetRole,
+          message: e?.message ?? e,
+        });
+
+        if (rawMessage.includes("caller phone not found")) {
+          Alert.alert(
+            t("driver.orderDetails.communication.callUnavailableTitle", "Call unavailable"),
+            t(
+              "driver.orderDetails.communication.driverPhoneMissing",
+              "Ton numéro de téléphone chauffeur est manquant. Ajoute ton numéro dans ton profil avant d'utiliser les appels masqués."
+            )
+          );
+          return;
+        }
+
+        if (
+          rawMessage.includes("target phone not found") ||
+          rawMessage.includes("phone not found") ||
+          rawMessage.includes("missing phone")
+        ) {
+          const targetLabel =
+            targetRole === "client"
+              ? t("driver.orderDetails.communication.client", "Client")
+              : targetRole === "restaurant"
+              ? t("driver.orderDetails.communication.restaurant", "Restaurant")
+              : t("driver.orderDetails.communication.support", "MMD support");
+
+          Alert.alert(
+            t("driver.orderDetails.communication.callUnavailableTitle", "Call unavailable"),
+            t(
+              "driver.orderDetails.communication.targetPhoneMissing",
+              "Le numéro de téléphone de {{target}} est manquant pour cette commande.",
+              { target: targetLabel }
+            )
+          );
+          return;
+        }
+
+        Alert.alert(
+          t("driver.orderDetails.communication.callUnavailableTitle", "Call unavailable"),
+          e?.message ??
+            t(
+              "driver.orderDetails.communication.callFailed",
+              "Impossible de démarrer l'appel pour le moment."
+            )
+        );
       } finally {
         setCalling(null);
       }

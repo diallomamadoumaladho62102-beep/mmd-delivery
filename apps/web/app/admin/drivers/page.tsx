@@ -20,7 +20,15 @@ type DocType =
   | "passport"
   | "other";
 
-type ReviewStatus = "pending" | "approved" | "rejected";
+type ReviewStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "incomplete"
+  | "suspended"
+  | "disabled";
+
+type DriverActionStatus = "approved" | "rejected" | "suspended" | "disabled";
 
 type ReviewDriverRole = Parameters<typeof canReviewDrivers>[0];
 
@@ -103,7 +111,7 @@ type AdminRoleRow = {
 type ReviewDriverApiResponse = {
   ok: boolean;
   userId?: string;
-  status?: "approved" | "rejected";
+  status?: DriverActionStatus;
   reviewedAt?: string;
   reviewNotes?: string | null;
   documentsRequired?: boolean;
@@ -114,23 +122,77 @@ type ReviewDriverApiResponse = {
   error?: string;
 };
 
+type UpdateDriverProfileApiResponse = {
+  ok: boolean;
+  userId?: string;
+  updatedFields?: string[];
+  message?: string;
+  error?: string;
+};
+
+type UpdateDriverDocumentApiResponse = {
+  ok: boolean;
+  userId?: string;
+  documentId?: string;
+  deleted?: boolean;
+  document?: Partial<DriverDocumentRow>;
+  message?: string;
+  error?: string;
+};
+
+type DriverProfileDraft = {
+  full_name: string;
+  phone: string;
+  emergency_phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  date_of_birth: string;
+  transport_mode: VehicleType;
+  vehicle_brand: string;
+  vehicle_model: string;
+  vehicle_year: string;
+  vehicle_color: string;
+  plate_number: string;
+  license_number: string;
+  license_expiry: string;
+};
+
+const DOCUMENT_SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+const DRIVER_DOCUMENT_BUCKETS = [
+  "driver-documents",
+  "driver-docs",
+  "avatars",
+] as const;
+
 function isReviewDriverRole(value: string | null): value is ReviewDriverRole {
-  return typeof value === "string" && canReviewDrivers(value as ReviewDriverRole);
+  return (
+    typeof value === "string" && canReviewDrivers(value as ReviewDriverRole)
+  );
 }
 
 function isImagePath(path: string): boolean {
   return /\.(png|jpe?g|webp|gif)$/i.test(path);
 }
 
-function normalizeDriverStatus(
-  value: string | null | undefined,
-): ReviewStatus {
-  return value === "approved" || value === "rejected" ? value : "pending";
+function normalizeDriverStatus(value: string | null | undefined): ReviewStatus {
+  if (
+    value === "pending" ||
+    value === "approved" ||
+    value === "rejected" ||
+    value === "incomplete" ||
+    value === "suspended" ||
+    value === "disabled"
+  ) {
+    return value;
+  }
+
+  return "pending";
 }
 
-function normalizeVehicleType(
-  value: string | null | undefined,
-): VehicleType {
+function normalizeVehicleType(value: string | null | undefined): VehicleType {
   if (value === "bike" || value === "moto" || value === "car") return value;
   return "other";
 }
@@ -213,6 +275,12 @@ function badgeClassForStatus(status: ReviewStatus): string {
       return "border-green-200 bg-green-100 text-green-800";
     case "rejected":
       return "border-red-200 bg-red-100 text-red-800";
+    case "incomplete":
+      return "border-amber-200 bg-amber-100 text-amber-800";
+    case "suspended":
+      return "border-orange-200 bg-orange-100 text-orange-800";
+    case "disabled":
+      return "border-slate-300 bg-slate-200 text-slate-800";
     case "pending":
     default:
       return "border-yellow-200 bg-yellow-100 text-yellow-800";
@@ -225,6 +293,12 @@ function statusLabel(status: ReviewStatus): string {
       return "Approuvé";
     case "rejected":
       return "Refusé";
+    case "incomplete":
+      return "Incomplet";
+    case "suspended":
+      return "Suspendu";
+    case "disabled":
+      return "Désactivé";
     case "pending":
     default:
       return "En attente";
@@ -243,9 +317,7 @@ function getLatestReviewNote(documents: DriverDocumentRow[]): string {
   return withNotes[0]?.review_notes?.trim() ?? "";
 }
 
-function parseMissingRequirements(
-  text: string | null | undefined,
-): string[] {
+function parseMissingRequirements(text: string | null | undefined): string[] {
   if (!text) return [];
   const trimmed = text.trim();
   if (!trimmed) return [];
@@ -262,6 +334,12 @@ function getActionCardClass(status: ReviewStatus): string {
       return "border-green-200 bg-green-50";
     case "rejected":
       return "border-red-200 bg-red-50";
+    case "incomplete":
+      return "border-amber-200 bg-amber-50";
+    case "suspended":
+      return "border-orange-200 bg-orange-50";
+    case "disabled":
+      return "border-slate-300 bg-slate-100";
     case "pending":
     default:
       return "border-slate-200 bg-white";
@@ -324,8 +402,14 @@ function computeMissingRequirementsForRow(input: {
 }
 
 function getPriorityScore(row: DriverAdminRow): number {
+  if (row.status === "disabled") return 8;
+  if (row.status === "suspended") return 7;
   if (row.documents.length === 0) return 0;
-  if (row.computed_missing_requirements.length > 0) return 1;
+  if (
+    row.computed_missing_requirements.length > 0 ||
+    row.status === "incomplete"
+  )
+    return 1;
   if (row.status === "pending") return 2;
   if (row.status === "rejected") return 3;
   if (row.status === "approved" && row.documents_required) return 4;
@@ -336,6 +420,20 @@ function getDriverInsight(row: DriverAdminRow): {
   label: string;
   className: string;
 } {
+  if (row.status === "disabled") {
+    return {
+      label: "Compte désactivé",
+      className: "border-slate-300 bg-slate-100 text-slate-700",
+    };
+  }
+
+  if (row.status === "suspended") {
+    return {
+      label: "Compte suspendu",
+      className: "border-orange-200 bg-orange-50 text-orange-700",
+    };
+  }
+
   if (row.documents.length === 0) {
     return {
       label: "Aucun document reçu",
@@ -383,12 +481,10 @@ async function buildSignedDocument(
     return doc;
   }
 
-  const bucketsToTry = ["avatars", "driver-docs"];
-
-  for (const bucket of bucketsToTry) {
+  for (const bucket of DRIVER_DOCUMENT_BUCKETS) {
     const { data, error } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(row.file_path, 60 * 60);
+      .createSignedUrl(row.file_path, DOCUMENT_SIGNED_URL_TTL_SECONDS);
 
     if (!error && data?.signedUrl) {
       doc._signedUrl = data.signedUrl;
@@ -397,6 +493,44 @@ async function buildSignedDocument(
   }
 
   return doc;
+}
+
+function buildProfileDraft(row: DriverAdminRow): DriverProfileDraft {
+  return {
+    full_name: row.full_name ?? "",
+    phone: row.phone ?? "",
+    emergency_phone: row.emergency_phone ?? "",
+    address: row.address ?? "",
+    city: row.city ?? "",
+    state: row.state ?? "",
+    zip_code: row.zip_code ?? "",
+    date_of_birth: row.date_of_birth ?? "",
+    transport_mode: row.transport_mode === "other" ? "car" : row.transport_mode,
+    vehicle_brand: row.vehicle_brand ?? "",
+    vehicle_model: row.vehicle_model ?? "",
+    vehicle_year: row.vehicle_year == null ? "" : String(row.vehicle_year),
+    vehicle_color: row.vehicle_color ?? "",
+    plate_number: row.plate_number ?? "",
+    license_number: row.license_number ?? "",
+    license_expiry: row.license_expiry ?? "",
+  };
+}
+
+async function getAdminAccessToken(): Promise<string> {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!session?.access_token) {
+    throw new Error("Session utilisateur introuvable");
+  }
+
+  return session.access_token;
 }
 
 export default function AdminDriversPage() {
@@ -410,6 +544,20 @@ export default function AdminDriversPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [profileDrafts, setProfileDrafts] = useState<
+    Record<string, DriverProfileDraft>
+  >({});
+  const [documentStatusDrafts, setDocumentStatusDrafts] = useState<
+    Record<string, ReviewStatus>
+  >({});
+  const [documentNoteDrafts, setDocumentNoteDrafts] = useState<
+    Record<string, string>
+  >({});
+  const [updatingDocumentId, setUpdatingDocumentId] = useState<string | null>(
+    null,
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<ReviewStatus | "all">("all");
 
   const loadPage = useCallback(
     async (cancelledRef?: { cancelled: boolean }) => {
@@ -495,7 +643,8 @@ export default function AdminDriversPage() {
           throw new Error(dpError.message);
         }
 
-        const typedDriverProfiles = (driverProfiles ?? []) as DriverProfileRow[];
+        const typedDriverProfiles = (driverProfiles ??
+          []) as DriverProfileRow[];
 
         if (typedDriverProfiles.length === 0) {
           if (!cancelledRef?.cancelled) {
@@ -540,10 +689,12 @@ export default function AdminDriversPage() {
         }
 
         const docsRows = await Promise.all(
-          ((docsRowsRaw ?? []) as Omit<
-            DriverDocumentRow,
-            "_signedUrl" | "_isImage"
-          >[]).map((row) => buildSignedDocument(row)),
+          (
+            (docsRowsRaw ?? []) as Omit<
+              DriverDocumentRow,
+              "_signedUrl" | "_isImage"
+            >[]
+          ).map((row) => buildSignedDocument(row)),
         );
 
         const docsByUser = new Map<string, DriverDocumentRow[]>();
@@ -565,25 +716,26 @@ export default function AdminDriversPage() {
               d.transport_mode ?? d.vehicle_type,
             );
             const documents = sortDocuments(docsByUser.get(d.user_id) ?? []);
-            const computedMissingRequirements = computeMissingRequirementsForRow({
-              transport_mode: transportMode,
-              full_name: d.full_name ?? profileInfo.full_name ?? null,
-              phone: d.phone,
-              emergency_phone: d.emergency_phone,
-              address: d.address,
-              city: d.city,
-              state: d.state,
-              zip_code: d.zip_code,
-              date_of_birth: d.date_of_birth,
-              vehicle_brand: d.vehicle_brand,
-              vehicle_model: d.vehicle_model,
-              vehicle_year: d.vehicle_year,
-              vehicle_color: d.vehicle_color,
-              plate_number: d.plate_number,
-              license_number: d.license_number,
-              license_expiry: d.license_expiry,
-              documents,
-            });
+            const computedMissingRequirements =
+              computeMissingRequirementsForRow({
+                transport_mode: transportMode,
+                full_name: d.full_name ?? profileInfo.full_name ?? null,
+                phone: d.phone,
+                emergency_phone: d.emergency_phone,
+                address: d.address,
+                city: d.city,
+                state: d.state,
+                zip_code: d.zip_code,
+                date_of_birth: d.date_of_birth,
+                vehicle_brand: d.vehicle_brand,
+                vehicle_model: d.vehicle_model,
+                vehicle_year: d.vehicle_year,
+                vehicle_color: d.vehicle_color,
+                plate_number: d.plate_number,
+                license_number: d.license_number,
+                license_expiry: d.license_expiry,
+                documents,
+              });
 
             const fallbackMissing = parseMissingRequirements(
               d.missing_requirements ?? null,
@@ -613,7 +765,7 @@ export default function AdminDriversPage() {
               missing_requirements:
                 computedMissingRequirements.length > 0
                   ? computedMissingRequirements.join(", ")
-                  : d.missing_requirements ?? null,
+                  : (d.missing_requirements ?? null),
               computed_missing_requirements:
                 computedMissingRequirements.length > 0
                   ? computedMissingRequirements
@@ -628,10 +780,24 @@ export default function AdminDriversPage() {
           setRows(merged);
 
           const initialDrafts: Record<string, string> = {};
+          const initialProfileDrafts: Record<string, DriverProfileDraft> = {};
+          const initialDocumentStatusDrafts: Record<string, ReviewStatus> = {};
+          const initialDocumentNoteDrafts: Record<string, string> = {};
+
           merged.forEach((row) => {
             initialDrafts[row.user_id] = getLatestReviewNote(row.documents);
+            initialProfileDrafts[row.user_id] = buildProfileDraft(row);
+
+            row.documents.forEach((doc) => {
+              initialDocumentStatusDrafts[doc.id] = doc.status;
+              initialDocumentNoteDrafts[doc.id] = doc.review_notes ?? "";
+            });
           });
+
           setNoteDrafts(initialDrafts);
+          setProfileDrafts(initialProfileDrafts);
+          setDocumentStatusDrafts(initialDocumentStatusDrafts);
+          setDocumentNoteDrafts(initialDocumentNoteDrafts);
         }
       } catch (e: unknown) {
         if (!cancelledRef?.cancelled) {
@@ -659,7 +825,7 @@ export default function AdminDriversPage() {
 
   async function updateDriverStatus(
     targetUserId: string,
-    newStatus: Extract<ReviewStatus, "approved" | "rejected">,
+    newStatus: DriverActionStatus,
   ) {
     setUpdatingUserId(targetUserId);
     setErr(null);
@@ -667,25 +833,29 @@ export default function AdminDriversPage() {
 
     try {
       const reviewNotes = (noteDrafts[targetUserId] ?? "").trim();
+      const targetRow = rows.find((row) => row.user_id === targetUserId);
 
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw new Error(sessionError.message);
+      if (!targetRow) {
+        throw new Error("Chauffeur introuvable dans la liste actuelle.");
       }
 
-      if (!session?.access_token) {
-        throw new Error("Session utilisateur introuvable");
+      if (
+        newStatus === "approved" &&
+        targetRow.computed_missing_requirements.length > 0
+      ) {
+        setErr(
+          "Impossible d’approuver ce chauffeur : il manque encore des informations ou documents obligatoires.",
+        );
+        return;
       }
+
+      const accessToken = await getAdminAccessToken();
 
       const response = await fetch("/api/admin/drivers/review", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           userId: targetUserId,
@@ -714,7 +884,11 @@ export default function AdminDriversPage() {
         json.message ||
           (newStatus === "approved"
             ? "Chauffeur approuvé ✅"
-            : "Chauffeur refusé ❌"),
+            : newStatus === "rejected"
+              ? "Chauffeur refusé ❌"
+              : newStatus === "suspended"
+                ? "Chauffeur suspendu ⚠️"
+                : "Chauffeur désactivé 🚫"),
       );
 
       setRows((prev) =>
@@ -723,33 +897,36 @@ export default function AdminDriversPage() {
             if (r.user_id !== targetUserId) return r;
 
             const updatedDocuments = sortDocuments(
-              r.documents.map((d) => ({
-                ...d,
-                status: newStatus,
-                reviewed_at: reviewedAt,
-                review_notes: normalizedReviewNotes,
-              })),
+              newStatus === "approved" || newStatus === "rejected"
+                ? r.documents.map((d) => ({
+                    ...d,
+                    status: newStatus,
+                    reviewed_at: reviewedAt,
+                    review_notes: normalizedReviewNotes,
+                  }))
+                : r.documents,
             );
 
-            const computedMissingRequirements = computeMissingRequirementsForRow({
-              transport_mode: r.transport_mode,
-              full_name: r.full_name,
-              phone: r.phone,
-              emergency_phone: r.emergency_phone,
-              address: r.address,
-              city: r.city,
-              state: r.state,
-              zip_code: r.zip_code,
-              date_of_birth: r.date_of_birth,
-              vehicle_brand: r.vehicle_brand,
-              vehicle_model: r.vehicle_model,
-              vehicle_year: r.vehicle_year,
-              vehicle_color: r.vehicle_color,
-              plate_number: r.plate_number,
-              license_number: r.license_number,
-              license_expiry: r.license_expiry,
-              documents: updatedDocuments,
-            });
+            const computedMissingRequirements =
+              computeMissingRequirementsForRow({
+                transport_mode: r.transport_mode,
+                full_name: r.full_name,
+                phone: r.phone,
+                emergency_phone: r.emergency_phone,
+                address: r.address,
+                city: r.city,
+                state: r.state,
+                zip_code: r.zip_code,
+                date_of_birth: r.date_of_birth,
+                vehicle_brand: r.vehicle_brand,
+                vehicle_model: r.vehicle_model,
+                vehicle_year: r.vehicle_year,
+                vehicle_color: r.vehicle_color,
+                plate_number: r.plate_number,
+                license_number: r.license_number,
+                license_expiry: r.license_expiry,
+                documents: updatedDocuments,
+              });
 
             return {
               ...r,
@@ -761,16 +938,15 @@ export default function AdminDriversPage() {
               missing_requirements:
                 typeof json.missingRequirementsText === "string" ||
                 json.missingRequirementsText === null
-                  ? json.missingRequirementsText ?? null
+                  ? (json.missingRequirementsText ?? null)
                   : computedMissingRequirements.join(", "),
-              computed_missing_requirements:
-                Array.isArray(json.missingRequirements)
-                  ? json.missingRequirements
-                  : computedMissingRequirements,
+              computed_missing_requirements: Array.isArray(
+                json.missingRequirements,
+              )
+                ? json.missingRequirements
+                : computedMissingRequirements,
               is_online:
-                typeof json.isOnline === "boolean"
-                  ? json.isOnline
-                  : false,
+                typeof json.isOnline === "boolean" ? json.isOnline : false,
               documents: updatedDocuments,
             };
           })
@@ -787,6 +963,290 @@ export default function AdminDriversPage() {
       setErr(message);
     } finally {
       setUpdatingUserId(null);
+    }
+  }
+
+  async function updateDriverProfile(targetUserId: string) {
+    setUpdatingUserId(targetUserId);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const draft = profileDrafts[targetUserId];
+      if (!draft)
+        throw new Error("Profil chauffeur introuvable dans le formulaire.");
+
+      const accessToken = await getAdminAccessToken();
+      const response = await fetch("/api/admin/drivers/update-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ userId: targetUserId, profile: draft }),
+      });
+
+      const json = (await response.json()) as UpdateDriverProfileApiResponse;
+      if (!response.ok || !json.ok) {
+        throw new Error(
+          json.error || "Erreur lors de la modification du profil chauffeur",
+        );
+      }
+
+      setRows((prev) =>
+        prev.map((row) => {
+          if (row.user_id !== targetUserId) return row;
+
+          const vehicleYear = draft.vehicle_year.trim()
+            ? Number(draft.vehicle_year.trim())
+            : null;
+
+          const updatedRow: DriverAdminRow = {
+            ...row,
+            full_name: draft.full_name.trim() || null,
+            phone: draft.phone.trim() || null,
+            emergency_phone: draft.emergency_phone.trim() || null,
+            address: draft.address.trim() || null,
+            city: draft.city.trim() || null,
+            state: draft.state.trim().toUpperCase() || null,
+            zip_code: draft.zip_code.trim() || null,
+            date_of_birth: draft.date_of_birth.trim() || null,
+            transport_mode: draft.transport_mode,
+            vehicle_brand: draft.vehicle_brand.trim() || null,
+            vehicle_model: draft.vehicle_model.trim() || null,
+            vehicle_year: Number.isFinite(vehicleYear) ? vehicleYear : null,
+            vehicle_color: draft.vehicle_color.trim() || null,
+            plate_number: draft.plate_number.trim().toUpperCase() || null,
+            license_number: draft.license_number.trim().toUpperCase() || null,
+            license_expiry: draft.license_expiry.trim() || null,
+          };
+
+          return {
+            ...updatedRow,
+            computed_missing_requirements: computeMissingRequirementsForRow({
+              transport_mode: updatedRow.transport_mode,
+              full_name: updatedRow.full_name,
+              phone: updatedRow.phone,
+              emergency_phone: updatedRow.emergency_phone,
+              address: updatedRow.address,
+              city: updatedRow.city,
+              state: updatedRow.state,
+              zip_code: updatedRow.zip_code,
+              date_of_birth: updatedRow.date_of_birth,
+              vehicle_brand: updatedRow.vehicle_brand,
+              vehicle_model: updatedRow.vehicle_model,
+              vehicle_year: updatedRow.vehicle_year,
+              vehicle_color: updatedRow.vehicle_color,
+              plate_number: updatedRow.plate_number,
+              license_number: updatedRow.license_number,
+              license_expiry: updatedRow.license_expiry,
+              documents: updatedRow.documents,
+            }),
+          };
+        }),
+      );
+
+      setOk(json.message || "Profil chauffeur modifié avec succès ✅");
+    } catch (e: unknown) {
+      setErr(
+        e instanceof Error
+          ? e.message
+          : "Erreur lors de la modification du profil",
+      );
+    } finally {
+      setUpdatingUserId(null);
+    }
+  }
+
+  async function updateDriverDocument(params: {
+    userId: string;
+    documentId: string;
+  }) {
+    const { userId, documentId } = params;
+    setUpdatingDocumentId(documentId);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const accessToken = await getAdminAccessToken();
+      const status = documentStatusDrafts[documentId] ?? "pending";
+      const reviewNotes = (documentNoteDrafts[documentId] ?? "").trim();
+
+      const response = await fetch("/api/admin/drivers/update-document", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId,
+          documentId,
+          status,
+          reviewNotes,
+        }),
+      });
+
+      const json = (await response.json()) as UpdateDriverDocumentApiResponse;
+      if (!response.ok || !json.ok) {
+        throw new Error(
+          json.error || "Erreur lors de la modification du document",
+        );
+      }
+
+      setRows((prev) =>
+        prev.map((row) => {
+          if (row.user_id !== userId) return row;
+
+          const documents = sortDocuments(
+            row.documents.map((doc) =>
+              doc.id === documentId
+                ? {
+                    ...doc,
+                    status,
+                    reviewed_at:
+                      typeof json.document?.reviewed_at === "string"
+                        ? json.document.reviewed_at
+                        : new Date().toISOString(),
+                    review_notes: reviewNotes.length > 0 ? reviewNotes : null,
+                  }
+                : doc,
+            ),
+          );
+
+          return {
+            ...row,
+            documents,
+            computed_missing_requirements: computeMissingRequirementsForRow({
+              transport_mode: row.transport_mode,
+              full_name: row.full_name,
+              phone: row.phone,
+              emergency_phone: row.emergency_phone,
+              address: row.address,
+              city: row.city,
+              state: row.state,
+              zip_code: row.zip_code,
+              date_of_birth: row.date_of_birth,
+              vehicle_brand: row.vehicle_brand,
+              vehicle_model: row.vehicle_model,
+              vehicle_year: row.vehicle_year,
+              vehicle_color: row.vehicle_color,
+              plate_number: row.plate_number,
+              license_number: row.license_number,
+              license_expiry: row.license_expiry,
+              documents,
+            }),
+          };
+        }),
+      );
+
+      setOk(json.message || "Document chauffeur modifié avec succès ✅");
+    } catch (e: unknown) {
+      setErr(
+        e instanceof Error
+          ? e.message
+          : "Erreur lors de la modification du document",
+      );
+    } finally {
+      setUpdatingDocumentId(null);
+    }
+  }
+
+  async function deleteDriverDocument(params: {
+    userId: string;
+    documentId: string;
+  }) {
+    const { userId, documentId } = params;
+
+    if (
+      !window.confirm(
+        "Supprimer ce document chauffeur ? Cette action est réservée aux admins.",
+      )
+    ) {
+      return;
+    }
+
+    setUpdatingDocumentId(documentId);
+    setErr(null);
+    setOk(null);
+
+    try {
+      const accessToken = await getAdminAccessToken();
+      const reviewNotes = (documentNoteDrafts[documentId] ?? "").trim();
+
+      const response = await fetch("/api/admin/drivers/update-document", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId,
+          documentId,
+          reviewNotes,
+          deleteDocument: true,
+        }),
+      });
+
+      const json = (await response.json()) as UpdateDriverDocumentApiResponse;
+      if (!response.ok || !json.ok) {
+        throw new Error(
+          json.error || "Erreur lors de la suppression du document",
+        );
+      }
+
+      setRows((prev) =>
+        prev.map((row) => {
+          if (row.user_id !== userId) return row;
+          const documents = row.documents.filter(
+            (doc) => doc.id !== documentId,
+          );
+
+          return {
+            ...row,
+            documents,
+            computed_missing_requirements: computeMissingRequirementsForRow({
+              transport_mode: row.transport_mode,
+              full_name: row.full_name,
+              phone: row.phone,
+              emergency_phone: row.emergency_phone,
+              address: row.address,
+              city: row.city,
+              state: row.state,
+              zip_code: row.zip_code,
+              date_of_birth: row.date_of_birth,
+              vehicle_brand: row.vehicle_brand,
+              vehicle_model: row.vehicle_model,
+              vehicle_year: row.vehicle_year,
+              vehicle_color: row.vehicle_color,
+              plate_number: row.plate_number,
+              license_number: row.license_number,
+              license_expiry: row.license_expiry,
+              documents,
+            }),
+          };
+        }),
+      );
+
+      setDocumentStatusDrafts((prev) => {
+        const next = { ...prev };
+        delete next[documentId];
+        return next;
+      });
+      setDocumentNoteDrafts((prev) => {
+        const next = { ...prev };
+        delete next[documentId];
+        return next;
+      });
+
+      setOk(json.message || "Document chauffeur supprimé avec succès ✅");
+    } catch (e: unknown) {
+      setErr(
+        e instanceof Error
+          ? e.message
+          : "Erreur lors de la suppression du document",
+      );
+    } finally {
+      setUpdatingDocumentId(null);
     }
   }
 
@@ -807,10 +1267,50 @@ export default function AdminDriversPage() {
     [rows],
   );
 
+  const suspendedCount = useMemo(
+    () => rows.filter((r) => r.status === "suspended").length,
+    [rows],
+  );
+
+  const disabledCount = useMemo(
+    () => rows.filter((r) => r.status === "disabled").length,
+    [rows],
+  );
+
   const incompleteCount = useMemo(
     () => rows.filter((r) => r.computed_missing_requirements.length > 0).length,
     [rows],
   );
+
+  const filteredRows = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return rows.filter((row) => {
+      const matchesStatus =
+        statusFilter === "all" ? true : row.status === statusFilter;
+
+      if (!matchesStatus) return false;
+      if (!query) return true;
+
+      const searchable = [
+        row.full_name,
+        row.email,
+        row.phone,
+        row.emergency_phone,
+        row.city,
+        row.state,
+        row.zip_code,
+        row.transport_mode,
+        row.plate_number,
+        row.license_number,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchable.includes(query);
+    });
+  }, [rows, searchQuery, statusFilter]);
 
   if (loading || !authChecked) {
     return (
@@ -855,12 +1355,12 @@ export default function AdminDriversPage() {
           </h1>
 
           <p className="text-sm text-slate-600">
-            Vérifie les profils chauffeurs, leurs documents et indique clairement
-            les informations manquantes avant validation.
+            Vérifie les profils chauffeurs, leurs documents et indique
+            clairement les informations manquantes avant validation.
           </p>
         </header>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-7">
           <div className="min-h-[132px] rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm flex flex-col items-center justify-center">
             <div className="text-sm font-medium leading-none text-slate-500">
               Total chauffeurs
@@ -905,6 +1405,24 @@ export default function AdminDriversPage() {
               {incompleteCount}
             </div>
           </div>
+
+          <div className="min-h-[132px] rounded-2xl border border-orange-200 bg-orange-50 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-orange-700">
+              Suspendus
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-orange-900">
+              {suspendedCount}
+            </div>
+          </div>
+
+          <div className="min-h-[132px] rounded-2xl border border-slate-300 bg-slate-100 p-6 text-center shadow-sm flex flex-col items-center justify-center">
+            <div className="text-sm font-medium leading-none text-slate-700">
+              Désactivés
+            </div>
+            <div className="mt-4 text-5xl font-extrabold tracking-tight leading-none text-slate-900">
+              {disabledCount}
+            </div>
+          </div>
         </section>
 
         {err && (
@@ -919,15 +1437,48 @@ export default function AdminDriversPage() {
           </div>
         )}
 
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px]">
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Rechercher par nom, email, téléphone, ville, plaque..."
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+            />
+
+            <select
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as ReviewStatus | "all")
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="pending">En attente</option>
+              <option value="approved">Approuvés</option>
+              <option value="rejected">Refusés</option>
+              <option value="incomplete">Incomplets</option>
+              <option value="suspended">Suspendus</option>
+              <option value="disabled">Désactivés</option>
+            </select>
+          </div>
+        </section>
+
         {rows.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
             <p className="text-sm text-slate-600">
               Aucun profil chauffeur enregistré pour le moment.
             </p>
           </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <p className="text-sm text-slate-600">
+              Aucun chauffeur ne correspond à ce filtre.
+            </p>
+          </div>
         ) : (
           <div className="space-y-4">
-            {rows.map((r) => {
+            {filteredRows.map((r) => {
               const status = r.status;
               const insight = getDriverInsight(r);
               const reviewNote = noteDrafts[r.user_id] ?? "";
@@ -989,7 +1540,9 @@ export default function AdminDriversPage() {
                             {r.phone || "—"}
                           </p>
                           <p>
-                            <span className="font-medium">Téléphone urgence :</span>{" "}
+                            <span className="font-medium">
+                              Téléphone urgence :
+                            </span>{" "}
                             {r.emergency_phone || "—"}
                           </p>
                           <p className="break-all">
@@ -997,7 +1550,9 @@ export default function AdminDriversPage() {
                             {r.email || "—"}
                           </p>
                           <p>
-                            <span className="font-medium">Date de naissance :</span>{" "}
+                            <span className="font-medium">
+                              Date de naissance :
+                            </span>{" "}
                             {formatBirthDate(r.date_of_birth)}
                           </p>
                           <p>
@@ -1017,7 +1572,9 @@ export default function AdminDriversPage() {
                             <span className="font-medium text-slate-700">
                               Ville / État / ZIP :
                             </span>{" "}
-                            {[r.city, r.state, r.zip_code].filter(Boolean).join(" • ") || "—"}
+                            {[r.city, r.state, r.zip_code]
+                              .filter(Boolean)
+                              .join(" • ") || "—"}
                           </p>
                         </div>
 
@@ -1056,13 +1613,22 @@ export default function AdminDriversPage() {
                           </div>
 
                           <div className="text-xs text-slate-600 mb-4">
-                            L’API recalculera automatiquement les documents et champs manquants.
+                            L’API recalculera automatiquement les documents et
+                            champs manquants.
                           </div>
 
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                             <button
                               type="button"
-                              disabled={updatingUserId === r.user_id}
+                              disabled={
+                                updatingUserId === r.user_id ||
+                                missingList.length > 0
+                              }
+                              title={
+                                missingList.length > 0
+                                  ? "Complète d’abord les informations/documents manquants."
+                                  : "Approuver ce chauffeur"
+                              }
                               onClick={() =>
                                 void updateDriverStatus(r.user_id, "approved")
                               }
@@ -1070,20 +1636,32 @@ export default function AdminDriversPage() {
                                 minHeight: "54px",
                                 width: "100%",
                                 borderRadius: "12px",
-                                backgroundColor: "#16a34a",
+                                backgroundColor:
+                                  missingList.length > 0
+                                    ? "#94a3b8"
+                                    : "#16a34a",
                                 color: "#ffffff",
-                                border: "2px solid #166534",
+                                border:
+                                  missingList.length > 0
+                                    ? "2px solid #64748b"
+                                    : "2px solid #166534",
                                 fontSize: "16px",
                                 fontWeight: 700,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                                cursor:
+                                  missingList.length > 0
+                                    ? "not-allowed"
+                                    : "pointer",
                               }}
                             >
                               {updatingUserId === r.user_id
                                 ? "Validation..."
-                                : "Approuver"}
+                                : missingList.length > 0
+                                  ? "Incomplet"
+                                  : "Approuver"}
                             </button>
 
                             <button
@@ -1111,6 +1689,58 @@ export default function AdminDriversPage() {
                                 ? "Traitement..."
                                 : "Refuser"}
                             </button>
+
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateDriverStatus(r.user_id, "suspended")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#ea580c",
+                                color: "#ffffff",
+                                border: "2px solid #9a3412",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Traitement..."
+                                : "Suspendre"}
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateDriverStatus(r.user_id, "disabled")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#334155",
+                                color: "#ffffff",
+                                border: "2px solid #0f172a",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                              }}
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Traitement..."
+                                : "Désactiver"}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1125,11 +1755,15 @@ export default function AdminDriversPage() {
                         <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
                           <div className="space-y-2">
                             <p>
-                              <span className="font-medium">Mode de transport :</span>{" "}
+                              <span className="font-medium">
+                                Mode de transport :
+                              </span>{" "}
                               {formatVehicleType(r.transport_mode)}
                             </p>
                             <p>
-                              <span className="font-medium">Marque / modèle :</span>{" "}
+                              <span className="font-medium">
+                                Marque / modèle :
+                              </span>{" "}
                               {[r.vehicle_brand, r.vehicle_model]
                                 .filter(Boolean)
                                 .join(" • ") || "—"}
@@ -1139,7 +1773,9 @@ export default function AdminDriversPage() {
                               {r.email || "—"}
                             </p>
                             <p>
-                              <span className="font-medium">Téléphone urgence :</span>{" "}
+                              <span className="font-medium">
+                                Téléphone urgence :
+                              </span>{" "}
                               {r.emergency_phone || "—"}
                             </p>
                           </div>
@@ -1158,11 +1794,105 @@ export default function AdminDriversPage() {
                               {r.plate_number || "—"}
                             </p>
                             <p>
-                              <span className="font-medium">Permis / expiration :</span>{" "}
+                              <span className="font-medium">
+                                Permis / expiration :
+                              </span>{" "}
                               {[r.license_number, r.license_expiry]
                                 .filter(Boolean)
                                 .join(" • ") || "—"}
                             </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="font-semibold text-slate-900">
+                              Modifier le profil chauffeur
+                            </p>
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateDriverProfile(r.user_id)
+                              }
+                              className="rounded-xl border border-blue-700 bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {updatingUserId === r.user_id
+                                ? "Sauvegarde..."
+                                : "Sauvegarder le profil"}
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            {[
+                              ["full_name", "Nom complet"],
+                              ["phone", "Téléphone"],
+                              ["emergency_phone", "Téléphone urgence"],
+                              ["address", "Adresse"],
+                              ["city", "Ville"],
+                              ["state", "État"],
+                              ["zip_code", "ZIP"],
+                              ["date_of_birth", "Date naissance"],
+                              ["vehicle_brand", "Marque"],
+                              ["vehicle_model", "Modèle"],
+                              ["vehicle_year", "Année"],
+                              ["vehicle_color", "Couleur"],
+                              ["plate_number", "Plaque"],
+                              ["license_number", "Permis"],
+                              ["license_expiry", "Expiration permis"],
+                            ].map(([field, label]) => (
+                              <label key={field} className="space-y-1">
+                                <span className="text-xs font-semibold text-slate-600">
+                                  {label}
+                                </span>
+                                <input
+                                  value={String(
+                                    profileDrafts[r.user_id]?.[
+                                      field as keyof DriverProfileDraft
+                                    ] ?? "",
+                                  )}
+                                  onChange={(event) =>
+                                    setProfileDrafts((prev) => ({
+                                      ...prev,
+                                      [r.user_id]: {
+                                        ...(prev[r.user_id] ??
+                                          buildProfileDraft(r)),
+                                        [field]: event.target.value,
+                                      },
+                                    }))
+                                  }
+                                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                                />
+                              </label>
+                            ))}
+
+                            <label className="space-y-1">
+                              <span className="text-xs font-semibold text-slate-600">
+                                Mode transport
+                              </span>
+                              <select
+                                value={
+                                  profileDrafts[r.user_id]?.transport_mode ??
+                                  r.transport_mode
+                                }
+                                onChange={(event) =>
+                                  setProfileDrafts((prev) => ({
+                                    ...prev,
+                                    [r.user_id]: {
+                                      ...(prev[r.user_id] ??
+                                        buildProfileDraft(r)),
+                                      transport_mode: event.target
+                                        .value as VehicleType,
+                                    },
+                                  }))
+                                }
+                                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                              >
+                                <option value="bike">Bike</option>
+                                <option value="moto">Moto</option>
+                                <option value="car">Car</option>
+                              </select>
+                            </label>
                           </div>
                         </div>
 
@@ -1238,7 +1968,8 @@ export default function AdminDriversPage() {
                                       ) : (
                                         <div className="space-y-1">
                                           <div className="max-w-xl truncate text-xs text-slate-600">
-                                            {d.file_path || "Fichier indisponible"}
+                                            {d.file_path ||
+                                              "Fichier indisponible"}
                                           </div>
 
                                           {d._signedUrl && (
@@ -1268,13 +1999,84 @@ export default function AdminDriversPage() {
                                       ) : null}
                                     </div>
 
-                                    <span
-                                      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
-                                        d.status,
-                                      )}`}
-                                    >
-                                      {statusLabel(d.status)}
-                                    </span>
+                                    <div className="min-w-[220px] space-y-3">
+                                      <span
+                                        className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${badgeClassForStatus(
+                                          d.status,
+                                        )}`}
+                                      >
+                                        {statusLabel(d.status)}
+                                      </span>
+
+                                      <select
+                                        value={
+                                          documentStatusDrafts[d.id] ?? d.status
+                                        }
+                                        onChange={(event) =>
+                                          setDocumentStatusDrafts((prev) => ({
+                                            ...prev,
+                                            [d.id]: event.target
+                                              .value as ReviewStatus,
+                                          }))
+                                        }
+                                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                                      >
+                                        <option value="pending">
+                                          En attente
+                                        </option>
+                                        <option value="approved">
+                                          Approuvé
+                                        </option>
+                                        <option value="rejected">Refusé</option>
+                                        <option value="incomplete">
+                                          Incomplet
+                                        </option>
+                                      </select>
+
+                                      <textarea
+                                        value={documentNoteDrafts[d.id] ?? ""}
+                                        onChange={(event) =>
+                                          setDocumentNoteDrafts((prev) => ({
+                                            ...prev,
+                                            [d.id]: event.target.value,
+                                          }))
+                                        }
+                                        rows={3}
+                                        placeholder="Note document..."
+                                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+                                      />
+
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                          type="button"
+                                          disabled={updatingDocumentId === d.id}
+                                          onClick={() =>
+                                            void updateDriverDocument({
+                                              userId: r.user_id,
+                                              documentId: d.id,
+                                            })
+                                          }
+                                          className="rounded-xl border border-blue-700 bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                          {updatingDocumentId === d.id
+                                            ? "..."
+                                            : "Sauver"}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={updatingDocumentId === d.id}
+                                          onClick={() =>
+                                            void deleteDriverDocument({
+                                              userId: r.user_id,
+                                              documentId: d.id,
+                                            })
+                                          }
+                                          className="rounded-xl border border-red-700 bg-red-600 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                          Supprimer
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
                                 </li>
                               ))}
@@ -1299,7 +2101,8 @@ export default function AdminDriversPage() {
                             className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                           />
                           <p className="text-xs text-slate-500">
-                            Cette note peut expliquer au chauffeur ce qu’il doit corriger ou compléter.
+                            Cette note peut expliquer au chauffeur ce qu’il doit
+                            corriger ou compléter.
                           </p>
                         </div>
                       </div>

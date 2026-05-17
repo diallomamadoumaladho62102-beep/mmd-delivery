@@ -5,7 +5,8 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type DriverReviewStatus = "approved" | "rejected";
+type DriverReviewStatus = "approved" | "rejected" | "suspended" | "disabled";
+type DriverDocumentReviewStatus = "approved" | "rejected";
 
 type DriverReviewBody = {
   userId?: unknown;
@@ -14,7 +15,7 @@ type DriverReviewBody = {
 };
 
 type DriverDocumentUpdate = {
-  status: DriverReviewStatus;
+  status: DriverDocumentReviewStatus;
   reviewed_at: string;
   reviewed_by: string;
   review_notes: string | null;
@@ -59,7 +60,18 @@ type DriverProfileStatusUpdate = {
 };
 
 function isDriverReviewStatus(value: unknown): value is DriverReviewStatus {
-  return value === "approved" || value === "rejected";
+  return (
+    value === "approved" ||
+    value === "rejected" ||
+    value === "suspended" ||
+    value === "disabled"
+  );
+}
+
+function isDocumentReviewStatus(
+  status: DriverReviewStatus,
+): status is DriverDocumentReviewStatus {
+  return status === "approved" || status === "rejected";
 }
 
 async function parseBody(request: NextRequest): Promise<DriverReviewBody> {
@@ -125,15 +137,9 @@ function computeMissingRequirements(params: {
   if (!hasText(profile.date_of_birth)) missing.push("date of birth");
   if (!hasText(profile.transport_mode)) missing.push("transport mode");
 
-  if (!hasDoc(docsByType, "profile_photo")) {
-    missing.push("profile photo");
-  }
-  if (!hasDoc(docsByType, "id_card_front")) {
-    missing.push("ID card front");
-  }
-  if (!hasDoc(docsByType, "id_card_back")) {
-    missing.push("ID card back");
-  }
+  if (!hasDoc(docsByType, "profile_photo")) missing.push("profile photo");
+  if (!hasDoc(docsByType, "id_card_front")) missing.push("ID card front");
+  if (!hasDoc(docsByType, "id_card_back")) missing.push("ID card back");
 
   const isMotor =
     profile.transport_mode === "car" || profile.transport_mode === "moto";
@@ -147,18 +153,10 @@ function computeMissingRequirements(params: {
     if (!hasText(profile.vehicle_color)) missing.push("vehicle color");
     if (!hasText(profile.plate_number)) missing.push("plate number");
 
-    if (!hasDoc(docsByType, "license_front")) {
-      missing.push("license front");
-    }
-    if (!hasDoc(docsByType, "license_back")) {
-      missing.push("license back");
-    }
-    if (!hasDoc(docsByType, "insurance")) {
-      missing.push("insurance");
-    }
-    if (!hasDoc(docsByType, "registration")) {
-      missing.push("registration");
-    }
+    if (!hasDoc(docsByType, "license_front")) missing.push("license front");
+    if (!hasDoc(docsByType, "license_back")) missing.push("license back");
+    if (!hasDoc(docsByType, "insurance")) missing.push("insurance");
+    if (!hasDoc(docsByType, "registration")) missing.push("registration");
   }
 
   return uniqueStrings(missing);
@@ -171,7 +169,7 @@ function formatMissingRequirements(missing: string[]): string | null {
 }
 
 function buildDriverDocumentUpdate(params: {
-  status: DriverReviewStatus;
+  status: DriverDocumentReviewStatus;
   reviewedAt: string;
   reviewedBy: string;
   reviewNotes: string;
@@ -203,6 +201,20 @@ function buildDriverProfileStatusUpdate(params: {
     is_online: false,
     updated_at: reviewedAt,
   };
+}
+
+function getAuditAction(status: DriverReviewStatus): string {
+  if (status === "approved") return "driver_approved";
+  if (status === "rejected") return "driver_rejected";
+  if (status === "suspended") return "driver_suspended";
+  return "driver_disabled";
+}
+
+function getSuccessMessage(status: DriverReviewStatus): string {
+  if (status === "approved") return "Driver approved successfully.";
+  if (status === "rejected") return "Driver rejected successfully.";
+  if (status === "suspended") return "Driver suspended successfully.";
+  return "Driver disabled successfully.";
 }
 
 async function getDriverProfile(params: {
@@ -343,7 +355,7 @@ async function writeDriverAuditLog(params: {
 
   const { error } = await supabase.from("admin_audit_logs").insert({
     admin_user_id: adminUserId,
-    action: status === "approved" ? "driver_approved" : "driver_rejected",
+    action: getAuditAction(status),
     target_type: "driver",
     target_id: targetUserId,
     metadata: {
@@ -389,21 +401,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isDriverReviewStatus(status)) {
-      return badRequest("status must be 'approved' or 'rejected'.");
+      return badRequest(
+        "status must be approved, rejected, suspended or disabled.",
+      );
     }
 
     const supabase = buildSupabaseAdminClient();
     const reviewedAt = new Date().toISOString();
 
     const [driverProfile, driverDocuments] = await Promise.all([
-      getDriverProfile({
-        supabase,
-        userId,
-      }),
-      getDriverDocuments({
-        supabase,
-        userId,
-      }),
+      getDriverProfile({ supabase, userId }),
+      getDriverDocuments({ supabase, userId }),
     ]);
 
     const missingRequirements = computeMissingRequirements({
@@ -411,12 +419,9 @@ export async function POST(request: NextRequest) {
       documents: driverDocuments,
     });
 
-    const documentUpdate = buildDriverDocumentUpdate({
-      status,
-      reviewedAt,
-      reviewedBy: actor,
-      reviewNotes,
-    });
+    if (status === "approved" && missingRequirements.length > 0) {
+      return badRequest("Cannot approve driver with missing requirements.");
+    }
 
     const profileUpdate = await updateDriverProfileStatus({
       supabase,
@@ -426,11 +431,20 @@ export async function POST(request: NextRequest) {
       missingRequirements,
     });
 
-    await updateDriverDocuments({
-      supabase,
-      userId,
-      payload: documentUpdate,
-    });
+    if (isDocumentReviewStatus(status)) {
+      const documentUpdate = buildDriverDocumentUpdate({
+        status,
+        reviewedAt,
+        reviewedBy: actor,
+        reviewNotes,
+      });
+
+      await updateDriverDocuments({
+        supabase,
+        userId,
+        payload: documentUpdate,
+      });
+    }
 
     await writeDriverAuditLog({
       supabase,
@@ -454,12 +468,7 @@ export async function POST(request: NextRequest) {
         missingRequirements,
         missingRequirementsText: profileUpdate.missing_requirements,
         isOnline: profileUpdate.is_online,
-        message:
-          status === "approved"
-            ? profileUpdate.documents_required
-              ? "Driver approved with missing requirements recorded."
-              : "Driver approved successfully."
-            : "Driver rejected successfully.",
+        message: getSuccessMessage(status),
       },
       { status: 200 },
     );

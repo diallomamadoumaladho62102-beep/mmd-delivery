@@ -16,8 +16,9 @@ import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
-import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { supabase } from "../../lib/supabase";
 
 type ChatTargetRole = "client" | "driver" | "restaurant" | "admin" | "";
 
@@ -38,9 +39,16 @@ const CHAT_BUCKET = "chat-images";
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic", "heif"] as const;
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUuid(value: unknown) {
+  return UUID_RE.test(String(value ?? "").trim());
+}
+
 function fmtDateTime(iso: string) {
   try {
-    return new Date(iso).toLocaleString("fr-FR");
+    return new Date(iso).toLocaleString();
   } catch {
     return iso;
   }
@@ -60,6 +68,7 @@ function safeFileExt(fileName: string) {
 
 function isHeicLike(pathOrName: string) {
   const s = String(pathOrName ?? "").toLowerCase();
+
   return (
     s.endsWith(".heic") ||
     s.endsWith(".heif") ||
@@ -70,8 +79,10 @@ function isHeicLike(pathOrName: string) {
 
 function contentTypeFromExt(ext: string) {
   const e = String(ext ?? "").toLowerCase();
+
   if (e === "png") return "image/png";
   if (e === "webp") return "image/webp";
+
   return "image/jpeg";
 }
 
@@ -85,8 +96,10 @@ function guessFileNameFromUri(uri: string) {
   try {
     const clean = String(uri ?? "").split("?")[0].split("#")[0];
     const last = clean.split("/").pop() || "";
+
     if (last.includes(".")) return last;
   } catch {}
+
   return `photo_${Date.now()}.jpg`;
 }
 
@@ -118,6 +131,7 @@ function normalizeRoleFromTitlePrefix(value?: string): ChatTargetRole {
 
 function isMissingColumnError(error: unknown) {
   const message = String((error as any)?.message ?? error ?? "").toLowerCase();
+
   return (
     message.includes("sender_role") ||
     message.includes("target_role") ||
@@ -125,16 +139,16 @@ function isMissingColumnError(error: unknown) {
   );
 }
 
-function targetRoleLabel(role: ChatTargetRole) {
+function targetRoleLabel(role: ChatTargetRole, t: TFunction) {
   switch (role) {
     case "client":
-      return "Client";
+      return t("shared.roles.client", "Client");
     case "driver":
-      return "Driver";
+      return t("shared.roles.driver", "Driver");
     case "restaurant":
-      return "Restaurant";
+      return t("shared.roles.restaurant", "Restaurant");
     case "admin":
-      return "MMD Support";
+      return t("shared.roles.admin", "MMD Support");
     default:
       return "";
   }
@@ -151,6 +165,7 @@ export function OrderChatBaseScreen(props: {
 
   const targetRole = normalizeTargetRole(props.targetRole);
   const currentRole = normalizeRoleFromTitlePrefix(titlePrefix);
+  const isValidOrderId = useMemo(() => isValidUuid(orderId), [orderId]);
 
   const [rows, setRows] = useState<Row[]>([]);
   const [text, setText] = useState("");
@@ -186,6 +201,7 @@ export function OrderChatBaseScreen(props: {
             key,
             error,
           });
+
           return { ...r, _signedUrl: null };
         }
 
@@ -197,7 +213,10 @@ export function OrderChatBaseScreen(props: {
   }, []);
 
   const load = useCallback(async () => {
-    if (!orderId) return;
+    if (!orderId || !isValidOrderId) {
+      setRows([]);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -250,10 +269,12 @@ export function OrderChatBaseScreen(props: {
       }));
 
       const enriched = await enrichSignedUrls(normalizedRows);
+
       setRows(enriched);
       scrollToEnd();
     } catch (e: any) {
       console.log("load chat error:", e);
+
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
         e?.message ??
@@ -262,11 +283,12 @@ export function OrderChatBaseScreen(props: {
     } finally {
       setLoading(false);
     }
-  }, [orderId, targetRole, enrichSignedUrls, scrollToEnd, t]);
+  }, [orderId, isValidOrderId, targetRole, enrichSignedUrls, scrollToEnd, t]);
 
   useEffect(() => {
     void load();
-    if (!orderId) return;
+
+    if (!orderId || !isValidOrderId) return;
 
     const channel = supabase
       .channel(`order_messages:${orderId}`)
@@ -285,7 +307,7 @@ export function OrderChatBaseScreen(props: {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [orderId, load]);
+  }, [orderId, isValidOrderId, load]);
 
   const pickImage = useCallback(async () => {
     try {
@@ -303,7 +325,7 @@ export function OrderChatBaseScreen(props: {
       }
 
       const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.85,
       });
 
@@ -318,6 +340,7 @@ export function OrderChatBaseScreen(props: {
       });
     } catch (e: any) {
       console.log("pickImage error:", e);
+
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
         e?.message ??
@@ -328,8 +351,14 @@ export function OrderChatBaseScreen(props: {
 
   const uploadPickedImage = useCallback(async () => {
     if (!pickedImage) return null;
-    if (!orderId) {
-      throw new Error(t("shared.orderChat.errors.missingOrderId", "orderId manquant"));
+
+    if (!orderId || !isValidOrderId) {
+      throw new Error(
+        t(
+          "shared.orderChat.errors.invalidOrderId",
+          "Conversation invalide : cette discussion doit être liée à une vraie commande."
+        )
+      );
     }
 
     const { data: userData } = await supabase.auth.getUser();
@@ -340,18 +369,11 @@ export function OrderChatBaseScreen(props: {
 
     if (!isAllowedImageExt(ext)) {
       throw new Error(
-        t(
-          "shared.orderChat.errors.unsupportedImage",
-          "Format d'image non supporté."
-        )
+        t("shared.orderChat.errors.unsupportedImage", "Format d'image non supporté.")
       );
     }
 
-    const isHeic =
-      ext === "heic" ||
-      ext === "heif" ||
-      uploadUri.toLowerCase().endsWith(".heic") ||
-      uploadUri.toLowerCase().endsWith(".heif");
+    const isHeic = ext === "heic" || ext === "heif" || isHeicLike(uploadUri);
 
     if (isHeic) {
       const manipulated = await ImageManipulator.manipulateAsync(uploadUri, [], {
@@ -372,7 +394,10 @@ export function OrderChatBaseScreen(props: {
 
     if (!info.exists) {
       throw new Error(
-        t("shared.orderChat.errors.imageNotFoundOnPhone", "Fichier image introuvable sur le téléphone.")
+        t(
+          "shared.orderChat.errors.imageNotFoundOnPhone",
+          "Fichier image introuvable sur le téléphone."
+        )
       );
     }
 
@@ -422,7 +447,7 @@ export function OrderChatBaseScreen(props: {
     if (uploadError) throw uploadError;
 
     return `chat-images/${key}`;
-  }, [pickedImage, orderId, t]);
+  }, [pickedImage, orderId, isValidOrderId, t]);
 
   const send = useCallback(async () => {
     if (sending) return;
@@ -430,15 +455,39 @@ export function OrderChatBaseScreen(props: {
     const trimmed = text.trim();
 
     if (!trimmed && !pickedImage) return;
-    if (!orderId || sending) return;
+    if (!orderId) return;
+
+    if (!isValidOrderId) {
+      Alert.alert(
+        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        t(
+          "shared.orderChat.errors.invalidOrderId",
+          "Conversation invalide : cette discussion doit être liée à une vraie commande."
+        )
+      );
+      return;
+    }
 
     try {
       setSending(true);
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      const userId = userData.user?.id ?? null;
+
+      if (userError || !userId) {
+        throw new Error(
+          t(
+            "shared.orderChat.errors.notAuthenticated",
+            "Tu dois être connecté pour envoyer un message."
+          )
+        );
+      }
 
       const image_path = pickedImage ? await uploadPickedImage() : null;
 
       const messagePayload = {
         order_id: orderId,
+        user_id: userId,
         text: trimmed || null,
         image_path,
         sender_role: currentRole || null,
@@ -450,6 +499,7 @@ export function OrderChatBaseScreen(props: {
       if (error && isMissingColumnError(error)) {
         const legacyPayload = {
           order_id: orderId,
+          user_id: userId,
           text: trimmed || null,
           image_path,
         };
@@ -462,9 +512,11 @@ export function OrderChatBaseScreen(props: {
 
       setText("");
       setPickedImage(null);
+
       await load();
     } catch (e: any) {
       console.log("send chat error:", e);
+
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
         e?.message ??
@@ -473,7 +525,18 @@ export function OrderChatBaseScreen(props: {
     } finally {
       setSending(false);
     }
-  }, [text, pickedImage, orderId, targetRole, currentRole, sending, uploadPickedImage, load, t]);
+  }, [
+    sending,
+    text,
+    pickedImage,
+    orderId,
+    isValidOrderId,
+    targetRole,
+    currentRole,
+    uploadPickedImage,
+    load,
+    t,
+  ]);
 
   const del = useCallback(
     async (id: string, imagePath: string | null) => {
@@ -503,6 +566,7 @@ export function OrderChatBaseScreen(props: {
         setRows((prev) => prev.filter((r) => r.id !== id));
       } catch (e: any) {
         console.log("delete chat error:", e);
+
         Alert.alert(
           t("shared.orderChat.alerts.errorTitle", "Erreur"),
           e?.message ??
@@ -516,11 +580,12 @@ export function OrderChatBaseScreen(props: {
   const title = useMemo(() => {
     const short = orderId ? orderId.slice(0, 8) : "—";
     const prefix = titlePrefix ? `${titlePrefix} • ` : "";
-    const target = targetRole ? ` → ${targetRoleLabel(targetRole)}` : "";
-    return `${prefix}Chat${target} • #${short}`;
-  }, [orderId, titlePrefix, targetRole]);
+    const target = targetRole ? ` → ${targetRoleLabel(targetRole, t)}` : "";
 
-  if (!orderId) {
+    return `${prefix}${t("shared.orderChat.header.title", "Chat")}${target} • #${short}`;
+  }, [orderId, titlePrefix, targetRole, t]);
+
+  if (!orderId || !isValidOrderId) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#020617", padding: 16 }}>
         <TouchableOpacity onPress={onBack}>
@@ -529,8 +594,15 @@ export function OrderChatBaseScreen(props: {
           </Text>
         </TouchableOpacity>
 
-        <Text style={{ color: "white", marginTop: 16 }}>
-          {t("shared.orderChat.errors.missingOrderIdUi", "Erreur: orderId manquant.")}
+        <Text style={{ color: "white", marginTop: 16, fontWeight: "900" }}>
+          {t("shared.orderChat.errors.invalidOrderIdTitle", "Discussion indisponible")}
+        </Text>
+
+        <Text style={{ color: "#CBD5E1", marginTop: 8, lineHeight: 20, fontWeight: "700" }}>
+          {t(
+            "shared.orderChat.errors.invalidOrderIdUi",
+            "Cette discussion doit être ouverte depuis une vraie commande. Le support général sera corrigé séparément pour ne plus envoyer orderId = support."
+          )}
         </Text>
       </SafeAreaView>
     );
@@ -556,6 +628,7 @@ export function OrderChatBaseScreen(props: {
             <Text style={{ color: "#E5E7EB", fontWeight: "900", textAlign: "center" }}>
               {title}
             </Text>
+
             <Text style={{ color: "#9CA3AF", marginTop: 2, fontWeight: "800", fontSize: 12 }}>
               {t("shared.orderChat.header.subtitle", "Messages & pièces jointes")}
             </Text>

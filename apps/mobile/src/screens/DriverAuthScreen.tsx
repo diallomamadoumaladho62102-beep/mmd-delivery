@@ -302,6 +302,31 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
+function normalizeUsPhoneForTwilio(value: string): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("+")) {
+    return raw.replace(/[^+\d]/g, "");
+  }
+
+  const digits = raw.replace(/\D/g, "");
+
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+${digits}`;
+  }
+
+  return raw;
+}
+
+function isValidTwilioPhone(value: string): boolean {
+  return /^\+[1-9]\d{7,14}$/.test(value.trim());
+}
+
 export function DriverAuthScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
@@ -729,13 +754,29 @@ export function DriverAuthScreen() {
       const cleanedEmail = email.trim().toLowerCase();
       const cleanedPassword = password.trim();
       const cleanedFullName = fullName.trim();
-      const cleanedPhone = phone.trim();
-      const cleanedEmergencyPhone = emergencyPhone.trim();
+      const cleanedPhone = normalizeUsPhoneForTwilio(phone);
+      const cleanedEmergencyPhone = normalizeUsPhoneForTwilio(emergencyPhone);
       const cleanedAddress = address.trim();
       const cleanedCity = city.trim();
       const cleanedState = stateValue.trim().toUpperCase() || null;
       const cleanedZipCode = zipCode.trim();
       const cleanedDateOfBirth = dateOfBirth.trim();
+
+      if (!isValidTwilioPhone(cleanedPhone)) {
+        Alert.alert(
+          "Téléphone invalide",
+          "Entre un numéro valide au format américain. Exemple : 9297408722 ou +19297408722."
+        );
+        return;
+      }
+
+      if (!isValidTwilioPhone(cleanedEmergencyPhone)) {
+        Alert.alert(
+          "Téléphone d'urgence invalide",
+          "Entre un numéro d'urgence valide. Exemple : 9297408722 ou +19297408722."
+        );
+        return;
+      }
 
       const cleanedVehicleBrand = vehicleBrand.trim();
       const cleanedVehicleModel = vehicleModel.trim();
@@ -788,7 +829,7 @@ export function DriverAuthScreen() {
       await supabase.from("profiles").upsert(
         {
           id: uid,
-          role: "livreur",
+          role: "driver",
           full_name: cleanedFullName,
           phone: cleanedPhone,
         },

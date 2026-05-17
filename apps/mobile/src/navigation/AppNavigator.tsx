@@ -142,6 +142,26 @@ type AppNavigatorProps = {
   initialRouteName?: keyof RootStackParamList;
 };
 
+type DriverStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "incomplete"
+  | "suspended";
+
+type AppRole = "client" | "driver" | "restaurant" | "admin" | null;
+
+function normalizeAppRole(value: unknown): AppRole {
+  const role = String(value ?? "").trim().toLowerCase();
+
+  if (role === "client") return "client";
+  if (role === "driver" || role === "livreur") return "driver";
+  if (role === "restaurant") return "restaurant";
+  if (role === "admin") return "admin";
+
+  return null;
+}
+
 function isResetPasswordUrl(url: string | null | undefined) {
   if (!url) return false;
   const normalized = url.toLowerCase();
@@ -259,6 +279,50 @@ export function AppNavigator({
       });
     },
     [currentRoute, navReady]
+  );
+
+  const resolveUserRole = React.useCallback(async (uid: string): Promise<AppRole> => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", uid)
+        .maybeSingle();
+
+      if (!error) {
+        const dbRole = normalizeAppRole((data as any)?.role);
+        if (dbRole) return dbRole;
+      } else {
+        console.log("profiles role check error:", error);
+      }
+    } catch (e) {
+      console.log("profiles role check failed:", e);
+    }
+
+    return normalizeAppRole(await getSelectedRole());
+  }, []);
+
+  const getDriverStatus = React.useCallback(
+    async (uid: string): Promise<DriverStatus | null> => {
+      try {
+        const { data, error } = await supabase
+          .from("driver_profiles")
+          .select("status")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (error) {
+          console.log("driver_profiles status check error:", error);
+          return null;
+        }
+
+        return ((data as any)?.status as DriverStatus | undefined) ?? null;
+      } catch (e) {
+        console.log("driver profile status check failed:", e);
+        return null;
+      }
+    },
+    []
   );
 
   const openResetPassword = React.useCallback(() => {
@@ -424,7 +488,6 @@ export function AppNavigator({
 
       const { data } = await supabase.auth.getSession();
       const session = data.session ?? null;
-      const role = await getSelectedRole();
 
       if (!session) {
         if (
@@ -441,6 +504,7 @@ export function AppNavigator({
       }
 
       const uid = session.user.id;
+      const role = await resolveUserRole(uid);
 
       if (role === "client") {
         const ok = await isClientProfileComplete(uid);
@@ -454,15 +518,50 @@ export function AppNavigator({
       }
 
       if (role === "driver") {
-        if (isInDriverArea(cur)) return;
-        resetTo("DriverTabs");
+        const status = await getDriverStatus(uid);
+
+        if (status === "suspended") {
+          resetTo("DriverAuth");
+          return;
+        }
+
+        if (status === "approved") {
+          if (isInDriverArea(cur) && cur !== "DriverOnboarding") return;
+          resetTo("DriverTabs");
+          return;
+        }
+
+        if (
+          status === "pending" ||
+          status === "incomplete" ||
+          status === "rejected" ||
+          status === null
+        ) {
+          if (cur !== "DriverOnboarding") resetTo("DriverOnboarding");
+          return;
+        }
+
+        resetTo("DriverOnboarding");
         return;
       }
 
       if (role === "restaurant") {
+        const ok = await isRestaurantProfileComplete(uid);
+
+        if (!ok) {
+          if (cur !== "RestaurantGate" && cur !== "RestaurantSetup") {
+            resetTo("RestaurantGate");
+          }
+          return;
+        }
+
         if (isInRestaurantArea(cur)) return;
-        await isRestaurantProfileComplete(uid);
-        resetTo("RestaurantGate");
+        resetTo("RestaurantHome");
+        return;
+      }
+
+      if (role === "admin") {
+        resetTo("RoleSelect");
         return;
       }
 
@@ -477,6 +576,8 @@ export function AppNavigator({
     openResetPassword,
     isClientProfileComplete,
     isRestaurantProfileComplete,
+    resolveUserRole,
+    getDriverStatus,
     isInClientArea,
     isInDriverArea,
     isInRestaurantArea,

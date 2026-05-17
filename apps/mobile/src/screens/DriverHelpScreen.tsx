@@ -20,16 +20,16 @@ const CARD_DEEP = "rgba(2,6,23,0.72)";
 const BORDER = "rgba(148,163,184,0.14)";
 const PURPLE = "#A78BFA";
 const BLUE = "#60A5FA";
-const GREEN = "#22C55E";
 const ORANGE = "#F97316";
 const RED = "#F87171";
 const TEXT = "#F8FAFC";
 const MUTED = "#94A3B8";
 
-const SUPPORT_EMAIL = "support@mmd-delivery.com";
+const SUPPORT_EMAIL = "support@mmddelivery.com";
 const EMERGENCY_NUMBER = "911";
 
-type HelpTone = "purple" | "blue" | "green" | "orange" | "red";
+type HelpTone = "purple" | "blue" | "orange" | "red";
+type BusyAction = "mail" | "emergency" | "chat" | "report";
 
 type HelpItemProps = {
   icon: string;
@@ -44,7 +44,6 @@ type HelpItemProps = {
 
 function toneColor(tone?: HelpTone) {
   if (tone === "blue") return BLUE;
-  if (tone === "green") return GREEN;
   if (tone === "orange") return ORANGE;
   if (tone === "red") return RED;
   return PURPLE;
@@ -71,17 +70,19 @@ function HelpItem({
   accessibilityLabel,
 }: HelpItemProps) {
   const color = toneColor(tone);
+  const isDisabled = disabled || loading;
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       activeOpacity={0.86}
-      style={[styles.helpItem, (disabled || loading) && styles.disabledItem]}
+      style={[styles.helpItem, isDisabled && styles.disabledItem]}
       accessible
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || title}
       accessibilityHint={subtitle}
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
     >
       <View
         style={[
@@ -121,12 +122,10 @@ function FaqRow({ question, answer }: { question: string; answer: string }) {
 export function DriverHelpScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const [busyAction, setBusyAction] = useState<"mail" | "emergency" | "chat" | "report" | null>(
-    null
-  );
+  const [busyAction, setBusyAction] = useState<BusyAction | null>(null);
 
   const runBusyAction = useCallback(
-    async (key: "mail" | "emergency" | "chat" | "report", action: () => Promise<void> | void) => {
+    async (key: BusyAction, action: () => Promise<void> | void) => {
       if (busyAction) return;
 
       try {
@@ -201,20 +200,25 @@ export function DriverHelpScreen() {
 
   const openAdminChat = useCallback(() => {
     void runBusyAction("chat", async () => {
-      try {
-        navigation.navigate("DriverChat", {
-          orderId: "support",
-          targetRole: "admin",
-        });
-        return;
-      } catch {
-        Alert.alert(
-          t("driver.help.comingSoonTitle", "Coming soon ✅"),
-          t("driver.help.adminChatSoon", "Admin support chat will be available soon.")
-        );
-      }
+      Alert.alert(
+        t("driver.help.comingSoonTitle", "Coming soon ✅"),
+        t(
+          "driver.help.adminChatSoon",
+          "Admin support chat will be available soon. For now, please contact support by email or report an issue with the order ID and details."
+        ),
+        [
+          {
+            text: t("driver.help.emailSupport", "Email support"),
+            onPress: openMail,
+          },
+          {
+            text: t("common.ok", "OK"),
+            style: "cancel",
+          },
+        ]
+      );
     });
-  }, [navigation, runBusyAction, t]);
+  }, [openMail, runBusyAction, t]);
 
   const reportIssue = useCallback(() => {
     void runBusyAction("report", async () => {
@@ -246,6 +250,7 @@ export function DriverHelpScreen() {
             accessible
             accessibilityRole="button"
             accessibilityLabel={t("common.back", "Back")}
+            accessibilityState={{ disabled: busy }}
           >
             <Text style={styles.backText}>←</Text>
           </TouchableOpacity>
@@ -289,7 +294,6 @@ export function DriverHelpScreen() {
           tone="purple"
           disabled={busy}
           loading={busyAction === "chat"}
-          accessibilityLabel={t("driver.help.chatSupport", "Chat support")}
         />
 
         <HelpItem
@@ -300,7 +304,6 @@ export function DriverHelpScreen() {
           tone="blue"
           disabled={busy}
           loading={busyAction === "mail"}
-          accessibilityLabel={t("driver.help.emailSupport", "Email support")}
         />
 
         <HelpItem
@@ -314,7 +317,6 @@ export function DriverHelpScreen() {
           tone="orange"
           disabled={busy}
           loading={busyAction === "report"}
-          accessibilityLabel={t("driver.help.reportIssue", "Report an issue")}
         />
 
         <HelpItem
@@ -325,7 +327,6 @@ export function DriverHelpScreen() {
           tone="red"
           disabled={busy}
           loading={busyAction === "emergency"}
-          accessibilityLabel={t("driver.help.emergency", "Emergency")}
         />
 
         <Text style={styles.sectionTitle}>{t("driver.help.faqSection", "FAQ")}</Text>
