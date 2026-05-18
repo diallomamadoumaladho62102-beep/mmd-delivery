@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
-import { Text, View } from "react-native";
+import { ActivityIndicator, Image, Text, View } from "react-native";
 import Mapbox from "@rnmapbox/maps";
 
 // i18n boot
@@ -54,8 +54,39 @@ function isExpoGo(): boolean {
 
 function Splash(): React.JSX.Element {
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-      <Text>Chargement…</Text>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "#111827",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 24,
+      }}
+    >
+      <Image
+        source={require("./assets/brand/mmd-logo.png")}
+        style={{
+          width: 140,
+          height: 140,
+          marginBottom: 24,
+        }}
+        resizeMode="contain"
+      />
+
+      <ActivityIndicator size="large" color="#FFFFFF" />
+
+      <Text
+        style={{
+          marginTop: 20,
+          color: "#FFFFFF",
+          fontSize: 16,
+          fontWeight: "700",
+          letterSpacing: 0.3,
+          textAlign: "center",
+        }}
+      >
+        MMD Delivery
+      </Text>
     </View>
   );
 }
@@ -291,9 +322,10 @@ export default function App(): React.JSX.Element {
     };
   }, []);
 
-  const initialRouteName = useMemo(() => {
-    return session ? "ClientHome" : "RoleSelect";
-  }, [session]);
+  // Important production fix:
+  // Do not open ClientHome by default for every authenticated user.
+  // AppNavigator resolves the real role and redirects properly.
+  const initialRouteName: "RoleSelect" = "RoleSelect";
 
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
   const StripeGate = useMemo(() => getStripeGateSafe(), []);

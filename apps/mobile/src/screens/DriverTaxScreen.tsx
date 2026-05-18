@@ -12,7 +12,11 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { openYearlyTaxPdf } from "../lib/taxPdf";
+import {
+  openMonthlyTaxPdf,
+  openWeeklyTaxPdf,
+  openYearlyTaxPdf,
+} from "../lib/taxPdf";
 
 type Row = {
   labelKey: string;
@@ -25,19 +29,34 @@ type YearOption = {
   label: string;
 };
 
+type DownloadingType = "weekly" | "monthly" | "yearly" | null;
+
 function currentYearLocal() {
   return new Date().getFullYear();
+}
+
+function getInitialWeek(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now.getTime() - start.getTime();
+  const oneWeek = 1000 * 60 * 60 * 24 * 7;
+
+  return Math.min(Math.max(Math.floor(diff / oneWeek) + 1, 1), 53);
 }
 
 export default function DriverTaxScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
-  const [downloading, setDownloading] = useState(false);
+  const now = new Date();
+
+  const [downloading, setDownloading] = useState<DownloadingType>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
+  const [selectedWeek, setSelectedWeek] = useState<number>(getInitialWeek());
 
   const country = "US";
   const isVerified = true;
-  const canSeeYearlySummary = country === "US" && isVerified;
+  const canSeeTaxDocuments = country === "US" && isVerified;
 
   const yearOptions: YearOption[] = useMemo(() => {
     const y = currentYearLocal();
@@ -47,16 +66,34 @@ export default function DriverTaxScreen() {
     }));
   }, []);
 
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) => ({
+        value: index + 1,
+        label: String(index + 1),
+      })),
+    [],
+  );
+
+  const weekOptions = useMemo(
+    () =>
+      Array.from({ length: 53 }, (_, index) => ({
+        value: index + 1,
+        label: String(index + 1),
+      })),
+    [],
+  );
+
   const [selectedYear, setSelectedYear] = useState<number>(
-    yearOptions[1]?.value ?? currentYearLocal() - 1
+    yearOptions[1]?.value ?? currentYearLocal() - 1,
   );
 
   const rows: Row[] = useMemo(() => {
     return [
       {
         labelKey: "driver.tax.overview.status.label",
-        valueText: "Not configured",
-        badge: { textKey: "driver.tax.badges.soon", kind: "info" },
+        valueText: "Configured",
+        badge: { textKey: "driver.tax.badges.available", kind: "ok" },
       },
       {
         labelKey: "driver.tax.overview.formType.label",
@@ -67,6 +104,8 @@ export default function DriverTaxScreen() {
     ];
   }, [country]);
 
+  const isDownloading = downloading !== null;
+
   const onW9 = useCallback(() => {
     navigation.navigate("DriverW9");
   }, [navigation]);
@@ -76,8 +115,8 @@ export default function DriverTaxScreen() {
       t("driver.tax.learnMore.title", "How taxes work"),
       t(
         "driver.tax.learnMore.body",
-        "We don’t withhold taxes. You are responsible for reporting your earnings."
-      )
+        "We don’t withhold taxes. You are responsible for reporting your earnings.",
+      ),
     );
   }, [t]);
 
@@ -90,8 +129,8 @@ export default function DriverTaxScreen() {
           t("driver.tax.year.future.title", "Not finished yet"),
           t(
             "driver.tax.year.future.body",
-            "This year is not completed yet. We’ll switch to the previous year."
-          )
+            "This year is not completed yet. We’ll switch to the previous year.",
+          ),
         );
 
         setSelectedYear(current - 1);
@@ -100,21 +139,8 @@ export default function DriverTaxScreen() {
 
       setSelectedYear(year);
     },
-    [t]
+    [t],
   );
-
-  const onYearlySummary = useCallback(async () => {
-    if (downloading) return;
-
-    try {
-      setDownloading(true);
-      await openYearlyTaxPdf(selectedYear);
-    } catch (error: any) {
-      console.log("DriverTaxScreen.onYearlySummary error:", error?.message, error);
-    } finally {
-      setDownloading(false);
-    }
-  }, [downloading, selectedYear]);
 
   const onUnavailable = useCallback(() => {
     Alert.alert(
@@ -122,11 +148,50 @@ export default function DriverTaxScreen() {
       country !== "US"
         ? t(
             "driver.tax.countryNotSupported",
-            "This document is only available in the US for now."
+            "This document is only available in the US for now.",
           )
-        : t("driver.tax.verifyFirst", "Please verify your account first.")
+        : t("driver.tax.verifyFirst", "Please verify your account first."),
     );
   }, [country, t]);
+
+  const onYearlySummary = useCallback(async () => {
+    if (isDownloading) return;
+
+    try {
+      setDownloading("yearly");
+      await openYearlyTaxPdf(selectedYear);
+    } catch (error: any) {
+      console.log("DriverTaxScreen.onYearlySummary error:", error?.message, error);
+    } finally {
+      setDownloading(null);
+    }
+  }, [isDownloading, selectedYear]);
+
+  const onMonthlySummary = useCallback(async () => {
+    if (isDownloading) return;
+
+    try {
+      setDownloading("monthly");
+      await openMonthlyTaxPdf(selectedYear, selectedMonth);
+    } catch (error: any) {
+      console.log("DriverTaxScreen.onMonthlySummary error:", error?.message, error);
+    } finally {
+      setDownloading(null);
+    }
+  }, [isDownloading, selectedMonth, selectedYear]);
+
+  const onWeeklySummary = useCallback(async () => {
+    if (isDownloading) return;
+
+    try {
+      setDownloading("weekly");
+      await openWeeklyTaxPdf(selectedYear, selectedWeek);
+    } catch (error: any) {
+      console.log("DriverTaxScreen.onWeeklySummary error:", error?.message, error);
+    } finally {
+      setDownloading(null);
+    }
+  }, [isDownloading, selectedWeek, selectedYear]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -168,7 +233,7 @@ export default function DriverTaxScreen() {
                 {row.badge ? (
                   <View style={[styles.badge, badgeStyle(row.badge.kind)]}>
                     <Text style={styles.badgeText} numberOfLines={1}>
-                      {t(row.badge.textKey, "Soon")}
+                      {t(row.badge.textKey, row.badge.kind === "ok" ? "Available" : "Soon")}
                     </Text>
                   </View>
                 ) : null}
@@ -193,7 +258,7 @@ export default function DriverTaxScreen() {
             <Text style={styles.noteText}>
               {t(
                 "driver.tax.important.body",
-                "You are responsible for declaring your earnings."
+                "You are responsible for declaring your earnings.",
               )}
             </Text>
           </View>
@@ -211,12 +276,12 @@ export default function DriverTaxScreen() {
                   <TouchableOpacity
                     key={option.value}
                     onPress={() => onSelectYear(option.value)}
-                    disabled={downloading}
+                    disabled={isDownloading}
                     activeOpacity={0.85}
                     style={[
                       styles.yearChip,
                       active ? styles.yearChipActive : styles.yearChipInactive,
-                      downloading && { opacity: 0.85 },
+                      isDownloading && { opacity: 0.85 },
                     ]}
                   >
                     <Text
@@ -239,6 +304,80 @@ export default function DriverTaxScreen() {
             </Text>
           </View>
 
+          <View style={styles.yearBox}>
+            <Text style={styles.yearLabel}>
+              {t("driver.tax.month.label", "Month")}
+            </Text>
+
+            <View style={styles.yearChips}>
+              {monthOptions.map((option) => {
+                const active = option.value === selectedMonth;
+
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => setSelectedMonth(option.value)}
+                    disabled={isDownloading}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.smallChip,
+                      active ? styles.yearChipActive : styles.yearChipInactive,
+                      isDownloading && { opacity: 0.85 },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.yearChipText,
+                        active
+                          ? styles.yearChipTextActive
+                          : styles.yearChipTextInactive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.yearBox}>
+            <Text style={styles.yearLabel}>
+              {t("driver.tax.week.label", "Week")}
+            </Text>
+
+            <View style={styles.yearChips}>
+              {weekOptions.map((option) => {
+                const active = option.value === selectedWeek;
+
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    onPress={() => setSelectedWeek(option.value)}
+                    disabled={isDownloading}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.tinyChip,
+                      active ? styles.yearChipActive : styles.yearChipInactive,
+                      isDownloading && { opacity: 0.85 },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.tinyChipText,
+                        active
+                          ? styles.yearChipTextActive
+                          : styles.yearChipTextInactive,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={styles.actions}>
             <TouchableOpacity
               onPress={onLearnMore}
@@ -250,34 +389,44 @@ export default function DriverTaxScreen() {
               </Text>
             </TouchableOpacity>
 
-            {canSeeYearlySummary ? (
-              <TouchableOpacity
-                onPress={onYearlySummary}
-                style={[
-                  styles.secondaryBtn,
-                  downloading && styles.secondaryBtnDisabled,
-                ]}
-                activeOpacity={0.85}
-                disabled={downloading}
-              >
-                <View style={styles.btnRow}>
-                  {downloading ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="rgba(255,255,255,0.85)"
-                    />
-                  ) : null}
+            {canSeeTaxDocuments ? (
+              <>
+                <TaxButton
+                  loading={downloading === "weekly"}
+                  disabled={isDownloading}
+                  label={
+                    downloading === "weekly"
+                      ? t("common.loading", "Loading…")
+                      : `${t("driver.tax.buttons.weeklySummary", "Weekly summary (PDF)")} — W${selectedWeek}, ${selectedYear}`
+                  }
+                  onPress={onWeeklySummary}
+                />
 
-                  <Text style={styles.secondaryBtnText}>
-                    {downloading
+                <TaxButton
+                  loading={downloading === "monthly"}
+                  disabled={isDownloading}
+                  label={
+                    downloading === "monthly"
+                      ? t("common.loading", "Loading…")
+                      : `${t("driver.tax.buttons.monthlySummary", "Monthly summary (PDF)")} — ${selectedMonth}/${selectedYear}`
+                  }
+                  onPress={onMonthlySummary}
+                />
+
+                <TaxButton
+                  loading={downloading === "yearly"}
+                  disabled={isDownloading}
+                  label={
+                    downloading === "yearly"
                       ? t("common.loading", "Loading…")
                       : `${t(
                           "driver.tax.buttons.yearlySummary",
-                          "Yearly summary (PDF)"
-                        )} — ${selectedYear}`}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+                          "Yearly summary (PDF)",
+                        )} — ${selectedYear}`
+                  }
+                  onPress={onYearlySummary}
+                />
+              </>
             ) : (
               <TouchableOpacity
                 onPress={onUnavailable}
@@ -303,7 +452,7 @@ export default function DriverTaxScreen() {
             <Text style={styles.metaNoteText}>
               {t(
                 "driver.tax.yearlySummary.note",
-                "Note: Download increments download_count and updates last_downloaded_at."
+                "Note: Downloads may update download_count and last_downloaded_at.",
               )}
             </Text>
           </View>
@@ -312,6 +461,35 @@ export default function DriverTaxScreen() {
         <View style={styles.footerSpace} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function TaxButton({
+  label,
+  loading,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  loading: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.secondaryBtn, { marginTop: 10 }, disabled && styles.secondaryBtnDisabled]}
+      activeOpacity={0.85}
+      disabled={disabled}
+    >
+      <View style={styles.btnRow}>
+        {loading ? (
+          <ActivityIndicator size="small" color="rgba(255,255,255,0.85)" />
+        ) : null}
+
+        <Text style={styles.secondaryBtnText}>{label}</Text>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -486,6 +664,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
 
+  smallChip: {
+    minWidth: 42,
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
+  tinyChip: {
+    minWidth: 34,
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
   yearChipActive: {
     backgroundColor: "rgba(255,255,255,0.16)",
     borderColor: "rgba(255,255,255,0.22)",
@@ -498,6 +694,11 @@ const styles = StyleSheet.create({
 
   yearChipText: {
     fontSize: 13,
+    fontWeight: "900",
+  },
+
+  tinyChipText: {
+    fontSize: 11,
     fontWeight: "900",
   },
 
@@ -545,12 +746,15 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.78)",
     fontSize: 14,
     fontWeight: "800",
+    textAlign: "center",
   },
 
   btnRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 10,
+    paddingHorizontal: 12,
   },
 
   metaNote: {

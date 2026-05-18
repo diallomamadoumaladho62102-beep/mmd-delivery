@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { API_BASE_URL } from "../lib/apiBase";
 
 type ChartPoint = {
   label: string;
@@ -48,7 +49,7 @@ function formatMoney(value: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-  }).format(value);
+  }).format(Number.isFinite(value) ? value : 0);
 }
 
 function KpiCard({
@@ -95,6 +96,7 @@ function SimpleBarChart({ data }: { data: ChartPoint[] }) {
       <View style={styles.chartBarsRow}>
         {data.map((item) => {
           const height = (item.gross / maxGross) * 140;
+
           return (
             <View key={item.label} style={styles.barItem}>
               <View style={styles.barTrack}>
@@ -116,49 +118,49 @@ export default function RestaurantFinancialCenterScreen() {
   const [overview, setOverview] = useState<FinancialOverview | null>(null);
 
   const apiBase = useMemo(() => {
-    const value = process.env.EXPO_PUBLIC_API_BASE_URL;
-    return value?.trim().replace(/\/$/, "") ?? "";
+    const value = String(API_BASE_URL ?? "").trim();
+    return value ? value.replace(/\/+$/, "") : "";
   }, []);
 
-  const loadOverview = async () => {
+  const loadOverview = useCallback(async () => {
     try {
       setError(null);
 
       if (!apiBase) {
         throw new Error(
-          "EXPO_PUBLIC_API_BASE_URL manquant dans les variables d’environnement."
+          "API_BASE_URL manquant. Vérifie la configuration API production.",
         );
       }
 
       const response = await fetch(
-        `${apiBase}/api/restaurant/financial/overview`
+        `${apiBase}/api/restaurant/financial/overview`,
       );
 
-      const json = await response.json();
+      const json = await response.json().catch(() => null);
 
       if (!response.ok || !json?.ok) {
         throw new Error(
-          json?.error || "Failed to load restaurant financial overview"
+          json?.error || "Failed to load restaurant financial overview",
         );
       }
 
-      setOverview(json.data);
+      setOverview(json.data as FinancialOverview);
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [apiBase]);
 
   useEffect(() => {
-    loadOverview();
-  }, []);
+    void loadOverview();
+  }, [loadOverview]);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadOverview();
-  };
+  }, [loadOverview]);
 
   if (loading) {
     return (
@@ -204,15 +206,18 @@ export default function RestaurantFinancialCenterScreen() {
           title="Gross Sales"
           value={formatMoney(overview.grossSales, overview.currency)}
         />
+
         <KpiCard
           title="Commission"
           value={formatMoney(overview.platformCommission, overview.currency)}
           subtitle="Platform fees"
         />
+
         <KpiCard
           title="Net Revenue"
           value={formatMoney(overview.netRevenue, overview.currency)}
         />
+
         <KpiCard title="Orders" value={String(overview.totalOrders)} />
       </View>
 

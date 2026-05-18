@@ -26,6 +26,10 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import {
+  getDriverOnlineStatus,
+  setDriverOnlineStatus,
+} from "../lib/driverStatus";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -300,6 +304,7 @@ export function DriverHomeScreen() {
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeqRef = useRef(0);
   const mountedRef = useRef(true);
+  const restoredOnlineStatusRef = useRef(false);
   const lastOfferIdRef = useRef<string | null>(null);
   const locationPermissionRequestRef = useRef<Promise<boolean> | null>(null);
   const locationPermissionDeniedAlertShownRef = useRef(false);
@@ -749,11 +754,97 @@ export function DriverHomeScreen() {
   }, [isOnline, scheduleDriverOrdersRefresh]);
 
   useEffect(() => {
+    if (restoredOnlineStatusRef.current) return;
+    restoredOnlineStatusRef.current = true;
+
+    let cancelled = false;
+
+    const restoreSavedOnlineStatus = async () => {
+      try {
+        const savedOnline = await getDriverOnlineStatus();
+        if (cancelled || !mountedRef.current) return;
+
+        if (!savedOnline) {
+          setIsOnline(false);
+          return;
+        }
+
+        setIsOnline(true);
+
+        const userId = await getUserIdOrThrow();
+
+        const { error: upErr } = await supabase
+          .from("driver_profiles")
+          .update({ is_online: true })
+          .eq("user_id", userId);
+
+        if (upErr) console.log("restoreSavedOnlineStatus profile update error:", upErr);
+
+        await startDbGpsTracking(userId);
+        await fetchDriverOrders(true);
+      } catch (e) {
+        console.log("restoreSavedOnlineStatus error:", e);
+      }
+    };
+
+    void restoreSavedOnlineStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchDriverOrders, getUserIdOrThrow, startDbGpsTracking]);
+
+  useEffect(() => {
     const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
-      if (state === "active" && isOnline) void fetchDriverOrders(true);
+      if (state !== "active") return;
+
+      void (async () => {
+        try {
+          const savedOnline = await getDriverOnlineStatus();
+          if (!mountedRef.current) return;
+
+          if (!savedOnline) {
+            if (isOnline) {
+              setIsOnline(false);
+              await stopDbGpsTracking();
+              await stopSound();
+              setActiveOffer(null);
+              setAvailableOrders([]);
+              setMyOrders([]);
+              setCountdown(60);
+              lastOfferIdRef.current = null;
+            }
+            return;
+          }
+
+          if (!isOnline) setIsOnline(true);
+
+          const userId = await getUserIdOrThrow();
+
+          const { error: upErr } = await supabase
+            .from("driver_profiles")
+            .update({ is_online: true })
+            .eq("user_id", userId);
+
+          if (upErr) console.log("AppState online restore profile update error:", upErr);
+
+          await startDbGpsTracking(userId);
+          await fetchDriverOrders(true);
+        } catch (e) {
+          console.log("AppState online restore error:", e);
+        }
+      })();
     });
+
     return () => sub.remove();
-  }, [fetchDriverOrders, isOnline]);
+  }, [
+    fetchDriverOrders,
+    getUserIdOrThrow,
+    isOnline,
+    startDbGpsTracking,
+    stopDbGpsTracking,
+    stopSound,
+  ]);
 
   const formatStatus = useCallback(
     (status: OrderStatus) => {
@@ -1015,6 +1106,7 @@ export function DriverHomeScreen() {
         }
         const { error: upErr } = await supabase.from("driver_profiles").update({ is_online: true }).eq("user_id", userId);
         if (upErr) throw upErr;
+        await setDriverOnlineStatus(true);
         setIsOnline(true);
         await startDbGpsTracking(userId);
         await fetchDriverOrders(true);
@@ -1023,6 +1115,7 @@ export function DriverHomeScreen() {
 
       const { error: downErr } = await supabase.from("driver_profiles").update({ is_online: false }).eq("user_id", userId);
       if (downErr) throw downErr;
+      await setDriverOnlineStatus(false);
       setIsOnline(false);
       await stopDbGpsTracking();
       await stopSound();
