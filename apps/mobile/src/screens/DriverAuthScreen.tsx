@@ -19,6 +19,7 @@ import * as Linking from "expo-linking";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
+import { clearSelectedRole } from "../lib/authRole";
 
 type TransportMode = "bike" | "moto" | "car";
 type DriverStatus =
@@ -488,6 +489,7 @@ export function DriverAuthScreen() {
         "Compte suspendu",
         "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery."
       );
+      await clearSelectedRole();
       await supabase.auth.signOut();
       return;
     }
@@ -542,7 +544,8 @@ export function DriverAuthScreen() {
           "Email non vérifié",
           "Confirme ton email avant de te connecter."
         );
-        await supabase.auth.signOut();
+        await clearSelectedRole();
+      await supabase.auth.signOut();
         return;
       }
 

@@ -12,6 +12,7 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { clearSelectedRole } from "../lib/authRole";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DriverAccountCard } from "../components/DriverAccountCard";
 
@@ -390,6 +391,8 @@ export function DriverAccountScreen() {
     try {
       setLoading(true);
 
+      await clearSelectedRole();
+
       const { error } = await supabase.auth.signOut();
       if (error) {
         Alert.alert(t("common.errorTitle", "Error"), error.message);
@@ -398,7 +401,7 @@ export function DriverAccountScreen() {
 
       navigation.reset({
         index: 0,
-        routes: [{ name: "DriverAuth" }],
+        routes: [{ name: "RoleSelect" }],
       });
     } finally {
       setLoading(false);

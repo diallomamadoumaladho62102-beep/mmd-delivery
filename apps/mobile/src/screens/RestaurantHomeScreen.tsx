@@ -13,6 +13,7 @@ import {
   AppState,
 } from "react-native";
 import { Audio } from "expo-av";
+import Constants from "expo-constants";
 import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
 import { supabase } from "../lib/supabase";
@@ -20,7 +21,11 @@ import { useIsFocused } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
 const FALLBACK_RESTAURANT_ID = "306ef52d-aa3c-4475-a7f3-abe0f9f6817c";
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
+const MAPBOX_TOKEN =
+  Constants.expoConfig?.extra?.EXPO_PUBLIC_MAPBOX_TOKEN ??
+  Constants.expoConfig?.extra?.mapboxToken ??
+  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ??
+  "";
 const DEFAULT_RESTAURANT_COORDINATE: [number, number] = [-73.949997, 40.650002];
 
 const MAP_STYLE_STREETS = "mapbox://styles/mapbox/streets-v12";

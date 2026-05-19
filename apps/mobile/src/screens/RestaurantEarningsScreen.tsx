@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../lib/supabase";
+import { clearSelectedRole } from "../lib/authRole";
 
 type OrderStatus =
   | "pending"
@@ -179,6 +180,7 @@ export function RestaurantEarningsScreen() {
           onPress: async () => {
             try {
               setLoading(true);
+              await clearSelectedRole();
               const { error } = await supabase.auth.signOut();
               if (error) throw error;
 
@@ -189,7 +191,7 @@ export function RestaurantEarningsScreen() {
 
               navigation.reset({
                 index: 0,
-                routes: [{ name: "RestaurantAuth" }],
+                routes: [{ name: "RoleSelect" }],
               });
             } catch (e: any) {
               Alert.alert(

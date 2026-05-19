@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Audio } from "expo-av";
 import { supabase } from "../lib/supabase";
+import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 
 const ACCEPT_WINDOW_SECONDS = 180;
@@ -662,6 +663,8 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           onPress: async () => {
             try {
               stopRepeatRinging();
+
+              await clearSelectedRole();
 
               const { error } = await supabase.auth.signOut();
               if (error) throw error;

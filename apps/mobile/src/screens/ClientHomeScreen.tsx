@@ -21,6 +21,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 import { setLocaleForRoleAndApply } from "../i18n";
 
@@ -1253,6 +1254,13 @@ export function ClientHomeScreen() {
       if (isMountedRef.current) {
         setError(null);
         setMenuOpen(false);
+      }
+
+      await clearSelectedRole();
+
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+        realtimeChannelRef.current = null;
       }
 
       const { error: signOutError } = await supabase.auth.signOut();

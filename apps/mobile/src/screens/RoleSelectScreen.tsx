@@ -13,7 +13,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 
 import { supabase } from "../lib/supabase";
-import { setSelectedRole } from "../lib/authRole";
+import { clearSelectedRole, setSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 
 type RoleSelectNav = NativeStackNavigationProp<RootStackParamList, "RoleSelect">;
@@ -134,6 +134,7 @@ export function RoleSelectScreen() {
             "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery."
           )
         );
+        await clearSelectedRole();
         await supabase.auth.signOut();
         navigation.navigate("RoleSelect");
         return;

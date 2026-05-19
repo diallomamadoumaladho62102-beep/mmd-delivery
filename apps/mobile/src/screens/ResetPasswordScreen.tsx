@@ -13,6 +13,7 @@ import {
 import * as Linking from "expo-linking";
 import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
+import { clearSelectedRole } from "../lib/authRole";
 
 function getUrlParams(url: string) {
   const params: Record<string, string> = {};
@@ -39,6 +40,8 @@ export default function ResetPasswordScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const prepareRecoverySession = useCallback(async (url: string | null) => {
     try {
@@ -124,6 +127,7 @@ export default function ResetPasswordScreen() {
         {
           text: "OK",
           onPress: async () => {
+            await clearSelectedRole();
             await supabase.auth.signOut();
             navigation.reset({
               index: 0,
@@ -182,48 +186,90 @@ export default function ResetPasswordScreen() {
             <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
               Mot de passe
             </Text>
-            <TextInput
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Nouveau mot de passe"
-              placeholderTextColor="#475569"
-              autoCapitalize="none"
-              autoCorrect={false}
+            <View
               style={{
                 marginTop: 8,
-                padding: 14,
                 borderRadius: 14,
                 backgroundColor: "#0B1220",
-                color: "white",
                 borderWidth: 1,
                 borderColor: "#111827",
+                flexDirection: "row",
+                alignItems: "center",
               }}
-            />
+            >
+              <TextInput
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Nouveau mot de passe"
+                placeholderTextColor="#475569"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  color: "white",
+                }}
+              />
+
+              <TouchableOpacity
+                onPress={() => setShowPassword((value) => !value)}
+                activeOpacity={0.85}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                }}
+              >
+                <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+                  {showPassword ? "Cacher" : "Voir"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={{ marginTop: 16 }}>
             <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
               Confirmer le mot de passe
             </Text>
-            <TextInput
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirme le mot de passe"
-              placeholderTextColor="#475569"
-              autoCapitalize="none"
-              autoCorrect={false}
+            <View
               style={{
                 marginTop: 8,
-                padding: 14,
                 borderRadius: 14,
                 backgroundColor: "#0B1220",
-                color: "white",
                 borderWidth: 1,
                 borderColor: "#111827",
+                flexDirection: "row",
+                alignItems: "center",
               }}
-            />
+            >
+              <TextInput
+                secureTextEntry={!showConfirmPassword}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirme le mot de passe"
+                placeholderTextColor="#475569"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={{
+                  flex: 1,
+                  padding: 14,
+                  color: "white",
+                }}
+              />
+
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword((value) => !value)}
+                activeOpacity={0.85}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                }}
+              >
+                <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+                  {showConfirmPassword ? "Cacher" : "Voir"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
