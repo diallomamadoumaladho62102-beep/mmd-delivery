@@ -859,6 +859,45 @@ export function RestaurantHomeScreen({ navigation }: any) {
         }
 
         const uid = session.user.id;
+
+        const { data: profile, error: roleError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", uid)
+          .maybeSingle();
+
+        if (roleError) {
+          console.log("RestaurantHome role guard error:", roleError);
+        }
+
+        const currentRole = String((profile as any)?.role ?? "")
+          .trim()
+          .toLowerCase();
+
+        if (currentRole === "driver") {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "DriverTabs" }],
+          });
+          return;
+        }
+
+        if (currentRole === "client") {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "ClientHome" }],
+          });
+          return;
+        }
+
+        if (currentRole && currentRole !== "restaurant") {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "RoleSelect" }],
+          });
+          return;
+        }
+
         setRestaurantUserId(uid);
         await loadRestaurantProfile(uid);
         setCheckingAuth(false);
@@ -1154,14 +1193,15 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
       <View style={{ flex: 1, backgroundColor: "#020617" }}>
         <Mapbox.MapView
-          style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
-          styleURL={mapStyleURL}
-          logoEnabled
+          style={{ flex: 1 }}
+          styleURL={mapStyleURL || MAP_STYLE_STREETS}
+          logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
           scaleBarEnabled={false}
           surfaceView={false}
         >
+          <Mapbox.UserLocation visible={false} showsUserHeadingIndicator />
           <Mapbox.Camera
             zoomLevel={zoomLevel}
             centerCoordinate={restaurantCoordinate}
