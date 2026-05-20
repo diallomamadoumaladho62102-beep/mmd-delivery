@@ -13,7 +13,6 @@ import {
   AppState,
 } from "react-native";
 import { Audio } from "expo-av";
-import Constants from "expo-constants";
 import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
 import { supabase } from "../lib/supabase";
@@ -21,15 +20,13 @@ import { useIsFocused } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
 const FALLBACK_RESTAURANT_ID = "306ef52d-aa3c-4475-a7f3-abe0f9f6817c";
-const MAPBOX_TOKEN =
-  Constants.expoConfig?.extra?.EXPO_PUBLIC_MAPBOX_TOKEN ??
-  Constants.expoConfig?.extra?.mapboxToken ??
-  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ??
-  "";
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
 const DEFAULT_RESTAURANT_COORDINATE: [number, number] = [-73.949997, 40.650002];
 
-const MAP_STYLE_STREETS = "mapbox://styles/mapbox/streets-v12";
-const MAP_STYLE_DARK = "mapbox://styles/mapbox/dark-v11";
+const MAP_STYLE_STREETS =
+  (Mapbox as any).StyleURL?.Street ?? "mapbox://styles/mapbox/streets-v12";
+const MAP_STYLE_DARK =
+  (Mapbox as any).StyleURL?.Dark ?? "mapbox://styles/mapbox/dark-v11";
 
 const MAX_VISIBLE_MAP_ORDERS = 12;
 const MAX_NEARBY_DRIVERS = 8;
@@ -1194,11 +1191,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
       <View style={{ flex: 1, backgroundColor: "#020617" }}>
         <Mapbox.MapView
           style={{ flex: 1 }}
-          styleURL={mapStyleURL || MAP_STYLE_STREETS}
+          styleURL="mapbox://styles/mapbox/streets-v12"
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
-          scaleBarEnabled={false}
           surfaceView={false}
         >
           <Mapbox.UserLocation visible={false} showsUserHeadingIndicator />
@@ -1435,7 +1431,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
             label="Layers"
             active={mapStyleURL === MAP_STYLE_DARK}
             onPress={() =>
-              setMapStyleURL((value) =>
+              setMapStyleURL((value: string) =>
                 value === MAP_STYLE_STREETS ? MAP_STYLE_DARK : MAP_STYLE_STREETS
               )
             }
