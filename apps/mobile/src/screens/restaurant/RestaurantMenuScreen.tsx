@@ -45,10 +45,34 @@ type Item = {
 
 type Props = { navigation: any };
 
+
+const MAX_ITEM_NAME_LENGTH = 80;
+const MAX_CATEGORY_NAME_LENGTH = 60;
+const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_PRICE_CENTS = 200000; // $2,000 safety limit for one menu item.
+const SUPPORTED_CURRENCIES = ["USD"] as const;
+
+function cleanText(value: string, maxLength: number) {
+  return String(value || "").trim().slice(0, maxLength);
+}
+
+function normalizeCurrency(value: string) {
+  const currency = String(value || "USD").trim().toUpperCase();
+  return (SUPPORTED_CURRENCIES as readonly string[]).includes(currency) ? currency : "USD";
+}
+
+function isValidCategoryId(categoryId: string | null | undefined, categories: Category[]) {
+  if (!categoryId) return true;
+  return categories.some((category) => category.id === categoryId);
+}
+
 function moneyToCents(v: string) {
-  const normalized = (v ?? "").toString().trim().replace(",", ".");
+  const normalized = String(v ?? "").trim().replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return 0;
+
   const n = Number(normalized);
-  if (Number.isNaN(n)) return 0;
+  if (!Number.isFinite(n) || n <= 0) return 0;
+
   return Math.round(n * 100);
 }
 
@@ -133,6 +157,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   });
 
   const [uploading, setUploading] = useState(false);
+  const [savingAction, setSavingAction] = useState(false);
 
   const MENU_BUCKET = "restaurant-menu";
   const AVATAR_BUCKET = "avatars";
@@ -176,20 +201,80 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     (async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        const uid = data.session?.user.id ?? null;
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+
+        const uid = user?.id ?? null;
 
         if (!mounted) return;
-        setRestaurantUserId(uid);
 
         if (!uid) {
-          setLoading(false);
+          setRestaurantUserId(null);
+          navigation?.replace?.("RestaurantAuth");
           return;
         }
 
+        const { data: roleProfile, error: roleError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", uid)
+          .maybeSingle();
+
+        if (roleError) {
+          console.log("❌ RestaurantMenuScreen role check:", roleError);
+        }
+
+        const role = String((roleProfile as any)?.role || "")
+          .trim()
+          .toLowerCase();
+
+        if (role && role !== "restaurant") {
+          setRestaurantUserId(null);
+
+          navigation?.reset?.({
+            index: 0,
+            routes: [
+              {
+                name:
+                  role === "driver"
+                    ? "DriverTabs"
+                    : role === "client"
+                      ? "ClientHome"
+                      : "RoleSelect",
+              },
+            ],
+          });
+
+          return;
+        }
+
+        const { data: restaurantProfile, error: profileError } = await supabase
+          .from("restaurant_profiles")
+          .select("user_id,status")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (profileError) {
+          console.log("❌ RestaurantMenuScreen profile check:", profileError);
+        }
+
+        if (!restaurantProfile) {
+          setRestaurantUserId(null);
+          navigation?.replace?.("RestaurantSetup");
+          return;
+        }
+
+        setRestaurantUserId(uid);
         await refreshAll(uid);
       } catch (e) {
         console.log("❌ RestaurantMenuScreen boot exception:", e);
+        if (mounted) {
+          setRestaurantUserId(null);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -198,7 +283,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [navigation]);
 
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, Item[]>();
@@ -219,9 +304,9 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   };
 
   const addCategory = async () => {
-    if (!restaurantUserId) return;
+    if (!restaurantUserId || savingAction) return;
 
-    const name = newCategoryName.trim();
+    const name = cleanText(newCategoryName, MAX_CATEGORY_NAME_LENGTH);
     if (!name) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
@@ -229,28 +314,89 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       );
     }
 
-    const { error } = await supabase.from("menu_categories").insert({
-      restaurant_id: restaurantUserId,
-      name,
-      position: categories.length,
-    });
+    const exists = categories.some(
+      (category) => category.name.trim().toLowerCase() === name.toLowerCase()
+    );
 
-    if (error) {
-      console.log("❌ add category:", error);
-      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), error.message);
+    if (exists) {
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.categories.duplicate", "Cette catégorie existe déjà.")
+      );
     }
 
-    setNewCategoryName("");
-    await refreshAll(restaurantUserId);
+    try {
+      setSavingAction(true);
+
+      const { error } = await supabase.from("menu_categories").insert({
+        restaurant_id: restaurantUserId,
+        name,
+        position: categories.length,
+      });
+
+      if (error) throw error;
+
+      setNewCategoryName("");
+      await refreshAll(restaurantUserId);
+    } catch (error: any) {
+      console.log("❌ add category:", error);
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        error?.message ?? t("restaurant.menu.alerts.createFailed", "Création impossible.")
+      );
+    } finally {
+      setSavingAction(false);
+    }
   };
 
   const deleteCategory = async (id: string) => {
-    const { error } = await supabase.from("menu_categories").delete().eq("id", id);
-    if (error) {
-      console.log("❌ delete category:", error);
-      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), error.message);
-    }
-    if (restaurantUserId) await refreshAll(restaurantUserId);
+    if (!restaurantUserId || savingAction) return;
+
+    Alert.alert(
+      t("restaurant.menu.categories.deleteTitle", "Supprimer la catégorie"),
+      t(
+        "restaurant.menu.categories.deleteConfirm",
+        "Les produits de cette catégorie resteront dans Sans catégorie. Continuer ?"
+      ),
+      [
+        { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
+        {
+          text: t("restaurant.menu.actions.delete", "Supprimer"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setSavingAction(true);
+
+              const { error: updateItemsError } = await supabase
+                .from("restaurant_items")
+                .update({ category_id: null, updated_at: new Date().toISOString() })
+                .eq("restaurant_user_id", restaurantUserId)
+                .eq("category_id", id);
+
+              if (updateItemsError) throw updateItemsError;
+
+              const { error } = await supabase
+                .from("menu_categories")
+                .delete()
+                .eq("id", id)
+                .eq("restaurant_id", restaurantUserId);
+
+              if (error) throw error;
+
+              await refreshAll(restaurantUserId);
+            } catch (error: any) {
+              console.log("❌ delete category:", error);
+              Alert.alert(
+                t("restaurant.menu.alerts.errorTitle", "Erreur"),
+                error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Suppression impossible")
+              );
+            } finally {
+              setSavingAction(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const pickAndUploadMenuImage = async (): Promise<string | null> => {
@@ -308,7 +454,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
       const finalExt = ext === "png" ? "png" : "jpg";
       const bytes = await fileUriToUint8Array(manipulated.uri);
-      const path = `restaurants/${restaurantUserId}/menu/${Date.now()}.${finalExt}`;
+      const path = `restaurants/${restaurantUserId}/menu/${Date.now()}_${Math.random().toString(36).slice(2)}.${finalExt}`;
 
       const { error: upErr } = await supabase.storage.from(MENU_BUCKET).upload(path, bytes, {
         contentType: contentTypeFromExt(finalExt),
@@ -348,7 +494,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   const addItem = async () => {
     if (!restaurantUserId) return;
 
-    const name = newItem.name.trim();
+    const name = cleanText(newItem.name, MAX_ITEM_NAME_LENGTH);
     if (!name) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
@@ -357,10 +503,19 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     }
 
     const priceCents = moneyToCents(newItem.price);
-    if (!priceCents || priceCents <= 0) {
+    if (!priceCents || priceCents <= 0 || priceCents > MAX_PRICE_CENTS) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
         t("restaurant.menu.items.invalidPrice", "Prix invalide")
+      );
+    }
+
+    const selectedCategoryId = newItem.category_id || null;
+
+    if (!isValidCategoryId(selectedCategoryId, categories)) {
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.categories.invalid", "Catégorie invalide.")
       );
     }
 
@@ -369,42 +524,52 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     const payload: Partial<Item> & any = {
       restaurant_user_id: restaurantUserId,
-      category_id: newItem.category_id ? newItem.category_id : null,
+      category_id: selectedCategoryId,
       name,
-      description: newItem.description.trim() ? newItem.description.trim() : null,
+      description: cleanText(newItem.description, MAX_DESCRIPTION_LENGTH) || null,
       price_cents: priceCents,
-      currency: newItem.currency || "USD",
+      currency: normalizeCurrency(newItem.currency),
       image_url: newItem.image_url.trim() ? newItem.image_url.trim() : null,
       is_available: Boolean(newItem.is_available),
       position: Number.isFinite(position) ? position : items.length + 1,
     };
 
-    const { error } = await supabase.from("restaurant_items").insert(payload);
+    try {
+      setSavingAction(true);
 
-    if (error) {
+      const { error } = await supabase.from("restaurant_items").insert(payload);
+
+      if (error) throw error;
+
+      setNewItem({
+        category_id: "",
+        name: "",
+        description: "",
+        price: "0.00",
+        currency: "USD",
+        image_url: "",
+        is_available: true,
+        position: "",
+      });
+
+      await refreshAll(restaurantUserId);
+    } catch (error: any) {
       console.log("❌ add item:", error);
-      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), error.message);
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        error?.message ?? t("restaurant.menu.alerts.createFailed", "Création impossible.")
+      );
+    } finally {
+      setSavingAction(false);
     }
-
-    setNewItem({
-      category_id: "",
-      name: "",
-      description: "",
-      price: "0.00",
-      currency: "USD",
-      image_url: "",
-      is_available: true,
-      position: "",
-    });
-
-    await refreshAll(restaurantUserId);
   };
 
   const toggleAvailable = async (id: string, value: boolean) => {
     const { error } = await supabase
       .from("restaurant_items")
       .update({ is_available: value, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("restaurant_user_id", restaurantUserId);
 
     if (error) {
       console.log("❌ toggle available:", error);
@@ -414,38 +579,59 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   };
 
   const deleteItem = async (id: string) => {
-    try {
-      const it = items.find((x) => x.id === id) ?? null;
+    if (!restaurantUserId || savingAction) return;
 
-      if (it?.image_url) {
-        const url = it.image_url.trim();
+    Alert.alert(
+      t("restaurant.menu.items.deleteTitle", "Supprimer le produit"),
+      t("restaurant.menu.items.deleteConfirm", "Confirmer la suppression de ce produit ?"),
+      [
+        { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
+        {
+          text: t("restaurant.menu.actions.delete", "Supprimer"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setSavingAction(true);
 
-        const menuPath = storagePathFromPublicUrl(url, MENU_BUCKET);
-        const avatarPath = storagePathFromPublicUrl(url, AVATAR_BUCKET);
+              const it = items.find((x) => x.id === id) ?? null;
 
-        if (menuPath) {
-          const { error: rmErr } = await supabase.storage.from(MENU_BUCKET).remove([menuPath]);
-          if (rmErr) console.log("⚠️ remove storage image error (menu):", rmErr);
-        } else if (avatarPath) {
-          const { error: rmErr } = await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath]);
-          if (rmErr) console.log("⚠️ remove storage image error (avatars):", rmErr);
-        }
-      }
+              if (it?.image_url) {
+                const url = it.image_url.trim();
 
-      const { error } = await supabase.from("restaurant_items").delete().eq("id", id);
-      if (error) {
-        console.log("❌ delete item:", error);
-        return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), error.message);
-      }
+                const menuPath = storagePathFromPublicUrl(url, MENU_BUCKET);
+                const avatarPath = storagePathFromPublicUrl(url, AVATAR_BUCKET);
 
-      if (restaurantUserId) await refreshAll(restaurantUserId);
-    } catch (e: any) {
-      console.log("❌ deleteItem exception:", e);
-      Alert.alert(
-        t("restaurant.menu.alerts.errorTitle", "Erreur"),
-        e?.message ?? t("restaurant.menu.alerts.deleteFailed", "Suppression impossible")
-      );
-    }
+                if (menuPath) {
+                  const { error: rmErr } = await supabase.storage.from(MENU_BUCKET).remove([menuPath]);
+                  if (rmErr) console.log("⚠️ remove storage image error (menu):", rmErr);
+                } else if (avatarPath) {
+                  const { error: rmErr } = await supabase.storage.from(AVATAR_BUCKET).remove([avatarPath]);
+                  if (rmErr) console.log("⚠️ remove storage image error (avatars):", rmErr);
+                }
+              }
+
+              const { error } = await supabase
+                .from("restaurant_items")
+                .delete()
+                .eq("id", id)
+                .eq("restaurant_user_id", restaurantUserId);
+
+              if (error) throw error;
+
+              await refreshAll(restaurantUserId);
+            } catch (error: any) {
+              console.log("❌ deleteItem exception:", error);
+              Alert.alert(
+                t("restaurant.menu.alerts.errorTitle", "Erreur"),
+                error?.message ?? t("restaurant.menu.alerts.deleteFailed", "Suppression impossible")
+              );
+            } finally {
+              setSavingAction(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const openEdit = (it: Item) => {
@@ -473,7 +659,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     if (!restaurantUserId) return;
     if (!editItemId) return;
 
-    const name = editForm.name.trim();
+    const name = cleanText(editForm.name, MAX_ITEM_NAME_LENGTH);
     if (!name) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
@@ -482,21 +668,30 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     }
 
     const priceCents = moneyToCents(editForm.price);
-    if (!priceCents || priceCents <= 0) {
+    if (!priceCents || priceCents <= 0 || priceCents > MAX_PRICE_CENTS) {
       return Alert.alert(
         t("restaurant.menu.alerts.errorTitle", "Erreur"),
         t("restaurant.menu.items.invalidPrice", "Prix invalide")
       );
     }
 
+    const selectedCategoryId = editForm.category_id || null;
+
+    if (!isValidCategoryId(selectedCategoryId, categories)) {
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.categories.invalid", "Catégorie invalide.")
+      );
+    }
+
     const position = editForm.position.trim() !== "" ? Number(editForm.position) : null;
 
     const payload: any = {
-      category_id: editForm.category_id ? editForm.category_id : null,
+      category_id: selectedCategoryId,
       name,
-      description: editForm.description.trim() ? editForm.description.trim() : null,
+      description: cleanText(editForm.description, MAX_DESCRIPTION_LENGTH) || null,
       price_cents: priceCents,
-      currency: editForm.currency || "USD",
+      currency: normalizeCurrency(editForm.currency),
       image_url: editForm.image_url.trim() ? editForm.image_url.trim() : null,
       is_available: Boolean(editForm.is_available),
       position: Number.isFinite(position as any) ? position : null,
@@ -614,6 +809,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
                       </Text>
                       <Switch
                         value={Boolean(item.is_available)}
+                        disabled={savingAction}
                         onValueChange={(v) => toggleAvailable(item.id, v)}
                       />
                     </View>
@@ -678,7 +874,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
             )}
             style={{ flex: 1, borderWidth: 1, borderRadius: 10, padding: 10 }}
           />
-          <Button title={t("restaurant.menu.actions.add", "Ajouter")} onPress={addCategory} />
+          <Button title={t("restaurant.menu.actions.add", "Ajouter")} onPress={addCategory} disabled={savingAction} />
         </View>
 
         {categories.map((c) => (
@@ -861,14 +1057,16 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
           <Text>{t("restaurant.menu.items.availableLabel", "Disponible")}</Text>
           <Switch
             value={Boolean(newItem.is_available)}
+            disabled={savingAction}
             onValueChange={(v) => setNewItem((s) => ({ ...s, is_available: v }))}
           />
         </View>
 
         <View style={{ marginTop: 10 }}>
           <Button
-            title={t("restaurant.menu.items.addButton", "Ajouter le produit")}
+            title={savingAction ? t("shared.common.saving", "Enregistrement…") : t("restaurant.menu.items.addButton", "Ajouter le produit")}
             onPress={addItem}
+            disabled={savingAction || uploading}
           />
         </View>
       </View>
@@ -1050,6 +1248,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
               <Text>{t("restaurant.menu.items.availableLabel", "Disponible")}</Text>
               <Switch
                 value={Boolean(editForm.is_available)}
+                disabled={editSaving || uploading}
                 onValueChange={(v) => setEditForm((s) => ({ ...s, is_available: v }))}
               />
             </View>

@@ -85,8 +85,6 @@ type PricingParams = {
   durationMinutes: number;
 };
 
-console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
-
 function computeDeliveryPricing({
   distanceMiles,
   durationMinutes,
@@ -154,10 +152,7 @@ function getFriendlyEstimateError(
   if (lower.includes("network request failed")) {
     return t(
       "client.newOrder.errors.networkFailed",
-      t(
-          "client.newOrder.errors.networkFailed",
-          "Impossible de joindre le serveur pour le moment. Vérifie le réseau local puis réessaie."
-        )
+      "Impossible de joindre le serveur pour le moment. Vérifie le réseau local puis réessaie."
     );
   }
 
@@ -187,6 +182,29 @@ function firstFiniteNumber(...values: unknown[]): number | null {
     if (Number.isFinite(n)) return n;
   }
   return null;
+}
+
+function hasValidCoordinate(latValue: unknown, lngValue: unknown) {
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+
+function cleanApiBaseUrl() {
+  const raw = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
+
+  if (!raw) return "";
+
+  return /^https?:\/\//i.test(raw) ? raw : "";
 }
 
 export function ClientNewOrderScreen() {
@@ -311,7 +329,10 @@ export function ClientNewOrderScreen() {
 
   async function resolveRestaurant(): Promise<{
     restaurant_id: string;
-    restaurant_user_id: string | null;
+    restaurant_user_id: string;
+    restaurant_address: string;
+    restaurant_lat: number;
+    restaurant_lng: number;
   }> {
     if (!restaurantIdFromParams) {
       throw new Error(
@@ -324,7 +345,9 @@ export function ClientNewOrderScreen() {
 
     const { data: rp, error } = await supabase
       .from("restaurant_profiles")
-      .select("user_id, restaurant_name, status, is_accepting_orders")
+      .select(
+        "user_id, restaurant_name, address, status, is_accepting_orders, location_lat, location_lng"
+      )
       .eq("user_id", restaurantIdFromParams)
       .eq("status", "approved")
       .eq("is_accepting_orders", true)
@@ -344,16 +367,44 @@ export function ClientNewOrderScreen() {
       );
     }
 
+    const restaurantAddress = String((rp as any).address || "").trim();
+    const restaurantLat = Number((rp as any).location_lat);
+    const restaurantLng = Number((rp as any).location_lng);
+    const restaurantUserId = String((rp as any).user_id || "").trim();
+
+    if (!restaurantUserId) {
+      throw new Error(
+        t(
+          "client.newOrder.errors.restaurantMissingOwner",
+          "Ce restaurant n’a pas encore un propriétaire valide."
+        )
+      );
+    }
+
+    if (!restaurantAddress || !hasValidCoordinate(restaurantLat, restaurantLng)) {
+      throw new Error(
+        t(
+          "client.newOrder.errors.restaurantMissingLocation",
+          "Ce restaurant n’a pas encore une adresse GPS valide. Il doit compléter son profil avant de recevoir des commandes."
+        )
+      );
+    }
+
     return {
       restaurant_id: restaurantIdFromParams,
-      restaurant_user_id: (rp as any).user_id,
+      restaurant_user_id: restaurantUserId,
+      restaurant_address: restaurantAddress,
+      restaurant_lat: restaurantLat,
+      restaurant_lng: restaurantLng,
     };
   }
 
   async function notifyBackendPaymentSuccess(orderId: string) {
-    if (!API_BASE_URL) return;
+    const apiBaseUrl = cleanApiBaseUrl();
 
-    const url = `${String(API_BASE_URL).replace(/\/+$/, "")}/api/stripe/mark-paid`;
+    if (!apiBaseUrl) return;
+
+    const url = `${apiBaseUrl}/api/stripe/mark-paid`;
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -436,7 +487,9 @@ export function ClientNewOrderScreen() {
       return false;
     }
 
-    if (!API_BASE_URL) {
+    const apiBaseUrl = cleanApiBaseUrl();
+
+    if (!apiBaseUrl) {
       if (!silent) {
         Alert.alert(
           t("client.newOrder.alerts.missingConfigTitle", "Configuration manquante"),
@@ -459,9 +512,7 @@ export function ClientNewOrderScreen() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20000);
 
-      const url = `${String(API_BASE_URL).replace(/\/+$/, "")}/api/mapbox/compute-distance`;
-      console.log("MMD MOBILE fetch distance →", url);
-
+      const url = `${apiBaseUrl}/api/mapbox/compute-distance`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -474,8 +525,6 @@ export function ClientNewOrderScreen() {
 
       const rawText = await res.text();
       clearTimeout(timeout);
-
-      console.log("MMD MOBILE distance raw =", rawText);
 
       let json: MapboxDistanceResponse | null = null;
       try {
@@ -561,8 +610,6 @@ export function ClientNewOrderScreen() {
 
         return false;
       }
-
-      console.log("✅ API Mapbox mobile OK (JSON):", json);
 
       const dMiles =
         json.distanceMiles ?? json.distance_miles ?? json.distance_miles_est ?? undefined;
@@ -662,17 +709,8 @@ export function ClientNewOrderScreen() {
         (json.coords as any)?.dropoff_lng ??
         undefined;
 
-      const pickupOk =
-        typeof pLat === "number" &&
-        typeof pLng === "number" &&
-        !Number.isNaN(pLat) &&
-        !Number.isNaN(pLng);
-
-      const dropoffOk =
-        typeof dLat === "number" &&
-        typeof dLng === "number" &&
-        !Number.isNaN(dLat) &&
-        !Number.isNaN(dLng);
+      const pickupOk = hasValidCoordinate(pLat, pLng);
+      const dropoffOk = hasValidCoordinate(dLat, dLng);
 
       const feeFromApi =
         json.delivery_fee_usd?.deliveryFee ??
@@ -694,7 +732,7 @@ export function ClientNewOrderScreen() {
       setEtaMinutes(tMinutes);
       setPickupCoords(pickupOk ? { lat: pLat, lng: pLng } : null);
       setDropoffCoords(dropoffOk ? { lat: dLat, lng: dLng } : null);
-      setDeliveryFee(finalFee);
+      setDeliveryFee(roundMoney(finalFee));
       setNewOrderId(null);
       setEstimateError(null);
 
@@ -785,6 +823,8 @@ export function ClientNewOrderScreen() {
   }, []);
 
   async function handleCreateOrder() {
+    if (creating || paying) return;
+
     const pickupValue = normalizeAddress(pickup);
     const dropoffValue = normalizeAddress(dropoff);
 
@@ -824,6 +864,20 @@ export function ClientNewOrderScreen() {
         t(
           "client.newOrder.alerts.missingCoordsBody",
           "Merci de refaire l’estimation pour récupérer les coordonnées GPS avant de créer la commande."
+        )
+      );
+      return;
+    }
+
+    if (
+      !hasValidCoordinate(pickupCoords.lat, pickupCoords.lng) ||
+      !hasValidCoordinate(dropoffCoords.lat, dropoffCoords.lng)
+    ) {
+      Alert.alert(
+        t("client.newOrder.alerts.missingCoordsTitle", "Coordonnées manquantes"),
+        t(
+          "client.newOrder.errors.invalidGps",
+          "Coordonnées GPS invalides. Refais l’estimation."
         )
       );
       return;
@@ -873,7 +927,7 @@ export function ClientNewOrderScreen() {
         client_user_id: userId,
         created_by: userId,
 
-        pickup_address: pickupValue,
+        pickup_address: r.restaurant_address,
         dropoff_address: dropoffValue,
 
         distance_miles: distanceMiles,
@@ -887,15 +941,13 @@ export function ClientNewOrderScreen() {
         total_cents: totalCents,
         currency: "USD",
 
-        pickup_lat: pickupCoords.lat,
-        pickup_lng: pickupCoords.lng,
+        pickup_lat: r.restaurant_lat,
+        pickup_lng: r.restaurant_lng,
         dropoff_lat: dropoffCoords.lat,
         dropoff_lng: dropoffCoords.lng,
 
         payment_status: "unpaid",
       };
-
-      console.log("MMD create order payload =", orderPayload);
 
       const { data, error } = await supabase
         .from("orders")
@@ -912,10 +964,19 @@ export function ClientNewOrderScreen() {
 
       if (createdOrderId) {
         try {
-          await supabase.from("order_members").insert([
+          const orderMembers = [
             { order_id: createdOrderId, user_id: userId, role: "client" },
-            { order_id: createdOrderId, user_id: r.restaurant_user_id, role: "restaurant" },
-          ]);
+          ];
+
+          if (r.restaurant_user_id && r.restaurant_user_id !== userId) {
+            orderMembers.push({
+              order_id: createdOrderId,
+              user_id: r.restaurant_user_id,
+              role: "restaurant",
+            });
+          }
+
+          await supabase.from("order_members").insert(orderMembers);
         } catch (memberErr) {
           console.log("Erreur insert order_members (non bloquant):", memberErr);
         }
@@ -960,7 +1021,7 @@ export function ClientNewOrderScreen() {
       return;
     }
 
-    if (!API_BASE_URL) {
+    if (!cleanApiBaseUrl()) {
       Alert.alert(
         t("client.newOrder.alerts.missingConfigTitle", "Configuration manquante"),
         t(
@@ -1541,3 +1602,5 @@ export function ClientNewOrderScreen() {
     </SafeAreaView>
   );
 }
+
+export default ClientNewOrderScreen;

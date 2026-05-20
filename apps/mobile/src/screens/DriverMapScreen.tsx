@@ -22,8 +22,6 @@ import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "../lib/supabase";
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
-
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverMap">;
 
 type MapRegion = {
@@ -38,6 +36,19 @@ const SHEET_EXPANDED_TOP = SCREEN_HEIGHT - 500;
 const SHEET_COLLAPSED_TOP = SCREEN_HEIGHT - 176;
 
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
+
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
+const MAP_STYLE_STREETS =
+  (Mapbox as any).StyleURL?.Street ?? "mapbox://styles/mapbox/streets-v12";
+const MAP_STYLE_DARK =
+  (Mapbox as any).StyleURL?.Dark ?? "mapbox://styles/mapbox/dark-v11";
+
+if (MAPBOX_TOKEN) {
+  Mapbox.setAccessToken(MAPBOX_TOKEN);
+} else if (IS_DEV) {
+  console.log("[DriverMapScreen] EXPO_PUBLIC_MAPBOX_TOKEN manquant");
+}
+
 
 type OrderStatus =
   | "pending"
@@ -261,13 +272,33 @@ function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number):
 }
 
 function formatMoney(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "—";
   return `${value.toFixed(2)} USD`;
 }
 
 function formatMiles(value: number | null | undefined) {
-  if (value == null || Number.isNaN(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "—";
   return `${value.toFixed(2)} mi`;
+}
+
+
+function isValidCoordinate(latValue: unknown, lngValue: unknown) {
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+function cleanRestaurantName(value: unknown) {
+  const name = String(value || "").trim();
+  return name || "Restaurant";
 }
 
 function regionToZoom(region: MapRegion): number {
@@ -349,7 +380,7 @@ export default function DriverMapScreen() {
   const incomingTranslateY = useRef(new Animated.Value(-18)).current;
   const incomingOpacity = useRef(new Animated.Value(0)).current;
 
-  const mapStyleURL = isNightMode ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Street;
+  const mapStyleURL = isNightMode ? MAP_STYLE_DARK : MAP_STYLE_STREETS;
 
   const animateSheet = useCallback(
     (target: "collapsed" | "expanded") => {
@@ -663,8 +694,9 @@ export default function DriverMapScreen() {
 
         const response = await supabase
           .from("restaurant_profiles")
-          .select("user_id, restaurant_name, location_lat, location_lng, status")
+          .select("user_id, restaurant_name, location_lat, location_lng, status, is_accepting_orders")
           .eq("status", "approved")
+          .eq("is_accepting_orders", true)
           .limit(150);
 
         if (response.error) {
@@ -680,10 +712,15 @@ export default function DriverMapScreen() {
         if (!response.data || cancelled) return;
 
         const mapped: RestaurantPin[] = (response.data as any[])
-          .filter((row) => row.location_lat != null && row.location_lng != null)
+          .filter((row) => {
+            return (
+              !!row?.user_id &&
+              isValidCoordinate(row?.location_lat, row?.location_lng)
+            );
+          })
           .map((row) => ({
-            id: row.user_id,
-            name: row.restaurant_name ?? "Restaurant",
+            id: String(row.user_id),
+            name: cleanRestaurantName(row.restaurant_name),
             latitude: Number(row.location_lat),
             longitude: Number(row.location_lng),
             logoUrl: null,
@@ -1025,9 +1062,17 @@ export default function DriverMapScreen() {
           </View>
         ) : (
           <>
-            <Mapbox.MapView style={{ flex: 1 }} styleURL={mapStyleURL}>
+            <Mapbox.MapView
+              style={{ flex: 1 }}
+              styleURL={mapStyleURL}
+              logoEnabled={false}
+              attributionEnabled={false}
+              compassEnabled
+              surfaceView={false}
+            >
               <Mapbox.Camera
                 ref={cameraRef}
+                centerCoordinate={[region.longitude, region.latitude]}
                 zoomLevel={regionToZoom(region)}
                 animationMode="flyTo"
                 animationDuration={650}

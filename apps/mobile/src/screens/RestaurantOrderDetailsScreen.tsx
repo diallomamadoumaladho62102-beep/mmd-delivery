@@ -41,6 +41,8 @@ type Order = {
   id: string;
   status: OrderStatus;
   created_at: string | null;
+  restaurant_id?: string | null;
+  restaurant_user_id?: string | null;
   client_id: string | null;
   client_user_id?: string | null;
   restaurant_name: string | null;
@@ -111,6 +113,36 @@ function isFinalStatus(status: OrderStatus) {
   return status === "delivered" || status === "canceled";
 }
 
+function canMoveToStatus(current: OrderStatus, next: OrderStatus) {
+  if (current === "pending" && next === "accepted") return true;
+  if (current === "accepted" && next === "prepared") return true;
+  if (current === "prepared" && next === "ready") return true;
+  return false;
+}
+
+function statusEventType(next: OrderStatus) {
+  if (next === "accepted") return "restaurant_accept";
+  if (next === "prepared") return "restaurant_prepared";
+  if (next === "ready") return "restaurant_ready";
+  if (next === "canceled") return "restaurant_cancel";
+  return "restaurant_status_change";
+}
+
+function withOptionalOrderTimestamps(next: OrderStatus) {
+  const nowIso = new Date().toISOString();
+  const payload: Record<string, any> = {
+    status: next,
+    updated_at: nowIso,
+  };
+
+  if (next === "accepted") payload.restaurant_accepted_at = nowIso;
+  if (next === "prepared") payload.restaurant_prepared_at = nowIso;
+  if (next === "ready") payload.ready_at = nowIso;
+  if (next === "canceled") payload.canceled_at = nowIso;
+
+  return { payload, nowIso };
+}
+
 export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const { t, i18n } = useTranslation();
   const { orderId } = route.params as { orderId: string };
@@ -122,6 +154,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const [pickupCode, setPickupCode] = useState("");
   const [driver, setDriver] = useState<DriverProfile | null>(null);
   const [driverLoading, setDriverLoading] = useState(false);
+  const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
 
   const localeTag = useMemo(() => {
     const lng = String(i18n.language || "en").toLowerCase();
@@ -139,6 +172,8 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
         "id",
         "status",
         "created_at",
+        "restaurant_id",
+        "restaurant_user_id",
         "client_id",
         "client_user_id",
         "restaurant_name",
@@ -205,10 +240,56 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     [t]
   );
 
+
+  const resolveRestaurantUser = useCallback(async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+
+    const uid = data?.user?.id ?? null;
+    if (!uid) {
+      throw new Error(
+        t("auth.errors.sessionExpired", "Session expirée. Reconnecte-toi puis réessaie.")
+      );
+    }
+
+    const { data: roleProfile, error: roleError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", uid)
+      .maybeSingle();
+
+    if (roleError) {
+      console.log("RestaurantOrderDetails role check error:", roleError);
+    }
+
+    const role = String((roleProfile as any)?.role || "").trim().toLowerCase();
+
+    if (role && role !== "restaurant") {
+      throw new Error(
+        t(
+          "order.errors.restaurantOnly",
+          "Cette page est réservée au compte restaurant."
+        )
+      );
+    }
+
+    setRestaurantUserId(uid);
+    return uid;
+  }, [t]);
+
+  const orderBelongsToRestaurant = useCallback((row: any, uid: string) => {
+    return (
+      String(row?.restaurant_user_id || "") === uid ||
+      String(row?.restaurant_id || "") === uid
+    );
+  }, []);
+
   const fetchOrder = useCallback(async () => {
     setLoading(true);
 
     try {
+      const uid = await resolveRestaurantUser();
+
       const { data, error } = await supabase
         .from("orders")
         .select(selectFields)
@@ -217,6 +298,15 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
 
       if (error || !data) {
         throw error ?? new Error(t("order.errors.notFound", "Commande introuvable."));
+      }
+
+      if (!orderBelongsToRestaurant(data, uid)) {
+        throw new Error(
+          t(
+            "order.errors.notAllowed",
+            "Tu n’as pas accès à cette commande."
+          )
+        );
       }
 
       const nextOrder = data as unknown as Order;
@@ -231,9 +321,11 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, [orderId, selectFields, t]);
+  }, [orderBelongsToRestaurant, orderId, resolveRestaurantUser, selectFields, t]);
 
   const refetchOrderSilent = useCallback(async () => {
+    const uid = restaurantUserId ?? (await resolveRestaurantUser());
+
     const { data, error } = await supabase
       .from("orders")
       .select(selectFields)
@@ -244,12 +336,21 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
       throw error ?? new Error(t("order.errors.notFound", "Commande introuvable."));
     }
 
+    if (!orderBelongsToRestaurant(data, uid)) {
+      throw new Error(
+        t(
+          "order.errors.notAllowed",
+          "Tu n’as pas accès à cette commande."
+        )
+      );
+    }
+
     const nextOrder = data as unknown as Order;
     setOrder(nextOrder);
     setPickupCode(nextOrder.pickup_code ?? "");
 
     return nextOrder;
-  }, [orderId, selectFields, t]);
+  }, [orderBelongsToRestaurant, orderId, resolveRestaurantUser, restaurantUserId, selectFields, t]);
 
   const fetchDriver = useCallback(async (driverId: string) => {
     setDriverLoading(true);
@@ -439,6 +540,14 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     async (next: OrderStatus) => {
       if (!order || updating) return;
 
+      if (!restaurantUserId) {
+        Alert.alert(
+          t("common.errorTitle", "Erreur"),
+          t("auth.errors.sessionExpired", "Session expirée. Reconnecte-toi puis réessaie.")
+        );
+        return;
+      }
+
       if (isFinalStatus(order.status)) {
         Alert.alert(
           t("common.errorTitle", "Erreur"),
@@ -447,12 +556,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
         return;
       }
 
-      const allowed =
-        (order.status === "pending" && next === "accepted") ||
-        (order.status === "accepted" && next === "prepared") ||
-        (order.status === "prepared" && next === "ready");
-
-      if (!allowed) {
+      if (!canMoveToStatus(order.status, next)) {
         Alert.alert(
           t("common.errorTitle", "Erreur"),
           t("order.errors.statusTransition", "Transition de statut non autorisée.")
@@ -463,11 +567,14 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
       setUpdating(true);
 
       try {
+        const { payload, nowIso } = withOptionalOrderTimestamps(next);
+
         const { data, error } = await supabase
           .from("orders")
-          .update({ status: next })
+          .update(payload)
           .eq("id", order.id)
           .eq("status", order.status)
+          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .select(selectFields)
           .maybeSingle();
 
@@ -477,6 +584,34 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
           throw new Error(
             t("order.errors.statusChanged", "Le statut a changé. Recharge la commande puis réessaie.")
           );
+        }
+
+        const { error: eventError } = await supabase.from("order_events").insert({
+          order_id: order.id,
+          event_type: statusEventType(next),
+          old_status: order.status,
+          new_status: next,
+          note: null,
+          actor_id: restaurantUserId,
+          created_at: nowIso,
+          description:
+            next === "accepted"
+              ? "Restaurant accepted the order"
+              : next === "prepared"
+                ? "Restaurant started preparing the order"
+                : next === "ready"
+                  ? "Restaurant marked the order ready"
+                  : `Restaurant changed status to ${next}`,
+          triggered_by: restaurantUserId,
+          triggered_role: "restaurant",
+          metadata: {
+            source: "RestaurantOrderDetailsScreen",
+            at: nowIso,
+          },
+        });
+
+        if (eventError) {
+          console.log("RestaurantOrderDetails order_events insert error:", eventError);
         }
 
         const nextOrder = data as unknown as Order;
@@ -491,7 +626,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
         setUpdating(false);
       }
     },
-    [order, selectFields, t, updating]
+    [order, restaurantUserId, selectFields, t, updating]
   );
 
   const cancelOrderByRestaurant = useCallback(async () => {
@@ -1184,3 +1319,5 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+
+export default RestaurantOrderDetailsScreen;

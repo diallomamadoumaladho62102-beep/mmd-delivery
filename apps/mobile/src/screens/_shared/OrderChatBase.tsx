@@ -42,6 +42,41 @@ const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic", "heif"] 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+const MAX_MESSAGE_LENGTH = 1200;
+
+type AccessCheck = {
+  userId: string;
+  role: ChatTargetRole;
+  canAccess: boolean;
+};
+
+function sanitizeMessageText(value: string) {
+  return String(value || "").replace(/\s+$/g, "").slice(0, MAX_MESSAGE_LENGTH);
+}
+
+function canRoleChatWithTarget(currentRole: ChatTargetRole, targetRole: ChatTargetRole) {
+  if (!currentRole) return false;
+  if (!targetRole) return currentRole === "admin";
+
+  if (currentRole === "admin") return true;
+  if (targetRole === "admin") return true;
+
+  if (currentRole === "restaurant") {
+    return targetRole === "client" || targetRole === "driver";
+  }
+
+  if (currentRole === "client") {
+    return targetRole === "restaurant" || targetRole === "driver";
+  }
+
+  if (currentRole === "driver") {
+    return targetRole === "restaurant" || targetRole === "client";
+  }
+
+  return false;
+}
+
+
 function isValidUuid(value: unknown) {
   return UUID_RE.test(String(value ?? "").trim());
 }
@@ -171,6 +206,8 @@ export function OrderChatBaseScreen(props: {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [pickedImage, setPickedImage] = useState<{ uri: string; fileName: string } | null>(
     null
   );
@@ -182,6 +219,80 @@ export function OrderChatBaseScreen(props: {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 80);
   }, []);
+
+
+  const verifyAccess = useCallback(async (): Promise<AccessCheck> => {
+    if (!isValidOrderId) {
+      return { userId: "", role: "", canAccess: false };
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError) throw userError;
+
+    const userId = userData.user?.id ?? "";
+
+    if (!userId) {
+      return { userId: "", role: "", canAccess: false };
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileError) {
+      console.log("OrderChatBase profile role error:", profileError);
+    }
+
+    const profileRole = normalizeTargetRole((profile as any)?.role);
+    const role = currentRole || profileRole;
+
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .select("id,client_id,client_user_id,user_id,restaurant_id,restaurant_user_id,driver_id,status")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (orderError) throw orderError;
+
+    if (!order) {
+      return { userId, role, canAccess: false };
+    }
+
+    const status = String((order as any)?.status || "").trim().toLowerCase();
+
+    if (status === "canceled" || status === "delivered") {
+      return { userId, role, canAccess: false };
+    }
+
+    const isClient =
+      String((order as any)?.client_id || "") === userId ||
+      String((order as any)?.client_user_id || "") === userId ||
+      String((order as any)?.user_id || "") === userId;
+
+    const isRestaurant =
+      String((order as any)?.restaurant_id || "") === userId ||
+      String((order as any)?.restaurant_user_id || "") === userId;
+
+    const isDriver = String((order as any)?.driver_id || "") === userId;
+    const isAdmin = role === "admin";
+
+    const roleMatches =
+      isAdmin ||
+      (role === "client" && isClient) ||
+      (role === "restaurant" && isRestaurant) ||
+      (role === "driver" && isDriver);
+
+    const targetAllowed = canRoleChatWithTarget(role, targetRole);
+
+    return {
+      userId,
+      role,
+      canAccess: roleMatches && targetAllowed,
+    };
+  }, [currentRole, isValidOrderId, orderId, targetRole]);
 
   const enrichSignedUrls = useCallback(async (data: Row[]) => {
     const enriched: Row[] = await Promise.all(
@@ -220,6 +331,16 @@ export function OrderChatBaseScreen(props: {
 
     try {
       setLoading(true);
+      setAccessDenied(false);
+
+      const access = await verifyAccess();
+      setCurrentUserId(access.userId || null);
+
+      if (!access.canAccess) {
+        setRows([]);
+        setAccessDenied(true);
+        return;
+      }
 
       const selectWithRoles =
         "id, order_id, user_id, text, image_path, created_at, sender_role, target_role";
@@ -283,7 +404,7 @@ export function OrderChatBaseScreen(props: {
     } finally {
       setLoading(false);
     }
-  }, [orderId, isValidOrderId, targetRole, enrichSignedUrls, scrollToEnd, t]);
+  }, [orderId, isValidOrderId, targetRole, enrichSignedUrls, scrollToEnd, t, verifyAccess]);
 
   useEffect(() => {
     void load();
@@ -361,8 +482,18 @@ export function OrderChatBaseScreen(props: {
       );
     }
 
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData.user?.id ?? "anon";
+    const access = await verifyAccess();
+
+    if (!access.canAccess || !access.userId) {
+      throw new Error(
+        t(
+          "shared.orderChat.errors.notAllowed",
+          "Tu n’as pas accès à cette discussion."
+        )
+      );
+    }
+
+    const uid = access.userId;
 
     let uploadUri = pickedImage.uri;
     let ext = safeFileExt(pickedImage.fileName);
@@ -447,14 +578,25 @@ export function OrderChatBaseScreen(props: {
     if (uploadError) throw uploadError;
 
     return `chat-images/${key}`;
-  }, [pickedImage, orderId, isValidOrderId, t]);
+  }, [pickedImage, orderId, isValidOrderId, t, verifyAccess]);
 
   const send = useCallback(async () => {
     if (sending) return;
 
-    const trimmed = text.trim();
+    const trimmed = sanitizeMessageText(text.trim());
 
     if (!trimmed && !pickedImage) return;
+
+    if (text.trim().length > MAX_MESSAGE_LENGTH) {
+      Alert.alert(
+        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        t(
+          "shared.orderChat.errors.messageTooLong",
+          "Message trop long. Réduis le texte avant d’envoyer."
+        )
+      );
+      return;
+    }
     if (!orderId) return;
 
     if (!isValidOrderId) {
@@ -471,10 +613,9 @@ export function OrderChatBaseScreen(props: {
     try {
       setSending(true);
 
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      const userId = userData.user?.id ?? null;
+      const access = await verifyAccess();
 
-      if (userError || !userId) {
+      if (!access.userId) {
         throw new Error(
           t(
             "shared.orderChat.errors.notAuthenticated",
@@ -483,6 +624,18 @@ export function OrderChatBaseScreen(props: {
         );
       }
 
+      if (!access.canAccess) {
+        throw new Error(
+          t(
+            "shared.orderChat.errors.notAllowed",
+            "Tu n’as pas accès à cette discussion."
+          )
+        );
+      }
+
+      const userId = access.userId;
+      const senderRole = access.role || currentRole || null;
+
       const image_path = pickedImage ? await uploadPickedImage() : null;
 
       const messagePayload = {
@@ -490,7 +643,7 @@ export function OrderChatBaseScreen(props: {
         user_id: userId,
         text: trimmed || null,
         image_path,
-        sender_role: currentRole || null,
+        sender_role: senderRole,
         target_role: targetRole || null,
       };
 
@@ -533,16 +686,36 @@ export function OrderChatBaseScreen(props: {
     isValidOrderId,
     targetRole,
     currentRole,
+    verifyAccess,
     uploadPickedImage,
     load,
     t,
   ]);
 
   const del = useCallback(
-    async (id: string, imagePath: string | null) => {
+    async (id: string, imagePath: string | null, ownerId?: string | null) => {
       if (!id) return;
 
       try {
+        const access = await verifyAccess();
+
+        if (!access.canAccess || !access.userId) {
+          throw new Error(
+            t(
+              "shared.orderChat.errors.notAllowed",
+              "Tu n’as pas accès à cette discussion."
+            )
+          );
+        }
+
+        if (ownerId && ownerId !== access.userId && access.role !== "admin") {
+          throw new Error(
+            t(
+              "shared.orderChat.errors.deleteOwnOnly",
+              "Tu peux supprimer seulement tes propres messages."
+            )
+          );
+        }
         if (imagePath) {
           const key = storageKeyFromImagePath(imagePath);
 
@@ -574,7 +747,7 @@ export function OrderChatBaseScreen(props: {
         );
       }
     },
-    [t]
+    [t, verifyAccess]
   );
 
   const title = useMemo(() => {
@@ -602,6 +775,30 @@ export function OrderChatBaseScreen(props: {
           {t(
             "shared.orderChat.errors.invalidOrderIdUi",
             "Cette discussion doit être ouverte depuis une vraie commande. Le support général sera corrigé séparément pour ne plus envoyer orderId = support."
+          )}
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+
+  if (accessDenied) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617", padding: 16 }}>
+        <TouchableOpacity onPress={onBack}>
+          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+            {t("shared.common.backWithArrow", "← Retour")}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={{ color: "#FCA5A5", marginTop: 16, fontWeight: "900" }}>
+          {t("shared.orderChat.errors.accessDeniedTitle", "Accès refusé")}
+        </Text>
+
+        <Text style={{ color: "#CBD5E1", marginTop: 8, lineHeight: 20, fontWeight: "700" }}>
+          {t(
+            "shared.orderChat.errors.accessDeniedUi",
+            "Tu ne peux pas ouvrir cette discussion avec ce compte ou cette commande est déjà terminée."
           )}
         </Text>
       </SafeAreaView>
@@ -743,7 +940,7 @@ export function OrderChatBaseScreen(props: {
                           {
                             text: t("shared.common.delete", "Supprimer"),
                             style: "destructive",
-                            onPress: () => void del(r.id, r.image_path),
+                            onPress: () => void del(r.id, r.image_path, r.user_id),
                           },
                         ]
                       )
@@ -820,7 +1017,7 @@ export function OrderChatBaseScreen(props: {
           <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
             <TouchableOpacity
               onPress={() => void pickImage()}
-              disabled={sending}
+              disabled={sending || accessDenied}
               style={{
                 flex: 1,
                 height: 46,
@@ -830,7 +1027,7 @@ export function OrderChatBaseScreen(props: {
                 backgroundColor: "rgba(15,23,42,0.35)",
                 borderWidth: 1,
                 borderColor: "#1F2937",
-                opacity: sending ? 0.6 : 1,
+                opacity: sending || accessDenied ? 0.6 : 1,
               }}
             >
               <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
@@ -840,7 +1037,7 @@ export function OrderChatBaseScreen(props: {
 
             <TouchableOpacity
               onPress={() => void send()}
-              disabled={sending || (text.trim() === "" && !pickedImage)}
+              disabled={sending || accessDenied || (text.trim() === "" && !pickedImage)}
               style={{
                 flex: 1,
                 height: 46,
@@ -850,7 +1047,7 @@ export function OrderChatBaseScreen(props: {
                 backgroundColor: "rgba(2,6,23,0.75)",
                 borderWidth: 1,
                 borderColor: "#1F2937",
-                opacity: sending || (text.trim() === "" && !pickedImage) ? 0.5 : 1,
+                opacity: sending || accessDenied || (text.trim() === "" && !pickedImage) ? 0.5 : 1,
               }}
             >
               <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
@@ -865,3 +1062,5 @@ export function OrderChatBaseScreen(props: {
     </SafeAreaView>
   );
 }
+
+export default OrderChatBaseScreen;

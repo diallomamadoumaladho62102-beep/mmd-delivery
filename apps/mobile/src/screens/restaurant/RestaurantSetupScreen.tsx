@@ -17,10 +17,79 @@ import * as FileSystem from "expo-file-system/legacy";
 type Props = { navigation: any };
 type DocType = "license" | "tax" | "id";
 
+type GeocodedAddress = {
+  latitude: number;
+  longitude: number;
+  formattedAddress: string;
+};
+
 const BUCKET = "restaurant-docs";
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
 
 function cleanText(v: string) {
   return (v || "").trim();
+}
+
+function isValidCoordinate(latitude: number, longitude: number) {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
+async function geocodeRestaurantAddress(fullAddress: string): Promise<GeocodedAddress> {
+  const cleanAddress = cleanText(fullAddress);
+
+  if (!cleanAddress) {
+    throw new Error("Adresse complète du restaurant obligatoire.");
+  }
+
+  if (!MAPBOX_TOKEN) {
+    throw new Error(
+      "Token Mapbox manquant. Ajoute EXPO_PUBLIC_MAPBOX_TOKEN dans les variables d’environnement."
+    );
+  }
+
+  const params = new URLSearchParams({
+    access_token: MAPBOX_TOKEN,
+    limit: "1",
+    country: "us",
+    language: "en",
+    types: "address,poi",
+  });
+
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+    cleanAddress
+  )}.json?${params.toString()}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error("Impossible de vérifier l’adresse du restaurant.");
+  }
+
+  const json = await response.json();
+  const feature = json?.features?.[0];
+  const center = feature?.center;
+
+  const longitude = Number(center?.[0]);
+  const latitude = Number(center?.[1]);
+
+  if (!isValidCoordinate(latitude, longitude)) {
+    throw new Error(
+      "Adresse introuvable. Entre une adresse complète avec ville, État et code postal."
+    );
+  }
+
+  return {
+    latitude,
+    longitude,
+    formattedAddress: String(feature?.place_name || cleanAddress),
+  };
 }
 
 function decodeBase64(base64: string) {
@@ -196,8 +265,18 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     const restaurantCity = cleanText(city);
     const restaurantPostalCode = cleanText(postalCode);
     const restaurantCuisineType = cleanText(cuisineType);
+    const fullAddress = cleanText(
+      `${restaurantAddress}, ${restaurantCity}, NY ${restaurantPostalCode}`
+    );
 
-    if (!name || !restaurantPhone || !restaurantAddress || !restaurantCity || !restaurantPostalCode || !restaurantCuisineType) {
+    if (
+      !name ||
+      !restaurantPhone ||
+      !restaurantAddress ||
+      !restaurantCity ||
+      !restaurantPostalCode ||
+      !restaurantCuisineType
+    ) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
         t(
@@ -222,16 +301,20 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         throw new Error(t("restaurant.setup.alerts.notLoggedIn", "Pas connecté"));
       }
 
+      const geocoded = await geocodeRestaurantAddress(fullAddress);
+
       const payload = {
         user_id: user.id,
         email: user.email,
         restaurant_name: name,
         phone: restaurantPhone,
-        address: restaurantAddress,
+        address: geocoded.formattedAddress,
         city: restaurantCity,
         postal_code: restaurantPostalCode,
         cuisine_type: restaurantCuisineType,
         description: cleanText(description) || null,
+        location_lat: geocoded.latitude,
+        location_lng: geocoded.longitude,
         opening_hours: null,
         offers_delivery: offersDelivery,
         offers_pickup: offersPickup,
@@ -315,6 +398,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         value={address}
         onChangeText={setAddress}
         editable={!loading}
+        placeholder="123 Main St"
         style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
       />
 
@@ -323,6 +407,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         value={city}
         onChangeText={setCity}
         editable={!loading}
+        placeholder="New York"
         style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
       />
 
@@ -332,6 +417,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         onChangeText={setPostalCode}
         editable={!loading}
         keyboardType="numbers-and-punctuation"
+        placeholder="10001"
         style={{ borderWidth: 1, padding: 10, borderRadius: 8 }}
       />
 

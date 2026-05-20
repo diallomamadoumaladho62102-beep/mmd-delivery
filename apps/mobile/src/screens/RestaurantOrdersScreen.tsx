@@ -77,6 +77,17 @@ const ACTIVE_STATUSES_UI: OrderStatus[] = [
   "dispatched",
 ];
 
+const NEXT_ALLOWED_STATUS: Partial<Record<OrderStatus, DbOrderStatus[]>> = {
+  pending: ["accepted", "canceled"],
+  accepted: ["prepared", "canceled"],
+  prepared: ["ready", "canceled"],
+  ready: ["dispatched", "canceled"],
+};
+
+function canMoveToStatus(currentStatus: OrderStatus, nextStatus: DbOrderStatus) {
+  return NEXT_ALLOWED_STATUS[currentStatus]?.includes(nextStatus) ?? false;
+}
+
 function mapDbStatusToUiStatus(s: string): OrderStatus {
   const v = String(s || "").toLowerCase();
 
@@ -356,8 +367,56 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         if (error) throw error;
 
         const uid = data?.user?.id ?? null;
+
+        if (!uid) {
+          if (!cancelled && mountedRef.current) {
+            setRestaurantUserId(null);
+          }
+          return;
+        }
+
+        const { data: roleProfile, error: roleError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", uid)
+          .maybeSingle();
+
+        if (roleError) {
+          console.log("resolve restaurant role error:", roleError);
+        }
+
+        const role = String((roleProfile as any)?.role || "")
+          .trim()
+          .toLowerCase();
+
+        if (role && role !== "restaurant") {
+          if (!cancelled && mountedRef.current) {
+            setRestaurantUserId(null);
+          }
+
+          navigation.reset({
+            index: 0,
+            routes: [{ name: role === "driver" ? "DriverTabs" : role === "client" ? "ClientHome" : "RoleSelect" }],
+          });
+          return;
+        }
+
+        const { data: restaurantProfile, error: restaurantError } = await supabase
+          .from("restaurant_profiles")
+          .select("user_id,status")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (restaurantError) {
+          console.log("resolve restaurant profile error:", restaurantError);
+        }
+
+        const isRestaurantProfile =
+          !!restaurantProfile &&
+          String((restaurantProfile as any)?.user_id || "") === uid;
+
         if (!cancelled && mountedRef.current) {
-          setRestaurantUserId(uid);
+          setRestaurantUserId(isRestaurantProfile ? uid : null);
         }
       } catch (e) {
         console.log("resolve auth uid error:", e);
@@ -374,7 +433,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigation]);
 
   const ensureSoundLoaded = useCallback(async () => {
     if (soundRef.current) return;
@@ -497,7 +556,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           .select(
             "id,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at"
           )
-          .eq("restaurant_user_id", restaurantUserId)
+          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -543,27 +602,89 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
   const updateOrderStatus = useCallback(
     async (orderId: string, nextStatus: DbOrderStatus) => {
+      if (!restaurantUserId) return;
+
       try {
         const { data: u, error: ue } = await supabase.auth.getUser();
         if (ue) throw ue;
 
         const actorId = u?.user?.id ?? null;
 
+        if (!actorId || actorId !== restaurantUserId) {
+          throw new Error(
+            t(
+              "restaurant.orders.errors.invalidActor",
+              "Session restaurant invalide. Reconnecte-toi puis réessaie."
+            )
+          );
+        }
+
         const { data: current, error: ce } = await supabase
           .from("orders")
-          .select("status")
+          .select("id,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id")
           .eq("id", orderId)
+          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .maybeSingle();
 
         if (ce) throw ce;
 
-        const oldStatus = String(current?.status ?? "");
+        if (!current) {
+          throw new Error(
+            t(
+              "restaurant.orders.errors.orderNotFound",
+              "Commande introuvable pour ce restaurant."
+            )
+          );
+        }
+
+        const oldStatus = mapDbStatusToUiStatus(String((current as any)?.status ?? ""));
+
+        if (!canMoveToStatus(oldStatus, nextStatus)) {
+          throw new Error(
+            t(
+              "restaurant.orders.errors.invalidTransition",
+              "Cette commande a déjà changé de statut. Rafraîchis la liste."
+            )
+          );
+        }
+
+        if (oldStatus === "pending" && nextStatus === "accepted") {
+          const remaining = remainingAcceptSeconds(
+            (current as any)?.restaurant_accept_expires_at ?? null,
+            (current as any)?.created_at ?? null
+          );
+
+          if (remaining <= 0) {
+            throw new Error(
+              t(
+                "restaurant.orders.errors.acceptExpired",
+                "Le délai d’acceptation est expiré. Tu ne peux plus accepter cette commande."
+              )
+            );
+          }
+        }
+
         const nowIso = new Date().toISOString();
+
+        const updatePayload: Record<string, any> = {
+          status: nextStatus,
+          updated_at: nowIso,
+        };
+
+        if (nextStatus === "accepted") {
+          updatePayload.restaurant_accepted_at = nowIso;
+        }
+
+        if (nextStatus === "canceled") {
+          updatePayload.canceled_at = nowIso;
+        }
 
         const { error } = await supabase
           .from("orders")
-          .update({ status: nextStatus })
-          .eq("id", orderId);
+          .update(updatePayload)
+          .eq("id", orderId)
+          .eq("status", (current as any).status)
+          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`);
 
         if (error) throw error;
 
@@ -600,6 +721,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           console.log("order_events insert error:", evErr);
         }
 
+        stopRepeatRinging();
         void fetchOrders({ silent: true });
       } catch (e: any) {
         Alert.alert(
@@ -608,7 +730,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         );
       }
     },
-    [fetchOrders, t]
+    [fetchOrders, restaurantUserId, stopRepeatRinging, t]
   );
 
   const confirmAccept = useCallback(
@@ -1301,3 +1423,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
+
+
+export default RestaurantOrdersScreen;

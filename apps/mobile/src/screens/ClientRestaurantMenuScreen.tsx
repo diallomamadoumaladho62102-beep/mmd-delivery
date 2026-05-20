@@ -33,6 +33,17 @@ type RestaurantItem = {
   position?: number | null;
 };
 
+type RestaurantProfile = {
+  user_id: string;
+  restaurant_name: string | null;
+  address: string | null;
+  status: string | null;
+  is_accepting_orders: boolean | null;
+  location_lat: number | string | null;
+  location_lng: number | string | null;
+};
+
+
 type CartItem = {
   id: string;
   name: string;
@@ -88,8 +99,6 @@ type MapboxDistanceResponse = {
   };
 };
 
-console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
-
 function computeDeliveryPricing({
   distanceMiles,
   durationMinutes,
@@ -123,6 +132,49 @@ function normalizeAddress(value: string) {
 function isAddressReady(value: string) {
   const v = normalizeAddress(value);
   return v.length >= 10 && /\d/.test(v) && v.includes(" ");
+}
+
+
+function isValidCoordinate(latValue: unknown, lngValue: unknown) {
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+function cleanApiBaseUrl() {
+  const raw = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (!raw) return "";
+  return /^https?:\/\//i.test(raw) ? raw : "";
+}
+
+function normalizeRestaurantItem(row: any): RestaurantItem | null {
+  const id = String(row?.id || "").trim();
+  const name = String(row?.name || "").trim();
+  const restaurantUserId = String(row?.restaurant_user_id || "").trim();
+  const priceCents = Number(row?.price_cents ?? 0);
+
+  if (!id || !name || !restaurantUserId) return null;
+  if (!Number.isFinite(priceCents) || priceCents <= 0) return null;
+
+  return {
+    id,
+    name,
+    description: row?.description ?? null,
+    price_cents: priceCents,
+    category: row?.category ?? null,
+    restaurant_user_id: restaurantUserId,
+    image_url: String(row?.image_url || "").trim() || null,
+    is_available: row?.is_available ?? true,
+    position: row?.position ?? null,
+  };
 }
 
 function getFriendlyEstimateError(
@@ -186,6 +238,7 @@ export function ClientRestaurantMenuScreen() {
   );
 
   const [items, setItems] = useState<RestaurantItem[]>([]);
+  const [restaurantProfile, setRestaurantProfile] = useState<RestaurantProfile | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -225,22 +278,66 @@ export function ClientRestaurantMenuScreen() {
   }, [restaurantId, tr]);
 
   function getItemPrice(item: RestaurantItem): number {
-    if (item.price_cents != null) return item.price_cents / 100;
+    const cents = Number(item.price_cents ?? 0);
+    if (Number.isFinite(cents) && cents > 0) return cents / 100;
     return 0;
   }
 
   useEffect(() => {
-    if (restaurantAddressFromRoute) {
-      setPickup(restaurantAddressFromRoute);
-    }
-  }, [restaurantAddressFromRoute]);
-
-  useEffect(() => {
     let cancelled = false;
 
-    async function loadMenu() {
+    async function loadRestaurantAndMenu() {
       try {
         if (!cancelled) setLoading(true);
+
+        if (!restaurantId) {
+          if (!cancelled) {
+            setRestaurantProfile(null);
+            setItems([]);
+          }
+          return;
+        }
+
+        const { data: profileData, error: profileError } = await supabase
+          .from("restaurant_profiles")
+          .select(
+            "user_id, restaurant_name, address, status, is_accepting_orders, location_lat, location_lng"
+          )
+          .eq("user_id", restaurantId)
+          .eq("status", "approved")
+          .eq("is_accepting_orders", true)
+          .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        const profile = (profileData as RestaurantProfile | null) ?? null;
+        const profileAddress = normalizeAddress(String(profile?.address || ""));
+        const hasValidProfile =
+          !!profile &&
+          !!profile.user_id &&
+          !!profileAddress &&
+          isValidCoordinate(profile.location_lat, profile.location_lng);
+
+        if (!hasValidProfile) {
+          if (!cancelled) {
+            setRestaurantProfile(null);
+            setItems([]);
+            resetEstimateState();
+            Alert.alert(
+              tr("common.error.title", "Erreur"),
+              tr(
+                "clientRestaurantMenu.errors.restaurantUnavailable",
+                "Ce restaurant n’est pas disponible ou son adresse GPS n’est pas encore configurée."
+              )
+            );
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setRestaurantProfile(profile);
+          setPickup(profileAddress);
+        }
 
         const { data, error } = await supabase
           .from("restaurant_items")
@@ -253,22 +350,31 @@ export function ClientRestaurantMenuScreen() {
           .order("name", { ascending: true });
 
         if (error) throw error;
-        if (!cancelled) setItems((data || []) as RestaurantItem[]);
+
+        const safeItems = ((data || []) as any[])
+          .map(normalizeRestaurantItem)
+          .filter(Boolean) as RestaurantItem[];
+
+        if (!cancelled) setItems(safeItems);
       } catch (err) {
         console.error("Erreur fetch menu restaurant (mobile):", err);
-        Alert.alert(
-          tr("common.error.title", "Erreur"),
-          tr(
-            "clientRestaurantMenu.loadMenuError",
-            "Impossible de charger le menu de ce restaurant pour le moment."
-          )
-        );
+        if (!cancelled) {
+          setRestaurantProfile(null);
+          setItems([]);
+          Alert.alert(
+            tr("common.error.title", "Erreur"),
+            tr(
+              "clientRestaurantMenu.loadMenuError",
+              "Impossible de charger le menu de ce restaurant pour le moment."
+            )
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
-    loadMenu();
+    void loadRestaurantAndMenu();
 
     return () => {
       cancelled = true;
@@ -292,6 +398,17 @@ export function ClientRestaurantMenuScreen() {
   function addToCart(item: RestaurantItem) {
     const price = getItemPrice(item);
 
+    if (!item.is_available || price <= 0) {
+      Alert.alert(
+        tr("common.error.title", "Erreur"),
+        tr(
+          "clientRestaurantMenu.menu.itemUnavailable",
+          "Ce plat n’est plus disponible pour le moment."
+        )
+      );
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev.find((c) => c.id === item.id);
       if (existing) {
@@ -313,9 +430,11 @@ export function ClientRestaurantMenuScreen() {
   }
 
   function updateQuantity(id: string, quantity: number) {
+    const safeQuantity = Math.max(0, Math.min(99, Math.floor(Number(quantity) || 0)));
+
     setCart((prev) =>
       prev
-        .map((c) => (c.id === id ? { ...c, quantity } : c))
+        .map((c) => (c.id === id ? { ...c, quantity: safeQuantity } : c))
         .filter((c) => c.quantity > 0)
     );
   }
@@ -346,6 +465,17 @@ export function ClientRestaurantMenuScreen() {
 
     if (estimating) {
       return false;
+    }
+
+    if (!restaurantProfile) {
+      Alert.alert(
+        tr("common.error.title", "Erreur"),
+        tr(
+          "clientRestaurantMenu.errors.restaurantUnavailable",
+          "Ce restaurant n’est pas disponible ou son adresse GPS n’est pas encore configurée."
+        )
+      );
+      return;
     }
 
     if (cart.length === 0) {
@@ -384,7 +514,9 @@ export function ClientRestaurantMenuScreen() {
       return false;
     }
 
-    if (!API_BASE_URL) {
+    const apiBaseUrl = cleanApiBaseUrl();
+
+    if (!apiBaseUrl) {
       if (!silent) {
         Alert.alert(
           tr("clientRestaurantMenu.missingConfigTitle", "Configuration manquante"),
@@ -404,8 +536,7 @@ export function ClientRestaurantMenuScreen() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20000);
 
-      const url = `${String(API_BASE_URL).replace(/\/+$/, "")}/api/mapbox/compute-distance`;
-      console.log("MMD MOBILE fetch distance (restaurant) →", url);
+      const url = `${apiBaseUrl}/api/mapbox/compute-distance`;
 
       const res = await fetch(url, {
         method: "POST",
@@ -419,8 +550,6 @@ export function ClientRestaurantMenuScreen() {
 
       const rawText = await res.text();
       clearTimeout(timeout);
-
-      console.log("MMD MOBILE distance raw (restaurant) =", rawText);
 
       let json: MapboxDistanceResponse | null = null;
 
@@ -551,17 +680,8 @@ export function ClientRestaurantMenuScreen() {
         json.coords?.dropoffLon ??
         undefined;
 
-      const pickupOk =
-        typeof pLat === "number" &&
-        typeof pLng === "number" &&
-        !Number.isNaN(pLat) &&
-        !Number.isNaN(pLng);
-
-      const dropoffOk =
-        typeof dLat === "number" &&
-        typeof dLng === "number" &&
-        !Number.isNaN(dLat) &&
-        !Number.isNaN(dLng);
+      const pickupOk = isValidCoordinate(pLat, pLng);
+      const dropoffOk = isValidCoordinate(dLat, dLng);
 
       const feeFromApi =
         json.delivery_fee_usd?.deliveryFee ??
@@ -758,13 +878,66 @@ export function ClientRestaurantMenuScreen() {
       }
 
       const userId = sessionData.session.user.id;
+      const activeRestaurantProfile = restaurantProfile;
+
+      if (!activeRestaurantProfile) {
+        throw new Error(
+          tr(
+            "clientRestaurantMenu.errors.restaurantUnavailable",
+            "Ce restaurant n’est pas disponible ou son adresse GPS n’est pas encore configurée."
+          )
+        );
+      }
+
+      const cartIds = cart.map((item) => item.id);
+
+      const { data: freshItemsData, error: freshItemsError } = await supabase
+        .from("restaurant_items")
+        .select("id, name, price_cents, category, image_url, is_available, restaurant_user_id")
+        .eq("restaurant_user_id", restaurantId)
+        .in("id", cartIds);
+
+      if (freshItemsError) throw freshItemsError;
+
+      const freshItems = ((freshItemsData || []) as any[])
+        .map(normalizeRestaurantItem)
+        .filter(Boolean) as RestaurantItem[];
+
+      const freshById = new Map(freshItems.map((item) => [item.id, item]));
+
+      for (const cartItem of cart) {
+        const fresh = freshById.get(cartItem.id);
+
+        if (!fresh || fresh.is_available === false) {
+          throw new Error(
+            tr(
+              "clientRestaurantMenu.errors.cartItemUnavailable",
+              "Un plat du panier n’est plus disponible. Retire-le puis réessaie."
+            )
+          );
+        }
+      }
+
+      const safeCart = cart.map((cartItem) => {
+        const fresh = freshById.get(cartItem.id)!;
+        return {
+          ...cartItem,
+          name: fresh.name,
+          category: fresh.category ?? null,
+          unit_price: getItemPrice(fresh),
+          image_url: fresh.image_url ?? null,
+        };
+      });
+
       const etaMinutesInt = Math.round(etaMinutes ?? 0);
 
       const pickupCode = Math.random().toString(36).slice(2, 8).toUpperCase();
       const dropoffCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-      const safeSubtotal = roundMoney(subtotal);
-      const safeTax = roundMoney(tax);
+      const safeSubtotal = roundMoney(
+        safeCart.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
+      );
+      const safeTax = roundMoney(safeSubtotal * 0.0888);
       const safeDeliveryFee = roundMoney(deliveryFee ?? 0);
       const safeGrandTotal = roundMoney(safeSubtotal + safeTax + safeDeliveryFee);
       const totalCents = Math.round(safeGrandTotal * 100);
@@ -785,10 +958,10 @@ export function ClientRestaurantMenuScreen() {
     user_id: userId,
     client_user_id: userId,
 
-    restaurant_name: restaurantName,
+    restaurant_name: activeRestaurantProfile.restaurant_name || restaurantName,
     created_by: userId,
 
-    items_json: cart.map((c) => ({
+    items_json: safeCart.map((c) => ({
       name: c.name,
       category: c.category,
       quantity: c.quantity,
@@ -881,6 +1054,7 @@ export function ClientRestaurantMenuScreen() {
     !creating &&
     !estimating &&
     !!restaurantId &&
+    !!restaurantProfile &&
     cart.length > 0 &&
     distanceMiles != null &&
     etaMinutes != null &&
@@ -907,7 +1081,7 @@ export function ClientRestaurantMenuScreen() {
           </Text>
 
           <Text style={{ color: "white", fontSize: 24, fontWeight: "800", marginBottom: 4 }}>
-            {restaurantName}
+            {restaurantProfile?.restaurant_name || restaurantName}
           </Text>
 
           <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
@@ -1424,3 +1598,6 @@ export function ClientRestaurantMenuScreen() {
 }
 
 
+
+
+export default ClientRestaurantMenuScreen;

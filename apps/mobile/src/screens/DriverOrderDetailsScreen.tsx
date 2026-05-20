@@ -30,7 +30,13 @@ import {
   stopDriverLocationTracking,
 } from "../lib/driverLocationTracker";
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
+const MAP_STYLE_STREETS =
+  (Mapbox as any).StyleURL?.Street ?? "mapbox://styles/mapbox/streets-v12";
+
+if (MAPBOX_TOKEN) {
+  Mapbox.setAccessToken(MAPBOX_TOKEN);
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -194,6 +200,43 @@ function isFinalStatus(status: OrderStatus) {
   return status === "delivered" || status === "canceled";
 }
 
+
+function isValidCoordinate(latValue: unknown, lngValue: unknown) {
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
+
+function normalizeVerificationCode(value: string) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .toUpperCase()
+    .slice(0, 12);
+}
+
+function isAllowedDriverVisibleOrder(order: Order, driverId: string) {
+  if (!driverId) return false;
+
+  if (order.driver_id) {
+    return order.driver_id === driverId;
+  }
+
+  const kind = normalizeKind(order.kind);
+  return (
+    (kind === "pickup_dropoff" && order.status === "pending") ||
+    (kind !== "pickup_dropoff" && order.status === "ready")
+  );
+}
+
 export function DriverOrderDetailsScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DriverOrderDetailsRoute>();
@@ -220,13 +263,13 @@ export function DriverOrderDetailsScreen() {
   const isPickupDropoff = normalizedKind === "pickup_dropoff";
 
   const pickupCoord = useMemo(() => {
-    if (order?.pickup_lat == null || order?.pickup_lng == null) return null;
-    return { latitude: order.pickup_lat, longitude: order.pickup_lng };
+    if (!isValidCoordinate(order?.pickup_lat, order?.pickup_lng)) return null;
+    return { latitude: Number(order?.pickup_lat), longitude: Number(order?.pickup_lng) };
   }, [order?.pickup_lat, order?.pickup_lng]);
 
   const dropoffCoord = useMemo(() => {
-    if (order?.dropoff_lat == null || order?.dropoff_lng == null) return null;
-    return { latitude: order.dropoff_lat, longitude: order.dropoff_lng };
+    if (!isValidCoordinate(order?.dropoff_lat, order?.dropoff_lng)) return null;
+    return { latitude: Number(order?.dropoff_lat), longitude: Number(order?.dropoff_lng) };
   }, [order?.dropoff_lat, order?.dropoff_lng]);
 
   const polylineCoords = useMemo(() => {
@@ -327,25 +370,83 @@ export function DriverOrderDetailsScreen() {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth
-      .getUser()
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+
+        const uid = user?.id ?? null;
+
         if (!mounted) return;
-        setMyUserId(data?.user?.id ?? null);
-      })
-      .catch(() => {
+
+        if (!uid) {
+          setMyUserId(null);
+          navigation.reset({ index: 0, routes: [{ name: "RoleSelect" as any }] });
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", uid)
+          .maybeSingle();
+
+        if (profileError) {
+          console.log("DriverOrderDetails role check error:", profileError);
+        }
+
+        const role = String((profile as any)?.role || "").trim().toLowerCase();
+
+        if (role && role !== "driver") {
+          setMyUserId(null);
+          navigation.reset({
+            index: 0,
+            routes: [
+              {
+                name:
+                  role === "restaurant"
+                    ? ("RestaurantGate" as any)
+                    : role === "client"
+                      ? ("ClientHome" as any)
+                      : ("RoleSelect" as any),
+              },
+            ],
+          });
+          return;
+        }
+
+        setMyUserId(uid);
+      } catch (e) {
         if (!mounted) return;
         setMyUserId(null);
-      });
+      }
+    })();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [navigation]);
 
   const fetchOrder = useCallback(async () => {
     try {
       setLoading(true);
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+
+      const uid = user?.id ?? null;
+
+      if (!uid) {
+        throw new Error(t("common.mustBeLoggedIn", "Tu dois être connecté."));
+      }
 
       const { data, error } = await supabase
         .from("orders")
@@ -387,7 +488,19 @@ export function DriverOrderDetailsScreen() {
         return;
       }
 
-      setOrder(data as Order);
+      const nextOrder = data as Order;
+
+      if (!isAllowedDriverVisibleOrder(nextOrder, uid)) {
+        throw new Error(
+          t(
+            "driver.orderDetails.notAllowed",
+            "Cette course n’est pas disponible pour ce compte chauffeur."
+          )
+        );
+      }
+
+      setOrder(nextOrder);
+      setMyUserId(uid);
       didFitRef.current = false;
     } catch (e: any) {
       console.error("Erreur fetch driver order details:", e);
@@ -406,6 +519,10 @@ export function DriverOrderDetailsScreen() {
 
   useEffect(() => {
     void fetchOrder();
+
+    return () => {
+      stopDriverLocationTracking();
+    };
   }, [fetchOrder]);
 
   useFocusEffect(
@@ -462,7 +579,7 @@ export function DriverOrderDetailsScreen() {
   }) {
     const { address, lat, lng } = params;
 
-    if (typeof lat === "number" && typeof lng === "number") {
+    if (isValidCoordinate(lat, lng)) {
       const url =
         Platform.OS === "ios"
           ? `http://maps.apple.com/?daddr=${lat},${lng}`
@@ -541,6 +658,11 @@ export function DriverOrderDetailsScreen() {
 
   const canAccept =
     !!order &&
+    !!myUserId &&
+    !accepting &&
+    !canceling &&
+    !submittingCode &&
+    !proofUploading &&
     !order.driver_id &&
     (
       (isPickupDropoff && order.status === "pending") ||
@@ -630,8 +752,20 @@ export function DriverOrderDetailsScreen() {
       const response = await fetch(photoUri);
       const blob = await response.blob();
 
+      if (blob.size > 8 * 1024 * 1024) {
+        throw new Error(
+          t(
+            "driver.orderDetails.photo.tooLarge",
+            "La photo est trop grande. Reprends une photo plus légère."
+          )
+        );
+      }
+
+      const uid = myUserId || "unknown-driver";
       const ext = "jpg";
-      const filePath = `${currentOrderId}/${kind}-${Date.now()}.${ext}`;
+      const filePath = `${currentOrderId}/${uid}/${kind}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from(PROOF_BUCKET)
@@ -695,6 +829,7 @@ export function DriverOrderDetailsScreen() {
       body: JSON.stringify({
         order_id: currentOrderId,
         proof_photo_url: proofPhotoUrl,
+        driver_id: myUserId,
       }),
     });
 
@@ -719,7 +854,18 @@ export function DriverOrderDetailsScreen() {
   }
 
   async function handleAccept() {
-    if (!order) return;
+    if (!order || !myUserId || accepting) return;
+
+    if (!canAccept) {
+      Alert.alert(
+        t("driver.orderDetails.acceptDeniedTitle", "Impossible d'accepter"),
+        t(
+          "driver.orderDetails.acceptDeniedGeneric",
+          "Impossible d'accepter cette course."
+        )
+      );
+      return;
+    }
 
     try {
       setAccepting(true);
@@ -880,9 +1026,11 @@ export function DriverOrderDetailsScreen() {
   }
 
   async function handleSubmitCode() {
-    if (!order || !verifyingKind) return;
+    if (!order || !verifyingKind || !myUserId || !isAssignedDriver) return;
 
-    if (!codeInput.trim()) {
+    const normalizedCode = normalizeVerificationCode(codeInput);
+
+    if (!normalizedCode) {
       Alert.alert(
         t("driver.orderDetails.codeMissingTitle", "Code manquant"),
         t("driver.orderDetails.codeMissingBody", "Entre le code de vérification.")
@@ -908,7 +1056,7 @@ export function DriverOrderDetailsScreen() {
 
       const { data, error } = await supabase.rpc("verify_order_code", {
         p_order_id: order.id,
-        p_input_code: codeInput.trim(),
+        p_input_code: normalizedCode,
         p_code_type: kind,
       });
 
@@ -1086,7 +1234,7 @@ export function DriverOrderDetailsScreen() {
   }, [startOrderCall]);
 
   function openOrderChat(targetRole: CommunicationTarget) {
-    if (!order?.id) return;
+    if (!order?.id || !isAssignedDriver) return;
 
     if (isFinalStatus(order.status)) {
       Alert.alert(
@@ -1213,10 +1361,10 @@ export function DriverOrderDetailsScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={{ height: 265, width: "100%" }}>
-        <Mapbox.MapView style={{ flex: 1 }} styleURL="mapbox://styles/mapbox/streets-v12"
+        <Mapbox.MapView style={{ flex: 1 }} styleURL={MAP_STYLE_STREETS}
           logoEnabled={false}
           attributionEnabled={false}
-          compassEnabled={false}
+          compassEnabled
           surfaceView={false}>
           <Mapbox.Camera
             ref={cameraRef}
@@ -2000,7 +2148,7 @@ export function DriverOrderDetailsScreen() {
 
             <TextInput
               value={codeInput}
-              onChangeText={setCodeInput}
+              onChangeText={(value) => setCodeInput(normalizeVerificationCode(value))}
               placeholder={t("driver.orderDetails.modal.placeholder", "Ex : ABC123")}
               placeholderTextColor="#6B7280"
               autoCapitalize="characters"
@@ -2102,3 +2250,6 @@ export function DriverOrderDetailsScreen() {
     </SafeAreaView>
   );
 }
+
+
+export default DriverOrderDetailsScreen;

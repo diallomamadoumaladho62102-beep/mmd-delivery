@@ -11,6 +11,7 @@ import {
   Animated,
   Easing,
   AppState,
+  StyleSheet,
 } from "react-native";
 import { Audio } from "expo-av";
 import * as KeepAwake from "expo-keep-awake";
@@ -19,7 +20,8 @@ import { supabase } from "../lib/supabase";
 import { useIsFocused } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
-const FALLBACK_RESTAURANT_ID = "306ef52d-aa3c-4475-a7f3-abe0f9f6817c";
+const FALLBACK_RESTAURANT_ID = "";
+const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
 const DEFAULT_RESTAURANT_COORDINATE: [number, number] = [-73.949997, 40.650002];
 
@@ -34,7 +36,7 @@ const RESTAURANT_ONLINE_KEEP_AWAKE_TAG = "mmd-restaurant-online";
 
 if (MAPBOX_TOKEN) {
   Mapbox.setAccessToken(MAPBOX_TOKEN);
-} else if (__DEV__) {
+} else if (IS_DEV) {
   console.log("[RestaurantHomeScreen] EXPO_PUBLIC_MAPBOX_TOKEN manquant");
 }
 
@@ -47,6 +49,8 @@ type DashboardStats = {
 
 type RestaurantProfileLite = {
   restaurant_name?: string | null;
+  address?: string | null;
+  status?: string | null;
   is_accepting_orders?: boolean | null;
   location_lat?: number | string | null;
   location_lng?: number | string | null;
@@ -566,14 +570,36 @@ function BottomMapButton({
 }
 
 
+const restaurantStyles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#020617",
+  },
+  root: {
+    flex: 1,
+    backgroundColor: "#020617",
+  },
+  map: {
+    flex: 1,
+  },
+  loadingSafe: {
+    flex: 1,
+    backgroundColor: "#020617",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
+
+
 export function RestaurantHomeScreen({ navigation }: any) {
   const { t } = useTranslation();
   const soundRef = useRef<Audio.Sound | null>(null);
   const isFocused = useIsFocused();
+  const cameraRef = useRef<Mapbox.Camera | null>(null);
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
-  const [restaurantName, setRestaurantName] = useState("Fouta Halal");
+  const [restaurantName, setRestaurantName] = useState("Restaurant");
   const [statsLoading, setStatsLoading] = useState(false);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [restaurantOnline, setRestaurantOnline] = useState(true);
@@ -581,6 +607,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [nearbyDrivers, setNearbyDrivers] = useState<NearbyDriver[]>([]);
   const [restaurantCoordinate, setRestaurantCoordinate] =
     useState<[number, number]>(DEFAULT_RESTAURANT_COORDINATE);
+  const [profileNeedsSetup, setProfileNeedsSetup] = useState(false);
   const [mapStyleURL, setMapStyleURL] = useState(MAP_STYLE_STREETS);
   const [zoomLevel, setZoomLevel] = useState(12);
   const [showHeatmap, setShowHeatmap] = useState(true);
@@ -678,7 +705,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
     try {
       const { data, error } = await supabase
         .from("restaurant_profiles")
-        .select("restaurant_name,is_accepting_orders,location_lat,location_lng")
+        .select("restaurant_name,address,status,is_accepting_orders,location_lat,location_lng")
         .eq("user_id", uid)
         .maybeSingle();
 
@@ -696,14 +723,29 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
       if (nextName) {
         setRestaurantName(nextName);
+      } else {
+        setRestaurantName("Restaurant");
       }
 
-      setRestaurantCoordinate(profileCoordinate ?? DEFAULT_RESTAURANT_COORDINATE);
+      const hasAddress = String(profile?.address || "").trim().length > 0;
+      const status = String(profile?.status || "").trim().toLowerCase();
+      const isProfileReady =
+        !!profile &&
+        !!nextName &&
+        !!hasAddress &&
+        !!profileCoordinate &&
+        status === "approved";
+
+      setProfileNeedsSetup(!isProfileReady);
+
+      if (profileCoordinate) {
+        setRestaurantCoordinate(profileCoordinate);
+      }
 
       if (typeof profile?.is_accepting_orders === "boolean") {
         setRestaurantOnline(profile.is_accepting_orders);
       } else {
-        setRestaurantOnline(true);
+        setRestaurantOnline(false);
       }
     } catch (e) {
       console.log("Restaurant profile load exception:", e);
@@ -757,6 +799,17 @@ export function RestaurantHomeScreen({ navigation }: any) {
   );
 
   const handleToggleAvailability = useCallback(() => {
+    if (profileNeedsSetup) {
+      Alert.alert(
+        t("restaurant.dashboard.setupRequiredTitle", "Profil incomplet"),
+        t(
+          "restaurant.dashboard.setupRequiredBody",
+          "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne."
+        )
+      );
+      return;
+    }
+
     const nextValue = !restaurantOnline;
 
     Alert.alert(
@@ -783,7 +836,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         },
       ]
     );
-  }, [restaurantOnline, t, updateRestaurantAvailability]);
+  }, [profileNeedsSetup, restaurantOnline, t, updateRestaurantAvailability]);
 
   const refreshLiveMap = useCallback(() => {
     void loadDashboardStats();
@@ -802,7 +855,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
         KeepAwake.deactivateKeepAwake(RESTAURANT_ONLINE_KEEP_AWAKE_TAG);
       } catch (e) {
-        if (__DEV__ && !cancelled) {
+        if (IS_DEV && !cancelled) {
           console.log("Restaurant keep awake sync error:", e);
         }
       }
@@ -826,7 +879,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
       if (restaurantOnline) {
         KeepAwake.activateKeepAwakeAsync(RESTAURANT_ONLINE_KEEP_AWAKE_TAG).catch((e) => {
-          if (__DEV__) {
+          if (IS_DEV) {
             console.log("Restaurant keep awake resume error:", e);
           }
         });
@@ -1167,14 +1220,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
   if (checkingAuth) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: "#020617",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
+      <SafeAreaView style={restaurantStyles.loadingSafe}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator />
         <Text style={{ color: "white", marginTop: 10 }}>
@@ -1185,13 +1231,13 @@ export function RestaurantHomeScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={restaurantStyles.safe}>
       <StatusBar barStyle="light-content" />
 
-      <View style={{ flex: 1, backgroundColor: "#020617" }}>
+      <View style={restaurantStyles.root}>
         <Mapbox.MapView
-          style={{ flex: 1 }}
-          styleURL="mapbox://styles/mapbox/streets-v12"
+          style={restaurantStyles.map}
+          styleURL={mapStyleURL || MAP_STYLE_STREETS}
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
@@ -1199,6 +1245,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         >
           <Mapbox.UserLocation visible={false} showsUserHeadingIndicator />
           <Mapbox.Camera
+            ref={cameraRef}
             zoomLevel={zoomLevel}
             centerCoordinate={restaurantCoordinate}
             animationMode="flyTo"
@@ -1304,10 +1351,40 @@ export function RestaurantHomeScreen({ navigation }: any) {
         </Mapbox.MapView>
 
         <StatusPill
-          online={restaurantOnline}
+          online={profileNeedsSetup ? false : restaurantOnline}
           loading={availabilityLoading}
           onPress={handleToggleAvailability}
         />
+
+        {profileNeedsSetup && (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate("RestaurantSetup")}
+            style={{
+              position: "absolute",
+              top: 82,
+              left: 16,
+              right: 16,
+              zIndex: 30,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderRadius: 18,
+              backgroundColor: "rgba(127,29,29,0.94)",
+              borderWidth: 1,
+              borderColor: "rgba(248,113,113,0.45)",
+            }}
+          >
+            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>
+              {t("restaurant.dashboard.setupRequiredTitle", "Profil incomplet")}
+            </Text>
+            <Text style={{ color: "#FECACA", fontSize: 11, fontWeight: "700", marginTop: 3 }}>
+              {t(
+                "restaurant.dashboard.setupRequiredBody",
+                "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne."
+              )}
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <View
           style={{
@@ -1417,6 +1494,12 @@ export function RestaurantHomeScreen({ navigation }: any) {
             label="Center"
             onPress={() => {
               setZoomLevel((value) => (value === 12 ? 12.01 : 12));
+              cameraRef.current?.setCamera({
+                centerCoordinate: restaurantCoordinate,
+                zoomLevel: 13,
+                animationMode: "flyTo",
+                animationDuration: 650,
+              });
             }}
           />
           <MapActionButton
@@ -1424,6 +1507,12 @@ export function RestaurantHomeScreen({ navigation }: any) {
             label="My Location"
             onPress={() => {
               setZoomLevel((value) => (value === 13 ? 13.01 : 13));
+              cameraRef.current?.setCamera({
+                centerCoordinate: restaurantCoordinate,
+                zoomLevel: 14,
+                animationMode: "flyTo",
+                animationDuration: 650,
+              });
             }}
           />
           <MapActionButton

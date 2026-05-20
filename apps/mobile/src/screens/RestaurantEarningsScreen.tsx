@@ -62,6 +62,8 @@ type RestaurantPayoutProfile = {
   stripe_details_submitted: boolean | null;
 };
 
+const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
+
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
@@ -156,6 +158,61 @@ export function RestaurantEarningsScreen() {
         if (error) throw error;
 
         const uid = data?.user?.id ?? null;
+
+        if (!uid) {
+          if (!cancelled) setRestaurantId(null);
+          return;
+        }
+
+        const { data: roleProfile, error: roleError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", uid)
+          .maybeSingle();
+
+        if (roleError) {
+          console.log("RestaurantEarnings role check error:", roleError);
+        }
+
+        const role = String((roleProfile as any)?.role || "")
+          .trim()
+          .toLowerCase();
+
+        if (role && role !== "restaurant") {
+          if (!cancelled) setRestaurantId(null);
+
+          navigation.reset({
+            index: 0,
+            routes: [
+              {
+                name:
+                  role === "driver"
+                    ? "DriverTabs"
+                    : role === "client"
+                      ? "ClientHome"
+                      : "RoleSelect",
+              },
+            ],
+          });
+          return;
+        }
+
+        const { data: restaurantProfile, error: restaurantError } = await supabase
+          .from("restaurant_profiles")
+          .select("user_id,status")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (restaurantError) {
+          console.log("RestaurantEarnings profile check error:", restaurantError);
+        }
+
+        if (!restaurantProfile) {
+          if (!cancelled) setRestaurantId(null);
+          navigation.replace("RestaurantSetup");
+          return;
+        }
+
         if (!cancelled) setRestaurantId(uid);
       } catch (e: any) {
         console.log("getUser error:", e?.message ?? e);
@@ -166,7 +223,7 @@ export function RestaurantEarningsScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigation]);
 
   const doLogout = useCallback(async () => {
     Alert.alert(
@@ -290,7 +347,7 @@ export function RestaurantEarningsScreen() {
       const { data, error } = await supabase
         .from("orders")
         .select(selectCols)
-        .eq("restaurant_id", restaurantId)
+        .or(`restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`)
         .eq("status", "delivered")
         .or(monthFilterOr)
         .returns<Row[]>();
@@ -519,7 +576,7 @@ export function RestaurantEarningsScreen() {
           restaurant_paid_out_at: now,
         })
         .eq("id", orderId)
-        .eq("restaurant_id", restaurantId)
+        .or(`restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`)
         .eq("status", "delivered")
         .or("restaurant_paid_out.is.null,restaurant_paid_out.eq.false");
 
@@ -801,6 +858,7 @@ export function RestaurantEarningsScreen() {
                 borderWidth: 1,
                 borderColor: "#1D4ED8",
                 backgroundColor: "rgba(59,130,246,0.12)",
+                opacity: payoutLoading ? 0.65 : 1,
               }}
             >
               <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
@@ -1183,6 +1241,7 @@ export function RestaurantEarningsScreen() {
           <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
             <TouchableOpacity
               onPress={() => void startStripeOnboarding()}
+              disabled={payoutLoading}
               style={{
                 alignSelf: "flex-start",
                 paddingHorizontal: 14,
@@ -1478,7 +1537,7 @@ export function RestaurantEarningsScreen() {
                         </Text>
                       </Text>
 
-                      {isUnpaid && (
+                      {IS_DEV && isUnpaid && (
                         <TouchableOpacity
                           onPress={() => {
                             Alert.alert(
@@ -1544,3 +1603,5 @@ export function RestaurantEarningsScreen() {
     </SafeAreaView>
   );
 }
+
+export default RestaurantEarningsScreen;

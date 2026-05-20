@@ -75,6 +75,26 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+
+function safeYear(value: number): number {
+  const current = new Date().getFullYear();
+  return clamp(Math.floor(value), 2020, current + 1);
+}
+
+function getApiUrl(apiBase: string | null, pathWithQuery: string) {
+  const base = String(apiBase ?? "").trim().replace(/\/+$/, "");
+
+  if (!base) {
+    throw new Error("API_BASE_URL manquant. Vérifie la configuration API production.");
+  }
+
+  if (!/^https?:\/\//i.test(base)) {
+    throw new Error("API_BASE_URL doit être une URL absolue.");
+  }
+
+  return `${base}${pathWithQuery.startsWith("/") ? pathWithQuery : `/${pathWithQuery}`}`;
+}
+
 function getInitialWeek(): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 1);
@@ -126,10 +146,12 @@ export default function RestaurantTaxScreen({
   const [month, setMonth] = useState<number>(now.getMonth() + 1);
   const [week, setWeek] = useState<number>(getInitialWeek());
 
+  const [authChecking, setAuthChecking] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [downloading, setDownloading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<RestaurantTaxSummary | null>(null);
+  const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
 
   const apiBase = useMemo(() => {
     const value = String(API_BASE_URL ?? "").trim();
@@ -153,6 +175,117 @@ export default function RestaurantTaxScreen({
     return params.toString();
   }, [range, year, month, week]);
 
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveRestaurantAccess() {
+      try {
+        setAuthChecking(true);
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError) throw userError;
+
+        if (!user?.id) {
+          if (!cancelled) {
+            setRestaurantUserId(null);
+            setError(
+              t(
+                "restaurant.tax.errors.noSession",
+                "Session introuvable. Reconnecte-toi puis réessaie."
+              )
+            );
+          }
+          return;
+        }
+
+        const { data: roleProfile, error: roleError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (roleError) {
+          console.log("RestaurantTax role check error:", roleError);
+        }
+
+        const role = String((roleProfile as any)?.role || "")
+          .trim()
+          .toLowerCase();
+
+        if (role && role !== "restaurant") {
+          if (!cancelled) {
+            setRestaurantUserId(null);
+            setError(
+              t(
+                "restaurant.tax.errors.restaurantOnly",
+                "Cette page est réservée aux comptes restaurant."
+              )
+            );
+          }
+
+          navigation.navigate(role === "driver" ? "DriverTabs" : role === "client" ? "ClientHome" : "RoleSelect");
+          return;
+        }
+
+        const { data: restaurantProfile, error: restaurantError } = await supabase
+          .from("restaurant_profiles")
+          .select("user_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (restaurantError) {
+          console.log("RestaurantTax profile check error:", restaurantError);
+        }
+
+        if (!restaurantProfile) {
+          if (!cancelled) {
+            setRestaurantUserId(null);
+            setError(
+              t(
+                "restaurant.tax.errors.noRestaurantProfile",
+                "Profil restaurant introuvable. Complète ton profil restaurant."
+              )
+            );
+          }
+
+          navigation.navigate("RestaurantSetup");
+          return;
+        }
+
+        if (!cancelled) {
+          setRestaurantUserId(user.id);
+          setError(null);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setRestaurantUserId(null);
+          setError(
+            e?.message ??
+              t(
+                "restaurant.tax.errors.unknown",
+                "Une erreur inattendue est survenue."
+              )
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthChecking(false);
+        }
+      }
+    }
+
+    void resolveRestaurantAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigation, t]);
+
   const fetchSummary = useCallback(
     async (download = false) => {
       try {
@@ -163,6 +296,15 @@ export default function RestaurantTaxScreen({
         }
 
         setError(null);
+
+        if (!restaurantUserId) {
+          throw new Error(
+            t(
+              "restaurant.tax.errors.noRestaurantProfile",
+              "Profil restaurant introuvable. Complète ton profil restaurant."
+            )
+          );
+        }
 
         const {
           data: { session },
@@ -180,15 +322,10 @@ export default function RestaurantTaxScreen({
           );
         }
 
-        if (!apiBase) {
-          throw new Error(
-            "API_BASE_URL manquant. Vérifie la configuration API production.",
-          );
-        }
-
-        const url = `${apiBase}/api/restaurant/tax/summary?${queryString}${
-          download ? "&download=1" : ""
-        }`;
+        const url = getApiUrl(
+          apiBase,
+          `/api/restaurant/tax/summary?${queryString}${download ? "&download=1" : ""}`
+        );
 
         const response = await fetch(url, {
           method: "GET",
@@ -250,12 +387,14 @@ export default function RestaurantTaxScreen({
         setDownloading(false);
       }
     },
-    [apiBase, queryString, t],
+    [apiBase, queryString, restaurantUserId, t],
   );
 
   useEffect(() => {
-    void fetchSummary(false);
-  }, [fetchSummary]);
+    if (!authChecking && restaurantUserId) {
+      void fetchSummary(false);
+    }
+  }, [authChecking, restaurantUserId, fetchSummary]);
 
   const profileComplete = summary?.profile?.isComplete ?? false;
   const missingFields = summary?.profile?.missingFields ?? [];
@@ -265,7 +404,7 @@ export default function RestaurantTaxScreen({
     return missingFields.join(", ");
   }, [missingFields]);
 
-  const canDownload = !!summary && !downloading;
+  const canDownload = !!summary && !downloading && (summary?.profile?.isComplete ?? false);
 
   function selectRange(nextRange: RestaurantTaxRange) {
     setRange(nextRange);
@@ -274,7 +413,7 @@ export default function RestaurantTaxScreen({
   }
 
   function changeYear(delta: number) {
-    setYear((prev) => prev + delta);
+    setYear((prev) => safeYear(prev + delta));
     setSummary(null);
     setError(null);
   }
@@ -397,14 +536,14 @@ export default function RestaurantTaxScreen({
           <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
             <TouchableOpacity
               onPress={() => void fetchSummary(false)}
-              disabled={loading}
+              disabled={authChecking || loading}
               style={{
                 flex: 1,
                 backgroundColor: "#2563EB",
                 borderRadius: 14,
                 paddingVertical: 14,
                 alignItems: "center",
-                opacity: loading ? 0.7 : 1,
+                opacity: authChecking || loading ? 0.7 : 1,
               }}
             >
               <Text style={{ color: "white", fontWeight: "900" }}>
@@ -435,7 +574,7 @@ export default function RestaurantTaxScreen({
           </View>
         </View>
 
-        {loading ? (
+        {authChecking || loading ? (
           <View style={{ backgroundColor: "#020617", borderRadius: 18, padding: 22, borderWidth: 1, borderColor: "#1F2937", alignItems: "center" }}>
             <ActivityIndicator />
             <Text style={{ color: "#94A3B8", marginTop: 10 }}>
@@ -567,7 +706,7 @@ export default function RestaurantTaxScreen({
                     </Text>
 
                     <TouchableOpacity
-                      onPress={() => navigation.navigate("RestaurantMenu")}
+                      onPress={() => navigation.navigate("RestaurantSetup")}
                       style={{ marginTop: 12, alignSelf: "flex-start", backgroundColor: "rgba(15,23,42,0.75)", borderWidth: 1, borderColor: "#1F2937", borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 }}
                     >
                       <Text style={{ color: "white", fontWeight: "900" }}>

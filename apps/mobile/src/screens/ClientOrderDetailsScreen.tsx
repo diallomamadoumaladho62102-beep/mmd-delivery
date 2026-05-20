@@ -24,7 +24,13 @@ import { openStripeCheckout } from "../lib/stripe";
 import { useTranslation } from "react-i18next";
 import Mapbox from "@rnmapbox/maps";
 
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
+const MAP_STYLE_STREETS =
+  (Mapbox as any).StyleURL?.Street ?? "mapbox://styles/mapbox/streets-v12";
+
+if (MAPBOX_TOKEN) {
+  Mapbox.setAccessToken(MAPBOX_TOKEN);
+}
 
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
@@ -35,6 +41,27 @@ const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL ||
   (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_WEB_BASE_URL;
+
+
+function cleanApiUrl() {
+  const raw = String(API_URL || "").trim().replace(/\/+$/, "");
+  if (!raw) return "";
+  return /^https?:\/\//i.test(raw) ? raw : "";
+}
+
+function isValidCoordinate(latValue: unknown, lngValue: unknown) {
+  const lat = Number(latValue);
+  const lng = Number(lngValue);
+
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180
+  );
+}
 
 type Route = RouteProp<RootStackParamList, "ClientOrderDetails">;
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientOrderDetails">;
@@ -68,6 +95,7 @@ type Order = {
   tip_cents?: number | null;
   client_id?: string | null;
   client_user_id?: string | null;
+  user_id?: string | null;
 };
 
 type CreateCheckoutResponse = {
@@ -347,6 +375,19 @@ export function ClientOrderDetailsScreen() {
       setLoading(true);
       setErrorMsg(null);
 
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+
+      const uid = user?.id ?? null;
+
+      if (!uid) {
+        throw new Error(ts("common.mustBeLoggedIn", "You must be logged in."));
+      }
+
       const { data, error } = await supabase
         .from("orders")
         .select(
@@ -370,6 +411,7 @@ export function ClientOrderDetailsScreen() {
             "tip_cents",
             "client_id",
             "client_user_id",
+            "user_id",
           ].join(",")
         )
         .eq("id", orderId)
@@ -378,6 +420,20 @@ export function ClientOrderDetailsScreen() {
       if (error) throw error;
 
       const nextOrder = data as unknown as Order;
+
+      const ownerIds = [
+        nextOrder.client_id,
+        nextOrder.client_user_id,
+        nextOrder.user_id,
+      ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean);
+
+      if (ownerIds.length > 0 && !ownerIds.includes(uid)) {
+        throw new Error(
+          ts("client.orderDetails.notOwnerError", "You are not logged in as the order owner.")
+        );
+      }
 
       if (isMountedRef.current) {
         setOrder(nextOrder);
@@ -399,8 +455,43 @@ export function ClientOrderDetailsScreen() {
   }, [orderId, ts]);
 
   const fetchPaymentStatusOnly = useCallback(async () => {
-    const { data, error } = await supabase.from("orders").select("payment_status, paid_at").eq("id", orderId).single();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) throw userError;
+
+    const uid = user?.id ?? null;
+
+    if (!uid) {
+      throw new Error("Not authenticated");
+    }
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("payment_status, paid_at, client_id, client_user_id, user_id")
+      .eq("id", orderId)
+      .maybeSingle();
+
     if (error) throw error;
+
+    if (!data) {
+      throw new Error("Order not found");
+    }
+
+    const ownerIds = [
+      (data as any).client_id,
+      (data as any).client_user_id,
+      (data as any).user_id,
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+
+    if (ownerIds.length > 0 && !ownerIds.includes(uid)) {
+      throw new Error("Not allowed");
+    }
+
     return normalizePaymentStatus((data as any)?.payment_status);
   }, [orderId]);
 
@@ -541,7 +632,9 @@ export function ClientOrderDetailsScreen() {
       setPaying(true);
       setPaymentPending(false);
 
-      if (!API_URL) throw new Error("EXPO_PUBLIC_API_URL is missing");
+      const apiUrl = cleanApiUrl();
+
+      if (!apiUrl) throw new Error("EXPO_PUBLIC_API_URL is missing");
 
       const { data, error } = await supabase.auth.getSession();
       const accessToken = data.session?.access_token;
@@ -552,7 +645,7 @@ export function ClientOrderDetailsScreen() {
         throw new Error(ts("client.orderDetails.mustBeLoggedInToPay", "You must be logged in to pay."));
       }
 
-      const endpoint = `${String(API_URL).replace(/\/$/, "")}/api/stripe/client/create-checkout-session`;
+      const endpoint = `${apiUrl}/api/stripe/client/create-checkout-session`;
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -624,7 +717,9 @@ export function ClientOrderDetailsScreen() {
   async function handleCancelOrder() {
     if (!order?.id || canceling || paying || verifyingPay || paymentPending) return;
 
-    if (!API_URL) {
+    const apiUrl = cleanApiUrl();
+
+    if (!apiUrl) {
       Alert.alert(
         ts("common.error", "Error"),
         "EXPO_PUBLIC_API_URL is missing. Set it to your web API URL."
@@ -669,7 +764,7 @@ export function ClientOrderDetailsScreen() {
                 throw new Error(ts("common.mustBeLoggedIn", "You must be logged in."));
               }
 
-              const endpoint = `${String(API_URL).replace(/\/$/, "")}/api/orders/cancel`;
+              const endpoint = `${apiUrl}/api/orders/cancel`;
 
               const res = await fetch(endpoint, {
                 method: "POST",
@@ -887,18 +982,18 @@ export function ClientOrderDetailsScreen() {
   const { location: liveDriver } = useLiveDriverLocation(driverId);
 
   const pickupCoord = useMemo(() => {
-    if (order?.pickup_lat == null || order?.pickup_lng == null) return null;
-    return { latitude: Number(order.pickup_lat), longitude: Number(order.pickup_lng) };
+    if (!isValidCoordinate(order?.pickup_lat, order?.pickup_lng)) return null;
+    return { latitude: Number(order?.pickup_lat), longitude: Number(order?.pickup_lng) };
   }, [order?.pickup_lat, order?.pickup_lng]);
 
   const dropoffCoord = useMemo(() => {
-    if (order?.dropoff_lat == null || order?.dropoff_lng == null) return null;
-    return { latitude: Number(order.dropoff_lat), longitude: Number(order.dropoff_lng) };
+    if (!isValidCoordinate(order?.dropoff_lat, order?.dropoff_lng)) return null;
+    return { latitude: Number(order?.dropoff_lat), longitude: Number(order?.dropoff_lng) };
   }, [order?.dropoff_lat, order?.dropoff_lng]);
 
   const driverCoord = useMemo(() => {
     if (!liveDriver) return null;
-    if (liveDriver.lat == null || liveDriver.lng == null) return null;
+    if (!isValidCoordinate(liveDriver.lat, liveDriver.lng)) return null;
     return { latitude: Number(liveDriver.lat), longitude: Number(liveDriver.lng) };
   }, [liveDriver]);
 
@@ -1126,9 +1221,11 @@ export function ClientOrderDetailsScreen() {
               >
                 <Mapbox.MapView
                   style={{ flex: 1 }}
-                  styleURL={Mapbox.StyleURL.Street}
+                  styleURL={MAP_STYLE_STREETS}
                   logoEnabled={false}
                   attributionEnabled={false}
+                  compassEnabled
+                  surfaceView={false}
                 >
                   <Mapbox.Camera
                     ref={cameraRef}
@@ -1845,7 +1942,12 @@ export function ClientOrderDetailsScreen() {
                       const finalTipDollars = tipCustom.trim() ? tipFromInput : tipDollars;
                       const tip_cents = Math.max(0, Math.round((finalTipDollars || 0) * 100));
 
-                      const { error: tipErr } = await supabase.from("orders").update({ tip_cents }).eq("id", order.id);
+                      const { error: tipErr } = await supabase
+                        .from("orders")
+                        .update({ tip_cents })
+                        .eq("id", order.id)
+                        .eq("status", "delivered")
+                        .or(`client_id.eq.${uid},client_user_id.eq.${uid},user_id.eq.${uid}`);
                       if (tipErr) throw tipErr;
 
                       const { error: ratingErr } = await supabase
@@ -1855,7 +1957,7 @@ export function ClientOrderDetailsScreen() {
                             order_id: order.id,
                             rater_id: uid,
                             rating,
-                            comment: comment.trim() ? comment.trim() : null,
+                            comment: comment.trim() ? comment.trim().slice(0, 800) : null,
                           },
                           { onConflict: "order_id,rater_id" }
                         );
@@ -1964,3 +2066,6 @@ export function ClientOrderDetailsScreen() {
     </SafeAreaView>
   );
 }
+
+
+export default ClientOrderDetailsScreen;
