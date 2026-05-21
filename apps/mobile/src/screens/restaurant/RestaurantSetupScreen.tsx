@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
   View,
@@ -8,10 +8,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image,
+  Platform,
 } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 
 type Props = { navigation: any };
@@ -24,10 +27,32 @@ type GeocodedAddress = {
 };
 
 const BUCKET = "restaurant-docs";
+const AVATARS_BUCKET = "avatars";
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
 
 function cleanText(v: string) {
   return (v || "").trim();
+}
+
+function isHttpUrl(value: string | null | undefined) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+function resolveStorageUrl(bucket: string, value: string | null | undefined) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  if (isHttpUrl(clean)) return clean;
+
+  const normalizedPath = clean.replace(new RegExp(`^${bucket}\\/`), "");
+  const { data } = supabase.storage.from(bucket).getPublicUrl(normalizedPath);
+  return data?.publicUrl || null;
+}
+
+function initials(name: string) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase() || "RS";
 }
 
 function isValidCoordinate(latitude: number, longitude: number) {
@@ -147,6 +172,8 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
   const [postalCode, setPostalCode] = useState("");
   const [cuisineType, setCuisineType] = useState("");
   const [description, setDescription] = useState("");
+  const [logoLocalUri, setLogoLocalUri] = useState<string | null>(null);
+  const [logoPath, setLogoPath] = useState<string | null>(null);
 
   const [offersDelivery, setOffersDelivery] = useState(true);
   const [offersPickup, setOffersPickup] = useState(true);
@@ -157,6 +184,114 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
   >({});
 
   const [loading, setLoading] = useState(false);
+
+  const logoPreview = useMemo(
+    () => logoLocalUri || resolveStorageUrl(AVATARS_BUCKET, logoPath),
+    [logoLocalUri, logoPath]
+  );
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadExistingProfile() {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user || !alive) return;
+
+        const { data, error } = await supabase
+          .from("restaurant_profiles")
+          .select(
+            "restaurant_name, phone, address, city, postal_code, cuisine_type, description, offers_delivery, offers_pickup, offers_dine_in, avatar_url, logo_url"
+          )
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error || !data || !alive) return;
+
+        const row = data as any;
+
+        setRestaurantName(row.restaurant_name ?? "");
+        setPhone(row.phone ?? "");
+        setAddress(row.address ?? "");
+        setCity(row.city ?? "");
+        setPostalCode(row.postal_code ?? "");
+        setCuisineType(row.cuisine_type ?? "");
+        setDescription(row.description ?? "");
+        setOffersDelivery(Boolean(row.offers_delivery ?? true));
+        setOffersPickup(Boolean(row.offers_pickup ?? true));
+        setOffersDineIn(Boolean(row.offers_dine_in ?? false));
+        setLogoPath(row.logo_url ?? row.avatar_url ?? null);
+      } catch (error) {
+        console.log("RestaurantSetup load existing profile ignored:", error);
+      }
+    }
+
+    void loadExistingProfile();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  async function pickRestaurantLogo() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          t("restaurant.setup.alerts.permissionTitle", "Permission"),
+          t(
+            "restaurant.setup.alerts.permissionPhotos",
+            "Autorise l’accès aux photos pour choisir le logo du restaurant."
+          )
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      setLogoLocalUri(result.assets[0].uri);
+    } catch (err: unknown) {
+      Alert.alert(
+        t("restaurant.setup.alerts.errorTitle", "Erreur"),
+        err instanceof Error ? err.message : "Impossible de choisir le logo."
+      );
+    }
+  }
+
+  async function uploadRestaurantLogoIfNeeded(userId: string) {
+    if (!logoLocalUri) return logoPath;
+
+    const filePath = `restaurants/${userId}/logo.jpg`;
+
+    const base64 = await FileSystem.readAsStringAsync(logoLocalUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const bytes = base64ToUint8Array(base64);
+
+    const { error } = await supabase.storage
+      .from(AVATARS_BUCKET)
+      .upload(filePath, bytes, {
+        contentType: "image/jpeg",
+        upsert: true,
+        cacheControl: "3600",
+      });
+
+    if (error) throw new Error(error.message);
+
+    return filePath;
+  }
 
   async function pickDocument(docType: DocType) {
     try {
@@ -302,6 +437,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
       }
 
       const geocoded = await geocodeRestaurantAddress(fullAddress);
+      const finalLogoPath = await uploadRestaurantLogoIfNeeded(user.id);
 
       const payload = {
         user_id: user.id,
@@ -313,6 +449,8 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         postal_code: restaurantPostalCode,
         cuisine_type: restaurantCuisineType,
         description: cleanText(description) || null,
+        avatar_url: finalLogoPath ?? null,
+        logo_url: finalLogoPath ?? null,
         location_lat: geocoded.latitude,
         location_lng: geocoded.longitude,
         opening_hours: null,
@@ -328,6 +466,25 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         .upsert(payload, { onConflict: "user_id" });
 
       if (profileError) throw new Error(profileError.message);
+
+      const { error: baseProfileError } = await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          role: "restaurant",
+          full_name: name,
+          phone: restaurantPhone,
+          avatar_url: finalLogoPath ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+      if (baseProfileError) {
+        console.log("RestaurantSetup profiles sync ignored:", baseProfileError);
+      }
+
+      setLogoPath(finalLogoPath ?? null);
+      setLogoLocalUri(null);
 
       await uploadSelectedDocuments(user.id);
 
@@ -371,10 +528,83 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
   );
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 36 }}
+    >
       <Text style={{ fontSize: 20, fontWeight: "700" }}>
         {t("restaurant.setup.title", "Profil restaurant")}
       </Text>
+
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: "#CBD5E1",
+          borderRadius: 16,
+          padding: 14,
+          backgroundColor: "#F8FAFC",
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: "#E2E8F0",
+              overflow: "hidden",
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: "#CBD5E1",
+            }}
+          >
+            {logoPreview ? (
+              <Image
+                source={{ uri: logoPreview }}
+                style={{ width: 72, height: 72 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={{ color: "#0F172A", fontSize: 18, fontWeight: "900" }}>
+                {initials(restaurantName)}
+              </Text>
+            )}
+          </View>
+
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ color: "#0F172A", fontWeight: "900", fontSize: 15 }}>
+              {t("restaurant.setup.logo.title", "Logo / photo du restaurant")}
+            </Text>
+            <Text style={{ color: "#475569", marginTop: 4, fontWeight: "600" }}>
+              {t(
+                "restaurant.setup.logo.subtitle",
+                "Cette image sera visible par le client, le driver et dans le chat."
+              )}
+            </Text>
+            <TouchableOpacity
+              disabled={loading}
+              onPress={pickRestaurantLogo}
+              style={{
+                alignSelf: "flex-start",
+                marginTop: 10,
+                paddingVertical: 9,
+                paddingHorizontal: 12,
+                borderRadius: 10,
+                backgroundColor: "#0F172A",
+                opacity: loading ? 0.6 : 1,
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "900" }}>
+                {logoPreview
+                  ? t("restaurant.setup.logo.change", "Changer l’image")
+                  : t("restaurant.setup.logo.add", "Ajouter une image")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
 
       <Text>{t("restaurant.setup.fields.restaurantName", "Nom du restaurant")}</Text>
       <TextInput

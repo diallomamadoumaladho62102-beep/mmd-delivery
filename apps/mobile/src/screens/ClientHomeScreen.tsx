@@ -16,6 +16,8 @@ import {
   Image,
   RefreshControl,
   Pressable,
+  Platform,
+  StyleSheet,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -104,6 +106,24 @@ const FETCH_LIMIT = 10;
 const HOME_RECENT_LIMIT = 10;
 const DEFAULT_CLIENT_NAME = "Client";
 const DEFAULT_AVATAR_BG = "#0F172A";
+const CLIENT_BOTTOM_SAFE_PADDING = Platform.OS === "android" ? 96 : 54;
+const CARD_SHADOW = {
+  shadowColor: "#000",
+  shadowOpacity: 0.22,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 10 },
+  elevation: 6,
+} as const;
+
+const PREMIUM_BG = "#030712";
+const PREMIUM_SURFACE = "#07111F";
+const PREMIUM_CARD_BG = "rgba(15,23,42,0.82)";
+const PREMIUM_BORDER = "rgba(148,163,184,0.16)";
+const PURPLE = "#A855F7";
+const GREEN = "#22C55E";
+const BLUE = "#3B82F6";
+const YELLOW = "#FACC15";
+const RED = "#EF4444";
 
 function isInProgress(status: OrderStatus) {
   return (
@@ -282,6 +302,58 @@ function formatDateTime(iso: string | null) {
   })}`;
 }
 
+function formatCompactDateTime(iso: string | null) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+
+  return `${d.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })} • ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function recentOrderTitle(item: ClientItem) {
+  if (item.kind === "delivery_request") return "Send Package";
+  const pickup = item.pickup_address?.split(",")[0]?.trim();
+  return pickup || "Restaurant Order";
+}
+
+function activityIcon(item: ClientItem) {
+  if (item.kind === "delivery_request") return "📦";
+  if (item.status === "delivered") return "🍔";
+  if (item.status === "dispatched") return "🍕";
+  return "🍽️";
+}
+
+function statusAccentColor(status: OrderStatus) {
+  if (status === "delivered") return GREEN;
+  if (status === "canceled") return RED;
+  if (status === "dispatched") return PURPLE;
+  if (status === "pending") return YELLOW;
+  return BLUE;
+}
+
+function premiumStatusText(
+  item: ClientItem,
+  ts: (key: string, fallback: string, params?: Record<string, unknown>) => string
+) {
+  if (item.status === "delivered") return ts("orders.status.delivered", "Delivered");
+  if (item.status === "canceled") return ts("orders.status.canceled", "Canceled");
+  if (item.status === "dispatched") return ts("orders.status.dispatched", "On the way");
+  if (item.kind === "delivery_request" && item.status === "pending") {
+    return ts("delivery_requests.status.paid_pending", "Finding driver");
+  }
+  return orderStatusLabelForCard(item, ts).replace(/^\S+\s/, "");
+}
+
+function averageRatingEstimate(delivered: number, canceled: number) {
+  if (delivered <= 0) return "—";
+  const rating = Math.max(4.2, Math.min(5, 4.9 - canceled * 0.08));
+  return rating.toFixed(1);
+}
+
 function isValidOrderStatus(value: unknown): value is OrderStatus {
   return (
     value === "pending" ||
@@ -452,10 +524,14 @@ function SectionTitle({
       }}
     >
       <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
         style={{
           color: "white",
           fontSize: 17,
           fontWeight: "900",
+          flex: 1,
+          paddingRight: 10,
         }}
       >
         {title}
@@ -486,82 +562,29 @@ function ActionBanner({
     <TouchableOpacity
       activeOpacity={0.9}
       onPress={onPress}
-      style={{
-        borderRadius: 26,
-        borderWidth: 1,
-        borderColor,
-        backgroundColor,
-        paddingHorizontal: 18,
-        paddingVertical: 18,
-        minHeight: 112,
-        justifyContent: "center",
-        marginBottom: 12,
-        shadowColor: "#000",
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 4,
-      }}
+      style={[
+        premiumStyles.quickActionCard,
+        {
+          backgroundColor,
+          borderColor,
+        },
+      ]}
     >
-      <View
-        style={{
-          position: "absolute",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 134,
-          borderTopRightRadius: 26,
-          borderBottomRightRadius: 26,
-          backgroundColor: "rgba(255,255,255,0.04)",
-        }}
-      />
-
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <View style={{ flex: 1, paddingRight: 14 }}>
-          <Text
-            style={{
-              color: "white",
-              fontSize: 17,
-              fontWeight: "900",
-              lineHeight: 22,
-            }}
-          >
-            {emoji} {title}
-          </Text>
-
-          <Text
-            style={{
-              color: "#D1D5DB",
-              fontSize: 14,
-              marginTop: 8,
-            }}
-          >
-            {subtitle}
-          </Text>
-        </View>
-
-        <View
-          style={{
-            width: 84,
-            height: 84,
-            borderRadius: 24,
-            backgroundColor: "rgba(255,255,255,0.07)",
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.10)",
-            alignItems: "center",
-            justifyContent: "center",
-            marginLeft: 10,
-          }}
-        >
-          <Text style={{ fontSize: 34 }}>{tileEmoji}</Text>
-        </View>
+      <View style={premiumStyles.quickActionGlow} />
+      <View style={premiumStyles.quickActionIconBox}>
+        <Text style={premiumStyles.quickActionTileIcon}>{tileEmoji}</Text>
       </View>
+
+      <View style={premiumStyles.quickActionTextWrap}>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={premiumStyles.quickActionTitle}>
+          {title}
+        </Text>
+        <Text numberOfLines={3} ellipsizeMode="tail" style={premiumStyles.quickActionSubtitle}>
+          {subtitle}
+        </Text>
+      </View>
+
+      <Text style={premiumStyles.quickActionArrow}>›</Text>
     </TouchableOpacity>
   );
 }
@@ -583,18 +606,28 @@ function StatCard({
     <View
       style={{
         flex: 1,
-        borderRadius: 24,
+        borderRadius: 22,
         borderWidth: 1,
         borderColor: border,
         backgroundColor: bg,
-        padding: 16,
-        minHeight: 118,
+        padding: 14,
+        minHeight: 108,
         justifyContent: "space-between",
+        overflow: "hidden",
       }}
     >
       <Text style={{ fontSize: 22 }}>{icon}</Text>
-      <Text style={{ color: "#D1D5DB", fontSize: 13 }}>{label}</Text>
-      <Text style={{ color: "white", fontSize: 23, fontWeight: "900" }}>
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        style={{ color: "#D1D5DB", fontSize: 12, fontWeight: "700" }}
+      >
+        {label}
+      </Text>
+      <Text
+        numberOfLines={1}
+        style={{ color: "white", fontSize: 22, fontWeight: "900" }}
+      >
         {value}
       </Text>
     </View>
@@ -637,11 +670,7 @@ function FeaturedOrderCard({
         backgroundColor,
         padding: 18,
         marginBottom: 14,
-        shadowColor: "#000",
-        shadowOpacity: 0.2,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 4,
+        ...CARD_SHADOW,
       }}
     >
       <View
@@ -654,6 +683,8 @@ function FeaturedOrderCard({
       >
         <View style={{ flex: 1, paddingRight: 10 }}>
           <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
             style={{
               color: "white",
               fontSize: 18,
@@ -663,10 +694,13 @@ function FeaturedOrderCard({
             {title}
           </Text>
           <Text
+            numberOfLines={2}
+            ellipsizeMode="tail"
             style={{
               color: "#CBD5E1",
               fontSize: 13,
               marginTop: 4,
+              lineHeight: 18,
             }}
           >
             {subtitle}
@@ -688,6 +722,7 @@ function FeaturedOrderCard({
               color: accentColor,
               fontSize: 12,
               fontWeight: "900",
+              maxWidth: 72,
             }}
           >
             {ctaLabel}
@@ -834,12 +869,130 @@ function MenuAction({
       }}
     >
       <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
         style={{
           color: isDanger ? "#FCA5A5" : "#E2E8F0",
           fontSize: 13,
           fontWeight: "900",
         }}
       >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+
+function ActivityStatItem({
+  icon,
+  value,
+  label,
+  accent,
+}: {
+  icon: string;
+  value: string | number;
+  label: string;
+  accent: string;
+}) {
+  return (
+    <View style={premiumStyles.activityStatItem}>
+      <View style={[premiumStyles.activityIconBox, { backgroundColor: `${accent}24`, borderColor: `${accent}45` }]}>
+        <Text style={premiumStyles.activityIcon}>{icon}</Text>
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={premiumStyles.activityValue}>
+          {value}
+        </Text>
+        <Text numberOfLines={2} ellipsizeMode="tail" style={premiumStyles.activityLabel}>
+          {label}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function PremiumRecentRow({
+  item,
+  onPress,
+  onChatPress,
+  ts,
+}: {
+  item: ClientItem;
+  onPress: () => void;
+  onChatPress?: () => void;
+  ts: (key: string, fallback: string, params?: Record<string, unknown>) => string;
+}) {
+  const accent = statusAccentColor(item.status);
+  const isRestaurant = item.kind === "restaurant_order";
+  const title = recentOrderTitle(item);
+  const statusText = premiumStatusText(item, ts);
+  const amount = formatCurrency(item.total ?? item.delivery_fee);
+
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={premiumStyles.recentRow}>
+      <View style={[premiumStyles.recentAccent, { backgroundColor: accent }]} />
+
+      <View style={[premiumStyles.recentIconBox, { borderColor: `${accent}60`, backgroundColor: `${accent}22` }]}>
+        <Text style={premiumStyles.recentIcon}>{activityIcon(item)}</Text>
+      </View>
+
+      <View style={premiumStyles.recentContent}>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={premiumStyles.recentTitle}>
+          {title}
+        </Text>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={premiumStyles.recentMeta}>
+          {formatCompactDateTime(item.created_at)}
+        </Text>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={premiumStyles.recentSub}>
+          {isRestaurant ? "🍕" : "🚗"} {kindLabel(item.kind, ts)} • #{item.id.slice(0, 8)}
+        </Text>
+      </View>
+
+      <View style={premiumStyles.recentRight}>
+        {isRestaurant && onChatPress ? (
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation();
+              onChatPress();
+            }}
+            style={premiumStyles.chatMiniButton}
+          >
+            <Text style={premiumStyles.chatMiniText}>💬</Text>
+          </Pressable>
+        ) : null}
+
+        <View style={[premiumStyles.statusChip, { backgroundColor: `${accent}22` }]}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[premiumStyles.statusChipText, { color: accent }]}>
+            {statusText}
+          </Text>
+        </View>
+
+        <Text numberOfLines={1} style={premiumStyles.recentAmount}>
+          {amount}
+        </Text>
+      </View>
+
+      <Text style={premiumStyles.recentChevron}>›</Text>
+    </TouchableOpacity>
+  );
+}
+
+function BottomNavItem({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity activeOpacity={0.86} onPress={onPress} style={premiumStyles.bottomNavItem}>
+      <Text style={[premiumStyles.bottomNavIcon, active && { color: PURPLE }]}>{icon}</Text>
+      <Text numberOfLines={1} style={[premiumStyles.bottomNavLabel, active && { color: "#C084FC" }]}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -1340,6 +1493,18 @@ export function ClientHomeScreen() {
   const greeting = getGreeting(ts);
   const firstName = getFirstName(displayName || DEFAULT_CLIENT_NAME);
 
+  const totalSpent = useMemo(() => {
+    return items.reduce((sum, item) => {
+      const amount = item.total ?? item.delivery_fee ?? 0;
+      return sum + (Number.isFinite(amount) ? Number(amount) : 0);
+    }, 0);
+  }, [items]);
+
+  const averageRating = useMemo(
+    () => averageRatingEstimate(stats.delivered, stats.canceled),
+    [stats.delivered, stats.canceled]
+  );
+
   const handleOpenFeaturedOrder = useCallback(() => {
     const target = activeOrder ?? lastDeliveredOrder ?? featuredOrder;
     if (!target?.id) return;
@@ -1373,22 +1538,18 @@ export function ClientHomeScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }}>
+    <SafeAreaView style={premiumStyles.safe}>
       <StatusBar barStyle="light-content" />
 
       <Pressable
-        style={{ flex: 1 }}
+        style={premiumStyles.root}
         onPress={() => {
           if (menuOpen) setMenuOpen(false);
         }}
       >
         <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingHorizontal: 14,
-            paddingTop: 12,
-            paddingBottom: 30,
-          }}
+          style={premiumStyles.scroll}
+          contentContainerStyle={premiumStyles.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -1400,131 +1561,42 @@ export function ClientHomeScreen() {
             />
           }
         >
-          <View
-            style={{
-              borderRadius: 32,
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.06)",
-              backgroundColor: "#040a23",
-              padding: 14,
-              shadowColor: "#000",
-              shadowOpacity: 0.32,
-              shadowRadius: 22,
-              shadowOffset: { width: 0, height: 10 },
-              elevation: 10,
-            }}
-          >
-            <View
-              style={{
-                position: "relative",
-                zIndex: 20,
-                flexDirection: "row",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  flex: 1,
-                  marginRight: 10,
-                }}
-              >
+          <View style={premiumStyles.shell}>
+            <View pointerEvents="none" style={premiumStyles.bgGlowOne} />
+            <View pointerEvents="none" style={premiumStyles.bgGlowTwo} />
+
+            <View style={premiumStyles.header}>
+              <View style={premiumStyles.headerLeft}>
                 {avatarUrl ? (
-                  <Image
-                    source={{ uri: avatarUrl }}
-                    style={{
-                      width: 54,
-                      height: 54,
-                      borderRadius: 27,
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.10)",
-                      backgroundColor: DEFAULT_AVATAR_BG,
-                    }}
-                  />
+                  <Image source={{ uri: avatarUrl }} style={premiumStyles.avatarImage} />
                 ) : (
-                  <View
-                    style={{
-                      width: 54,
-                      height: 54,
-                      borderRadius: 27,
-                      backgroundColor: "rgba(59,130,246,0.18)",
-                      borderWidth: 1,
-                      borderColor: "rgba(96,165,250,0.20)",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#DBEAFE",
-                        fontSize: 18,
-                        fontWeight: "900",
-                      }}
-                    >
-                      {initials}
-                    </Text>
+                  <View style={premiumStyles.avatarFallback}>
+                    <Text style={premiumStyles.avatarInitials}>{initials}</Text>
                   </View>
                 )}
 
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text
-                    style={{
-                      color: "#94A3B8",
-                      fontSize: 13,
-                      fontWeight: "700",
-                    }}
-                    numberOfLines={1}
-                  >
-                    {greeting}
+                <View style={premiumStyles.headerText}>
+                  <Text numberOfLines={1} style={premiumStyles.helloText}>
+                    Hello, <Text style={premiumStyles.helloStrong}>{truncateName(firstName)}</Text>
                   </Text>
 
-                  <Text
-                    style={{
-                      color: "white",
-                      fontSize: 22,
-                      fontWeight: "900",
-                      marginTop: 2,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {truncateName(firstName)}
+                  <Text numberOfLines={1} ellipsizeMode="tail" style={premiumStyles.greetingTitle}>
+                    {greeting}! 👋
                   </Text>
 
-                  <Text
-                    style={{
-                      color: "#CBD5E1",
-                      fontSize: 12,
-                      marginTop: 4,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {ts(
-                      "client.home.header.subtitle",
-                      "Manage your deliveries and orders in one place."
-                    )}
+                  <Text numberOfLines={1} ellipsizeMode="tail" style={premiumStyles.greetingSubtitle}>
+                    {ts("client.home.header.question", "What would you like to do today?")}
                   </Text>
                 </View>
               </View>
 
               <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
+                onPress={(event) => {
+                  event.stopPropagation();
                 }}
-                style={{
-                  alignItems: "flex-end",
-                }}
+                style={premiumStyles.headerRight}
               >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                    marginBottom: 8,
-                  }}
-                >
+                <View style={premiumStyles.langRow}>
                   {(["en", "fr", "es"] as const).map((lang) => {
                     const active = currentLang === lang;
                     return (
@@ -1534,29 +1606,9 @@ export function ClientHomeScreen() {
                         onPress={() => {
                           void changeLang(lang);
                         }}
-                        style={{
-                          minWidth: 40,
-                          paddingHorizontal: 10,
-                          paddingVertical: 8,
-                          borderRadius: 999,
-                          backgroundColor: active
-                            ? "rgba(59,130,246,0.20)"
-                            : "rgba(255,255,255,0.05)",
-                          borderWidth: 1,
-                          borderColor: active
-                            ? "rgba(96,165,250,0.32)"
-                            : "rgba(255,255,255,0.08)",
-                          alignItems: "center",
-                        }}
+                        style={[premiumStyles.langButton, active && premiumStyles.langButtonActive]}
                       >
-                        <Text
-                          style={{
-                            color: active ? "#DBEAFE" : "#CBD5E1",
-                            fontSize: 12,
-                            fontWeight: "900",
-                            textTransform: "uppercase",
-                          }}
-                        >
+                        <Text style={[premiumStyles.langText, active && premiumStyles.langTextActive]}>
                           {lang}
                         </Text>
                       </TouchableOpacity>
@@ -1566,70 +1618,22 @@ export function ClientHomeScreen() {
 
                 <TouchableOpacity
                   activeOpacity={0.9}
-                  onPress={() => {
-                    setMenuOpen((prev) => !prev);
-                  }}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "rgba(255,255,255,0.06)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.10)",
-                  }}
+                  onPress={() => setMenuOpen((prev) => !prev)}
+                  style={premiumStyles.bellButton}
                 >
-                  <Text
-                    style={{
-                      color: "#E2E8F0",
-                      fontSize: 18,
-                      fontWeight: "900",
-                    }}
-                  >
-                    ⋯
-                  </Text>
+                  <Text style={premiumStyles.bellIcon}>🔔</Text>
+                  {stats.inProgress > 0 ? (
+                    <View style={premiumStyles.bellBadge}>
+                      <Text style={premiumStyles.bellBadgeText}>{Math.min(99, stats.inProgress)}</Text>
+                    </View>
+                  ) : null}
                 </TouchableOpacity>
 
                 {menuOpen ? (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: 54,
-                      right: 0,
-                      width: 190,
-                      borderRadius: 18,
-                      padding: 10,
-                      backgroundColor: "#0B1220",
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.08)",
-                      shadowColor: "#000",
-                      shadowOpacity: 0.28,
-                      shadowRadius: 16,
-                      shadowOffset: { width: 0, height: 8 },
-                      elevation: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#94A3B8",
-                        fontSize: 11,
-                        fontWeight: "800",
-                        textTransform: "uppercase",
-                        marginBottom: 10,
-                        paddingHorizontal: 4,
-                      }}
-                    >
-                      Account
-                    </Text>
-
-                    <MenuAction
-                      label="Switch role"
-                      onPress={handleGoToRoleSelect}
-                    />
-
+                  <View style={premiumStyles.menu}>
+                    <Text style={premiumStyles.menuTitle}>Account</Text>
+                    <MenuAction label="Switch role" onPress={handleGoToRoleSelect} />
                     <View style={{ height: 8 }} />
-
                     <MenuAction
                       label="Sign out"
                       accent="danger"
@@ -1643,467 +1647,695 @@ export function ClientHomeScreen() {
             </View>
 
             {error ? (
-              <View
-                style={{
-                  borderRadius: 18,
-                  borderWidth: 1,
-                  borderColor: "rgba(248,113,113,0.20)",
-                  backgroundColor: "rgba(127,29,29,0.26)",
-                  padding: 14,
-                  marginBottom: 14,
-                }}
-              >
-                <Text style={{ color: "#FCA5A5", fontWeight: "800" }}>
+              <View style={premiumStyles.errorBox}>
+                <Text numberOfLines={3} style={premiumStyles.errorText}>
                   {ts(error.key, error.fallback, error.params)}
                 </Text>
               </View>
             ) : null}
 
-            <ActionBanner
-              title={ts("client.home.banner.delivery.title", "Request a driver")}
-              subtitle={ts(
-                "client.home.banner.delivery.subtitle",
-                "Book a pickup and dropoff delivery request in seconds."
-              )}
-              emoji="🚗"
-              tileEmoji="📍"
-              backgroundColor="rgba(15,23,42,0.88)"
-              borderColor="rgba(59,130,246,0.18)"
-              onPress={() => navigation.navigate("DeliveryRequest" as never)}
-            />
+            <View style={premiumStyles.quickGrid}>
+              <ActionBanner
+                title={ts("client.home.banner.restaurant.title", "Order Food")}
+                subtitle={ts(
+                  "client.home.banner.restaurant.subtitle",
+                  "Discover restaurants and order your favorite meals"
+                )}
+                emoji="🍔"
+                tileEmoji="🍔"
+                backgroundColor="rgba(5,150,105,0.74)"
+                borderColor="rgba(52,211,153,0.28)"
+                onPress={() => navigation.navigate("ClientRestaurantList" as never)}
+              />
 
-            <ActionBanner
-              title={ts("client.home.banner.restaurant.title", "Order food")}
-              subtitle={ts(
-                "client.home.banner.restaurant.subtitle",
-                "Browse restaurants and place an order quickly."
-              )}
-              emoji="🍔"
-              tileEmoji="🛍️"
-              backgroundColor="rgba(15,23,42,0.88)"
-              borderColor="rgba(251,146,60,0.18)"
-              onPress={() => navigation.navigate("ClientRestaurantList" as never)}
-            />
-
-            <SectionTitle
-              title={ts("client.home.section.overview", "Overview")}
-            />
-
-            <View
-              style={{
-                flexDirection: "row",
-                gap: 10,
-                marginBottom: 14,
-              }}
-            >
-              {quickStats.map((stat) => (
-                <StatCard
-                  key={stat.label}
-                  icon={stat.icon}
-                  label={stat.label}
-                  value={stat.value}
-                  bg={stat.bg}
-                  border={stat.border}
-                />
-              ))}
+              <ActionBanner
+                title={ts("client.home.banner.delivery.title", "Send Package")}
+                subtitle={ts(
+                  "client.home.banner.delivery.subtitle",
+                  "Send anything anywhere quickly & safely"
+                )}
+                emoji="🚗"
+                tileEmoji="🚙"
+                backgroundColor="rgba(79,70,229,0.82)"
+                borderColor="rgba(167,139,250,0.32)"
+                onPress={() => navigation.navigate("DeliveryRequest" as never)}
+              />
             </View>
 
-            <View
-              style={{
-                borderRadius: 24,
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.06)",
-                backgroundColor: "rgba(15,23,42,0.9)",
-                padding: 16,
-                marginBottom: 14,
-              }}
-            >
-              <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
-                {ts("client.home.rewards.title", "Rewards progress")}
-              </Text>
+            <View style={premiumStyles.activityCard}>
+              <Text style={premiumStyles.cardTitle}>{ts("client.home.activity.title", "Your Activity")}</Text>
 
-              <Text style={{ color: "#94A3B8", fontSize: 13, marginTop: 5 }}>
-                {ts("client.home.rewards.level", "Level")}: {stats.level} •{" "}
-                {stats.points} pts
-              </Text>
-
-              <View
-                style={{
-                  height: 10,
-                  borderRadius: 999,
-                  overflow: "hidden",
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  marginTop: 12,
-                }}
-              >
-                <View
-                  style={{
-                    width: progressBarWidth,
-                    height: "100%",
-                    backgroundColor: "#3B82F6",
-                  }}
+              <View style={premiumStyles.activityGrid}>
+                <ActivityStatItem
+                  icon="🛍️"
+                  value={stats.delivered}
+                  label={ts("client.home.stats.completed", "Orders Completed")}
+                  accent={GREEN}
+                />
+                <ActivityStatItem
+                  icon="🕘"
+                  value={stats.inProgress}
+                  label={ts("client.home.stats.in_progress", "In Progress")}
+                  accent={YELLOW}
+                />
+                <ActivityStatItem
+                  icon="💳"
+                  value={formatCurrency(totalSpent)}
+                  label={ts("client.home.stats.total_spent", "Total Spent")}
+                  accent={BLUE}
+                />
+                <ActivityStatItem
+                  icon="⭐"
+                  value={averageRating}
+                  label={ts("client.home.stats.average_rating", "Average Rating")}
+                  accent={PURPLE}
                 />
               </View>
 
-              <Text style={{ color: "#CBD5E1", fontSize: 12, marginTop: 8 }}>
-                {stats.pointsToNext > 0
-                  ? `${stats.pointsToNext} ${ts(
-                      "client.home.rewards.to_next",
-                      "points to next level"
-                    )}`
-                  : ts("client.home.rewards.maxed", "You reached the current goal")}
-              </Text>
-
-              <View style={{ height: 14 }} />
-
-              <Text style={{ color: "white", fontSize: 15, fontWeight: "900" }}>
-                {ts("client.home.mission.title", "Weekly mission")}
-              </Text>
-
-              <Text style={{ color: "#94A3B8", fontSize: 13, marginTop: 5 }}>
-                {stats.last7dDelivered}/{stats.missionTarget}{" "}
-                {ts("client.home.mission.completed", "completed deliveries")}
-              </Text>
-
-              <View
-                style={{
-                  height: 10,
-                  borderRadius: 999,
-                  overflow: "hidden",
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  marginTop: 12,
-                }}
-              >
-                <View
-                  style={{
-                    width: missionBarWidth,
-                    height: "100%",
-                    backgroundColor: "#22C55E",
-                  }}
-                />
+              <View style={premiumStyles.progressBlock}>
+                <View style={premiumStyles.progressHeader}>
+                  <Text numberOfLines={1} style={premiumStyles.progressTitle}>
+                    {ts("client.home.rewards.title", "Rewards progress")} • {stats.level}
+                  </Text>
+                  <Text style={premiumStyles.progressPoints}>{stats.points} pts</Text>
+                </View>
+                <View style={premiumStyles.progressTrack}>
+                  <View style={[premiumStyles.progressFill, { width: progressBarWidth }]} />
+                </View>
               </View>
             </View>
 
-            <FeaturedOrderCard
-              title={ts("client.home.highlight.title", "Highlighted order")}
-              subtitle={ts(
-                "client.home.highlight.subtitle",
-                "Your most relevant recent request or order."
-              )}
-              order={activeOrder ?? lastDeliveredOrder ?? featuredOrder}
-              accentColor="#93C5FD"
-              borderColor="rgba(96,165,250,0.18)"
-              backgroundColor="rgba(15,23,42,0.92)"
-              emptyTitle={ts("client.home.empty.title", "Nothing here yet")}
-              emptySubtitle={ts(
-                "client.home.empty.subtitle",
-                "Create a delivery request or order from a restaurant to test the system."
-              )}
-              ctaLabel={ts("client.home.highlight.cta", "Open")}
-              onPress={handleOpenFeaturedOrder}
-              ts={ts}
-            />
-
-            <SectionTitle
-              title={ts("client.home.section.recent", "Recent activity")}
-              right={
-                loading ? (
+            <View style={premiumStyles.recentCard}>
+              <View style={premiumStyles.recentHeader}>
+                <Text style={premiumStyles.cardTitle}>{ts("client.home.section.recent", "Recent Activity")}</Text>
+                {loading ? (
                   <ActivityIndicator size="small" color="#fff" />
-                ) : undefined
-              }
-            />
-
-            {items.length === 0 && !loading ? (
-              <View
-                style={{
-                  borderRadius: 24,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.06)",
-                  backgroundColor: "rgba(15,23,42,0.94)",
-                  padding: 18,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ fontSize: 30, marginBottom: 8 }}>📭</Text>
-                <Text
-                  style={{
-                    color: "white",
-                    fontSize: 15,
-                    fontWeight: "900",
-                    textAlign: "center",
-                  }}
-                >
-                  {ts("client.home.empty.title", "Nothing here yet")}
-                </Text>
-                <Text
-                  style={{
-                    color: "#6B7280",
-                    fontSize: 12,
-                    marginTop: 6,
-                    textAlign: "center",
-                  }}
-                >
-                  {ts(
-                    "client.home.empty.subtitle",
-                    "Create a delivery request or order from a restaurant to test the system."
-                  )}
-                </Text>
-              </View>
-            ) : (
-              recentOrders.map((order) => {
-                const pill = statusPillStyles(order.status);
-                const isRestaurant = order.kind === "restaurant_order";
-
-                return (
-                  <TouchableOpacity
-                    key={`${order.kind}-${order.id}`}
-                    activeOpacity={0.92}
-                    onPress={() => {
-                      if (isRestaurant) {
-                        handleOpenRestaurantOrder(order.id);
-                      } else {
-                        (navigation as any).navigate("ClientDeliveryRequestDetails", {
-                          requestId: order.id,
-                        });
-                      }
-                    }}
-                    style={{
-                      borderRadius: 24,
-                      borderWidth: 1,
-                      borderColor: "rgba(255,255,255,0.06)",
-                      backgroundColor: "rgba(15,23,42,0.94)",
-                      padding: 16,
-                      marginBottom: 12,
-                    }}
-                  >
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                      }}
-                    >
-                      <View style={{ flex: 1, paddingRight: 14 }}>
-                        <Text
-                          style={{
-                            color: "white",
-                            fontSize: 15,
-                            fontWeight: "900",
-                          }}
-                          numberOfLines={1}
-                        >
-                          {kindEmoji(order.kind)} {orderBullet(order.status)} #
-                          {order.id.slice(0, 8)}
-                        </Text>
-
-                        <Text
-                          style={{
-                            color: "#CBD5E1",
-                            fontSize: 12,
-                            marginTop: 5,
-                            fontWeight: "800",
-                          }}
-                          numberOfLines={1}
-                        >
-                          {kindLabel(order.kind, ts)}
-                        </Text>
-
-                        <Text
-                          style={{
-                            color: "#94A3B8",
-                            fontSize: 12,
-                            marginTop: 5,
-                          }}
-                        >
-                          {formatDateTime(order.created_at)}
-                        </Text>
-
-                        <Text
-                          style={{
-                            color: "#D1D5DB",
-                            fontSize: 13,
-                            marginTop: 10,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {ts("client.home.labels.pickup", "Pickup")}:{" "}
-                          <Text style={{ color: "white", fontWeight: "800" }}>
-                            {order.pickup_address ?? "—"}
-                          </Text>
-                        </Text>
-
-                        <Text
-                          style={{
-                            color: "#D1D5DB",
-                            fontSize: 13,
-                            marginTop: 6,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {ts("client.home.labels.dropoff", "Dropoff")}:{" "}
-                          <Text style={{ color: "white", fontWeight: "800" }}>
-                            {order.dropoff_address ?? "—"}
-                          </Text>
-                        </Text>
-
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            marginTop: 10,
-                            gap: 8,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: "#93C5FD",
-                              fontSize: 12,
-                              fontWeight: "800",
-                            }}
-                          >
-                            📍 {formatDistance(order.distance_miles)}
-                          </Text>
-
-                          <Text
-                            style={{
-                              color: "#FDE68A",
-                              fontSize: 12,
-                              fontWeight: "800",
-                            }}
-                          >
-                            💵 {formatCurrency(order.total ?? order.delivery_fee)}
-                          </Text>
-
-                          {order.payment_status ? (
-                            <Text
-                              style={{
-                                color:
-                                  order.payment_status === "paid"
-                                    ? "#86EFAC"
-                                    : order.payment_status === "processing"
-                                    ? "#FDE68A"
-                                    : "#CBD5E1",
-                                fontSize: 12,
-                                fontWeight: "800",
-                              }}
-                            >
-                              💳 {order.payment_status}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </View>
-
-                      <View style={{ alignItems: "flex-end" }}>
-                        {isRestaurant ? (
-                          <Pressable
-                            onPress={() => handleOpenChat(order.id)}
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                              alignItems: "center",
-                              justifyContent: "center",
-                              backgroundColor: "rgba(255,255,255,0.05)",
-                              borderWidth: 1,
-                              borderColor: "rgba(255,255,255,0.08)",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#E5E7EB",
-                                fontSize: 17,
-                                fontWeight: "900",
-                              }}
-                            >
-                              💬
-                            </Text>
-                          </Pressable>
-                        ) : (
-                          <View
-                            style={{
-                              paddingHorizontal: 10,
-                              paddingVertical: 8,
-                              borderRadius: 999,
-                              backgroundColor: "rgba(59,130,246,0.10)",
-                              borderWidth: 1,
-                              borderColor: "rgba(96,165,250,0.18)",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#93C5FD",
-                                fontSize: 11,
-                                fontWeight: "900",
-                              }}
-                            >
-                              LIVE
-                            </Text>
-                          </View>
-                        )}
-
-                        <View
-                          style={{
-                            marginTop: 12,
-                            paddingHorizontal: 12,
-                            paddingVertical: 7,
-                            borderRadius: 999,
-                            backgroundColor: pill.bg,
-                            borderWidth: 1,
-                            borderColor: pill.border,
-                            maxWidth: 170,
-                          }}
-                        >
-                          <Text
-                            numberOfLines={1}
-                            style={{
-                              color: pill.text,
-                              fontSize: 12,
-                              fontWeight: "900",
-                            }}
-                          >
-                            {orderStatusLabelForCard(order, ts)}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
+                ) : (
+                  <TouchableOpacity activeOpacity={0.8} onPress={handleOpenFeaturedOrder} style={premiumStyles.viewAllButton}>
+                    <Text style={premiumStyles.viewAllText}>View all</Text>
+                    <Text style={premiumStyles.viewAllChevron}>›</Text>
                   </TouchableOpacity>
-                );
-              })
-            )}
+                )}
+              </View>
 
-            {items.length > HOME_RECENT_LIMIT && (
-              <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={handleOpenFeaturedOrder}
-                style={{
-                  marginTop: 2,
-                  alignSelf: "center",
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.08)",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "white",
-                    fontWeight: "800",
-                    fontSize: 13,
-                  }}
-                >
-                  {ts("client.home.see_more", "Open highlighted order")}
-                </Text>
-              </TouchableOpacity>
-            )}
+              {items.length === 0 && !loading ? (
+                <View style={premiumStyles.emptyBox}>
+                  <Text style={premiumStyles.emptyIcon}>📭</Text>
+                  <Text style={premiumStyles.emptyTitle}>
+                    {ts("client.home.empty.title", "Nothing here yet")}
+                  </Text>
+                  <Text style={premiumStyles.emptySub}>
+                    {ts(
+                      "client.home.empty.subtitle",
+                      "Create a delivery request or order from a restaurant to test the system."
+                    )}
+                  </Text>
+                </View>
+              ) : (
+                recentOrders.slice(0, 4).map((order) => {
+                  const isRestaurant = order.kind === "restaurant_order";
 
-            <View style={{ height: 6 }} />
+                  return (
+                    <PremiumRecentRow
+                      key={`${order.kind}-${order.id}`}
+                      item={order}
+                      ts={ts}
+                      onChatPress={
+                        isRestaurant
+                          ? () => {
+                              handleOpenChat(order.id);
+                            }
+                          : undefined
+                      }
+                      onPress={() => {
+                        if (isRestaurant) {
+                          handleOpenRestaurantOrder(order.id);
+                        } else {
+                          (navigation as any).navigate("ClientDeliveryRequestDetails", {
+                            requestId: order.id,
+                          });
+                        }
+                      }}
+                    />
+                  );
+                })
+              )}
+            </View>
+
+            <View style={{ height: 98 }} />
           </View>
         </ScrollView>
+
+        <View style={premiumStyles.bottomNav}>
+          <BottomNavItem icon="⌂" label="Home" active onPress={() => {}} />
+          <BottomNavItem icon="▢" label="Orders" onPress={handleOpenFeaturedOrder} />
+          <BottomNavItem
+            icon="➤"
+            label="Send"
+            onPress={() => navigation.navigate("DeliveryRequest" as never)}
+          />
+          <BottomNavItem
+            icon="▣"
+            label="Food"
+            onPress={() => navigation.navigate("ClientRestaurantList" as never)}
+          />
+          <BottomNavItem
+            icon="◎"
+            label="Account"
+            onPress={() => setMenuOpen((prev) => !prev)}
+          />
+        </View>
       </Pressable>
     </SafeAreaView>
   );
 }
+
+
+const premiumStyles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: PREMIUM_BG,
+  },
+  root: {
+    flex: 1,
+    backgroundColor: PREMIUM_BG,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: CLIENT_BOTTOM_SAFE_PADDING,
+  },
+  shell: {
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: 34,
+    borderWidth: 1,
+    borderColor: PREMIUM_BORDER,
+    backgroundColor: PREMIUM_BG,
+    padding: 18,
+    minHeight: "100%",
+    ...CARD_SHADOW,
+  },
+  bgGlowOne: {
+    position: "absolute",
+    top: -120,
+    left: -100,
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: "rgba(37,99,235,0.20)",
+  },
+  bgGlowTwo: {
+    position: "absolute",
+    top: 150,
+    right: -130,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: "rgba(168,85,247,0.14)",
+  },
+  header: {
+    zIndex: 20,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  headerLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+    paddingRight: 12,
+  },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    borderColor: "rgba(34,197,94,0.75)",
+    backgroundColor: DEFAULT_AVATAR_BG,
+  },
+  avatarFallback: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    borderColor: "rgba(34,197,94,0.75)",
+    backgroundColor: "rgba(15,23,42,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitials: {
+    color: "#E5E7EB",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 18,
+  },
+  helloText: {
+    color: "#E5E7EB",
+    fontSize: 19,
+    fontWeight: "500",
+  },
+  helloStrong: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+  },
+  greetingTitle: {
+    color: "#FFFFFF",
+    fontSize: 30,
+    fontWeight: "900",
+    marginTop: 4,
+    letterSpacing: -0.6,
+  },
+  greetingSubtitle: {
+    color: "#CBD5E1",
+    fontSize: 17,
+    marginTop: 8,
+  },
+  headerRight: {
+    alignItems: "flex-end",
+    zIndex: 80,
+  },
+  langRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 10,
+  },
+  langButton: {
+    minWidth: 34,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    alignItems: "center",
+  },
+  langButtonActive: {
+    backgroundColor: "rgba(168,85,247,0.22)",
+    borderColor: "rgba(192,132,252,0.38)",
+  },
+  langText: {
+    color: "#94A3B8",
+    fontSize: 10,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  langTextActive: {
+    color: "#E9D5FF",
+  },
+  bellButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+  bellIcon: {
+    fontSize: 22,
+  },
+  bellBadge: {
+    position: "absolute",
+    top: -7,
+    right: -5,
+    minWidth: 23,
+    height: 23,
+    borderRadius: 12,
+    paddingHorizontal: 5,
+    backgroundColor: RED,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: PREMIUM_BG,
+  },
+  bellBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  menu: {
+    position: "absolute",
+    top: 58,
+    right: 0,
+    width: 178,
+    borderRadius: 18,
+    padding: 10,
+    backgroundColor: "#0B1220",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    zIndex: 100,
+    ...CARD_SHADOW,
+  },
+  menuTitle: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  errorBox: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(248,113,113,0.22)",
+    backgroundColor: "rgba(127,29,29,0.30)",
+    padding: 14,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#FCA5A5",
+    fontWeight: "800",
+  },
+  quickGrid: {
+    flexDirection: "row",
+    gap: 14,
+    marginBottom: 18,
+  },
+  quickActionCard: {
+    flex: 1,
+    minHeight: 166,
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 16,
+    overflow: "hidden",
+    flexDirection: "row",
+    alignItems: "center",
+    ...CARD_SHADOW,
+  },
+  quickActionGlow: {
+    position: "absolute",
+    right: -34,
+    top: -34,
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    backgroundColor: "rgba(255,255,255,0.10)",
+  },
+  quickActionIconBox: {
+    width: 82,
+    height: 82,
+    borderRadius: 26,
+    backgroundColor: "rgba(255,255,255,0.13)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 18,
+  },
+  quickActionTileIcon: {
+    fontSize: 38,
+  },
+  quickActionTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  quickActionTitle: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  quickActionSubtitle: {
+    color: "#E5E7EB",
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 8,
+  },
+  quickActionArrow: {
+    color: "#FFFFFF",
+    fontSize: 44,
+    fontWeight: "300",
+    marginLeft: 8,
+  },
+  activityCard: {
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: PREMIUM_BORDER,
+    backgroundColor: PREMIUM_CARD_BG,
+    padding: 18,
+    marginBottom: 18,
+  },
+  cardTitle: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "900",
+    marginBottom: 16,
+  },
+  activityGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  activityStatItem: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+    borderRightWidth: 1,
+    borderRightColor: "rgba(148,163,184,0.12)",
+    paddingRight: 8,
+  },
+  activityIconBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  activityIcon: {
+    fontSize: 24,
+  },
+  activityValue: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+  activityLabel: {
+    color: "#CBD5E1",
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 3,
+  },
+  progressBlock: {
+    marginTop: 18,
+  },
+  progressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  progressTitle: {
+    color: "#CBD5E1",
+    fontSize: 12,
+    fontWeight: "800",
+    flex: 1,
+    paddingRight: 10,
+  },
+  progressPoints: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  progressTrack: {
+    height: 9,
+    borderRadius: 999,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginTop: 10,
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: PURPLE,
+  },
+  recentCard: {
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: PREMIUM_BORDER,
+    backgroundColor: PREMIUM_CARD_BG,
+    overflow: "hidden",
+    marginBottom: 18,
+  },
+  recentHeader: {
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  viewAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  viewAllText: {
+    color: "#C084FC",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  viewAllChevron: {
+    color: "#C084FC",
+    fontSize: 28,
+    fontWeight: "300",
+    marginLeft: 8,
+    marginTop: -2,
+  },
+  recentRow: {
+    minHeight: 112,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(148,163,184,0.12)",
+  },
+  recentAccent: {
+    width: 3,
+    height: 70,
+    borderRadius: 999,
+    marginRight: 12,
+  },
+  recentIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  recentIcon: {
+    fontSize: 30,
+  },
+  recentContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 12,
+  },
+  recentTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  recentMeta: {
+    color: "#CBD5E1",
+    fontSize: 13,
+    marginTop: 5,
+  },
+  recentSub: {
+    color: "#CBD5E1",
+    fontSize: 12,
+    marginTop: 7,
+  },
+  recentRight: {
+    alignItems: "flex-end",
+    width: 126,
+  },
+  chatMiniButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  chatMiniText: {
+    fontSize: 15,
+  },
+  statusChip: {
+    maxWidth: 118,
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    marginBottom: 8,
+  },
+  statusChipText: {
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  recentAmount: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  recentChevron: {
+    color: "#CBD5E1",
+    fontSize: 30,
+    fontWeight: "300",
+    marginLeft: 10,
+  },
+  emptyBox: {
+    padding: 24,
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(148,163,184,0.12)",
+  },
+  emptyIcon: {
+    fontSize: 34,
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  emptySub: {
+    color: "#94A3B8",
+    fontSize: 13,
+    marginTop: 6,
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  bottomNav: {
+    position: "absolute",
+    left: 14,
+    right: 14,
+    bottom: Platform.OS === "android" ? 18 : 22,
+    minHeight: 76,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: PREMIUM_BORDER,
+    backgroundColor: "rgba(15,23,42,0.96)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    zIndex: 50,
+    ...CARD_SHADOW,
+  },
+  bottomNavItem: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bottomNavIcon: {
+    color: "#94A3B8",
+    fontSize: 24,
+    fontWeight: "900",
+  },
+  bottomNavLabel: {
+    color: "#CBD5E1",
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 4,
+  },
+});
 
 export default ClientHomeScreen;

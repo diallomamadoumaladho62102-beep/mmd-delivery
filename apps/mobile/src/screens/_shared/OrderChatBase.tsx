@@ -34,8 +34,31 @@ type Row = {
   _signedUrl?: string | null;
 };
 
+type ChatParticipant = {
+  id: string;
+  role: ChatTargetRole;
+  name: string;
+  avatarUrl: string | null;
+};
+
+type BasicProfile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
+type RestaurantProfile = {
+  id?: string | null;
+  user_id?: string | null;
+  restaurant_name?: string | null;
+  business_name?: string | null;
+  avatar_url?: string | null;
+  logo_url?: string | null;
+};
+
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 const CHAT_BUCKET = "chat-images";
+const AVATARS_BUCKET = "avatars";
 const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic", "heif"] as const;
 
@@ -87,6 +110,54 @@ function fmtDateTime(iso: string) {
   } catch {
     return iso;
   }
+}
+
+function isHttpUrl(value: string | null | undefined) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+function resolveStorageUrl(bucket: string, value: string | null | undefined) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  if (isHttpUrl(clean)) return clean;
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(clean);
+  return data?.publicUrl || null;
+}
+
+function resolveAvatarUrl(value: string | null | undefined) {
+  return resolveStorageUrl(AVATARS_BUCKET, value);
+}
+
+function initials(name: string) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase() || "??";
+}
+
+function participantFallbackEmoji(role: ChatTargetRole) {
+  if (role === "client") return "👤";
+  if (role === "driver") return "🚚";
+  if (role === "restaurant") return "🍽️";
+  if (role === "admin") return "🛟";
+  return "💬";
+}
+
+function displayNameFromProfile(profile: BasicProfile | null, fallback: string, id?: string | null) {
+  const name = profile?.full_name?.trim();
+  if (name) return name;
+  const cleanId = String(id || "").trim();
+  if (cleanId) return `${fallback} ${cleanId.slice(0, 8)}`;
+  return fallback;
+}
+
+function displayNameFromRestaurant(profile: RestaurantProfile | null, fallback: string) {
+  return (
+    profile?.restaurant_name?.trim() ||
+    profile?.business_name?.trim() ||
+    fallback
+  );
 }
 
 function storageKeyFromImagePath(imagePath: string) {
@@ -207,6 +278,7 @@ export function OrderChatBaseScreen(props: {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<Record<string, ChatParticipant>>({});
   const [accessDenied, setAccessDenied] = useState(false);
   const [pickedImage, setPickedImage] = useState<{ uri: string; fileName: string } | null>(
     null
@@ -294,6 +366,143 @@ export function OrderChatBaseScreen(props: {
     };
   }, [currentRole, isValidOrderId, orderId, targetRole]);
 
+
+  const loadParticipants = useCallback(
+    async (currentAccess?: AccessCheck) => {
+      if (!isValidOrderId) {
+        setParticipants({});
+        return;
+      }
+
+      try {
+        const { data: order, error } = await supabase
+          .from("orders")
+          .select("client_id,client_user_id,user_id,restaurant_id,restaurant_user_id,driver_id,restaurant_name")
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!order) {
+          setParticipants({});
+          return;
+        }
+
+        const clientId =
+          String((order as any)?.client_user_id || "").trim() ||
+          String((order as any)?.client_id || "").trim() ||
+          String((order as any)?.user_id || "").trim();
+
+        const driverId = String((order as any)?.driver_id || "").trim();
+        const restaurantUserId = String((order as any)?.restaurant_user_id || "").trim();
+        const restaurantId = String((order as any)?.restaurant_id || "").trim();
+        const restaurantFallbackName = String((order as any)?.restaurant_name || "").trim();
+
+        const next: Record<string, ChatParticipant> = {};
+
+        const fetchProfile = async (id: string, role: ChatTargetRole, fallback: string) => {
+          if (!id) return;
+
+          try {
+            const { data } = await supabase
+              .from("profiles")
+              .select("id, full_name, avatar_url")
+              .eq("id", id)
+              .maybeSingle();
+
+            const profile = (data as BasicProfile | null) ?? null;
+            next[id] = {
+              id,
+              role,
+              name: displayNameFromProfile(profile, fallback, id),
+              avatarUrl: resolveAvatarUrl(profile?.avatar_url),
+            };
+          } catch {
+            next[id] = {
+              id,
+              role,
+              name: `${fallback} ${id.slice(0, 8)}`,
+              avatarUrl: null,
+            };
+          }
+        };
+
+        await fetchProfile(clientId, "client", targetRoleLabel("client", t));
+        await fetchProfile(driverId, "driver", targetRoleLabel("driver", t));
+
+        if (restaurantUserId || restaurantId) {
+          try {
+            let restaurantProfile: RestaurantProfile | null = null;
+
+            if (restaurantUserId) {
+              const { data } = await supabase
+                .from("restaurant_profiles")
+                .select("id, user_id, restaurant_name, business_name, avatar_url, logo_url")
+                .eq("user_id", restaurantUserId)
+                .maybeSingle();
+
+              restaurantProfile = (data as RestaurantProfile | null) ?? null;
+            }
+
+            if (!restaurantProfile && restaurantId) {
+              const { data } = await supabase
+                .from("restaurant_profiles")
+                .select("id, user_id, restaurant_name, business_name, avatar_url, logo_url")
+                .eq("id", restaurantId)
+                .maybeSingle();
+
+              restaurantProfile = (data as RestaurantProfile | null) ?? null;
+            }
+
+            const restaurantKey = restaurantUserId || restaurantId;
+            next[restaurantKey] = {
+              id: restaurantKey,
+              role: "restaurant",
+              name: displayNameFromRestaurant(
+                restaurantProfile,
+                restaurantFallbackName || targetRoleLabel("restaurant", t)
+              ),
+              avatarUrl:
+                resolveAvatarUrl(restaurantProfile?.avatar_url) ||
+                resolveAvatarUrl(restaurantProfile?.logo_url),
+            };
+          } catch {
+            const restaurantKey = restaurantUserId || restaurantId;
+            next[restaurantKey] = {
+              id: restaurantKey,
+              role: "restaurant",
+              name: restaurantFallbackName || targetRoleLabel("restaurant", t),
+              avatarUrl: null,
+            };
+          }
+        }
+
+        const supportId = "admin";
+        next[supportId] = {
+          id: supportId,
+          role: "admin",
+          name: targetRoleLabel("admin", t),
+          avatarUrl: null,
+        };
+
+        if (currentAccess?.userId && currentAccess.role && !next[currentAccess.userId]) {
+          next[currentAccess.userId] = {
+            id: currentAccess.userId,
+            role: currentAccess.role,
+            name: targetRoleLabel(currentAccess.role, t),
+            avatarUrl: null,
+          };
+        }
+
+        setParticipants(next);
+      } catch (e) {
+        console.log("load chat participants error:", e);
+        setParticipants({});
+      }
+    },
+    [isValidOrderId, orderId, t]
+  );
+
   const enrichSignedUrls = useCallback(async (data: Row[]) => {
     const enriched: Row[] = await Promise.all(
       data.map(async (r) => {
@@ -341,6 +550,8 @@ export function OrderChatBaseScreen(props: {
         setAccessDenied(true);
         return;
       }
+
+      await loadParticipants(access);
 
       const selectWithRoles =
         "id, order_id, user_id, text, image_path, created_at, sender_role, target_role";
@@ -404,7 +615,7 @@ export function OrderChatBaseScreen(props: {
     } finally {
       setLoading(false);
     }
-  }, [orderId, isValidOrderId, targetRole, enrichSignedUrls, scrollToEnd, t, verifyAccess]);
+  }, [orderId, isValidOrderId, targetRole, enrichSignedUrls, scrollToEnd, t, verifyAccess, loadParticipants]);
 
   useEffect(() => {
     void load();
@@ -750,6 +961,28 @@ export function OrderChatBaseScreen(props: {
     [t, verifyAccess]
   );
 
+
+  const getParticipant = useCallback(
+    (row: Row) => {
+      const userId = String(row.user_id || "").trim();
+
+      if (userId && participants[userId]) {
+        return participants[userId];
+      }
+
+      const role = normalizeTargetRole(row.sender_role) || "";
+      const fallbackName = role ? targetRoleLabel(role, t) : t("shared.orderChat.sender.unknown", "Participant");
+
+      return {
+        id: userId || role || "unknown",
+        role,
+        name: fallbackName,
+        avatarUrl: null,
+      } as ChatParticipant;
+    },
+    [participants, t]
+  );
+
   const title = useMemo(() => {
     const short = orderId ? orderId.slice(0, 8) : "—";
     const prefix = titlePrefix ? `${titlePrefix} • ` : "";
@@ -829,6 +1062,17 @@ export function OrderChatBaseScreen(props: {
             <Text style={{ color: "#9CA3AF", marginTop: 2, fontWeight: "800", fontSize: 12 }}>
               {t("shared.orderChat.header.subtitle", "Messages & pièces jointes")}
             </Text>
+
+            {targetRole ? (
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ color: "#64748B", marginTop: 2, fontWeight: "800", fontSize: 11 }}
+              >
+                {t("shared.orderChat.header.privateWith", "Conversation avec")}{" "}
+                {targetRoleLabel(targetRole, t)}
+              </Text>
+            ) : null}
           </View>
 
           <TouchableOpacity
@@ -885,72 +1129,189 @@ export function OrderChatBaseScreen(props: {
           ) : (
             rows.map((r) => {
               const isHeicMessage = !!r.image_path && isHeicLike(r.image_path);
+              const isMine = !!currentUserId && r.user_id === currentUserId;
+              const participant = getParticipant(r);
+              const roleLabel = participant.role ? targetRoleLabel(participant.role, t) : "";
+              const canDelete = isMine || currentRole === "admin";
 
               return (
-                <View key={r.id} style={{ marginBottom: 14 }}>
-                  <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "800" }}>
-                    {fmtDateTime(r.created_at)}
-                  </Text>
-
-                  {!!r.text && (
-                    <Text style={{ color: "white", marginTop: 6, lineHeight: 18, fontWeight: "700" }}>
-                      {r.text}
-                    </Text>
-                  )}
-
-                  {!!r._signedUrl && (
-                    <Image
-                      source={{ uri: r._signedUrl }}
-                      style={{
-                        width: "100%",
-                        height: 220,
-                        borderRadius: 14,
-                        backgroundColor: "#0B1220",
-                        marginTop: 10,
-                      }}
-                      resizeMode="cover"
-                      onError={(e) => {
-                        console.log("chat image render error:", {
-                          image_path: r.image_path,
-                          nativeEvent: e?.nativeEvent,
-                          platform: Platform.OS,
-                        });
-                      }}
-                    />
-                  )}
-
-                  {!r._signedUrl && isHeicMessage ? (
-                    <View style={{ marginTop: 10 }}>
-                      <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
-                        {t(
-                          "shared.orderChat.heic.oldMessageTitle",
-                          "Image HEIC détectée — peut ne pas s'afficher."
-                        )}
-                      </Text>
-                    </View>
+                <View
+                  key={r.id}
+                  style={{
+                    marginBottom: 14,
+                    flexDirection: "row",
+                    justifyContent: isMine ? "flex-end" : "flex-start",
+                  }}
+                >
+                  {!isMine ? (
+                    participant.avatarUrl ? (
+                      <Image
+                        source={{ uri: participant.avatarUrl }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          marginRight: 8,
+                          backgroundColor: "#0B1220",
+                          borderWidth: 1,
+                          borderColor: "rgba(148,163,184,0.22)",
+                        }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          marginRight: 8,
+                          backgroundColor: "#0B1220",
+                          borderWidth: 1,
+                          borderColor: "rgba(148,163,184,0.22)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Text style={{ fontSize: 14 }}>{participantFallbackEmoji(participant.role)}</Text>
+                      </View>
+                    )
                   ) : null}
 
-                  <TouchableOpacity
-                    onPress={() =>
-                      Alert.alert(
-                        t("shared.orderChat.actions.deleteTitle", "Supprimer"),
-                        t("shared.orderChat.actions.deleteConfirm", "Tu veux supprimer ce message ?"),
-                        [
-                          { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
-                          {
-                            text: t("shared.common.delete", "Supprimer"),
-                            style: "destructive",
-                            onPress: () => void del(r.id, r.image_path, r.user_id),
-                          },
-                        ]
-                      )
-                    }
-                    style={{ marginTop: 8 }}
+                  <View
+                    style={{
+                      maxWidth: "82%",
+                      minWidth: 120,
+                      borderRadius: 16,
+                      padding: 10,
+                      backgroundColor: isMine ? "rgba(37,99,235,0.32)" : "rgba(2,6,23,0.56)",
+                      borderWidth: 1,
+                      borderColor: isMine ? "rgba(96,165,250,0.32)" : "rgba(148,163,184,0.16)",
+                    }}
                   >
-                    <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 12 }}>
-                      {t("shared.orderChat.actions.deleteLower", "supprimer")}
-                    </Text>
-                  </TouchableOpacity>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                      }}
+                    >
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}
+                        >
+                          {isMine
+                            ? t("shared.orderChat.sender.you", "You")
+                            : participant.name}
+                        </Text>
+
+                        <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800", marginTop: 1 }}
+                        >
+                          {roleLabel ? `${roleLabel} • ` : ""}
+                          {fmtDateTime(r.created_at)}
+                        </Text>
+                      </View>
+
+                      {isMine ? (
+                        participant.avatarUrl ? (
+                          <Image
+                            source={{ uri: participant.avatarUrl }}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 14,
+                              backgroundColor: "#0B1220",
+                              borderWidth: 1,
+                              borderColor: "rgba(148,163,184,0.22)",
+                            }}
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 14,
+                              backgroundColor: "#0B1220",
+                              borderWidth: 1,
+                              borderColor: "rgba(148,163,184,0.22)",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Text style={{ color: "#E5E7EB", fontSize: 10, fontWeight: "900" }}>
+                              {initials(participant.name)}
+                            </Text>
+                          </View>
+                        )
+                      ) : null}
+                    </View>
+
+                    {!!r.text && (
+                      <Text style={{ color: "white", marginTop: 8, lineHeight: 19, fontWeight: "700" }}>
+                        {r.text}
+                      </Text>
+                    )}
+
+                    {!!r._signedUrl && (
+                      <Image
+                        source={{ uri: r._signedUrl }}
+                        style={{
+                          width: "100%",
+                          height: 220,
+                          borderRadius: 14,
+                          backgroundColor: "#0B1220",
+                          marginTop: 10,
+                        }}
+                        resizeMode="cover"
+                        onError={(e) => {
+                          console.log("chat image render error:", {
+                            image_path: r.image_path,
+                            nativeEvent: e?.nativeEvent,
+                            platform: Platform.OS,
+                          });
+                        }}
+                      />
+                    )}
+
+                    {!r._signedUrl && isHeicMessage ? (
+                      <View style={{ marginTop: 10 }}>
+                        <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
+                          {t(
+                            "shared.orderChat.heic.oldMessageTitle",
+                            "Image HEIC détectée — peut ne pas s'afficher."
+                          )}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {canDelete ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          Alert.alert(
+                            t("shared.orderChat.actions.deleteTitle", "Supprimer"),
+                            t("shared.orderChat.actions.deleteConfirm", "Tu veux supprimer ce message ?"),
+                            [
+                              { text: t("shared.common.cancel", "Annuler"), style: "cancel" },
+                              {
+                                text: t("shared.common.delete", "Supprimer"),
+                                style: "destructive",
+                                onPress: () => void del(r.id, r.image_path, r.user_id),
+                              },
+                            ]
+                          )
+                        }
+                        style={{ marginTop: 8, alignSelf: isMine ? "flex-end" : "flex-start" }}
+                      >
+                        <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 12 }}>
+                          {t("shared.orderChat.actions.deleteLower", "supprimer")}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                 </View>
               );
             })

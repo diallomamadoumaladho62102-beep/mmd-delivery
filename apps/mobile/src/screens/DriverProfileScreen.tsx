@@ -173,6 +173,20 @@ function inferExt(name: string, mime: string) {
   return "bin";
 }
 
+function isHttpUrl(value: string | null | undefined) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+function resolveAvatarPublicUrl(value: string | null | undefined) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  if (isHttpUrl(clean)) return clean;
+
+  const normalizedPath = clean.replace(/^avatars\//, "");
+  const pub = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(normalizedPath);
+  return pub.data.publicUrl ?? null;
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <Text
@@ -652,8 +666,7 @@ export function DriverProfileScreen() {
 
     try {
       setAvatarBroken(false);
-      const pub = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path);
-      setAvatarUrl(pub.data.publicUrl ?? null);
+      setAvatarUrl(resolveAvatarPublicUrl(path));
     } catch (error) {
       console.log("refreshAvatarUrl error", error);
       setAvatarUrl(null);
@@ -891,7 +904,7 @@ export function DriverProfileScreen() {
         id: uid,
         full_name: null,
         phone: null,
-        role: "livreur",
+        role: "driver",
         avatar_url: null,
       };
       setProfile(profileRow);
@@ -1026,12 +1039,14 @@ export function DriverProfileScreen() {
 
       const profilePayload = {
         id: uid,
-        role: profile?.role ?? "livreur",
+        role: profile?.role ?? "driver",
         full_name: trimOrNull(editFullName),
         phone: trimOrNull(editPhone),
         emergency_phone: trimOrNull(editEmergencyPhone),
         state: trimOrNull(editState),
         zip_code: trimOrNull(normalizeZip(editZipCode)),
+        avatar_url: avatarPath ?? profile?.avatar_url ?? profile?.personal_photo_url ?? null,
+        updated_at: new Date().toISOString(),
       };
 
       const { error: pErr } = await supabase
@@ -1234,7 +1249,20 @@ export function DriverProfileScreen() {
 
       const updatedAt = Date.now();
 
-      await supabase.from("profiles").update({ avatar_url: storagePath }).eq("id", uid);
+      await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: uid,
+            role: profile?.role ?? "driver",
+            full_name: profile?.full_name ?? driver?.full_name ?? null,
+            phone: profile?.phone ?? driver?.phone ?? null,
+            avatar_url: storagePath,
+            personal_photo_url: storagePath,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" },
+        );
       await supabase.auth.updateUser({
         data: { avatar_path: storagePath, avatar_updated_at: updatedAt },
       });
@@ -1245,14 +1273,14 @@ export function DriverProfileScreen() {
       await refreshAvatarUrl(storagePath);
 
       const { data: driverRow } = await supabase
-  .from("driver_profiles")
-  .select("id")
-  .eq("user_id", uid)
-  .single();
+        .from("driver_profiles")
+        .select("id")
+        .eq("user_id", uid)
+        .single();
 
-const driverId = driverRow?.id ?? uid;
+      const driverId = driverRow?.id ?? uid;
 
-const { error: docErr } = await supabase.from("driver_documents").upsert(
+      const { error: docErr } = await supabase.from("driver_documents").upsert(
         {
           user_id: uid,
           driver_id: driverId,
@@ -1401,14 +1429,14 @@ const { error: docErr } = await supabase.from("driver_documents").upsert(
       }
 
       const { data: driverRow } = await supabase
-  .from("driver_profiles")
-  .select("id")
-  .eq("user_id", uid)
-  .single();
+        .from("driver_profiles")
+        .select("id")
+        .eq("user_id", uid)
+        .single();
 
-const driverId = driverRow?.id ?? uid;
+      const driverId = driverRow?.id ?? uid;
 
-const { error: insErr } = await supabase.from("driver_documents").upsert(
+      const { error: insErr } = await supabase.from("driver_documents").upsert(
         {
           user_id: uid,
           driver_id: driverId,
@@ -2476,3 +2504,5 @@ const { error: insErr } = await supabase.from("driver_documents").upsert(
     </SafeAreaView>
   );
 }
+
+export default DriverProfileScreen;

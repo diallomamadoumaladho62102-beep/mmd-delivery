@@ -12,6 +12,7 @@ import {
   Easing,
   AppState,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { Audio } from "expo-av";
 import * as KeepAwake from "expo-keep-awake";
@@ -33,6 +34,11 @@ const MAP_STYLE_DARK =
 const MAX_VISIBLE_MAP_ORDERS = 12;
 const MAX_NEARBY_DRIVERS = 8;
 const RESTAURANT_ONLINE_KEEP_AWAKE_TAG = "mmd-restaurant-online";
+const BOTTOM_NAV_SAFE_OFFSET = Platform.OS === "android" ? 74 : 40;
+const FLOATING_SIDE_BOTTOM_OFFSET = BOTTOM_NAV_SAFE_OFFSET + 98;
+const SIDE_BUTTON_SIZE = 66;
+const SIDE_BUTTON_MIN_HEIGHT = 68;
+const BOTTOM_BUTTON_MIN_HEIGHT = 72;
 
 if (MAPBOX_TOKEN) {
   Mapbox.setAccessToken(MAPBOX_TOKEN);
@@ -209,11 +215,11 @@ function FloatingBadge({
     <View
       style={{
         position: "absolute",
-        top: -8,
-        right: -8,
-        minWidth: 23,
-        height: 23,
-        borderRadius: 12,
+        top: -7,
+        right: -7,
+        minWidth: 21,
+        height: 21,
+        borderRadius: 11,
         paddingHorizontal: 5,
         backgroundColor: bg,
         alignItems: "center",
@@ -248,8 +254,8 @@ function MapActionButton({
       activeOpacity={0.86}
       onPress={onPress}
       style={{
-        width: 76,
-        minHeight: label ? 78 : 62,
+        width: SIDE_BUTTON_SIZE,
+        minHeight: label ? SIDE_BUTTON_MIN_HEIGHT : 58,
         borderRadius: 28,
         backgroundColor: active ? "rgba(15,23,42,0.98)" : "rgba(2,6,23,0.92)",
         borderWidth: 1.4,
@@ -264,16 +270,19 @@ function MapActionButton({
       }}
     >
       {badge !== undefined && <FloatingBadge value={badge} bg={badgeColor} />}
-      <Text style={{ fontSize: 28 }}>{icon}</Text>
+      <Text style={{ fontSize: 24 }}>{icon}</Text>
       {label ? (
         <Text
           numberOfLines={1}
+          ellipsizeMode="tail"
           style={{
             color: "white",
-            marginTop: 4,
-            fontSize: 11,
+            marginTop: 3,
+            fontSize: 10,
             fontWeight: "900",
             textAlign: "center",
+            maxWidth: SIDE_BUTTON_SIZE - 8,
+            includeFontPadding: false,
           }}
         >
           {label}
@@ -479,7 +488,13 @@ function LegendItem({ label, color }: { label: string; color: string }) {
           marginRight: 8,
         }}
       />
-      <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800" }}>{label}</Text>
+      <Text
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800", maxWidth: 82 }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -493,9 +508,9 @@ function TopLegendPill({
     <View
       pointerEvents="none"
       style={{
-        minHeight: 46,
-        borderRadius: 23,
-        paddingHorizontal: 12,
+        minHeight: 42,
+        borderRadius: 21,
+        paddingHorizontal: 10,
         backgroundColor: "rgba(2,6,23,0.90)",
         borderWidth: 1,
         borderColor: "rgba(148,163,184,0.28)",
@@ -536,14 +551,14 @@ function BottomMapButton({
       onPress={onPress}
       style={{
         flex: 1,
-        minHeight: 78,
-        borderRadius: 22,
+        minHeight: BOTTOM_BUTTON_MIN_HEIGHT,
+        borderRadius: 20,
         backgroundColor: "rgba(2,6,23,0.92)",
         borderWidth: 1.2,
         borderColor: "rgba(148,163,184,0.30)",
         alignItems: "center",
         justifyContent: "center",
-        marginHorizontal: 4,
+        marginHorizontal: 3,
         shadowColor: "#000",
         shadowOpacity: 0.24,
         shadowRadius: 12,
@@ -552,15 +567,18 @@ function BottomMapButton({
       }}
     >
       {badge !== undefined && <FloatingBadge value={badge} bg={badgeColor} />}
-      <Text style={{ fontSize: 26 }}>{icon}</Text>
+      <Text style={{ fontSize: 24 }}>{icon}</Text>
       <Text
         numberOfLines={1}
+        ellipsizeMode="tail"
         style={{
           color: "#FFFFFF",
-          fontSize: 10,
+          fontSize: 9.5,
           fontWeight: "900",
-          marginTop: 5,
+          marginTop: 4,
           textAlign: "center",
+          maxWidth: 76,
+          includeFontPadding: false,
         }}
       >
         {label}
@@ -1374,10 +1392,25 @@ export function RestaurantHomeScreen({ navigation }: any) {
               borderColor: "rgba(248,113,113,0.45)",
             }}
           >
-            <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}
+            >
               {t("restaurant.dashboard.setupRequiredTitle", "Profil incomplet")}
             </Text>
-            <Text style={{ color: "#FECACA", fontSize: 11, fontWeight: "700", marginTop: 3 }}>
+            <Text
+              numberOfLines={2}
+              ellipsizeMode="tail"
+              style={{
+                color: "#FECACA",
+                fontSize: 10.5,
+                fontWeight: "700",
+                marginTop: 3,
+                lineHeight: 14,
+                flexShrink: 1,
+              }}
+            >
               {t(
                 "restaurant.dashboard.setupRequiredBody",
                 "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne."
@@ -1389,16 +1422,16 @@ export function RestaurantHomeScreen({ navigation }: any) {
         <View
           style={{
             position: "absolute",
-            left: 16,
-            top: 86,
-            bottom: 112,
+            left: 12,
+            top: 92,
+            bottom: FLOATING_SIDE_BOTTOM_OFFSET,
             justifyContent: "space-between",
             zIndex: 15,
           }}
         >
           <MapActionButton
             icon="▦"
-            label="Dashboard"
+            label="Dash"
             onPress={() =>
               Alert.alert(
                 t("restaurant.dashboard.title", "Restaurant Dashboard"),
@@ -1468,9 +1501,9 @@ export function RestaurantHomeScreen({ navigation }: any) {
         <View
           style={{
             position: "absolute",
-            right: 16,
-            top: 86,
-            bottom: 184,
+            right: 12,
+            top: 92,
+            bottom: FLOATING_SIDE_BOTTOM_OFFSET,
             justifyContent: "space-between",
             alignItems: "center",
             zIndex: 15,
@@ -1478,7 +1511,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         >
           <MapActionButton
             icon="🔔"
-            label="Notifications"
+            label="Alerts"
             badge={stats.pendingOrders > 0 ? stats.pendingOrders : undefined}
             badgeColor="#EF4444"
             onPress={() => navigation.navigate("RestaurantOrders")}
@@ -1504,7 +1537,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
           />
           <MapActionButton
             icon="➤"
-            label="My Location"
+            label="Location"
             onPress={() => {
               setZoomLevel((value) => (value === 13 ? 13.01 : 13));
               cameraRef.current?.setCamera({
@@ -1527,7 +1560,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
           />
           <View
             style={{
-              borderRadius: 36,
+              borderRadius: 32,
               overflow: "hidden",
               borderWidth: 1.4,
               borderColor: "rgba(148,163,184,0.30)",
@@ -1543,8 +1576,8 @@ export function RestaurantHomeScreen({ navigation }: any) {
               activeOpacity={0.86}
               onPress={() => setZoomLevel((value) => Math.min(16, value + 0.6))}
               style={{
-                width: 76,
-                height: 62,
+                width: SIDE_BUTTON_SIZE,
+                height: 56,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -1556,8 +1589,8 @@ export function RestaurantHomeScreen({ navigation }: any) {
               activeOpacity={0.86}
               onPress={() => setZoomLevel((value) => Math.max(10, value - 0.6))}
               style={{
-                width: 76,
-                height: 62,
+                width: SIDE_BUTTON_SIZE,
+                height: 56,
                 alignItems: "center",
                 justifyContent: "center",
               }}
@@ -1592,10 +1625,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
         <View
           style={{
             position: "absolute",
-            left: 16,
-            right: 16,
-            bottom: 24,
-            minHeight: 86,
+            left: 12,
+            right: 12,
+            bottom: BOTTOM_NAV_SAFE_OFFSET,
+            minHeight: 82,
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
@@ -1604,7 +1637,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         >
           <BottomMapButton
             icon="📋"
-            label="View Orders"
+            label="Orders"
             badge={stats.pendingOrders > 0 ? stats.pendingOrders : undefined}
             badgeColor="#EF4444"
             onPress={() => navigation.navigate("RestaurantOrders")}
@@ -1616,7 +1649,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
           />
           <BottomMapButton
             icon="🧾"
-            label="Tax Center"
+            label="Tax"
             onPress={() => navigation.navigate("RestaurantTax")}
           />
           <BottomMapButton
@@ -1629,3 +1662,6 @@ export function RestaurantHomeScreen({ navigation }: any) {
     </SafeAreaView>
   );
 }
+
+
+export default RestaurantHomeScreen;

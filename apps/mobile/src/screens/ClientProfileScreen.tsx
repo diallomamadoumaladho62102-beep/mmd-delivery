@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../lib/supabase";
@@ -45,6 +46,26 @@ type ProfileRow = {
 
 function trimOrEmpty(v: string) {
   return (v || "").trim();
+}
+
+function isHttpUrl(value: string | null | undefined) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+function resolveAvatarUrl(value: string | null | undefined) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  if (isHttpUrl(clean)) return clean;
+
+  const { data } = supabase.storage.from("avatars").getPublicUrl(clean);
+  return data?.publicUrl || null;
+}
+
+function initials(name: string) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase() || "CL";
 }
 
 // ✅ wrapper pour convertir i18next t(key, options) en t(key, fallback, vars)
@@ -405,6 +426,22 @@ export function ClientProfileScreen() {
         );
       }
 
+      const { error: baseProfileErr } = await supabase.from("profiles").upsert(
+        {
+          id: uid,
+          full_name: trimOrEmpty(fullName),
+          phone: trimOrEmpty(phone),
+          role: "client",
+          avatar_url: finalAvatar ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+      if (baseProfileErr) {
+        console.log("profiles sync error (ignored):", baseProfileErr);
+      }
+
       await upsertClientAddress({
         uid,
         addressLine1: addr1,
@@ -461,16 +498,24 @@ export function ClientProfileScreen() {
     );
   }
 
-  const avatarPreview = avatarLocalUri || avatarUrl;
+  const avatarPreview = avatarLocalUri || resolveAvatarUrl(avatarUrl);
+  const displayInitials = initials(fullName);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView
-        style={{ flex: 1, padding: 20 }}
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+        >
         <Text
+          numberOfLines={1}
+          ellipsizeMode="tail"
           style={{
             fontSize: 24,
             fontWeight: "800",
@@ -481,7 +526,7 @@ export function ClientProfileScreen() {
           {t("client.profile.title", "Profil client")}
         </Text>
 
-        <Text style={{ color: "#9CA3AF", marginBottom: 18 }}>
+        <Text style={{ color: "#9CA3AF", marginBottom: 18, lineHeight: 20 }}>
           {t(
             "client.profile.subtitle",
             "Complète ton profil (photo, adresse, téléphone) pour passer des commandes."
@@ -511,11 +556,20 @@ export function ClientProfileScreen() {
             }}
           >
             {avatarPreview ? (
-              <Image source={{ uri: avatarPreview }} style={{ width: 64, height: 64 }} />
+              <Image
+                source={{ uri: avatarPreview }}
+                style={{ width: 64, height: 64 }}
+                resizeMode="cover"
+              />
             ) : (
-              <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                {t("client.profile.photo", "Photo")}
-              </Text>
+              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: "#E5E7EB", fontSize: 18, fontWeight: "900" }}>
+                  {displayInitials}
+                </Text>
+                <Text style={{ color: "#9CA3AF", fontSize: 10, marginTop: 2 }}>
+                  {t("client.profile.photo", "Photo")}
+                </Text>
+              </View>
             )}
           </View>
 
@@ -628,6 +682,7 @@ export function ClientProfileScreen() {
             </Text>
           )}
         </TouchableOpacity>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -653,6 +708,7 @@ function Field(props: any) {
       {...props}
       placeholderTextColor="#6B7280"
       autoCapitalize={props.autoCapitalize ?? "none"}
+      autoCorrect={props.autoCorrect ?? false}
       style={{
         borderWidth: 1,
         borderColor: "#374151",
@@ -666,3 +722,5 @@ function Field(props: any) {
     />
   );
 }
+
+export default ClientProfileScreen;

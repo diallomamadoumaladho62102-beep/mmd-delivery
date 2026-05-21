@@ -63,13 +63,45 @@ type Order = {
   items_json: unknown;
 };
 
-type DriverProfile = {
+type BasicProfile = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
 };
 
+type DriverProfile = BasicProfile;
+type ClientProfile = BasicProfile;
+
 type CallingTarget = "client" | "driver" | "admin";
+
+const AVATARS_BUCKET = "avatars";
+
+function isHttpUrl(value: string | null | undefined) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+function resolveAvatarUrl(value: string | null | undefined) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  if (isHttpUrl(clean)) return clean;
+
+  const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(clean);
+  return data?.publicUrl || null;
+}
+
+function getProfileDisplayName(
+  profile: BasicProfile | null,
+  fallback: string,
+  fallbackId?: string | null
+) {
+  const name = profile?.full_name?.trim();
+  if (name) return name;
+
+  const id = String(fallbackId || "").trim();
+  if (id) return `${fallback} ${id.slice(0, 8)}`;
+
+  return fallback;
+}
 
 function getApiUrl(path: string) {
   const raw = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
@@ -154,6 +186,8 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const [pickupCode, setPickupCode] = useState("");
   const [driver, setDriver] = useState<DriverProfile | null>(null);
   const [driverLoading, setDriverLoading] = useState(false);
+  const [client, setClient] = useState<ClientProfile | null>(null);
+  const [clientLoading, setClientLoading] = useState(false);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
 
   const localeTag = useMemo(() => {
@@ -352,24 +386,48 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     return nextOrder;
   }, [orderBelongsToRestaurant, orderId, resolveRestaurantUser, restaurantUserId, selectFields, t]);
 
-  const fetchDriver = useCallback(async (driverId: string) => {
-    setDriverLoading(true);
+  const fetchProfile = useCallback(async (profileId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url")
+      .eq("id", profileId)
+      .maybeSingle();
 
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .eq("id", driverId)
-        .maybeSingle();
-
-      if (error) throw error;
-      setDriver((data as unknown as DriverProfile) ?? null);
-    } catch {
-      setDriver(null);
-    } finally {
-      setDriverLoading(false);
-    }
+    if (error) throw error;
+    return (data as unknown as BasicProfile) ?? null;
   }, []);
+
+  const fetchDriver = useCallback(
+    async (driverId: string) => {
+      setDriverLoading(true);
+
+      try {
+        const profile = await fetchProfile(driverId);
+        setDriver(profile as DriverProfile | null);
+      } catch {
+        setDriver(null);
+      } finally {
+        setDriverLoading(false);
+      }
+    },
+    [fetchProfile]
+  );
+
+  const fetchClient = useCallback(
+    async (clientId: string) => {
+      setClientLoading(true);
+
+      try {
+        const profile = await fetchProfile(clientId);
+        setClient(profile as ClientProfile | null);
+      } catch {
+        setClient(null);
+      } finally {
+        setClientLoading(false);
+      }
+    },
+    [fetchProfile]
+  );
 
   useEffect(() => {
     void fetchOrder();
@@ -407,6 +465,17 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
 
     void fetchDriver(driverId);
   }, [order?.driver_id, fetchDriver]);
+
+  useEffect(() => {
+    const clientId = order?.client_user_id ?? order?.client_id ?? null;
+
+    if (!clientId) {
+      setClient(null);
+      return;
+    }
+
+    void fetchClient(clientId);
+  }, [order?.client_id, order?.client_user_id, fetchClient]);
 
   const startOrderCall = useCallback(
     async (targetRole: CallingTarget) => {
@@ -765,14 +834,26 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const canCancel = canRestaurantCancel(order.status);
   const callDisabled = !!calling || updating || isFinalStatus(order.status);
 
-  const driverName =
-    driver?.full_name?.trim() ||
-    (order.driver_id
-      ? t("order.driver.fallback", {
-          defaultValue: "Chauffeur {{id}}",
-          id: order.driver_id.slice(0, 8),
-        })
-      : null);
+  const clientId = order.client_user_id ?? order.client_id ?? null;
+
+  const clientName = clientId
+    ? getProfileDisplayName(
+        client,
+        t("order.client.fallback", "Client"),
+        clientId
+      )
+    : t("order.client.unknown", "Client introuvable");
+
+  const driverName = order.driver_id
+    ? getProfileDisplayName(
+        driver,
+        t("order.driver.fallbackShort", "Chauffeur"),
+        order.driver_id
+      )
+    : null;
+
+  const clientAvatarUrl = resolveAvatarUrl(client?.avatar_url);
+  const driverAvatarUrl = resolveAvatarUrl(driver?.avatar_url);
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -936,22 +1017,36 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
               style={styles.pickupCodeInput}
             />
 
-            <ActionButton
-              label={
-                calling === "client"
-                  ? t("order.call.callingClient", "Appel client…")
-                  : t("order.call.client", "Call client")
-              }
-              color="#2563EB"
-              disabled={callDisabled}
-              onPress={callClient}
-            />
-            <ActionButton
-              label={t("order.chat.client", "Message client")}
-              color="#1D4ED8"
-              disabled={callDisabled}
-              onPress={messageClient}
-            />
+            <View style={styles.contactMiniCard}>
+              <ProfileHeader
+                title={t("order.details.clientSection", "Client")}
+                subtitle={t(
+                  "order.client.profileHint",
+                  "Profil client lié à cette commande"
+                )}
+                avatarUrl={clientAvatarUrl}
+                name={clientName}
+                loading={clientLoading}
+                fallbackEmoji="👤"
+              />
+
+              <ActionButton
+                label={
+                  calling === "client"
+                    ? t("order.call.callingClient", "Appel client…")
+                    : t("order.call.client", "Call client")
+                }
+                color="#2563EB"
+                disabled={callDisabled || !clientId}
+                onPress={callClient}
+              />
+              <ActionButton
+                label={t("order.chat.client", "Message client")}
+                color="#1D4ED8"
+                disabled={callDisabled || !clientId}
+                onPress={messageClient}
+              />
+            </View>
           </View>
 
           <View style={styles.card}>
@@ -965,28 +1060,14 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
               </Text>
             ) : (
               <>
-                <View style={styles.driverRow}>
-                  {driver?.avatar_url ? (
-                    <Image source={{ uri: driver.avatar_url }} style={styles.avatar} />
-                  ) : (
-                    <View style={styles.avatarFallback}>
-                      <Text style={styles.avatarInitials}>
-                        {initials(driverName ?? "Driver")}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.flex}>
-                    <Text style={styles.driverName}>
-                      {driverName ?? t("order.driver.title", "Chauffeur")}
-                    </Text>
-                    <Text style={styles.mutedText}>
-                      {driverLoading
-                        ? t("order.driver.loading", "Chargement du profil…")
-                        : t("order.driver.profile", "Profil chauffeur")}
-                    </Text>
-                  </View>
-                </View>
+                <ProfileHeader
+                  title={t("order.details.driverSection", "Chauffeur")}
+                  subtitle={t("order.driver.profile", "Profil chauffeur assigné")}
+                  avatarUrl={driverAvatarUrl}
+                  name={driverName ?? t("order.driver.title", "Chauffeur")}
+                  loading={driverLoading}
+                  fallbackEmoji="🚚"
+                />
 
                 <ActionButton
                   label={
@@ -1090,6 +1171,48 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+
+function ProfileHeader({
+  title,
+  subtitle,
+  avatarUrl,
+  name,
+  loading,
+  fallbackEmoji,
+}: {
+  title: string;
+  subtitle: string;
+  avatarUrl: string | null;
+  name: string;
+  loading?: boolean;
+  fallbackEmoji: string;
+}) {
+  return (
+    <View style={styles.profileRow}>
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+      ) : (
+        <View style={styles.avatarFallback}>
+          <Text style={styles.avatarEmoji}>{fallbackEmoji}</Text>
+          <Text style={styles.avatarInitialsSmall}>{initials(name)}</Text>
+        </View>
+      )}
+
+      <View style={styles.flex}>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.profileTitle}>
+          {title}
+        </Text>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.profileName}>
+          {name}
+        </Text>
+        <Text numberOfLines={2} ellipsizeMode="tail" style={styles.mutedText}>
+          {loading ? "Chargement du profil…" : subtitle}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -1273,10 +1396,19 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     letterSpacing: 2,
   },
-  driverRow: {
+  profileRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    marginBottom: 12,
+  },
+  contactMiniCard: {
+    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#1F2937",
+    backgroundColor: "#0B1220",
+    padding: 12,
   },
   avatar: {
     width: 56,
@@ -1295,16 +1427,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#0B1220",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
-  avatarInitials: {
+  avatarEmoji: {
+    fontSize: 22,
+    lineHeight: 24,
+  },
+  avatarInitialsSmall: {
+    color: "#E5E7EB",
+    fontWeight: "900",
+    fontSize: 10,
+    marginTop: 1,
+  },
+  profileTitle: {
+    color: "#93C5FD",
+    fontWeight: "900",
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  profileName: {
     color: "#E5E7EB",
     fontWeight: "900",
     fontSize: 16,
-  },
-  driverName: {
-    color: "#E5E7EB",
-    fontWeight: "900",
-    fontSize: 16,
+    marginTop: 2,
   },
   itemRow: {
     paddingVertical: 10,

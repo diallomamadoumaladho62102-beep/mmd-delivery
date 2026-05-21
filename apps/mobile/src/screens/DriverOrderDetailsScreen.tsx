@@ -67,6 +67,7 @@ type Order = {
   client_id?: string | null;
   client_user_id?: string | null;
   restaurant_id?: string | null;
+  restaurant_user_id?: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
   dropoff_lat: number | null;
@@ -75,6 +76,66 @@ type Order = {
 
 type VerifyKind = "pickup" | "dropoff";
 type CommunicationTarget = "client" | "restaurant" | "admin";
+
+type BasicProfile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
+type RestaurantProfile = {
+  id?: string | null;
+  user_id?: string | null;
+  restaurant_name?: string | null;
+  business_name?: string | null;
+  avatar_url?: string | null;
+  logo_url?: string | null;
+};
+
+const AVATARS_BUCKET = "avatars";
+
+function isHttpUrl(value: string | null | undefined) {
+  return /^https?:\/\//i.test(String(value || "").trim());
+}
+
+function resolveStorageUrl(bucket: string, value: string | null | undefined) {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  if (isHttpUrl(clean)) return clean;
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(clean);
+  return data?.publicUrl || null;
+}
+
+function resolveAvatarUrl(value: string | null | undefined) {
+  return resolveStorageUrl(AVATARS_BUCKET, value);
+}
+
+function initials(name: string) {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase() || "??";
+}
+
+function getProfileDisplayName(profile: BasicProfile | null, fallback: string, fallbackId?: string | null) {
+  const name = profile?.full_name?.trim();
+  if (name) return name;
+
+  const id = String(fallbackId || "").trim();
+  if (id) return `${fallback} ${id.slice(0, 8)}`;
+
+  return fallback;
+}
+
+function getRestaurantDisplayName(profile: RestaurantProfile | null, fallback?: string | null) {
+  const name =
+    profile?.restaurant_name?.trim() ||
+    profile?.business_name?.trim() ||
+    String(fallback || "").trim();
+
+  return name || "Restaurant";
+}
 
 type CancelOrderResponse = {
   ok?: boolean;
@@ -255,6 +316,10 @@ export function DriverOrderDetailsScreen() {
   const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
   const [proofUploading, setProofUploading] = useState(false);
   const [calling, setCalling] = useState<CommunicationTarget | null>(null);
+  const [clientProfile, setClientProfile] = useState<BasicProfile | null>(null);
+  const [clientProfileLoading, setClientProfileLoading] = useState(false);
+  const [restaurantProfile, setRestaurantProfile] = useState<RestaurantProfile | null>(null);
+  const [restaurantProfileLoading, setRestaurantProfileLoading] = useState(false);
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
   const didFitRef = useRef(false);
@@ -468,6 +533,7 @@ export function DriverOrderDetailsScreen() {
           client_id,
           client_user_id,
           restaurant_id,
+          restaurant_user_id,
           pickup_lat,
           pickup_lng,
           dropoff_lat,
@@ -516,6 +582,99 @@ export function DriverOrderDetailsScreen() {
       setLoading(false);
     }
   }, [orderId, navigation, t]);
+
+
+  const fetchProfileById = useCallback(async (profileId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url")
+      .eq("id", profileId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return (data as unknown as BasicProfile) ?? null;
+  }, []);
+
+  const fetchClientProfile = useCallback(
+    async (clientId: string) => {
+      setClientProfileLoading(true);
+
+      try {
+        const profile = await fetchProfileById(clientId);
+        setClientProfile(profile);
+      } catch {
+        setClientProfile(null);
+      } finally {
+        setClientProfileLoading(false);
+      }
+    },
+    [fetchProfileById]
+  );
+
+  const fetchRestaurantProfile = useCallback(async (currentOrder: Order) => {
+    const restaurantUserId = String(currentOrder.restaurant_user_id || "").trim();
+    const restaurantId = String(currentOrder.restaurant_id || "").trim();
+
+    if (!restaurantUserId && !restaurantId) {
+      setRestaurantProfile(null);
+      return;
+    }
+
+    setRestaurantProfileLoading(true);
+
+    try {
+      if (restaurantUserId) {
+        const { data, error } = await supabase
+          .from("restaurant_profiles")
+          .select("id, user_id, restaurant_name, business_name, avatar_url, logo_url")
+          .eq("user_id", restaurantUserId)
+          .maybeSingle();
+
+        if (!error && data) {
+          setRestaurantProfile(data as RestaurantProfile);
+          return;
+        }
+      }
+
+      if (restaurantId) {
+        const { data, error } = await supabase
+          .from("restaurant_profiles")
+          .select("id, user_id, restaurant_name, business_name, avatar_url, logo_url")
+          .eq("id", restaurantId)
+          .maybeSingle();
+
+        if (error) throw error;
+        setRestaurantProfile((data as RestaurantProfile) ?? null);
+        return;
+      }
+
+      setRestaurantProfile(null);
+    } catch {
+      setRestaurantProfile(null);
+    } finally {
+      setRestaurantProfileLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const clientId = order?.client_user_id ?? order?.client_id ?? null;
+
+    if (!clientId) {
+      setClientProfile(null);
+      return;
+    }
+
+    void fetchClientProfile(clientId);
+  }, [order?.client_id, order?.client_user_id, fetchClientProfile]);
+
+  useEffect(() => {
+    if (!order || isPickupDropoff) {
+      setRestaurantProfile(null);
+      return;
+    }
+
+    void fetchRestaurantProfile(order);
+  }, [order, isPickupDropoff, fetchRestaurantProfile]);
 
   useEffect(() => {
     void fetchOrder();
@@ -1356,6 +1515,105 @@ export function DriverOrderDetailsScreen() {
 
   const badge = statusBadgeStyle(order.status);
 
+  const clientId = order.client_user_id ?? order.client_id ?? null;
+  const clientName = clientId
+    ? getProfileDisplayName(
+        clientProfile,
+        t("driver.orderDetails.communication.client", "Client"),
+        clientId
+      )
+    : t("driver.orderDetails.communication.client", "Client");
+
+  const restaurantName = getRestaurantDisplayName(
+    restaurantProfile,
+    order.restaurant_name
+  );
+
+  const clientAvatarUrl = resolveAvatarUrl(clientProfile?.avatar_url);
+  const restaurantAvatarUrl =
+    resolveAvatarUrl(restaurantProfile?.avatar_url) ||
+    resolveAvatarUrl(restaurantProfile?.logo_url);
+
+  const ProfileHeader = ({
+    title,
+    name,
+    subtitle,
+    avatarUrl,
+    fallbackEmoji,
+    loadingProfile,
+  }: {
+    title: string;
+    name: string;
+    subtitle: string;
+    avatarUrl: string | null;
+    fallbackEmoji: string;
+    loadingProfile?: boolean;
+  }) => (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 12,
+      }}
+    >
+      {avatarUrl ? (
+        <Image
+          source={{ uri: avatarUrl }}
+          style={{
+            width: 54,
+            height: 54,
+            borderRadius: 27,
+            borderWidth: 1,
+            borderColor: "rgba(148,163,184,0.22)",
+            backgroundColor: "#0B1220",
+          }}
+        />
+      ) : (
+        <View
+          style={{
+            width: 54,
+            height: 54,
+            borderRadius: 27,
+            borderWidth: 1,
+            borderColor: "rgba(148,163,184,0.22)",
+            backgroundColor: "#0B1220",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text style={{ fontSize: 20 }}>{fallbackEmoji}</Text>
+          <Text style={{ color: "#E5E7EB", fontSize: 10, fontWeight: "900" }}>
+            {initials(name)}
+          </Text>
+        </View>
+      )}
+
+      <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
+        <Text
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={{ color: "#93C5FD", fontSize: 11, fontWeight: "900", textTransform: "uppercase" }}
+        >
+          {title}
+        </Text>
+        <Text
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          style={{ color: "#E5E7EB", fontSize: 16, fontWeight: "900", marginTop: 2 }}
+        >
+          {name}
+        </Text>
+        <Text
+          numberOfLines={2}
+          ellipsizeMode="tail"
+          style={{ color: "#9CA3AF", fontSize: 12, marginTop: 3 }}
+        >
+          {loadingProfile ? t("driver.orderDetails.profile.loading", "Chargement du profil…") : subtitle}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar barStyle="light-content" />
@@ -1857,9 +2115,17 @@ export function DriverOrderDetailsScreen() {
               marginBottom: 10,
             }}
           >
-            <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
-              👤 {t("driver.orderDetails.communication.client", "Client")}
-            </Text>
+            <ProfileHeader
+              title={t("driver.orderDetails.communication.client", "Client")}
+              name={clientName}
+              subtitle={t(
+                "driver.orderDetails.communication.clientProfile",
+                "Profil client lié à cette course"
+              )}
+              avatarUrl={clientAvatarUrl}
+              fallbackEmoji="👤"
+              loadingProfile={clientProfileLoading}
+            />
 
             <View style={{ flexDirection: "row" }}>
               <TouchableOpacity
@@ -1917,9 +2183,17 @@ export function DriverOrderDetailsScreen() {
                 marginBottom: 10,
               }}
             >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
-                🍽️ {t("driver.orderDetails.communication.restaurant", "Restaurant")}
-              </Text>
+              <ProfileHeader
+                title={t("driver.orderDetails.communication.restaurant", "Restaurant")}
+                name={restaurantName}
+                subtitle={t(
+                  "driver.orderDetails.communication.restaurantProfile",
+                  "Profil restaurant lié à cette commande"
+                )}
+                avatarUrl={restaurantAvatarUrl}
+                fallbackEmoji="🍽️"
+                loadingProfile={restaurantProfileLoading}
+              />
 
               <View style={{ flexDirection: "row" }}>
                 <TouchableOpacity

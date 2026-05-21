@@ -12,6 +12,7 @@ import {
   AppState,
   type AppStateStatus,
   TextInput,
+  Image,
 } from "react-native";
 import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
@@ -63,6 +64,28 @@ function isValidCoordinate(latValue: unknown, lngValue: unknown) {
   );
 }
 
+function normalizeAvatarUrl(value: string | null | undefined) {
+  const clean = String(value ?? "").trim();
+  if (!clean) return null;
+
+  if (/^https?:\/\//i.test(clean)) {
+    return clean;
+  }
+
+  const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(clean);
+  return data?.publicUrl ?? null;
+}
+
+function getInitials(name: string | null | undefined, fallback = "U") {
+  const clean = String(name ?? "").trim();
+  if (!clean) return fallback;
+
+  const parts = clean.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase() || fallback;
+}
+
 type Route = RouteProp<RootStackParamList, "ClientOrderDetails">;
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientOrderDetails">;
 
@@ -88,6 +111,9 @@ type Order = {
   dropoff_code: string | null;
   payment_status?: string | null;
   driver_id?: string | null;
+  restaurant_id?: string | null;
+  restaurant_user_id?: string | null;
+  restaurant_name?: string | null;
   pickup_lat?: number | null;
   pickup_lng?: number | null;
   dropoff_lat?: number | null;
@@ -113,6 +139,20 @@ type CancelOrderResponse = {
 };
 
 type CommunicationTarget = "restaurant" | "driver" | "admin";
+
+const AVATARS_BUCKET = "avatars";
+
+type PublicProfile = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
+
+type RestaurantPublicProfile = {
+  user_id: string;
+  restaurant_name: string | null;
+  avatar_url?: string | null;
+};
 
 // =========================
 // ✅ Helpers
@@ -337,6 +377,9 @@ export function ClientOrderDetailsScreen() {
   const [paymentPending, setPaymentPending] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [calling, setCalling] = useState<CommunicationTarget | null>(null);
+  const [driverProfile, setDriverProfile] = useState<PublicProfile | null>(null);
+  const [restaurantProfile, setRestaurantProfile] =
+    useState<RestaurantPublicProfile | null>(null);
 
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState("");
@@ -369,6 +412,101 @@ export function ClientOrderDetailsScreen() {
       console.warn("EXPO_PUBLIC_API_URL is missing.");
     }
   }, []);
+
+
+  const loadParticipantProfiles = useCallback(
+    async (nextOrder: Order) => {
+      const nextDriverId = String(nextOrder.driver_id ?? "").trim();
+      const nextRestaurantId = String(
+        nextOrder.restaurant_id ?? nextOrder.restaurant_user_id ?? ""
+      ).trim();
+
+      const fallbackRestaurantName = String(nextOrder.restaurant_name ?? "").trim();
+
+      try {
+        const [driverRes, restaurantRes, restaurantAccountRes] = await Promise.all([
+          nextDriverId
+            ? supabase
+                .from("profiles")
+                .select("id, full_name, avatar_url")
+                .eq("id", nextDriverId)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null } as any),
+
+          nextRestaurantId
+            ? supabase
+                .from("restaurant_profiles")
+                .select("user_id, restaurant_name")
+                .eq("user_id", nextRestaurantId)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null } as any),
+
+          nextRestaurantId
+            ? supabase
+                .from("profiles")
+                .select("id, full_name, avatar_url")
+                .eq("id", nextRestaurantId)
+                .maybeSingle()
+            : Promise.resolve({ data: null, error: null } as any),
+        ]);
+
+        if (driverRes.error) {
+          console.log("ClientOrderDetails driver profile error:", driverRes.error);
+        }
+
+        if (restaurantRes.error) {
+          console.log("ClientOrderDetails restaurant profile error:", restaurantRes.error);
+        }
+
+        if (restaurantAccountRes.error) {
+          console.log(
+            "ClientOrderDetails restaurant account profile error:",
+            restaurantAccountRes.error
+          );
+        }
+
+        if (!isMountedRef.current) return;
+
+        const driverRow = driverRes.data as PublicProfile | null;
+        const restaurantRow = restaurantRes.data as
+          | { user_id: string; restaurant_name: string | null }
+          | null;
+        const restaurantAccount = restaurantAccountRes.data as PublicProfile | null;
+
+        setDriverProfile(driverRow ?? null);
+
+        if (nextRestaurantId || fallbackRestaurantName) {
+          setRestaurantProfile({
+            user_id: nextRestaurantId,
+            restaurant_name:
+              restaurantRow?.restaurant_name ??
+              fallbackRestaurantName ??
+              restaurantAccount?.full_name ??
+              null,
+            avatar_url: restaurantAccount?.avatar_url ?? null,
+          });
+        } else {
+          setRestaurantProfile(null);
+        }
+      } catch (e) {
+        console.log("ClientOrderDetails participant profiles error:", e);
+        if (!isMountedRef.current) return;
+        setDriverProfile(null);
+        setRestaurantProfile(
+          nextOrder.restaurant_name
+            ? {
+                user_id: String(
+                  nextOrder.restaurant_id ?? nextOrder.restaurant_user_id ?? ""
+                ),
+                restaurant_name: nextOrder.restaurant_name,
+                avatar_url: null,
+              }
+            : null
+        );
+      }
+    },
+    []
+  );
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -404,6 +542,9 @@ export function ClientOrderDetailsScreen() {
             "dropoff_code",
             "payment_status",
             "driver_id",
+            "restaurant_id",
+            "restaurant_user_id",
+            "restaurant_name",
             "pickup_lat",
             "pickup_lng",
             "dropoff_lat",
@@ -435,6 +576,8 @@ export function ClientOrderDetailsScreen() {
         );
       }
 
+      await loadParticipantProfiles(nextOrder);
+
       if (isMountedRef.current) {
         setOrder(nextOrder);
 
@@ -452,7 +595,7 @@ export function ClientOrderDetailsScreen() {
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-  }, [orderId, ts]);
+  }, [orderId, ts, loadParticipantProfiles]);
 
   const fetchPaymentStatusOnly = useCallback(async () => {
     const {
@@ -1137,6 +1280,120 @@ export function ClientOrderDetailsScreen() {
     </View>
   );
 
+
+  const ProfileAvatar = ({
+    name,
+    avatarUrl,
+    fallback,
+    borderColor,
+  }: {
+    name: string | null | undefined;
+    avatarUrl?: string | null;
+    fallback: string;
+    borderColor: string;
+  }) => {
+    const uri = normalizeAvatarUrl(avatarUrl);
+    const initialsText = getInitials(name, fallback);
+
+    if (uri) {
+      return (
+        <Image
+          source={{ uri }}
+          style={{
+            width: 46,
+            height: 46,
+            borderRadius: 23,
+            borderWidth: 1,
+            borderColor,
+            backgroundColor: "#0B1220",
+          }}
+        />
+      );
+    }
+
+    return (
+      <View
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 23,
+          borderWidth: 1,
+          borderColor,
+          backgroundColor: "rgba(15,23,42,0.95)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 13 }}>
+          {initialsText}
+        </Text>
+      </View>
+    );
+  };
+
+  const ParticipantCard = ({
+    roleIcon,
+    title,
+    name,
+    avatarUrl,
+    status,
+    accent,
+    children,
+  }: {
+    roleIcon: string;
+    title: string;
+    name: string;
+    avatarUrl?: string | null;
+    status: string;
+    accent: string;
+    children?: React.ReactNode;
+  }) => (
+    <View
+      style={{
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: "rgba(148,163,184,0.14)",
+        backgroundColor: "rgba(15,23,42,0.45)",
+        padding: 12,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+        <ProfileAvatar
+          name={name}
+          avatarUrl={avatarUrl}
+          fallback={roleIcon === "🚚" ? "DR" : roleIcon === "🍽️" ? "RS" : "AD"}
+          borderColor={accent}
+        />
+
+        <View style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 14 }}
+          >
+            {roleIcon} {title}
+          </Text>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: "white", fontWeight: "900", fontSize: 15, marginTop: 3 }}
+          >
+            {name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: accent, fontWeight: "800", fontSize: 11, marginTop: 3 }}
+          >
+            {status}
+          </Text>
+        </View>
+      </View>
+
+      {children}
+    </View>
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar barStyle="light-content" />
@@ -1567,19 +1824,18 @@ export function ClientOrderDetailsScreen() {
               </Text>
 
               <View style={{ gap: 10 }}>
-                <View
-                  style={{
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: "rgba(148,163,184,0.14)",
-                    backgroundColor: "rgba(15,23,42,0.45)",
-                    padding: 12,
-                  }}
+                <ParticipantCard
+                  roleIcon="🍽️"
+                  title={ts("client.orderDetails.restaurantContact", "Restaurant")}
+                  name={
+                    restaurantProfile?.restaurant_name ??
+                    order.restaurant_name ??
+                    ts("client.orderDetails.restaurantContact", "Restaurant")
+                  }
+                  avatarUrl={restaurantProfile?.avatar_url ?? null}
+                  status={ts("client.orderDetails.restaurantVisible", "Restaurant profile visible")}
+                  accent="#FBBF24"
                 >
-                  <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
-                    🍽️ {ts("client.orderDetails.restaurantContact", "Restaurant")}
-                  </Text>
-
                   <View style={{ flexDirection: "row", gap: 10 }}>
                     <TouchableOpacity
                       disabled={communicationDisabled}
@@ -1622,21 +1878,25 @@ export function ClientOrderDetailsScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </ParticipantCard>
 
-                <View
-                  style={{
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: "rgba(148,163,184,0.14)",
-                    backgroundColor: "rgba(15,23,42,0.45)",
-                    padding: 12,
-                  }}
+                <ParticipantCard
+                  roleIcon="🚚"
+                  title={ts("client.orderDetails.driverContact", "Driver")}
+                  name={
+                    driverProfile?.full_name ??
+                    (order.driver_id
+                      ? ts("client.orderDetails.driverAssigned", "Assigned driver")
+                      : ts("client.orderDetails.driverPending", "Not assigned yet"))
+                  }
+                  avatarUrl={driverProfile?.avatar_url ?? null}
+                  status={
+                    order.driver_id
+                      ? ts("client.orderDetails.driverAssigned", "Assigned ✅")
+                      : ts("client.orderDetails.driverPending", "Not assigned yet")
+                  }
+                  accent={order.driver_id ? "#38BDF8" : "#94A3B8"}
                 >
-                  <Text style={{ color: "#E5E7EB", fontWeight: "900", marginBottom: 10 }}>
-                    🚚 {ts("client.orderDetails.driverContact", "Driver")}
-                  </Text>
-
                   {!order.driver_id ? (
                     <Text style={{ color: "#94A3B8", fontSize: 12 }}>
                       {ts("client.orderDetails.driverPending", "Not assigned yet")}
@@ -1685,7 +1945,7 @@ export function ClientOrderDetailsScreen() {
                       </TouchableOpacity>
                     </View>
                   )}
-                </View>
+                </ParticipantCard>
 
                 <View
                   style={{
