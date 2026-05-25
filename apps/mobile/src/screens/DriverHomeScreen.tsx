@@ -44,6 +44,8 @@ type AnyNav = NativeStackNavigationProp<any>;
 
 type OrderStatus =
   | "pending"
+  | "paid_pending"
+  | "processing_pending"
   | "accepted"
   | "prepared"
   | "ready"
@@ -204,11 +206,19 @@ function milesBetween(lat1: number, lng1: number, lat2: number, lng2: number) {
 
 function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined) {
   if (!order) return false;
+
   const kind = normalizeKind(order.kind);
   const status = normalizeStatus(order.status);
+
   if (kind === "food") return status === "ready";
   if (kind === "pickup_dropoff") return status === "pending";
-  if (kind === "delivery") return status === "pending";
+
+  // MMD Delivery requests can come from delivery_requests with different paid states.
+  // They must be visible once paid and unassigned, not only when status === "pending".
+  if (kind === "delivery") {
+    return status === "pending" || status === "paid_pending" || status === "processing_pending";
+  }
+
   return false;
 }
 
@@ -797,7 +807,7 @@ export function DriverHomeScreen() {
           .select(
             `id, kind, status, created_at,
              restaurant_name, pickup_address, dropoff_address,
-             distance_miles, delivery_fee, driver_delivery_payout, total,
+             distance_miles, driver_delivery_payout,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
           )
           .in("status", ["pending", "ready"])
@@ -813,12 +823,12 @@ export function DriverHomeScreen() {
           .select(
             `id, kind, status, created_at,
              pickup_address, dropoff_address,
-             distance_miles, delivery_fee, total,
+             distance_miles,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
           )
-          .eq("status", "pending")
-          .eq("payment_status", "paid")
-          .eq("kind", "delivery")
+          .in("status", ["pending", "paid_pending", "processing_pending"])
+          .or("payment_status.eq.paid,status.eq.paid_pending,status.eq.processing_pending")
+          .or("kind.eq.delivery,kind.is.null")
           .is("driver_id", null)
           .order("created_at", { ascending: false });
 
@@ -830,7 +840,7 @@ export function DriverHomeScreen() {
           .select(
             `id, kind, status, created_at,
              restaurant_name, pickup_address, dropoff_address,
-             distance_miles, delivery_fee, driver_delivery_payout, total,
+             distance_miles, driver_delivery_payout,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
           )
           .eq("driver_id", driverId)
@@ -845,7 +855,7 @@ export function DriverHomeScreen() {
           .select(
             `id, kind, status, created_at,
              pickup_address, dropoff_address,
-             distance_miles, delivery_fee, total,
+             distance_miles,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
           )
           .eq("driver_id", driverId)
@@ -869,9 +879,9 @@ export function DriverHomeScreen() {
           pickup_address: request.pickup_address ?? null,
           dropoff_address: request.dropoff_address ?? null,
           distance_miles: typeof request.distance_miles === "number" ? request.distance_miles : null,
-          delivery_fee: typeof request.delivery_fee === "number" ? request.delivery_fee : null,
+          delivery_fee: null,
           driver_delivery_payout: null,
-          total: typeof request.total === "number" ? request.total : null,
+          total: null,
           pickup_lat: typeof request.pickup_lat === "number" ? request.pickup_lat : null,
           pickup_lng: typeof request.pickup_lng === "number" ? request.pickup_lng : null,
           dropoff_lat: typeof request.dropoff_lat === "number" ? request.dropoff_lat : null,
@@ -893,9 +903,9 @@ export function DriverHomeScreen() {
           pickup_address: request.pickup_address ?? null,
           dropoff_address: request.dropoff_address ?? null,
           distance_miles: typeof request.distance_miles === "number" ? request.distance_miles : null,
-          delivery_fee: typeof request.delivery_fee === "number" ? request.delivery_fee : null,
+          delivery_fee: null,
           driver_delivery_payout: null,
-          total: typeof request.total === "number" ? request.total : null,
+          total: null,
           pickup_lat: typeof request.pickup_lat === "number" ? request.pickup_lat : null,
           pickup_lng: typeof request.pickup_lng === "number" ? request.pickup_lng : null,
           dropoff_lat: typeof request.dropoff_lat === "number" ? request.dropoff_lat : null,
@@ -944,7 +954,9 @@ export function DriverHomeScreen() {
             return null;
           }
           if (prev) {
-            const stillExists = visibleAvailable.find((o) => o.id === prev.id);
+            const stillExists = visibleAvailable.find(
+              (o) => o.id === prev.id && (o.source_table ?? "orders") === (prev.source_table ?? "orders"),
+            );
             if (stillExists) return stillExists;
           }
           const nextOffer = visibleAvailable[0] ?? null;
@@ -1097,6 +1109,8 @@ export function DriverHomeScreen() {
     (status: OrderStatus) => {
       switch (status) {
         case "pending":
+        case "paid_pending":
+        case "processing_pending":
           return t("driver.home.status.pending", "En attente");
         case "accepted":
           return t("driver.home.status.accepted", "Acceptée");
@@ -1233,9 +1247,9 @@ export function DriverHomeScreen() {
       return;
     }
 
-    if (lastOfferIdRef.current === activeOffer.id && soundRef.current) return;
+    if (lastOfferIdRef.current === `${activeOffer.source_table ?? "orders"}:${activeOffer.id}` && soundRef.current) return;
 
-    lastOfferIdRef.current = activeOffer.id;
+    lastOfferIdRef.current = `${activeOffer.source_table ?? "orders"}:${activeOffer.id}`;
 
     let cancelled = false;
 
@@ -1252,7 +1266,7 @@ export function DriverHomeScreen() {
           },
         );
 
-        if (cancelled || !mountedRef.current || lastOfferIdRef.current !== activeOffer.id) {
+        if (cancelled || !mountedRef.current || lastOfferIdRef.current !== `${activeOffer.source_table ?? "orders"}:${activeOffer.id}`) {
           await sound.unloadAsync().catch(() => {});
           return;
         }
@@ -1307,7 +1321,7 @@ export function DriverHomeScreen() {
       cancelled = true;
       void stopSound();
     };
-  }, [activeOffer?.id, stopSound]);
+  }, [activeOffer?.id, activeOffer?.source_table, stopSound]);
 
   const toggleOnline = useCallback(async () => {
     hapticLight();
@@ -1690,7 +1704,7 @@ export function DriverHomeScreen() {
                   <FlatList
                     style={styles.ordersScroll}
                     data={myOrders}
-                    keyExtractor={(order) => order.id}
+                    keyExtractor={(order) => `${order.source_table ?? "orders"}:${order.id}`}
                     renderItem={({ item: order }) => (
                       <OrderRow
                         order={order}

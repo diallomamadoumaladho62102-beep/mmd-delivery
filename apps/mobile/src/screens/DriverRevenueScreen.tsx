@@ -21,8 +21,6 @@ type OrderRow = {
   status: string | null;
   driver_id: string | null;
   driver_delivery_payout: number | null;
-  delivery_fee: number | null;
-  total: number | null;
   tip_cents?: number | null;
   kind: string | null;
   restaurant_name: string | null;
@@ -77,8 +75,11 @@ function fmtMoney(n: number) {
 }
 
 function getGain(o: OrderRow) {
-  const g = o.driver_delivery_payout ?? o.delivery_fee ?? o.total ?? 0;
-  return Number.isFinite(Number(g)) ? Number(g) : 0;
+  // Production privacy rule:
+  // Driver revenue must be based only on the driver's payout.
+  // Never fall back to delivery_fee or total because those are customer-facing amounts.
+  const payout = o.driver_delivery_payout;
+  return typeof payout === "number" && Number.isFinite(payout) ? payout : 0;
 }
 
 function getTip(o: OrderRow) {
@@ -183,7 +184,7 @@ export function DriverRevenueScreen() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, created_at, status, driver_id, driver_delivery_payout, delivery_fee, total, tip_cents, kind, restaurant_name",
+          "id, created_at, status, driver_id, driver_delivery_payout, tip_cents, kind, restaurant_name",
         )
         .eq("driver_id", uid)
         .eq("status", "delivered")

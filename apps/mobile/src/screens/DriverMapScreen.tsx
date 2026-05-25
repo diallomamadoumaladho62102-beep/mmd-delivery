@@ -1,4 +1,10 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   SafeAreaView,
   View,
@@ -49,9 +55,10 @@ if (MAPBOX_TOKEN) {
   console.log("[DriverMapScreen] EXPO_PUBLIC_MAPBOX_TOKEN manquant");
 }
 
-
 type OrderStatus =
   | "pending"
+  | "paid_pending"
+  | "processing_pending"
   | "accepted"
   | "prepared"
   | "ready"
@@ -61,8 +68,11 @@ type OrderStatus =
 
 type OrderKind = "pickup_dropoff" | "food" | string;
 
+type OrderSourceTable = "orders" | "delivery_requests";
+
 type DriverOrder = {
   id: string;
+  source_table: OrderSourceTable;
   kind: OrderKind;
   status: OrderStatus;
   created_at: string | null;
@@ -70,9 +80,7 @@ type DriverOrder = {
   pickup_address: string | null;
   dropoff_address: string | null;
   distance_miles: number | null;
-  delivery_fee: number | null;
   driver_delivery_payout: number | null;
-  total: number | null;
 };
 
 type ZoneActivity = "calm" | "normal" | "busy" | "very_busy";
@@ -255,7 +263,12 @@ function getZoneColors(activity: ZoneActivity) {
   }
 }
 
-function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function distanceMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -276,11 +289,21 @@ function formatMoney(value: number | null | undefined) {
   return `${value.toFixed(2)} USD`;
 }
 
+function getSafeDriverPayout(
+  order: Pick<DriverOrder, "driver_delivery_payout"> | null | undefined,
+) {
+  const payout = order?.driver_delivery_payout;
+  return typeof payout === "number" && Number.isFinite(payout) ? payout : null;
+}
+
+function getOrderCompositeKey(order: Pick<DriverOrder, "id" | "source_table">) {
+  return `${order.source_table}:${order.id}`;
+}
+
 function formatMiles(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "—";
   return `${value.toFixed(2)} mi`;
 }
-
 
 function isValidCoordinate(latValue: unknown, lngValue: unknown) {
   const lat = Number(latValue);
@@ -365,13 +388,16 @@ export default function DriverMapScreen() {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
 
-  const [incomingOrder, setIncomingOrder] = useState<IncomingOrderBanner | null>(null);
+  const [incomingOrder, setIncomingOrder] =
+    useState<IncomingOrderBanner | null>(null);
   const [incomingTimer, setIncomingTimer] = useState(0);
 
   const [isNightMode, setIsNightMode] = useState(false);
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
-  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
+    null,
+  );
   const hasCenteredOnDriverRef = useRef(false);
 
   const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
@@ -384,7 +410,8 @@ export default function DriverMapScreen() {
 
   const animateSheet = useCallback(
     (target: "collapsed" | "expanded") => {
-      const toValue = target === "collapsed" ? SHEET_COLLAPSED_TOP : SHEET_EXPANDED_TOP;
+      const toValue =
+        target === "collapsed" ? SHEET_COLLAPSED_TOP : SHEET_EXPANDED_TOP;
       sheetState.current = target;
 
       Animated.spring(sheetTop, {
@@ -394,18 +421,24 @@ export default function DriverMapScreen() {
         friction: 10,
       }).start();
     },
-    [sheetTop]
+    [sheetTop],
   );
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dy) > 10,
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dy) > 10,
       onPanResponderMove: (_, gestureState) => {
         const currentTop =
-          sheetState.current === "collapsed" ? SHEET_COLLAPSED_TOP : SHEET_EXPANDED_TOP;
+          sheetState.current === "collapsed"
+            ? SHEET_COLLAPSED_TOP
+            : SHEET_EXPANDED_TOP;
 
         let newTop = currentTop + gestureState.dy;
-        newTop = Math.max(SHEET_EXPANDED_TOP, Math.min(SHEET_COLLAPSED_TOP, newTop));
+        newTop = Math.max(
+          SHEET_EXPANDED_TOP,
+          Math.min(SHEET_COLLAPSED_TOP, newTop),
+        );
         sheetTop.setValue(newTop);
       },
       onPanResponderRelease: (_, gestureState) => {
@@ -421,18 +454,24 @@ export default function DriverMapScreen() {
           return;
         }
 
-        const currentValue = (sheetTop as any).__getValue?.() ?? SHEET_COLLAPSED_TOP;
+        const currentValue =
+          (sheetTop as any).__getValue?.() ?? SHEET_COLLAPSED_TOP;
         const midpoint = (SHEET_EXPANDED_TOP + SHEET_COLLAPSED_TOP) / 2;
         animateSheet(currentValue < midpoint ? "expanded" : "collapsed");
       },
-    })
+    }),
   ).current;
 
   const nearbyRestaurantCount = useMemo(() => {
     if (!hasLocation) return 0;
 
     return restaurants.filter((r) => {
-      const dist = distanceMeters(region.latitude, region.longitude, r.latitude, r.longitude);
+      const dist = distanceMeters(
+        region.latitude,
+        region.longitude,
+        r.latitude,
+        r.longitude,
+      );
       return dist < 2500;
     }).length;
   }, [hasLocation, restaurants, region.latitude, region.longitude]);
@@ -447,7 +486,7 @@ export default function DriverMapScreen() {
           region.latitude,
           region.longitude,
           restaurant.latitude,
-          restaurant.longitude
+          restaurant.longitude,
         ),
       }))
       .filter((restaurant) => restaurant.distanceFromDriver < 2500)
@@ -478,7 +517,9 @@ export default function DriverMapScreen() {
     return "Calme";
   }, [zoneOpportunityScore]);
 
-  const statusTitle = isOnline ? t("driver.map.online") : t("driver.map.offline");
+  const statusTitle = isOnline
+    ? t("driver.map.online")
+    : t("driver.map.offline");
 
   const statusSubtitle = isOnline
     ? t("driver.map.statusOnlineSubtitle")
@@ -487,9 +528,14 @@ export default function DriverMapScreen() {
       : t("driver.map.statusOfflineSubtitleNoLocation");
 
   const boostMultiplier =
-    currentZone?.activity === "very_busy" ? 1.6 : currentZone?.activity === "busy" ? 1.3 : 1.0;
+    currentZone?.activity === "very_busy"
+      ? 1.6
+      : currentZone?.activity === "busy"
+        ? 1.3
+        : 1.0;
 
-  const boostLabelGlobal = boostMultiplier > 1 ? `x${boostMultiplier.toFixed(1)}` : null;
+  const boostLabelGlobal =
+    boostMultiplier > 1 ? `x${boostMultiplier.toFixed(1)}` : null;
 
   const sheetSummaryCardColor = isOnline ? "#031A12" : "#1A0B0F";
 
@@ -536,7 +582,7 @@ export default function DriverMapScreen() {
           }));
 
           setHasLocation(true);
-        }
+        },
       );
     } catch (e: any) {
       console.log("Erreur DriverMapScreen:", e);
@@ -608,7 +654,10 @@ export default function DriverMapScreen() {
         const { data, error } = await supabase.auth.getUser();
 
         if (error || !data?.user) {
-          console.log("🚫 Impossible de récupérer l'utilisateur (driver)", error);
+          console.log(
+            "🚫 Impossible de récupérer l'utilisateur (driver)",
+            error,
+          );
           return;
         }
 
@@ -652,7 +701,8 @@ export default function DriverMapScreen() {
       if (assignedOrderIds.length > 0) {
         const { data, error } = await supabase
           .from("orders")
-          .select(`
+          .select(
+            `
             id,
             kind,
             status,
@@ -661,25 +711,31 @@ export default function DriverMapScreen() {
             pickup_address,
             dropoff_address,
             distance_miles,
-            delivery_fee,
-            driver_delivery_payout,
-            total
-          `)
+            driver_delivery_payout
+          `,
+          )
           .in("id", assignedOrderIds)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
 
-        assignedOrders = (data as DriverOrder[]) ?? [];
+        assignedOrders = (
+          (data as Omit<DriverOrder, "source_table">[]) ?? []
+        ).map((order) => ({
+          ...order,
+          source_table: "orders" as const,
+        }));
       }
 
       // 2) Commandes disponibles depuis la table orders :
       // - commandes restaurant prêtes : status = ready
       // - demandes pickup/dropoff : status = pending + kind = pickup_dropoff
       // Important : orders.kind est un enum et n'accepte pas "delivery".
-      const { data: availableOrdersData, error: availableOrdersError } = await supabase
-        .from("orders")
-        .select(`
+      const { data: availableOrdersData, error: availableOrdersError } =
+        await supabase
+          .from("orders")
+          .select(
+            `
           id,
           kind,
           status,
@@ -688,62 +744,78 @@ export default function DriverMapScreen() {
           pickup_address,
           dropoff_address,
           distance_miles,
-          delivery_fee,
-          driver_delivery_payout,
-          total
-        `)
-        .is("driver_id", null)
-        .or("status.eq.ready,and(status.eq.pending,kind.eq.pickup_dropoff)")
-        .order("created_at", { ascending: false });
+          driver_delivery_payout
+        `,
+          )
+          .is("driver_id", null)
+          .or("status.eq.ready,and(status.eq.pending,kind.eq.pickup_dropoff)")
+          .order("created_at", { ascending: false });
 
       if (availableOrdersError) throw availableOrdersError;
 
-      const availableOrders = (availableOrdersData as DriverOrder[]) ?? [];
+      const availableOrders: DriverOrder[] = (
+        (availableOrdersData as Omit<DriverOrder, "source_table">[]) ?? []
+      ).map((order) => ({
+        ...order,
+        source_table: "orders" as const,
+      }));
 
       // 3) Demandes MMD Delivery disponibles depuis delivery_requests :
       // - la table delivery_requests utilise kind = delivery
-      // - seules les demandes payées, non assignées et encore pending sont proposées aux drivers
-      const { data: deliveryRequestsData, error: deliveryRequestsError } = await supabase
-        .from("delivery_requests")
-        .select(`
+      // - demandes payées/non assignées visibles même si le statut client est encore paid_pending/processing_pending
+      const { data: deliveryRequestsData, error: deliveryRequestsError } =
+        await supabase
+          .from("delivery_requests")
+          .select(
+            `
           id,
           kind,
           status,
           created_at,
           pickup_address,
           dropoff_address,
-          distance_miles,
-          delivery_fee,
-          total
-        `)
-        .eq("status", "pending")
-        .eq("payment_status", "paid")
-        .eq("kind", "delivery")
-        .is("driver_id", null)
-        .order("created_at", { ascending: false });
+          distance_miles
+        `,
+          )
+          .in("status", ["pending", "paid_pending", "processing_pending"])
+          .eq("payment_status", "paid")
+          .eq("kind", "delivery")
+          .is("driver_id", null)
+          .order("created_at", { ascending: false });
 
       if (deliveryRequestsError) throw deliveryRequestsError;
 
-      const availableDeliveryRequests: DriverOrder[] = ((deliveryRequestsData as any[]) ?? []).map(
-        (request) => ({
-          id: String(request.id),
-          kind: String(request.kind ?? "delivery"),
-          status: String(request.status ?? "pending") as OrderStatus,
-          created_at: request.created_at ?? null,
-          restaurant_name: null,
-          pickup_address: request.pickup_address ?? null,
-          dropoff_address: request.dropoff_address ?? null,
-          distance_miles:
-            typeof request.distance_miles === "number" ? request.distance_miles : null,
-          delivery_fee: typeof request.delivery_fee === "number" ? request.delivery_fee : null,
-          driver_delivery_payout: null,
-          total: typeof request.total === "number" ? request.total : null,
-        })
-      );
+      const availableDeliveryRequests: DriverOrder[] = (
+        (deliveryRequestsData as any[]) ?? []
+      ).map((request) => ({
+        id: String(request.id),
+        kind: String(request.kind ?? "delivery"),
+        status: String(request.status ?? "pending") as OrderStatus,
+        created_at: request.created_at ?? null,
+        restaurant_name: null,
+        pickup_address: request.pickup_address ?? null,
+        dropoff_address: request.dropoff_address ?? null,
+        distance_miles:
+          typeof request.distance_miles === "number"
+            ? request.distance_miles
+            : null,
+        driver_delivery_payout: null,
+        source_table: "delivery_requests" as const,
+      }));
 
-      // 4) Fusion sans doublons
-      const merged = [...assignedOrders, ...availableOrders, ...availableDeliveryRequests];
-      const uniqueOrders = Array.from(new Map(merged.map((order) => [order.id, order])).values());
+      // 4) Fusion sans doublons multi-table.
+      // Important: orders.id and delivery_requests.id can be identical, so the source table
+      // must be part of the key to avoid hiding a valid order.
+      const merged = [
+        ...assignedOrders,
+        ...availableOrders,
+        ...availableDeliveryRequests,
+      ];
+      const uniqueOrders = Array.from(
+        new Map(
+          merged.map((order) => [getOrderCompositeKey(order), order]),
+        ).values(),
+      );
 
       setDriverOrders(uniqueOrders);
     } catch (e: any) {
@@ -770,7 +842,9 @@ export default function DriverMapScreen() {
 
         const response = await supabase
           .from("restaurant_profiles")
-          .select("user_id, restaurant_name, location_lat, location_lng, status, is_accepting_orders")
+          .select(
+            "user_id, restaurant_name, location_lat, location_lng, status, is_accepting_orders",
+          )
           .eq("status", "approved")
           .eq("is_accepting_orders", true)
           .limit(150);
@@ -833,7 +907,12 @@ export default function DriverMapScreen() {
     let bestDist = Infinity;
 
     for (const zone of DRIVER_ZONES) {
-      const d = distanceMeters(region.latitude, region.longitude, zone.center.lat, zone.center.lng);
+      const d = distanceMeters(
+        region.latitude,
+        region.longitude,
+        zone.center.lat,
+        zone.center.lng,
+      );
 
       if (d < zone.radiusMeters && d < bestDist) {
         bestDist = d;
@@ -887,7 +966,8 @@ export default function DriverMapScreen() {
 
   function triggerTestIncomingOrder() {
     const surgeLabel =
-      currentZone && (currentZone.activity === "busy" || currentZone.activity === "very_busy")
+      currentZone &&
+      (currentZone.activity === "busy" || currentZone.activity === "very_busy")
         ? currentZone.activity === "very_busy"
           ? "x1.6"
           : "x1.3"
@@ -926,6 +1006,8 @@ export default function DriverMapScreen() {
   function formatStatus(status: OrderStatus) {
     switch (status) {
       case "pending":
+      case "paid_pending":
+      case "processing_pending":
         return t("driver.map.status.pending");
       case "accepted":
         return t("driver.map.status.accepted");
@@ -952,6 +1034,8 @@ export default function DriverMapScreen() {
     }
 
     if (kind === "pickup_dropoff") return t("driver.map.kind.pickup_dropoff");
+    if (kind === "delivery")
+      return t("driver.map.kind.delivery", "MMD Delivery");
 
     return kind;
   }
@@ -971,13 +1055,15 @@ export default function DriverMapScreen() {
   }
 
   function renderOrderCard(order: DriverOrder) {
-    const gain = order.driver_delivery_payout ?? order.delivery_fee ?? order.total;
+    const gain = getSafeDriverPayout(order);
     const statusColor =
       order.status === "delivered"
         ? "#22C55E"
         : order.status === "dispatched"
           ? "#FBBF24"
-          : order.status === "accepted" || order.status === "prepared" || order.status === "ready"
+          : order.status === "accepted" ||
+              order.status === "prepared" ||
+              order.status === "ready"
             ? "#93C5FD"
             : order.status === "canceled"
               ? "#FB7185"
@@ -985,7 +1071,7 @@ export default function DriverMapScreen() {
 
     return (
       <TouchableOpacity
-        key={order.id}
+        key={getOrderCompositeKey(order)}
         onPress={() => handleOpenOrder(order.id)}
         activeOpacity={0.9}
         style={{
@@ -1036,7 +1122,14 @@ export default function DriverMapScreen() {
           </View>
         </View>
 
-        <Text style={{ color: "#7DD3FC", fontSize: 12, fontWeight: "600", marginBottom: 3 }}>
+        <Text
+          style={{
+            color: "#7DD3FC",
+            fontSize: 12,
+            fontWeight: "600",
+            marginBottom: 3,
+          }}
+        >
           {formatKind(order.kind, order.restaurant_name)}
         </Text>
 
@@ -1052,7 +1145,12 @@ export default function DriverMapScreen() {
         </Text>
 
         <Text
-          style={{ color: "#94A3B8", fontSize: 11, marginTop: 3, marginBottom: 8 }}
+          style={{
+            color: "#94A3B8",
+            fontSize: 11,
+            marginTop: 3,
+            marginBottom: 8,
+          }}
           numberOfLines={1}
         >
           {t("driver.map.orderCard.dropoffLabel")}{" "}
@@ -1113,7 +1211,9 @@ export default function DriverMapScreen() {
 
       <View style={{ flex: 1 }}>
         {loading && !hasLocation ? (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
             <View
               style={{
                 paddingHorizontal: 22,
@@ -1127,7 +1227,14 @@ export default function DriverMapScreen() {
             >
               <ActivityIndicator size="large" color="#60A5FA" />
 
-              <Text style={{ color: "#E2E8F0", fontSize: 13, marginTop: 10, fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: "#E2E8F0",
+                  fontSize: 13,
+                  marginTop: 10,
+                  fontWeight: "700",
+                }}
+              >
                 {t("driver.map.locating")}
               </Text>
 
@@ -1197,9 +1304,8 @@ export default function DriverMapScreen() {
               )}
 
               {DRIVER_ZONES.map((zone) => {
-                const { strokeColor, fillColor, labelColor, haloColor } = getZoneColors(
-                  zone.activity
-                );
+                const { strokeColor, fillColor, labelColor, haloColor } =
+                  getZoneColors(zone.activity);
 
                 return (
                   <React.Fragment key={zone.id}>
@@ -1223,19 +1329,24 @@ export default function DriverMapScreen() {
                         }}
                       />
                     </Mapbox.ShapeSource>
-
                   </React.Fragment>
                 );
               })}
 
               {nearbyRestaurants.map((resto) => {
                 const dist = hasLocation
-                  ? distanceMeters(region.latitude, region.longitude, resto.latitude, resto.longitude)
+                  ? distanceMeters(
+                      region.latitude,
+                      region.longitude,
+                      resto.latitude,
+                      resto.longitude,
+                    )
                   : Infinity;
 
                 const inBusyZone =
                   currentZone &&
-                  (currentZone.activity === "busy" || currentZone.activity === "very_busy");
+                  (currentZone.activity === "busy" ||
+                    currentZone.activity === "very_busy");
 
                 const isClose = dist < 2500;
                 const isBoosted = !!inBusyZone && isClose;
@@ -1290,10 +1401,18 @@ export default function DriverMapScreen() {
                               height: "100%",
                               alignItems: "center",
                               justifyContent: "center",
-                              backgroundColor: isBoosted ? "#EA580C" : "#F97316",
+                              backgroundColor: isBoosted
+                                ? "#EA580C"
+                                : "#F97316",
                             }}
                           >
-                            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
+                            <Text
+                              style={{
+                                color: "#FFFFFF",
+                                fontSize: 15,
+                                fontWeight: "900",
+                              }}
+                            >
                               {isBoosted ? "🔥" : "R"}
                             </Text>
                           </View>
@@ -1309,7 +1428,9 @@ export default function DriverMapScreen() {
                           borderRadius: 999,
                           backgroundColor: "rgba(2,6,23,0.9)",
                           borderWidth: 1,
-                          borderColor: isBoosted ? "rgba(249,115,22,0.55)" : "rgba(148,163,184,0.25)",
+                          borderColor: isBoosted
+                            ? "rgba(249,115,22,0.55)"
+                            : "rgba(148,163,184,0.25)",
                           flexDirection: "row",
                           alignItems: "center",
                         }}
@@ -1379,8 +1500,19 @@ export default function DriverMapScreen() {
                   borderColor: "rgba(71,85,105,0.55)",
                 }}
               >
-                <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}>ZONE</Text>
-                <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
+                <Text
+                  style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}
+                >
+                  ZONE
+                </Text>
+                <Text
+                  style={{
+                    color: "#F8FAFC",
+                    fontSize: 12,
+                    fontWeight: "900",
+                    marginTop: 2,
+                  }}
+                >
                   {currentZone?.name ?? "Live area"}
                 </Text>
               </View>
@@ -1395,10 +1527,19 @@ export default function DriverMapScreen() {
                   borderColor: "rgba(71,85,105,0.55)",
                 }}
               >
-                <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}>
+                <Text
+                  style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}
+                >
                   PREMIUM
                 </Text>
-                <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
+                <Text
+                  style={{
+                    color: "#F8FAFC",
+                    fontSize: 12,
+                    fontWeight: "900",
+                    marginTop: 2,
+                  }}
+                >
                   {zoneOpportunityLabel} · {zoneOpportunityScore}%
                 </Text>
               </View>
@@ -1414,8 +1555,23 @@ export default function DriverMapScreen() {
                     borderColor: "rgba(251,191,36,0.28)",
                   }}
                 >
-                  <Text style={{ color: "#FCD34D", fontSize: 10, fontWeight: "800" }}>BOOST</Text>
-                  <Text style={{ color: "#FEF3C7", fontSize: 12, fontWeight: "900", marginTop: 2 }}>
+                  <Text
+                    style={{
+                      color: "#FCD34D",
+                      fontSize: 10,
+                      fontWeight: "800",
+                    }}
+                  >
+                    BOOST
+                  </Text>
+                  <Text
+                    style={{
+                      color: "#FEF3C7",
+                      fontSize: 12,
+                      fontWeight: "900",
+                      marginTop: 2,
+                    }}
+                  >
                     {boostLabelGlobal}
                   </Text>
                 </View>
@@ -1457,11 +1613,19 @@ export default function DriverMapScreen() {
                     }}
                   >
                     <View>
-                      <Text style={{ color: "#F8FAFC", fontSize: 14, fontWeight: "900" }}>
+                      <Text
+                        style={{
+                          color: "#F8FAFC",
+                          fontSize: 14,
+                          fontWeight: "900",
+                        }}
+                      >
                         {t("driver.map.incoming.title")}
                       </Text>
 
-                      <Text style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}>
+                      <Text
+                        style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}
+                      >
                         Nouvelle opportunité premium
                       </Text>
                     </View>
@@ -1476,22 +1640,43 @@ export default function DriverMapScreen() {
                         borderColor: "#F97316",
                       }}
                     >
-                      <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "900" }}>
+                      <Text
+                        style={{
+                          color: "#FDBA74",
+                          fontSize: 11,
+                          fontWeight: "900",
+                        }}
+                      >
                         {incomingTimer}s
                       </Text>
                     </View>
                   </View>
 
-                  <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "700", marginBottom: 3 }}>
+                  <Text
+                    style={{
+                      color: "#E5E7EB",
+                      fontSize: 13,
+                      fontWeight: "700",
+                      marginBottom: 3,
+                    }}
+                  >
                     {incomingOrder.restaurantName}
                   </Text>
 
-                  <Text style={{ color: "#9CA3AF", fontSize: 11 }} numberOfLines={1}>
-                    {t("driver.map.incoming.pickup")} {incomingOrder.pickupAddress}
+                  <Text
+                    style={{ color: "#9CA3AF", fontSize: 11 }}
+                    numberOfLines={1}
+                  >
+                    {t("driver.map.incoming.pickup")}{" "}
+                    {incomingOrder.pickupAddress}
                   </Text>
 
-                  <Text style={{ color: "#9CA3AF", fontSize: 11, marginTop: 2 }} numberOfLines={1}>
-                    {t("driver.map.incoming.dropoff")} {incomingOrder.dropoffAddress}
+                  <Text
+                    style={{ color: "#9CA3AF", fontSize: 11, marginTop: 2 }}
+                    numberOfLines={1}
+                  >
+                    {t("driver.map.incoming.dropoff")}{" "}
+                    {incomingOrder.dropoffAddress}
                   </Text>
 
                   <View
@@ -1511,12 +1696,21 @@ export default function DriverMapScreen() {
                         backgroundColor: "rgba(15,23,42,0.9)",
                       }}
                     >
-                      <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "700" }}>
-                        {incomingOrder.distanceMiles.toFixed(1)} mi • {incomingOrder.etaMinutes} min
+                      <Text
+                        style={{
+                          color: "#F8FAFC",
+                          fontSize: 12,
+                          fontWeight: "700",
+                        }}
+                      >
+                        {incomingOrder.distanceMiles.toFixed(1)} mi •{" "}
+                        {incomingOrder.etaMinutes} min
                       </Text>
                     </View>
 
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
                       {incomingOrder.surgeLabel && (
                         <View
                           style={{
@@ -1527,7 +1721,13 @@ export default function DriverMapScreen() {
                             backgroundColor: "#FEF3C7",
                           }}
                         >
-                          <Text style={{ color: "#B45309", fontSize: 10, fontWeight: "800" }}>
+                          <Text
+                            style={{
+                              color: "#B45309",
+                              fontSize: 10,
+                              fontWeight: "800",
+                            }}
+                          >
                             {incomingOrder.surgeLabel}
                           </Text>
                         </View>
@@ -1541,7 +1741,13 @@ export default function DriverMapScreen() {
                           backgroundColor: "rgba(5,46,22,0.45)",
                         }}
                       >
-                        <Text style={{ color: "#BBF7D0", fontSize: 13, fontWeight: "900" }}>
+                        <Text
+                          style={{
+                            color: "#BBF7D0",
+                            fontSize: 13,
+                            fontWeight: "900",
+                          }}
+                        >
                           {incomingOrder.price.toFixed(2)} $
                         </Text>
                       </View>
@@ -1562,7 +1768,13 @@ export default function DriverMapScreen() {
                         alignItems: "center",
                       }}
                     >
-                      <Text style={{ color: "#FECDD3", fontSize: 13, fontWeight: "800" }}>
+                      <Text
+                        style={{
+                          color: "#FECDD3",
+                          fontSize: 13,
+                          fontWeight: "800",
+                        }}
+                      >
                         {t("driver.map.incoming.decline")}
                       </Text>
                     </TouchableOpacity>
@@ -1582,7 +1794,13 @@ export default function DriverMapScreen() {
                         shadowOffset: { width: 0, height: 4 },
                       }}
                     >
-                      <Text style={{ color: "#052E16", fontSize: 13, fontWeight: "900" }}>
+                      <Text
+                        style={{
+                          color: "#052E16",
+                          fontSize: 13,
+                          fontWeight: "900",
+                        }}
+                      >
                         {t("driver.map.incoming.accept")}
                       </Text>
                     </TouchableOpacity>
@@ -1605,14 +1823,25 @@ export default function DriverMapScreen() {
                   borderColor: "rgba(51,65,85,0.95)",
                 }}
               >
-                <Text style={{ color: "#CBD5E1", fontSize: 10, fontWeight: "700" }}>
+                <Text
+                  style={{ color: "#CBD5E1", fontSize: 10, fontWeight: "700" }}
+                >
                   {t("driver.map.restaurantsLoading")}
                 </Text>
               </View>
             )}
 
             {hasLocation && (
-              <View pointerEvents="box-none" style={{ position: "absolute", right: 18, bottom: 214, zIndex: 9998, elevation: 9998 }}>
+              <View
+                pointerEvents="box-none"
+                style={{
+                  position: "absolute",
+                  right: 18,
+                  bottom: 214,
+                  zIndex: 9998,
+                  elevation: 9998,
+                }}
+              >
                 <TouchableOpacity
                   onPress={centerOnDriver}
                   activeOpacity={0.9}
@@ -1674,7 +1903,11 @@ export default function DriverMapScreen() {
               >
                 <TouchableOpacity
                   onPress={() =>
-                    animateSheet(sheetState.current === "collapsed" ? "expanded" : "collapsed")
+                    animateSheet(
+                      sheetState.current === "collapsed"
+                        ? "expanded"
+                        : "collapsed",
+                    )
                   }
                   activeOpacity={0.7}
                   style={{ alignItems: "center", marginBottom: 12 }}
@@ -1698,11 +1931,19 @@ export default function DriverMapScreen() {
                   }}
                 >
                   <View>
-                    <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "800" }}>
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 16,
+                        fontWeight: "800",
+                      }}
+                    >
                       {t("driver.map.statusTitle")}
                     </Text>
 
-                    <Text style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}>
+                    <Text
+                      style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}
+                    >
                       Mode détection premium
                     </Text>
                   </View>
@@ -1716,7 +1957,9 @@ export default function DriverMapScreen() {
                         ? "rgba(5,46,22,0.7)"
                         : "rgba(69,10,10,0.65)",
                       borderWidth: 1,
-                      borderColor: isOnline ? "rgba(34,197,94,0.55)" : "rgba(251,113,133,0.45)",
+                      borderColor: isOnline
+                        ? "rgba(34,197,94,0.55)"
+                        : "rgba(251,113,133,0.45)",
                     }}
                   >
                     <Text
@@ -1750,10 +1993,14 @@ export default function DriverMapScreen() {
                       marginBottom: 5,
                     }}
                   >
-                    {isOnline ? t("driver.map.statusOnlineTitle") : t("driver.map.statusOfflineTitle")}
+                    {isOnline
+                      ? t("driver.map.statusOnlineTitle")
+                      : t("driver.map.statusOfflineTitle")}
                   </Text>
 
-                  <Text style={{ color: "#E2E8F0", fontSize: 11, lineHeight: 17 }}>
+                  <Text
+                    style={{ color: "#E2E8F0", fontSize: 11, lineHeight: 17 }}
+                  >
                     {statusSubtitle}
                   </Text>
                 </View>
@@ -1775,15 +2022,35 @@ export default function DriverMapScreen() {
                       borderColor: "rgba(51,65,85,0.6)",
                     }}
                   >
-                    <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
+                    <Text
+                      style={{
+                        color: "#94A3B8",
+                        fontSize: 10,
+                        fontWeight: "700",
+                      }}
+                    >
                       OPPORTUNITY SCORE
                     </Text>
 
-                    <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "900", marginTop: 4 }}>
+                    <Text
+                      style={{
+                        color: "#F8FAFC",
+                        fontSize: 18,
+                        fontWeight: "900",
+                        marginTop: 4,
+                      }}
+                    >
                       {zoneOpportunityScore}%
                     </Text>
 
-                    <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "700", marginTop: 2 }}>
+                    <Text
+                      style={{
+                        color: "#60A5FA",
+                        fontSize: 11,
+                        fontWeight: "700",
+                        marginTop: 2,
+                      }}
+                    >
                       {zoneOpportunityLabel}
                     </Text>
                   </View>
@@ -1798,11 +2065,24 @@ export default function DriverMapScreen() {
                       borderColor: "rgba(51,65,85,0.6)",
                     }}
                   >
-                    <Text style={{ color: "#94A3B8", fontSize: 10, fontWeight: "700" }}>
+                    <Text
+                      style={{
+                        color: "#94A3B8",
+                        fontSize: 10,
+                        fontWeight: "700",
+                      }}
+                    >
                       ACTIVE AREA
                     </Text>
 
-                    <Text style={{ color: "#F8FAFC", fontSize: 16, fontWeight: "900", marginTop: 4 }}>
+                    <Text
+                      style={{
+                        color: "#F8FAFC",
+                        fontSize: 16,
+                        fontWeight: "900",
+                        marginTop: 4,
+                      }}
+                    >
                       {currentZone?.name ?? "Live area"}
                     </Text>
 
@@ -1816,7 +2096,9 @@ export default function DriverMapScreen() {
                         marginTop: 2,
                       }}
                     >
-                      {currentZone ? getActivityLabel(currentZone.activity) : t("driver.map.zoneUnknown")}
+                      {currentZone
+                        ? getActivityLabel(currentZone.activity)
+                        : t("driver.map.zoneUnknown")}
                     </Text>
                   </View>
                 </View>
@@ -1853,7 +2135,9 @@ export default function DriverMapScreen() {
                           marginTop: 3,
                         }}
                       >
-                        {currentZone ? getActivityLabel(currentZone.activity) : t("driver.map.zoneUnknown")}
+                        {currentZone
+                          ? getActivityLabel(currentZone.activity)
+                          : t("driver.map.zoneUnknown")}
                       </Text>
 
                       {boostLabelGlobal && (
@@ -1869,8 +2153,16 @@ export default function DriverMapScreen() {
                             borderColor: "rgba(251,191,36,0.25)",
                           }}
                         >
-                          <Text style={{ color: "#FBBF24", fontSize: 11, fontWeight: "800" }}>
-                            {t("driver.map.bonusEstimated", { boost: boostLabelGlobal })}
+                          <Text
+                            style={{
+                              color: "#FBBF24",
+                              fontSize: 11,
+                              fontWeight: "800",
+                            }}
+                          >
+                            {t("driver.map.bonusEstimated", {
+                              boost: boostLabelGlobal,
+                            })}
                           </Text>
                         </View>
                       )}
@@ -1930,7 +2222,13 @@ export default function DriverMapScreen() {
                           borderColor: "#4B5563",
                         }}
                       >
-                        <Text style={{ color: "#CBD5E1", fontSize: 11, fontWeight: "700" }}>
+                        <Text
+                          style={{
+                            color: "#CBD5E1",
+                            fontSize: 11,
+                            fontWeight: "700",
+                          }}
+                        >
                           {t("driver.map.debug.testIncomingOrder")}
                         </Text>
                       </TouchableOpacity>
@@ -1956,11 +2254,19 @@ export default function DriverMapScreen() {
                     }}
                   >
                     <View>
-                      <Text style={{ color: "#E5E7EB", fontSize: 15, fontWeight: "800" }}>
+                      <Text
+                        style={{
+                          color: "#E5E7EB",
+                          fontSize: 15,
+                          fontWeight: "800",
+                        }}
+                      >
                         {t("driver.map.myOrders.title")}
                       </Text>
 
-                      <Text style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}>
+                      <Text
+                        style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}
+                      >
                         Historique et commandes assignées
                       </Text>
                     </View>
@@ -1978,7 +2284,13 @@ export default function DriverMapScreen() {
                         borderColor: "rgba(59,130,246,0.45)",
                       }}
                     >
-                      <Text style={{ color: "#60A5FA", fontSize: 11, fontWeight: "800" }}>
+                      <Text
+                        style={{
+                          color: "#60A5FA",
+                          fontSize: 11,
+                          fontWeight: "800",
+                        }}
+                      >
                         {ordersLoading
                           ? t("driver.map.myOrders.loading")
                           : t("shared.common.refresh", "Rafraîchir")}
@@ -1997,7 +2309,13 @@ export default function DriverMapScreen() {
                     >
                       <ActivityIndicator size="small" color="#FFFFFF" />
 
-                      <Text style={{ color: "#9CA3AF", fontSize: 11, marginLeft: 8 }}>
+                      <Text
+                        style={{
+                          color: "#9CA3AF",
+                          fontSize: 11,
+                          marginLeft: 8,
+                        }}
+                      >
                         {t("driver.map.myOrders.loading")}
                       </Text>
                     </View>
@@ -2015,7 +2333,13 @@ export default function DriverMapScreen() {
                         borderColor: "rgba(251,113,133,0.25)",
                       }}
                     >
-                      <Text style={{ color: "#FECACA", fontSize: 11, fontWeight: "600" }}>
+                      <Text
+                        style={{
+                          color: "#FECACA",
+                          fontSize: 11,
+                          fontWeight: "600",
+                        }}
+                      >
                         {ordersError}
                       </Text>
                     </View>
@@ -2035,11 +2359,23 @@ export default function DriverMapScreen() {
                           backgroundColor: "rgba(15,23,42,0.55)",
                         }}
                       >
-                        <Text style={{ color: "#CBD5E1", fontSize: 12, fontWeight: "700" }}>
+                        <Text
+                          style={{
+                            color: "#CBD5E1",
+                            fontSize: 12,
+                            fontWeight: "700",
+                          }}
+                        >
                           {t("driver.map.myOrders.emptyTitle")}
                         </Text>
 
-                        <Text style={{ color: "#6B7280", fontSize: 10, marginTop: 4 }}>
+                        <Text
+                          style={{
+                            color: "#6B7280",
+                            fontSize: 10,
+                            marginTop: 4,
+                          }}
+                        >
                           {t("driver.map.myOrders.emptySubtitle")}
                         </Text>
                       </View>
@@ -2066,7 +2402,9 @@ export default function DriverMapScreen() {
                   borderColor: "rgba(251,113,133,0.3)",
                 }}
               >
-                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "700" }}>
+                <Text
+                  style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "700" }}
+                >
                   {errorMsg}
                 </Text>
               </View>

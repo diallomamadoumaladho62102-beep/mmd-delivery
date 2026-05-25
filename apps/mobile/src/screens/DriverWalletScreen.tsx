@@ -149,7 +149,7 @@ export function DriverWalletScreen() {
 
         const { data: delivered, error: delErr } = await supabase
           .from("orders")
-          .select("driver_delivery_payout, delivery_fee, total, tip_cents, driver_payout_id")
+          .select("driver_delivery_payout, tip_cents, driver_payout_id")
           .eq("driver_id", uid)
           .eq("status", "delivered")
           .eq("driver_paid_out", false)
@@ -158,7 +158,11 @@ export function DriverWalletScreen() {
         if (delErr) throw delErr;
 
         const available = (delivered ?? []).reduce((sum, o: any) => {
-          const base = o?.driver_delivery_payout ?? o?.delivery_fee ?? o?.total ?? 0;
+          const base =
+            typeof o?.driver_delivery_payout === "number" &&
+            Number.isFinite(o.driver_delivery_payout)
+              ? o.driver_delivery_payout
+              : 0;
           const tipCents = toNumber(o?.tip_cents ?? 0);
           const tip = Math.max(0, tipCents) / 100;
           return sum + toNumber(base) + (Number.isFinite(tip) ? tip : 0);

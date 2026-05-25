@@ -60,8 +60,6 @@ type Order = {
   dropoff_address: string | null;
   distance_miles: number | null;
   eta_minutes: number | null;
-  delivery_fee: number | null;
-  platform_delivery_fee: number | null;
   driver_delivery_payout: number | null;
   driver_id: string | null;
   client_id?: string | null;
@@ -526,8 +524,6 @@ export function DriverOrderDetailsScreen() {
           dropoff_address,
           distance_miles,
           eta_minutes,
-          delivery_fee,
-          platform_delivery_fee,
           driver_delivery_payout,
           driver_id,
           client_id,
@@ -852,12 +848,14 @@ export function DriverOrderDetailsScreen() {
     setProofUploading(false);
   }
 
-  const transportFee = order?.delivery_fee ?? null;
+  // Production privacy rule:
+  // The driver must only see the exact driver payout.
+  // Do not fetch, calculate, or display customer total, delivery_fee,
+  // platform_delivery_fee, restaurant revenue, or platform revenue here.
   const driverPart =
-    order?.driver_delivery_payout != null
+    typeof order?.driver_delivery_payout === "number" &&
+    Number.isFinite(order.driver_delivery_payout)
       ? order.driver_delivery_payout
-      : transportFee != null
-      ? Math.round(transportFee * 0.8 * 100) / 100
       : null;
 
   async function takeProofPhoto() {
@@ -1906,20 +1904,6 @@ export function DriverOrderDetailsScreen() {
             </Text>
           </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginTop: 6,
-            }}
-          >
-            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {t("driver.orderDetails.summary.transportFee", "Prix du transport")}
-            </Text>
-            <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "700" }}>
-              {formatMoneyUSD(transportFee)}
-            </Text>
-          </View>
         </View>
 
         <View
