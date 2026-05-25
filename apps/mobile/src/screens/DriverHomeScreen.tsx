@@ -170,7 +170,7 @@ function getZoneInfoFromLocation(lat: number, lon: number) {
   }
 
   return {
-    name: "Zone actuelle",
+    name: "Current area",
     demand: "calm" as ZoneDemand,
     multiplier: 1.0,
     zoomDelta: 0.08,
@@ -212,14 +212,118 @@ function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined)
 
 function getBestDriverAmount(order: Partial<DriverOrder> | null | undefined) {
   if (!order) return null;
-  if (typeof order.driver_delivery_payout === "number") return order.driver_delivery_payout;
-  if (typeof order.delivery_fee === "number") return order.delivery_fee;
-  if (typeof order.total === "number") return order.total;
+
+  // Production privacy rule:
+  // Drivers must only see their exact payout, not the customer order total
+  // and not the full delivery fee.
+  if (typeof order.driver_delivery_payout === "number" && Number.isFinite(order.driver_delivery_payout)) {
+    return order.driver_delivery_payout;
+  }
+
   return null;
 }
 
 function money(amount: number | null | undefined) {
   return typeof amount === "number" ? `$${amount.toFixed(2)}` : "$0.00";
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getCurrentLocalHour() {
+  return new Date().getHours();
+}
+
+function getNearestPickupMiles(
+  orders: DriverOrder[],
+  driverLocation: { lat: number; lng: number } | null,
+) {
+  if (!driverLocation) return null;
+
+  let nearest: number | null = null;
+
+  for (const order of orders) {
+    const pickupLat = typeof order.pickup_lat === "number" ? order.pickup_lat : null;
+    const pickupLngRaw =
+      order.pickup_lng ??
+      (order as any)?.pickup_lon ??
+      (order as any)?.pickup_long ??
+      (order as any)?.pickup_longitude ??
+      null;
+    const pickupLng = typeof pickupLngRaw === "number" ? pickupLngRaw : null;
+
+    if (pickupLat == null || pickupLng == null) continue;
+
+    const miles = milesBetween(driverLocation.lat, driverLocation.lng, pickupLat, pickupLng);
+    if (!Number.isFinite(miles)) continue;
+
+    nearest = nearest == null ? miles : Math.min(nearest, miles);
+  }
+
+  return nearest;
+}
+
+function estimateWaitWindowMinutes(params: {
+  isOnline: boolean;
+  availableCount: number;
+  zoneStatus: ZoneDemand;
+  nearestPickupMiles: number | null;
+  hour: number;
+}) {
+  const { isOnline, availableCount, zoneStatus, nearestPickupMiles, hour } = params;
+
+  if (!isOnline) return null;
+
+  let min = zoneStatus === "very_busy" ? 2 : zoneStatus === "busy" ? 4 : 8;
+  let max = zoneStatus === "very_busy" ? 5 : zoneStatus === "busy" ? 9 : 18;
+
+  if (availableCount >= 5) {
+    min -= 3;
+    max -= 5;
+  } else if (availableCount >= 3) {
+    min -= 2;
+    max -= 4;
+  } else if (availableCount > 0) {
+    min -= 1;
+    max -= 3;
+  } else {
+    min += 2;
+    max += 4;
+  }
+
+  if (nearestPickupMiles != null) {
+    if (nearestPickupMiles <= 1) {
+      min -= 1;
+      max -= 2;
+    } else if (nearestPickupMiles <= 2.5) {
+      max -= 1;
+    } else if (nearestPickupMiles >= 4) {
+      min += 1;
+      max += 2;
+    }
+  }
+
+  const isLunchOrDinnerRush = (hour >= 11 && hour <= 14) || (hour >= 17 && hour <= 21);
+  const isLateNight = hour >= 23 || hour <= 5;
+
+  if (isLunchOrDinnerRush) {
+    min -= 1;
+    max -= 2;
+  } else if (isLateNight) {
+    min += 2;
+    max += 4;
+  }
+
+  min = Math.round(clampNumber(min, 1, 25));
+  max = Math.round(clampNumber(max, min + 2, 35));
+
+  return { min, max };
+}
+
+function formatWaitWindow(window: { min: number; max: number } | null) {
+  if (!window) return null;
+  return `${window.min} to ${window.max} min`;
 }
 
 function hapticLight() {
@@ -285,6 +389,7 @@ export function DriverHomeScreen() {
   const [zoneName, setZoneName] = useState(t("driver.home.zone.current", "Zone actuelle"));
   const [zoneMultiplier, setZoneMultiplier] = useState(1.0);
   const [searchMessageIndex, setSearchMessageIndex] = useState(0);
+  const [earningsHidden, setEarningsHidden] = useState(false);
 
   const searchMessages = useMemo(
     () => [
@@ -300,6 +405,7 @@ export function DriverHomeScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const volumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const volumeRampTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsDbIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeqRef = useRef(0);
@@ -409,12 +515,27 @@ export function DriverHomeScreen() {
 
   const activeRideCount = useMemo(() => myOrders.length, [myOrders.length]);
 
+  const nearestPickupMiles = useMemo(
+    () => getNearestPickupMiles(availableOrders, driverLocation),
+    [availableOrders, driverLocation],
+  );
+
+  const waitWindow = useMemo(
+    () =>
+      estimateWaitWindowMinutes({
+        isOnline,
+        availableCount: availableOrders.length,
+        zoneStatus,
+        nearestPickupMiles,
+        hour: getCurrentLocalHour(),
+      }),
+    [availableOrders.length, isOnline, nearestPickupMiles, zoneStatus],
+  );
+
   const waitRangeText = useMemo(() => {
     if (!isOnline) return t("driver.home.wait.offlineTitle", "You're offline");
-    if (availableOrders.length >= 3 || zoneStatus === "very_busy") return "1 to 4 min";
-    if (availableOrders.length > 0 || zoneStatus === "busy") return "2 to 7 min";
-    return "7 to 15 min";
-  }, [availableOrders.length, isOnline, t, zoneStatus]);
+    return formatWaitWindow(waitWindow) ?? "—";
+  }, [isOnline, t, waitWindow]);
 
   const waitTitleText = useMemo(() => {
     if (!isOnline) {
@@ -429,20 +550,25 @@ export function DriverHomeScreen() {
       return t("driver.home.wait.goOnline", "Go online to start receiving nearby requests.");
     }
 
+    const nearestText =
+      nearestPickupMiles == null
+        ? t("driver.home.wait.gpsLive", "GPS live")
+        : `${nearestPickupMiles.toFixed(1)} mi nearest pickup`;
+
     if (availableOrders.length > 0) {
       return t(
         "driver.home.wait.connectedDemand",
-        "{{count}} nearby request(s) · {{zone}}",
-        { count: availableOrders.length, zone: zoneName },
+        "{{count}} nearby request(s) · {{zone}} · {{nearest}}",
+        { count: availableOrders.length, zone: zoneName, nearest: nearestText },
       );
     }
 
     return t(
       "driver.home.wait.connectedZone",
-      "Live estimate based on {{zone}} demand",
-      { zone: zoneName },
+      "Live estimate based on {{zone}} demand · {{nearest}}",
+      { zone: zoneName, nearest: nearestText },
     );
-  }, [availableOrders.length, isOnline, t, zoneName]);
+  }, [availableOrders.length, isOnline, nearestPickupMiles, t, zoneName]);
 
   const applyDriverCoordinates = useCallback(
     (latitude: number, longitude: number) => {
@@ -473,14 +599,36 @@ export function DriverHomeScreen() {
 
   const stopSound = useCallback(async () => {
     try {
-      if (volumeIntervalRef.current) clearInterval(volumeIntervalRef.current);
-      volumeIntervalRef.current = null;
-      if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
-      stopTimeoutRef.current = null;
+      if (volumeIntervalRef.current) {
+        clearInterval(volumeIntervalRef.current);
+        volumeIntervalRef.current = null;
+      }
+
+      if (volumeRampTimeoutRef.current) {
+        clearTimeout(volumeRampTimeoutRef.current);
+        volumeRampTimeoutRef.current = null;
+      }
+
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
+      }
+
       if (soundRef.current) {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
+        const currentSound = soundRef.current;
         soundRef.current = null;
+
+        try {
+          currentSound.setOnPlaybackStatusUpdate(null);
+        } catch {}
+
+        try {
+          await currentSound.stopAsync();
+        } catch {}
+
+        try {
+          await currentSound.unloadAsync();
+        } catch {}
       }
     } catch (e) {
       console.log("stopSound error:", e);
@@ -964,47 +1112,70 @@ export function DriverHomeScreen() {
       void stopSound();
       return;
     }
-    if (lastOfferIdRef.current === activeOffer.id) return;
+
+    if (lastOfferIdRef.current === activeOffer.id && soundRef.current) return;
+
     lastOfferIdRef.current = activeOffer.id;
+
+    let cancelled = false;
 
     (async () => {
       try {
         await stopSound();
-        const { sound } = await Audio.Sound.createAsync(require("../../assets/sounds/new_order.wav"), {
-          shouldPlay: true,
-          isLooping: true,
-          volume: 0.2,
-        });
+
+        const { sound } = await Audio.Sound.createAsync(
+          require("../../assets/sounds/new_order.wav"),
+          {
+            shouldPlay: false,
+            isLooping: true,
+            volume: 0.35,
+          },
+        );
+
+        if (cancelled || !mountedRef.current || lastOfferIdRef.current !== activeOffer.id) {
+          await sound.unloadAsync().catch(() => {});
+          return;
+        }
+
         soundRef.current = sound;
+
+        // Safety fallback: if Android/iOS does not loop the WAV correctly,
+        // restart the sound immediately when it finishes.
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (!status.isLoaded) return;
+          if (status.didJustFinish && soundRef.current === sound && activeOffer?.id) {
+            sound.replayAsync().catch(() => {});
+          }
+        });
+
+        await sound.setPositionAsync(0);
         await sound.playAsync();
 
-        const rampTimeout = setTimeout(() => {
-          let volume = 0.2;
+        // Smooth volume ramp: starts softer, then reaches full volume after 10 seconds.
+        volumeRampTimeoutRef.current = setTimeout(() => {
+          let volume = 0.35;
 
           volumeIntervalRef.current = setInterval(async () => {
             if (!soundRef.current) return;
 
-            volume += 0.1;
-
-            if (volume >= 1) {
-              volume = 1;
-
-              if (volumeIntervalRef.current) {
-                clearInterval(volumeIntervalRef.current);
-                volumeIntervalRef.current = null;
-              }
-            }
+            volume = Math.min(1, volume + 0.1);
 
             try {
               await soundRef.current.setVolumeAsync(volume);
             } catch (e) {
               console.log("setVolumeAsync error:", e);
             }
+
+            if (volume >= 1 && volumeIntervalRef.current) {
+              clearInterval(volumeIntervalRef.current);
+              volumeIntervalRef.current = null;
+            }
           }, 1000);
         }, 10000);
 
+        // Driver offer duration is 60 seconds. The sound stops only when:
+        // accept, decline, offer timeout, app cleanup, or this safety timeout.
         stopTimeoutRef.current = setTimeout(() => {
-          clearTimeout(rampTimeout);
           void stopSound();
         }, 60000);
       } catch (e) {
@@ -1012,7 +1183,10 @@ export function DriverHomeScreen() {
       }
     })();
 
-    return () => void stopSound();
+    return () => {
+      cancelled = true;
+      void stopSound();
+    };
   }, [activeOffer?.id, stopSound]);
 
   const toggleOnline = useCallback(async () => {
@@ -1302,15 +1476,15 @@ export function DriverHomeScreen() {
 
                   <View style={styles.smartTextWrap}>
                     <View style={styles.rowCenter}>
-                      <Text style={styles.smartTitle}>MMD Smart Mode</Text>
-                      <View style={styles.livePill}><Text style={styles.liveText}>LIVE</Text></View>
+                      <Text style={styles.smartTitle}>{t("driver.home.smartMode.title", "MMD Smart Mode")}</Text>
+                      <View style={styles.livePill}><Text style={styles.liveText}>{t("driver.home.smartMode.live", "LIVE")}</Text></View>
                     </View>
 
                     <Text style={styles.smartSubtitle}>{searchMessages[searchMessageIndex]}</Text>
 
                     <View style={styles.chipsRow}>
-                      <Chip label={t("driver.home.searching.chip1", "Nearby")} color="#93C5FD" bg="rgba(59,130,246,0.13)" />
-                      <Chip label={t("driver.home.searching.chip2", "Optimized")} color="#86EFAC" bg="rgba(34,197,94,0.13)" />
+                      <Chip label={t("driver.home.smartMode.nearby", "Nearby")} color="#93C5FD" bg="rgba(59,130,246,0.13)" />
+                      <Chip label={t("driver.home.smartMode.optimized", "Optimized")} color="#86EFAC" bg="rgba(34,197,94,0.13)" />
                       <Chip label={`${zoneMultiplier.toFixed(1)}x ${zoneName}`} color="#C4B5FD" bg="rgba(139,92,246,0.13)" />
                     </View>
                   </View>
@@ -1326,15 +1500,36 @@ export function DriverHomeScreen() {
                   }}
                   style={styles.sheetEarningsRow}
                 >
-                  <View>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
                     <Text style={styles.sheetEarningsLabel}>{t("driver.home.earnings.today", "Today's earnings")}</Text>
                     <Text style={styles.sheetEarningsSub}>
-                      {t("driver.home.earnings.live", "{{count}} active delivery(s) · live total", { count: activeRideCount })}
+                      {earningsHidden
+                        ? t("driver.home.earnings.hidden", "{{count}} active delivery(s) · hidden", { count: activeRideCount })
+                        : t("driver.home.earnings.live", "{{count}} active delivery(s) · live total", { count: activeRideCount })}
                     </Text>
                   </View>
 
                   <View style={styles.sheetEarningsRight}>
-                    <Text style={styles.sheetEarningsAmount}>{money(todayEarnings)}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Text style={styles.sheetEarningsAmount}>
+                        {earningsHidden ? "••••" : money(todayEarnings)}
+                      </Text>
+
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={(e: any) => {
+                          e?.stopPropagation?.();
+                          hapticLight();
+                          setEarningsHidden((value) => !value);
+                        }}
+                        style={styles.earningsEyeButton}
+                      >
+                        <Text style={styles.earningsEyeText}>
+                          {earningsHidden ? "👁" : "🙈"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
                     <Text style={styles.sheetEarningsLink}>{t("driver.home.earnings.breakdown", "View")} ›</Text>
                   </View>
                 </TouchableOpacity>
@@ -1798,6 +1993,18 @@ const styles = StyleSheet.create({
   sheetEarningsRight: { alignItems: "flex-end" },
   sheetEarningsAmount: { color: "#A78BFA", fontSize: 20, fontWeight: "900" },
   sheetEarningsLink: { color: "#C4B5FD", fontSize: 12, fontWeight: "900", marginTop: 3 },
+  earningsEyeButton: {
+    marginLeft: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(2,6,23,0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.16)",
+  },
+  earningsEyeText: { fontSize: 15 },
   sheetStatusRow: {
     minHeight: 34,
     borderRadius: 999,

@@ -634,6 +634,7 @@ export default function DriverMapScreen() {
       setOrdersLoading(true);
       setOrdersError(null);
 
+      // 1) Commandes déjà assignées au driver via order_members
       const { data: memberships, error: membershipError } = await supabase
         .from("order_members")
         .select("order_id")
@@ -642,14 +643,40 @@ export default function DriverMapScreen() {
 
       if (membershipError) throw membershipError;
 
-      const orderIds = (memberships ?? []).map((m: any) => m.order_id).filter(Boolean);
+      const assignedOrderIds = (memberships ?? [])
+        .map((m: any) => m.order_id)
+        .filter(Boolean);
 
-      if (orderIds.length === 0) {
-        setDriverOrders([]);
-        return;
+      let assignedOrders: DriverOrder[] = [];
+
+      if (assignedOrderIds.length > 0) {
+        const { data, error } = await supabase
+          .from("orders")
+          .select(`
+            id,
+            kind,
+            status,
+            created_at,
+            restaurant_name,
+            pickup_address,
+            dropoff_address,
+            distance_miles,
+            delivery_fee,
+            driver_delivery_payout,
+            total
+          `)
+          .in("id", assignedOrderIds)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        assignedOrders = (data as DriverOrder[]) ?? [];
       }
 
-      const { data: ordersData, error: ordersError } = await supabase
+      // 2) Commandes disponibles pour les drivers :
+      // - commandes restaurant prêtes : status = ready
+      // - demandes delivery / pickup-dropoff : status = pending + kind = pickup_dropoff
+      const { data: availableOrdersData, error: availableOrdersError } = await supabase
         .from("orders")
         .select(`
           id,
@@ -664,12 +691,19 @@ export default function DriverMapScreen() {
           driver_delivery_payout,
           total
         `)
-        .in("id", orderIds)
+        .is("driver_id", null)
+        .or("status.eq.ready,and(status.eq.pending,kind.eq.pickup_dropoff)")
         .order("created_at", { ascending: false });
 
-      if (ordersError) throw ordersError;
+      if (availableOrdersError) throw availableOrdersError;
 
-      setDriverOrders((ordersData as DriverOrder[]) ?? []);
+      const availableOrders = (availableOrdersData as DriverOrder[]) ?? [];
+
+      // 3) Fusion sans doublons
+      const merged = [...assignedOrders, ...availableOrders];
+      const uniqueOrders = Array.from(new Map(merged.map((order) => [order.id, order])).values());
+
+      setDriverOrders(uniqueOrders);
     } catch (e: any) {
       console.log("Erreur chargement commandes driver (map):", e);
       setOrdersError(e?.message ?? t("driver.map.myOrders.loading"));
