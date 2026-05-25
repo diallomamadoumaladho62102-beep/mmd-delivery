@@ -69,6 +69,7 @@ type DriverOrder = {
   pickup_lng: number | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
+  source_table?: "orders" | "delivery_requests";
 };
 
 type ZoneDemand = "calm" | "busy" | "very_busy";
@@ -207,6 +208,7 @@ function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined)
   const status = normalizeStatus(order.status);
   if (kind === "food") return status === "ready";
   if (kind === "pickup_dropoff") return status === "pending";
+  if (kind === "delivery") return status === "pending";
   return false;
 }
 
@@ -787,6 +789,9 @@ export function DriverHomeScreen() {
         setError(null);
         const driverId = await getUserIdOrThrow();
 
+        // 1) Commandes disponibles depuis orders.
+        // orders.kind est un enum : errand | food | pickup_dropoff.
+        // On ne met jamais "delivery" ici, car delivery existe dans delivery_requests.
         const { data: available, error: availableError } = await supabase
           .from("orders")
           .select(
@@ -801,6 +806,25 @@ export function DriverHomeScreen() {
 
         if (availableError) throw availableError;
 
+        // 2) Demandes MMD Delivery disponibles depuis delivery_requests.
+        // Ces demandes sont séparées de orders et doivent être chargées séparément.
+        const { data: deliveryAvailable, error: deliveryAvailableError } = await supabase
+          .from("delivery_requests")
+          .select(
+            `id, kind, status, created_at,
+             pickup_address, dropoff_address,
+             distance_miles, delivery_fee, total,
+             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
+          )
+          .eq("status", "pending")
+          .eq("payment_status", "paid")
+          .eq("kind", "delivery")
+          .is("driver_id", null)
+          .order("created_at", { ascending: false });
+
+        if (deliveryAvailableError) throw deliveryAvailableError;
+
+        // 3) Commandes orders déjà assignées au driver.
         const { data: mine, error: mineError } = await supabase
           .from("orders")
           .select(
@@ -814,10 +838,72 @@ export function DriverHomeScreen() {
           .order("created_at", { ascending: false });
 
         if (mineError) throw mineError;
+
+        // 4) Demandes delivery_requests déjà assignées au driver.
+        const { data: myDeliveryRequests, error: myDeliveryRequestsError } = await supabase
+          .from("delivery_requests")
+          .select(
+            `id, kind, status, created_at,
+             pickup_address, dropoff_address,
+             distance_miles, delivery_fee, total,
+             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
+          )
+          .eq("driver_id", driverId)
+          .not("status", "in", '("delivered","canceled")')
+          .order("created_at", { ascending: false });
+
+        if (myDeliveryRequestsError) throw myDeliveryRequestsError;
         if (!mountedRef.current || fetchSeq !== fetchSeqRef.current) return;
 
-        const allAvailable = (available ?? []) as DriverOrder[];
-        const myList = (mine ?? []) as DriverOrder[];
+        const orderAvailable = ((available ?? []) as DriverOrder[]).map((order) => ({
+          ...order,
+          source_table: "orders" as const,
+        }));
+
+        const deliveryAvailableList: DriverOrder[] = ((deliveryAvailable ?? []) as any[]).map((request) => ({
+          id: String(request.id),
+          kind: "delivery",
+          status: String(request.status ?? "pending") as OrderStatus,
+          created_at: request.created_at ?? null,
+          restaurant_name: null,
+          pickup_address: request.pickup_address ?? null,
+          dropoff_address: request.dropoff_address ?? null,
+          distance_miles: typeof request.distance_miles === "number" ? request.distance_miles : null,
+          delivery_fee: typeof request.delivery_fee === "number" ? request.delivery_fee : null,
+          driver_delivery_payout: null,
+          total: typeof request.total === "number" ? request.total : null,
+          pickup_lat: typeof request.pickup_lat === "number" ? request.pickup_lat : null,
+          pickup_lng: typeof request.pickup_lng === "number" ? request.pickup_lng : null,
+          dropoff_lat: typeof request.dropoff_lat === "number" ? request.dropoff_lat : null,
+          dropoff_lng: typeof request.dropoff_lng === "number" ? request.dropoff_lng : null,
+          source_table: "delivery_requests" as const,
+        }));
+
+        const myOrderList = ((mine ?? []) as DriverOrder[]).map((order) => ({
+          ...order,
+          source_table: "orders" as const,
+        }));
+
+        const myDeliveryList: DriverOrder[] = ((myDeliveryRequests ?? []) as any[]).map((request) => ({
+          id: String(request.id),
+          kind: "delivery",
+          status: String(request.status ?? "pending") as OrderStatus,
+          created_at: request.created_at ?? null,
+          restaurant_name: null,
+          pickup_address: request.pickup_address ?? null,
+          dropoff_address: request.dropoff_address ?? null,
+          distance_miles: typeof request.distance_miles === "number" ? request.distance_miles : null,
+          delivery_fee: typeof request.delivery_fee === "number" ? request.delivery_fee : null,
+          driver_delivery_payout: null,
+          total: typeof request.total === "number" ? request.total : null,
+          pickup_lat: typeof request.pickup_lat === "number" ? request.pickup_lat : null,
+          pickup_lng: typeof request.pickup_lng === "number" ? request.pickup_lng : null,
+          dropoff_lat: typeof request.dropoff_lat === "number" ? request.dropoff_lat : null,
+          dropoff_lng: typeof request.dropoff_lng === "number" ? request.dropoff_lng : null,
+          source_table: "delivery_requests" as const,
+        }));
+
+        const allAvailable = [...orderAvailable, ...deliveryAvailableList];
         const visibleAvailable = allAvailable.filter((o) => {
           const statusVisible = isOrderVisibleForDriver(o);
           const pickupLat = typeof o.pickup_lat === "number" ? o.pickup_lat : null;
@@ -829,6 +915,7 @@ export function DriverHomeScreen() {
             null;
           const pickupLng = typeof pickupLngRaw === "number" ? pickupLngRaw : null;
           const hasPickupCoordinates = pickupLat != null && pickupLng != null;
+          const isDeliveryRequest = o.source_table === "delivery_requests";
           let withinFiveMiles = false;
 
           if (driverLocation && hasPickupCoordinates) {
@@ -836,8 +923,17 @@ export function DriverHomeScreen() {
             withinFiveMiles = distance <= MAX_VISIBLE_ORDER_MILES;
           }
 
+          // Production safety:
+          // orders must have pickup coordinates for nearby filtering.
+          // delivery_requests without coordinates are still shown so paid customer requests are not hidden.
+          if (isDeliveryRequest) {
+            return statusVisible && (!driverLocation || !hasPickupCoordinates || withinFiveMiles);
+          }
+
           return statusVisible && hasPickupCoordinates && (!driverLocation || withinFiveMiles);
         });
+
+        const myList = [...myOrderList, ...myDeliveryList];
 
         setAvailableOrders(visibleAvailable);
         setMyOrders(myList);
@@ -892,6 +988,9 @@ export function DriverHomeScreen() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, () => scheduleDriverOrdersRefresh(250))
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, () => scheduleDriverOrdersRefresh(250))
       .on("postgres_changes", { event: "DELETE", schema: "public", table: "orders" }, () => scheduleDriverOrdersRefresh(250))
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "delivery_requests" }, () => scheduleDriverOrdersRefresh(250))
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "delivery_requests" }, () => scheduleDriverOrdersRefresh(250))
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "delivery_requests" }, () => scheduleDriverOrdersRefresh(250))
       .subscribe((status) => console.log("DRIVER_HOME_REALTIME_STATUS", status));
 
     return () => {
@@ -1027,6 +1126,7 @@ export function DriverHomeScreen() {
           : t("driver.home.kind.food", "Restaurant order");
       }
       if (normalizedKind === "pickup_dropoff") return t("driver.home.kind.pickup_dropoff", "Pickup / dropoff");
+      if (normalizedKind === "delivery") return t("driver.home.kind.delivery", "MMD Delivery");
       return String(kind ?? "—");
     },
     [t],
@@ -1049,11 +1149,31 @@ export function DriverHomeScreen() {
         hapticSuccess();
         setAcceptingId(orderId);
         const { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+        const userId = sessionData.session?.user?.id;
+        if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
 
-        const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", { p_order_id: orderId });
-        if (rpcError) throw rpcError;
-        await supabase.rpc("join_order", { p_order_id: orderId, p_role: "driver" });
+        const offerSourceTable = activeOffer?.source_table ?? "orders";
+
+        if (offerSourceTable === "delivery_requests") {
+          const { error: acceptDeliveryError } = await supabase
+            .from("delivery_requests")
+            .update({
+              driver_id: userId,
+              status: "dispatched",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", orderId)
+            .eq("status", "pending")
+            .eq("payment_status", "paid")
+            .eq("kind", "delivery")
+            .is("driver_id", null);
+
+          if (acceptDeliveryError) throw acceptDeliveryError;
+        } else {
+          const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", { p_order_id: orderId });
+          if (rpcError) throw rpcError;
+          await supabase.rpc("join_order", { p_order_id: orderId, p_role: "driver" });
+        }
 
         await stopSound();
         setActiveOffer(null);
@@ -1068,7 +1188,7 @@ export function DriverHomeScreen() {
         setAcceptingId(null);
       }
     },
-    [fetchDriverOrders, navAny, stopSound, t],
+    [activeOffer?.source_table, fetchDriverOrders, navAny, stopSound, t],
   );
 
   const handleDeclineActiveOffer = useCallback(async () => {
