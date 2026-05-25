@@ -58,6 +58,21 @@ type VerifyCodeResponse = {
   message?: string;
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return fallback;
+}
+
 const ORDER_SELECT = `
   id,
   status,
@@ -452,9 +467,14 @@ export default function OrderPage() {
       );
 
       await refetchOrder();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("handleVerifyPickupCode error", e);
-      setErr(e?.message ?? "Erreur inattendue pendant la confirmation du pickup.");
+      setErr(
+        getErrorMessage(
+          e,
+          "Erreur inattendue pendant la confirmation du pickup."
+        )
+      );
     } finally {
       setVerifyingPickup(false);
     }
@@ -493,10 +513,13 @@ export default function OrderPage() {
       );
 
       await refetchOrder();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("handleVerifyDropoffCode error", e);
       setErr(
-        e?.message ?? "Erreur inattendue pendant la confirmation de la livraison."
+        getErrorMessage(
+          e,
+          "Erreur inattendue pendant la confirmation de la livraison."
+        )
       );
     } finally {
       setVerifyingDropoff(false);
@@ -554,9 +577,9 @@ export default function OrderPage() {
           ? "Commande refusée avec succès. Refund client requis selon la règle."
           : "Commande annulée avec succès. Refund client requis selon la règle."
       );
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("handleRestaurantCancel error", e);
-      setErr(e?.message ?? "Erreur inattendue pendant l’annulation.");
+      setErr(getErrorMessage(e, "Erreur inattendue pendant l’annulation."));
     } finally {
       setUpdatingStatus(false);
     }
@@ -618,9 +641,14 @@ export default function OrderPage() {
       setOrder(nextOrder);
       setDriverId(nextOrder.driver_id ?? null);
       setSuccessMsg("Statut mis à jour avec succès.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setErr(e?.message ?? "Erreur inattendue lors de la mise à jour du statut.");
+      setErr(
+        getErrorMessage(
+          e,
+          "Erreur inattendue lors de la mise à jour du statut."
+        )
+      );
     } finally {
       setUpdatingStatus(false);
     }
