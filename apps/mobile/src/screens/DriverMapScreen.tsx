@@ -692,7 +692,7 @@ export default function DriverMapScreen() {
           total
         `)
         .is("driver_id", null)
-        .or("status.eq.ready,and(status.eq.pending,kind.eq.pickup_dropoff)")
+        .or("status.eq.ready,and(status.eq.pending,kind.in.(pickup_dropoff,delivery))")
         .order("created_at", { ascending: false });
 
       if (availableOrdersError) throw availableOrdersError;
