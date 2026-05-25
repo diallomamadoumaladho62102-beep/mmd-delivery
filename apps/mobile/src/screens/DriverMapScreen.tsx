@@ -673,9 +673,10 @@ export default function DriverMapScreen() {
         assignedOrders = (data as DriverOrder[]) ?? [];
       }
 
-      // 2) Commandes disponibles pour les drivers :
+      // 2) Commandes disponibles depuis la table orders :
       // - commandes restaurant prêtes : status = ready
-      // - demandes delivery / pickup-dropoff : status = pending + kind = pickup_dropoff
+      // - demandes pickup/dropoff : status = pending + kind = pickup_dropoff
+      // Important : orders.kind est un enum et n'accepte pas "delivery".
       const { data: availableOrdersData, error: availableOrdersError } = await supabase
         .from("orders")
         .select(`
@@ -692,15 +693,56 @@ export default function DriverMapScreen() {
           total
         `)
         .is("driver_id", null)
-        .or("status.eq.ready,and(status.eq.pending,kind.in.(pickup_dropoff,delivery))")
+        .or("status.eq.ready,and(status.eq.pending,kind.eq.pickup_dropoff)")
         .order("created_at", { ascending: false });
 
       if (availableOrdersError) throw availableOrdersError;
 
       const availableOrders = (availableOrdersData as DriverOrder[]) ?? [];
 
-      // 3) Fusion sans doublons
-      const merged = [...assignedOrders, ...availableOrders];
+      // 3) Demandes MMD Delivery disponibles depuis delivery_requests :
+      // - la table delivery_requests utilise kind = delivery
+      // - seules les demandes payées, non assignées et encore pending sont proposées aux drivers
+      const { data: deliveryRequestsData, error: deliveryRequestsError } = await supabase
+        .from("delivery_requests")
+        .select(`
+          id,
+          kind,
+          status,
+          created_at,
+          pickup_address,
+          dropoff_address,
+          distance_miles,
+          delivery_fee,
+          total
+        `)
+        .eq("status", "pending")
+        .eq("payment_status", "paid")
+        .eq("kind", "delivery")
+        .is("driver_id", null)
+        .order("created_at", { ascending: false });
+
+      if (deliveryRequestsError) throw deliveryRequestsError;
+
+      const availableDeliveryRequests: DriverOrder[] = ((deliveryRequestsData as any[]) ?? []).map(
+        (request) => ({
+          id: String(request.id),
+          kind: String(request.kind ?? "delivery"),
+          status: String(request.status ?? "pending") as OrderStatus,
+          created_at: request.created_at ?? null,
+          restaurant_name: null,
+          pickup_address: request.pickup_address ?? null,
+          dropoff_address: request.dropoff_address ?? null,
+          distance_miles:
+            typeof request.distance_miles === "number" ? request.distance_miles : null,
+          delivery_fee: typeof request.delivery_fee === "number" ? request.delivery_fee : null,
+          driver_delivery_payout: null,
+          total: typeof request.total === "number" ? request.total : null,
+        })
+      );
+
+      // 4) Fusion sans doublons
+      const merged = [...assignedOrders, ...availableOrders, ...availableDeliveryRequests];
       const uniqueOrders = Array.from(new Map(merged.map((order) => [order.id, order])).values());
 
       setDriverOrders(uniqueOrders);
