@@ -64,6 +64,7 @@ type RestaurantProfileLite = {
 
 type RestaurantMapOrder = {
   id: string;
+  kind?: string | null;
   status: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
@@ -631,8 +632,11 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showRoutes, setShowRoutes] = useState(true);
   const [showDrivers, setShowDrivers] = useState(true);
+  const [liveOrder, setLiveOrder] = useState<RestaurantMapOrder | null>(null);
+  const [orderActionLoading, setOrderActionLoading] = useState(false);
 
   const pinPulseAnim = useRef(new Animated.Value(0)).current;
+  const liveOrderAnim = useRef(new Animated.Value(0)).current;
 
   const [stats, setStats] = useState<DashboardStats>({
     ordersToday: 0,
@@ -654,13 +658,15 @@ export function RestaurantHomeScreen({ navigation }: any) {
       const [todayOrdersRes, pendingRes] = await Promise.all([
         supabase
           .from("orders")
-          .select("id,status,total,subtotal,tax,currency,created_at")
+          .select("id,kind,status,total,subtotal,tax,currency,created_at")
           .eq("restaurant_id", activeRestaurantId)
+          .eq("kind", "food")
           .gte("created_at", fromISO),
         supabase
           .from("orders")
-          .select("id,status,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,created_at,total")
+          .select("id,kind,status,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,created_at,total")
           .eq("restaurant_id", activeRestaurantId)
+          .eq("kind", "food")
           .in("status", ["pending", "accepted", "prepared", "ready"])
           .order("created_at", { ascending: false }),
       ]);
@@ -681,7 +687,9 @@ export function RestaurantHomeScreen({ navigation }: any) {
         return sum + buildOrderAmount(row);
       }, 0);
 
-      const pendingRows = (pendingRes.data ?? []) as RestaurantMapOrder[];
+      const pendingRows = ((pendingRes.data ?? []) as RestaurantMapOrder[]).filter(
+        (row) => String(row?.kind ?? "food").toLowerCase() === "food"
+      );
       const pendingOrders = pendingRows.length;
       setMapOrders(pendingRows);
 
@@ -861,6 +869,72 @@ export function RestaurantHomeScreen({ navigation }: any) {
     void loadNearbyDrivers();
   }, [loadDashboardStats, loadNearbyDrivers]);
 
+  const openRestaurantOrderDetails = useCallback(
+    (orderId: string) => {
+      navigation.navigate("RestaurantOrderDetails", { orderId });
+    },
+    [navigation]
+  );
+
+  const handleOpenMapOrder = useCallback((order: RestaurantMapOrder) => {
+    setLiveOrder(order);
+  }, []);
+
+  const updateFoodOrderStatus = useCallback(
+    async (order: RestaurantMapOrder, nextStatus: "accepted" | "canceled") => {
+      if (!activeRestaurantId || !order?.id) return;
+
+      try {
+        setOrderActionLoading(true);
+
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            status: nextStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", order.id)
+          .eq("restaurant_id", activeRestaurantId)
+          .eq("kind", "food");
+
+        if (error) throw error;
+
+        setLiveOrder(null);
+        refreshLiveMap();
+      } catch (e: any) {
+        Alert.alert(
+          t("common.errorTitle", "Error"),
+          e?.message ?? t("restaurant.orders.updateFailed", "Unable to update order.")
+        );
+      } finally {
+        setOrderActionLoading(false);
+      }
+    },
+    [activeRestaurantId, refreshLiveMap, t]
+  );
+
+  const handleAcceptLiveOrder = useCallback(() => {
+    if (!liveOrder) return;
+    void updateFoodOrderStatus(liveOrder, "accepted");
+  }, [liveOrder, updateFoodOrderStatus]);
+
+  const handleRejectLiveOrder = useCallback(() => {
+    if (!liveOrder) return;
+
+    Alert.alert(
+      t("restaurant.orders.rejectTitle", "Reject order"),
+      t("restaurant.orders.rejectConfirm", "Reject this order?"),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("common.yes", "Yes"),
+          style: "destructive",
+          onPress: () => void updateFoodOrderStatus(liveOrder, "canceled"),
+        },
+      ]
+    );
+  }, [liveOrder, t, updateFoodOrderStatus]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1013,6 +1087,15 @@ export function RestaurantHomeScreen({ navigation }: any) {
   }, [pinPulseAnim]);
 
   useEffect(() => {
+    Animated.timing(liveOrderAnim, {
+      toValue: liveOrder ? 1 : 0,
+      duration: liveOrder ? 220 : 160,
+      easing: liveOrder ? Easing.out(Easing.ease) : Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [liveOrder, liveOrderAnim]);
+
+  useEffect(() => {
     (async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -1066,7 +1149,20 @@ export function RestaurantHomeScreen({ navigation }: any) {
         async (payload) => {
           const row: any = payload.new;
 
-          if (restaurantOnline && isFocused && row?.status === "pending") {
+          const isFoodOrder = String(row?.kind ?? "food").toLowerCase() === "food";
+
+          if (restaurantOnline && isFocused && row?.status === "pending" && isFoodOrder) {
+            setLiveOrder({
+              id: String(row.id),
+              kind: "food",
+              status: row.status ?? "pending",
+              pickup_lat: row.pickup_lat ?? null,
+              pickup_lng: row.pickup_lng ?? null,
+              dropoff_lat: row.dropoff_lat ?? null,
+              dropoff_lng: row.dropoff_lng ?? null,
+              created_at: row.created_at ?? null,
+              total: Number.isFinite(Number(row.total)) ? Number(row.total) : null,
+            });
             await playRing();
           }
 
@@ -1081,7 +1177,30 @@ export function RestaurantHomeScreen({ navigation }: any) {
           table: "orders",
           filter: `restaurant_id=eq.${activeRestaurantId}`,
         },
-        async () => {
+        async (payload) => {
+          const row: any = payload.new;
+          const isFoodOrder = String(row?.kind ?? "food").toLowerCase() === "food";
+
+          if (!isFoodOrder) return;
+
+          setLiveOrder((current): RestaurantMapOrder | null => {
+            if (!current || current.id !== String(row?.id ?? "")) {
+              return current;
+            }
+
+            return {
+              ...current,
+              status: row.status ?? current.status,
+              pickup_lat: row.pickup_lat ?? current.pickup_lat,
+              pickup_lng: row.pickup_lng ?? current.pickup_lng,
+              dropoff_lat: row.dropoff_lat ?? current.dropoff_lat,
+              dropoff_lng: row.dropoff_lng ?? current.dropoff_lng,
+              total: Number.isFinite(Number(row.total))
+                ? Number(row.total)
+                : current.total,
+            };
+          });
+
           refreshLiveMap();
         }
       )
@@ -1344,14 +1463,16 @@ export function RestaurantHomeScreen({ navigation }: any) {
                 id={`restaurant-order-${order.id}`}
                 coordinate={coordinate}
               >
-                <Animated.View
-                  style={{
-                    opacity: pinPulseOpacity,
-                    transform: [{ scale: pinPulseScale }],
-                  }}
-                >
-                  <OrderMapPin status={order.status} index={index} />
-                </Animated.View>
+                <TouchableOpacity activeOpacity={0.9} onPress={() => handleOpenMapOrder(order)}>
+                  <Animated.View
+                    style={{
+                      opacity: pinPulseOpacity,
+                      transform: [{ scale: pinPulseScale }],
+                    }}
+                  >
+                    <OrderMapPin status={order.status} index={index} />
+                  </Animated.View>
+                </TouchableOpacity>
               </Mapbox.PointAnnotation>
             );
           })}
@@ -1417,6 +1538,134 @@ export function RestaurantHomeScreen({ navigation }: any) {
               )}
             </Text>
           </TouchableOpacity>
+        )}
+
+        {liveOrder && (
+          <Animated.View
+            style={{
+              position: "absolute",
+              left: 88,
+              right: 88,
+              top: 92,
+              zIndex: 35,
+              opacity: liveOrderAnim,
+              transform: [
+                {
+                  translateY: liveOrderAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-16, 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            <View
+              style={{
+                borderRadius: 24,
+                padding: 14,
+                backgroundColor: "rgba(2,6,23,0.97)",
+                borderWidth: 1.4,
+                borderColor: "rgba(249,115,22,0.72)",
+                shadowColor: "#000",
+                shadowOpacity: 0.34,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 8 },
+                elevation: 16,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={{ color: "#FED7AA", fontSize: 12, fontWeight: "900" }}>
+                    {t("restaurant.dashboard.newFoodOrder", "New food order")}
+                  </Text>
+                  <Text style={{ color: "#FFFFFF", fontSize: 19, fontWeight: "900", marginTop: 3 }}>
+                    #{liveOrder.id.slice(0, 8)} · {formatMoney(Number(liveOrder.total ?? 0), stats.currency)}
+                  </Text>
+                  <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "700", marginTop: 3 }}>
+                    {statusLabel(liveOrder.status)} · {liveOrder.created_at ? new Date(liveOrder.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Live"}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setLiveOrder(null)}
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(15,23,42,0.95)",
+                    borderWidth: 1,
+                    borderColor: "rgba(148,163,184,0.25)",
+                  }}
+                >
+                  <Text style={{ color: "#CBD5E1", fontSize: 18, fontWeight: "900" }}>×</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  disabled={orderActionLoading}
+                  onPress={handleRejectLiveOrder}
+                  style={{
+                    flex: 1,
+                    minHeight: 46,
+                    borderRadius: 999,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(127,29,29,0.86)",
+                    borderWidth: 1,
+                    borderColor: "rgba(248,113,113,0.45)",
+                    opacity: orderActionLoading ? 0.65 : 1,
+                  }}
+                >
+                  <Text style={{ color: "#FECACA", fontSize: 12, fontWeight: "900" }}>
+                    {t("common.reject", "Reject")}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => openRestaurantOrderDetails(liveOrder.id)}
+                  style={{
+                    flex: 1,
+                    minHeight: 46,
+                    borderRadius: 999,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "rgba(30,41,59,0.95)",
+                    borderWidth: 1,
+                    borderColor: "rgba(148,163,184,0.28)",
+                  }}
+                >
+                  <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
+                    {t("common.view", "View")}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  disabled={orderActionLoading}
+                  onPress={handleAcceptLiveOrder}
+                  style={{
+                    flex: 1,
+                    minHeight: 46,
+                    borderRadius: 999,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#22C55E",
+                    opacity: orderActionLoading ? 0.65 : 1,
+                  }}
+                >
+                  <Text style={{ color: "#052E16", fontSize: 12, fontWeight: "900" }}>
+                    {orderActionLoading ? "..." : t("common.accept", "Accept")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Animated.View>
         )}
 
         <View

@@ -760,26 +760,29 @@ export default function DriverMapScreen() {
         source_table: "orders" as const,
       }));
 
-      // 3) Demandes MMD Delivery disponibles depuis delivery_requests :
-      // - la table delivery_requests utilise kind = delivery
-      // - demandes payées/non assignées visibles même si le statut client est encore paid_pending/processing_pending
+      // 3) Demandes MMD Delivery disponibles depuis delivery_requests.
+      // Important production:
+      // - Do not select delivery_requests.kind here. Some production API schema caches
+      //   can be stale even after the DB column exists.
+      // - This table already represents MMD Delivery requests, so the app safely maps
+      //   them as kind = "delivery" after loading.
+      // - Food orders are untouched because they come from the orders table above.
       const { data: deliveryRequestsData, error: deliveryRequestsError } =
         await supabase
           .from("delivery_requests")
           .select(
             `
           id,
-          kind,
           status,
           created_at,
           pickup_address,
           dropoff_address,
-          distance_miles
+          distance_miles,
+          driver_delivery_payout
         `,
           )
           .in("status", ["pending", "paid_pending", "processing_pending"])
           .eq("payment_status", "paid")
-          .eq("kind", "delivery")
           .is("driver_id", null)
           .order("created_at", { ascending: false });
 
@@ -789,7 +792,7 @@ export default function DriverMapScreen() {
         (deliveryRequestsData as any[]) ?? []
       ).map((request) => ({
         id: String(request.id),
-        kind: String(request.kind ?? "delivery"),
+        kind: "delivery",
         status: String(request.status ?? "pending") as OrderStatus,
         created_at: request.created_at ?? null,
         restaurant_name: null,
@@ -798,8 +801,15 @@ export default function DriverMapScreen() {
         distance_miles:
           typeof request.distance_miles === "number"
             ? request.distance_miles
-            : null,
-        driver_delivery_payout: null,
+            : Number.isFinite(Number(request.distance_miles))
+              ? Number(request.distance_miles)
+              : null,
+        driver_delivery_payout:
+          typeof request.driver_delivery_payout === "number"
+            ? request.driver_delivery_payout
+            : Number.isFinite(Number(request.driver_delivery_payout))
+              ? Number(request.driver_delivery_payout)
+              : null,
         source_table: "delivery_requests" as const,
       }));
 
@@ -988,8 +998,13 @@ export default function DriverMapScreen() {
     setIncomingTimer(60);
   }
 
-  function handleOpenOrder(orderId: string) {
-    navigation.navigate("DriverOrderDetails", { orderId });
+  function handleOpenOrder(order: DriverOrder) {
+    // Keep sourceTable for runtime support while avoiding a stale RootStackParamList
+    // TypeScript error in this screen. DriverOrderDetailsScreen already supports it.
+    (navigation as any).navigate("DriverOrderDetails", {
+      orderId: order.id,
+      sourceTable: order.source_table,
+    });
   }
 
   function formatDate(iso: string | null) {
@@ -1072,7 +1087,7 @@ export default function DriverMapScreen() {
     return (
       <TouchableOpacity
         key={getOrderCompositeKey(order)}
-        onPress={() => handleOpenOrder(order.id)}
+        onPress={() => handleOpenOrder(order)}
         activeOpacity={0.9}
         style={{
           backgroundColor: "rgba(2,6,23,0.92)",

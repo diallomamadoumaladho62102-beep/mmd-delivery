@@ -51,6 +51,7 @@ type FilterKey = "all" | "pending" | "prepared" | "ready";
 
 type OrderRow = {
   id: string;
+  kind?: string | null;
   status: DbOrderStatus | string;
   created_at: string | null;
   currency: string | null;
@@ -554,14 +555,17 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         const { data, error } = await supabase
           .from("orders")
           .select(
-            "id,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at"
+            "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at"
           )
+          .eq("kind", "food")
           .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
 
-        const mapped: Order[] = (data || []).map((row: OrderRow) => {
+        const mapped: Order[] = ((data || []) as OrderRow[])
+          .filter((row) => String(row?.kind ?? "food").toLowerCase() === "food")
+          .map((row: OrderRow) => {
           const uiStatus = mapDbStatusToUiStatus(row.status);
 
           return {
@@ -621,8 +625,9 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
         const { data: current, error: ce } = await supabase
           .from("orders")
-          .select("id,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id")
+          .select("id,kind,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id")
           .eq("id", orderId)
+          .eq("kind", "food")
           .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .maybeSingle();
 
@@ -683,6 +688,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           .from("orders")
           .update(updatePayload)
           .eq("id", orderId)
+          .eq("kind", "food")
           .eq("status", (current as any).status)
           .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`);
 
