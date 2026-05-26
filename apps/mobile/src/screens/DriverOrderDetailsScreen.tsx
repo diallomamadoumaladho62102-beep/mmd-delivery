@@ -605,7 +605,14 @@ export function DriverOrderDetailsScreen() {
       if (sourceTable === "delivery_requests") {
         const { data, error } = await supabase
           .from("delivery_requests")
-          .select("*")
+          .select(
+            `id,status,payment_status,driver_id,created_at,updated_at,
+             created_by,client_user_id,user_id,
+             pickup_address,dropoff_address,
+             pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
+             distance_miles,eta_minutes,delivery_fee,total,currency,
+             driver_delivery_payout,platform_fee`
+          )
           .eq("id", orderId)
           .maybeSingle();
 
@@ -1139,7 +1146,6 @@ export function DriverOrderDetailsScreen() {
           .eq("id", order.id)
           .in("status", ["pending", "paid_pending", "processing_pending"])
           .eq("payment_status", "paid")
-          .or("kind.eq.delivery,kind.is.null")
           .is("driver_id", null)
           .select("id")
           .maybeSingle();

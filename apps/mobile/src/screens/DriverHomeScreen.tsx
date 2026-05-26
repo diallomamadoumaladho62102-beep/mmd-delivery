@@ -692,6 +692,41 @@ export function DriverHomeScreen() {
     return userId;
   }, [t]);
 
+  const setDriverProfileOnline = useCallback(
+    async (userId: string, nextOnline: boolean) => {
+      const { data, error } = await supabase
+        .from("driver_profiles")
+        .update({
+          is_online: nextOnline,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .select("user_id,is_online")
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        throw new Error(
+          nextOnline
+            ? "Impossible de confirmer le statut en ligne dans Supabase."
+            : "Impossible de confirmer le statut hors ligne dans Supabase.",
+        );
+      }
+
+      if (Boolean(data.is_online) !== nextOnline) {
+        throw new Error(
+          nextOnline
+            ? "Supabase n’a pas confirmé le passage en ligne."
+            : "Supabase n’a pas confirmé le passage hors ligne.",
+        );
+      }
+
+      return data;
+    },
+    [],
+  );
+
   const ensureGpsPermission = useCallback(async () => {
     if (locationPermissionRequestRef.current) return locationPermissionRequestRef.current;
     locationPermissionRequestRef.current = (async () => {
@@ -857,10 +892,15 @@ export function DriverHomeScreen() {
         // Ces demandes sont séparées de orders et doivent être chargées séparément.
         const { data: deliveryAvailable, error: deliveryAvailableError } = await supabase
           .from("delivery_requests")
-          .select("*")
+          .select(
+            `id,status,payment_status,driver_id,created_at,updated_at,
+             pickup_address,dropoff_address,
+             pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
+             distance_miles,eta_minutes,delivery_fee,total,currency,
+             driver_delivery_payout,platform_fee`
+          )
           .in("status", ["pending", "paid_pending", "processing_pending"])
           .eq("payment_status", "paid")
-          .or("kind.eq.delivery,kind.is.null")
           .is("driver_id", null)
           .order("created_at", { ascending: false });
 
@@ -884,7 +924,13 @@ export function DriverHomeScreen() {
         // 4) Demandes delivery_requests déjà assignées au driver.
         const { data: myDeliveryRequests, error: myDeliveryRequestsError } = await supabase
           .from("delivery_requests")
-          .select("*")
+          .select(
+            `id,status,payment_status,driver_id,created_at,updated_at,
+             pickup_address,dropoff_address,
+             pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
+             distance_miles,eta_minutes,delivery_fee,total,currency,
+             driver_delivery_payout,platform_fee`
+          )
           .eq("driver_id", driverId)
           .not("status", "in", '("delivered","canceled")')
           .order("created_at", { ascending: false });
@@ -1055,21 +1101,19 @@ export function DriverHomeScreen() {
           return;
         }
 
-        setIsOnline(true);
-
         const userId = await getUserIdOrThrow();
+        await setDriverProfileOnline(userId, true);
+        await setDriverOnlineStatus(true);
 
-        const { error: upErr } = await supabase
-          .from("driver_profiles")
-          .update({ is_online: true })
-          .eq("user_id", userId);
-
-        if (upErr) console.log("restoreSavedOnlineStatus profile update error:", upErr);
+        if (cancelled || !mountedRef.current) return;
+        setIsOnline(true);
 
         await startDbGpsTracking(userId);
         await fetchDriverOrders(true);
       } catch (e) {
         console.log("restoreSavedOnlineStatus error:", e);
+        await setDriverOnlineStatus(false).catch(() => {});
+        if (!cancelled && mountedRef.current) setIsOnline(false);
       }
     };
 
@@ -1078,7 +1122,7 @@ export function DriverHomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [fetchDriverOrders, getUserIdOrThrow, startDbGpsTracking]);
+  }, [fetchDriverOrders, getUserIdOrThrow, setDriverProfileOnline, startDbGpsTracking]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
@@ -1103,21 +1147,19 @@ export function DriverHomeScreen() {
             return;
           }
 
-          if (!isOnline) setIsOnline(true);
-
           const userId = await getUserIdOrThrow();
+          await setDriverProfileOnline(userId, true);
+          await setDriverOnlineStatus(true);
 
-          const { error: upErr } = await supabase
-            .from("driver_profiles")
-            .update({ is_online: true })
-            .eq("user_id", userId);
-
-          if (upErr) console.log("AppState online restore profile update error:", upErr);
+          if (!mountedRef.current) return;
+          if (!isOnline) setIsOnline(true);
 
           await startDbGpsTracking(userId);
           await fetchDriverOrders(true);
         } catch (e) {
           console.log("AppState online restore error:", e);
+          await setDriverOnlineStatus(false).catch(() => {});
+          if (mountedRef.current) setIsOnline(false);
         }
       })();
     });
@@ -1127,6 +1169,7 @@ export function DriverHomeScreen() {
     fetchDriverOrders,
     getUserIdOrThrow,
     isOnline,
+    setDriverProfileOnline,
     startDbGpsTracking,
     stopDbGpsTracking,
     stopSound,
@@ -1214,7 +1257,6 @@ export function DriverHomeScreen() {
             .eq("id", orderId)
             .in("status", ["pending", "paid_pending", "processing_pending"])
             .eq("payment_status", "paid")
-            .or("kind.eq.delivery,kind.is.null")
             .is("driver_id", null)
             .select("id")
             .maybeSingle();
@@ -1464,8 +1506,7 @@ export function DriverHomeScreen() {
           }
           return;
         }
-        const { error: upErr } = await supabase.from("driver_profiles").update({ is_online: true }).eq("user_id", userId);
-        if (upErr) throw upErr;
+        await setDriverProfileOnline(userId, true);
         await setDriverOnlineStatus(true);
         setIsOnline(true);
         await startDbGpsTracking(userId);
@@ -1473,8 +1514,7 @@ export function DriverHomeScreen() {
         return;
       }
 
-      const { error: downErr } = await supabase.from("driver_profiles").update({ is_online: false }).eq("user_id", userId);
-      if (downErr) throw downErr;
+      await setDriverProfileOnline(userId, false);
       await setDriverOnlineStatus(false);
       setIsOnline(false);
       await stopDbGpsTracking();
@@ -1488,7 +1528,7 @@ export function DriverHomeScreen() {
       console.log("toggleOnline error:", e);
       Alert.alert(t("shared.orderChat.alerts.errorTitle", "Erreur"), e?.message ?? "Impossible de changer le statut.");
     }
-  }, [ensureGpsPermission, fetchDriverOrders, getUserIdOrThrow, isOnline, startDbGpsTracking, stopDbGpsTracking, stopSound, t]);
+  }, [ensureGpsPermission, fetchDriverOrders, getUserIdOrThrow, isOnline, setDriverProfileOnline, startDbGpsTracking, stopDbGpsTracking, stopSound, t]);
 
   const openDriverMenu = useCallback(() => {
     hapticLight();
