@@ -43,6 +43,8 @@ type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails
 
 type OrderStatus =
   | "pending"
+  | "paid_pending"
+  | "processing_pending"
   | "accepted"
   | "prepared"
   | "ready"
@@ -52,7 +54,7 @@ type OrderStatus =
 
 type Order = {
   id: string;
-  kind: "pickup_dropoff" | "food" | string;
+  kind: "pickup_dropoff" | "food" | "delivery" | string;
   status: OrderStatus;
   created_at: string | null;
   restaurant_name: string | null;
@@ -70,6 +72,7 @@ type Order = {
   pickup_lng: number | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
+  source_table?: "orders" | "delivery_requests";
 };
 
 type VerifyKind = "pickup" | "dropoff";
@@ -215,6 +218,81 @@ function formatMoneyUSD(v: number | null) {
   return `${v.toFixed(2)} USD`;
 }
 
+
+function toFiniteNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function getConfiguredDriverPayout(row: any) {
+  const payoutCandidates = [
+    row?.driver_delivery_payout,
+    row?.driver_payout,
+    row?.driver_amount,
+    row?.driver_pay,
+    row?.driver_earning,
+    row?.driver_earnings,
+    row?.estimated_driver_payout,
+    row?.estimated_driver_pay,
+    row?.estimated_driver_earning,
+    row?.driver_share_amount,
+    row?.payout_amount,
+  ];
+
+  for (const value of payoutCandidates) {
+    const payout = toFiniteNumber(value);
+    if (payout != null) return payout;
+  }
+
+  return null;
+}
+
+function normalizeSourceTable(value: unknown): "orders" | "delivery_requests" {
+  return value === "delivery_requests" ? "delivery_requests" : "orders";
+}
+
+function getOrderSourceTable(order: Pick<Order, "source_table"> | null | undefined) {
+  return normalizeSourceTable(order?.source_table);
+}
+
+function mapDeliveryRequestToOrder(row: any): Order {
+  return {
+    id: String(row?.id ?? ""),
+    kind: "delivery",
+    status: String(row?.status ?? "pending") as OrderStatus,
+    created_at: row?.created_at ?? null,
+    restaurant_name: null,
+    pickup_address: row?.pickup_address ?? null,
+    dropoff_address: row?.dropoff_address ?? null,
+    distance_miles: toFiniteNumber(row?.distance_miles),
+    eta_minutes: toFiniteNumber(row?.eta_minutes),
+    driver_delivery_payout: getConfiguredDriverPayout(row),
+    driver_id: row?.driver_id ?? null,
+    client_id: row?.client_id ?? row?.created_by ?? null,
+    client_user_id: row?.client_user_id ?? row?.user_id ?? row?.created_by ?? null,
+    restaurant_id: null,
+    restaurant_user_id: null,
+    pickup_lat: toFiniteNumber(row?.pickup_lat),
+    pickup_lng: toFiniteNumber(row?.pickup_lng ?? row?.pickup_lon ?? row?.pickup_long ?? row?.pickup_longitude),
+    dropoff_lat: toFiniteNumber(row?.dropoff_lat),
+    dropoff_lng: toFiniteNumber(row?.dropoff_lng ?? row?.dropoff_lon ?? row?.dropoff_long ?? row?.dropoff_longitude),
+    source_table: "delivery_requests",
+  };
+}
+
+function mapOrderRowToOrder(row: any): Order {
+  return {
+    ...(row as Order),
+    source_table: "orders",
+    driver_delivery_payout: getConfiguredDriverPayout(row),
+  };
+}
+
+
 function formatMiles(v: number | null) {
   if (v == null) return "—";
   return `${v.toFixed(1)} mi`;
@@ -290,16 +368,24 @@ function isAllowedDriverVisibleOrder(order: Order, driverId: string) {
   }
 
   const kind = normalizeKind(order.kind);
+  const status = String(order.status || "").trim().toLowerCase();
+
+  if (order.source_table === "delivery_requests" || kind === "delivery") {
+    return status === "pending" || status === "paid_pending" || status === "processing_pending";
+  }
+
   return (
-    (kind === "pickup_dropoff" && order.status === "pending") ||
-    (kind !== "pickup_dropoff" && order.status === "ready")
+    (kind === "pickup_dropoff" && status === "pending") ||
+    (kind !== "pickup_dropoff" && status === "ready")
   );
 }
 
 export function DriverOrderDetailsScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DriverOrderDetailsRoute>();
-  const { orderId } = route.params;
+  const routeParams = route.params as any;
+  const { orderId } = routeParams;
+  const sourceTable = normalizeSourceTable(routeParams?.sourceTable ?? routeParams?.source_table);
 
   const { t } = useTranslation();
 
@@ -324,6 +410,7 @@ export function DriverOrderDetailsScreen() {
 
   const normalizedKind = useMemo(() => normalizeKind(order?.kind), [order?.kind]);
   const isPickupDropoff = normalizedKind === "pickup_dropoff";
+  const isDeliveryRequest = order?.source_table === "delivery_requests" || normalizedKind === "delivery";
 
   const pickupCoord = useMemo(() => {
     if (!isValidCoordinate(order?.pickup_lat, order?.pickup_lng)) return null;
@@ -394,6 +481,8 @@ export function DriverOrderDetailsScreen() {
 
     switch (currentOrder.status) {
       case "pending":
+      case "paid_pending":
+      case "processing_pending":
         return t("driver.orderDetails.status.pending", "En attente d’un chauffeur");
       case "accepted":
       case "prepared":
@@ -511,37 +600,51 @@ export function DriverOrderDetailsScreen() {
         throw new Error(t("common.mustBeLoggedIn", "Tu dois être connecté."));
       }
 
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
+      let nextOrder: Order | null = null;
+
+      if (sourceTable === "delivery_requests") {
+        const { data, error } = await supabase
+          .from("delivery_requests")
+          .select("*")
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (data) nextOrder = mapDeliveryRequestToOrder(data);
+      } else {
+        const { data, error } = await supabase
+          .from("orders")
+          .select(
+            `
+            id,
+            kind,
+            status,
+            created_at,
+            restaurant_name,
+            pickup_address,
+            dropoff_address,
+            distance_miles,
+            eta_minutes,
+            driver_delivery_payout,
+            driver_id,
+            client_id,
+            client_user_id,
+            restaurant_id,
+            restaurant_user_id,
+            pickup_lat,
+            pickup_lng,
+            dropoff_lat,
+            dropoff_lng
           `
-          id,
-          kind,
-          status,
-          created_at,
-          restaurant_name,
-          pickup_address,
-          dropoff_address,
-          distance_miles,
-          eta_minutes,
-          driver_delivery_payout,
-          driver_id,
-          client_id,
-          client_user_id,
-          restaurant_id,
-          restaurant_user_id,
-          pickup_lat,
-          pickup_lng,
-          dropoff_lat,
-          dropoff_lng
-        `
-        )
-        .eq("id", orderId)
-        .maybeSingle();
+          )
+          .eq("id", orderId)
+          .maybeSingle();
 
-      if (error) throw error;
+        if (error) throw error;
+        if (data) nextOrder = mapOrderRowToOrder(data);
+      }
 
-      if (!data) {
+      if (!nextOrder) {
         Alert.alert(
           t("common.error", "Erreur"),
           t("driver.orderDetails.notFound", "Commande introuvable.")
@@ -549,8 +652,6 @@ export function DriverOrderDetailsScreen() {
         navigation.goBack();
         return;
       }
-
-      const nextOrder = data as Order;
 
       if (!isAllowedDriverVisibleOrder(nextOrder, uid)) {
         throw new Error(
@@ -577,8 +678,7 @@ export function DriverOrderDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [orderId, navigation, t]);
-
+  }, [orderId, sourceTable, navigation, t]);
 
   const fetchProfileById = useCallback(async (profileId: string) => {
     const { data, error } = await supabase
@@ -804,6 +904,7 @@ export function DriverOrderDetailsScreen() {
   const canPickup =
     !!order &&
     isAssignedDriver &&
+    !isDeliveryRequest &&
     (
       (isPickupDropoff && ["accepted", "prepared", "ready"].includes(order.status)) ||
       (!isPickupDropoff && order.status === "ready")
@@ -820,8 +921,9 @@ export function DriverOrderDetailsScreen() {
     !proofUploading &&
     !order.driver_id &&
     (
+      (isDeliveryRequest && ["pending", "paid_pending", "processing_pending"].includes(order.status)) ||
       (isPickupDropoff && order.status === "pending") ||
-      (!isPickupDropoff && order.status === "ready")
+      (!isDeliveryRequest && !isPickupDropoff && order.status === "ready")
     );
 
   const canCancelAsDriver =
@@ -830,7 +932,10 @@ export function DriverOrderDetailsScreen() {
     !canceling &&
     !submittingCode &&
     !proofUploading &&
-    (order.status === "accepted" || order.status === "ready");
+    (
+      (isDeliveryRequest && order.status === "dispatched") ||
+      (!isDeliveryRequest && (order.status === "accepted" || order.status === "ready"))
+    );
 
   function openCodeModal(kind: VerifyKind) {
     if (kind === "pickup" && !canPickup) return;
@@ -852,11 +957,7 @@ export function DriverOrderDetailsScreen() {
   // The driver must only see the exact driver payout.
   // Do not fetch, calculate, or display customer total, delivery_fee,
   // platform_delivery_fee, restaurant revenue, or platform revenue here.
-  const driverPart =
-    typeof order?.driver_delivery_payout === "number" &&
-    Number.isFinite(order.driver_delivery_payout)
-      ? order.driver_delivery_payout
-      : null;
+  const driverPart = getConfiguredDriverPayout(order);
 
   async function takeProofPhoto() {
     try {
@@ -1027,29 +1128,57 @@ export function DriverOrderDetailsScreen() {
     try {
       setAccepting(true);
 
-      const { data: accepted, error: accErr } = await supabase.rpc("driver_accept_ready_order", {
-        p_order_id: order.id,
-      });
+      if (getOrderSourceTable(order) === "delivery_requests") {
+        const { data: acceptedDelivery, error: acceptDeliveryError } = await supabase
+          .from("delivery_requests")
+          .update({
+            driver_id: myUserId,
+            status: "dispatched",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", order.id)
+          .in("status", ["pending", "paid_pending", "processing_pending"])
+          .eq("payment_status", "paid")
+          .or("kind.eq.delivery,kind.is.null")
+          .is("driver_id", null)
+          .select("id")
+          .maybeSingle();
 
-      if (accErr) {
-        console.error("❌ accept_order error:", accErr);
-        Alert.alert(
-          t("driver.orderDetails.acceptDeniedTitle", "Impossible d'accepter"),
-          accErr.message?.includes("Stripe onboarding required")
-            ? t(
-                "driver.orderDetails.acceptDeniedStripe",
-                "Tu dois terminer la configuration Stripe avant d'accepter des courses."
-              )
-            : accErr.message ??
-                t(
-                  "driver.orderDetails.acceptDeniedGeneric",
-                  "Impossible d'accepter cette course."
+        if (acceptDeliveryError) throw acceptDeliveryError;
+
+        if (!acceptedDelivery) {
+          throw new Error(
+            t(
+              "driver.orderDetails.acceptDeniedGeneric",
+              "Impossible d'accepter cette course."
+            )
+          );
+        }
+      } else {
+        const { data: accepted, error: accErr } = await supabase.rpc("driver_accept_ready_order", {
+          p_order_id: order.id,
+        });
+
+        if (accErr) {
+          console.error("❌ accept_order error:", accErr);
+          Alert.alert(
+            t("driver.orderDetails.acceptDeniedTitle", "Impossible d'accepter"),
+            accErr.message?.includes("Stripe onboarding required")
+              ? t(
+                  "driver.orderDetails.acceptDeniedStripe",
+                  "Tu dois terminer la configuration Stripe avant d'accepter des courses."
                 )
-        );
-        return;
-      }
+              : accErr.message ??
+                  t(
+                    "driver.orderDetails.acceptDeniedGeneric",
+                    "Impossible d'accepter cette course."
+                  )
+          );
+          return;
+        }
 
-      console.log("✅ Course acceptée via RPC:", (accepted as any)?.id ?? accepted);
+        console.log("✅ Course acceptée via RPC:", (accepted as any)?.id ?? accepted);
+      }
 
       const uid =
         myUserId ?? (await supabase.auth.getUser()).data?.user?.id ?? null;
@@ -1115,6 +1244,34 @@ export function DriverOrderDetailsScreen() {
           onPress: async () => {
             try {
               setCanceling(true);
+
+              if (getOrderSourceTable(order) === "delivery_requests") {
+                const { error: deliveryCancelError } = await supabase
+                  .from("delivery_requests")
+                  .update({
+                    driver_id: null,
+                    status: "pending",
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", order.id)
+                  .eq("driver_id", myUserId);
+
+                if (deliveryCancelError) throw deliveryCancelError;
+
+                stopDriverLocationTracking();
+                await fetchOrder();
+
+                Alert.alert(
+                  t("driver.orderDetails.cancel.successTitle", "Course annulée"),
+                  t(
+                    "driver.orderDetails.cancel.successBody",
+                    "Tu as été retiré de cette course. Elle peut maintenant être prise par un autre chauffeur."
+                  )
+                );
+
+                navigation.goBack();
+                return;
+              }
 
               const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
@@ -1210,6 +1367,60 @@ export function DriverOrderDetailsScreen() {
       setSubmittingCode(true);
 
       const kind = verifyingKind;
+
+      if (getOrderSourceTable(order) === "delivery_requests") {
+        const codeColumn = kind === "pickup" ? "pickup_code" : "dropoff_code";
+        const verifiedAtColumn =
+          kind === "pickup" ? "pickup_code_verified_at" : "dropoff_code_verified_at";
+
+        const nextStatus = kind === "dropoff" ? "delivered" : order.status;
+        const nowIso = new Date().toISOString();
+
+        const { data: verifiedDeliveryRequest, error: verifyDeliveryRequestError } =
+          await supabase
+            .from("delivery_requests")
+            .update({
+              status: nextStatus,
+              updated_at: nowIso,
+              [verifiedAtColumn]: nowIso,
+            })
+            .eq("id", order.id)
+            .eq("driver_id", myUserId)
+            .eq("status", "dispatched")
+            .eq(codeColumn, normalizedCode)
+            .select("id")
+            .maybeSingle();
+
+        if (verifyDeliveryRequestError) throw verifyDeliveryRequestError;
+
+        if (!verifiedDeliveryRequest) {
+          Alert.alert(
+            t("driver.orderDetails.codeInvalidTitle", "Code invalide"),
+            kind === "pickup"
+              ? t("driver.orderDetails.codePickupInvalid", "Code de retrait invalide.")
+              : t("driver.orderDetails.codeDropoffInvalid", "Code de livraison invalide.")
+          );
+          return;
+        }
+
+        const uploaded = await uploadProofPhoto({
+          orderId: order.id,
+          kind,
+          photoUri: proofPhotoUri,
+        });
+
+        console.log("delivery_request proof uploaded:", uploaded.publicUrl);
+        await fetchOrder();
+        closeCodeModal();
+
+        Alert.alert(
+          t("common.success", "Succès"),
+          kind === "pickup"
+            ? t("driver.orderDetails.codePickupOk", "Code de retrait validé ✅")
+            : t("driver.orderDetails.codeDropoffOk", "Code de livraison validé ✅")
+        );
+        return;
+      }
 
       const { data, error } = await supabase.rpc("verify_order_code", {
         p_order_id: order.id,
@@ -1318,6 +1529,7 @@ export function DriverOrderDetailsScreen() {
           orderId: order.id,
           callerRole: "driver",
           targetRole,
+          sourceTable: getOrderSourceTable(order),
         });
       } catch (e: any) {
         const rawMessage = String(e?.message ?? e ?? "").toLowerCase();
@@ -1416,12 +1628,12 @@ export function DriverOrderDetailsScreen() {
     }
 
     try {
-      (navigation as any).navigate("DriverChat", { orderId: order.id, targetRole });
+      (navigation as any).navigate("DriverChat", { orderId: order.id, targetRole, sourceTable: getOrderSourceTable(order) });
       return;
     } catch {}
 
     try {
-      (navigation as any).navigate("OrderChat", { orderId: order.id, targetRole });
+      (navigation as any).navigate("OrderChat", { orderId: order.id, targetRole, sourceTable: getOrderSourceTable(order) });
     } catch (e) {
       console.error("Navigation chat introuvable:", e);
       Alert.alert(
@@ -1448,11 +1660,11 @@ export function DriverOrderDetailsScreen() {
 
   function openDriverChat() {
     try {
-      (navigation as any).navigate("DriverChat", { orderId, targetRole: "admin" });
+      (navigation as any).navigate("DriverChat", { orderId, targetRole: "admin", sourceTable });
       return;
     } catch {}
     try {
-      (navigation as any).navigate("OrderChat", { orderId, targetRole: "admin" });
+      (navigation as any).navigate("OrderChat", { orderId, targetRole: "admin", sourceTable });
     } catch (e) {
       console.error("Navigation chat introuvable:", e);
       Alert.alert(

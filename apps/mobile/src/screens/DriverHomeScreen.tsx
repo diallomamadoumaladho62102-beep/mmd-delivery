@@ -226,17 +226,54 @@ function getBestDriverAmount(order: Partial<DriverOrder> | null | undefined) {
   if (!order) return null;
 
   // Production privacy rule:
-  // Drivers must only see their exact payout, not the customer order total
-  // and not the full delivery fee.
-  if (typeof order.driver_delivery_payout === "number" && Number.isFinite(order.driver_delivery_payout)) {
-    return order.driver_delivery_payout;
+  // The driver UI must only display the payout already calculated by the backend/database.
+  // Do not calculate percentages in the app, and never display customer total or delivery fee as payout.
+  return getConfiguredDriverPayout(order);
+}
+
+function money(amount: number | null | undefined) {
+  return typeof amount === "number" ? `$${amount.toFixed(2)}` : "$0.00";
+}
+
+function toFiniteNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function getConfiguredDriverPayout(order: Partial<DriverOrder> | null | undefined) {
+  if (!order) return null;
+
+  // Keep this flexible because orders and delivery_requests may not use the exact same column name yet.
+  // The value must come from Supabase, where your commission table / trigger / RPC calculates it.
+  const payoutCandidates = [
+    (order as any).driver_delivery_payout,
+    (order as any).driver_payout,
+    (order as any).driver_amount,
+    (order as any).driver_pay,
+    (order as any).driver_earning,
+    (order as any).driver_earnings,
+    (order as any).estimated_driver_payout,
+    (order as any).estimated_driver_pay,
+    (order as any).estimated_driver_earning,
+    (order as any).driver_share_amount,
+    (order as any).payout_amount,
+  ];
+
+  for (const value of payoutCandidates) {
+    const payout = toFiniteNumber(value);
+    if (payout != null) return payout;
   }
 
   return null;
 }
 
-function money(amount: number | null | undefined) {
-  return typeof amount === "number" ? `$${amount.toFixed(2)}` : "$0.00";
+function getOrderCompositeKey(order: Partial<DriverOrder> | null | undefined) {
+  if (!order?.id) return "";
+  return `${order.source_table ?? "orders"}:${order.id}`;
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -807,7 +844,7 @@ export function DriverHomeScreen() {
           .select(
             `id, kind, status, created_at,
              restaurant_name, pickup_address, dropoff_address,
-             distance_miles, driver_delivery_payout,
+             distance_miles, delivery_fee, driver_delivery_payout, total,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
           )
           .in("status", ["pending", "ready"])
@@ -820,14 +857,9 @@ export function DriverHomeScreen() {
         // Ces demandes sont séparées de orders et doivent être chargées séparément.
         const { data: deliveryAvailable, error: deliveryAvailableError } = await supabase
           .from("delivery_requests")
-          .select(
-            `id, kind, status, created_at,
-             pickup_address, dropoff_address,
-             distance_miles,
-             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
-          )
+          .select("*")
           .in("status", ["pending", "paid_pending", "processing_pending"])
-          .or("payment_status.eq.paid,status.eq.paid_pending,status.eq.processing_pending")
+          .eq("payment_status", "paid")
           .or("kind.eq.delivery,kind.is.null")
           .is("driver_id", null)
           .order("created_at", { ascending: false });
@@ -840,7 +872,7 @@ export function DriverHomeScreen() {
           .select(
             `id, kind, status, created_at,
              restaurant_name, pickup_address, dropoff_address,
-             distance_miles, driver_delivery_payout,
+             distance_miles, delivery_fee, driver_delivery_payout, total,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
           )
           .eq("driver_id", driverId)
@@ -852,12 +884,7 @@ export function DriverHomeScreen() {
         // 4) Demandes delivery_requests déjà assignées au driver.
         const { data: myDeliveryRequests, error: myDeliveryRequestsError } = await supabase
           .from("delivery_requests")
-          .select(
-            `id, kind, status, created_at,
-             pickup_address, dropoff_address,
-             distance_miles,
-             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
-          )
+          .select("*")
           .eq("driver_id", driverId)
           .not("status", "in", '("delivered","canceled")')
           .order("created_at", { ascending: false });
@@ -878,14 +905,14 @@ export function DriverHomeScreen() {
           restaurant_name: null,
           pickup_address: request.pickup_address ?? null,
           dropoff_address: request.dropoff_address ?? null,
-          distance_miles: typeof request.distance_miles === "number" ? request.distance_miles : null,
-          delivery_fee: null,
-          driver_delivery_payout: null,
-          total: null,
-          pickup_lat: typeof request.pickup_lat === "number" ? request.pickup_lat : null,
-          pickup_lng: typeof request.pickup_lng === "number" ? request.pickup_lng : null,
-          dropoff_lat: typeof request.dropoff_lat === "number" ? request.dropoff_lat : null,
-          dropoff_lng: typeof request.dropoff_lng === "number" ? request.dropoff_lng : null,
+          distance_miles: toFiniteNumber(request.distance_miles),
+          delivery_fee: toFiniteNumber(request.delivery_fee),
+          driver_delivery_payout: getConfiguredDriverPayout(request),
+          total: toFiniteNumber(request.total),
+          pickup_lat: toFiniteNumber(request.pickup_lat),
+          pickup_lng: toFiniteNumber(request.pickup_lng),
+          dropoff_lat: toFiniteNumber(request.dropoff_lat),
+          dropoff_lng: toFiniteNumber(request.dropoff_lng),
           source_table: "delivery_requests" as const,
         }));
 
@@ -902,14 +929,14 @@ export function DriverHomeScreen() {
           restaurant_name: null,
           pickup_address: request.pickup_address ?? null,
           dropoff_address: request.dropoff_address ?? null,
-          distance_miles: typeof request.distance_miles === "number" ? request.distance_miles : null,
-          delivery_fee: null,
-          driver_delivery_payout: null,
-          total: null,
-          pickup_lat: typeof request.pickup_lat === "number" ? request.pickup_lat : null,
-          pickup_lng: typeof request.pickup_lng === "number" ? request.pickup_lng : null,
-          dropoff_lat: typeof request.dropoff_lat === "number" ? request.dropoff_lat : null,
-          dropoff_lng: typeof request.dropoff_lng === "number" ? request.dropoff_lng : null,
+          distance_miles: toFiniteNumber(request.distance_miles),
+          delivery_fee: toFiniteNumber(request.delivery_fee),
+          driver_delivery_payout: getConfiguredDriverPayout(request),
+          total: toFiniteNumber(request.total),
+          pickup_lat: toFiniteNumber(request.pickup_lat),
+          pickup_lng: toFiniteNumber(request.pickup_lng),
+          dropoff_lat: toFiniteNumber(request.dropoff_lat),
+          dropoff_lng: toFiniteNumber(request.dropoff_lng),
           source_table: "delivery_requests" as const,
         }));
 
@@ -960,7 +987,7 @@ export function DriverHomeScreen() {
             if (stillExists) return stillExists;
           }
           const nextOffer = visibleAvailable[0] ?? null;
-          if (!prev || prev.id !== nextOffer?.id) setCountdown(60);
+          if (!prev || getOrderCompositeKey(prev) !== getOrderCompositeKey(nextOffer)) setCountdown(60);
           return nextOffer;
         });
       } catch (e: any) {
@@ -1152,24 +1179,32 @@ export function DriverHomeScreen() {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   }, []);
 
-  const handleOpenOrder = useCallback((orderId: string) => {
+  const handleOpenOrder = useCallback((order: DriverOrder) => {
     hapticLight();
-    navAny.navigate("DriverOrderDetails", { orderId });
+    navAny.navigate("DriverOrderDetails", {
+      orderId: order.id,
+      sourceTable: order.source_table ?? "orders",
+    });
   }, [navAny]);
 
   const handleAccept = useCallback(
-    async (orderId: string) => {
+    async (offer: DriverOrder) => {
+      const orderId = offer.id;
+      const offerSourceTable = offer.source_table ?? "orders";
+      const offerKey = getOrderCompositeKey(offer);
+
       try {
         hapticSuccess();
-        setAcceptingId(orderId);
-        const { data: sessionData } = await supabase.auth.getSession();
+        setAcceptingId(offerKey);
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
         const userId = sessionData.session?.user?.id;
         if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
 
-        const offerSourceTable = activeOffer?.source_table ?? "orders";
-
         if (offerSourceTable === "delivery_requests") {
-          const { error: acceptDeliveryError } = await supabase
+          const { data: acceptedDelivery, error: acceptDeliveryError } = await supabase
             .from("delivery_requests")
             .update({
               driver_id: userId,
@@ -1177,16 +1212,29 @@ export function DriverHomeScreen() {
               updated_at: new Date().toISOString(),
             })
             .eq("id", orderId)
-            .eq("status", "pending")
+            .in("status", ["pending", "paid_pending", "processing_pending"])
             .eq("payment_status", "paid")
-            .eq("kind", "delivery")
-            .is("driver_id", null);
+            .or("kind.eq.delivery,kind.is.null")
+            .is("driver_id", null)
+            .select("id")
+            .maybeSingle();
 
           if (acceptDeliveryError) throw acceptDeliveryError;
+
+          if (!acceptedDelivery) {
+            throw new Error(
+              t(
+                "driver.home.errors.deliveryAlreadyTaken",
+                "This delivery request is no longer available. It may already be accepted by another driver.",
+              ),
+            );
+          }
         } else {
           const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", { p_order_id: orderId });
           if (rpcError) throw rpcError;
-          await supabase.rpc("join_order", { p_order_id: orderId, p_role: "driver" });
+
+          const { error: joinError } = await supabase.rpc("join_order", { p_order_id: orderId, p_role: "driver" });
+          if (joinError) console.log("join_order driver warning:", joinError);
         }
 
         await stopSound();
@@ -1194,7 +1242,11 @@ export function DriverHomeScreen() {
         setCountdown(60);
         lastOfferIdRef.current = null;
         await fetchDriverOrders(true);
-        navAny.navigate("DriverOrderDetails", { orderId });
+
+        navAny.navigate("DriverOrderDetails", {
+          orderId,
+          sourceTable: offerSourceTable,
+        });
       } catch (e: any) {
         console.log("Erreur acceptation course:", e);
         Alert.alert(t("shared.orderChat.alerts.errorTitle", "Erreur"), e?.message ?? t("driver.home.errors.accept", "Impossible d'accepter la course."));
@@ -1202,7 +1254,7 @@ export function DriverHomeScreen() {
         setAcceptingId(null);
       }
     },
-    [activeOffer?.source_table, fetchDriverOrders, navAny, stopSound, t],
+    [fetchDriverOrders, navAny, stopSound, t],
   );
 
   const handleDeclineActiveOffer = useCallback(async () => {
@@ -1581,11 +1633,11 @@ export function DriverHomeScreen() {
             <OfferCard
               offer={activeOffer}
               countdown={countdown}
-              accepting={acceptingId === activeOffer.id}
+              accepting={acceptingId === getOrderCompositeKey(activeOffer)}
               formatKind={formatKind}
               formatDate={formatDate}
               onDecline={handleDeclineActiveOffer}
-              onAccept={() => handleAccept(activeOffer.id)}
+              onAccept={() => handleAccept(activeOffer)}
               t={t}
             />
           ) : (
@@ -1708,7 +1760,7 @@ export function DriverHomeScreen() {
                     renderItem={({ item: order }) => (
                       <OrderRow
                         order={order}
-                        onPress={() => handleOpenOrder(order.id)}
+                        onPress={() => handleOpenOrder(order)}
                         formatStatus={formatStatus}
                         formatKind={formatKind}
                         formatDate={formatDate}
