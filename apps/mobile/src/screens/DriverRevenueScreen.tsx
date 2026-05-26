@@ -15,6 +15,8 @@ import { supabase } from "../lib/supabase";
 
 type RangeKey = "week" | "today" | "month";
 
+type SourceTable = "orders" | "delivery_requests";
+
 type OrderRow = {
   id: string;
   created_at: string | null;
@@ -24,6 +26,7 @@ type OrderRow = {
   tip_cents?: number | null;
   kind: string | null;
   restaurant_name: string | null;
+  source_table: SourceTable;
 };
 
 type QuickActionProps = {
@@ -181,7 +184,7 @@ export function DriverRevenueScreen() {
       const uid = sessionData.session.user.id;
       setDriverId(uid);
 
-      const { data, error } = await supabase
+      const { data: orderRows, error: ordersError } = await supabase
         .from("orders")
         .select(
           "id, created_at, status, driver_id, driver_delivery_payout, tip_cents, kind, restaurant_name",
@@ -192,8 +195,65 @@ export function DriverRevenueScreen() {
         .lte("created_at", toISO)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setOrders((data ?? []) as OrderRow[]);
+      if (ordersError) throw ordersError;
+
+      const { data: deliveryRequestRows, error: deliveryRequestsError } = await supabase
+        .from("delivery_requests")
+        .select("id, created_at, status, driver_id, driver_delivery_payout, kind")
+        .eq("driver_id", uid)
+        .eq("status", "delivered")
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("created_at", { ascending: false });
+
+      if (deliveryRequestsError) throw deliveryRequestsError;
+
+      const normalizedOrders: OrderRow[] = ((orderRows ?? []) as any[]).map((row) => ({
+        id: String(row.id),
+        created_at: row.created_at ?? null,
+        status: row.status ?? null,
+        driver_id: row.driver_id ?? null,
+        driver_delivery_payout:
+          typeof row.driver_delivery_payout === "number"
+            ? row.driver_delivery_payout
+            : Number.isFinite(Number(row.driver_delivery_payout))
+              ? Number(row.driver_delivery_payout)
+              : null,
+        tip_cents:
+          typeof row.tip_cents === "number"
+            ? row.tip_cents
+            : Number.isFinite(Number(row.tip_cents))
+              ? Number(row.tip_cents)
+              : 0,
+        kind: row.kind ?? null,
+        restaurant_name: row.restaurant_name ?? null,
+        source_table: "orders",
+      }));
+
+      const normalizedDeliveryRequests: OrderRow[] = ((deliveryRequestRows ?? []) as any[]).map((row) => ({
+        id: String(row.id),
+        created_at: row.created_at ?? null,
+        status: row.status ?? null,
+        driver_id: row.driver_id ?? null,
+        driver_delivery_payout:
+          typeof row.driver_delivery_payout === "number"
+            ? row.driver_delivery_payout
+            : Number.isFinite(Number(row.driver_delivery_payout))
+              ? Number(row.driver_delivery_payout)
+              : null,
+        tip_cents: 0,
+        kind: row.kind ?? "delivery",
+        restaurant_name: null,
+        source_table: "delivery_requests",
+      }));
+
+      setOrders(
+        [...normalizedOrders, ...normalizedDeliveryRequests].sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() -
+            new Date(a.created_at ?? 0).getTime(),
+        ),
+      );
     } catch (e: any) {
       console.log("fetchRevenue error:", e);
       Alert.alert(
@@ -401,11 +461,11 @@ export function DriverRevenueScreen() {
 
                 return (
                   <TouchableOpacity
-                    key={o.id}
+                    key={`${o.source_table}:${o.id}`}
                     onPress={() =>
                       Alert.alert(
                         t("driver.revenue.trip_title", "Trip"),
-                        `${t("driver.revenue.trip_id", "ID")}: ${o.id}\n${t("driver.revenue.net_price", "Net")}: ${fmtMoney(base)}\n${t("driver.revenue.tip", "Tip")}: ${fmtMoney(tip)}\n${t("driver.revenue.total", "Total")}: ${fmtMoney(total)}`,
+                        `${t("driver.revenue.trip_id", "ID")}: ${o.id}\nSource: ${o.source_table === "delivery_requests" ? "Delivery request" : "Order"}\n${t("driver.revenue.net_price", "Net")}: ${fmtMoney(base)}\n${t("driver.revenue.tip", "Tip")}: ${fmtMoney(tip)}\n${t("driver.revenue.total", "Total")}: ${fmtMoney(total)}`,
                       )
                     }
                     style={styles.sessionCard}
@@ -415,7 +475,7 @@ export function DriverRevenueScreen() {
                       <View style={{ flex: 1, paddingRight: 10 }}>
                         <Text style={styles.sessionAmount}>{fmtMoney(total)}</Text>
                         <Text style={styles.sessionMeta} numberOfLines={1}>
-                          {fmtTimeRange(o.created_at)} · #{o.id.slice(0, 8)}{o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
+                          {fmtTimeRange(o.created_at)} · #{o.id.slice(0, 8)}{o.source_table === "delivery_requests" ? " · Delivery" : ""}{o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
                         </Text>
                       </View>
                       <View style={styles.datePill}>

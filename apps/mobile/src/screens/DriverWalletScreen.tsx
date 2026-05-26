@@ -147,7 +147,7 @@ export function DriverWalletScreen() {
           setStripeOnboarded(Boolean((dp as any)?.stripe_onboarded));
         }
 
-        const { data: delivered, error: delErr } = await supabase
+        const { data: deliveredOrders, error: ordersErr } = await supabase
           .from("orders")
           .select("driver_delivery_payout, tip_cents, driver_payout_id")
           .eq("driver_id", uid)
@@ -155,18 +155,34 @@ export function DriverWalletScreen() {
           .eq("driver_paid_out", false)
           .is("driver_payout_id", null);
 
-        if (delErr) throw delErr;
+        if (ordersErr) throw ordersErr;
 
-        const available = (delivered ?? []).reduce((sum, o: any) => {
-          const base =
-            typeof o?.driver_delivery_payout === "number" &&
-            Number.isFinite(o.driver_delivery_payout)
-              ? o.driver_delivery_payout
-              : 0;
+        const { data: deliveredRequests, error: requestsErr } = await supabase
+          .from("delivery_requests")
+          .select("driver_delivery_payout, driver_payout_id")
+          .eq("driver_id", uid)
+          .eq("status", "delivered")
+          .or("driver_paid_out.eq.false,driver_paid_out.is.null")
+          .is("driver_payout_id", null);
+
+        if (requestsErr) throw requestsErr;
+
+        const ordersAvailable = (deliveredOrders ?? []).reduce((sum, o: any) => {
+          // Production privacy rule:
+          // Wallet balance must use only driver_delivery_payout + tips.
+          // Never fall back to total or delivery_fee because those are customer-facing amounts.
+          const base = toNumber(o?.driver_delivery_payout);
           const tipCents = toNumber(o?.tip_cents ?? 0);
           const tip = Math.max(0, tipCents) / 100;
-          return sum + toNumber(base) + (Number.isFinite(tip) ? tip : 0);
+          return sum + base + (Number.isFinite(tip) ? tip : 0);
         }, 0);
+
+        const deliveryRequestsAvailable = (deliveredRequests ?? []).reduce((sum, r: any) => {
+          // delivery_requests do not have tips here; only the exact driver payout is counted.
+          return sum + toNumber(r?.driver_delivery_payout);
+        }, 0);
+
+        const available = ordersAvailable + deliveryRequestsAvailable;
 
         if (aliveRef && !aliveRef.alive) return;
         setAvailableAmount(Math.floor(available * 100) / 100);

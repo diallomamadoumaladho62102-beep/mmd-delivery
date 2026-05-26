@@ -14,6 +14,8 @@ import { supabase } from "../lib/supabase";
 
 type RangeKey = "week" | "today" | "month";
 
+type SourceTable = "orders" | "delivery_requests";
+
 type OrderRow = {
   id: string;
   created_at: string | null;
@@ -21,14 +23,13 @@ type OrderRow = {
   driver_id: string | null;
 
   driver_delivery_payout: number | null;
-  delivery_fee: number | null;
-  total: number | null;
 
-  // ✅ tip depuis DB (cents)
+  // ✅ tip depuis DB (cents). delivery_requests do not use tips here.
   tip_cents?: number | null;
 
   kind: string | null;
   restaurant_name: string | null;
+  source_table: SourceTable;
 };
 
 function startOfDay(d: Date) {
@@ -69,10 +70,16 @@ function fmtTime(iso: string | null, locale: string) {
   return d.toLocaleTimeString(locale || "en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
+function toSafeNumber(value: unknown) {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function getGain(o: OrderRow) {
-  // ✅ base payout chauffeur (sans tips)
-  const g = o.driver_delivery_payout ?? o.delivery_fee ?? o.total ?? 0;
-  return Number.isFinite(g) ? Number(g) : 0;
+  // Production privacy rule:
+  // Driver revenue must be based only on the driver's payout.
+  // Never fall back to delivery_fee or total because those are customer-facing amounts.
+  return toSafeNumber(o.driver_delivery_payout);
 }
 
 // ✅ tip en dollars (depuis tip_cents)
@@ -191,10 +198,10 @@ export function DriverRevenueDetailsScreen() {
         if (!aliveRef.alive) return;
         setDriverId(uid);
 
-        const { data, error } = await supabase
+        const { data: orderRows, error: ordersError } = await supabase
           .from("orders")
           .select(
-            "id, created_at, status, driver_id, driver_delivery_payout, delivery_fee, total, tip_cents, kind, restaurant_name"
+            "id, created_at, status, driver_id, driver_delivery_payout, tip_cents, kind, restaurant_name"
           )
           .eq("driver_id", uid)
           .eq("status", "delivered")
@@ -202,10 +209,60 @@ export function DriverRevenueDetailsScreen() {
           .lte("created_at", toISO)
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        if (ordersError) throw ordersError;
+
+        const { data: deliveryRequestRows, error: deliveryRequestsError } = await supabase
+          .from("delivery_requests")
+          .select("id, created_at, status, driver_id, driver_delivery_payout, kind")
+          .eq("driver_id", uid)
+          .eq("status", "delivered")
+          .gte("created_at", fromISO)
+          .lte("created_at", toISO)
+          .order("created_at", { ascending: false });
+
+        if (deliveryRequestsError) throw deliveryRequestsError;
+
+        const normalizedOrders: OrderRow[] = ((orderRows ?? []) as any[]).map((row) => ({
+          id: String(row.id),
+          created_at: row.created_at ?? null,
+          status: row.status ?? null,
+          driver_id: row.driver_id ?? null,
+          driver_delivery_payout:
+            Number.isFinite(Number(row.driver_delivery_payout))
+              ? Number(row.driver_delivery_payout)
+              : null,
+          tip_cents:
+            Number.isFinite(Number(row.tip_cents))
+              ? Number(row.tip_cents)
+              : 0,
+          kind: row.kind ?? null,
+          restaurant_name: row.restaurant_name ?? null,
+          source_table: "orders",
+        }));
+
+        const normalizedDeliveryRequests: OrderRow[] = ((deliveryRequestRows ?? []) as any[]).map((row) => ({
+          id: String(row.id),
+          created_at: row.created_at ?? null,
+          status: row.status ?? null,
+          driver_id: row.driver_id ?? null,
+          driver_delivery_payout:
+            Number.isFinite(Number(row.driver_delivery_payout))
+              ? Number(row.driver_delivery_payout)
+              : null,
+          tip_cents: 0,
+          kind: row.kind ?? "delivery",
+          restaurant_name: null,
+          source_table: "delivery_requests",
+        }));
+
+        const mergedRows = [...normalizedOrders, ...normalizedDeliveryRequests].sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() -
+            new Date(a.created_at ?? 0).getTime()
+        );
 
         if (!aliveRef.alive) return;
-        setOrders((data ?? []) as OrderRow[]);
+        setOrders(mergedRows);
       } catch (e: any) {
         console.log("fetchDetails error:", e);
         if (!aliveRef.alive) return;
@@ -370,7 +427,7 @@ export function DriverRevenueDetailsScreen() {
       return;
     }
     const last = orders[0];
-    navigation.navigate("DriverOrderDetails", { orderId: last.id });
+    navigation.navigate("DriverOrderDetails", { orderId: last.id, sourceTable: last.source_table });
   }, [navigation, orders, t]);
 
   const onRefresh = useCallback(() => {
@@ -702,7 +759,7 @@ export function DriverRevenueDetailsScreen() {
 
                 return (
                   <TouchableOpacity
-                    key={o.id}
+                    key={`${o.source_table}:${o.id}`}
                     onPress={() =>
                       Alert.alert(
                         t("driver.revenue.details.tripAlert.title", "Trip"),
@@ -716,7 +773,7 @@ export function DriverRevenueDetailsScreen() {
                             net: fmtMoney(gain),
                             tip: fmtMoney(tip),
                             total: fmtMoney(gain + tip),
-                            restaurant: o.restaurant_name ?? "—",
+                            restaurant: o.source_table === "delivery_requests" ? "Delivery" : o.restaurant_name ?? "—",
                           }
                         )
                       )
@@ -740,7 +797,7 @@ export function DriverRevenueDetailsScreen() {
 
                     <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "800" }}>
                       {fmtTime(o.created_at, localeForDates)} · #{o.id.slice(0, 8)}
-                      {o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
+                      {o.source_table === "delivery_requests" ? " · Delivery" : ""}{o.restaurant_name ? ` · ${o.restaurant_name}` : ""}
                     </Text>
                   </TouchableOpacity>
                 );
