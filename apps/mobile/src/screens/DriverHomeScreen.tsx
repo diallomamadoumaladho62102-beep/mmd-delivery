@@ -14,6 +14,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Platform,
   Animated,
   PanResponder,
   Image,
@@ -144,6 +145,24 @@ const ZONES: ZoneDef[] = [
 const SHEET_MIN_TRANSLATE_Y = 0;
 const SHEET_MID_TRANSLATE_Y = 220;
 const SHEET_MAX_TRANSLATE_Y = 430;
+
+// Keeps floating driver UI above Android/iOS system navigation and bottom tabs.
+// This prevents Home / Earnings / Inbox / Menu from being pushed under the device nav bar,
+// especially on Samsung tablets and Android gesture/button navigation.
+const DRIVER_BOTTOM_NAV_SAFE_OFFSET = Platform.select({
+  android: 34,
+  ios: 22,
+  default: 28,
+});
+
+const DRIVER_BOTTOM_TAB_CLEARANCE = Platform.select({
+  android: 78,
+  ios: 54,
+  default: 64,
+});
+
+const DRIVER_BOTTOM_PANEL_OFFSET =
+  (DRIVER_BOTTOM_TAB_CLEARANCE ?? 64) + (DRIVER_BOTTOM_NAV_SAFE_OFFSET ?? 28);
 const MAX_VISIBLE_ORDER_MILES = 5;
 const CARD_BG = "rgba(15,23,42,0.92)";
 const CARD_BORDER = "rgba(148,163,184,0.16)";
@@ -2275,14 +2294,14 @@ const styles = StyleSheet.create({
   chipsRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 9 },
   chip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, marginRight: 6, marginBottom: 6 },
   chipText: { fontSize: 10, fontWeight: "800", maxWidth: 120 },
-  bottomArea: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60 },
+  bottomArea: { position: "absolute", left: 0, right: 0, bottom: DRIVER_BOTTOM_PANEL_OFFSET, zIndex: 60 },
   sheet: {
     width: "100%",
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 20,
+    paddingBottom: 24,
     backgroundColor: "rgba(2,6,23,0.985)",
     borderTopWidth: 1,
     borderLeftWidth: 1,
@@ -2329,7 +2348,7 @@ const styles = StyleSheet.create({
   detailBlockSmall: { width: 48 },
   detailLabel: { color: "#64748B", fontSize: 10, fontWeight: "700" },
   detailValue: { color: "#E2E8F0", fontSize: 11, fontWeight: "700", marginTop: 3 },
-  offerWrap: { paddingHorizontal: 16, paddingBottom: 14 },
+  offerWrap: { paddingHorizontal: 16, paddingBottom: 18 },
   offerCard: { borderRadius: 24, padding: 16, backgroundColor: "rgba(2,6,23,0.96)", borderWidth: 1, borderColor: "rgba(139,92,246,0.24)" },
   offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   offerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },

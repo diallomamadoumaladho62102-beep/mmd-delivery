@@ -3,31 +3,17 @@ import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 
+const MMD_TWILIO_NUMBER = "+19294924563";
+const ADMIN_SUPPORT_PHONE =
+  process.env.MMD_ADMIN_SUPPORT_PHONE || "+19297408722";
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-function twiml(xml: string) {
-  return new Response(xml.trim(), {
-    status: 200,
-    headers: {
-      "Content-Type": "text/xml; charset=utf-8",
-    },
-  });
-}
-
-function say(message: string) {
-  return twiml(`
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="alice">${escapeXml(message)}</Say>
-</Response>
-  `);
-}
-
 function escapeXml(value: string) {
-  return value
+  return String(value || "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
@@ -35,8 +21,64 @@ function escapeXml(value: string) {
     .replaceAll("'", "&apos;");
 }
 
+function twiml(xml: string) {
+  return new Response(xml.trim(), {
+    status: 200,
+    headers: { "Content-Type": "text/xml; charset=utf-8" },
+  });
+}
+
+function say(message: string) {
+  return twiml(`
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">${escapeXml(message)}</Say>
+</Response>
+  `);
+}
+
+function publicSupportDialAdmin() {
+  return twiml(`
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice" language="en-US">
+    Welcome to MMD Delivery and Ride support.
+    Thank you for calling us.
+    For safety and quality purposes, this call may be recorded.
+    Please wait while we connect you to our support team.
+  </Say>
+
+  <Dial
+    callerId="${escapeXml(MMD_TWILIO_NUMBER)}"
+    answerOnBridge="true"
+    timeout="25"
+    record="record-from-answer-dual"
+  >
+    <Number>${escapeXml(ADMIN_SUPPORT_PHONE)}</Number>
+  </Dial>
+
+  <Say voice="alice" language="en-US">
+    Our support team is not available right now.
+    Please leave your name, phone number, order or trip details, and a short message after the beep.
+  </Say>
+
+  <Record
+    maxLength="180"
+    playBeep="true"
+    transcribe="false"
+    trim="trim-silence"
+  />
+
+  <Say voice="alice" language="en-US">
+    Thank you for calling MMD Delivery and Ride.
+    We appreciate your trust. Goodbye.
+  </Say>
+</Response>
+  `);
+}
+
 export async function GET() {
-  return say("MMD Delivery voice system is active.");
+  return say("MMD Delivery and Ride voice system is active.");
 }
 
 export async function POST(req: NextRequest) {
@@ -47,7 +89,7 @@ export async function POST(req: NextRequest) {
     const callSid = String(formData.get("CallSid") || "").trim();
 
     if (!from) {
-      return say("Missing caller number.");
+      return publicSupportDialAdmin();
     }
 
     const now = new Date().toISOString();
@@ -63,19 +105,21 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (sessionError) {
-      console.error("call_sessions lookup error", sessionError);
-      return say("Unable to verify this call session.");
+      console.error("[twilio/voice] call_sessions lookup error", sessionError);
+      return publicSupportDialAdmin();
     }
 
     if (!session) {
-      return say("No active call session found.");
+      return publicSupportDialAdmin();
     }
 
     const targetPhone = String(session.target_phone || "").trim();
-    const proxyNumber = String(session.proxy_number || "").trim();
+    const proxyNumber = String(session.proxy_number || MMD_TWILIO_NUMBER).trim();
 
-    if (!targetPhone || !proxyNumber) {
-      return say("This call session is incomplete.");
+    if (!targetPhone) {
+      return say(
+        "This call session is incomplete. Please return to the MMD Delivery app and try again."
+      );
     }
 
     await supabaseAdmin
@@ -90,9 +134,12 @@ export async function POST(req: NextRequest) {
     return twiml(`
 <?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">
-    This call may be recorded for safety and quality purposes.
+  <Say voice="alice" language="en-US">
+    Welcome to MMD Delivery and Ride.
+    For safety and quality purposes, this call may be recorded.
+    Please wait while we connect your call.
   </Say>
+
   <Dial
     callerId="${escapeXml(proxyNumber)}"
     answerOnBridge="true"
@@ -101,10 +148,15 @@ export async function POST(req: NextRequest) {
   >
     <Number>${escapeXml(targetPhone)}</Number>
   </Dial>
+
+  <Say voice="alice" language="en-US">
+    We were unable to connect your call.
+    Please try again later or contact MMD Delivery support.
+  </Say>
 </Response>
     `);
   } catch (error) {
-    console.error("twilio voice webhook error", error);
-    return say("Internal server error.");
+    console.error("[twilio/voice] fatal error", error);
+    return publicSupportDialAdmin();
   }
 }

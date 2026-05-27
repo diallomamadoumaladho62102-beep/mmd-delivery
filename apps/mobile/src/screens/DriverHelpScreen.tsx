@@ -200,25 +200,26 @@ export function DriverHelpScreen() {
 
   const openAdminChat = useCallback(() => {
     void runBusyAction("chat", async () => {
-      Alert.alert(
-        t("driver.help.comingSoonTitle", "Coming soon ✅"),
-        t(
-          "driver.help.adminChatSoon",
-          "Admin support chat will be available soon. For now, please contact support by email or report an issue with the order ID and details."
-        ),
-        [
-          {
-            text: t("driver.help.emailSupport", "Email support"),
-            onPress: openMail,
-          },
-          {
-            text: t("common.ok", "OK"),
-            style: "cancel",
-          },
-        ]
-      );
+      try {
+        navigation.navigate("DriverChat", {
+          orderId: "support",
+          targetRole: "admin",
+          sourceTable: "support",
+        });
+      } catch (e: any) {
+        console.error("[DriverHelpScreen] admin chat open failed", e);
+
+        Alert.alert(
+          t("shared.orderChat.alerts.errorTitle", "Error"),
+          e?.message ||
+            t(
+              "driver.help.chatOpenError",
+              "Unable to open admin support chat."
+            )
+        );
+      }
     });
-  }, [openMail, runBusyAction, t]);
+  }, [navigation, runBusyAction, t]);
 
   const reportIssue = useCallback(() => {
     void runBusyAction("report", async () => {
