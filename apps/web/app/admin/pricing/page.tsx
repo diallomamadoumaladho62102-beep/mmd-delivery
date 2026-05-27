@@ -1,5 +1,10 @@
+import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import AdminCancelRefundPanel from "@/components/AdminCancelRefundPanel";
+
+const PRICING_PAGE_PATH = "/admin/pricing";
+const MAX_MONEY_VALUE = 1_000_000;
+const ALLOWED_PROMO_TYPES = new Set(["percent", "fixed", "free_delivery"]);
 
 type PricingRow = {
   id: string;
@@ -31,6 +36,28 @@ type SplitStatus = {
   isOver: boolean;
   label: string;
   tone: "ok" | "warn" | "danger";
+};
+
+type PromoType = "percent" | "fixed" | "free_delivery" | null;
+
+type PricingPayload = {
+  active: boolean;
+  currency: string;
+  client_pct: number;
+  driver_pct: number;
+  restaurant_pct: number;
+  platform_pct: number;
+  delivery_platform_pct: number;
+  delivery_driver_pct: number;
+  delivery_fee_base: number;
+  delivery_fee_per_mile: number;
+  delivery_fee_per_minute: number;
+  minimum_order_amount: number;
+  promo_enabled: boolean;
+  promo_type: PromoType;
+  promo_value: number | null;
+  promo_code: string | null;
+  updated_at: string;
 };
 
 function getAdminClient() {
@@ -71,6 +98,230 @@ async function getPricingConfig(): Promise<PricingRow[]> {
   return (data ?? []) as PricingRow[];
 }
 
+function text(value: FormDataEntryValue | null, fallback = "") {
+  return String(value ?? fallback).trim();
+}
+
+function nullableText(value: FormDataEntryValue | null) {
+  const clean = text(value);
+  return clean ? clean : null;
+}
+
+function bool(value: FormDataEntryValue | null) {
+  const clean = text(value).toLowerCase();
+  return clean === "true" || clean === "1" || clean === "on" || clean === "yes";
+}
+
+function parseNumber(value: FormDataEntryValue | null, fallback = 0) {
+  const clean = text(value).replace(",", ".");
+  if (!clean) return fallback;
+
+  const parsed = Number(clean);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseNullableNumber(value: FormDataEntryValue | null) {
+  const clean = text(value).replace(",", ".");
+  if (!clean) return null;
+
+  const parsed = Number(clean);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function round2(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function assertUuid(value: string) {
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  if (!uuidPattern.test(value)) {
+    throw new Error("Invalid pricing config ID / ID de configuration invalide.");
+  }
+}
+
+function assertPercent(name: string, value: number) {
+  if (!Number.isFinite(value) || value < 0 || value > 100) {
+    throw new Error(`${name} must be between 0 and 100 / doit être entre 0 et 100.`);
+  }
+}
+
+function assertMoney(name: string, value: number) {
+  if (!Number.isFinite(value) || value < 0 || value > MAX_MONEY_VALUE) {
+    throw new Error(
+      `${name} must be between 0 and ${MAX_MONEY_VALUE} / doit être entre 0 et ${MAX_MONEY_VALUE}.`
+    );
+  }
+}
+
+function normalizeCurrency(value: string) {
+  const currency = value.trim().toUpperCase() || "USD";
+
+  if (!/^[A-Z]{3}$/.test(currency)) {
+    throw new Error("Currency must be a 3-letter code like USD / La devise doit être un code de 3 lettres comme USD.");
+  }
+
+  return currency;
+}
+
+function normalizePromoType(value: string | null): PromoType {
+  if (!value) return null;
+
+  const promoType = value.trim().toLowerCase();
+  if (!ALLOWED_PROMO_TYPES.has(promoType)) {
+    throw new Error("Invalid promo type / Type de promotion invalide.");
+  }
+
+  return promoType as PromoType;
+}
+
+function normalizePromoCode(value: string | null) {
+  if (!value) return null;
+
+  const promo = value.trim().toUpperCase().replace(/\s+/g, "");
+  if (!promo) return null;
+
+  if (!/^[A-Z0-9_-]{3,32}$/.test(promo)) {
+    throw new Error(
+      "Promo code must be 3-32 characters: A-Z, 0-9, _ or - / Code promo : 3 à 32 caractères."
+    );
+  }
+
+  return promo;
+}
+
+function buildPayload(formData: FormData): { id: string; payload: PricingPayload } {
+  const id = text(formData.get("id"));
+  if (!id) throw new Error("Missing ID / ID manquant.");
+  assertUuid(id);
+
+  const active = bool(formData.get("active"));
+  const promoEnabled = bool(formData.get("promo_enabled"));
+
+  const clientPct = round2(parseNumber(formData.get("client_pct")));
+  // Production rule:
+  // The driver must not take a percentage from the food/order subtotal.
+  // Driver payout is calculated only from delivery_driver_pct on the transport/delivery fee.
+  const driverPct = 0;
+  const restaurantPct = round2(parseNumber(formData.get("restaurant_pct")));
+  const platformPct = round2(parseNumber(formData.get("platform_pct")));
+
+  const deliveryPlatformPct = round2(
+    parseNumber(formData.get("delivery_platform_pct"), 20)
+  );
+  const deliveryDriverPct = round2(
+    parseNumber(formData.get("delivery_driver_pct"), 80)
+  );
+
+  const deliveryFeeBase = round2(parseNumber(formData.get("delivery_fee_base")));
+  const deliveryFeePerMile = round2(
+    parseNumber(formData.get("delivery_fee_per_mile"))
+  );
+  const deliveryFeePerMinute = round2(
+    parseNumber(formData.get("delivery_fee_per_minute"))
+  );
+  const minimumOrderAmount = round2(
+    parseNumber(formData.get("minimum_order_amount"))
+  );
+
+  const promoType = normalizePromoType(nullableText(formData.get("promo_type")));
+  const promoValue = parseNullableNumber(formData.get("promo_value"));
+  const promoCode = normalizePromoCode(nullableText(formData.get("promo_code")));
+  const currency = normalizeCurrency(text(formData.get("currency"), "USD"));
+
+  assertPercent("client_pct", clientPct);
+  assertPercent("driver_pct", driverPct);
+  assertPercent("restaurant_pct", restaurantPct);
+  assertPercent("platform_pct", platformPct);
+  assertPercent("delivery_platform_pct", deliveryPlatformPct);
+  assertPercent("delivery_driver_pct", deliveryDriverPct);
+
+  assertMoney("delivery_fee_base", deliveryFeeBase);
+  assertMoney("delivery_fee_per_mile", deliveryFeePerMile);
+  assertMoney("delivery_fee_per_minute", deliveryFeePerMinute);
+  assertMoney("minimum_order_amount", minimumOrderAmount);
+
+  const deliveryTotal = round2(deliveryDriverPct + deliveryPlatformPct);
+  if (deliveryTotal !== 100) {
+    throw new Error(
+      "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire 100."
+    );
+  }
+
+  const coreTotal = round2(clientPct + restaurantPct + platformPct);
+  if (coreTotal > 100) {
+    throw new Error(
+      "Client % + Restaurant % + Platform % must be <= 100 / Client % + Restaurant % + Plateforme % doit être <= 100."
+    );
+  }
+
+  if (promoEnabled) {
+    if (!promoType) {
+      throw new Error("Promo type is required when promo is enabled / Type promo obligatoire si la promo est active.");
+    }
+
+    if (promoType !== "free_delivery" && promoValue === null) {
+      throw new Error("Promo value is required / Valeur promo obligatoire.");
+    }
+
+    if (promoValue !== null) {
+      const safePromoValue = round2(promoValue);
+      if (!Number.isFinite(safePromoValue) || safePromoValue < 0) {
+        throw new Error("Promo value must be >= 0 / Valeur promo doit être >= 0.");
+      }
+
+      if (promoType === "percent" && safePromoValue > 100) {
+        throw new Error("Percent promo must be <= 100 / Promo pourcentage doit être <= 100.");
+      }
+    }
+  }
+
+  return {
+    id,
+    payload: {
+      active,
+      currency,
+      client_pct: clientPct,
+      driver_pct: driverPct,
+      restaurant_pct: restaurantPct,
+      platform_pct: platformPct,
+      delivery_platform_pct: deliveryPlatformPct,
+      delivery_driver_pct: deliveryDriverPct,
+      delivery_fee_base: deliveryFeeBase,
+      delivery_fee_per_mile: deliveryFeePerMile,
+      delivery_fee_per_minute: deliveryFeePerMinute,
+      minimum_order_amount: minimumOrderAmount,
+      promo_enabled: promoEnabled,
+      promo_type: promoEnabled ? promoType : null,
+      promo_value:
+        promoEnabled && promoType !== "free_delivery" && promoValue !== null
+          ? round2(promoValue)
+          : null,
+      promo_code: promoEnabled ? promoCode : null,
+      updated_at: new Date().toISOString(),
+    },
+  };
+}
+
+async function updatePricingConfig(formData: FormData) {
+  "use server";
+
+  const { id, payload } = buildPayload(formData);
+  const supabase = getAdminClient();
+
+  const { error } = await supabase
+    .from("pricing_config")
+    .update(payload)
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Failed to save pricing_config / Échec sauvegarde pricing_config: ${error.message}`);
+  }
+
+  revalidatePath(PRICING_PAGE_PATH);
+}
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
   const date = new Date(value);
@@ -92,7 +343,7 @@ function pctValue(value: number | null | undefined) {
 
 function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
   const total = parts.reduce((sum, value) => sum + numberValue(value), 0);
-  const rounded = Math.round(total * 100) / 100;
+  const rounded = round2(total);
   const isExact = Math.abs(rounded - 100) < 0.01;
   const isOver = rounded > 100;
 
@@ -101,7 +352,7 @@ function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
       total: rounded,
       isExact,
       isOver,
-      label: "Balanced at 100%",
+      label: "Balanced at 100% / Équilibré à 100%",
       tone: "ok",
     };
   }
@@ -111,7 +362,7 @@ function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
       total: rounded,
       isExact,
       isOver,
-      label: `Over by ${(rounded - 100).toFixed(2)}%`,
+      label: `Over by ${(rounded - 100).toFixed(2)}% / Dépasse de ${(rounded - 100).toFixed(2)}%`,
       tone: "danger",
     };
   }
@@ -120,7 +371,7 @@ function splitStatus(parts: Array<number | null | undefined>): SplitStatus {
     total: rounded,
     isExact,
     isOver,
-    label: `Remaining ${(100 - rounded).toFixed(2)}%`,
+    label: `Remaining ${(100 - rounded).toFixed(2)}% / Reste ${(100 - rounded).toFixed(2)}%`,
     tone: "warn",
   };
 }
@@ -141,7 +392,7 @@ function sectionTitle(title: string, subtitle: string) {
   return (
     <div className="space-y-1">
       <div className="text-sm font-semibold text-slate-900">{title}</div>
-      <div className="text-xs text-slate-500">{subtitle}</div>
+      <div className="text-xs leading-5 text-slate-500">{subtitle}</div>
     </div>
   );
 }
@@ -174,7 +425,7 @@ function PercentInput({
           %
         </span>
       </div>
-      {help ? <div className="text-[11px] text-slate-500">{help}</div> : null}
+      {help ? <div className="text-[11px] leading-4 text-slate-500">{help}</div> : null}
     </label>
   );
 }
@@ -206,7 +457,7 @@ function MoneyInput({
           className="w-full rounded-xl border border-slate-200 bg-white px-7 py-2 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/10"
         />
       </div>
-      {help ? <div className="text-[11px] text-slate-500">{help}</div> : null}
+      {help ? <div className="text-[11px] leading-4 text-slate-500">{help}</div> : null}
     </label>
   );
 }
@@ -233,7 +484,7 @@ function TextInputField({
         placeholder={placeholder}
         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/10"
       />
-      {help ? <div className="text-[11px] text-slate-500">{help}</div> : null}
+      {help ? <div className="text-[11px] leading-4 text-slate-500">{help}</div> : null}
     </label>
   );
 }
@@ -287,21 +538,22 @@ export default async function AdminPricingPage() {
               MMD Delivery Admin
             </div>
             <h1 className="text-2xl font-black tracking-tight">
-              Pricing Configuration
+              Pricing Configuration / Configuration des prix
             </h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-600">
-              Modifie les commissions, promotions et frais depuis Supabase
-              <span className="font-semibold text-slate-900"> pricing_config</span>,
-              sans toucher au code mobile. Les triggers Supabase utilisent ces
-              valeurs pour calculer les gains chauffeur et la part plateforme.
+            <p className="max-w-3xl text-sm leading-6 text-slate-600">
+              Edit commissions, promotions, delivery pricing and payout splits from
+              <span className="font-semibold text-slate-900"> Supabase pricing_config</span>{" "}
+              without changing the mobile app code. / Modifie les commissions,
+              promotions, frais et partages depuis{" "}
+              <span className="font-semibold text-slate-900">Supabase pricing_config</span>{" "}
+              sans toucher au code mobile.
             </p>
           </div>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <div className="font-bold">Règle production</div>
+            <div className="font-bold">Production rule / Règle production</div>
             <div className="mt-1 text-xs leading-5">
-              Pour chaque ligne, garde le delivery split proche de 100%.
-              Exemple : Driver 80% + Platform 20%.
+              Delivery driver % + delivery platform % must equal 100. The driver gets paid only from transport/delivery, not from the order subtotal. / La part chauffeur livraison + la part plateforme livraison doit faire 100. Le chauffeur est payé seulement sur le transport/livraison, pas sur le montant de la commande.
             </div>
           </div>
         </div>
@@ -313,7 +565,6 @@ export default async function AdminPricingPage() {
         {rows.map((row) => {
           const coreStatus = splitStatus([
             row.client_pct,
-            row.driver_pct,
             row.restaurant_pct,
             row.platform_pct,
           ]);
@@ -329,8 +580,7 @@ export default async function AdminPricingPage() {
           return (
             <form
               key={row.id}
-              action="/api/admin/pricing"
-              method="post"
+              action={updatePricingConfig}
               className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
             >
               <input type="hidden" name="id" value={row.id} />
@@ -359,7 +609,8 @@ export default async function AdminPricingPage() {
 
                     <div className="mt-2 text-xs text-slate-500">
                       Key: <span className="font-semibold">{row.config_key}</span>{" "}
-                      • Last update: {formatDateTime(row.updated_at)}
+                      • Last update / Dernière mise à jour:{" "}
+                      {formatDateTime(row.updated_at)}
                     </div>
                   </div>
 
@@ -367,7 +618,7 @@ export default async function AdminPricingPage() {
                     type="submit"
                     className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
                   >
-                    Save changes
+                    Save changes / Enregistrer
                   </button>
                 </div>
               </div>
@@ -376,7 +627,7 @@ export default async function AdminPricingPage() {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <label className="space-y-1">
                     <div className="text-sm font-medium text-slate-800">
-                      Active
+                      Active / Actif
                     </div>
                     <select
                       name="active"
@@ -390,19 +641,18 @@ export default async function AdminPricingPage() {
 
                   <TextInputField
                     name="currency"
-                    label="Currency"
+                    label="Currency / Devise"
                     value={row.currency ?? "USD"}
                     placeholder="USD"
-                    help="Devise utilisée pour les montants affichés."
+                    help="3-letter currency code. / Code devise à 3 lettres."
                   />
                 </div>
 
                 <SplitSummary
-                  title="Core commission split"
+                  title="Core split / Partage principal"
                   status={coreStatus}
                   items={[
                     { label: "Client", value: row.client_pct },
-                    { label: "Driver", value: row.driver_pct },
                     { label: "Restaurant", value: row.restaurant_pct },
                     { label: "Platform", value: row.platform_pct },
                   ]}
@@ -410,10 +660,10 @@ export default async function AdminPricingPage() {
 
                 <div className="rounded-2xl border border-slate-200 p-4">
                   {sectionTitle(
-                    "Core commission split",
+                    "Core commission split / Partage commission principale",
                     isFood
-                      ? "Pour food : utilisé pour la nourriture / restaurant."
-                      : "Pour errand : utilisé pour les commissions générales."
+                      ? "Food: restaurant subtotal split only. Suggested: Restaurant 85%, Platform 15%, Driver 0%. / Food : partage nourriture seulement. Recommandé : Restaurant 85%, Plateforme 15%, Chauffeur 0%."
+                      : "Errand: no driver percentage on order money. Driver is paid from delivery/transport split below. / Errand : pas de % chauffeur sur la commande. Le chauffeur est payé via le transport ci-dessous."
                   )}
 
                   <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -422,11 +672,16 @@ export default async function AdminPricingPage() {
                       label="Client %"
                       value={row.client_pct}
                     />
-                    <PercentInput
-                      name="driver_pct"
-                      label="Driver %"
-                      value={row.driver_pct}
-                    />
+                    <input type="hidden" name="driver_pct" value="0" />
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <div className="text-sm font-medium text-slate-800">
+                        Driver order % / Chauffeur commande %
+                      </div>
+                      <div className="mt-2 text-lg font-black text-slate-900">0%</div>
+                      <div className="mt-1 text-[11px] leading-4 text-slate-500">
+                        Not used for order/subtotal commissions. Driver earnings are calculated only from the delivery/transport split below. / Non utilisé sur l’argent de la commande. Le chauffeur est payé seulement avec le partage livraison/transport ci-dessous.
+                      </div>
+                    </div>
                     <PercentInput
                       name="restaurant_pct"
                       label="Restaurant %"
@@ -434,65 +689,65 @@ export default async function AdminPricingPage() {
                     />
                     <PercentInput
                       name="platform_pct"
-                      label="Platform %"
+                      label="Platform % / Plateforme %"
                       value={row.platform_pct}
                     />
                   </div>
                 </div>
 
                 <SplitSummary
-                  title="Delivery split"
+                  title="Delivery split / Partage livraison"
                   status={deliveryStatus}
                   items={[
-                    { label: "Driver", value: row.delivery_driver_pct },
-                    { label: "Platform", value: row.delivery_platform_pct },
+                    { label: "Driver / Chauffeur", value: row.delivery_driver_pct },
+                    { label: "Platform / Plateforme", value: row.delivery_platform_pct },
                   ]}
                 />
 
                 <div className="rounded-2xl border border-slate-200 p-4">
                   {sectionTitle(
-                    "Delivery split",
+                    "Delivery split / Partage livraison",
                     isErrand
-                      ? "Pickup/dropoff : ces % alimentent driver_delivery_payout et platform_delivery_fee."
-                      : "Food delivery : ces % divisent uniquement les frais de livraison."
+                      ? "Pickup/dropoff: used by Supabase triggers for driver_delivery_payout and platform_delivery_fee. / Pickup/dropoff : utilisé par les triggers Supabase."
+                      : "Food delivery: splits only the delivery fee, not the food subtotal. / Food delivery : partage seulement les frais de livraison."
                   )}
 
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <PercentInput
                       name="delivery_platform_pct"
-                      label="Delivery platform %"
+                      label="Delivery platform % / Plateforme livraison %"
                       value={row.delivery_platform_pct}
-                      help="Part plateforme sur les frais de livraison."
+                      help="Platform share on delivery fee. / Part plateforme sur les frais de livraison."
                     />
                     <PercentInput
                       name="delivery_driver_pct"
-                      label="Delivery driver %"
+                      label="Delivery driver % / Chauffeur livraison %"
                       value={row.delivery_driver_pct}
-                      help="Part chauffeur affichée dans l'application driver."
+                      help="Driver payout shown in the driver app. / Gain chauffeur affiché dans l’app."
                     />
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 p-4">
                   {sectionTitle(
-                    "Delivery pricing inputs",
-                    "Base + distance + temps. Ces valeurs peuvent servir au calcul des frais de livraison."
+                    "Delivery pricing inputs / Paramètres prix livraison",
+                    "Base + distance + time. / Base + distance + temps."
                   )}
 
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                     <MoneyInput
                       name="delivery_fee_base"
-                      label="Delivery fee base"
+                      label="Delivery fee base / Base livraison"
                       value={row.delivery_fee_base}
                     />
                     <MoneyInput
                       name="delivery_fee_per_mile"
-                      label="Per mile"
+                      label="Per mile / Par mile"
                       value={row.delivery_fee_per_mile}
                     />
                     <MoneyInput
                       name="delivery_fee_per_minute"
-                      label="Per minute"
+                      label="Per minute / Par minute"
                       value={row.delivery_fee_per_minute}
                     />
                   </div>
@@ -500,20 +755,20 @@ export default async function AdminPricingPage() {
 
                 <div className="rounded-2xl border border-slate-200 p-4">
                   {sectionTitle(
-                    "Order floor & promotion",
-                    "Contrôle du minimum de commande et des promotions actives."
+                    "Order floor & promotion / Minimum commande & promotion",
+                    "Control minimum order amount and active promotions. / Contrôle du minimum et des promotions."
                   )}
 
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <MoneyInput
                       name="minimum_order_amount"
-                      label="Minimum order amount"
+                      label="Minimum order amount / Montant minimum"
                       value={row.minimum_order_amount}
                     />
 
                     <label className="space-y-1">
                       <div className="text-sm font-medium text-slate-800">
-                        Promo enabled
+                        Promo enabled / Promo active
                       </div>
                       <select
                         name="promo_enabled"
@@ -529,29 +784,31 @@ export default async function AdminPricingPage() {
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                     <label className="space-y-1">
                       <div className="text-sm font-medium text-slate-800">
-                        Promo type
+                        Promo type / Type promo
                       </div>
                       <select
                         name="promo_type"
                         defaultValue={row.promo_type ?? ""}
                         className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-black focus:ring-2 focus:ring-black/10"
                       >
-                        <option value="">none</option>
-                        <option value="percent">percent</option>
-                        <option value="fixed">fixed</option>
-                        <option value="free_delivery">free_delivery</option>
+                        <option value="">none / aucun</option>
+                        <option value="percent">percent / pourcentage</option>
+                        <option value="fixed">fixed / montant fixe</option>
+                        <option value="free_delivery">
+                          free_delivery / livraison gratuite
+                        </option>
                       </select>
                     </label>
 
                     <MoneyInput
                       name="promo_value"
-                      label="Promo value"
+                      label="Promo value / Valeur promo"
                       value={row.promo_value}
                     />
 
                     <TextInputField
                       name="promo_code"
-                      label="Promo code"
+                      label="Promo code / Code promo"
                       value={row.promo_code}
                       placeholder="SAVE10"
                     />
@@ -560,16 +817,17 @@ export default async function AdminPricingPage() {
 
                 <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 md:flex-row md:items-center md:justify-between">
                   <div className="text-xs leading-5 text-slate-500">
-                    Cette page écrit dans <b>pricing_config</b>. Les calculs
-                    automatiques côté Supabase lisent ces valeurs pour les
-                    prochaines commandes.
+                    This page writes directly to <b>pricing_config</b>. Supabase
+                    triggers read these values for the next orders. / Cette page
+                    écrit directement dans <b>pricing_config</b>. Les triggers
+                    Supabase lisent ces valeurs pour les prochaines commandes.
                   </div>
 
                   <button
                     type="submit"
                     className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
                   >
-                    Save changes
+                    Save changes / Enregistrer
                   </button>
                 </div>
               </div>
