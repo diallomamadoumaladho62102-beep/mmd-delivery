@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../lib/apiBase";
 import { startMaskedCall } from "../lib/maskedCall";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 
 import {
   startDriverLocationTracking,
@@ -148,6 +149,88 @@ type CancelOrderResponse = {
 };
 
 const PROOF_BUCKET = "delivery-proofs";
+
+const MAX_PROOF_PHOTO_BYTES = 8 * 1024 * 1024;
+
+function sanitizeBase64(value: string) {
+  return String(value || "")
+    .replace(/^data:[^;]+;base64,/i, "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .replace(/\s+/g, "");
+}
+
+function base64ToUint8Array(base64Value: string) {
+  const base64 = sanitizeBase64(base64Value);
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+  const output: number[] = [];
+
+  let buffer = 0;
+  let bits = 0;
+
+  for (let i = 0; i < base64.length; i += 1) {
+    const char = base64[i];
+    if (char === "=") break;
+
+    const value = chars.indexOf(char);
+    if (value < 0) continue;
+
+    buffer = (buffer << 6) | value;
+    bits += 6;
+
+    if (bits >= 8) {
+      bits -= 8;
+      output.push((buffer >> bits) & 0xff);
+    }
+  }
+
+  return new Uint8Array(output);
+}
+
+function getArrayBufferFromUint8Array(bytes: Uint8Array) {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+}
+
+async function createImageBlobFromLocalUri(photoUri: string) {
+  const cleanUri = String(photoUri || "").trim();
+
+  if (!cleanUri) {
+    throw new Error("Photo URI missing.");
+  }
+
+  const info = await FileSystem.getInfoAsync(cleanUri);
+
+  if (!info.exists) {
+    throw new Error("Photo file not found.");
+  }
+
+  const size = typeof info.size === "number" ? info.size : null;
+
+  if (size != null && size > MAX_PROOF_PHOTO_BYTES) {
+    throw new Error("PHOTO_TOO_LARGE");
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(cleanUri, {
+    encoding: "base64" as any,
+  });
+
+  const bytes = base64ToUint8Array(base64);
+
+  if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
+    throw new Error("PHOTO_TOO_LARGE");
+  }
+
+  if (bytes.byteLength === 0) {
+    throw new Error("PHOTO_EMPTY");
+  }
+
+  const arrayBuffer = getArrayBufferFromUint8Array(bytes) as ArrayBuffer;
+
+  return new Blob([arrayBuffer], {
+    type: "image/jpeg",
+  });
+}
+
 
 type MapRegion = {
   latitude: number;
@@ -1014,10 +1097,36 @@ export function DriverOrderDetailsScreen() {
 
     setProofUploading(true);
     try {
-      const response = await fetch(photoUri);
-      const blob = await response.blob();
+      const blob = await createImageBlobFromLocalUri(photoUri).catch((e: any) => {
+        const message = String(e?.message ?? e ?? "");
 
-      if (blob.size > 8 * 1024 * 1024) {
+        if (message === "PHOTO_TOO_LARGE") {
+          throw new Error(
+            t(
+              "driver.orderDetails.photo.tooLarge",
+              "La photo est trop grande. Reprends une photo plus légère."
+            )
+          );
+        }
+
+        if (message === "PHOTO_EMPTY" || message === "Photo file not found.") {
+          throw new Error(
+            t(
+              "driver.orderDetails.photo.readError",
+              "Impossible de lire la photo. Reprends une nouvelle photo."
+            )
+          );
+        }
+
+        throw new Error(
+          t(
+            "driver.orderDetails.photo.readError",
+            "Impossible de lire la photo. Reprends une nouvelle photo."
+          )
+        );
+      });
+
+      if (blob.size > MAX_PROOF_PHOTO_BYTES) {
         throw new Error(
           t(
             "driver.orderDetails.photo.tooLarge",
