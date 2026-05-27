@@ -164,6 +164,13 @@ type GenericErrorLike = {
   hint?: unknown;
 };
 
+type StripeFeeSnapshot = {
+  stripe_fee_cents: number;
+  stripe_net_cents: number | null;
+  stripe_balance_transaction_id: string | null;
+  stripe_charge_id: string | null;
+};
+
 const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024; // 1 MB
 const HANDLED_EVENT_TYPES = new Set([
   "checkout.session.completed",
@@ -396,6 +403,149 @@ function getStripeAmountFromPaymentIntent(
   if (!Number.isFinite(n) || n <= 0) return null;
   return Math.round(n);
 }
+
+
+async function getStripeFeeSnapshot(
+  paymentIntentId: string
+): Promise<StripeFeeSnapshot> {
+  try {
+    const expandedPi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge.balance_transaction"],
+    });
+
+    const latestCharge =
+      expandedPi.latest_charge && typeof expandedPi.latest_charge === "object"
+        ? (expandedPi.latest_charge as Stripe.Charge)
+        : null;
+
+    const balanceTransaction =
+      latestCharge?.balance_transaction &&
+      typeof latestCharge.balance_transaction === "object"
+        ? (latestCharge.balance_transaction as Stripe.BalanceTransaction)
+        : null;
+
+    return {
+      stripe_fee_cents:
+        typeof balanceTransaction?.fee === "number"
+          ? balanceTransaction.fee
+          : 0,
+      stripe_net_cents:
+        typeof balanceTransaction?.net === "number"
+          ? balanceTransaction.net
+          : null,
+      stripe_balance_transaction_id:
+        typeof balanceTransaction?.id === "string"
+          ? balanceTransaction.id
+          : null,
+      stripe_charge_id:
+        typeof latestCharge?.id === "string" ? latestCharge.id : null,
+    };
+  } catch (error) {
+    console.log("⚠️ WEBHOOK: could not retrieve Stripe fee snapshot", {
+      paymentIntentId,
+      message: getErrorMessage(error),
+    });
+
+    return {
+      stripe_fee_cents: 0,
+      stripe_net_cents: null,
+      stripe_balance_transaction_id: null,
+      stripe_charge_id: null,
+    };
+  }
+}
+
+async function persistStripeFeeSnapshot(opts: {
+  supabaseAdmin: SupabaseClient;
+  paymentIntentId: string;
+  snapshot: StripeFeeSnapshot;
+  orderId?: string | null;
+  deliveryRequestId?: string | null;
+}) {
+  const {
+    supabaseAdmin,
+    paymentIntentId,
+    snapshot,
+    orderId = null,
+    deliveryRequestId = null,
+  } = opts;
+
+  const paymentsPayload = {
+    stripe_fee_cents: snapshot.stripe_fee_cents,
+    stripe_net_cents: snapshot.stripe_net_cents,
+    stripe_balance_transaction_id: snapshot.stripe_balance_transaction_id,
+    stripe_charge_id: snapshot.stripe_charge_id,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error: paymentsError } = await supabaseAdmin
+    .from("payments")
+    .update(paymentsPayload)
+    .eq("provider_payment_intent_id", paymentIntentId);
+
+  if (paymentsError) {
+    console.log("⚠️ WEBHOOK: payments Stripe fee update failed", {
+      paymentIntentId,
+      code: getErrorCode(paymentsError),
+      message: getErrorMessage(paymentsError),
+      details: getErrorDetails(paymentsError),
+      hint: getErrorHint(paymentsError),
+    });
+  }
+
+  const ordersPayload = {
+    stripe_fee_cents: snapshot.stripe_fee_cents,
+    stripe_net_cents: snapshot.stripe_net_cents,
+  };
+
+  if (orderId) {
+    const { error: orderError } = await supabaseAdmin
+      .from("orders")
+      .update(ordersPayload)
+      .eq("id", orderId);
+
+    if (orderError) {
+      console.log("⚠️ WEBHOOK: order Stripe fee update failed", {
+        orderId,
+        paymentIntentId,
+        code: getErrorCode(orderError),
+        message: getErrorMessage(orderError),
+        details: getErrorDetails(orderError),
+        hint: getErrorHint(orderError),
+      });
+    }
+  }
+
+  if (deliveryRequestId) {
+    const { error: linkedOrderError } = await supabaseAdmin
+      .from("orders")
+      .update(ordersPayload)
+      .eq("external_ref_id", deliveryRequestId)
+      .eq("external_ref_type", "delivery_request");
+
+    if (linkedOrderError) {
+      console.log("⚠️ WEBHOOK: linked delivery_request order Stripe fee update failed", {
+        deliveryRequestId,
+        paymentIntentId,
+        code: getErrorCode(linkedOrderError),
+        message: getErrorMessage(linkedOrderError),
+        details: getErrorDetails(linkedOrderError),
+        hint: getErrorHint(linkedOrderError),
+      });
+    }
+  }
+
+  console.log("✅ WEBHOOK: Stripe fee snapshot persisted", {
+    paymentIntentId,
+    orderId,
+    deliveryRequestId,
+    stripe_fee_cents: snapshot.stripe_fee_cents,
+    stripe_net_cents: snapshot.stripe_net_cents,
+    stripe_balance_transaction_id: snapshot.stripe_balance_transaction_id,
+    stripe_charge_id: snapshot.stripe_charge_id,
+  });
+}
+
 
 function paymentIntentIdFromUnknown(value: unknown): string | null {
   if (isNonEmptyString(value)) return value.trim();
@@ -1442,6 +1592,7 @@ async function handlePaymentIntentSucceeded(
   const paymentIntentId = pi.id;
   const piAmount = getStripeAmountFromPaymentIntent(pi);
   const piCurrency = normalizeCurrency(pi.currency);
+  const stripeFeeSnapshot = await getStripeFeeSnapshot(paymentIntentId);
 
   console.log("✅ WEBHOOK payment_intent.succeeded", {
     paymentIntentId,
@@ -1451,6 +1602,8 @@ async function handlePaymentIntentSucceeded(
     amount: pi.amount,
     currency: pi.currency,
     status: pi.status,
+    stripe_fee_cents: stripeFeeSnapshot.stripe_fee_cents,
+    stripe_net_cents: stripeFeeSnapshot.stripe_net_cents,
   });
 
   let orderId: string | null = orderIdFromMd;
@@ -1577,6 +1730,14 @@ async function handlePaymentIntentSucceeded(
 
     if (isPaidStatus(order.payment_status)) {
       console.log("ℹ️ WEBHOOK PI: order already paid", { orderId });
+
+      await persistStripeFeeSnapshot({
+        supabaseAdmin,
+        paymentIntentId,
+        snapshot: stripeFeeSnapshot,
+        orderId,
+      });
+
       return json({
         received: true,
         ok: true,
@@ -1622,6 +1783,13 @@ async function handlePaymentIntentSucceeded(
         500
       );
     }
+
+    await persistStripeFeeSnapshot({
+      supabaseAdmin,
+      paymentIntentId,
+      snapshot: stripeFeeSnapshot,
+      orderId,
+    });
 
     return json({
       received: true,
@@ -1773,6 +1941,14 @@ async function handlePaymentIntentSucceeded(
     console.log("ℹ️ WEBHOOK PI: delivery_request already paid", {
       deliveryRequestId,
     });
+
+    await persistStripeFeeSnapshot({
+      supabaseAdmin,
+      paymentIntentId,
+      snapshot: stripeFeeSnapshot,
+      deliveryRequestId,
+    });
+
     return json({
       received: true,
       ok: true,
@@ -1841,6 +2017,13 @@ if (releaseOrderError) {
 }
 
 console.log("✅ WEBHOOK PI: order released to drivers", {
+  deliveryRequestId,
+});
+
+await persistStripeFeeSnapshot({
+  supabaseAdmin,
+  paymentIntentId,
+  snapshot: stripeFeeSnapshot,
   deliveryRequestId,
 });
 
