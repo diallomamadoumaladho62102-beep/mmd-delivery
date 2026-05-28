@@ -100,7 +100,7 @@ export async function fetchNavigationRoute(
 }
 
 export async function fitCameraToRoute(
-  cameraRef: React.RefObject<Mapbox.Camera>,
+  cameraRef: React.RefObject<Mapbox.Camera | null>,
   route:
     | GeoJSON.Feature<GeoJSON.LineString>
     | null
@@ -160,4 +160,60 @@ export function calculateHeading(
   const brng = Math.atan2(y, x);
 
   return ((brng * 180) / Math.PI + 360) % 360;
+}
+
+export function distanceBetweenPoints(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+) {
+  const R = 6371000;
+
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+export function shouldReroute(
+  current: RoutePoint,
+  route: GeoJSON.Feature<GeoJSON.LineString> | null | undefined,
+  thresholdMeters = 90,
+) {
+  try {
+    if (!validateCoords(current)) return false;
+    if (!route?.geometry?.coordinates?.length) return false;
+
+    let minDistance = Infinity;
+
+    for (const coord of route.geometry.coordinates) {
+      const lng = Number(coord[0]);
+      const lat = Number(coord[1]);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        continue;
+      }
+
+      const dist = distanceBetweenPoints(
+        current.latitude,
+        current.longitude,
+        lat,
+        lng,
+      );
+
+      minDistance = Math.min(minDistance, dist);
+    }
+
+    return Number.isFinite(minDistance) && minDistance > thresholdMeters;
+  } catch {
+    return false;
+  }
 }
