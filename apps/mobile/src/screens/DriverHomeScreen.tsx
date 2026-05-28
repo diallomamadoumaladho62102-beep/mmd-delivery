@@ -74,6 +74,9 @@ type DriverOrder = {
   dropoff_lat: number | null;
   dropoff_lng: number | null;
   source_table?: "orders" | "delivery_requests";
+  offer_id?: string | null;
+  offer_expires_at?: string | null;
+  is_dispatch_offer?: boolean;
 };
 
 type ZoneDemand = "calm" | "busy" | "very_busy";
@@ -444,7 +447,20 @@ function getConfiguredDriverPayout(order: Partial<DriverOrder> | null | undefine
 
 function getOrderCompositeKey(order: Partial<DriverOrder> | null | undefined) {
   if (!order?.id) return "";
-  return `${order.source_table ?? "orders"}:${order.id}`;
+  const offerId = (order as any)?.offer_id;
+  return offerId ? `offer:${order.source_table ?? "orders"}:${offerId}` : `${order.source_table ?? "orders"}:${order.id}`;
+}
+
+function getRpcRow<T extends Record<string, any>>(data: T | T[] | null | undefined) {
+  if (Array.isArray(data)) return data[0] ?? null;
+  return data ?? null;
+}
+
+function getOfferUnavailableMessage(t: any) {
+  return t(
+    "driver.home.errors.offerUnavailable",
+    "This offer is no longer available. It may have expired or been accepted by another driver.",
+  );
 }
 
 function clampNumber(value: number, min: number, max: number) {
@@ -1103,6 +1119,117 @@ export function DriverHomeScreen() {
         setLoading(true);
         setError(null);
         const driverId = await getUserIdOrThrow();
+        const nowIso = new Date().toISOString();
+
+        // 0) Offres dispatch personnalisées déjà envoyées à ce chauffeur.
+        // Ces offres sont la base du système accept/refuse + timeout/fallback.
+        const { data: pendingOrderOffers, error: pendingOrderOffersError } = await supabase
+          .from("driver_order_offers")
+          .select("id, order_id, expires_at, restaurant_name, pickup_address, dropoff_address, driver_price_cents, distance_miles, eta_minutes")
+          .eq("driver_id", driverId)
+          .eq("status", "pending")
+          .gt("expires_at", nowIso)
+          .order("created_at", { ascending: false });
+
+        if (pendingOrderOffersError) throw pendingOrderOffersError;
+
+        const orderOfferIds = Array.from(
+          new Set((pendingOrderOffers ?? []).map((offer: any) => String(offer.order_id)).filter(Boolean)),
+        );
+
+        const { data: offeredOrders, error: offeredOrdersError } = orderOfferIds.length
+          ? await supabase
+              .from("orders")
+              .select(
+                `id, kind, status, created_at,
+                 restaurant_name, pickup_address, dropoff_address,
+                 distance_miles, delivery_fee, driver_delivery_payout, total,
+                 pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
+              )
+              .in("id", orderOfferIds)
+          : { data: [], error: null };
+
+        if (offeredOrdersError) throw offeredOrdersError;
+
+        const orderOfferByOrderId = new Map(
+          (pendingOrderOffers ?? []).map((offer: any) => [String(offer.order_id), offer]),
+        );
+
+        const pendingOrderOfferList: DriverOrder[] = ((offeredOrders ?? []) as any[]).map((order) => {
+          const offer = orderOfferByOrderId.get(String(order.id));
+          return {
+            ...order,
+            restaurant_name: order.restaurant_name ?? offer?.restaurant_name ?? null,
+            pickup_address: order.pickup_address ?? offer?.pickup_address ?? null,
+            dropoff_address: order.dropoff_address ?? offer?.dropoff_address ?? null,
+            distance_miles: toFiniteNumber(order.distance_miles ?? offer?.distance_miles),
+            driver_delivery_payout:
+              getConfiguredDriverPayout(order) ??
+              (typeof offer?.driver_price_cents === "number" ? offer.driver_price_cents / 100 : null),
+            source_table: "orders" as const,
+            offer_id: offer?.id ?? null,
+            offer_expires_at: offer?.expires_at ?? null,
+            is_dispatch_offer: true,
+          };
+        });
+
+        const { data: pendingDeliveryOffers, error: pendingDeliveryOffersError } = await supabase
+          .from("delivery_request_driver_offers")
+          .select("id, delivery_request_id, expires_at")
+          .eq("driver_id", driverId)
+          .eq("status", "pending")
+          .gt("expires_at", nowIso)
+          .order("created_at", { ascending: false });
+
+        if (pendingDeliveryOffersError) throw pendingDeliveryOffersError;
+
+        const deliveryOfferIds = Array.from(
+          new Set((pendingDeliveryOffers ?? []).map((offer: any) => String(offer.delivery_request_id)).filter(Boolean)),
+        );
+
+        const { data: offeredDeliveryRequests, error: offeredDeliveryRequestsError } = deliveryOfferIds.length
+          ? await supabase
+              .from("delivery_requests")
+              .select(
+                `id,status,payment_status,driver_id,created_at,updated_at,
+                 pickup_address,dropoff_address,
+                 pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
+                 distance_miles,eta_minutes,delivery_fee,total,currency,
+                 driver_delivery_payout,platform_fee`,
+              )
+              .in("id", deliveryOfferIds)
+          : { data: [], error: null };
+
+        if (offeredDeliveryRequestsError) throw offeredDeliveryRequestsError;
+
+        const deliveryOfferByRequestId = new Map(
+          (pendingDeliveryOffers ?? []).map((offer: any) => [String(offer.delivery_request_id), offer]),
+        );
+
+        const pendingDeliveryOfferList: DriverOrder[] = ((offeredDeliveryRequests ?? []) as any[]).map((request) => {
+          const offer = deliveryOfferByRequestId.get(String(request.id));
+          return {
+            id: String(request.id),
+            kind: "delivery",
+            status: String(request.status ?? "pending") as OrderStatus,
+            created_at: request.created_at ?? null,
+            restaurant_name: null,
+            pickup_address: request.pickup_address ?? null,
+            dropoff_address: request.dropoff_address ?? null,
+            distance_miles: toFiniteNumber(request.distance_miles),
+            delivery_fee: toFiniteNumber(request.delivery_fee),
+            driver_delivery_payout: getConfiguredDriverPayout(request),
+            total: toFiniteNumber(request.total),
+            pickup_lat: toFiniteNumber(request.pickup_lat),
+            pickup_lng: toFiniteNumber(request.pickup_lng),
+            dropoff_lat: toFiniteNumber(request.dropoff_lat),
+            dropoff_lng: toFiniteNumber(request.dropoff_lng),
+            source_table: "delivery_requests" as const,
+            offer_id: offer?.id ?? null,
+            offer_expires_at: offer?.expires_at ?? null,
+            is_dispatch_offer: true,
+          };
+        });
 
         // 1) Commandes disponibles depuis orders.
         // orders.kind est un enum : errand | food | pickup_dropoff.
@@ -1219,8 +1346,21 @@ export function DriverHomeScreen() {
           source_table: "delivery_requests" as const,
         }));
 
-        const allAvailable = [...orderAvailable, ...deliveryAvailableList];
+        const allAvailable = [
+          ...pendingOrderOfferList,
+          ...pendingDeliveryOfferList,
+          ...orderAvailable,
+          ...deliveryAvailableList,
+        ];
+
+        const seenAvailableKeys = new Set<string>();
         const visibleAvailable = allAvailable.filter((o) => {
+          const compositeKey = getOrderCompositeKey(o);
+          if (seenAvailableKeys.has(compositeKey)) return false;
+          seenAvailableKeys.add(compositeKey);
+
+          if (o.is_dispatch_offer) return true;
+
           const statusVisible = isOrderVisibleForDriver(o);
           const pickupLat = typeof o.pickup_lat === "number" ? o.pickup_lat : null;
           const pickupLngRaw =
@@ -1474,13 +1614,30 @@ export function DriverHomeScreen() {
         hapticSuccess();
         setAcceptingId(offerKey);
 
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
+        if (offer.offer_id) {
+          const rpcName =
+            offerSourceTable === "delivery_requests"
+              ? "driver_accept_delivery_request_offer"
+              : "driver_accept_order_offer";
 
-        const userId = sessionData.session?.user?.id;
-        if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+          const { data, error } = await supabase.rpc(rpcName, {
+            p_offer_id: offer.offer_id,
+          });
 
-        if (offerSourceTable === "delivery_requests") {
+          if (error) throw error;
+
+          const result = getRpcRow<{ ok?: boolean; message?: string }>(data as any);
+
+          if (!result?.ok) {
+            throw new Error(result?.message ?? getOfferUnavailableMessage(t));
+          }
+        } else if (offerSourceTable === "delivery_requests") {
+          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) throw sessionError;
+
+          const userId = sessionData.session?.user?.id;
+          if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
+
           const { data: acceptedDelivery, error: acceptDeliveryError } = await supabase
             .from("delivery_requests")
             .update({
@@ -1526,21 +1683,56 @@ export function DriverHomeScreen() {
         });
       } catch (e: any) {
         console.log("Erreur acceptation course:", e);
-        Alert.alert(t("shared.orderChat.alerts.errorTitle", "Erreur"), e?.message ?? t("driver.home.errors.accept", "Impossible d'accepter la course."));
+        Alert.alert(
+          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          e?.message ?? t("driver.home.errors.accept", "Impossible d'accepter la course."),
+        );
       } finally {
         setAcceptingId(null);
       }
     },
-    [fetchDriverOrders, navAny, stopSound, t],
+    [fetchDriverOrders, fetchDriverPerformance, navAny, stopSound, t],
   );
 
   const handleDeclineActiveOffer = useCallback(async () => {
     hapticWarning();
-    await stopSound();
-    setActiveOffer(null);
-    setCountdown(60);
-    lastOfferIdRef.current = null;
-  }, [stopSound]);
+
+    try {
+      const offer = activeOffer;
+
+      if (offer?.offer_id) {
+        const rpcName =
+          (offer.source_table ?? "orders") === "delivery_requests"
+            ? "driver_reject_delivery_request_offer"
+            : "driver_reject_order_offer";
+
+        const { data, error } = await supabase.rpc(rpcName, {
+          p_offer_id: offer.offer_id,
+          p_reason: "driver_ignored",
+        });
+
+        if (error) throw error;
+
+        const result = getRpcRow<{ ok?: boolean; message?: string }>(data as any);
+
+        if (!result?.ok && result?.message !== "offer_not_available") {
+          throw new Error(result?.message ?? getOfferUnavailableMessage(t));
+        }
+      }
+    } catch (e: any) {
+      console.log("Erreur refus offre driver:", e);
+      Alert.alert(
+        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        e?.message ?? t("driver.home.errors.decline", "Impossible de refuser cette offre."),
+      );
+    } finally {
+      await stopSound();
+      setActiveOffer(null);
+      setCountdown(60);
+      lastOfferIdRef.current = null;
+      if (isOnline) await fetchDriverOrders(true);
+    }
+  }, [activeOffer, fetchDriverOrders, isOnline, stopSound, t]);
 
   useEffect(() => {
     if (!activeOffer) return;
