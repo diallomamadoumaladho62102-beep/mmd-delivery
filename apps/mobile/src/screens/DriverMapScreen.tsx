@@ -29,6 +29,7 @@ import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "../lib/supabase";
 import {
+  calculateHeading,
   fetchNavigationRoute,
   fitCameraToRoute,
   type NavigationRoute,
@@ -46,6 +47,11 @@ type MapRegion = {
 const SCREEN_HEIGHT = Dimensions.get("window").height;
 const SHEET_EXPANDED_TOP = SCREEN_HEIGHT - 500;
 const SHEET_COLLAPSED_TOP = SCREEN_HEIGHT - 176;
+
+const NAVIGATION_FOLLOW_ZOOM = 17.2;
+const NAVIGATION_FOLLOW_PITCH = 56;
+const NAVIGATION_CAMERA_THROTTLE_MS = 1100;
+const NAVIGATION_MIN_HEADING_DISTANCE_METERS = 4;
 
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
 
@@ -421,6 +427,8 @@ export default function DriverMapScreen() {
   const [incomingActionLoading, setIncomingActionLoading] = useState(false);
   const [navigationRoute, setNavigationRoute] = useState<NavigationRoute | null>(null);
   const [navigationRouteLoading, setNavigationRouteLoading] = useState(false);
+  const [driverHeading, setDriverHeading] = useState(0);
+  const [followNavigationMode, setFollowNavigationMode] = useState(true);
 
   const [isNightMode, setIsNightMode] = useState(false);
 
@@ -429,6 +437,8 @@ export default function DriverMapScreen() {
     null,
   );
   const hasCenteredOnDriverRef = useRef(false);
+  const previousDriverPointRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const lastFollowCameraAtRef = useRef(0);
 
   const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
   const sheetState = useRef<"collapsed" | "expanded">("collapsed");
@@ -568,6 +578,8 @@ export default function DriverMapScreen() {
     boostMultiplier > 1 ? `x${boostMultiplier.toFixed(1)}` : null;
 
   const sheetSummaryCardColor = isOnline ? "#031A12" : "#1A0B0F";
+
+  const isNavigationActive = Boolean(incomingOrder && navigationRoute?.geometry);
 
   const locateDriver = useCallback(async () => {
     try {
@@ -1263,12 +1275,81 @@ export default function DriverMapScreen() {
     region.longitude,
   ]);
 
+  useEffect(() => {
+    if (!hasLocation) {
+      previousDriverPointRef.current = null;
+      return;
+    }
+
+    const currentPoint = {
+      latitude: region.latitude,
+      longitude: region.longitude,
+    };
+    const previousPoint = previousDriverPointRef.current;
+    let nextHeading = driverHeading;
+
+    if (previousPoint) {
+      const movedMeters = distanceMeters(
+        previousPoint.latitude,
+        previousPoint.longitude,
+        currentPoint.latitude,
+        currentPoint.longitude,
+      );
+
+      if (movedMeters >= NAVIGATION_MIN_HEADING_DISTANCE_METERS) {
+        nextHeading = calculateHeading(previousPoint, currentPoint);
+        setDriverHeading((currentHeading) => {
+          const delta = Math.abs(currentHeading - nextHeading);
+          const wrappedDelta = Math.min(delta, 360 - delta);
+          return wrappedDelta >= 2 ? nextHeading : currentHeading;
+        });
+      }
+    }
+
+    previousDriverPointRef.current = currentPoint;
+
+    if (!followNavigationMode || !isNavigationActive || !cameraRef.current) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastFollowCameraAtRef.current < NAVIGATION_CAMERA_THROTTLE_MS) {
+      return;
+    }
+
+    lastFollowCameraAtRef.current = now;
+
+    try {
+      (cameraRef.current as any).setCamera({
+        centerCoordinate: [region.longitude, region.latitude],
+        zoomLevel: NAVIGATION_FOLLOW_ZOOM,
+        heading: nextHeading,
+        pitch: NAVIGATION_FOLLOW_PITCH,
+        animationMode: "easeTo",
+        animationDuration: 700,
+      });
+    } catch (e) {
+      console.log("DriverMapScreen follow camera error:", e);
+    }
+  }, [
+    driverHeading,
+    followNavigationMode,
+    hasLocation,
+    isNavigationActive,
+    region.latitude,
+    region.longitude,
+  ]);
+
   function centerOnDriver() {
     if (!hasLocation) return;
 
-    cameraRef.current?.setCamera({
+    setFollowNavigationMode(true);
+
+    (cameraRef.current as any)?.setCamera({
       centerCoordinate: [region.longitude, region.latitude],
-      zoomLevel: 16,
+      zoomLevel: isNavigationActive ? NAVIGATION_FOLLOW_ZOOM : 16,
+      heading: isNavigationActive ? driverHeading : 0,
+      pitch: isNavigationActive ? NAVIGATION_FOLLOW_PITCH : 0,
       animationDuration: 650,
       animationMode: "flyTo",
     });
@@ -1683,7 +1764,7 @@ export default function DriverMapScreen() {
 
               <Mapbox.UserLocation
                 visible={false}
-                showsUserHeadingIndicator={false}
+                showsUserHeadingIndicator={true}
               />
 
               {navigationRoute?.geometry && (
@@ -1739,7 +1820,7 @@ export default function DriverMapScreen() {
                         color: "#FFFFFF",
                         fontSize: 23,
                         fontWeight: "900",
-                        transform: [{ rotate: "-45deg" }],
+                        transform: [{ rotate: `${driverHeading - 45}deg` }],
                         marginTop: -1,
                       }}
                     >
