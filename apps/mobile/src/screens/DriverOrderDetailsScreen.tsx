@@ -195,40 +195,92 @@ async function createImageBlobFromLocalUri(photoUri: string) {
   const cleanUri = String(photoUri || "").trim();
 
   if (!cleanUri) {
-    throw new Error("Photo URI missing.");
+    throw new Error("PHOTO_URI_MISSING");
   }
 
-  const info = await FileSystem.getInfoAsync(cleanUri);
+  if (/^data:image\//i.test(cleanUri)) {
+    const bytes = base64ToUint8Array(cleanUri);
 
-  if (!info.exists) {
-    throw new Error("Photo file not found.");
+    if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
+      throw new Error("PHOTO_TOO_LARGE");
+    }
+
+    if (bytes.byteLength === 0) {
+      throw new Error("PHOTO_EMPTY");
+    }
+
+    return new Blob([getArrayBufferFromUint8Array(bytes) as ArrayBuffer], {
+      type: cleanUri.match(/^data:([^;]+);base64,/i)?.[1] || "image/jpeg",
+    });
   }
 
-  const size = typeof info.size === "number" ? info.size : null;
+  try {
+    const info = await FileSystem.getInfoAsync(cleanUri, { size: true } as any);
+    const exists = Boolean((info as any)?.exists);
 
-  if (size != null && size > MAX_PROOF_PHOTO_BYTES) {
-    throw new Error("PHOTO_TOO_LARGE");
+    if (exists) {
+      const size = typeof (info as any)?.size === "number" ? (info as any).size : null;
+
+      if (size != null && size > MAX_PROOF_PHOTO_BYTES) {
+        throw new Error("PHOTO_TOO_LARGE");
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(cleanUri, {
+        encoding: "base64" as any,
+      });
+
+      const bytes = base64ToUint8Array(base64);
+
+      if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
+        throw new Error("PHOTO_TOO_LARGE");
+      }
+
+      if (bytes.byteLength === 0) {
+        throw new Error("PHOTO_EMPTY");
+      }
+
+      return new Blob([getArrayBufferFromUint8Array(bytes) as ArrayBuffer], {
+        type: "image/jpeg",
+      });
+    }
+  } catch (error: any) {
+    const message = String(error?.message ?? error ?? "");
+
+    if (message === "PHOTO_TOO_LARGE") {
+      throw error;
+    }
+
+    console.log("FileSystem proof photo read failed, trying fetch fallback:", message);
   }
 
-  const base64 = await FileSystem.readAsStringAsync(cleanUri, {
-    encoding: "base64" as any,
-  });
+  try {
+    const response = await fetch(cleanUri);
 
-  const bytes = base64ToUint8Array(base64);
+    if (!response.ok) {
+      throw new Error(`PHOTO_FETCH_FAILED_${response.status}`);
+    }
 
-  if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
-    throw new Error("PHOTO_TOO_LARGE");
+    const blob = await response.blob();
+
+    if (blob.size > MAX_PROOF_PHOTO_BYTES) {
+      throw new Error("PHOTO_TOO_LARGE");
+    }
+
+    if (blob.size === 0) {
+      throw new Error("PHOTO_EMPTY");
+    }
+
+    return blob;
+  } catch (error: any) {
+    const message = String(error?.message ?? error ?? "");
+
+    if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
+      throw error;
+    }
+
+    console.log("fetch proof photo read failed:", message);
+    throw new Error("PHOTO_READ_FAILED");
   }
-
-  if (bytes.byteLength === 0) {
-    throw new Error("PHOTO_EMPTY");
-  }
-
-  const arrayBuffer = getArrayBufferFromUint8Array(bytes) as ArrayBuffer;
-
-  return new Blob([arrayBuffer], {
-    type: "image/jpeg",
-  });
 }
 
 
@@ -1064,17 +1116,44 @@ export function DriverOrderDetailsScreen() {
         return;
       }
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.75,
-      });
+      const mediaTypes =
+        (ImagePicker as any)?.MediaType?.Images ??
+        (ImagePicker as any)?.MediaTypeOptions?.Images ??
+        "images";
 
-      if (result.canceled || !result.assets?.[0]?.uri) {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes,
+        allowsEditing: false,
+        quality: 0.72,
+        base64: true,
+        exif: false,
+      } as any);
+
+      if (result.canceled || !result.assets?.length) {
         return;
       }
 
-      setProofPhotoUri(result.assets[0].uri);
+      const asset = result.assets[0];
+      const uri = String(asset?.uri || "").trim();
+      const base64 = String((asset as any)?.base64 || "").trim();
+
+      if (base64) {
+        setProofPhotoUri(`data:image/jpeg;base64,${base64}`);
+        return;
+      }
+
+      if (uri) {
+        setProofPhotoUri(uri);
+        return;
+      }
+
+      Alert.alert(
+        t("common.error", "Erreur"),
+        t(
+          "driver.orderDetails.photo.readError",
+          "Impossible de lire la photo. Reprends une nouvelle photo."
+        )
+      );
     } catch (e: any) {
       console.log("takeProofPhoto error:", e);
       Alert.alert(
@@ -1109,7 +1188,13 @@ export function DriverOrderDetailsScreen() {
           );
         }
 
-        if (message === "PHOTO_EMPTY" || message === "Photo file not found.") {
+        if (
+          message === "PHOTO_EMPTY" ||
+          message === "PHOTO_URI_MISSING" ||
+          message === "PHOTO_READ_FAILED" ||
+          message === "Photo URI missing." ||
+          message === "Photo file not found."
+        ) {
           throw new Error(
             t(
               "driver.orderDetails.photo.readError",

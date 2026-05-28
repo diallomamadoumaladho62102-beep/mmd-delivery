@@ -31,6 +31,7 @@ import {
   getDriverOnlineStatus,
   setDriverOnlineStatus,
 } from "../lib/driverStatus";
+import { registerUserPushToken } from "../lib/notifications";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -142,23 +143,174 @@ const ZONES: ZoneDef[] = [
   },
 ];
 
-const SHEET_MIN_TRANSLATE_Y = 0;
-const SHEET_MID_TRANSLATE_Y = 220;
-const SHEET_MAX_TRANSLATE_Y = 430;
 
-// Keeps floating driver UI above Android/iOS system navigation and bottom tabs.
+type DriverPerformanceStats = {
+  todayEarnings: number;
+  lifetimeEarnings: number;
+  completedTripsToday: number;
+  completedTripsTotal: number;
+  points: number;
+  level: string;
+  nextLevel: string | null;
+  levelProgress: number;
+  dailyEarningsGoal: number;
+  earningsGoalProgress: number;
+};
+
+const DRIVER_LEVELS = [
+  { name: "Bronze", minPoints: 0 },
+  { name: "Silver", minPoints: 1000 },
+  { name: "Gold", minPoints: 5000 },
+  { name: "Platinum", minPoints: 10000 },
+];
+
+const DEFAULT_DAILY_EARNINGS_GOAL = 150;
+
+function getTodayStartIso() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+}
+
+function getRecordNumber(record: any, keys: string[]) {
+  for (const key of keys) {
+    const value = toFiniteNumber(record?.[key]);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function getCompletionDateIso(record: any) {
+  return (
+    record?.delivered_at ??
+    record?.completed_at ??
+    record?.dropoff_code_verified_at ??
+    record?.updated_at ??
+    record?.created_at ??
+    null
+  );
+}
+
+function normalizeDriverLevelName(value: unknown) {
+  const clean = String(value ?? "").trim().toLowerCase();
+  const found = DRIVER_LEVELS.find((level) => level.name.toLowerCase() === clean);
+  return found?.name ?? null;
+}
+
+function getDriverLevelFromPoints(points: number) {
+  let current = DRIVER_LEVELS[0];
+  for (const level of DRIVER_LEVELS) {
+    if (points >= level.minPoints) current = level;
+  }
+  return current;
+}
+
+function getNextDriverLevel(points: number) {
+  return DRIVER_LEVELS.find((level) => level.minPoints > points) ?? null;
+}
+
+function buildDriverPerformanceStats(params: {
+  rewardAccount: any | null;
+  todayDeliveredRows: any[];
+  profile?: any | null;
+}) {
+  const { rewardAccount, todayDeliveredRows, profile } = params;
+
+  const accountPoints = getRecordNumber(rewardAccount, ["points"]) ?? 0;
+  const lifetimePoints =
+    getRecordNumber(rewardAccount, ["lifetime_points"]) ?? accountPoints;
+
+  const completedTripsTotal =
+    getRecordNumber(rewardAccount, ["completed_deliveries"]) ?? 0;
+
+  const lifetimeEarnings =
+    getRecordNumber(rewardAccount, ["total_earnings"]) ?? 0;
+
+  const todayEarnings = todayDeliveredRows.reduce(
+    (sum, row) => sum + (getConfiguredDriverPayout(row) ?? 0),
+    0,
+  );
+
+  const completedTripsToday = todayDeliveredRows.length;
+
+  const accountLevel = normalizeDriverLevelName(rewardAccount?.level);
+  const profileLevel = normalizeDriverLevelName(
+    profile?.driver_level ?? profile?.level ?? profile?.tier ?? profile?.reward_level,
+  );
+
+  const levelInfo = accountLevel
+    ? DRIVER_LEVELS.find((level) => level.name === accountLevel) ?? getDriverLevelFromPoints(lifetimePoints)
+    : profileLevel
+      ? DRIVER_LEVELS.find((level) => level.name === profileLevel) ?? getDriverLevelFromPoints(lifetimePoints)
+      : getDriverLevelFromPoints(lifetimePoints);
+
+  const nextLevel = getNextDriverLevel(lifetimePoints);
+
+  const levelProgress = nextLevel
+    ? clampNumber(
+        (lifetimePoints - levelInfo.minPoints) /
+          Math.max(1, nextLevel.minPoints - levelInfo.minPoints),
+        0,
+        1,
+      )
+    : 1;
+
+  const dailyEarningsGoal =
+    getRecordNumber(profile, [
+      "daily_earnings_goal",
+      "earnings_goal_daily",
+      "driver_daily_goal",
+      "daily_goal",
+    ]) ?? DEFAULT_DAILY_EARNINGS_GOAL;
+
+  return {
+    todayEarnings,
+    lifetimeEarnings,
+    completedTripsToday,
+    completedTripsTotal,
+    points: accountPoints,
+    level: levelInfo.name,
+    nextLevel: nextLevel?.name ?? null,
+    levelProgress,
+    dailyEarningsGoal,
+    earningsGoalProgress:
+      dailyEarningsGoal > 0 ? clampNumber(todayEarnings / dailyEarningsGoal, 0, 1) : 1,
+  } satisfies DriverPerformanceStats;
+}
+
+const EMPTY_DRIVER_PERFORMANCE_STATS: DriverPerformanceStats = {
+  todayEarnings: 0,
+  lifetimeEarnings: 0,
+  completedTripsToday: 0,
+  completedTripsTotal: 0,
+  points: 0,
+  level: "Bronze",
+  nextLevel: "Silver",
+  levelProgress: 0,
+  dailyEarningsGoal: DEFAULT_DAILY_EARNINGS_GOAL,
+  earningsGoalProgress: 0,
+};
+
+const SHEET_MIN_TRANSLATE_Y = 0;
+const SHEET_MID_TRANSLATE_Y = 260;
+const SHEET_MAX_TRANSLATE_Y = 520;
+
+// Bottom sheet production tuning:
+ // - FULL WIDTH, no side gap, no bottom visual gap.
+ // - Starts slightly lower so the map stays visible.
+ // - Still snaps fully to the top when dragged upward.
+ // Keeps floating driver UI above Android/iOS system navigation and bottom tabs.
 // This prevents Home / Earnings / Inbox / Menu from being pushed under the device nav bar,
 // especially on Samsung tablets and Android gesture/button navigation.
 const DRIVER_BOTTOM_NAV_SAFE_OFFSET = Platform.select({
-  android: 34,
-  ios: 22,
-  default: 28,
+  android: 48,
+  ios: 28,
+  default: 38,
 });
 
 const DRIVER_BOTTOM_TAB_CLEARANCE = Platform.select({
-  android: 78,
-  ios: 54,
-  default: 64,
+  android: 92,
+  ios: 64,
+  default: 78,
 });
 
 const DRIVER_BOTTOM_PANEL_OFFSET =
@@ -436,6 +588,10 @@ export function DriverHomeScreen() {
   const { t } = useTranslation();
   useKeepAwake();
 
+  useEffect(() => {
+    void registerUserPushToken("driver");
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [availableOrders, setAvailableOrders] = useState<DriverOrder[]>([]);
   const [myOrders, setMyOrders] = useState<DriverOrder[]>([]);
@@ -458,6 +614,7 @@ export function DriverHomeScreen() {
   const [zoneMultiplier, setZoneMultiplier] = useState(1.0);
   const [searchMessageIndex, setSearchMessageIndex] = useState(0);
   const [earningsHidden, setEarningsHidden] = useState(false);
+  const [driverStats, setDriverStats] = useState<DriverPerformanceStats>(EMPTY_DRIVER_PERFORMANCE_STATS);
 
   const searchMessages = useMemo(
     () => [
@@ -576,10 +733,7 @@ export function DriverHomeScreen() {
     }),
   ).current;
 
-  const todayEarnings = useMemo(
-    () => myOrders.reduce((sum, order) => sum + (getBestDriverAmount(order) ?? 0), 0),
-    [myOrders],
-  );
+  const todayEarnings = driverStats.todayEarnings;
 
   const activeRideCount = useMemo(() => myOrders.length, [myOrders.length]);
 
@@ -871,6 +1025,66 @@ export function DriverHomeScreen() {
     };
   }, [applyDriverCoordinates, ensureGpsPermission, isOnline]);
 
+  const fetchDriverPerformance = useCallback(async () => {
+    try {
+      const driverId = await getUserIdOrThrow();
+      const todayStartIso = getTodayStartIso();
+
+      const { data: rewardAccount, error: rewardAccountError } = await supabase
+        .from("driver_reward_accounts")
+        .select(
+          "driver_id, points, lifetime_points, level, completed_deliveries, total_earnings, acceptance_rate, cancellation_rate, rating, updated_at",
+        )
+        .eq("driver_id", driverId)
+        .maybeSingle();
+
+      if (rewardAccountError) throw rewardAccountError;
+
+      const { data: profile } = await supabase
+        .from("driver_profiles")
+        .select("*")
+        .eq("user_id", driverId)
+        .maybeSingle();
+
+      const { data: todayOrders, error: todayOrdersError } = await supabase
+        .from("orders")
+        .select("id, status, updated_at, created_at, driver_delivery_payout")
+        .eq("driver_id", driverId)
+        .eq("status", "delivered")
+        .gte("updated_at", todayStartIso)
+        .order("updated_at", { ascending: false })
+        .limit(500);
+
+      if (todayOrdersError) throw todayOrdersError;
+
+      const { data: todayRequests, error: todayRequestsError } = await supabase
+        .from("delivery_requests")
+        .select("id, status, updated_at, created_at, driver_delivery_payout")
+        .eq("driver_id", driverId)
+        .eq("status", "delivered")
+        .gte("updated_at", todayStartIso)
+        .order("updated_at", { ascending: false })
+        .limit(500);
+
+      if (todayRequestsError) throw todayRequestsError;
+
+      if (!mountedRef.current) return;
+
+      setDriverStats(
+        buildDriverPerformanceStats({
+          rewardAccount,
+          profile,
+          todayDeliveredRows: [...(todayOrders ?? []), ...(todayRequests ?? [])],
+        }),
+      );
+    } catch (e) {
+      console.log("fetchDriverPerformance error:", e);
+      if (mountedRef.current) {
+        setDriverStats((current) => current);
+      }
+    }
+  }, [getUserIdOrThrow]);
+
   const fetchDriverOrders = useCallback(
     async (forceOnline = false) => {
       const fetchSeq = ++fetchSeqRef.current;
@@ -1081,8 +1295,9 @@ export function DriverHomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      void fetchDriverPerformance();
       if (isOnline) void fetchDriverOrders(true);
-    }, [isOnline, fetchDriverOrders]),
+    }, [fetchDriverPerformance, isOnline, fetchDriverOrders]),
   );
 
   useEffect(() => {
@@ -1303,6 +1518,7 @@ export function DriverHomeScreen() {
         setCountdown(60);
         lastOfferIdRef.current = null;
         await fetchDriverOrders(true);
+        void fetchDriverPerformance();
 
         navAny.navigate("DriverOrderDetails", {
           orderId,
@@ -1530,6 +1746,7 @@ export function DriverHomeScreen() {
         setIsOnline(true);
         await startDbGpsTracking(userId);
         await fetchDriverOrders(true);
+        void fetchDriverPerformance();
         return;
       }
 
@@ -1790,8 +2007,22 @@ export function DriverHomeScreen() {
               </View>
 
               <View style={styles.goalsRow}>
-                <GoalCard icon="medal" title="Unlock Silver" sub="400 / 1,000" progress={0.4} />
-                <GoalCard icon="star" title="Earnings Goal" sub="$0 of $1,009" progress={0} />
+                <GoalCard
+                  icon="medal"
+                  title={
+                    driverStats.nextLevel
+                      ? `${driverStats.level} → ${driverStats.nextLevel}`
+                      : `${driverStats.level} Driver`
+                  }
+                  sub={`${Math.round(driverStats.points).toLocaleString()} pts · ${driverStats.completedTripsTotal} completed`}
+                  progress={driverStats.levelProgress}
+                />
+                <GoalCard
+                  icon="star"
+                  title={t("driver.home.goals.earningsGoal", "Earnings Goal")}
+                  sub={`${money(driverStats.todayEarnings)} of ${money(driverStats.dailyEarningsGoal)} · ${driverStats.completedTripsToday} today`}
+                  progress={driverStats.earningsGoalProgress}
+                />
               </View>
 
               <View style={styles.ordersPanel}>
