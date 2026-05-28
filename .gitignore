@@ -16,3 +16,5 @@ pnpm-debug.log*
 
 *.ipa
 build*/
+
+supabase/.temp/
