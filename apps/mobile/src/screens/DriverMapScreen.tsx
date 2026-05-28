@@ -12,6 +12,7 @@ import {
   StatusBar,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
   Animated,
   Easing,
   PanResponder,
@@ -104,6 +105,8 @@ type RestaurantPin = {
 
 type IncomingOrderBanner = {
   id: string;
+  offerId?: string | null;
+  sourceTable?: OrderSourceTable;
   restaurantName: string;
   pickupAddress: string;
   dropoffAddress: string;
@@ -391,6 +394,7 @@ export default function DriverMapScreen() {
   const [incomingOrder, setIncomingOrder] =
     useState<IncomingOrderBanner | null>(null);
   const [incomingTimer, setIncomingTimer] = useState(0);
+  const [incomingActionLoading, setIncomingActionLoading] = useState(false);
 
   const [isNightMode, setIsNightMode] = useState(false);
 
@@ -841,6 +845,170 @@ export default function DriverMapScreen() {
     void fetchDriverOrders();
   }, [driverId, fetchDriverOrders]);
 
+
+  const loadLatestIncomingOffer = useCallback(async () => {
+    if (!driverId) return;
+
+    try {
+      const nowIso = new Date().toISOString();
+
+      const { data: orderOffers, error: orderOfferError } = await supabase
+        .from("driver_order_offers")
+        .select(
+          "id, order_id, driver_id, restaurant_name, pickup_address, dropoff_address, driver_price_cents, distance_miles, eta_minutes, surge_label, status, expires_at",
+        )
+        .eq("driver_id", driverId)
+        .eq("status", "pending")
+        .gt("expires_at", nowIso)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (orderOfferError) throw orderOfferError;
+
+      const orderOffer = orderOffers?.[0] as any | undefined;
+
+      if (orderOffer) {
+        const secondsLeft = Math.max(
+          1,
+          Math.ceil((new Date(orderOffer.expires_at).getTime() - Date.now()) / 1000),
+        );
+
+        setIncomingOrder({
+          id: String(orderOffer.order_id),
+          offerId: String(orderOffer.id),
+          sourceTable: "orders",
+          restaurantName: orderOffer.restaurant_name ?? "Restaurant order",
+          pickupAddress: orderOffer.pickup_address ?? "Pickup location",
+          dropoffAddress: orderOffer.dropoff_address ?? "Dropoff location",
+          price:
+            typeof orderOffer.driver_price_cents === "number"
+              ? orderOffer.driver_price_cents / 100
+              : 0,
+          distanceMiles:
+            typeof orderOffer.distance_miles === "number"
+              ? orderOffer.distance_miles
+              : Number.isFinite(Number(orderOffer.distance_miles))
+                ? Number(orderOffer.distance_miles)
+                : 0,
+          etaMinutes:
+            typeof orderOffer.eta_minutes === "number"
+              ? orderOffer.eta_minutes
+              : Number.isFinite(Number(orderOffer.eta_minutes))
+                ? Number(orderOffer.eta_minutes)
+                : 0,
+          surgeLabel: orderOffer.surge_label ?? null,
+        });
+        setIncomingTimer(secondsLeft);
+        return;
+      }
+
+      const { data: deliveryOffers, error: deliveryOfferError } = await supabase
+        .from("delivery_request_driver_offers")
+        .select("id, delivery_request_id, driver_id, status, expires_at")
+        .eq("driver_id", driverId)
+        .eq("status", "pending")
+        .gt("expires_at", nowIso)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (deliveryOfferError) throw deliveryOfferError;
+
+      const deliveryOffer = deliveryOffers?.[0] as any | undefined;
+
+      if (!deliveryOffer) {
+        setIncomingOrder(null);
+        setIncomingTimer(0);
+        return;
+      }
+
+      const { data: request, error: requestError } = await supabase
+        .from("delivery_requests")
+        .select(
+          "id,pickup_address,dropoff_address,distance_miles,eta_minutes,driver_delivery_payout",
+        )
+        .eq("id", deliveryOffer.delivery_request_id)
+        .maybeSingle();
+
+      if (requestError) throw requestError;
+
+      if (!request) {
+        setIncomingOrder(null);
+        setIncomingTimer(0);
+        return;
+      }
+
+      const secondsLeft = Math.max(
+        1,
+        Math.ceil((new Date(deliveryOffer.expires_at).getTime() - Date.now()) / 1000),
+      );
+
+      setIncomingOrder({
+        id: String(deliveryOffer.delivery_request_id),
+        offerId: String(deliveryOffer.id),
+        sourceTable: "delivery_requests",
+        restaurantName: "MMD Delivery",
+        pickupAddress: request.pickup_address ?? "Pickup location",
+        dropoffAddress: request.dropoff_address ?? "Dropoff location",
+        price:
+          typeof request.driver_delivery_payout === "number"
+            ? request.driver_delivery_payout
+            : Number.isFinite(Number(request.driver_delivery_payout))
+              ? Number(request.driver_delivery_payout)
+              : 0,
+        distanceMiles:
+          typeof request.distance_miles === "number"
+            ? request.distance_miles
+            : Number.isFinite(Number(request.distance_miles))
+              ? Number(request.distance_miles)
+              : 0,
+        etaMinutes:
+          typeof request.eta_minutes === "number"
+            ? request.eta_minutes
+            : Number.isFinite(Number(request.eta_minutes))
+              ? Number(request.eta_minutes)
+              : 0,
+        surgeLabel: null,
+      });
+      setIncomingTimer(secondsLeft);
+    } catch (e) {
+      console.log("Erreur chargement incoming offer map:", e);
+    }
+  }, [driverId]);
+
+  useEffect(() => {
+    if (!driverId) return;
+
+    void loadLatestIncomingOffer();
+
+    const channel = supabase
+      .channel(`driver-map-offers-${driverId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "driver_order_offers",
+          filter: `driver_id=eq.${driverId}`,
+        },
+        () => void loadLatestIncomingOffer(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "delivery_request_driver_offers",
+          filter: `driver_id=eq.${driverId}`,
+        },
+        () => void loadLatestIncomingOffer(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [driverId, loadLatestIncomingOffer]);
+
   useEffect(() => {
     if (!hasLocation) return;
 
@@ -962,16 +1130,103 @@ export default function DriverMapScreen() {
     });
   }
 
-  function handleAcceptIncomingOrder() {
-    if (!incomingOrder) return;
-    setIncomingOrder(null);
-    setIncomingTimer(0);
+  async function handleAcceptIncomingOrder() {
+    if (!incomingOrder || incomingActionLoading) return;
+
+    if (!incomingOrder.offerId || !incomingOrder.sourceTable) {
+      setIncomingOrder(null);
+      setIncomingTimer(0);
+      return;
+    }
+
+    try {
+      setIncomingActionLoading(true);
+
+      const rpcName =
+        incomingOrder.sourceTable === "delivery_requests"
+          ? "driver_accept_delivery_request_offer"
+          : "driver_accept_order_offer";
+
+      const { data, error } = await supabase.rpc(rpcName, {
+        p_offer_id: incomingOrder.offerId,
+      });
+
+      if (error) throw error;
+
+      const result = Array.isArray(data) ? data[0] : data;
+      if (result && result.ok === false) {
+        throw new Error(result.message ?? "offer_not_available");
+      }
+
+      const orderId =
+        incomingOrder.sourceTable === "delivery_requests"
+          ? result?.delivery_request_id ?? incomingOrder.id
+          : result?.order_id ?? incomingOrder.id;
+
+      setIncomingOrder(null);
+      setIncomingTimer(0);
+      await fetchDriverOrders();
+
+      (navigation as any).navigate("DriverOrderDetails", {
+        orderId,
+        sourceTable: incomingOrder.sourceTable,
+      });
+    } catch (e: any) {
+      console.log("Erreur accept incoming map:", e);
+      Alert.alert(
+        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        e?.message ?? "Impossible d'accepter cette offre.",
+      );
+      void loadLatestIncomingOffer();
+    } finally {
+      setIncomingActionLoading(false);
+    }
   }
 
-  function handleRejectIncomingOrder(_reason: "reject" | "timeout") {
-    if (!incomingOrder) return;
-    setIncomingOrder(null);
-    setIncomingTimer(0);
+  async function handleRejectIncomingOrder(reason: "reject" | "timeout") {
+    if (!incomingOrder || incomingActionLoading) return;
+
+    if (!incomingOrder.offerId || !incomingOrder.sourceTable) {
+      setIncomingOrder(null);
+      setIncomingTimer(0);
+      return;
+    }
+
+    try {
+      setIncomingActionLoading(true);
+
+      const rpcName =
+        incomingOrder.sourceTable === "delivery_requests"
+          ? "driver_reject_delivery_request_offer"
+          : "driver_reject_order_offer";
+
+      const { data, error } = await supabase.rpc(rpcName, {
+        p_offer_id: incomingOrder.offerId,
+        p_reason: reason === "timeout" ? "timeout" : "driver_rejected",
+      });
+
+      if (error) throw error;
+
+      const result = Array.isArray(data) ? data[0] : data;
+      if (result && result.ok === false) {
+        throw new Error(result.message ?? "offer_not_available");
+      }
+
+      setIncomingOrder(null);
+      setIncomingTimer(0);
+      await fetchDriverOrders();
+    } catch (e: any) {
+      console.log("Erreur reject incoming map:", e);
+      if (reason !== "timeout") {
+        Alert.alert(
+          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          e?.message ?? "Impossible de refuser cette offre.",
+        );
+      }
+      void loadLatestIncomingOffer();
+    } finally {
+      setIncomingActionLoading(false);
+    }
   }
 
   function triggerTestIncomingOrder() {
@@ -985,6 +1240,8 @@ export default function DriverMapScreen() {
 
     const fakeOrder: IncomingOrderBanner = {
       id: "test-order",
+      offerId: null,
+      sourceTable: "orders",
       restaurantName: "Restaurant MMD test",
       pickupAddress: "Prospect Park West, Brooklyn",
       dropoffAddress: "Flatbush Ave, Brooklyn",
@@ -1773,8 +2030,10 @@ export default function DriverMapScreen() {
                     <TouchableOpacity
                       onPress={() => handleRejectIncomingOrder("reject")}
                       activeOpacity={0.9}
+                      disabled={incomingActionLoading}
                       style={{
                         flex: 1,
+                        opacity: incomingActionLoading ? 0.6 : 1,
                         paddingVertical: 11,
                         borderRadius: 999,
                         backgroundColor: "#111827",
@@ -1797,8 +2056,10 @@ export default function DriverMapScreen() {
                     <TouchableOpacity
                       onPress={handleAcceptIncomingOrder}
                       activeOpacity={0.9}
+                      disabled={incomingActionLoading}
                       style={{
                         flex: 1,
+                        opacity: incomingActionLoading ? 0.6 : 1,
                         paddingVertical: 11,
                         borderRadius: 999,
                         backgroundColor: "#22C55E",
