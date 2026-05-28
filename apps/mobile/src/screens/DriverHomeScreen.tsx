@@ -1401,7 +1401,7 @@ export function DriverHomeScreen() {
           }
           if (prev) {
             const stillExists = visibleAvailable.find(
-              (o) => o.id === prev.id && (o.source_table ?? "orders") === (prev.source_table ?? "orders"),
+              (o) => getOrderCompositeKey(o) === getOrderCompositeKey(prev),
             );
             if (stillExists) return stillExists;
           }
@@ -1442,22 +1442,135 @@ export function DriverHomeScreen() {
 
   useEffect(() => {
     if (!isOnline) return;
-    const channel = supabase
-      .channel(`driver-orders-watch-${Date.now()}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, () => scheduleDriverOrdersRefresh(250))
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, () => scheduleDriverOrdersRefresh(250))
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "orders" }, () => scheduleDriverOrdersRefresh(250))
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "delivery_requests" }, () => scheduleDriverOrdersRefresh(250))
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "delivery_requests" }, () => scheduleDriverOrdersRefresh(250))
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "delivery_requests" }, () => scheduleDriverOrdersRefresh(250))
-      .subscribe((status) => console.log("DRIVER_HOME_REALTIME_STATUS", status));
+
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const subscribeToDriverRealtime = async () => {
+      try {
+        const driverId = await getUserIdOrThrow();
+        if (cancelled || !mountedRef.current) return;
+
+        channel = supabase
+          .channel(`driver-dispatch-live-${driverId}-${Date.now()}`)
+
+          // Live order changes: when another driver accepts, this screen refreshes and removes stale offers.
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "orders" },
+            () => scheduleDriverOrdersRefresh(150),
+          )
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "orders" },
+            () => scheduleDriverOrdersRefresh(150),
+          )
+          .on(
+            "postgres_changes",
+            { event: "DELETE", schema: "public", table: "orders" },
+            () => scheduleDriverOrdersRefresh(150),
+          )
+
+          // Live delivery request changes.
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "delivery_requests" },
+            () => scheduleDriverOrdersRefresh(150),
+          )
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "delivery_requests" },
+            () => scheduleDriverOrdersRefresh(150),
+          )
+          .on(
+            "postgres_changes",
+            { event: "DELETE", schema: "public", table: "delivery_requests" },
+            () => scheduleDriverOrdersRefresh(150),
+          )
+
+          // Personalized restaurant order offers for this driver only.
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "driver_order_offers",
+              filter: `driver_id=eq.${driverId}`,
+            },
+            () => scheduleDriverOrdersRefresh(0),
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "driver_order_offers",
+              filter: `driver_id=eq.${driverId}`,
+            },
+            () => scheduleDriverOrdersRefresh(0),
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "DELETE",
+              schema: "public",
+              table: "driver_order_offers",
+              filter: `driver_id=eq.${driverId}`,
+            },
+            () => scheduleDriverOrdersRefresh(0),
+          )
+
+          // Personalized MMD delivery request offers for this driver only.
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "delivery_request_driver_offers",
+              filter: `driver_id=eq.${driverId}`,
+            },
+            () => scheduleDriverOrdersRefresh(0),
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "UPDATE",
+              schema: "public",
+              table: "delivery_request_driver_offers",
+              filter: `driver_id=eq.${driverId}`,
+            },
+            () => scheduleDriverOrdersRefresh(0),
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "DELETE",
+              schema: "public",
+              table: "delivery_request_driver_offers",
+              filter: `driver_id=eq.${driverId}`,
+            },
+            () => scheduleDriverOrdersRefresh(0),
+          )
+          .subscribe((status) => {
+            console.log("DRIVER_HOME_REALTIME_STATUS", status);
+            if (status === "SUBSCRIBED") scheduleDriverOrdersRefresh(0);
+          });
+      } catch (e) {
+        console.log("driver realtime subscribe error:", e);
+      }
+    };
+
+    void subscribeToDriverRealtime();
 
     return () => {
+      cancelled = true;
       if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
       refreshDebounceRef.current = null;
-      supabase.removeChannel(channel);
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
     };
-  }, [isOnline, scheduleDriverOrdersRefresh]);
+  }, [getUserIdOrThrow, isOnline, scheduleDriverOrdersRefresh]);
 
   useEffect(() => {
     if (restoredOnlineStatusRef.current) return;
@@ -1768,9 +1881,9 @@ export function DriverHomeScreen() {
       return;
     }
 
-    if (lastOfferIdRef.current === `${activeOffer.source_table ?? "orders"}:${activeOffer.id}` && soundRef.current) return;
+    if (lastOfferIdRef.current === getOrderCompositeKey(activeOffer) && soundRef.current) return;
 
-    lastOfferIdRef.current = `${activeOffer.source_table ?? "orders"}:${activeOffer.id}`;
+    lastOfferIdRef.current = getOrderCompositeKey(activeOffer);
 
     let cancelled = false;
 
@@ -1787,7 +1900,7 @@ export function DriverHomeScreen() {
           },
         );
 
-        if (cancelled || !mountedRef.current || lastOfferIdRef.current !== `${activeOffer.source_table ?? "orders"}:${activeOffer.id}`) {
+        if (cancelled || !mountedRef.current || lastOfferIdRef.current !== getOrderCompositeKey(activeOffer)) {
           await sound.unloadAsync().catch(() => {});
           return;
         }
