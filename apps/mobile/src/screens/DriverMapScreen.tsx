@@ -32,6 +32,7 @@ import {
   calculateHeading,
   fetchNavigationRoute,
   fitCameraToRoute,
+  shouldReroute,
   type NavigationRoute,
 } from "../lib/navigationService";
 
@@ -52,6 +53,8 @@ const NAVIGATION_FOLLOW_ZOOM = 17.2;
 const NAVIGATION_FOLLOW_PITCH = 56;
 const NAVIGATION_CAMERA_THROTTLE_MS = 1100;
 const NAVIGATION_MIN_HEADING_DISTANCE_METERS = 4;
+const NAVIGATION_REROUTE_THRESHOLD_METERS = 110;
+const NAVIGATION_REROUTE_COOLDOWN_MS = 12000;
 
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
 
@@ -439,6 +442,8 @@ export default function DriverMapScreen() {
   const hasCenteredOnDriverRef = useRef(false);
   const previousDriverPointRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const lastFollowCameraAtRef = useRef(0);
+  const lastRerouteAtRef = useRef(0);
+  const rerouteInFlightRef = useRef(false);
 
   const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
   const sheetState = useRef<"collapsed" | "expanded">("collapsed");
@@ -1247,6 +1252,7 @@ export default function DriverMapScreen() {
         if (cancelled) return;
 
         setNavigationRoute(route);
+        lastRerouteAtRef.current = Date.now();
 
         if (route) {
           void fitCameraToRoute(cameraRef as any, route.geometry);
@@ -1271,6 +1277,109 @@ export default function DriverMapScreen() {
     incomingOrder?.pickupLng,
     incomingOrder?.dropoffLat,
     incomingOrder?.dropoffLng,
+    region.latitude,
+    region.longitude,
+  ]);
+
+  useEffect(() => {
+    if (!incomingOrder || !hasLocation || !navigationRoute?.geometry) {
+      return;
+    }
+
+    if (navigationRouteLoading || rerouteInFlightRef.current) {
+      return;
+    }
+
+    const activeIncomingOrder = incomingOrder;
+
+    const currentPoint = {
+      latitude: region.latitude,
+      longitude: region.longitude,
+    };
+
+    const needsReroute = shouldReroute(
+      currentPoint,
+      navigationRoute.geometry,
+      NAVIGATION_REROUTE_THRESHOLD_METERS,
+    );
+
+    if (!needsReroute) {
+      return;
+    }
+
+    const now = Date.now();
+
+    if (now - lastRerouteAtRef.current < NAVIGATION_REROUTE_COOLDOWN_MS) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function rerouteLiveNavigation() {
+      try {
+        rerouteInFlightRef.current = true;
+        lastRerouteAtRef.current = Date.now();
+        setNavigationRouteLoading(true);
+
+        const hasDropoff =
+          Number.isFinite(activeIncomingOrder.dropoffLat ?? NaN) &&
+          Number.isFinite(activeIncomingOrder.dropoffLng ?? NaN);
+
+        const route = await fetchNavigationRoute(
+          currentPoint,
+          {
+            latitude: hasDropoff
+              ? Number(activeIncomingOrder.dropoffLat)
+              : Number(activeIncomingOrder.pickupLat),
+            longitude: hasDropoff
+              ? Number(activeIncomingOrder.dropoffLng)
+              : Number(activeIncomingOrder.pickupLng),
+          },
+          hasDropoff
+            ? [
+                {
+                  latitude: Number(activeIncomingOrder.pickupLat),
+                  longitude: Number(activeIncomingOrder.pickupLng),
+                },
+              ]
+            : [],
+        );
+
+        if (cancelled) return;
+
+        if (route) {
+          setNavigationRoute(route);
+
+          if (!followNavigationMode) {
+            void fitCameraToRoute(cameraRef as any, route.geometry);
+          }
+        }
+      } catch (e) {
+        console.log("DriverMapScreen live reroute error:", e);
+      } finally {
+        if (!cancelled) {
+          setNavigationRouteLoading(false);
+        }
+
+        rerouteInFlightRef.current = false;
+      }
+    }
+
+    void rerouteLiveNavigation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    followNavigationMode,
+    hasLocation,
+    incomingOrder?.id,
+    incomingOrder?.pickupLat,
+    incomingOrder?.pickupLng,
+    incomingOrder?.dropoffLat,
+    incomingOrder?.dropoffLng,
+    navigationRoute?.geometry,
+    navigationRouteLoading,
     region.latitude,
     region.longitude,
   ]);
