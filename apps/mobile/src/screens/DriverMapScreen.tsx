@@ -28,6 +28,11 @@ import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "../lib/supabase";
+import {
+  fetchNavigationRoute,
+  fitCameraToRoute,
+  type NavigationRoute,
+} from "../lib/navigationService";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverMap">;
 
@@ -82,6 +87,12 @@ type DriverOrder = {
   dropoff_address: string | null;
   distance_miles: number | null;
   driver_delivery_payout: number | null;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
+  pickup_lon?: number | null;
+  dropoff_lat?: number | null;
+  dropoff_lng?: number | null;
+  dropoff_lon?: number | null;
 };
 
 type ZoneActivity = "calm" | "normal" | "busy" | "very_busy";
@@ -107,6 +118,10 @@ type IncomingOrderBanner = {
   id: string;
   offerId?: string | null;
   sourceTable?: OrderSourceTable;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
   restaurantName: string;
   pickupAddress: string;
   dropoffAddress: string;
@@ -308,6 +323,15 @@ function formatMiles(value: number | null | undefined) {
   return `${value.toFixed(2)} mi`;
 }
 
+function numberOrNull(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function isValidCoordinate(latValue: unknown, lngValue: unknown) {
   const lat = Number(latValue);
   const lng = Number(lngValue);
@@ -395,6 +419,8 @@ export default function DriverMapScreen() {
     useState<IncomingOrderBanner | null>(null);
   const [incomingTimer, setIncomingTimer] = useState(0);
   const [incomingActionLoading, setIncomingActionLoading] = useState(false);
+  const [navigationRoute, setNavigationRoute] = useState<NavigationRoute | null>(null);
+  const [navigationRouteLoading, setNavigationRouteLoading] = useState(false);
 
   const [isNightMode, setIsNightMode] = useState(false);
 
@@ -715,7 +741,13 @@ export default function DriverMapScreen() {
             pickup_address,
             dropoff_address,
             distance_miles,
-            driver_delivery_payout
+            driver_delivery_payout,
+            pickup_lat,
+            pickup_lng,
+            pickup_lon,
+            dropoff_lat,
+            dropoff_lng,
+            dropoff_lon
           `,
           )
           .in("id", assignedOrderIds)
@@ -748,7 +780,13 @@ export default function DriverMapScreen() {
           pickup_address,
           dropoff_address,
           distance_miles,
-          driver_delivery_payout
+          driver_delivery_payout,
+          pickup_lat,
+          pickup_lng,
+          pickup_lon,
+          dropoff_lat,
+          dropoff_lng,
+          dropoff_lon
         `,
           )
           .is("driver_id", null)
@@ -781,6 +819,10 @@ export default function DriverMapScreen() {
           created_at,
           pickup_address,
           dropoff_address,
+          pickup_lat,
+          pickup_lng,
+          dropoff_lat,
+          dropoff_lng,
           distance_miles,
           driver_delivery_payout
         `,
@@ -802,6 +844,10 @@ export default function DriverMapScreen() {
         restaurant_name: null,
         pickup_address: request.pickup_address ?? null,
         dropoff_address: request.dropoff_address ?? null,
+        pickup_lat: numberOrNull(request.pickup_lat),
+        pickup_lng: numberOrNull(request.pickup_lng),
+        dropoff_lat: numberOrNull(request.dropoff_lat),
+        dropoff_lng: numberOrNull(request.dropoff_lng),
         distance_miles:
           typeof request.distance_miles === "number"
             ? request.distance_miles
@@ -873,10 +919,27 @@ export default function DriverMapScreen() {
           Math.ceil((new Date(orderOffer.expires_at).getTime() - Date.now()) / 1000),
         );
 
+        const { data: orderRouteRow, error: orderRouteError } = await supabase
+          .from("orders")
+          .select("pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon")
+          .eq("id", orderOffer.order_id)
+          .maybeSingle();
+
+        if (orderRouteError) {
+          console.log("Driver map order route warning:", orderRouteError);
+        }
+
+        const pickupLng = numberOrNull(orderRouteRow?.pickup_lng ?? orderRouteRow?.pickup_lon);
+        const dropoffLng = numberOrNull(orderRouteRow?.dropoff_lng ?? orderRouteRow?.dropoff_lon);
+
         setIncomingOrder({
           id: String(orderOffer.order_id),
           offerId: String(orderOffer.id),
           sourceTable: "orders",
+          pickupLat: numberOrNull(orderRouteRow?.pickup_lat),
+          pickupLng,
+          dropoffLat: numberOrNull(orderRouteRow?.dropoff_lat),
+          dropoffLng,
           restaurantName: orderOffer.restaurant_name ?? "Restaurant order",
           pickupAddress: orderOffer.pickup_address ?? "Pickup location",
           dropoffAddress: orderOffer.dropoff_address ?? "Dropoff location",
@@ -924,7 +987,7 @@ export default function DriverMapScreen() {
       const { data: request, error: requestError } = await supabase
         .from("delivery_requests")
         .select(
-          "id,pickup_address,dropoff_address,distance_miles,eta_minutes,driver_delivery_payout",
+          "id,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout",
         )
         .eq("id", deliveryOffer.delivery_request_id)
         .maybeSingle();
@@ -946,6 +1009,10 @@ export default function DriverMapScreen() {
         id: String(deliveryOffer.delivery_request_id),
         offerId: String(deliveryOffer.id),
         sourceTable: "delivery_requests",
+        pickupLat: numberOrNull(request.pickup_lat),
+        pickupLng: numberOrNull(request.pickup_lng),
+        dropoffLat: numberOrNull(request.dropoff_lat),
+        dropoffLng: numberOrNull(request.dropoff_lng),
         restaurantName: "MMD Delivery",
         pickupAddress: request.pickup_address ?? "Pickup location",
         dropoffAddress: request.dropoff_address ?? "Dropoff location",
@@ -1119,6 +1186,83 @@ export default function DriverMapScreen() {
     return () => clearTimeout(id);
   }, [incomingOrder, incomingTimer]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function buildLiveNavigationRoute() {
+      if (!incomingOrder || !hasLocation) {
+        setNavigationRoute(null);
+        setNavigationRouteLoading(false);
+        return;
+      }
+
+      if (
+        !Number.isFinite(incomingOrder.pickupLat ?? NaN) ||
+        !Number.isFinite(incomingOrder.pickupLng ?? NaN)
+      ) {
+        setNavigationRoute(null);
+        setNavigationRouteLoading(false);
+        return;
+      }
+
+      try {
+        setNavigationRouteLoading(true);
+
+        const hasDropoff =
+          Number.isFinite(incomingOrder.dropoffLat ?? NaN) &&
+          Number.isFinite(incomingOrder.dropoffLng ?? NaN);
+
+        const route = await fetchNavigationRoute(
+          { latitude: region.latitude, longitude: region.longitude },
+          {
+            latitude: hasDropoff
+              ? Number(incomingOrder.dropoffLat)
+              : Number(incomingOrder.pickupLat),
+            longitude: hasDropoff
+              ? Number(incomingOrder.dropoffLng)
+              : Number(incomingOrder.pickupLng),
+          },
+          hasDropoff
+            ? [
+                {
+                  latitude: Number(incomingOrder.pickupLat),
+                  longitude: Number(incomingOrder.pickupLng),
+                },
+              ]
+            : [],
+        );
+
+        if (cancelled) return;
+
+        setNavigationRoute(route);
+
+        if (route) {
+          void fitCameraToRoute(cameraRef as any, route.geometry);
+        }
+      } catch (e) {
+        console.log("DriverMapScreen navigation route error:", e);
+        if (!cancelled) setNavigationRoute(null);
+      } finally {
+        if (!cancelled) setNavigationRouteLoading(false);
+      }
+    }
+
+    void buildLiveNavigationRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    hasLocation,
+    incomingOrder?.id,
+    incomingOrder?.pickupLat,
+    incomingOrder?.pickupLng,
+    incomingOrder?.dropoffLat,
+    incomingOrder?.dropoffLng,
+    region.latitude,
+    region.longitude,
+  ]);
+
   function centerOnDriver() {
     if (!hasLocation) return;
 
@@ -1242,6 +1386,10 @@ export default function DriverMapScreen() {
       id: "test-order",
       offerId: null,
       sourceTable: "orders",
+      pickupLat: 40.6615,
+      pickupLng: -73.9796,
+      dropoffLat: 40.6501,
+      dropoffLng: -73.9496,
       restaurantName: "Restaurant MMD test",
       pickupAddress: "Prospect Park West, Brooklyn",
       dropoffAddress: "Flatbush Ave, Brooklyn",
@@ -1538,6 +1686,32 @@ export default function DriverMapScreen() {
                 showsUserHeadingIndicator={false}
               />
 
+              {navigationRoute?.geometry && (
+                <Mapbox.ShapeSource
+                  id="driver-navigation-route-source"
+                  shape={navigationRoute.geometry}
+                >
+                  <Mapbox.LineLayer
+                    id="driver-navigation-route-casing"
+                    style={{
+                      lineColor: "rgba(15,23,42,0.86)",
+                      lineWidth: 8,
+                      lineCap: "round",
+                      lineJoin: "round",
+                    }}
+                  />
+                  <Mapbox.LineLayer
+                    id="driver-navigation-route-line"
+                    style={{
+                      lineColor: "#2563EB",
+                      lineWidth: 5,
+                      lineCap: "round",
+                      lineJoin: "round",
+                    }}
+                  />
+                </Mapbox.ShapeSource>
+              )}
+
               {hasLocation && (
                 <Mapbox.PointAnnotation
                   id="driver-live-marker"
@@ -1570,6 +1744,50 @@ export default function DriverMapScreen() {
                       }}
                     >
                       ➤
+                    </Text>
+                  </View>
+                </Mapbox.PointAnnotation>
+              )}
+
+              {incomingOrder?.pickupLat != null && incomingOrder?.pickupLng != null && (
+                <Mapbox.PointAnnotation
+                  id="incoming-pickup-marker"
+                  coordinate={[Number(incomingOrder.pickupLng), Number(incomingOrder.pickupLat)]}
+                >
+                  <View
+                    style={{
+                      paddingHorizontal: 9,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      backgroundColor: "#22C55E",
+                      borderWidth: 2,
+                      borderColor: "#FFFFFF",
+                    }}
+                  >
+                    <Text style={{ color: "#052E16", fontSize: 10, fontWeight: "900" }}>
+                      PICKUP
+                    </Text>
+                  </View>
+                </Mapbox.PointAnnotation>
+              )}
+
+              {incomingOrder?.dropoffLat != null && incomingOrder?.dropoffLng != null && (
+                <Mapbox.PointAnnotation
+                  id="incoming-dropoff-marker"
+                  coordinate={[Number(incomingOrder.dropoffLng), Number(incomingOrder.dropoffLat)]}
+                >
+                  <View
+                    style={{
+                      paddingHorizontal: 9,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      backgroundColor: "#F97316",
+                      borderWidth: 2,
+                      borderColor: "#FFFFFF",
+                    }}
+                  >
+                    <Text style={{ color: "#431407", fontSize: 10, fontWeight: "900" }}>
+                      DROPOFF
                     </Text>
                   </View>
                 </Mapbox.PointAnnotation>
@@ -1898,7 +2116,9 @@ export default function DriverMapScreen() {
                       <Text
                         style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}
                       >
-                        Nouvelle opportunité premium
+                        {navigationRouteLoading
+                          ? "Calcul de la route live…"
+                          : "Nouvelle opportunité premium"}
                       </Text>
                     </View>
 
@@ -1975,8 +2195,9 @@ export default function DriverMapScreen() {
                           fontWeight: "700",
                         }}
                       >
-                        {incomingOrder.distanceMiles.toFixed(1)} mi •{" "}
-                        {incomingOrder.etaMinutes} min
+                        {navigationRoute
+                          ? `${(navigationRoute.distanceMeters / 1609.344).toFixed(1)} mi • ${navigationRoute.etaMinutes} min`
+                          : `${incomingOrder.distanceMiles.toFixed(1)} mi • ${incomingOrder.etaMinutes} min`}
                       </Text>
                     </View>
 
