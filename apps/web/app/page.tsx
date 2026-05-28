@@ -342,8 +342,6 @@ export default function HomePage() {
               </a>
             </div>
 
-            {/* STATS */}
-
             <div
               style={{
                 display: "flex",
@@ -391,7 +389,7 @@ export default function HomePage() {
             }}
           >
             <img
-              src="/brand/hero-rider.png"
+              src="/brand/hero/hero-rider.png"
               alt="MMD Delivery Rider"
               style={{
                 width: "100%",
@@ -532,7 +530,7 @@ export default function HomePage() {
                 }}
               >
                 <img
-                  src="/brand/qr-placeholder.png"
+                  src="/brand/mmd-logo.png"
                   alt={`${store} QR`}
                   style={{
                     width: 140,
