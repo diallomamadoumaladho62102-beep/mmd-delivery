@@ -35,6 +35,7 @@ import {
   shouldReroute,
   type NavigationRoute,
 } from "../lib/navigationService";
+import { buildNavigationInstruction } from "../lib/navigationInstructions";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverMap">;
 
@@ -585,6 +586,17 @@ export default function DriverMapScreen() {
   const sheetSummaryCardColor = isOnline ? "#031A12" : "#1A0B0F";
 
   const isNavigationActive = Boolean(incomingOrder && navigationRoute?.geometry);
+
+  const navigationInstruction = useMemo(() => {
+    if (!incomingOrder || !navigationRoute) {
+      return null;
+    }
+
+    return buildNavigationInstruction(
+      navigationRoute.distanceMeters,
+      "pickup",
+    );
+  }, [incomingOrder, navigationRoute?.distanceMeters]);
 
   const locateDriver = useCallback(async () => {
     try {
@@ -2157,6 +2169,109 @@ export default function DriverMapScreen() {
                 backgroundColor: "rgba(2,6,23,0.08)",
               }}
             />
+
+            {navigationInstruction && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: incomingOrder ? 318 : 78,
+                  left: 14,
+                  right: 14,
+                  borderRadius: 24,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  backgroundColor: "rgba(2,6,23,0.96)",
+                  borderWidth: 1,
+                  borderColor: "rgba(96,165,250,0.42)",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.34,
+                  shadowRadius: 18,
+                  shadowOffset: { width: 0, height: 8 },
+                  elevation: 14,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text
+                      style={{
+                        color: "#93C5FD",
+                        fontSize: 10,
+                        fontWeight: "900",
+                        letterSpacing: 0.8,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Navigation live
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#F8FAFC",
+                        fontSize: 16,
+                        fontWeight: "900",
+                        marginTop: 3,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {navigationInstruction.title}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#CBD5E1",
+                        fontSize: 12,
+                        fontWeight: "700",
+                        marginTop: 3,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {navigationInstruction.subtitle}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={{
+                      minWidth: 84,
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
+                      borderRadius: 16,
+                      backgroundColor: "rgba(37,99,235,0.22)",
+                      borderWidth: 1,
+                      borderColor: "rgba(96,165,250,0.38)",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#BFDBFE",
+                        fontSize: 10,
+                        fontWeight: "800",
+                      }}
+                    >
+                      ETA
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 15,
+                        fontWeight: "900",
+                        marginTop: 2,
+                      }}
+                    >
+                      {navigationRoute?.etaMinutes ?? incomingOrder?.etaMinutes ?? 0} min
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
 
             <View
               pointerEvents="none"
