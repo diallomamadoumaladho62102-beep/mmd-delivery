@@ -36,6 +36,10 @@ import {
   type NavigationRoute,
 } from "../lib/navigationService";
 import { buildNavigationInstruction } from "../lib/navigationInstructions";
+import {
+  speakNavigation,
+  stopNavigationVoice,
+} from "../lib/navigationVoice";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverMap">;
 
@@ -56,6 +60,9 @@ const NAVIGATION_CAMERA_THROTTLE_MS = 1100;
 const NAVIGATION_MIN_HEADING_DISTANCE_METERS = 4;
 const NAVIGATION_REROUTE_THRESHOLD_METERS = 110;
 const NAVIGATION_REROUTE_COOLDOWN_MS = 12000;
+const NAVIGATION_PICKUP_ARRIVAL_METERS = 80;
+const NAVIGATION_DROPOFF_ARRIVAL_METERS = 90;
+const NAVIGATION_PROGRESS_VOICE_MS = 30000;
 
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
 
@@ -445,6 +452,11 @@ export default function DriverMapScreen() {
   const lastFollowCameraAtRef = useRef(0);
   const lastRerouteAtRef = useRef(0);
   const rerouteInFlightRef = useRef(false);
+  const lastNavigationVoiceAtRef = useRef(0);
+  const lastNavigationVoiceKeyRef = useRef<string | null>(null);
+  const pickupArrivalAnnouncedRef = useRef(false);
+  const dropoffArrivalAnnouncedRef = useRef(false);
+  const routeRecalculatedAnnouncedRef = useRef(false);
 
   const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
   const sheetState = useRef<"collapsed" | "expanded">("collapsed");
@@ -587,6 +599,37 @@ export default function DriverMapScreen() {
 
   const isNavigationActive = Boolean(incomingOrder && navigationRoute?.geometry);
 
+  const navigationStage = useMemo<"pickup" | "dropoff">(() => {
+    if (!incomingOrder || !hasLocation) {
+      return "pickup";
+    }
+
+    if (
+      Number.isFinite(incomingOrder.pickupLat ?? NaN) &&
+      Number.isFinite(incomingOrder.pickupLng ?? NaN)
+    ) {
+      const pickupDistance = distanceMeters(
+        region.latitude,
+        region.longitude,
+        Number(incomingOrder.pickupLat),
+        Number(incomingOrder.pickupLng),
+      );
+
+      if (pickupDistance <= NAVIGATION_PICKUP_ARRIVAL_METERS) {
+        return "dropoff";
+      }
+    }
+
+    return "pickup";
+  }, [
+    hasLocation,
+    incomingOrder?.id,
+    incomingOrder?.pickupLat,
+    incomingOrder?.pickupLng,
+    region.latitude,
+    region.longitude,
+  ]);
+
   const navigationInstruction = useMemo(() => {
     if (!incomingOrder || !navigationRoute) {
       return null;
@@ -594,9 +637,13 @@ export default function DriverMapScreen() {
 
     return buildNavigationInstruction(
       navigationRoute.distanceMeters,
-      "pickup",
+      navigationStage,
     );
-  }, [incomingOrder, navigationRoute?.distanceMeters]);
+  }, [
+    incomingOrder,
+    navigationRoute?.distanceMeters,
+    navigationStage,
+  ]);
 
   const locateDriver = useCallback(async () => {
     try {
@@ -659,6 +706,12 @@ export default function DriverMapScreen() {
   }, [locateDriver]);
 
   useEffect(() => {
+    return () => {
+      void stopNavigationVoice();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!hasLocation || hasCenteredOnDriverRef.current) return;
 
     hasCenteredOnDriverRef.current = true;
@@ -704,6 +757,24 @@ export default function DriverMapScreen() {
       }),
     ]).start();
   }, [incomingOpacity, incomingOrder, incomingTranslateY]);
+
+  useEffect(() => {
+    if (!incomingOrder) {
+      pickupArrivalAnnouncedRef.current = false;
+      dropoffArrivalAnnouncedRef.current = false;
+      routeRecalculatedAnnouncedRef.current = false;
+      lastNavigationVoiceAtRef.current = 0;
+      lastNavigationVoiceKeyRef.current = null;
+      void stopNavigationVoice();
+      return;
+    }
+
+    pickupArrivalAnnouncedRef.current = false;
+    dropoffArrivalAnnouncedRef.current = false;
+    routeRecalculatedAnnouncedRef.current = false;
+    lastNavigationVoiceAtRef.current = 0;
+    lastNavigationVoiceKeyRef.current = null;
+  }, [incomingOrder?.id, incomingOrder?.sourceTable]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1362,6 +1433,13 @@ export default function DriverMapScreen() {
         if (route) {
           setNavigationRoute(route);
 
+          if (!routeRecalculatedAnnouncedRef.current) {
+            routeRecalculatedAnnouncedRef.current = true;
+            void speakNavigation("Route recalculated", true);
+          } else {
+            void speakNavigation("Route recalculated");
+          }
+
           if (!followNavigationMode) {
             void fitCameraToRoute(cameraRef as any, route.geometry);
           }
@@ -1392,6 +1470,92 @@ export default function DriverMapScreen() {
     incomingOrder?.dropoffLng,
     navigationRoute?.geometry,
     navigationRouteLoading,
+    region.latitude,
+    region.longitude,
+  ]);
+
+  useEffect(() => {
+    if (!incomingOrder || !hasLocation || !navigationInstruction) {
+      return;
+    }
+
+    const now = Date.now();
+
+    const hasPickup =
+      Number.isFinite(incomingOrder.pickupLat ?? NaN) &&
+      Number.isFinite(incomingOrder.pickupLng ?? NaN);
+
+    const hasDropoff =
+      Number.isFinite(incomingOrder.dropoffLat ?? NaN) &&
+      Number.isFinite(incomingOrder.dropoffLng ?? NaN);
+
+    if (hasPickup) {
+      const pickupDistance = distanceMeters(
+        region.latitude,
+        region.longitude,
+        Number(incomingOrder.pickupLat),
+        Number(incomingOrder.pickupLng),
+      );
+
+      if (
+        pickupDistance <= NAVIGATION_PICKUP_ARRIVAL_METERS &&
+        !pickupArrivalAnnouncedRef.current
+      ) {
+        pickupArrivalAnnouncedRef.current = true;
+        lastNavigationVoiceAtRef.current = now;
+        lastNavigationVoiceKeyRef.current = "arrived-pickup";
+        void speakNavigation("Arriving at pickup location", true);
+        return;
+      }
+    }
+
+    if (hasDropoff && navigationStage === "dropoff") {
+      const dropoffDistance = distanceMeters(
+        region.latitude,
+        region.longitude,
+        Number(incomingOrder.dropoffLat),
+        Number(incomingOrder.dropoffLng),
+      );
+
+      if (
+        dropoffDistance <= NAVIGATION_DROPOFF_ARRIVAL_METERS &&
+        !dropoffArrivalAnnouncedRef.current
+      ) {
+        dropoffArrivalAnnouncedRef.current = true;
+        lastNavigationVoiceAtRef.current = now;
+        lastNavigationVoiceKeyRef.current = "arrived-dropoff";
+        void speakNavigation("Arriving at destination", true);
+        return;
+      }
+    }
+
+    const voiceKey =
+      navigationStage === "pickup"
+        ? "continue-pickup"
+        : "continue-dropoff";
+
+    if (
+      lastNavigationVoiceKeyRef.current !== voiceKey ||
+      now - lastNavigationVoiceAtRef.current >= NAVIGATION_PROGRESS_VOICE_MS
+    ) {
+      lastNavigationVoiceKeyRef.current = voiceKey;
+      lastNavigationVoiceAtRef.current = now;
+
+      void speakNavigation(
+        navigationStage === "pickup"
+          ? "Continue to pickup location"
+          : "Continue to dropoff location",
+      );
+    }
+  }, [
+    hasLocation,
+    incomingOrder?.id,
+    incomingOrder?.pickupLat,
+    incomingOrder?.pickupLng,
+    incomingOrder?.dropoffLat,
+    incomingOrder?.dropoffLng,
+    navigationInstruction,
+    navigationStage,
     region.latitude,
     region.longitude,
   ]);
