@@ -151,6 +151,7 @@ type CancelOrderResponse = {
 const PROOF_BUCKET = "delivery-proofs";
 
 const MAX_PROOF_PHOTO_BYTES = 8 * 1024 * 1024;
+const FILE_SYSTEM_CACHE_DIRECTORY = String((FileSystem as any).cacheDirectory || "");
 
 function sanitizeBase64(value: string) {
   return String(value || "")
@@ -191,6 +192,70 @@ function getArrayBufferFromUint8Array(bytes: Uint8Array) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
+function getMimeTypeFromPhotoUri(photoUri: string) {
+  const cleanUri = String(photoUri || "").trim();
+
+  if (/^data:image\//i.test(cleanUri)) {
+    return cleanUri.match(/^data:([^;]+);base64,/i)?.[1] || "image/jpeg";
+  }
+
+  const withoutQuery = cleanUri.split("?")[0]?.toLowerCase() || "";
+
+  if (withoutQuery.endsWith(".png")) return "image/png";
+  if (withoutQuery.endsWith(".webp")) return "image/webp";
+  if (withoutQuery.endsWith(".heic")) return "image/heic";
+  if (withoutQuery.endsWith(".heif")) return "image/heif";
+
+  return "image/jpeg";
+}
+
+function getExtensionFromMimeType(mimeType: string) {
+  const cleanMimeType = String(mimeType || "").toLowerCase();
+
+  if (cleanMimeType.includes("png")) return "png";
+  if (cleanMimeType.includes("webp")) return "webp";
+  if (cleanMimeType.includes("heic")) return "heic";
+  if (cleanMimeType.includes("heif")) return "heif";
+
+  return "jpg";
+}
+
+function createBlobFromBase64(base64Value: string, mimeType = "image/jpeg") {
+  const bytes = base64ToUint8Array(base64Value);
+
+  if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
+    throw new Error("PHOTO_TOO_LARGE");
+  }
+
+  if (bytes.byteLength === 0) {
+    throw new Error("PHOTO_EMPTY");
+  }
+
+  return new Blob([getArrayBufferFromUint8Array(bytes) as ArrayBuffer], {
+    type: mimeType,
+  });
+}
+
+async function readImageFileAsBlob(uri: string, mimeType: string) {
+  const info = await FileSystem.getInfoAsync(uri, { size: true } as any);
+
+  if (!(info as any)?.exists) {
+    throw new Error("PHOTO_FILE_NOT_FOUND");
+  }
+
+  const size = typeof (info as any)?.size === "number" ? (info as any).size : null;
+
+  if (size != null && size > MAX_PROOF_PHOTO_BYTES) {
+    throw new Error("PHOTO_TOO_LARGE");
+  }
+
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: "base64" as any,
+  });
+
+  return createBlobFromBase64(base64, mimeType);
+}
+
 async function createImageBlobFromLocalUri(photoUri: string) {
   const cleanUri = String(photoUri || "").trim();
 
@@ -198,59 +263,43 @@ async function createImageBlobFromLocalUri(photoUri: string) {
     throw new Error("PHOTO_URI_MISSING");
   }
 
+  const mimeType = getMimeTypeFromPhotoUri(cleanUri);
+
   if (/^data:image\//i.test(cleanUri)) {
-    const bytes = base64ToUint8Array(cleanUri);
-
-    if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
-      throw new Error("PHOTO_TOO_LARGE");
-    }
-
-    if (bytes.byteLength === 0) {
-      throw new Error("PHOTO_EMPTY");
-    }
-
-    return new Blob([getArrayBufferFromUint8Array(bytes) as ArrayBuffer], {
-      type: cleanUri.match(/^data:([^;]+);base64,/i)?.[1] || "image/jpeg",
-    });
+    return createBlobFromBase64(cleanUri, mimeType);
   }
 
   try {
-    const info = await FileSystem.getInfoAsync(cleanUri, { size: true } as any);
-    const exists = Boolean((info as any)?.exists);
-
-    if (exists) {
-      const size = typeof (info as any)?.size === "number" ? (info as any).size : null;
-
-      if (size != null && size > MAX_PROOF_PHOTO_BYTES) {
-        throw new Error("PHOTO_TOO_LARGE");
-      }
-
-      const base64 = await FileSystem.readAsStringAsync(cleanUri, {
-        encoding: "base64" as any,
-      });
-
-      const bytes = base64ToUint8Array(base64);
-
-      if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
-        throw new Error("PHOTO_TOO_LARGE");
-      }
-
-      if (bytes.byteLength === 0) {
-        throw new Error("PHOTO_EMPTY");
-      }
-
-      return new Blob([getArrayBufferFromUint8Array(bytes) as ArrayBuffer], {
-        type: "image/jpeg",
-      });
-    }
+    return await readImageFileAsBlob(cleanUri, mimeType);
   } catch (error: any) {
     const message = String(error?.message ?? error ?? "");
 
-    if (message === "PHOTO_TOO_LARGE") {
+    if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
       throw error;
     }
+  }
 
-    console.log("FileSystem proof photo read failed, trying fetch fallback:", message);
+  if (/^content:\/\//i.test(cleanUri) || /^file:\/\//i.test(cleanUri)) {
+    const cacheUri = `${FILE_SYSTEM_CACHE_DIRECTORY}mmd-proof-${Date.now()}.${getExtensionFromMimeType(
+      mimeType
+    )}`;
+
+    if (FILE_SYSTEM_CACHE_DIRECTORY) {
+      try {
+        await FileSystem.copyAsync({
+          from: cleanUri,
+          to: cacheUri,
+        });
+
+        return await readImageFileAsBlob(cacheUri, mimeType);
+      } catch (error: any) {
+        const message = String(error?.message ?? error ?? "");
+
+        if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
+          throw error;
+        }
+      }
+    }
   }
 
   try {
@@ -278,7 +327,6 @@ async function createImageBlobFromLocalUri(photoUri: string) {
       throw error;
     }
 
-    console.log("fetch proof photo read failed:", message);
     throw new Error("PHOTO_READ_FAILED");
   }
 }
@@ -1221,7 +1269,8 @@ export function DriverOrderDetailsScreen() {
       }
 
       const uid = myUserId || "unknown-driver";
-      const ext = "jpg";
+      const contentType = blob.type || getMimeTypeFromPhotoUri(photoUri);
+      const ext = getExtensionFromMimeType(contentType);
       const filePath = `${currentOrderId}/${uid}/${kind}-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}.${ext}`;
@@ -1229,7 +1278,7 @@ export function DriverOrderDetailsScreen() {
       const { error: uploadError } = await supabase.storage
         .from(PROOF_BUCKET)
         .upload(filePath, blob, {
-          contentType: "image/jpeg",
+          contentType,
           upsert: false,
         });
 
@@ -1573,6 +1622,34 @@ export function DriverOrderDetailsScreen() {
         const verifiedAtColumn =
           kind === "pickup" ? "pickup_code_verified_at" : "dropoff_code_verified_at";
 
+        const { data: matchingDeliveryRequest, error: matchingDeliveryRequestError } =
+          await supabase
+            .from("delivery_requests")
+            .select("id")
+            .eq("id", order.id)
+            .eq("driver_id", myUserId)
+            .eq("status", "dispatched")
+            .eq(codeColumn, normalizedCode)
+            .maybeSingle();
+
+        if (matchingDeliveryRequestError) throw matchingDeliveryRequestError;
+
+        if (!matchingDeliveryRequest) {
+          Alert.alert(
+            t("driver.orderDetails.codeInvalidTitle", "Code invalide"),
+            kind === "pickup"
+              ? t("driver.orderDetails.codePickupInvalid", "Code de retrait invalide.")
+              : t("driver.orderDetails.codeDropoffInvalid", "Code de livraison invalide.")
+          );
+          return;
+        }
+
+        const uploaded = await uploadProofPhoto({
+          orderId: order.id,
+          kind,
+          photoUri: proofPhotoUri,
+        });
+
         const nextStatus = kind === "dropoff" ? "delivered" : order.status;
         const nowIso = new Date().toISOString();
 
@@ -1603,12 +1680,6 @@ export function DriverOrderDetailsScreen() {
           return;
         }
 
-        const uploaded = await uploadProofPhoto({
-          orderId: order.id,
-          kind,
-          photoUri: proofPhotoUri,
-        });
-
         console.log("delivery_request proof uploaded:", uploaded.publicUrl);
         await fetchOrder();
         closeCodeModal();
@@ -1621,6 +1692,12 @@ export function DriverOrderDetailsScreen() {
         );
         return;
       }
+
+      const uploaded = await uploadProofPhoto({
+        orderId: order.id,
+        kind,
+        photoUri: proofPhotoUri,
+      });
 
       const { data, error } = await supabase.rpc("verify_order_code", {
         p_order_id: order.id,
@@ -1656,12 +1733,6 @@ export function DriverOrderDetailsScreen() {
         );
         return;
       }
-
-      const uploaded = await uploadProofPhoto({
-        orderId: order.id,
-        kind,
-        photoUri: proofPhotoUri,
-      });
 
       await callConfirmRoute(kind, order.id, uploaded.publicUrl);
       await fetchOrder();

@@ -294,16 +294,14 @@ const EMPTY_DRIVER_PERFORMANCE_STATS: DriverPerformanceStats = {
 };
 
 const SHEET_MIN_TRANSLATE_Y = 0;
-const SHEET_MID_TRANSLATE_Y = 260;
-const SHEET_MAX_TRANSLATE_Y = 520;
+const SHEET_MID_TRANSLATE_Y = 320;
+const SHEET_MAX_TRANSLATE_Y = 580;
 
 // Bottom sheet production tuning:
  // - FULL WIDTH, no side gap, no bottom visual gap.
- // - Starts slightly lower so the map stays visible.
- // - Still snaps fully to the top when dragged upward.
- // Keeps floating driver UI above Android/iOS system navigation and bottom tabs.
-// This prevents Home / Earnings / Inbox / Menu from being pushed under the device nav bar,
-// especially on Samsung tablets and Android gesture/button navigation.
+ // - The sheet container stays pinned to the real screen bottom.
+ // - Device/bottom-tab clearance is kept INSIDE the sheet padding.
+ // - This prevents the black panel from floating and leaving an empty space below it.
 const DRIVER_BOTTOM_NAV_SAFE_OFFSET = Platform.select({
   android: 48,
   ios: 28,
@@ -2830,14 +2828,14 @@ const styles = StyleSheet.create({
   chipsRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 9 },
   chip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, marginRight: 6, marginBottom: 6 },
   chipText: { fontSize: 10, fontWeight: "800", maxWidth: 120 },
-  bottomArea: { position: "absolute", left: 0, right: 0, bottom: DRIVER_BOTTOM_PANEL_OFFSET, zIndex: 60 },
+  bottomArea: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60 },
   sheet: {
     width: "100%",
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 24,
+    paddingBottom: DRIVER_BOTTOM_PANEL_OFFSET,
     backgroundColor: "rgba(2,6,23,0.985)",
     borderTopWidth: 1,
     borderLeftWidth: 1,
@@ -2884,7 +2882,7 @@ const styles = StyleSheet.create({
   detailBlockSmall: { width: 48 },
   detailLabel: { color: "#64748B", fontSize: 10, fontWeight: "700" },
   detailValue: { color: "#E2E8F0", fontSize: 11, fontWeight: "700", marginTop: 3 },
-  offerWrap: { paddingHorizontal: 16, paddingBottom: 18 },
+  offerWrap: { paddingHorizontal: 16, paddingBottom: DRIVER_BOTTOM_PANEL_OFFSET },
   offerCard: { borderRadius: 24, padding: 16, backgroundColor: "rgba(2,6,23,0.96)", borderWidth: 1, borderColor: "rgba(139,92,246,0.24)" },
   offerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   offerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
