@@ -1072,6 +1072,81 @@ export function DriverOrderDetailsScreen() {
     });
   }
 
+  function openMmdNavigation() {
+    if (!order) return;
+
+    if (!isAssignedDriver) {
+      Alert.alert(
+        t("driver.orderDetails.navigation.unavailableTitle", "Navigation indisponible"),
+        t(
+          "driver.orderDetails.navigation.mustAcceptFirst",
+          "Accepte d'abord cette course avant de démarrer la navigation MMD."
+        )
+      );
+      return;
+    }
+
+    if (!pickupCoord && !dropoffCoord) {
+      Alert.alert(
+        t("driver.orderDetails.missingCoordsTitle", "Infos manquantes"),
+        t(
+          "driver.orderDetails.missingCoordsBody",
+          "Cette course n’a pas encore de coordonnées GPS."
+        )
+      );
+      return;
+    }
+
+    (navigation as any).navigate("DriverMap", {
+      orderId: order.id,
+      sourceTable: getOrderSourceTable(order),
+      destinationStage: canDeliver ? "dropoff" : "pickup",
+    });
+  }
+
+  function openWazeSingle(params: {
+    address: string | null;
+    lat: number | null;
+    lng: number | null;
+  }) {
+    const { address, lat, lng } = params;
+
+    const hasCoords = isValidCoordinate(lat, lng);
+    const encodedAddress = encodeURIComponent(String(address || "").trim());
+
+    if (!hasCoords && !encodedAddress) {
+      Alert.alert(
+        t("driver.orderDetails.missingAddressTitle", "Adresse manquante"),
+        t(
+          "driver.orderDetails.missingAddressBody",
+          "Aucune adresse disponible pour cette étape."
+        )
+      );
+      return;
+    }
+
+    const deepLink = hasCoords
+      ? `waze://?ll=${lat},${lng}&navigate=yes`
+      : `waze://?q=${encodedAddress}&navigate=yes`;
+
+    const fallbackUrl = hasCoords
+      ? `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`
+      : `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+
+    Linking.openURL(deepLink).catch(() => {
+      Linking.openURL(fallbackUrl).catch((err) => {
+        console.error("Erreur ouverture Waze:", err);
+        Alert.alert(
+          t("common.error", "Erreur"),
+          t(
+            "driver.orderDetails.wazeOpenError",
+            "Impossible d'ouvrir Waze sur ce téléphone."
+          )
+        );
+      });
+    });
+  }
+
   function openMapsPickup() {
     openMapsSingle({
       address: order?.pickup_address ?? null,
@@ -1082,6 +1157,22 @@ export function DriverOrderDetailsScreen() {
 
   function openMapsDropoff() {
     openMapsSingle({
+      address: order?.dropoff_address ?? null,
+      lat: order?.dropoff_lat ?? null,
+      lng: order?.dropoff_lng ?? null,
+    });
+  }
+
+  function openWazePickup() {
+    openWazeSingle({
+      address: order?.pickup_address ?? null,
+      lat: order?.pickup_lat ?? null,
+      lng: order?.pickup_lng ?? null,
+    });
+  }
+
+  function openWazeDropoff() {
+    openWazeSingle({
       address: order?.dropoff_address ?? null,
       lat: order?.dropoff_lat ?? null,
       lng: order?.dropoff_lng ?? null,
@@ -2307,9 +2398,39 @@ export function DriverOrderDetailsScreen() {
             </Text>
           </View>
 
-          <View style={{ flexDirection: "row" }}>
+          {isAssignedDriver && !isFinalStatus(order.status) && (
+            <TouchableOpacity
+              onPress={openMmdNavigation}
+              activeOpacity={0.9}
+              style={{
+                marginBottom: 12,
+                borderRadius: 999,
+                paddingVertical: 14,
+                alignItems: "center",
+                backgroundColor: "#7C3AED",
+                borderWidth: 1,
+                borderColor: "rgba(196,181,253,0.65)",
+              }}
+            >
+              <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "900" }}>
+                {t("driver.orderDetails.actions.mmdNavigation", "Navigation MMD")}
+              </Text>
+              <Text style={{ color: "#DDD6FE", fontSize: 11, fontWeight: "700", marginTop: 2 }}>
+                {canDeliver
+                  ? t("driver.orderDetails.actions.mmdNavigationDropoff", "Route vers le client")
+                  : t("driver.orderDetails.actions.mmdNavigationPickup", "Route vers le pickup")}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "800", marginBottom: 8 }}>
+            {t("driver.orderDetails.actions.backupNavigation", "Options de secours")}
+          </Text>
+
+          <View style={{ flexDirection: "row", marginBottom: 8 }}>
             <TouchableOpacity
               onPress={openMapsPickup}
+              activeOpacity={0.86}
               style={{
                 flex: 1,
                 marginRight: 8,
@@ -2321,14 +2442,13 @@ export function DriverOrderDetailsScreen() {
               }}
             >
               <Text style={{ color: "#BFDBFE", fontSize: 12, fontWeight: "800" }}>
-                {isPickupDropoff
-                  ? t("driver.orderDetails.actions.goPickupGeneric", "Go to pickup")
-                  : t("driver.orderDetails.actions.goPickup", "Aller au retrait")}
+                {t("driver.orderDetails.actions.googlePickup", "Google / Apple pickup")}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={openMapsDropoff}
+              activeOpacity={0.86}
               style={{
                 flex: 1,
                 borderRadius: 999,
@@ -2339,9 +2459,44 @@ export function DriverOrderDetailsScreen() {
               }}
             >
               <Text style={{ color: "#BBF7D0", fontSize: 12, fontWeight: "800" }}>
-                {isPickupDropoff
-                  ? t("driver.orderDetails.actions.goDropoffGeneric", "Go to dropoff")
-                  : t("driver.orderDetails.actions.goDropoff", "Aller à la livraison")}
+                {t("driver.orderDetails.actions.googleDropoff", "Google / Apple dropoff")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ flexDirection: "row" }}>
+            <TouchableOpacity
+              onPress={openWazePickup}
+              activeOpacity={0.86}
+              style={{
+                flex: 1,
+                marginRight: 8,
+                borderRadius: 999,
+                paddingVertical: 10,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#38BDF8",
+              }}
+            >
+              <Text style={{ color: "#BAE6FD", fontSize: 12, fontWeight: "800" }}>
+                {t("driver.orderDetails.actions.wazePickup", "Waze pickup")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={openWazeDropoff}
+              activeOpacity={0.86}
+              style={{
+                flex: 1,
+                borderRadius: 999,
+                paddingVertical: 10,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#38BDF8",
+              }}
+            >
+              <Text style={{ color: "#BAE6FD", fontSize: 12, fontWeight: "800" }}>
+                {t("driver.orderDetails.actions.wazeDropoff", "Waze dropoff")}
               </Text>
             </TouchableOpacity>
           </View>
