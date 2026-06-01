@@ -1,4 +1,4 @@
-import React, {
+﻿import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -15,13 +15,10 @@ import {
   Alert,
   Animated,
   Easing,
-  PanResponder,
-  Dimensions,
-  ScrollView,
   Image,
 } from "react-native";
 import Mapbox from "@rnmapbox/maps";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import * as Location from "expo-location";
@@ -51,9 +48,57 @@ type MapRegion = {
   longitudeDelta: number;
 };
 
-const SCREEN_HEIGHT = Dimensions.get("window").height;
-const SHEET_EXPANDED_TOP = SCREEN_HEIGHT - 500;
-const SHEET_COLLAPSED_TOP = SCREEN_HEIGHT - 176;
+type OrderStatus =
+  | "pending"
+  | "paid_pending"
+  | "processing_pending"
+  | "accepted"
+  | "prepared"
+  | "ready"
+  | "dispatched"
+  | "delivered"
+  | "canceled";
+
+type OrderSourceTable = "orders" | "delivery_requests";
+type DestinationStage = "pickup" | "dropoff";
+
+type ZoneActivity = "calm" | "normal" | "busy" | "very_busy";
+
+type DriverZone = {
+  id: string;
+  name: string;
+  center: { lat: number; lng: number };
+  radiusMeters: number;
+  activity: ZoneActivity;
+  polygon: { latitude: number; longitude: number }[];
+};
+
+type RestaurantPin = {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  logoUrl: string | null;
+};
+
+type IncomingOrderBanner = {
+  id: string;
+  offerId?: string | null;
+  sourceTable: OrderSourceTable;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
+  restaurantName: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  price: number;
+  distanceMiles: number;
+  etaMinutes: number;
+  surgeLabel?: string | null;
+  isAcceptedTrip?: boolean;
+  destinationStage?: DestinationStage | null;
+};
 
 const NAVIGATION_FOLLOW_ZOOM = 17.2;
 const NAVIGATION_FOLLOW_PITCH = 56;
@@ -78,76 +123,6 @@ if (MAPBOX_TOKEN) {
 } else if (IS_DEV) {
   console.log("[DriverMapScreen] EXPO_PUBLIC_MAPBOX_TOKEN manquant");
 }
-
-type OrderStatus =
-  | "pending"
-  | "paid_pending"
-  | "processing_pending"
-  | "accepted"
-  | "prepared"
-  | "ready"
-  | "dispatched"
-  | "delivered"
-  | "canceled";
-
-type OrderKind = "pickup_dropoff" | "food" | string;
-
-type OrderSourceTable = "orders" | "delivery_requests";
-
-type DriverOrder = {
-  id: string;
-  source_table: OrderSourceTable;
-  kind: OrderKind;
-  status: OrderStatus;
-  created_at: string | null;
-  restaurant_name: string | null;
-  pickup_address: string | null;
-  dropoff_address: string | null;
-  distance_miles: number | null;
-  driver_delivery_payout: number | null;
-  pickup_lat?: number | null;
-  pickup_lng?: number | null;
-  pickup_lon?: number | null;
-  dropoff_lat?: number | null;
-  dropoff_lng?: number | null;
-  dropoff_lon?: number | null;
-};
-
-type ZoneActivity = "calm" | "normal" | "busy" | "very_busy";
-
-type DriverZone = {
-  id: string;
-  name: string;
-  center: { lat: number; lng: number };
-  radiusMeters: number;
-  activity: ZoneActivity;
-  polygon: { latitude: number; longitude: number }[];
-};
-
-type RestaurantPin = {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  logoUrl: string | null;
-};
-
-type IncomingOrderBanner = {
-  id: string;
-  offerId?: string | null;
-  sourceTable?: OrderSourceTable;
-  pickupLat?: number | null;
-  pickupLng?: number | null;
-  dropoffLat?: number | null;
-  dropoffLng?: number | null;
-  restaurantName: string;
-  pickupAddress: string;
-  dropoffAddress: string;
-  price: number;
-  distanceMiles: number;
-  etaMinutes: number;
-  surgeLabel?: string | null;
-};
 
 const DRIVER_ZONES: DriverZone[] = [
   {
@@ -271,30 +246,22 @@ function getZoneColors(activity: ZoneActivity) {
       return {
         strokeColor: "rgba(239,68,68,0.95)",
         fillColor: "rgba(248,113,113,0.26)",
-        labelColor: "#EF4444",
-        haloColor: "rgba(239,68,68,0.18)",
       };
     case "busy":
       return {
         strokeColor: "rgba(249,115,22,0.95)",
         fillColor: "rgba(251,146,60,0.24)",
-        labelColor: "#F97316",
-        haloColor: "rgba(249,115,22,0.18)",
       };
     case "normal":
       return {
         strokeColor: "rgba(234,179,8,0.92)",
         fillColor: "rgba(250,204,21,0.20)",
-        labelColor: "#EAB308",
-        haloColor: "rgba(234,179,8,0.16)",
       };
     case "calm":
     default:
       return {
         strokeColor: "rgba(34,197,94,0.90)",
         fillColor: "rgba(34,197,94,0.16)",
-        labelColor: "#22C55E",
-        haloColor: "rgba(34,197,94,0.16)",
       };
   }
 }
@@ -325,22 +292,6 @@ function formatMoney(value: number | null | undefined) {
   return `${value.toFixed(2)} USD`;
 }
 
-function getSafeDriverPayout(
-  order: Pick<DriverOrder, "driver_delivery_payout"> | null | undefined,
-) {
-  const payout = order?.driver_delivery_payout;
-  return typeof payout === "number" && Number.isFinite(payout) ? payout : null;
-}
-
-function getOrderCompositeKey(order: Pick<DriverOrder, "id" | "source_table">) {
-  return `${order.source_table}:${order.id}`;
-}
-
-function formatMiles(value: number | null | undefined) {
-  if (value == null || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(2)} mi`;
-}
-
 function numberOrNull(value: unknown) {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string" && value.trim()) {
@@ -369,12 +320,6 @@ function cleanRestaurantName(value: unknown) {
   return name || "Restaurant";
 }
 
-function regionToZoom(region: MapRegion): number {
-  const delta = Math.max(region.latitudeDelta, region.longitudeDelta);
-  const zoom = Math.log2(360 / Math.max(delta, 0.0001));
-  return Math.max(3, Math.min(18, zoom));
-}
-
 function zonePolygonToFeature(zone: DriverZone) {
   const ring = zone.polygon.map((point) => [point.longitude, point.latitude]);
 
@@ -401,11 +346,84 @@ function zonePolygonToFeature(zone: DriverZone) {
   };
 }
 
+function regionToZoom(region: MapRegion): number {
+  const delta = Math.max(region.latitudeDelta, region.longitudeDelta);
+  const zoom = Math.log2(360 / Math.max(delta, 0.0001));
+  return Math.max(3, Math.min(18, zoom));
+}
+
+function normalizeSourceTable(value: unknown): OrderSourceTable {
+  return value === "delivery_requests" ? "delivery_requests" : "orders";
+}
+
+function normalizeDestinationStage(value: unknown): DestinationStage | null {
+  return value === "dropoff" || value === "pickup" ? value : null;
+}
+
+function getDriverPayout(row: any) {
+  const candidates = [
+    row?.driver_delivery_payout,
+    row?.driver_payout,
+    row?.driver_amount,
+    row?.driver_pay,
+    row?.estimated_driver_payout,
+    row?.driver_share_amount,
+    row?.payout_amount,
+  ];
+
+  for (const candidate of candidates) {
+    const value = numberOrNull(candidate);
+    if (value != null) return value;
+  }
+
+  return 0;
+}
+
+function buildOrderBannerFromRow(params: {
+  row: any;
+  sourceTable: OrderSourceTable;
+  destinationStage?: DestinationStage | null;
+  isAcceptedTrip?: boolean;
+}): IncomingOrderBanner {
+  const { row, sourceTable, destinationStage = null, isAcceptedTrip = false } = params;
+  const pickupLng = numberOrNull(row?.pickup_lng ?? row?.pickup_lon ?? row?.pickup_long ?? row?.pickup_longitude);
+  const dropoffLng = numberOrNull(row?.dropoff_lng ?? row?.dropoff_lon ?? row?.dropoff_long ?? row?.dropoff_longitude);
+  const kind = String(row?.kind ?? "").trim().toLowerCase();
+  const isDeliveryRequest = sourceTable === "delivery_requests" || kind === "delivery";
+
+  return {
+    id: String(row?.id ?? ""),
+    offerId: row?.offer_id ?? null,
+    sourceTable,
+    pickupLat: numberOrNull(row?.pickup_lat),
+    pickupLng,
+    dropoffLat: numberOrNull(row?.dropoff_lat),
+    dropoffLng,
+    restaurantName:
+      String(row?.restaurant_name || "").trim() ||
+      (isDeliveryRequest ? "MMD Delivery" : "Restaurant order"),
+    pickupAddress: String(row?.pickup_address || "Pickup location"),
+    dropoffAddress: String(row?.dropoff_address || "Dropoff location"),
+    price: getDriverPayout(row),
+    distanceMiles: numberOrNull(row?.distance_miles) ?? 0,
+    etaMinutes: numberOrNull(row?.eta_minutes) ?? 0,
+    surgeLabel: row?.surge_label ?? null,
+    isAcceptedTrip,
+    destinationStage,
+  };
+}
+
 export default function DriverMapScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<any>();
   const { t } = useTranslation();
 
   useKeepAwake();
+
+  const routeParams = route.params ?? {};
+  const routeOrderId = String(routeParams?.orderId ?? routeParams?.order_id ?? "").trim();
+  const routeSourceTable = normalizeSourceTable(routeParams?.sourceTable ?? routeParams?.source_table);
+  const routeDestinationStage = normalizeDestinationStage(routeParams?.destinationStage ?? routeParams?.destination_stage);
 
   const [region, setRegion] = useState<MapRegion>({
     latitude: 40.73061,
@@ -417,37 +435,23 @@ export default function DriverMapScreen() {
   const [hasLocation, setHasLocation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // DriverMapScreen only reads the saved online/offline status.
-  // DriverHomeScreen remains the source of truth for changing online/offline.
   const [isOnline, setIsOnline] = useState(false);
-
   const [restaurants, setRestaurants] = useState<RestaurantPin[]>([]);
   const [restaurantsLoading, setRestaurantsLoading] = useState(false);
-
   const [currentZone, setCurrentZone] = useState<DriverZone | null>(null);
-
   const [driverId, setDriverId] = useState<string | null>(null);
-
-  const [driverOrders, setDriverOrders] = useState<DriverOrder[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
-
-  const [incomingOrder, setIncomingOrder] =
-    useState<IncomingOrderBanner | null>(null);
+  const [incomingOrder, setIncomingOrder] = useState<IncomingOrderBanner | null>(null);
   const [incomingTimer, setIncomingTimer] = useState(0);
   const [incomingActionLoading, setIncomingActionLoading] = useState(false);
   const [navigationRoute, setNavigationRoute] = useState<NavigationRoute | null>(null);
   const [navigationRouteLoading, setNavigationRouteLoading] = useState(false);
   const [driverHeading, setDriverHeading] = useState(0);
   const [followNavigationMode, setFollowNavigationMode] = useState(true);
-
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [isNightMode, setIsNightMode] = useState(false);
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
-  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
-    null,
-  );
+  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const hasCenteredOnDriverRef = useRef(false);
   const previousDriverPointRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const lastFollowCameraAtRef = useRef(0);
@@ -459,13 +463,31 @@ export default function DriverMapScreen() {
   const dropoffArrivalAnnouncedRef = useRef(false);
   const routeRecalculatedAnnouncedRef = useRef(false);
 
-  const sheetTop = useRef(new Animated.Value(SHEET_COLLAPSED_TOP)).current;
-  const sheetState = useRef<"collapsed" | "expanded">("collapsed");
-
   const incomingTranslateY = useRef(new Animated.Value(-18)).current;
   const incomingOpacity = useRef(new Animated.Value(0)).current;
 
   const mapStyleURL = isNightMode ? MAP_STYLE_DARK : MAP_STYLE_STREETS;
+  const isAcceptedTripMode = Boolean(routeOrderId && incomingOrder?.isAcceptedTrip);
+  const isOfferMode = Boolean(incomingOrder && !incomingOrder.isAcceptedTrip && incomingOrder.offerId);
+  const isNavigationActive = Boolean(incomingOrder && navigationRoute?.geometry);
+
+  const nearbyRestaurants = useMemo(() => {
+    if (!hasLocation) return [];
+
+    return restaurants
+      .map((restaurant) => ({
+        ...restaurant,
+        distanceFromDriver: distanceMeters(
+          region.latitude,
+          region.longitude,
+          restaurant.latitude,
+          restaurant.longitude,
+        ),
+      }))
+      .filter((restaurant) => restaurant.distanceFromDriver < 2500)
+      .sort((a, b) => a.distanceFromDriver - b.distanceFromDriver)
+      .slice(0, 20);
+  }, [hasLocation, restaurants, region.latitude, region.longitude]);
 
   useFocusEffect(
     useCallback(() => {
@@ -488,132 +510,15 @@ export default function DriverMapScreen() {
     }, []),
   );
 
-  const animateSheet = useCallback(
-    (target: "collapsed" | "expanded") => {
-      const toValue =
-        target === "collapsed" ? SHEET_COLLAPSED_TOP : SHEET_EXPANDED_TOP;
-      sheetState.current = target;
-
-      Animated.spring(sheetTop, {
-        toValue,
-        useNativeDriver: false,
-        tension: 45,
-        friction: 10,
-      }).start();
-    },
-    [sheetTop],
-  );
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        Math.abs(gestureState.dy) > 10,
-      onPanResponderMove: (_, gestureState) => {
-        const currentTop =
-          sheetState.current === "collapsed"
-            ? SHEET_COLLAPSED_TOP
-            : SHEET_EXPANDED_TOP;
-
-        let newTop = currentTop + gestureState.dy;
-        newTop = Math.max(
-          SHEET_EXPANDED_TOP,
-          Math.min(SHEET_COLLAPSED_TOP, newTop),
-        );
-        sheetTop.setValue(newTop);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        const threshold = 32;
-
-        if (gestureState.dy < -threshold) {
-          animateSheet("expanded");
-          return;
-        }
-
-        if (gestureState.dy > threshold) {
-          animateSheet("collapsed");
-          return;
-        }
-
-        const currentValue =
-          (sheetTop as any).__getValue?.() ?? SHEET_COLLAPSED_TOP;
-        const midpoint = (SHEET_EXPANDED_TOP + SHEET_COLLAPSED_TOP) / 2;
-        animateSheet(currentValue < midpoint ? "expanded" : "collapsed");
-      },
-    }),
-  ).current;
-
-  const nearbyRestaurantCount = useMemo(() => {
-    if (!hasLocation) return 0;
-
-    return restaurants.filter((r) => {
-      const dist = distanceMeters(
-        region.latitude,
-        region.longitude,
-        r.latitude,
-        r.longitude,
-      );
-      return dist < 2500;
-    }).length;
-  }, [hasLocation, restaurants, region.latitude, region.longitude]);
-
-  const nearbyRestaurants = useMemo(() => {
-    if (!hasLocation) return [];
-
-    return restaurants
-      .map((restaurant) => ({
-        ...restaurant,
-        distanceFromDriver: distanceMeters(
-          region.latitude,
-          region.longitude,
-          restaurant.latitude,
-          restaurant.longitude,
-        ),
-      }))
-      .filter((restaurant) => restaurant.distanceFromDriver < 2500)
-      .sort((a, b) => a.distanceFromDriver - b.distanceFromDriver)
-      .slice(0, 20);
-  }, [hasLocation, restaurants, region.latitude, region.longitude]);
-
-  const zoneOpportunityScore = useMemo(() => {
-    const base =
-      currentZone?.activity === "very_busy"
-        ? 92
-        : currentZone?.activity === "busy"
-          ? 78
-          : currentZone?.activity === "normal"
-            ? 59
-            : currentZone?.activity === "calm"
-              ? 34
-              : 18;
-
-    const restaurantBoost = Math.min(nearbyRestaurantCount * 2, 16);
-    return Math.min(base + restaurantBoost, 99);
-  }, [currentZone, nearbyRestaurantCount]);
-
-  const zoneOpportunityLabel = useMemo(() => {
-    if (zoneOpportunityScore >= 85) return "Elite";
-    if (zoneOpportunityScore >= 65) return "Très fort";
-    if (zoneOpportunityScore >= 45) return "Prometteur";
-    return "Calme";
-  }, [zoneOpportunityScore]);
-
   const statusTitle = isOnline
-    ? t("driver.map.online")
-    : t("driver.map.offline");
+    ? t("driver.map.online", "ONLINE")
+    : t("driver.map.offline", "OFFLINE");
 
-  const boostMultiplier =
-    currentZone?.activity === "very_busy"
-      ? 1.6
-      : currentZone?.activity === "busy"
-        ? 1.3
-        : 1.0;
+  const navigationStage = useMemo<DestinationStage>(() => {
+    if (incomingOrder?.destinationStage) {
+      return incomingOrder.destinationStage;
+    }
 
-  const boostLabelGlobal =
-    boostMultiplier > 1 ? `x${boostMultiplier.toFixed(1)}` : null;
-
-  const isNavigationActive = Boolean(incomingOrder && navigationRoute?.geometry);
-
-  const navigationStage = useMemo<"pickup" | "dropoff">(() => {
     if (!incomingOrder || !hasLocation) {
       return "pickup";
     }
@@ -637,6 +542,7 @@ export default function DriverMapScreen() {
     return "pickup";
   }, [
     hasLocation,
+    incomingOrder?.destinationStage,
     incomingOrder?.id,
     incomingOrder?.pickupLat,
     incomingOrder?.pickupLng,
@@ -653,11 +559,7 @@ export default function DriverMapScreen() {
       navigationRoute.distanceMeters,
       navigationStage,
     );
-  }, [
-    incomingOrder,
-    navigationRoute?.distanceMeters,
-    navigationStage,
-  ]);
+  }, [incomingOrder, navigationRoute?.distanceMeters, navigationStage]);
 
   const locateDriver = useCallback(async () => {
     try {
@@ -667,12 +569,14 @@ export default function DriverMapScreen() {
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
-        setErrorMsg(t("driver.map.permissionDenied"));
+        setErrorMsg(t("driver.map.permissionDenied", "Permission GPS refusée."));
         setLoading(false);
         return;
       }
 
-      const current = await Location.getCurrentPositionAsync({});
+      const current = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
 
       setRegion((prev) => ({
         ...prev,
@@ -705,8 +609,8 @@ export default function DriverMapScreen() {
         },
       );
     } catch (e: any) {
-      console.log("Erreur DriverMapScreen:", e);
-      setErrorMsg(e?.message ?? t("driver.map.permissionDenied"));
+      if (IS_DEV) console.log("Erreur DriverMapScreen:", e);
+      setErrorMsg(e?.message ?? t("driver.map.permissionDenied", "Permission GPS refusée."));
       setLoading(false);
     }
   }, [t]);
@@ -798,10 +702,7 @@ export default function DriverMapScreen() {
         const { data, error } = await supabase.auth.getUser();
 
         if (error || !data?.user) {
-          console.log(
-            "🚫 Impossible de récupérer l'utilisateur (driver)",
-            error,
-          );
+          if (IS_DEV) console.log("Impossible de récupérer l'utilisateur driver", error);
           return;
         }
 
@@ -809,7 +710,7 @@ export default function DriverMapScreen() {
           setDriverId(data.user.id);
         }
       } catch (e) {
-        console.log("Erreur loadDriver:", e);
+        if (IS_DEV) console.log("Erreur loadDriver:", e);
       }
     }
 
@@ -820,194 +721,58 @@ export default function DriverMapScreen() {
     };
   }, []);
 
-  const fetchDriverOrders = useCallback(async () => {
-    if (!driverId) return;
+  const loadRouteOrder = useCallback(async () => {
+    if (!routeOrderId) return;
 
     try {
-      setOrdersLoading(true);
-      setOrdersError(null);
+      const table = routeSourceTable;
 
-      // 1) Commandes déjà assignées au driver via order_members
-      const { data: memberships, error: membershipError } = await supabase
-        .from("order_members")
-        .select("order_id")
-        .eq("user_id", driverId)
-        .eq("role", "driver");
+      const result: any =
+        table === "delivery_requests"
+          ? await supabase
+              .from("delivery_requests")
+              .select(
+                "id,status,created_at,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout",
+              )
+              .eq("id", routeOrderId)
+              .maybeSingle()
+          : await supabase
+              .from("orders")
+              .select(
+                "id,kind,status,created_at,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout",
+              )
+              .eq("id", routeOrderId)
+              .maybeSingle();
 
-      if (membershipError) throw membershipError;
+      const { data, error } = result;
 
-      const assignedOrderIds = (memberships ?? [])
-        .map((m: any) => m.order_id)
-        .filter(Boolean);
+      if (error) throw error;
 
-      let assignedOrders: DriverOrder[] = [];
-
-      if (assignedOrderIds.length > 0) {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(
-            `
-            id,
-            kind,
-            status,
-            created_at,
-            restaurant_name,
-            pickup_address,
-            dropoff_address,
-            distance_miles,
-            driver_delivery_payout,
-            pickup_lat,
-            pickup_lng,
-            pickup_lon,
-            dropoff_lat,
-            dropoff_lng,
-            dropoff_lon
-          `,
-          )
-          .in("id", assignedOrderIds)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        assignedOrders = (
-          (data as Omit<DriverOrder, "source_table">[]) ?? []
-        ).map((order) => ({
-          ...order,
-          source_table: "orders" as const,
-        }));
+      if (!data) {
+        setErrorMsg(t("driver.map.orderNotFound", "Course introuvable."));
+        return;
       }
 
-      // 2) Commandes disponibles depuis la table orders :
-      // - commandes restaurant prêtes : status = ready
-      // - demandes pickup/dropoff : status = pending + kind = pickup_dropoff
-      // Important : orders.kind est un enum et n'accepte pas "delivery".
-      const { data: availableOrdersData, error: availableOrdersError } =
-        await supabase
-          .from("orders")
-          .select(
-            `
-          id,
-          kind,
-          status,
-          created_at,
-          restaurant_name,
-          pickup_address,
-          dropoff_address,
-          distance_miles,
-          driver_delivery_payout,
-          pickup_lat,
-          pickup_lng,
-          pickup_lon,
-          dropoff_lat,
-          dropoff_lng,
-          dropoff_lon
-        `,
-          )
-          .is("driver_id", null)
-          .or("status.eq.ready,and(status.eq.pending,kind.eq.pickup_dropoff)")
-          .order("created_at", { ascending: false });
-
-      if (availableOrdersError) throw availableOrdersError;
-
-      const availableOrders: DriverOrder[] = (
-        (availableOrdersData as Omit<DriverOrder, "source_table">[]) ?? []
-      ).map((order) => ({
-        ...order,
-        source_table: "orders" as const,
-      }));
-
-      // 3) Demandes MMD Delivery disponibles depuis delivery_requests.
-      // Important production:
-      // - Do not select delivery_requests.kind here. Some production API schema caches
-      //   can be stale even after the DB column exists.
-      // - This table already represents MMD Delivery requests, so the app safely maps
-      //   them as kind = "delivery" after loading.
-      // - Food orders are untouched because they come from the orders table above.
-      const { data: deliveryRequestsData, error: deliveryRequestsError } =
-        await supabase
-          .from("delivery_requests")
-          .select(
-            `
-          id,
-          status,
-          created_at,
-          pickup_address,
-          dropoff_address,
-          pickup_lat,
-          pickup_lng,
-          dropoff_lat,
-          dropoff_lng,
-          distance_miles,
-          driver_delivery_payout
-        `,
-          )
-          .in("status", ["pending", "paid_pending", "processing_pending"])
-          .eq("payment_status", "paid")
-          .is("driver_id", null)
-          .order("created_at", { ascending: false });
-
-      if (deliveryRequestsError) throw deliveryRequestsError;
-
-      const availableDeliveryRequests: DriverOrder[] = (
-        (deliveryRequestsData as any[]) ?? []
-      ).map((request) => ({
-        id: String(request.id),
-        kind: "delivery",
-        status: String(request.status ?? "pending") as OrderStatus,
-        created_at: request.created_at ?? null,
-        restaurant_name: null,
-        pickup_address: request.pickup_address ?? null,
-        dropoff_address: request.dropoff_address ?? null,
-        pickup_lat: numberOrNull(request.pickup_lat),
-        pickup_lng: numberOrNull(request.pickup_lng),
-        dropoff_lat: numberOrNull(request.dropoff_lat),
-        dropoff_lng: numberOrNull(request.dropoff_lng),
-        distance_miles:
-          typeof request.distance_miles === "number"
-            ? request.distance_miles
-            : Number.isFinite(Number(request.distance_miles))
-              ? Number(request.distance_miles)
-              : null,
-        driver_delivery_payout:
-          typeof request.driver_delivery_payout === "number"
-            ? request.driver_delivery_payout
-            : Number.isFinite(Number(request.driver_delivery_payout))
-              ? Number(request.driver_delivery_payout)
-              : null,
-        source_table: "delivery_requests" as const,
-      }));
-
-      // 4) Fusion sans doublons multi-table.
-      // Important: orders.id and delivery_requests.id can be identical, so the source table
-      // must be part of the key to avoid hiding a valid order.
-      const merged = [
-        ...assignedOrders,
-        ...availableOrders,
-        ...availableDeliveryRequests,
-      ];
-      const uniqueOrders = Array.from(
-        new Map(
-          merged.map((order) => [getOrderCompositeKey(order), order]),
-        ).values(),
+      setIncomingOrder(
+        buildOrderBannerFromRow({
+          row: data,
+          sourceTable: table,
+          destinationStage: routeDestinationStage,
+          isAcceptedTrip: true,
+        }),
       );
-
-      setDriverOrders(uniqueOrders);
     } catch (e: any) {
-      console.log("Erreur chargement commandes driver (map):", e);
-      setOrdersError(e?.message ?? t("driver.map.myOrders.loading"));
-    } finally {
-      setOrdersLoading(false);
+      if (IS_DEV) console.log("DriverMapScreen route order load error:", e);
+      setErrorMsg(e?.message ?? t("driver.map.orderLoadError", "Impossible de charger la course."));
     }
-  }, [driverId, t]);
+  }, [routeDestinationStage, routeOrderId, routeSourceTable, t]);
 
   useEffect(() => {
-    if (!driverId) return;
-    void fetchDriverOrders();
-  }, [driverId, fetchDriverOrders]);
-
+    void loadRouteOrder();
+  }, [loadRouteOrder]);
 
   const loadLatestIncomingOffer = useCallback(async () => {
-    if (!driverId) return;
+    if (!driverId || routeOrderId) return;
 
     try {
       const nowIso = new Date().toISOString();
@@ -1015,7 +780,7 @@ export default function DriverMapScreen() {
       const { data: orderOffers, error: orderOfferError } = await supabase
         .from("driver_order_offers")
         .select(
-          "id, order_id, driver_id, restaurant_name, pickup_address, dropoff_address, driver_price_cents, distance_miles, eta_minutes, surge_label, status, expires_at",
+          "id, order_id, restaurant_name, pickup_address, dropoff_address, driver_price_cents, distance_miles, eta_minutes, surge_label, status, expires_at",
         )
         .eq("driver_id", driverId)
         .eq("status", "pending")
@@ -1035,45 +800,34 @@ export default function DriverMapScreen() {
 
         const { data: orderRouteRow, error: orderRouteError } = await supabase
           .from("orders")
-          .select("pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon")
+          .select("id,kind,status,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout")
           .eq("id", orderOffer.order_id)
           .maybeSingle();
 
-        if (orderRouteError) {
+        if (orderRouteError && IS_DEV) {
           console.log("Driver map order route warning:", orderRouteError);
         }
 
-        const pickupLng = numberOrNull(orderRouteRow?.pickup_lng ?? orderRouteRow?.pickup_lon);
-        const dropoffLng = numberOrNull(orderRouteRow?.dropoff_lng ?? orderRouteRow?.dropoff_lon);
-
         setIncomingOrder({
-          id: String(orderOffer.order_id),
+          ...buildOrderBannerFromRow({
+            row: {
+              ...(orderRouteRow ?? {}),
+              id: orderOffer.order_id,
+              restaurant_name: orderOffer.restaurant_name,
+              pickup_address: orderOffer.pickup_address,
+              dropoff_address: orderOffer.dropoff_address,
+              driver_delivery_payout:
+                typeof orderOffer.driver_price_cents === "number"
+                  ? orderOffer.driver_price_cents / 100
+                  : 0,
+              distance_miles: orderOffer.distance_miles,
+              eta_minutes: orderOffer.eta_minutes,
+              surge_label: orderOffer.surge_label,
+            },
+            sourceTable: "orders",
+          }),
           offerId: String(orderOffer.id),
-          sourceTable: "orders",
-          pickupLat: numberOrNull(orderRouteRow?.pickup_lat),
-          pickupLng,
-          dropoffLat: numberOrNull(orderRouteRow?.dropoff_lat),
-          dropoffLng,
-          restaurantName: orderOffer.restaurant_name ?? "Restaurant order",
-          pickupAddress: orderOffer.pickup_address ?? "Pickup location",
-          dropoffAddress: orderOffer.dropoff_address ?? "Dropoff location",
-          price:
-            typeof orderOffer.driver_price_cents === "number"
-              ? orderOffer.driver_price_cents / 100
-              : 0,
-          distanceMiles:
-            typeof orderOffer.distance_miles === "number"
-              ? orderOffer.distance_miles
-              : Number.isFinite(Number(orderOffer.distance_miles))
-                ? Number(orderOffer.distance_miles)
-                : 0,
-          etaMinutes:
-            typeof orderOffer.eta_minutes === "number"
-              ? orderOffer.eta_minutes
-              : Number.isFinite(Number(orderOffer.eta_minutes))
-                ? Number(orderOffer.eta_minutes)
-                : 0,
-          surgeLabel: orderOffer.surge_label ?? null,
+          isAcceptedTrip: false,
         });
         setIncomingTimer(secondsLeft);
         return;
@@ -1081,7 +835,7 @@ export default function DriverMapScreen() {
 
       const { data: deliveryOffers, error: deliveryOfferError } = await supabase
         .from("delivery_request_driver_offers")
-        .select("id, delivery_request_id, driver_id, status, expires_at")
+        .select("id, delivery_request_id, status, expires_at")
         .eq("driver_id", driverId)
         .eq("status", "pending")
         .gt("expires_at", nowIso)
@@ -1120,44 +874,21 @@ export default function DriverMapScreen() {
       );
 
       setIncomingOrder({
-        id: String(deliveryOffer.delivery_request_id),
+        ...buildOrderBannerFromRow({
+          row: request,
+          sourceTable: "delivery_requests",
+        }),
         offerId: String(deliveryOffer.id),
-        sourceTable: "delivery_requests",
-        pickupLat: numberOrNull(request.pickup_lat),
-        pickupLng: numberOrNull(request.pickup_lng),
-        dropoffLat: numberOrNull(request.dropoff_lat),
-        dropoffLng: numberOrNull(request.dropoff_lng),
-        restaurantName: "MMD Delivery",
-        pickupAddress: request.pickup_address ?? "Pickup location",
-        dropoffAddress: request.dropoff_address ?? "Dropoff location",
-        price:
-          typeof request.driver_delivery_payout === "number"
-            ? request.driver_delivery_payout
-            : Number.isFinite(Number(request.driver_delivery_payout))
-              ? Number(request.driver_delivery_payout)
-              : 0,
-        distanceMiles:
-          typeof request.distance_miles === "number"
-            ? request.distance_miles
-            : Number.isFinite(Number(request.distance_miles))
-              ? Number(request.distance_miles)
-              : 0,
-        etaMinutes:
-          typeof request.eta_minutes === "number"
-            ? request.eta_minutes
-            : Number.isFinite(Number(request.eta_minutes))
-              ? Number(request.eta_minutes)
-              : 0,
-        surgeLabel: null,
+        isAcceptedTrip: false,
       });
       setIncomingTimer(secondsLeft);
     } catch (e) {
-      console.log("Erreur chargement incoming offer map:", e);
+      if (IS_DEV) console.log("Erreur chargement incoming offer map:", e);
     }
-  }, [driverId]);
+  }, [driverId, routeOrderId]);
 
   useEffect(() => {
-    if (!driverId) return;
+    if (!driverId || routeOrderId) return;
 
     void loadLatestIncomingOffer();
 
@@ -1188,7 +919,7 @@ export default function DriverMapScreen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [driverId, loadLatestIncomingOffer]);
+  }, [driverId, loadLatestIncomingOffer, routeOrderId]);
 
   useEffect(() => {
     if (!hasLocation) return;
@@ -1209,7 +940,7 @@ export default function DriverMapScreen() {
           .limit(150);
 
         if (response.error) {
-          console.log("Erreur chargement restaurants:", response.error);
+          if (IS_DEV) console.log("Erreur chargement restaurants:", response.error);
 
           if (!cancelled) {
             setRestaurants([]);
@@ -1237,7 +968,7 @@ export default function DriverMapScreen() {
 
         setRestaurants(mapped);
       } catch (e) {
-        console.log("Exception loadRestaurants:", e);
+        if (IS_DEV) console.log("Exception loadRestaurants:", e);
 
         if (!cancelled) {
           setRestaurants([]);
@@ -1289,10 +1020,10 @@ export default function DriverMapScreen() {
   }, []);
 
   useEffect(() => {
-    if (!incomingOrder) return;
+    if (!incomingOrder || incomingOrder.isAcceptedTrip) return;
 
     if (incomingTimer <= 0) {
-      handleRejectIncomingOrder("timeout");
+      void handleRejectIncomingOrder("timeout");
       return;
     }
 
@@ -1310,40 +1041,37 @@ export default function DriverMapScreen() {
         return;
       }
 
-      if (
-        !Number.isFinite(incomingOrder.pickupLat ?? NaN) ||
-        !Number.isFinite(incomingOrder.pickupLng ?? NaN)
-      ) {
+      const hasPickup =
+        Number.isFinite(incomingOrder.pickupLat ?? NaN) &&
+        Number.isFinite(incomingOrder.pickupLng ?? NaN);
+      const hasDropoff =
+        Number.isFinite(incomingOrder.dropoffLat ?? NaN) &&
+        Number.isFinite(incomingOrder.dropoffLng ?? NaN);
+
+      if (!hasPickup && !hasDropoff) {
         setNavigationRoute(null);
         setNavigationRouteLoading(false);
         return;
       }
 
+      const shouldNavigateToDropoff = navigationStage === "dropoff" && hasDropoff;
+      const destination = shouldNavigateToDropoff
+        ? {
+            latitude: Number(incomingOrder.dropoffLat),
+            longitude: Number(incomingOrder.dropoffLng),
+          }
+        : {
+            latitude: Number(incomingOrder.pickupLat),
+            longitude: Number(incomingOrder.pickupLng),
+          };
+
       try {
         setNavigationRouteLoading(true);
 
-        const hasDropoff =
-          Number.isFinite(incomingOrder.dropoffLat ?? NaN) &&
-          Number.isFinite(incomingOrder.dropoffLng ?? NaN);
-
         const route = await fetchNavigationRoute(
           { latitude: region.latitude, longitude: region.longitude },
-          {
-            latitude: hasDropoff
-              ? Number(incomingOrder.dropoffLat)
-              : Number(incomingOrder.pickupLat),
-            longitude: hasDropoff
-              ? Number(incomingOrder.dropoffLng)
-              : Number(incomingOrder.pickupLng),
-          },
-          hasDropoff
-            ? [
-                {
-                  latitude: Number(incomingOrder.pickupLat),
-                  longitude: Number(incomingOrder.pickupLng),
-                },
-              ]
-            : [],
+          destination,
+          [],
         );
 
         if (cancelled) return;
@@ -1355,7 +1083,7 @@ export default function DriverMapScreen() {
           void fitCameraToRoute(cameraRef as any, route.geometry);
         }
       } catch (e) {
-        console.log("DriverMapScreen navigation route error:", e);
+        if (IS_DEV) console.log("DriverMapScreen navigation route error:", e);
         if (!cancelled) setNavigationRoute(null);
       } finally {
         if (!cancelled) setNavigationRouteLoading(false);
@@ -1374,6 +1102,7 @@ export default function DriverMapScreen() {
     incomingOrder?.pickupLng,
     incomingOrder?.dropoffLat,
     incomingOrder?.dropoffLng,
+    navigationStage,
     region.latitude,
     region.longitude,
   ]);
@@ -1386,8 +1115,6 @@ export default function DriverMapScreen() {
     if (navigationRouteLoading || rerouteInFlightRef.current) {
       return;
     }
-
-    const activeIncomingOrder = incomingOrder;
 
     const currentPoint = {
       latitude: region.latitude,
@@ -1411,6 +1138,7 @@ export default function DriverMapScreen() {
     }
 
     let cancelled = false;
+    const activeOrder = incomingOrder;
 
     async function rerouteLiveNavigation() {
       try {
@@ -1418,40 +1146,35 @@ export default function DriverMapScreen() {
         lastRerouteAtRef.current = Date.now();
         setNavigationRouteLoading(true);
 
-        const hasDropoff =
-          Number.isFinite(activeIncomingOrder.dropoffLat ?? NaN) &&
-          Number.isFinite(activeIncomingOrder.dropoffLng ?? NaN);
+        const shouldNavigateToDropoff =
+          navigationStage === "dropoff" &&
+          Number.isFinite(activeOrder.dropoffLat ?? NaN) &&
+          Number.isFinite(activeOrder.dropoffLng ?? NaN);
 
-        const route = await fetchNavigationRoute(
-          currentPoint,
-          {
-            latitude: hasDropoff
-              ? Number(activeIncomingOrder.dropoffLat)
-              : Number(activeIncomingOrder.pickupLat),
-            longitude: hasDropoff
-              ? Number(activeIncomingOrder.dropoffLng)
-              : Number(activeIncomingOrder.pickupLng),
-          },
-          hasDropoff
-            ? [
-                {
-                  latitude: Number(activeIncomingOrder.pickupLat),
-                  longitude: Number(activeIncomingOrder.pickupLng),
-                },
-              ]
-            : [],
-        );
+        const destination = shouldNavigateToDropoff
+          ? {
+              latitude: Number(activeOrder.dropoffLat),
+              longitude: Number(activeOrder.dropoffLng),
+            }
+          : {
+              latitude: Number(activeOrder.pickupLat),
+              longitude: Number(activeOrder.pickupLng),
+            };
+
+        const route = await fetchNavigationRoute(currentPoint, destination, []);
 
         if (cancelled) return;
 
         if (route) {
           setNavigationRoute(route);
 
-          if (!routeRecalculatedAnnouncedRef.current) {
-            routeRecalculatedAnnouncedRef.current = true;
-            void speakNavigation("Route recalculated", true);
-          } else {
-            void speakNavigation("Route recalculated");
+          if (voiceEnabled) {
+            if (!routeRecalculatedAnnouncedRef.current) {
+              routeRecalculatedAnnouncedRef.current = true;
+              void speakNavigation("Route recalculated", true);
+            } else {
+              void speakNavigation("Route recalculated");
+            }
           }
 
           if (!followNavigationMode) {
@@ -1459,7 +1182,7 @@ export default function DriverMapScreen() {
           }
         }
       } catch (e) {
-        console.log("DriverMapScreen live reroute error:", e);
+        if (IS_DEV) console.log("DriverMapScreen live reroute error:", e);
       } finally {
         if (!cancelled) {
           setNavigationRouteLoading(false);
@@ -1484,12 +1207,14 @@ export default function DriverMapScreen() {
     incomingOrder?.dropoffLng,
     navigationRoute?.geometry,
     navigationRouteLoading,
+    navigationStage,
     region.latitude,
     region.longitude,
+    voiceEnabled,
   ]);
 
   useEffect(() => {
-    if (!incomingOrder || !hasLocation || !navigationInstruction) {
+    if (!incomingOrder || !hasLocation || !navigationInstruction || !voiceEnabled) {
       return;
     }
 
@@ -1572,6 +1297,7 @@ export default function DriverMapScreen() {
     navigationStage,
     region.latitude,
     region.longitude,
+    voiceEnabled,
   ]);
 
   useEffect(() => {
@@ -1628,7 +1354,7 @@ export default function DriverMapScreen() {
         animationDuration: 700,
       });
     } catch (e) {
-      console.log("DriverMapScreen follow camera error:", e);
+      if (IS_DEV) console.log("DriverMapScreen follow camera error:", e);
     }
   }, [
     driverHeading,
@@ -1655,7 +1381,7 @@ export default function DriverMapScreen() {
   }
 
   async function handleAcceptIncomingOrder() {
-    if (!incomingOrder || incomingActionLoading) return;
+    if (!incomingOrder || incomingActionLoading || incomingOrder.isAcceptedTrip) return;
 
     if (!incomingOrder.offerId || !incomingOrder.sourceTable) {
       setIncomingOrder(null);
@@ -1687,16 +1413,24 @@ export default function DriverMapScreen() {
           ? result?.delivery_request_id ?? incomingOrder.id
           : result?.order_id ?? incomingOrder.id;
 
-      setIncomingOrder(null);
-      setIncomingTimer(0);
-      await fetchDriverOrders();
+      const acceptedTrip = {
+        ...incomingOrder,
+        id: String(orderId),
+        offerId: null,
+        isAcceptedTrip: true,
+        destinationStage: "pickup" as DestinationStage,
+      };
 
-      (navigation as any).navigate("DriverOrderDetails", {
-        orderId,
-        sourceTable: incomingOrder.sourceTable,
-      });
+      setIncomingOrder(acceptedTrip);
+      setIncomingTimer(0);
+      setFollowNavigationMode(true);
+
+      Alert.alert(
+        t("driver.map.acceptedTitle", "Course acceptée ✅"),
+        t("driver.map.acceptedBody", "Navigation MMD démarrée vers le pickup."),
+      );
     } catch (e: any) {
-      console.log("Erreur accept incoming map:", e);
+      if (IS_DEV) console.log("Erreur accept incoming map:", e);
       Alert.alert(
         t("shared.orderChat.alerts.errorTitle", "Erreur"),
         e?.message ?? "Impossible d'accepter cette offre.",
@@ -1708,7 +1442,7 @@ export default function DriverMapScreen() {
   }
 
   async function handleRejectIncomingOrder(reason: "reject" | "timeout") {
-    if (!incomingOrder || incomingActionLoading) return;
+    if (!incomingOrder || incomingActionLoading || incomingOrder.isAcceptedTrip) return;
 
     if (!incomingOrder.offerId || !incomingOrder.sourceTable) {
       setIncomingOrder(null);
@@ -1738,9 +1472,8 @@ export default function DriverMapScreen() {
 
       setIncomingOrder(null);
       setIncomingTimer(0);
-      await fetchDriverOrders();
     } catch (e: any) {
-      console.log("Erreur reject incoming map:", e);
+      if (IS_DEV) console.log("Erreur reject incoming map:", e);
       if (reason !== "timeout") {
         Alert.alert(
           t("shared.orderChat.alerts.errorTitle", "Erreur"),
@@ -1753,257 +1486,43 @@ export default function DriverMapScreen() {
     }
   }
 
-  function triggerTestIncomingOrder() {
-    const surgeLabel =
-      currentZone &&
-      (currentZone.activity === "busy" || currentZone.activity === "very_busy")
-        ? currentZone.activity === "very_busy"
-          ? "x1.6"
-          : "x1.3"
-        : null;
+  function openOrderDetails() {
+    if (!incomingOrder) return;
 
-    const fakeOrder: IncomingOrderBanner = {
-      id: "test-order",
-      offerId: null,
-      sourceTable: "orders",
-      pickupLat: 40.6615,
-      pickupLng: -73.9796,
-      dropoffLat: 40.6501,
-      dropoffLng: -73.9496,
-      restaurantName: "Restaurant MMD test",
-      pickupAddress: "Prospect Park West, Brooklyn",
-      dropoffAddress: "Flatbush Ave, Brooklyn",
-      price: 14.5,
-      distanceMiles: 3.7,
-      etaMinutes: 12,
-      surgeLabel,
-    };
-
-    setIncomingOrder(fakeOrder);
-    setIncomingTimer(60);
-  }
-
-  function handleOpenOrder(order: DriverOrder) {
-    // Keep sourceTable for runtime support while avoiding a stale RootStackParamList
-    // TypeScript error in this screen. DriverOrderDetailsScreen already supports it.
     (navigation as any).navigate("DriverOrderDetails", {
-      orderId: order.id,
-      sourceTable: order.source_table,
+      orderId: incomingOrder.id,
+      sourceTable: incomingOrder.sourceTable,
     });
   }
 
-  function formatDate(iso: string | null) {
-    if (!iso) return "—";
-
-    const d = new Date(iso);
-
-    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`;
+  function toggleVoice() {
+    setVoiceEnabled((current) => {
+      const next = !current;
+      if (!next) {
+        void stopNavigationVoice();
+      }
+      return next;
+    });
   }
 
-  function formatStatus(status: OrderStatus) {
-    switch (status) {
-      case "pending":
-      case "paid_pending":
-      case "processing_pending":
-        return t("driver.map.status.pending");
-      case "accepted":
-        return t("driver.map.status.accepted");
-      case "prepared":
-        return t("driver.map.status.prepared");
-      case "ready":
-        return t("driver.map.status.ready");
-      case "dispatched":
-        return t("driver.map.status.dispatched");
-      case "delivered":
-        return t("driver.map.status.delivered");
-      case "canceled":
-        return t("driver.map.status.canceled");
-      default:
-        return status;
-    }
-  }
-
-  function formatKind(kind: OrderKind, restaurantName: string | null) {
-    if (kind === "food") {
-      return restaurantName
-        ? t("driver.map.kind.foodWithName", { name: restaurantName })
-        : t("driver.map.kind.food");
-    }
-
-    if (kind === "pickup_dropoff") return t("driver.map.kind.pickup_dropoff");
-    if (kind === "delivery")
-      return t("driver.map.kind.delivery", "MMD Delivery");
-
-    return kind;
-  }
-
-  function getActivityLabel(activity: ZoneActivity) {
-    switch (activity) {
-      case "very_busy":
-        return t("driver.map.activity.very_busy");
-      case "busy":
-        return t("driver.map.activity.busy");
-      case "normal":
-        return t("driver.map.activity.normal");
-      case "calm":
-      default:
-        return t("driver.map.activity.calm");
-    }
-  }
-
-  function renderOrderCard(order: DriverOrder) {
-    const gain = getSafeDriverPayout(order);
-    const statusColor =
-      order.status === "delivered"
-        ? "#22C55E"
-        : order.status === "dispatched"
-          ? "#FBBF24"
-          : order.status === "accepted" ||
-              order.status === "prepared" ||
-              order.status === "ready"
-            ? "#93C5FD"
-            : order.status === "canceled"
-              ? "#FB7185"
-              : "#CBD5E1";
-
-    return (
-      <TouchableOpacity
-        key={getOrderCompositeKey(order)}
-        onPress={() => handleOpenOrder(order)}
-        activeOpacity={0.9}
-        style={{
-          backgroundColor: "rgba(2,6,23,0.92)",
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: "rgba(51,65,85,0.95)",
-          padding: 12,
-          marginBottom: 10,
-          shadowColor: "#000",
-          shadowOpacity: 0.22,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 5 },
-          elevation: 4,
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginBottom: 4,
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: "#F8FAFC", fontSize: 12, fontWeight: "700" }}>
-            #{order.id.slice(0, 8)}
-          </Text>
-
-          <View
-            style={{
-              paddingHorizontal: 8,
-              paddingVertical: 3,
-              borderRadius: 999,
-              backgroundColor: "rgba(15,23,42,0.9)",
-              borderWidth: 1,
-              borderColor: "rgba(71,85,105,0.95)",
-            }}
-          >
-            <Text
-              style={{
-                color: statusColor,
-                fontSize: 10,
-                fontWeight: "800",
-              }}
-            >
-              {formatStatus(order.status)}
-            </Text>
-          </View>
-        </View>
-
-        <Text
-          style={{
-            color: "#7DD3FC",
-            fontSize: 12,
-            fontWeight: "600",
-            marginBottom: 3,
-          }}
-        >
-          {formatKind(order.kind, order.restaurant_name)}
-        </Text>
-
-        <Text style={{ color: "#64748B", fontSize: 10, marginBottom: 8 }}>
-          {formatDate(order.created_at)}
-        </Text>
-
-        <Text style={{ color: "#94A3B8", fontSize: 11 }} numberOfLines={1}>
-          {t("driver.map.orderCard.pickupLabel")}{" "}
-          <Text style={{ color: "#E2E8F0", fontWeight: "600" }}>
-            {order.pickup_address ?? "—"}
-          </Text>
-        </Text>
-
-        <Text
-          style={{
-            color: "#94A3B8",
-            fontSize: 11,
-            marginTop: 3,
-            marginBottom: 8,
-          }}
-          numberOfLines={1}
-        >
-          {t("driver.map.orderCard.dropoffLabel")}{" "}
-          <Text style={{ color: "#E2E8F0", fontWeight: "600" }}>
-            {order.dropoff_address ?? "—"}
-          </Text>
-        </Text>
-
-        <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-          <View
-            style={{
-              paddingHorizontal: 8,
-              paddingVertical: 6,
-              borderRadius: 12,
-              backgroundColor: "rgba(15,23,42,0.75)",
-            }}
-          >
-            <Text style={{ color: "#94A3B8", fontSize: 10 }}>
-              {t("driver.map.orderCard.distanceLabel")}{" "}
-              <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
-                {formatMiles(order.distance_miles)}
-              </Text>
-            </Text>
-          </View>
-
-          <View
-            style={{
-              paddingHorizontal: 8,
-              paddingVertical: 6,
-              borderRadius: 12,
-              backgroundColor: "rgba(5,46,22,0.45)",
-            }}
-          >
-            <Text style={{ color: "#BBF7D0", fontSize: 10, fontWeight: "800" }}>
-              {t("driver.map.orderCard.earningsLabel")} {formatMoney(gain)}
-            </Text>
-          </View>
-        </View>
-
-        <Text
-          style={{
-            marginTop: 10,
-            color: "#60A5FA",
-            fontSize: 11,
-            fontWeight: "700",
-            textAlign: "right",
-          }}
-        >
-          {t("driver.map.myOrders.viewDetails")}
-        </Text>
-      </TouchableOpacity>
+  function reportNavigationIssue() {
+    Alert.alert(
+      t("driver.map.report.title", "Signaler"),
+      t("driver.map.report.body", "Le signalement navigation sera disponible dans une prochaine mise à jour."),
     );
   }
+
+  const routeDistanceText = navigationRoute?.distanceMeters
+    ? `${(navigationRoute.distanceMeters / 1609.344).toFixed(1)} mi`
+    : incomingOrder?.distanceMiles
+      ? `${incomingOrder.distanceMiles.toFixed(1)} mi`
+      : "—";
+
+  const routeEtaText = navigationRoute?.etaMinutes
+    ? `${Math.round(navigationRoute.etaMinutes)} min`
+    : incomingOrder?.etaMinutes
+      ? `${Math.round(incomingOrder.etaMinutes)} min`
+      : "—";
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
@@ -2011,9 +1530,7 @@ export default function DriverMapScreen() {
 
       <View style={{ flex: 1 }}>
         {loading && !hasLocation ? (
-          <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-          >
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
             <View
               style={{
                 paddingHorizontal: 22,
@@ -2026,20 +1543,11 @@ export default function DriverMapScreen() {
               }}
             >
               <ActivityIndicator size="large" color="#60A5FA" />
-
-              <Text
-                style={{
-                  color: "#E2E8F0",
-                  fontSize: 13,
-                  marginTop: 10,
-                  fontWeight: "700",
-                }}
-              >
-                {t("driver.map.locating")}
+              <Text style={{ color: "#E2E8F0", fontSize: 13, marginTop: 10, fontWeight: "700" }}>
+                {t("driver.map.locating", "Localisation du chauffeur…")}
               </Text>
-
               <Text style={{ color: "#94A3B8", fontSize: 11, marginTop: 4 }}>
-                Positionnement sécurisé en cours...
+                {t("driver.map.locatingSecure", "Positionnement sécurisé en cours...")}
               </Text>
             </View>
           </View>
@@ -2052,6 +1560,7 @@ export default function DriverMapScreen() {
               attributionEnabled={false}
               compassEnabled
               surfaceView={false}
+              onTouchStart={() => setFollowNavigationMode(false)}
             >
               <Mapbox.Camera
                 ref={cameraRef}
@@ -2061,10 +1570,104 @@ export default function DriverMapScreen() {
                 animationDuration={650}
               />
 
-              <Mapbox.UserLocation
-                visible={false}
-                showsUserHeadingIndicator={true}
-              />
+              <Mapbox.UserLocation visible={false} showsUserHeadingIndicator />
+
+              {DRIVER_ZONES.map((zone) => {
+                const { strokeColor, fillColor } = getZoneColors(zone.activity);
+
+                return (
+                  <Mapbox.ShapeSource
+                    key={zone.id}
+                    id={`zone-source-${zone.id}`}
+                    shape={zonePolygonToFeature(zone)}
+                  >
+                    <Mapbox.FillLayer
+                      id={`zone-fill-${zone.id}`}
+                      style={{
+                        fillColor,
+                        fillOpacity: 1,
+                      }}
+                    />
+
+                    <Mapbox.LineLayer
+                      id={`zone-line-${zone.id}`}
+                      style={{
+                        lineColor: strokeColor,
+                        lineWidth: 2,
+                      }}
+                    />
+                  </Mapbox.ShapeSource>
+                );
+              })}
+
+              {nearbyRestaurants.map((resto) => {
+                const dist = hasLocation
+                  ? distanceMeters(
+                      region.latitude,
+                      region.longitude,
+                      resto.latitude,
+                      resto.longitude,
+                    )
+                  : Infinity;
+
+                const inBusyZone =
+                  currentZone &&
+                  (currentZone.activity === "busy" ||
+                    currentZone.activity === "very_busy");
+
+                const isBoosted = !!inBusyZone && dist < 2500;
+
+                return (
+                  <Mapbox.PointAnnotation
+                    key={resto.id}
+                    id={`restaurant-${resto.id}`}
+                    coordinate={[resto.longitude, resto.latitude]}
+                  >
+                    <View style={{ alignItems: "center", justifyContent: "center" }}>
+                      <View
+                        style={{
+                          width: isBoosted ? 48 : 42,
+                          height: isBoosted ? 48 : 42,
+                          borderRadius: isBoosted ? 24 : 21,
+                          backgroundColor: "#FFFFFF",
+                          borderWidth: isBoosted ? 3 : 2,
+                          borderColor: isBoosted ? "#EA580C" : "#F97316",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          shadowColor: "#000",
+                          shadowOpacity: isBoosted ? 0.34 : 0.2,
+                          shadowRadius: isBoosted ? 10 : 7,
+                          shadowOffset: { width: 0, height: 4 },
+                          elevation: isBoosted ? 9 : 6,
+                          overflow: "hidden",
+                        }}
+                      >
+                        {resto.logoUrl ? (
+                          <Image
+                            source={{ uri: resto.logoUrl }}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              backgroundColor: isBoosted ? "#EA580C" : "#F97316",
+                            }}
+                          >
+                            <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
+                              {isBoosted ? "🔥" : "R"}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </Mapbox.PointAnnotation>
+                );
+              })}
 
               {navigationRoute?.geometry && (
                 <Mapbox.ShapeSource
@@ -2172,168 +1775,6 @@ export default function DriverMapScreen() {
                   </View>
                 </Mapbox.PointAnnotation>
               )}
-
-              {DRIVER_ZONES.map((zone) => {
-                const { strokeColor, fillColor, labelColor, haloColor } =
-                  getZoneColors(zone.activity);
-
-                return (
-                  <React.Fragment key={zone.id}>
-                    <Mapbox.ShapeSource
-                      id={`zone-source-${zone.id}`}
-                      shape={zonePolygonToFeature(zone)}
-                    >
-                      <Mapbox.FillLayer
-                        id={`zone-fill-${zone.id}`}
-                        style={{
-                          fillColor,
-                          fillOpacity: 1,
-                        }}
-                      />
-
-                      <Mapbox.LineLayer
-                        id={`zone-line-${zone.id}`}
-                        style={{
-                          lineColor: strokeColor,
-                          lineWidth: 2,
-                        }}
-                      />
-                    </Mapbox.ShapeSource>
-                  </React.Fragment>
-                );
-              })}
-
-              {nearbyRestaurants.map((resto) => {
-                const dist = hasLocation
-                  ? distanceMeters(
-                      region.latitude,
-                      region.longitude,
-                      resto.latitude,
-                      resto.longitude,
-                    )
-                  : Infinity;
-
-                const inBusyZone =
-                  currentZone &&
-                  (currentZone.activity === "busy" ||
-                    currentZone.activity === "very_busy");
-
-                const isClose = dist < 2500;
-                const isBoosted = !!inBusyZone && isClose;
-
-                const boostLabel =
-                  isBoosted && currentZone
-                    ? currentZone.activity === "very_busy"
-                      ? "x1.6"
-                      : "x1.3"
-                    : null;
-
-                return (
-                  <Mapbox.PointAnnotation
-                    key={resto.id}
-                    id={`restaurant-${resto.id}`}
-                    coordinate={[resto.longitude, resto.latitude]}
-                  >
-                    <View
-                      style={{
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: isBoosted ? 48 : 42,
-                          height: isBoosted ? 48 : 42,
-                          borderRadius: isBoosted ? 24 : 21,
-                          backgroundColor: "#FFFFFF",
-                          borderWidth: isBoosted ? 3 : 2,
-                          borderColor: isBoosted ? "#EA580C" : "#F97316",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          shadowColor: "#000",
-                          shadowOpacity: isBoosted ? 0.34 : 0.2,
-                          shadowRadius: isBoosted ? 10 : 7,
-                          shadowOffset: { width: 0, height: 4 },
-                          elevation: isBoosted ? 9 : 6,
-                          overflow: "hidden",
-                        }}
-                      >
-                        {resto.logoUrl ? (
-                          <Image
-                            source={{ uri: resto.logoUrl }}
-                            style={{ width: "100%", height: "100%" }}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              backgroundColor: isBoosted
-                                ? "#EA580C"
-                                : "#F97316",
-                            }}
-                          >
-                            <Text
-                              style={{
-                                color: "#FFFFFF",
-                                fontSize: 15,
-                                fontWeight: "900",
-                              }}
-                            >
-                              {isBoosted ? "🔥" : "R"}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-
-                      <View
-                        style={{
-                          marginTop: 4,
-                          maxWidth: 110,
-                          paddingHorizontal: 7,
-                          paddingVertical: 3,
-                          borderRadius: 999,
-                          backgroundColor: "rgba(2,6,23,0.9)",
-                          borderWidth: 1,
-                          borderColor: isBoosted
-                            ? "rgba(249,115,22,0.55)"
-                            : "rgba(148,163,184,0.25)",
-                          flexDirection: "row",
-                          alignItems: "center",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#FFFFFF",
-                            fontSize: 9,
-                            fontWeight: "800",
-                            maxWidth: boostLabel ? 72 : 96,
-                          }}
-                          numberOfLines={1}
-                        >
-                          {resto.name}
-                        </Text>
-
-                        {boostLabel && (
-                          <Text
-                            style={{
-                              marginLeft: 4,
-                              color: "#FDBA74",
-                              fontSize: 9,
-                              fontWeight: "900",
-                            }}
-                          >
-                            {boostLabel}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  </Mapbox.PointAnnotation>
-                );
-              })}
             </Mapbox.MapView>
 
             <View
@@ -2343,47 +1784,94 @@ export default function DriverMapScreen() {
                 top: 0,
                 left: 0,
                 right: 0,
-                height: 140,
-                backgroundColor: "rgba(2,6,23,0.08)",
+                height: 150,
+                backgroundColor: "rgba(2,6,23,0.06)",
               }}
             />
 
             <View
-              pointerEvents="none"
               style={{
                 position: "absolute",
                 top: 44,
+                left: 16,
                 right: 16,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: isOnline
-                  ? "rgba(5,46,22,0.88)"
-                  : "rgba(69,10,10,0.82)",
-                borderWidth: 1,
-                borderColor: isOnline
-                  ? "rgba(34,197,94,0.58)"
-                  : "rgba(251,113,133,0.48)",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              <Text
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.85}
                 style={{
-                  color: isOnline ? "#86EFAC" : "#FECACA",
-                  fontSize: 11,
-                  fontWeight: "900",
-                  letterSpacing: 0.4,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "rgba(2,6,23,0.9)",
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.22)",
                 }}
               >
-                {statusTitle}
-              </Text>
+                <Text style={{ color: "#FFFFFF", fontSize: 22, fontWeight: "900" }}>‹</Text>
+              </TouchableOpacity>
+
+              <View
+                pointerEvents="none"
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 999,
+                  backgroundColor: isOnline
+                    ? "rgba(5,46,22,0.88)"
+                    : "rgba(69,10,10,0.82)",
+                  borderWidth: 1,
+                  borderColor: isOnline
+                    ? "rgba(34,197,94,0.58)"
+                    : "rgba(251,113,133,0.48)",
+                }}
+              >
+                <Text
+                  style={{
+                    color: isOnline ? "#86EFAC" : "#FECACA",
+                    fontSize: 11,
+                    fontWeight: "900",
+                    letterSpacing: 0.4,
+                  }}
+                >
+                  {statusTitle}
+                </Text>
+              </View>
             </View>
+
+            {restaurantsLoading && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: 16,
+                  top: 96,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(15,23,42,0.92)",
+                  borderWidth: 1,
+                  borderColor: "rgba(51,65,85,0.95)",
+                }}
+              >
+                <Text style={{ color: "#CBD5E1", fontSize: 10, fontWeight: "800" }}>
+                  {t("driver.map.restaurantsLoading", "Chargement restaurants...")}
+                </Text>
+              </View>
+            )}
 
             {navigationInstruction && (
               <View
                 pointerEvents="none"
                 style={{
                   position: "absolute",
-                  top: incomingOrder ? 318 : 78,
+                  top: 96,
                   left: 14,
                   right: 14,
                   borderRadius: 24,
@@ -2399,991 +1887,308 @@ export default function DriverMapScreen() {
                   elevation: 14,
                 }}
               >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text
-                      style={{
-                        color: "#93C5FD",
-                        fontSize: 10,
-                        fontWeight: "900",
-                        letterSpacing: 0.8,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Navigation live
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={{ color: "#93C5FD", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 }}>
+                      {navigationStage === "pickup"
+                        ? t("driver.map.navigation.toPickup", "VERS LE PICKUP")
+                        : t("driver.map.navigation.toDropoff", "VERS LE DROPOFF")}
                     </Text>
-
-                    <Text
-                      style={{
-                        color: "#F8FAFC",
-                        fontSize: 16,
-                        fontWeight: "900",
-                        marginTop: 3,
-                      }}
-                      numberOfLines={1}
-                    >
+                    <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900", marginTop: 3 }}>
                       {navigationInstruction.title}
                     </Text>
-
-                    <Text
-                      style={{
-                        color: "#CBD5E1",
-                        fontSize: 12,
-                        fontWeight: "700",
-                        marginTop: 3,
-                      }}
-                      numberOfLines={1}
-                    >
+                    <Text style={{ color: "#CBD5E1", fontSize: 12, marginTop: 4 }} numberOfLines={2}>
                       {navigationInstruction.subtitle}
                     </Text>
                   </View>
-
-                  <View
-                    style={{
-                      minWidth: 84,
-                      paddingHorizontal: 10,
-                      paddingVertical: 8,
-                      borderRadius: 16,
-                      backgroundColor: "rgba(37,99,235,0.22)",
-                      borderWidth: 1,
-                      borderColor: "rgba(96,165,250,0.38)",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#BFDBFE",
-                        fontSize: 10,
-                        fontWeight: "800",
-                      }}
-                    >
-                      ETA
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 15,
-                        fontWeight: "900",
-                        marginTop: 2,
-                      }}
-                    >
-                      {navigationRoute?.etaMinutes ?? incomingOrder?.etaMinutes ?? 0} min
-                    </Text>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900" }}>{routeEtaText}</Text>
+                    <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800", marginTop: 3 }}>{routeDistanceText}</Text>
                   </View>
                 </View>
+              </View>
+            )}
+
+            {navigationRouteLoading && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  top: navigationInstruction ? 205 : 100,
+                  alignSelf: "center",
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                  backgroundColor: "rgba(15,23,42,0.92)",
+                  borderWidth: 1,
+                  borderColor: "rgba(96,165,250,0.34)",
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <ActivityIndicator size="small" color="#93C5FD" />
+                <Text style={{ color: "#DBEAFE", fontSize: 12, fontWeight: "800", marginLeft: 8 }}>
+                  {t("driver.map.navigation.calculating", "Calcul de la route…")}
+                </Text>
               </View>
             )}
 
             <View
-              pointerEvents="none"
               style={{
                 position: "absolute",
-                top: 82,
-                left: 16,
-                right: 16,
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 8,
+                right: 14,
+                top: navigationInstruction ? 238 : 112,
+                alignItems: "center",
               }}
             >
-              <View
+              <TouchableOpacity
+                onPress={centerOnDriver}
+                activeOpacity={0.86}
                 style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 7,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(15,23,42,0.86)",
-                  borderWidth: 1,
-                  borderColor: "rgba(71,85,105,0.55)",
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: "rgba(255,255,255,0.96)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.22,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 5 },
+                  elevation: 8,
+                  marginBottom: 10,
                 }}
               >
-                <Text
-                  style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}
-                >
-                  ZONE
-                </Text>
-                <Text
-                  style={{
-                    color: "#F8FAFC",
-                    fontSize: 12,
-                    fontWeight: "900",
-                    marginTop: 2,
-                  }}
-                >
-                  {currentZone?.name ?? "Live area"}
-                </Text>
-              </View>
+                <Text style={{ color: "#020617", fontSize: 22, fontWeight: "900" }}>⌖</Text>
+              </TouchableOpacity>
 
-              <View
+              <TouchableOpacity
+                onPress={toggleVoice}
+                activeOpacity={0.86}
                 style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 7,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(15,23,42,0.86)",
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: voiceEnabled ? "rgba(2,6,23,0.92)" : "rgba(127,29,29,0.92)",
+                  alignItems: "center",
+                  justifyContent: "center",
                   borderWidth: 1,
-                  borderColor: "rgba(71,85,105,0.55)",
+                  borderColor: voiceEnabled ? "rgba(148,163,184,0.22)" : "rgba(251,113,133,0.34)",
+                  marginBottom: 10,
                 }}
               >
-                <Text
-                  style={{ color: "#94A3B8", fontSize: 10, fontWeight: "800" }}
-                >
-                  PREMIUM
-                </Text>
-                <Text
-                  style={{
-                    color: "#F8FAFC",
-                    fontSize: 12,
-                    fontWeight: "900",
-                    marginTop: 2,
-                  }}
-                >
-                  {zoneOpportunityLabel} · {zoneOpportunityScore}%
-                </Text>
-              </View>
+                <Text style={{ color: "#FFFFFF", fontSize: 20, fontWeight: "900" }}>{voiceEnabled ? "🔊" : "🔇"}</Text>
+              </TouchableOpacity>
 
-              {boostLabelGlobal && (
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 7,
-                    borderRadius: 999,
-                    backgroundColor: "rgba(120,53,15,0.34)",
-                    borderWidth: 1,
-                    borderColor: "rgba(251,191,36,0.28)",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#FCD34D",
-                      fontSize: 10,
-                      fontWeight: "800",
-                    }}
-                  >
-                    BOOST
-                  </Text>
-                  <Text
-                    style={{
-                      color: "#FEF3C7",
-                      fontSize: 12,
-                      fontWeight: "900",
-                      marginTop: 2,
-                    }}
-                  >
-                    {boostLabelGlobal}
-                  </Text>
-                </View>
-              )}
+              <TouchableOpacity
+                onPress={reportNavigationIssue}
+                activeOpacity={0.86}
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: "rgba(2,6,23,0.92)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.22)",
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 20, fontWeight: "900" }}>!</Text>
+              </TouchableOpacity>
             </View>
 
-            <Animated.View
-              pointerEvents={incomingOrder ? "auto" : "none"}
-              style={{
-                position: "absolute",
-                left: 12,
-                right: 12,
-                top: 92,
-                opacity: incomingOpacity,
-                transform: [{ translateY: incomingTranslateY }],
-              }}
-            >
-              {incomingOrder && (
+            {incomingOrder && isOfferMode && (
+              <Animated.View
+                pointerEvents="auto"
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  right: 14,
+                  bottom: 22,
+                  opacity: incomingOpacity,
+                  transform: [{ translateY: incomingTranslateY }],
+                }}
+              >
                 <View
                   style={{
-                    padding: 12,
-                    borderRadius: 20,
-                    backgroundColor: "rgba(15,23,42,0.985)",
+                    borderRadius: 28,
+                    padding: 16,
+                    backgroundColor: "rgba(2,6,23,0.97)",
                     borderWidth: 1,
-                    borderColor: "#F97316",
+                    borderColor: "rgba(96,165,250,0.35)",
                     shadowColor: "#000",
-                    shadowOpacity: 0.44,
-                    shadowRadius: 18,
-                    shadowOffset: { width: 0, height: 6 },
-                    elevation: 12,
+                    shadowOpacity: 0.35,
+                    shadowRadius: 22,
+                    shadowOffset: { width: 0, height: 10 },
+                    elevation: 18,
                   }}
                 >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <View>
-                      <Text
-                        style={{
-                          color: "#F8FAFC",
-                          fontSize: 14,
-                          fontWeight: "900",
-                        }}
-                      >
-                        {t("driver.map.incoming.title")}
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "900", letterSpacing: 0.4 }}>
+                        {t("driver.map.offer.title", "NOUVELLE COURSE")}
                       </Text>
-
-                      <Text
-                        style={{ color: "#94A3B8", fontSize: 10, marginTop: 2 }}
-                      >
-                        {navigationRouteLoading
-                          ? "Calcul de la route live…"
-                          : "Nouvelle opportunité premium"}
+                      <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900", marginTop: 4 }} numberOfLines={1}>
+                        {incomingOrder.restaurantName}
                       </Text>
                     </View>
-
-                    <View
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        borderRadius: 999,
-                        backgroundColor: "rgba(17,24,39,0.98)",
-                        borderWidth: 1,
-                        borderColor: "#F97316",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#FDBA74",
-                          fontSize: 11,
-                          fontWeight: "900",
-                        }}
-                      >
-                        {incomingTimer}s
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={{ color: "#F97316", fontSize: 22, fontWeight: "900" }}>{incomingTimer}s</Text>
+                      <Text style={{ color: "#86EFAC", fontSize: 16, fontWeight: "900", marginTop: 2 }}>
+                        {formatMoney(incomingOrder.price)}
                       </Text>
                     </View>
                   </View>
 
-                  <Text
-                    style={{
-                      color: "#E5E7EB",
-                      fontSize: 13,
-                      fontWeight: "700",
-                      marginBottom: 3,
-                    }}
-                  >
-                    {incomingOrder.restaurantName}
-                  </Text>
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={{ color: "#94A3B8", fontSize: 12 }} numberOfLines={1}>
+                      Pickup: <Text style={{ color: "#E2E8F0", fontWeight: "800" }}>{incomingOrder.pickupAddress}</Text>
+                    </Text>
+                    <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 6 }} numberOfLines={1}>
+                      Dropoff: <Text style={{ color: "#E2E8F0", fontWeight: "800" }}>{incomingOrder.dropoffAddress}</Text>
+                    </Text>
+                  </View>
 
-                  <Text
-                    style={{ color: "#9CA3AF", fontSize: 11 }}
-                    numberOfLines={1}
-                  >
-                    {t("driver.map.incoming.pickup")}{" "}
-                    {incomingOrder.pickupAddress}
-                  </Text>
-
-                  <Text
-                    style={{ color: "#9CA3AF", fontSize: 11, marginTop: 2 }}
-                    numberOfLines={1}
-                  >
-                    {t("driver.map.incoming.dropoff")}{" "}
-                    {incomingOrder.dropoffAddress}
-                  </Text>
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginTop: 10,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <View
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 7,
-                        borderRadius: 14,
-                        backgroundColor: "rgba(15,23,42,0.9)",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#F8FAFC",
-                          fontSize: 12,
-                          fontWeight: "700",
-                        }}
-                      >
-                        {navigationRoute
-                          ? `${(navigationRoute.distanceMeters / 1609.344).toFixed(1)} mi • ${navigationRoute.etaMinutes} min`
-                          : `${incomingOrder.distanceMiles.toFixed(1)} mi • ${incomingOrder.etaMinutes} min`}
-                      </Text>
-                    </View>
-
-                    <View
-                      style={{ flexDirection: "row", alignItems: "center" }}
-                    >
-                      {incomingOrder.surgeLabel && (
-                        <View
-                          style={{
-                            marginRight: 6,
-                            paddingHorizontal: 7,
-                            paddingVertical: 3,
-                            borderRadius: 999,
-                            backgroundColor: "#FEF3C7",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: "#B45309",
-                              fontSize: 10,
-                              fontWeight: "800",
-                            }}
-                          >
-                            {incomingOrder.surgeLabel}
-                          </Text>
-                        </View>
-                      )}
-
-                      <View
-                        style={{
-                          paddingHorizontal: 10,
-                          paddingVertical: 6,
-                          borderRadius: 14,
-                          backgroundColor: "rgba(5,46,22,0.45)",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#BBF7D0",
-                            fontSize: 13,
-                            fontWeight: "900",
-                          }}
-                        >
-                          {incomingOrder.price.toFixed(2)} $
-                        </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+                    <Text style={{ color: "#CBD5E1", fontSize: 12, fontWeight: "800" }}>
+                      {incomingOrder.distanceMiles.toFixed(1)} mi • {incomingOrder.etaMinutes} min
+                    </Text>
+                    {incomingOrder.surgeLabel && (
+                      <View style={{ paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: "rgba(249,115,22,0.16)" }}>
+                        <Text style={{ color: "#FDBA74", fontSize: 11, fontWeight: "900" }}>{incomingOrder.surgeLabel}</Text>
                       </View>
-                    </View>
+                    )}
                   </View>
 
-                  <View style={{ flexDirection: "row", gap: 8 }}>
+                  <View style={{ flexDirection: "row", marginTop: 14 }}>
                     <TouchableOpacity
-                      onPress={() => handleRejectIncomingOrder("reject")}
-                      activeOpacity={0.9}
+                      onPress={() => void handleRejectIncomingOrder("reject")}
                       disabled={incomingActionLoading}
+                      activeOpacity={0.86}
                       style={{
                         flex: 1,
-                        opacity: incomingActionLoading ? 0.6 : 1,
-                        paddingVertical: 11,
                         borderRadius: 999,
-                        backgroundColor: "#111827",
-                        borderWidth: 1,
-                        borderColor: "#FDA4AF",
+                        paddingVertical: 13,
                         alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#EF4444",
+                        marginRight: 10,
+                        opacity: incomingActionLoading ? 0.65 : 1,
                       }}
                     >
-                      <Text
-                        style={{
-                          color: "#FECDD3",
-                          fontSize: 13,
-                          fontWeight: "800",
-                        }}
-                      >
-                        {t("driver.map.incoming.decline")}
+                      <Text style={{ color: "#FFFFFF", fontSize: 14, fontWeight: "900" }}>
+                        {t("driver.map.offer.ignore", "Ignore")}
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      onPress={handleAcceptIncomingOrder}
-                      activeOpacity={0.9}
+                      onPress={() => void handleAcceptIncomingOrder()}
                       disabled={incomingActionLoading}
+                      activeOpacity={0.86}
                       style={{
                         flex: 1,
-                        opacity: incomingActionLoading ? 0.6 : 1,
-                        paddingVertical: 11,
                         borderRadius: 999,
-                        backgroundColor: "#22C55E",
+                        paddingVertical: 13,
                         alignItems: "center",
-                        shadowColor: "#22C55E",
-                        shadowOpacity: 0.26,
-                        shadowRadius: 10,
-                        shadowOffset: { width: 0, height: 4 },
+                        justifyContent: "center",
+                        backgroundColor: "#22C55E",
+                        opacity: incomingActionLoading ? 0.65 : 1,
                       }}
                     >
-                      <Text
-                        style={{
-                          color: "#052E16",
-                          fontSize: 13,
-                          fontWeight: "900",
-                        }}
-                      >
-                        {t("driver.map.incoming.accept")}
+                      <Text style={{ color: "#022C22", fontSize: 14, fontWeight: "900" }}>
+                        {incomingActionLoading
+                          ? t("driver.map.offer.accepting", "Accepting...")
+                          : t("driver.map.offer.accept", "Accept")}
                       </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-              )}
-            </Animated.View>
+              </Animated.View>
+            )}
 
-            {restaurantsLoading && (
+            {incomingOrder && isAcceptedTripMode && (
               <View
                 style={{
                   position: "absolute",
-                  left: 12,
-                  top: 64,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  backgroundColor: "rgba(15,23,42,0.92)",
+                  left: 14,
+                  right: 14,
+                  bottom: 22,
+                  borderRadius: 26,
+                  padding: 14,
+                  backgroundColor: "rgba(2,6,23,0.96)",
                   borderWidth: 1,
-                  borderColor: "rgba(51,65,85,0.95)",
+                  borderColor: "rgba(96,165,250,0.32)",
+                  shadowColor: "#000",
+                  shadowOpacity: 0.28,
+                  shadowRadius: 18,
+                  shadowOffset: { width: 0, height: 8 },
+                  elevation: 14,
                 }}
               >
-                <Text
-                  style={{ color: "#CBD5E1", fontSize: 10, fontWeight: "700" }}
-                >
-                  {t("driver.map.restaurantsLoading")}
+                <TouchableOpacity onPress={openOrderDetails} activeOpacity={0.88}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={{ color: "#93C5FD", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 }}>
+                        {navigationStage === "pickup"
+                          ? t("driver.map.trip.nextPickup", "PROCHAINE ÉTAPE: PICKUP")
+                          : t("driver.map.trip.nextDropoff", "PROCHAINE ÉTAPE: DROPOFF")}
+                      </Text>
+                      <Text style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "900", marginTop: 5 }} numberOfLines={1}>
+                        {navigationStage === "pickup" ? incomingOrder.pickupAddress : incomingOrder.dropoffAddress}
+                      </Text>
+                      <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 5 }}>
+                        {t("driver.map.trip.detailsHint", "Toucher pour ouvrir les détails de la course")}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900" }}>{routeEtaText}</Text>
+                      <Text style={{ color: "#93C5FD", fontSize: 12, fontWeight: "800", marginTop: 3 }}>{routeDistanceText}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!incomingOrder && !errorMsg && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: "absolute",
+                  left: 18,
+                  right: 18,
+                  bottom: 28,
+                  borderRadius: 22,
+                  padding: 14,
+                  backgroundColor: "rgba(2,6,23,0.90)",
+                  borderWidth: 1,
+                  borderColor: "rgba(148,163,184,0.18)",
+                }}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 15, fontWeight: "900" }}>
+                  {t("driver.map.noNavigation.title", "Carte MMD prête")}
+                </Text>
+                <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 5 }}>
+                  {t("driver.map.noNavigation.body", "Les nouvelles offres peuvent apparaître ici. Pour naviguer, ouvre une course depuis les détails.")}
                 </Text>
               </View>
             )}
-
-            {hasLocation && (
-              <View
-                pointerEvents="box-none"
-                style={{
-                  position: "absolute",
-                  right: 18,
-                  bottom: 214,
-                  zIndex: 9998,
-                  elevation: 9998,
-                }}
-              >
-                <TouchableOpacity
-                  onPress={centerOnDriver}
-                  activeOpacity={0.9}
-                  style={{
-                    width: 54,
-                    height: 54,
-                    borderRadius: 27,
-                    backgroundColor: "rgba(255,255,255,0.96)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    shadowColor: "#000",
-                    shadowOpacity: 0.18,
-                    shadowRadius: 14,
-                    shadowOffset: { width: 0, height: 6 },
-                    elevation: 12,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#020617",
-                      fontSize: 28,
-                      fontWeight: "900",
-                      transform: [{ rotate: "-45deg" }],
-                      marginTop: -2,
-                    }}
-                  >
-                    ➤
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <Animated.View
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: sheetTop,
-                paddingHorizontal: 0,
-                paddingBottom: 0,
-              }}
-              {...panResponder.panHandlers}
-            >
-              <View
-                style={{
-                  borderTopLeftRadius: 28,
-                  borderTopRightRadius: 28,
-                  borderBottomLeftRadius: 0,
-                  borderBottomRightRadius: 0,
-                  paddingHorizontal: 16,
-                  paddingTop: 10,
-                  paddingBottom: 18,
-                  backgroundColor: "rgba(15,23,42,0.97)",
-                  borderWidth: 1,
-                  borderColor: "rgba(51,65,85,0.95)",
-                  shadowColor: "#000",
-                  shadowOpacity: 0.42,
-                  shadowRadius: 20,
-                  shadowOffset: { width: 0, height: -4 },
-                  elevation: 16,
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() =>
-                    animateSheet(
-                      sheetState.current === "collapsed"
-                        ? "expanded"
-                        : "collapsed",
-                    )
-                  }
-                  activeOpacity={0.7}
-                  style={{ alignItems: "center", marginBottom: 12 }}
-                >
-                  <View
-                    style={{
-                      width: 48,
-                      height: 5,
-                      borderRadius: 999,
-                      backgroundColor: "#475569",
-                    }}
-                  />
-                </TouchableOpacity>
-
-                {navigationInstruction && (
-                  <View
-                    style={{
-                      borderRadius: 20,
-                      padding: 14,
-                      backgroundColor: "rgba(2,6,23,0.82)",
-                      borderWidth: 1,
-                      borderColor: "rgba(96,165,250,0.32)",
-                      marginBottom: 12,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#93C5FD",
-                        fontSize: 10,
-                        fontWeight: "900",
-                        letterSpacing: 0.8,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Navigation MMD
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: "#F8FAFC",
-                        fontSize: 16,
-                        fontWeight: "900",
-                        marginTop: 4,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {navigationInstruction.title}
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: "#CBD5E1",
-                        fontSize: 12,
-                        fontWeight: "700",
-                        marginTop: 4,
-                      }}
-                      numberOfLines={1}
-                    >
-                      {navigationInstruction.subtitle}
-                    </Text>
-                  </View>
-                )}
-
-                <View
-                  style={{
-                    marginTop: 12,
-                    flexDirection: "row",
-                    gap: 10,
-                  }}
-                >
-                  <View
-                    style={{
-                      flex: 1,
-                      borderRadius: 18,
-                      padding: 12,
-                      backgroundColor: "rgba(15,23,42,0.72)",
-                      borderWidth: 1,
-                      borderColor: "rgba(51,65,85,0.6)",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#94A3B8",
-                        fontSize: 10,
-                        fontWeight: "700",
-                      }}
-                    >
-                      OPPORTUNITY SCORE
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: "#F8FAFC",
-                        fontSize: 18,
-                        fontWeight: "900",
-                        marginTop: 4,
-                      }}
-                    >
-                      {zoneOpportunityScore}%
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: "#60A5FA",
-                        fontSize: 11,
-                        fontWeight: "700",
-                        marginTop: 2,
-                      }}
-                    >
-                      {zoneOpportunityLabel}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={{
-                      flex: 1,
-                      borderRadius: 18,
-                      padding: 12,
-                      backgroundColor: "rgba(15,23,42,0.72)",
-                      borderWidth: 1,
-                      borderColor: "rgba(51,65,85,0.6)",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: "#94A3B8",
-                        fontSize: 10,
-                        fontWeight: "700",
-                      }}
-                    >
-                      ACTIVE AREA
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: "#F8FAFC",
-                        fontSize: 16,
-                        fontWeight: "900",
-                        marginTop: 4,
-                      }}
-                    >
-                      {currentZone?.name ?? "Live area"}
-                    </Text>
-
-                    <Text
-                      style={{
-                        color: currentZone
-                          ? getZoneColors(currentZone.activity).labelColor
-                          : "#A5B4FC",
-                        fontSize: 11,
-                        fontWeight: "700",
-                        marginTop: 2,
-                      }}
-                    >
-                      {currentZone
-                        ? getActivityLabel(currentZone.activity)
-                        : t("driver.map.zoneUnknown")}
-                    </Text>
-                  </View>
-                </View>
-
-                <View
-                  style={{
-                    marginTop: 14,
-                    borderTopWidth: 1,
-                    borderTopColor: "#1E293B",
-                    paddingTop: 12,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: 10,
-                    }}
-                  >
-                    <View style={{ flex: 1, paddingRight: 10 }}>
-                      <Text style={{ color: "#94A3B8", fontSize: 11 }}>
-                        {t("driver.map.zoneActivityTitle")}
-                        {currentZone ? ` (${currentZone.name})` : ""}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: currentZone
-                            ? getZoneColors(currentZone.activity).labelColor
-                            : "#A5B4FC",
-                          fontSize: 14,
-                          fontWeight: "900",
-                          marginTop: 3,
-                        }}
-                      >
-                        {currentZone
-                          ? getActivityLabel(currentZone.activity)
-                          : t("driver.map.zoneUnknown")}
-                      </Text>
-
-                      {boostLabelGlobal && (
-                        <View
-                          style={{
-                            marginTop: 7,
-                            alignSelf: "flex-start",
-                            paddingHorizontal: 9,
-                            paddingVertical: 5,
-                            borderRadius: 999,
-                            backgroundColor: "rgba(120,53,15,0.32)",
-                            borderWidth: 1,
-                            borderColor: "rgba(251,191,36,0.25)",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              color: "#FBBF24",
-                              fontSize: 11,
-                              fontWeight: "800",
-                            }}
-                          >
-                            {t("driver.map.bonusEstimated", {
-                              boost: boostLabelGlobal,
-                            })}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <View
-                      style={{
-                        minWidth: 106,
-                        backgroundColor: "rgba(15,23,42,0.7)",
-                        borderRadius: 16,
-                        padding: 10,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#94A3B8",
-                          fontSize: 11,
-                          textAlign: "right",
-                        }}
-                      >
-                        {t("driver.map.nextUpdateTitle")}
-                      </Text>
-
-                      <Text
-                        style={{
-                          color: "#F8FAFC",
-                          fontSize: 13,
-                          fontWeight: "700",
-                          textAlign: "right",
-                          marginTop: 3,
-                        }}
-                      >
-                        {t("driver.map.updateIntervalOnline")}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {IS_DEV && (
-                    <View
-                      style={{
-                        marginTop: 12,
-                        paddingTop: 10,
-                        borderTopWidth: 1,
-                        borderTopColor: "#1F2937",
-                      }}
-                    >
-                      <TouchableOpacity
-                        onPress={triggerTestIncomingOrder}
-                        activeOpacity={0.85}
-                        style={{
-                          alignSelf: "center",
-                          paddingHorizontal: 14,
-                          paddingVertical: 8,
-                          borderRadius: 999,
-                          backgroundColor: "#0F172A",
-                          borderWidth: 1,
-                          borderColor: "#4B5563",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#CBD5E1",
-                            fontSize: 11,
-                            fontWeight: "700",
-                          }}
-                        >
-                          {t("driver.map.debug.testIncomingOrder")}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-
-                <View
-                  style={{
-                    marginTop: 16,
-                    borderTopWidth: 1,
-                    borderTopColor: "#1E293B",
-                    paddingTop: 12,
-                    maxHeight: 235,
-                  }}
-                >
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: 8,
-                    }}
-                  >
-                    <View>
-                      <Text
-                        style={{
-                          color: "#E5E7EB",
-                          fontSize: 15,
-                          fontWeight: "800",
-                        }}
-                      >
-                        {t("driver.map.myOrders.title")}
-                      </Text>
-
-                      <Text
-                        style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}
-                      >
-                        Historique et commandes assignées
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={() => void fetchDriverOrders()}
-                      activeOpacity={0.85}
-                      disabled={ordersLoading}
-                      style={{
-                        paddingHorizontal: 10,
-                        paddingVertical: 7,
-                        borderRadius: 999,
-                        backgroundColor: "rgba(15,23,42,0.8)",
-                        borderWidth: 1,
-                        borderColor: "rgba(59,130,246,0.45)",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#60A5FA",
-                          fontSize: 11,
-                          fontWeight: "800",
-                        }}
-                      >
-                        {ordersLoading
-                          ? t("driver.map.myOrders.loading")
-                          : t("shared.common.refresh", "Rafraîchir")}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {ordersLoading && (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        marginBottom: 8,
-                        paddingVertical: 8,
-                      }}
-                    >
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-
-                      <Text
-                        style={{
-                          color: "#9CA3AF",
-                          fontSize: 11,
-                          marginLeft: 8,
-                        }}
-                      >
-                        {t("driver.map.myOrders.loading")}
-                      </Text>
-                    </View>
-                  )}
-
-                  {ordersError && (
-                    <View
-                      style={{
-                        marginBottom: 8,
-                        paddingHorizontal: 10,
-                        paddingVertical: 8,
-                        borderRadius: 12,
-                        backgroundColor: "rgba(127,29,29,0.28)",
-                        borderWidth: 1,
-                        borderColor: "rgba(251,113,133,0.25)",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: "#FECACA",
-                          fontSize: 11,
-                          fontWeight: "600",
-                        }}
-                      >
-                        {ordersError}
-                      </Text>
-                    </View>
-                  )}
-
-                  <ScrollView
-                    style={{ maxHeight: 172 }}
-                    contentContainerStyle={{ paddingBottom: 4 }}
-                    showsVerticalScrollIndicator={false}
-                  >
-                    {driverOrders.length === 0 && !ordersLoading ? (
-                      <View
-                        style={{
-                          paddingVertical: 16,
-                          paddingHorizontal: 12,
-                          borderRadius: 18,
-                          backgroundColor: "rgba(15,23,42,0.55)",
-                        }}
-                      >
-                        <Text
-                          style={{
-                            color: "#CBD5E1",
-                            fontSize: 12,
-                            fontWeight: "700",
-                          }}
-                        >
-                          {t("driver.map.myOrders.emptyTitle")}
-                        </Text>
-
-                        <Text
-                          style={{
-                            color: "#6B7280",
-                            fontSize: 10,
-                            marginTop: 4,
-                          }}
-                        >
-                          {t("driver.map.myOrders.emptySubtitle")}
-                        </Text>
-                      </View>
-                    ) : (
-                      driverOrders.map((order) => renderOrderCard(order))
-                    )}
-                  </ScrollView>
-                </View>
-              </View>
-            </Animated.View>
 
             {errorMsg && (
               <View
                 style={{
                   position: "absolute",
-                  top: 14,
-                  left: 12,
-                  right: 12,
-                  paddingVertical: 9,
-                  paddingHorizontal: 12,
+                  left: 18,
+                  right: 18,
+                  bottom: 26,
+                  padding: 12,
                   borderRadius: 14,
                   backgroundColor: "rgba(127,29,29,0.96)",
                   borderWidth: 1,
                   borderColor: "rgba(251,113,133,0.3)",
                 }}
               >
-                <Text
-                  style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "700" }}
-                >
+                <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "700" }}>
                   {errorMsg}
                 </Text>
               </View>

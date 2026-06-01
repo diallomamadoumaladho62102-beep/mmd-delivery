@@ -25,6 +25,7 @@ import { API_BASE_URL } from "../lib/apiBase";
 import { startMaskedCall } from "../lib/maskedCall";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
 
 import {
   startDriverLocationTracking,
@@ -1295,6 +1296,34 @@ export function DriverOrderDetailsScreen() {
       }
 
       if (uri) {
+        try {
+          const manipulated = await ImageManipulator.manipulateAsync(
+            uri,
+            [],
+            {
+              compress: 0.72,
+              format: ImageManipulator.SaveFormat.JPEG,
+              base64: true,
+            }
+          );
+
+          const manipulatedBase64 = String(
+            (manipulated as any)?.base64 || ""
+          ).trim();
+
+          if (manipulatedBase64) {
+            setProofPhotoUri(`data:image/jpeg;base64,${manipulatedBase64}`);
+            return;
+          }
+
+          if (manipulated?.uri) {
+            setProofPhotoUri(manipulated.uri);
+            return;
+          }
+        } catch (manipulateError) {
+          console.log("proof photo manipulate fallback:", manipulateError);
+        }
+
         setProofPhotoUri(uri);
         return;
       }
