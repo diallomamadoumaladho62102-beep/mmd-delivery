@@ -346,6 +346,123 @@ async function createImageBlobFromLocalUri(photoUri: string) {
   }
 }
 
+
+async function copyProofPhotoToStableCache(photoUri: string) {
+  const cleanUri = String(photoUri || "").trim();
+
+  if (!cleanUri) {
+    throw new Error("PHOTO_URI_MISSING");
+  }
+
+  if (/^data:image\//i.test(cleanUri)) {
+    return cleanUri;
+  }
+
+  if (!FILE_SYSTEM_CACHE_DIRECTORY) {
+    return cleanUri;
+  }
+
+  const mimeType = getMimeTypeFromPhotoUri(cleanUri);
+  const destinationUri = `${FILE_SYSTEM_CACHE_DIRECTORY}mmd-proof-stable-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}.${getExtensionFromMimeType(mimeType)}`;
+
+  try {
+    await FileSystem.copyAsync({
+      from: cleanUri,
+      to: destinationUri,
+    });
+
+    return destinationUri;
+  } catch (error) {
+    console.log("proof photo stable cache copy warning:", error);
+    return cleanUri;
+  }
+}
+
+async function prepareAndValidateProofPhotoUri(sourceUri: string) {
+  const cleanSourceUri = String(sourceUri || "").trim();
+
+  if (!cleanSourceUri) {
+    throw new Error("PHOTO_URI_MISSING");
+  }
+
+  let candidateUri = cleanSourceUri;
+
+  try {
+    const manipulated = await ImageManipulator.manipulateAsync(
+      cleanSourceUri,
+      [{ resize: { width: 1280 } }],
+      {
+        compress: 0.55,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: false,
+      }
+    );
+
+    const manipulatedUri = String(manipulated?.uri || "").trim();
+
+    if (manipulatedUri) {
+      candidateUri = manipulatedUri;
+    }
+  } catch (error) {
+    console.log("proof photo manipulate warning:", error);
+  }
+
+  const stableUri = await copyProofPhotoToStableCache(candidateUri);
+
+  try {
+    await createImageBlobFromLocalUri(stableUri);
+    return stableUri;
+  } catch (firstError: any) {
+    const firstMessage = String(firstError?.message ?? firstError ?? "");
+
+    if (firstMessage === "PHOTO_TOO_LARGE" || firstMessage === "PHOTO_EMPTY") {
+      throw firstError;
+    }
+
+    console.log("proof photo stable uri validation warning:", firstMessage);
+  }
+
+  if (stableUri !== cleanSourceUri) {
+    const fallbackStableUri = await copyProofPhotoToStableCache(cleanSourceUri);
+    await createImageBlobFromLocalUri(fallbackStableUri);
+    return fallbackStableUri;
+  }
+
+  throw new Error("PHOTO_READ_FAILED");
+}
+
+function getProofPhotoErrorMessage(t: any, error: any) {
+  const message = String(error?.message ?? error ?? "");
+
+  if (message === "PHOTO_TOO_LARGE") {
+    return t(
+      "driver.orderDetails.photo.tooLarge",
+      "La photo est trop grande. Reprends une photo plus légère."
+    );
+  }
+
+  if (
+    message === "PHOTO_EMPTY" ||
+    message === "PHOTO_URI_MISSING" ||
+    message === "PHOTO_READ_FAILED" ||
+    message === "PHOTO_FILE_NOT_FOUND" ||
+    message === "Photo URI missing." ||
+    message === "Photo file not found."
+  ) {
+    return t(
+      "driver.orderDetails.photo.readError",
+      "Impossible de lire la photo. Reprends une nouvelle photo."
+    );
+  }
+
+  return t(
+    "driver.orderDetails.photo.readError",
+    "Impossible de lire la photo. Reprends une nouvelle photo."
+  );
+}
+
 type MapRegion = {
   latitude: number;
   longitude: number;
@@ -595,6 +712,7 @@ export function DriverOrderDetailsScreen() {
   const [submittingCode, setSubmittingCode] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
+  const [proofPhotoPreparing, setProofPhotoPreparing] = useState(false);
   const [proofUploading, setProofUploading] = useState(false);
   const [calling, setCalling] = useState<CommunicationTarget | null>(null);
   const [clientProfile, setClientProfile] = useState<BasicProfile | null>(null);
@@ -1214,6 +1332,7 @@ export function DriverOrderDetailsScreen() {
     !canceling &&
     !submittingCode &&
     !proofUploading &&
+    !proofPhotoPreparing &&
     !order.driver_id &&
     (
       (isDeliveryRequest && ["pending", "paid_pending", "processing_pending"].includes(order.status)) ||
@@ -1227,6 +1346,7 @@ export function DriverOrderDetailsScreen() {
     !canceling &&
     !submittingCode &&
     !proofUploading &&
+    !proofPhotoPreparing &&
     (
       (isDeliveryRequest && order.status === "dispatched") ||
       (!isDeliveryRequest && (order.status === "accepted" || order.status === "ready"))
@@ -1244,6 +1364,7 @@ export function DriverOrderDetailsScreen() {
     setVerifyingKind(null);
     setCodeInput("");
     setProofPhotoUri(null);
+    setProofPhotoPreparing(false);
     setSubmittingCode(false);
     setProofUploading(false);
   }
@@ -1255,7 +1376,12 @@ export function DriverOrderDetailsScreen() {
   const driverPart = getConfiguredDriverPayout(order);
 
   async function takeProofPhoto() {
+    if (proofPhotoPreparing || proofUploading || submittingCode) return;
+
     try {
+      setProofPhotoPreparing(true);
+      setProofPhotoUri(null);
+
       const permission = await ImagePicker.requestCameraPermissionsAsync();
 
       if (permission.status !== "granted") {
@@ -1277,8 +1403,8 @@ export function DriverOrderDetailsScreen() {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes,
         allowsEditing: false,
-        quality: 0.72,
-        base64: true,
+        quality: 0.65,
+        base64: false,
         exif: false,
       } as any);
 
@@ -1286,65 +1412,24 @@ export function DriverOrderDetailsScreen() {
         return;
       }
 
-      const asset = result.assets[0];
-      const uri = String(asset?.uri || "").trim();
-      const base64 = String((asset as any)?.base64 || "").trim();
+      const sourceUri = String(result.assets[0]?.uri || "").trim();
 
-      if (base64) {
-        setProofPhotoUri(`data:image/jpeg;base64,${base64}`);
-        return;
+      if (!sourceUri) {
+        throw new Error("PHOTO_URI_MISSING");
       }
 
-      if (uri) {
-        try {
-          const manipulated = await ImageManipulator.manipulateAsync(
-            uri,
-            [],
-            {
-              compress: 0.72,
-              format: ImageManipulator.SaveFormat.JPEG,
-              base64: true,
-            }
-          );
+      const finalUri = await prepareAndValidateProofPhotoUri(sourceUri);
 
-          const manipulatedBase64 = String(
-            (manipulated as any)?.base64 || ""
-          ).trim();
-
-          if (manipulatedBase64) {
-            setProofPhotoUri(`data:image/jpeg;base64,${manipulatedBase64}`);
-            return;
-          }
-
-          if (manipulated?.uri) {
-            setProofPhotoUri(manipulated.uri);
-            return;
-          }
-        } catch (manipulateError) {
-          console.log("proof photo manipulate fallback:", manipulateError);
-        }
-
-        setProofPhotoUri(uri);
-        return;
-      }
-
-      Alert.alert(
-        t("common.error", "Erreur"),
-        t(
-          "driver.orderDetails.photo.readError",
-          "Impossible de lire la photo. Reprends une nouvelle photo."
-        )
-      );
+      setProofPhotoUri(finalUri);
     } catch (e: any) {
       console.log("takeProofPhoto error:", e);
+      setProofPhotoUri(null);
       Alert.alert(
         t("common.error", "Erreur"),
-        e?.message ??
-          t(
-            "driver.orderDetails.photo.captureError",
-            "Impossible de prendre la photo pour le moment."
-          )
+        getProofPhotoErrorMessage(t, e)
       );
+    } finally {
+      setProofPhotoPreparing(false);
     }
   }
 
@@ -1358,38 +1443,7 @@ export function DriverOrderDetailsScreen() {
     setProofUploading(true);
     try {
       const blob = await createImageBlobFromLocalUri(photoUri).catch((e: any) => {
-        const message = String(e?.message ?? e ?? "");
-
-        if (message === "PHOTO_TOO_LARGE") {
-          throw new Error(
-            t(
-              "driver.orderDetails.photo.tooLarge",
-              "La photo est trop grande. Reprends une photo plus légère."
-            )
-          );
-        }
-
-        if (
-          message === "PHOTO_EMPTY" ||
-          message === "PHOTO_URI_MISSING" ||
-          message === "PHOTO_READ_FAILED" ||
-          message === "Photo URI missing." ||
-          message === "Photo file not found."
-        ) {
-          throw new Error(
-            t(
-              "driver.orderDetails.photo.readError",
-              "Impossible de lire la photo. Reprends une nouvelle photo."
-            )
-          );
-        }
-
-        throw new Error(
-          t(
-            "driver.orderDetails.photo.readError",
-            "Impossible de lire la photo. Reprends une nouvelle photo."
-          )
-        );
+        throw new Error(getProofPhotoErrorMessage(t, e));
       });
 
       if (blob.size > MAX_PROOF_PHOTO_BYTES) {
@@ -1745,8 +1799,30 @@ export function DriverOrderDetailsScreen() {
       return;
     }
 
+    if (proofPhotoPreparing) {
+      Alert.alert(
+        t("driver.orderDetails.photo.preparingTitle", "Photo en préparation"),
+        t(
+          "driver.orderDetails.photo.preparingBody",
+          "Attends que la photo soit prête avant de valider."
+        )
+      );
+      return;
+    }
+
     try {
       setSubmittingCode(true);
+
+      try {
+        await createImageBlobFromLocalUri(proofPhotoUri);
+      } catch (photoCheckError: any) {
+        setProofPhotoUri(null);
+        Alert.alert(
+          t("common.error", "Erreur"),
+          getProofPhotoErrorMessage(t, photoCheckError)
+        );
+        return;
+      }
 
       const kind = verifyingKind;
 
@@ -1898,6 +1974,7 @@ export function DriverOrderDetailsScreen() {
     canceling ||
     submittingCode ||
     proofUploading ||
+    proofPhotoPreparing ||
     !!verifyingKind ||
     isFinalStatus(order.status) ||
     !isAssignedDriver;
@@ -3105,7 +3182,7 @@ export function DriverOrderDetailsScreen() {
 
             <TouchableOpacity
               onPress={takeProofPhoto}
-              disabled={submittingCode || proofUploading}
+              disabled={submittingCode || proofUploading || proofPhotoPreparing}
               style={{
                 borderRadius: 12,
                 borderWidth: 1,
@@ -3117,9 +3194,11 @@ export function DriverOrderDetailsScreen() {
               }}
             >
               <Text style={{ color: "#BFDBFE", fontSize: 13, fontWeight: "800" }}>
-                {proofPhotoUri
-                  ? t("driver.orderDetails.photo.retake", "Reprendre la photo")
-                  : t("driver.orderDetails.photo.take", "Prendre la photo de preuve")}
+                {proofPhotoPreparing
+                  ? t("driver.orderDetails.photo.preparing", "Préparation de la photo...")
+                  : proofPhotoUri
+                    ? t("driver.orderDetails.photo.retake", "Reprendre la photo")
+                    : t("driver.orderDetails.photo.take", "Prendre la photo de preuve")}
               </Text>
             </TouchableOpacity>
 
@@ -3151,7 +3230,7 @@ export function DriverOrderDetailsScreen() {
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <TouchableOpacity
                 onPress={closeCodeModal}
-                disabled={submittingCode || proofUploading}
+                disabled={submittingCode || proofUploading || proofPhotoPreparing}
                 style={{
                   paddingVertical: 10,
                   paddingHorizontal: 14,
@@ -3168,17 +3247,17 @@ export function DriverOrderDetailsScreen() {
 
               <TouchableOpacity
                 onPress={handleSubmitCode}
-                disabled={submittingCode || proofUploading}
+                disabled={submittingCode || proofUploading || proofPhotoPreparing}
                 style={{
                   paddingVertical: 10,
                   paddingHorizontal: 16,
                   borderRadius: 999,
                   backgroundColor: "#22C55E",
-                  opacity: submittingCode || proofUploading ? 0.6 : 1,
+                  opacity: submittingCode || proofUploading || proofPhotoPreparing ? 0.6 : 1,
                 }}
               >
                 <Text style={{ color: "white", fontSize: 13, fontWeight: "900" }}>
-                  {submittingCode || proofUploading
+                  {submittingCode || proofUploading || proofPhotoPreparing
                     ? t("driver.orderDetails.modal.verifying", "Vérification...")
                     : t("driver.orderDetails.modal.submit", "Valider")}
                 </Text>
