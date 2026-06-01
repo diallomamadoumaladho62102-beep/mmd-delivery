@@ -24,7 +24,7 @@ import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../lib/apiBase";
 import { startMaskedCall } from "../lib/maskedCall";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 
 import {
@@ -189,8 +189,10 @@ function base64ToUint8Array(base64Value: string) {
   return new Uint8Array(output);
 }
 
-function getArrayBufferFromUint8Array(bytes: Uint8Array) {
-  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+function getFileSystemBase64Encoding(): "base64" | number {
+  const encodingType = (FileSystem as any).EncodingType;
+  if (encodingType?.Base64 != null) return encodingType.Base64;
+  return "base64";
 }
 
 function getMimeTypeFromPhotoUri(photoUri: string) {
@@ -221,69 +223,38 @@ function getExtensionFromMimeType(mimeType: string) {
   return "jpg";
 }
 
-function createBlobFromBase64(base64Value: string, mimeType = "image/jpeg") {
-  const bytes = base64ToUint8Array(base64Value);
-
-  if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
-    throw new Error("PHOTO_TOO_LARGE");
-  }
-
+function validateProofPhotoBytes(bytes: Uint8Array) {
   if (bytes.byteLength === 0) {
     throw new Error("PHOTO_EMPTY");
   }
 
-  return new Blob([getArrayBufferFromUint8Array(bytes) as ArrayBuffer], {
-    type: mimeType,
-  });
-}
-
-async function fetchUriAsBlob(uri: string, mimeType: string) {
-  const response = await fetch(uri);
-
-  if (!response.ok) {
-    throw new Error(`PHOTO_FETCH_FAILED_${response.status}`);
-  }
-
-  const blob = await response.blob();
-
-  if (blob.size > MAX_PROOF_PHOTO_BYTES) {
+  if (bytes.byteLength > MAX_PROOF_PHOTO_BYTES) {
     throw new Error("PHOTO_TOO_LARGE");
   }
-
-  if (blob.size === 0) {
-    throw new Error("PHOTO_EMPTY");
-  }
-
-  return blob;
 }
 
-async function readImageFileAsBlob(uri: string, mimeType: string) {
-  const info = await FileSystem.getInfoAsync(uri, { size: true } as any);
+async function resolveProofPhotoFileUri(photoUri: string): Promise<string> {
+  const cleanUri = String(photoUri || "").trim();
 
-  if (!(info as any)?.exists) {
-    throw new Error("PHOTO_FILE_NOT_FOUND");
+  if (!cleanUri) {
+    throw new Error("PHOTO_URI_MISSING");
   }
 
-  const size = typeof (info as any)?.size === "number" ? (info as any).size : null;
-
-  if (size != null && size > MAX_PROOF_PHOTO_BYTES) {
-    throw new Error("PHOTO_TOO_LARGE");
+  if (/^data:image\//i.test(cleanUri)) {
+    return cleanUri;
   }
 
-  try {
-    return await fetchUriAsBlob(uri, mimeType);
-  } catch (fetchError) {
-    console.log("proof photo fetch fallback:", fetchError);
+  if (/^file:\/\//i.test(cleanUri)) {
+    return cleanUri;
   }
 
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: (FileSystem as any).EncodingType?.Base64 ?? "base64",
-  } as any);
-
-  return createBlobFromBase64(base64, mimeType);
+  return copyProofPhotoToStableCache(cleanUri);
 }
 
-async function createImageBlobFromLocalUri(photoUri: string) {
+/** Lecture fiable Android/iOS : FileSystem base64 → Uint8Array (pas de fetch/Blob). */
+async function readProofPhotoBytesFromLocalUri(
+  photoUri: string
+): Promise<{ bytes: Uint8Array; mimeType: string }> {
   const cleanUri = String(photoUri || "").trim();
 
   if (!cleanUri) {
@@ -293,59 +264,47 @@ async function createImageBlobFromLocalUri(photoUri: string) {
   const mimeType = getMimeTypeFromPhotoUri(cleanUri);
 
   if (/^data:image\//i.test(cleanUri)) {
-    return createBlobFromBase64(cleanUri, mimeType);
+    const bytes = base64ToUint8Array(cleanUri);
+    validateProofPhotoBytes(bytes);
+    return { bytes, mimeType };
   }
 
+  const fileUri = await resolveProofPhotoFileUri(cleanUri);
+
+  const info = await FileSystem.getInfoAsync(fileUri, { size: true } as any);
+
+  if (!(info as any)?.exists) {
+    throw new Error("PHOTO_FILE_NOT_FOUND");
+  }
+
+  const fileSize =
+    typeof (info as any)?.size === "number" ? (info as any).size : null;
+
+  if (fileSize != null && fileSize > MAX_PROOF_PHOTO_BYTES) {
+    throw new Error("PHOTO_TOO_LARGE");
+  }
+
+  let base64: string;
   try {
-    return await fetchUriAsBlob(cleanUri, mimeType);
-  } catch (error: any) {
-    const message = String(error?.message ?? error ?? "");
-
-    if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
-      throw error;
-    }
-
-    console.log("proof photo direct fetch warning:", message);
-  }
-
-  if (/^content:\/\//i.test(cleanUri) || /^file:\/\//i.test(cleanUri)) {
-    const cacheUri = `${FILE_SYSTEM_CACHE_DIRECTORY}mmd-proof-${Date.now()}.${getExtensionFromMimeType(
-      mimeType
-    )}`;
-
-    if (FILE_SYSTEM_CACHE_DIRECTORY) {
-      try {
-        await FileSystem.copyAsync({
-          from: cleanUri,
-          to: cacheUri,
-        });
-
-        return await readImageFileAsBlob(cacheUri, mimeType);
-      } catch (error: any) {
-        const message = String(error?.message ?? error ?? "");
-
-        if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
-          throw error;
-        }
-
-        console.log("proof photo cache copy warning:", message);
-      }
-    }
-  }
-
-  try {
-    return await readImageFileAsBlob(cleanUri, mimeType);
-  } catch (error: any) {
-    const message = String(error?.message ?? error ?? "");
-
-    if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
-      throw error;
-    }
-
+    base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: getFileSystemBase64Encoding(),
+    } as any);
+  } catch (readError) {
+    console.log("[MMD_PROOF] readAsStringAsync failed:", readError);
     throw new Error("PHOTO_READ_FAILED");
   }
+
+  const bytes = base64ToUint8Array(base64);
+  validateProofPhotoBytes(bytes);
+
+  return { bytes, mimeType };
 }
 
+function sleepMs(ms: number) {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 async function copyProofPhotoToStableCache(photoUri: string) {
   const cleanUri = String(photoUri || "").trim();
@@ -412,7 +371,7 @@ async function prepareAndValidateProofPhotoUri(sourceUri: string) {
   const stableUri = await copyProofPhotoToStableCache(candidateUri);
 
   try {
-    await createImageBlobFromLocalUri(stableUri);
+    await readProofPhotoBytesFromLocalUri(stableUri);
     return stableUri;
   } catch (firstError: any) {
     const firstMessage = String(firstError?.message ?? firstError ?? "");
@@ -426,7 +385,7 @@ async function prepareAndValidateProofPhotoUri(sourceUri: string) {
 
   if (stableUri !== cleanSourceUri) {
     const fallbackStableUri = await copyProofPhotoToStableCache(cleanSourceUri);
-    await createImageBlobFromLocalUri(fallbackStableUri);
+    await readProofPhotoBytesFromLocalUri(fallbackStableUri);
     return fallbackStableUri;
   }
 
@@ -1440,42 +1399,82 @@ export function DriverOrderDetailsScreen() {
   }) {
     const { orderId: currentOrderId, kind, photoUri } = params;
 
+    console.log("[MMD_PROOF] uploadProofPhoto START", {
+      orderId: currentOrderId,
+      kind,
+      uri: photoUri?.slice(0, 80),
+    });
+
     setProofUploading(true);
     try {
-      const blob = await createImageBlobFromLocalUri(photoUri).catch((e: any) => {
-        throw new Error(getProofPhotoErrorMessage(t, e));
-      });
-
-      if (blob.size > MAX_PROOF_PHOTO_BYTES) {
-        throw new Error(
-          t(
-            "driver.orderDetails.photo.tooLarge",
-            "La photo est trop grande. Reprends une photo plus légère."
-          )
-        );
-      }
+      const { bytes, mimeType } = await readProofPhotoBytesFromLocalUri(photoUri).catch(
+        (e: any) => {
+          throw new Error(getProofPhotoErrorMessage(t, e));
+        }
+      );
 
       const uid = myUserId || "unknown-driver";
-      const contentType = blob.type || getMimeTypeFromPhotoUri(photoUri);
+      const contentType = mimeType || getMimeTypeFromPhotoUri(photoUri);
       const ext = getExtensionFromMimeType(contentType);
       const filePath = `${currentOrderId}/${uid}/${kind}-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}.${ext}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from(PROOF_BUCKET)
-        .upload(filePath, blob, {
+      console.log("[MMD_PROOF] STEP storage.upload REACHED", {
+        bucket: PROOF_BUCKET,
+        filePath,
+        byteSize: bytes.byteLength,
+        contentType,
+      });
+
+      let uploadError: { message?: string; name?: string; status?: unknown; statusCode?: unknown } | null =
+        null;
+
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        const { error } = await supabase.storage.from(PROOF_BUCKET).upload(filePath, bytes, {
           contentType,
           upsert: false,
         });
 
+        if (!error) {
+          uploadError = null;
+          break;
+        }
+
+        uploadError = error;
+        console.log("[MMD_PROOF] STEP storage.upload attempt failed", {
+          attempt,
+          message: error.message,
+          name: error.name,
+          status: (error as any)?.status,
+          statusCode: (error as any)?.statusCode,
+        });
+
+        if (attempt < 3) {
+          await sleepMs(500 * attempt);
+        }
+      }
+
       if (uploadError) {
+        console.log("[MMD_PROOF] STEP storage.upload FAIL", {
+          message: uploadError.message,
+          name: uploadError.name,
+          status: uploadError.status,
+          statusCode: uploadError.statusCode,
+        });
         throw uploadError;
       }
+
+      console.log("[MMD_PROOF] STEP storage.upload OK", { filePath });
 
       const { data: publicData } = supabase.storage
         .from(PROOF_BUCKET)
         .getPublicUrl(filePath);
+
+      console.log("[MMD_PROOF] uploadProofPhoto DONE", {
+        storagePath: filePath,
+        publicUrl: publicData?.publicUrl,
+      });
 
       return {
         storagePath: filePath,
@@ -1515,17 +1514,41 @@ export function DriverOrderDetailsScreen() {
         ? `${apiBaseUrl}/api/orders/pickup-confirm`
         : `${apiBaseUrl}/api/orders/delivered-confirm`;
 
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        order_id: currentOrderId,
-        proof_photo_url: proofPhotoUrl,
-        driver_id: myUserId,
-      }),
+    console.log("[MMD_PROOF] callConfirmRoute START", {
+      kind,
+      orderId: currentOrderId,
+      proofPhotoUrl: proofPhotoUrl?.slice(0, 120),
+      apiBaseUrl,
+      endpoint,
+    });
+
+    console.log("[MMD_PROOF] STEP fetch confirm REACHED");
+
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          order_id: currentOrderId,
+          proof_photo_url: proofPhotoUrl,
+          driver_id: myUserId,
+        }),
+      });
+    } catch (fetchErr: any) {
+      console.log("[MMD_PROOF] STEP fetch confirm NETWORK_FAIL", {
+        message: fetchErr?.message,
+        name: fetchErr?.name,
+      });
+      throw fetchErr;
+    }
+
+    console.log("[MMD_PROOF] STEP fetch confirm RESPONSE", {
+      status: response.status,
+      ok: response.ok,
     });
 
     const result = await response.json().catch(() => null);
@@ -1813,9 +1836,23 @@ export function DriverOrderDetailsScreen() {
     try {
       setSubmittingCode(true);
 
+      console.log("[MMD_PROOF] handleSubmitCode START", {
+        orderId: order?.id,
+        source: getOrderSourceTable(order),
+        kind: verifyingKind,
+        proofPhotoUri: proofPhotoUri?.slice(0, 80),
+      });
+
       try {
-        await createImageBlobFromLocalUri(proofPhotoUri);
+        const precheck = await readProofPhotoBytesFromLocalUri(proofPhotoUri);
+        console.log("[MMD_PROOF] STEP photo precheck OK", {
+          byteSize: precheck.bytes.byteLength,
+        });
       } catch (photoCheckError: any) {
+        console.log("[MMD_PROOF] STEP photo precheck FAIL", {
+          message: photoCheckError?.message,
+          name: photoCheckError?.name,
+        });
         setProofPhotoUri(null);
         Alert.alert(
           t("common.error", "Erreur"),
@@ -1840,6 +1877,12 @@ export function DriverOrderDetailsScreen() {
             .eq("status", "dispatched")
             .eq(codeColumn, normalizedCode)
             .maybeSingle();
+
+        console.log("[MMD_PROOF] STEP delivery_requests code SELECT", {
+          ok: !matchingDeliveryRequestError,
+          matched: !!matchingDeliveryRequest,
+          error: matchingDeliveryRequestError?.message,
+        });
 
         if (matchingDeliveryRequestError) throw matchingDeliveryRequestError;
 
@@ -1910,10 +1953,22 @@ export function DriverOrderDetailsScreen() {
         photoUri: proofPhotoUri,
       });
 
+      console.log("[MMD_PROOF] STEP verify_order_code CALL", {
+        orderId: order.id,
+        kind,
+        codeLen: normalizedCode.length,
+      });
+
       const { data, error } = await supabase.rpc("verify_order_code", {
         p_order_id: order.id,
         p_input_code: normalizedCode,
         p_code_type: kind,
+      });
+
+      console.log("[MMD_PROOF] STEP verify_order_code RESULT", {
+        rpcError: error?.message ?? null,
+        success: (data as any)?.success,
+        rpcMessage: (data as any)?.message,
       });
 
       if (error) {
@@ -1951,6 +2006,11 @@ export function DriverOrderDetailsScreen() {
 
       Alert.alert(t("common.success", "Succès"), message);
     } catch (e: any) {
+      console.error("[MMD_PROOF] handleSubmitCode CATCH", {
+        message: e?.message,
+        name: e?.name,
+        stack: e?.stack,
+      });
       console.error("Erreur handleSubmitCode:", e);
       Alert.alert(
         t("common.error", "Erreur"),
