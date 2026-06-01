@@ -236,6 +236,26 @@ function createBlobFromBase64(base64Value: string, mimeType = "image/jpeg") {
   });
 }
 
+async function fetchUriAsBlob(uri: string, mimeType: string) {
+  const response = await fetch(uri);
+
+  if (!response.ok) {
+    throw new Error(`PHOTO_FETCH_FAILED_${response.status}`);
+  }
+
+  const blob = await response.blob();
+
+  if (blob.size > MAX_PROOF_PHOTO_BYTES) {
+    throw new Error("PHOTO_TOO_LARGE");
+  }
+
+  if (blob.size === 0) {
+    throw new Error("PHOTO_EMPTY");
+  }
+
+  return blob;
+}
+
 async function readImageFileAsBlob(uri: string, mimeType: string) {
   const info = await FileSystem.getInfoAsync(uri, { size: true } as any);
 
@@ -249,9 +269,15 @@ async function readImageFileAsBlob(uri: string, mimeType: string) {
     throw new Error("PHOTO_TOO_LARGE");
   }
 
+  try {
+    return await fetchUriAsBlob(uri, mimeType);
+  } catch (fetchError) {
+    console.log("proof photo fetch fallback:", fetchError);
+  }
+
   const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: "base64" as any,
-  });
+    encoding: (FileSystem as any).EncodingType?.Base64 ?? "base64",
+  } as any);
 
   return createBlobFromBase64(base64, mimeType);
 }
@@ -270,13 +296,15 @@ async function createImageBlobFromLocalUri(photoUri: string) {
   }
 
   try {
-    return await readImageFileAsBlob(cleanUri, mimeType);
+    return await fetchUriAsBlob(cleanUri, mimeType);
   } catch (error: any) {
     const message = String(error?.message ?? error ?? "");
 
     if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
       throw error;
     }
+
+    console.log("proof photo direct fetch warning:", message);
   }
 
   if (/^content:\/\//i.test(cleanUri) || /^file:\/\//i.test(cleanUri)) {
@@ -298,28 +326,14 @@ async function createImageBlobFromLocalUri(photoUri: string) {
         if (message === "PHOTO_TOO_LARGE" || message === "PHOTO_EMPTY") {
           throw error;
         }
+
+        console.log("proof photo cache copy warning:", message);
       }
     }
   }
 
   try {
-    const response = await fetch(cleanUri);
-
-    if (!response.ok) {
-      throw new Error(`PHOTO_FETCH_FAILED_${response.status}`);
-    }
-
-    const blob = await response.blob();
-
-    if (blob.size > MAX_PROOF_PHOTO_BYTES) {
-      throw new Error("PHOTO_TOO_LARGE");
-    }
-
-    if (blob.size === 0) {
-      throw new Error("PHOTO_EMPTY");
-    }
-
-    return blob;
+    return await readImageFileAsBlob(cleanUri, mimeType);
   } catch (error: any) {
     const message = String(error?.message ?? error ?? "");
 
@@ -330,7 +344,6 @@ async function createImageBlobFromLocalUri(photoUri: string) {
     throw new Error("PHOTO_READ_FAILED");
   }
 }
-
 
 type MapRegion = {
   latitude: number;
@@ -1751,6 +1764,8 @@ export function DriverOrderDetailsScreen() {
               status: nextStatus,
               updated_at: nowIso,
               [verifiedAtColumn]: nowIso,
+              [kind === "pickup" ? "pickup_photo_url" : "dropoff_photo_url"]:
+                uploaded.publicUrl,
             })
             .eq("id", order.id)
             .eq("driver_id", myUserId)

@@ -1,4 +1,4 @@
-﻿import React, {
+import React, {
   useCallback,
   useEffect,
   useMemo,
@@ -21,13 +21,14 @@ import {
   Image,
 } from "react-native";
 import Mapbox from "@rnmapbox/maps";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import * as Location from "expo-location";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "../lib/supabase";
+import { getDriverOnlineStatus } from "../lib/driverStatus";
 import {
   calculateHeading,
   fetchNavigationRoute,
@@ -417,9 +418,9 @@ export default function DriverMapScreen() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // DriverHomeScreen is the only place that controls online/offline, GPS tracking,
-  // live offers, and sounds. DriverMapScreen stays passive to avoid duplicate listeners.
-  const isOnline = false;
+  // DriverMapScreen only reads the saved online/offline status.
+  // DriverHomeScreen remains the source of truth for changing online/offline.
+  const [isOnline, setIsOnline] = useState(false);
 
   const [restaurants, setRestaurants] = useState<RestaurantPin[]>([]);
   const [restaurantsLoading, setRestaurantsLoading] = useState(false);
@@ -465,6 +466,27 @@ export default function DriverMapScreen() {
   const incomingOpacity = useRef(new Animated.Value(0)).current;
 
   const mapStyleURL = isNightMode ? MAP_STYLE_DARK : MAP_STYLE_STREETS;
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      void (async () => {
+        try {
+          const savedOnline = await getDriverOnlineStatus();
+          if (active) setIsOnline(savedOnline);
+        } catch (e) {
+          if (IS_DEV) {
+            console.log("DriverMapScreen online status sync warning:", e);
+          }
+        }
+      })();
+
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
 
   const animateSheet = useCallback(
     (target: "collapsed" | "expanded") => {
@@ -579,12 +601,6 @@ export default function DriverMapScreen() {
     ? t("driver.map.online")
     : t("driver.map.offline");
 
-  const statusSubtitle = isOnline
-    ? t("driver.map.statusOnlineSubtitle")
-    : hasLocation
-      ? t("driver.map.statusOfflineSubtitleHasLocation")
-      : t("driver.map.statusOfflineSubtitleNoLocation");
-
   const boostMultiplier =
     currentZone?.activity === "very_busy"
       ? 1.6
@@ -594,8 +610,6 @@ export default function DriverMapScreen() {
 
   const boostLabelGlobal =
     boostMultiplier > 1 ? `x${boostMultiplier.toFixed(1)}` : null;
-
-  const sheetSummaryCardColor = isOnline ? "#031A12" : "#1A0B0F";
 
   const isNavigationActive = Boolean(incomingOrder && navigationRoute?.geometry);
 
@@ -2334,6 +2348,36 @@ export default function DriverMapScreen() {
               }}
             />
 
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 44,
+                right: 16,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: isOnline
+                  ? "rgba(5,46,22,0.88)"
+                  : "rgba(69,10,10,0.82)",
+                borderWidth: 1,
+                borderColor: isOnline
+                  ? "rgba(34,197,94,0.58)"
+                  : "rgba(251,113,133,0.48)",
+              }}
+            >
+              <Text
+                style={{
+                  color: isOnline ? "#86EFAC" : "#FECACA",
+                  fontSize: 11,
+                  fontWeight: "900",
+                  letterSpacing: 0.4,
+                }}
+              >
+                {statusTitle}
+              </Text>
+            </View>
+
             {navigationInstruction && (
               <View
                 pointerEvents="none"
@@ -2846,14 +2890,17 @@ export default function DriverMapScreen() {
                 left: 0,
                 right: 0,
                 top: sheetTop,
-                paddingHorizontal: 12,
-                paddingBottom: 24,
+                paddingHorizontal: 0,
+                paddingBottom: 0,
               }}
               {...panResponder.panHandlers}
             >
               <View
                 style={{
-                  borderRadius: 28,
+                  borderTopLeftRadius: 28,
+                  borderTopRightRadius: 28,
+                  borderBottomLeftRadius: 0,
+                  borderBottomRightRadius: 0,
                   paddingHorizontal: 16,
                   paddingTop: 10,
                   paddingBottom: 18,
@@ -2888,88 +2935,54 @@ export default function DriverMapScreen() {
                   />
                 </TouchableOpacity>
 
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: 10,
-                  }}
-                >
-                  <View>
-                    <Text
-                      style={{
-                        color: "#FFFFFF",
-                        fontSize: 16,
-                        fontWeight: "800",
-                      }}
-                    >
-                      {t("driver.map.statusTitle")}
-                    </Text>
-
-                    <Text
-                      style={{ color: "#64748B", fontSize: 10, marginTop: 2 }}
-                    >
-                      Mode détection premium
-                    </Text>
-                  </View>
-
+                {navigationInstruction && (
                   <View
                     style={{
-                      paddingHorizontal: 10,
-                      paddingVertical: 5,
-                      borderRadius: 999,
-                      backgroundColor: isOnline
-                        ? "rgba(5,46,22,0.7)"
-                        : "rgba(69,10,10,0.65)",
+                      borderRadius: 20,
+                      padding: 14,
+                      backgroundColor: "rgba(2,6,23,0.82)",
                       borderWidth: 1,
-                      borderColor: isOnline
-                        ? "rgba(34,197,94,0.55)"
-                        : "rgba(251,113,133,0.45)",
+                      borderColor: "rgba(96,165,250,0.32)",
+                      marginBottom: 12,
                     }}
                   >
                     <Text
                       style={{
-                        color: isOnline ? "#86EFAC" : "#FECACA",
-                        fontSize: 11,
-                        fontWeight: "800",
+                        color: "#93C5FD",
+                        fontSize: 10,
+                        fontWeight: "900",
+                        letterSpacing: 0.8,
+                        textTransform: "uppercase",
                       }}
                     >
-                      {statusTitle}
+                      Navigation MMD
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#F8FAFC",
+                        fontSize: 16,
+                        fontWeight: "900",
+                        marginTop: 4,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {navigationInstruction.title}
+                    </Text>
+
+                    <Text
+                      style={{
+                        color: "#CBD5E1",
+                        fontSize: 12,
+                        fontWeight: "700",
+                        marginTop: 4,
+                      }}
+                      numberOfLines={1}
+                    >
+                      {navigationInstruction.subtitle}
                     </Text>
                   </View>
-                </View>
-
-                <View
-                  style={{
-                    backgroundColor: sheetSummaryCardColor,
-                    borderRadius: 20,
-                    padding: 14,
-                    borderWidth: 1,
-                    borderColor: isOnline
-                      ? "rgba(34,197,94,0.18)"
-                      : "rgba(251,113,133,0.18)",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: isOnline ? "#22C55E" : "#FB7185",
-                      fontSize: 14,
-                      fontWeight: "900",
-                      marginBottom: 5,
-                    }}
-                  >
-                    {isOnline
-                      ? t("driver.map.statusOnlineTitle")
-                      : t("driver.map.statusOfflineTitle")}
-                  </Text>
-
-                  <Text
-                    style={{ color: "#E2E8F0", fontSize: 11, lineHeight: 17 }}
-                  >
-                    {statusSubtitle}
-                  </Text>
-                </View>
+                )}
 
                 <View
                   style={{
