@@ -1,8 +1,16 @@
+import type { RefObject } from "react";
 import Mapbox from "@rnmapbox/maps";
+import type { CoordinatePoint } from "./coordinates";
+import { distanceMeters } from "./coordinates";
+import { distanceToRouteMeters } from "./navigationProgress";
+import { getMapboxToken, isMapboxConfigured } from "./mapboxConfig";
 
-export type RoutePoint = {
-  latitude: number;
-  longitude: number;
+export type RoutePoint = CoordinatePoint;
+
+export type NavigationRouteStep = {
+  instruction: string;
+  distanceMeters: number;
+  durationSeconds: number;
 };
 
 export type NavigationRoute = {
@@ -10,43 +18,61 @@ export type NavigationRoute = {
   durationSeconds: number;
   etaMinutes: number;
   geometry: GeoJSON.Feature<GeoJSON.LineString>;
+  steps: NavigationRouteStep[];
 };
-
-const MAPBOX_TOKEN =
-  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ||
-  process.env.MAPBOX_TOKEN ||
-  "";
 
 const DIRECTIONS_BASE =
   "https://api.mapbox.com/directions/v5/mapbox/driving";
 
-function validateCoords(point: RoutePoint) {
+function validateCoords(point: RoutePoint): boolean {
   return (
     Number.isFinite(point.latitude) &&
     Number.isFinite(point.longitude)
   );
 }
 
-function buildCoords(points: RoutePoint[]) {
-  return points
-    .map((p) => `${p.longitude},${p.latitude}`)
-    .join(";");
+function buildCoords(points: RoutePoint[]): string {
+  return points.map((p) => `${p.longitude},${p.latitude}`).join(";");
+}
+
+function parseSteps(rawSteps: unknown[]): NavigationRouteStep[] {
+  return rawSteps
+    .map((step) => {
+      const item = step as {
+        maneuver?: { instruction?: string };
+        distance?: number;
+        duration?: number;
+      };
+
+      const instruction = String(item?.maneuver?.instruction || "").trim();
+      if (!instruction) return null;
+
+      return {
+        instruction,
+        distanceMeters: Math.round(Number(item.distance) || 0),
+        durationSeconds: Math.round(Number(item.duration) || 0),
+      };
+    })
+    .filter((step): step is NavigationRouteStep => step != null);
+}
+
+export function isMapboxDirectionsAvailable(): boolean {
+  return isMapboxConfigured();
 }
 
 export async function fetchNavigationRoute(
   origin: RoutePoint,
   destination: RoutePoint,
   waypoints: RoutePoint[] = [],
+  signal?: AbortSignal,
 ): Promise<NavigationRoute | null> {
   try {
+    if (!isMapboxConfigured()) return null;
     if (!validateCoords(origin)) return null;
     if (!validateCoords(destination)) return null;
 
-    const coords = buildCoords([
-      origin,
-      ...waypoints,
-      destination,
-    ]);
+    const coords = buildCoords([origin, ...waypoints, destination]);
+    const token = getMapboxToken();
 
     const url =
       `${DIRECTIONS_BASE}/${coords}` +
@@ -55,20 +81,27 @@ export async function fetchNavigationRoute(
       `&geometries=geojson` +
       `&overview=full` +
       `&steps=true` +
-      `&access_token=${MAPBOX_TOKEN}`;
+      `&access_token=${token}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
 
     if (!response.ok) {
-      console.log("Mapbox directions error:", response.status);
       return null;
     }
 
-    const json = await response.json();
+    const json = (await response.json()) as {
+      routes?: Array<{
+        geometry?: { coordinates?: number[][] };
+        distance?: number;
+        duration?: number;
+        legs?: Array<{ steps?: unknown[] }>;
+      }>;
+    };
 
     const route = json?.routes?.[0];
+    const coordinates = route?.geometry?.coordinates;
 
-    if (!route) {
+    if (!route || !coordinates?.length) {
       return null;
     }
 
@@ -77,45 +110,38 @@ export async function fetchNavigationRoute(
       properties: {},
       geometry: {
         type: "LineString",
-        coordinates: route.geometry.coordinates,
+        coordinates,
       },
     };
 
     const durationSeconds = Math.round(route.duration || 0);
-    const distanceMeters = Math.round(route.distance || 0);
+    const distanceMetersValue = Math.round(route.distance || 0);
+    const rawSteps = route.legs?.flatMap((leg) => leg.steps ?? []) ?? [];
 
     return {
       geometry,
       durationSeconds,
-      distanceMeters,
-      etaMinutes: Math.max(
-        1,
-        Math.round(durationSeconds / 60),
-      ),
+      distanceMeters: distanceMetersValue,
+      etaMinutes: Math.max(1, Math.round(durationSeconds / 60)),
+      steps: parseSteps(rawSteps),
     };
-  } catch (e) {
-    console.log("fetchNavigationRoute error:", e);
+  } catch (error) {
+    if ((error as { name?: string })?.name === "AbortError") {
+      return null;
+    }
     return null;
   }
 }
 
 export async function fitCameraToRoute(
-  cameraRef: React.RefObject<Mapbox.Camera | null>,
-  route:
-    | GeoJSON.Feature<GeoJSON.LineString>
-    | null
-    | undefined,
-) {
+  cameraRef: RefObject<Mapbox.Camera | null>,
+  route: GeoJSON.Feature<GeoJSON.LineString> | null | undefined,
+): Promise<void> {
   try {
-    if (!cameraRef.current || !route) {
-      return;
-    }
+    if (!cameraRef.current || !route) return;
 
     const coords = route.geometry.coordinates;
-
-    if (!coords?.length) {
-      return;
-    }
+    if (!coords?.length) return;
 
     const ne = [
       Math.max(...coords.map((c) => c[0])),
@@ -133,33 +159,22 @@ export async function fitCameraToRoute(
       80,
       1200,
     );
-  } catch (e) {
-    console.log("fitCameraToRoute error:", e);
+  } catch {
+    // Camera failures must not crash navigation
   }
 }
 
-export function calculateHeading(
-  from: RoutePoint,
-  to: RoutePoint,
-) {
-  const dLon =
-    (to.longitude - from.longitude) *
-    (Math.PI / 180);
-
-  const lat1 = from.latitude * (Math.PI / 180);
-  const lat2 = to.latitude * (Math.PI / 180);
+export function calculateHeading(from: RoutePoint, to: RoutePoint): number {
+  const dLon = ((to.longitude - from.longitude) * Math.PI) / 180;
+  const lat1 = (from.latitude * Math.PI) / 180;
+  const lat2 = (to.latitude * Math.PI) / 180;
 
   const y = Math.sin(dLon) * Math.cos(lat2);
-
   const x =
     Math.cos(lat1) * Math.sin(lat2) -
-    Math.sin(lat1) *
-      Math.cos(lat2) *
-      Math.cos(dLon);
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
 
-  const brng = Math.atan2(y, x);
-
-  return ((brng * 180) / Math.PI + 360) % 360;
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
 export function distanceBetweenPoints(
@@ -167,53 +182,27 @@ export function distanceBetweenPoints(
   lon1: number,
   lat2: number,
   lon2: number,
-) {
-  const R = 6371000;
-
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+): number {
+  return distanceMeters(lat1, lon1, lat2, lon2);
 }
 
 export function shouldReroute(
   current: RoutePoint,
   route: GeoJSON.Feature<GeoJSON.LineString> | null | undefined,
   thresholdMeters = 90,
-) {
+): boolean {
   try {
     if (!validateCoords(current)) return false;
     if (!route?.geometry?.coordinates?.length) return false;
 
-    let minDistance = Infinity;
-
-    for (const coord of route.geometry.coordinates) {
-      const lng = Number(coord[0]);
-      const lat = Number(coord[1]);
-
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        continue;
-      }
-
-      const dist = distanceBetweenPoints(
-        current.latitude,
-        current.longitude,
-        lat,
-        lng,
-      );
-
-      minDistance = Math.min(minDistance, dist);
-    }
-
-    return Number.isFinite(minDistance) && minDistance > thresholdMeters;
+    const distance = distanceToRouteMeters(current, route);
+    return Number.isFinite(distance) && distance > thresholdMeters;
   } catch {
     return false;
   }
+}
+
+export function smoothHeading(current: number, next: number, factor = 0.28): number {
+  const delta = ((next - current + 540) % 360) - 180;
+  return (current + delta * factor + 360) % 360;
 }

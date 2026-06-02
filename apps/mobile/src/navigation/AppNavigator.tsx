@@ -94,7 +94,11 @@ export type RootStackParamList = {
 
   DriverTabs: undefined;
   DriverOrderDetails: { orderId: string };
-  DriverMap: undefined;
+  DriverMap: {
+    orderId: string;
+    sourceTable?: "orders" | "delivery_requests";
+    destinationStage?: "pickup" | "dropoff";
+  };
   DriverChat: {
     orderId: string;
     targetRole?: "client" | "restaurant" | "admin" | "";

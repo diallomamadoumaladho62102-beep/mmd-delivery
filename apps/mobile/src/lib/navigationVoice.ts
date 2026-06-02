@@ -3,12 +3,16 @@ import * as Speech from "expo-speech";
 let lastSpokenText = "";
 let lastSpokenAt = 0;
 
-const MIN_REPEAT_DELAY_MS = 12000;
+const MIN_REPEAT_DELAY_MS = 12_000;
+const PROGRESS_VOICE_MS = 30_000;
+
+export type NavigationVoiceLanguage = "en-US" | "fr-FR";
 
 export async function speakNavigation(
   text: string,
   force = false,
-) {
+  language: NavigationVoiceLanguage = "en-US",
+): Promise<void> {
   try {
     const cleanText = text.trim();
     if (!cleanText) return;
@@ -29,19 +33,61 @@ export async function speakNavigation(
     await Speech.stop();
 
     Speech.speak(cleanText, {
-      language: "en-US",
+      language,
       pitch: 1,
       rate: 0.92,
     });
-  } catch (e) {
-    console.log("speakNavigation error:", e);
+  } catch {
+    // Voice must never crash navigation
   }
 }
 
-export async function stopNavigationVoice() {
+export async function speakNavigationProgress(
+  text: string,
+  language: NavigationVoiceLanguage = "en-US",
+): Promise<void> {
+  const now = Date.now();
+  if (now - lastSpokenAt < PROGRESS_VOICE_MS) return;
+  await speakNavigation(text, false, language);
+}
+
+export async function speakArrival(
+  stage: "pickup" | "dropoff",
+  language: NavigationVoiceLanguage = "en-US",
+): Promise<void> {
+  const text =
+    stage === "pickup"
+      ? language.startsWith("fr")
+        ? "Arrivée au point de collecte"
+        : "Arriving at pickup location"
+      : language.startsWith("fr")
+        ? "Arrivée à destination"
+        : "Arriving at destination";
+
+  await speakNavigation(text, true, language);
+}
+
+export async function speakReroute(
+  language: NavigationVoiceLanguage = "en-US",
+): Promise<void> {
+  const text = language.startsWith("fr")
+    ? "Itinéraire recalculé"
+    : "Route recalculated";
+  await speakNavigation(text, true, language);
+}
+
+export async function stopNavigationVoice(): Promise<void> {
   try {
     await Speech.stop();
-  } catch (e) {
-    console.log("stopNavigationVoice error:", e);
+    lastSpokenText = "";
+    lastSpokenAt = 0;
+  } catch {
+    // ignore
   }
+}
+
+export function resolveNavigationVoiceLanguage(
+  appLanguage: string | undefined,
+): NavigationVoiceLanguage {
+  return appLanguage?.toLowerCase().startsWith("fr") ? "fr-FR" : "en-US";
 }
