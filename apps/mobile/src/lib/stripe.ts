@@ -25,15 +25,10 @@ export async function configureDriverPayments(userId: string) {
 }
 
 /**
- * ✅ PRO: "Check" (optionnel) d'une session Stripe côté serveur.
+ * Checkout session confirm (disabled server-side).
  *
- * IMPORTANT:
- * - Ta Edge Function confirm_checkout_session renvoie 500 car elle essaye d'UPDATE orders
- *   avec le token utilisateur => bloqué par ton trigger (Client can only update tip_cents).
- * - La vérité doit venir du webhook Stripe (service role) => orders.payment_status='paid'
- * - Côté app: on fait le polling DB (ClientOrderDetailsScreen.tsx: pollUntilPaid)
- *
- * Donc ici: on garde la fonction pour compat, mais on la désactive (no-op).
+ * confirm_checkout_session Edge Function returns 410 Gone (S0-2).
+ * Payment truth: Stripe webhook -> mark_order_paid RPC + DB polling in ClientOrderDetailsScreen.
  */
 export async function checkCheckoutSession(params: {
   orderId: string;
@@ -74,7 +69,7 @@ export async function openStripeCheckout(params: {
   // 1) Ouvre Stripe Checkout
   await WebBrowser.openBrowserAsync(checkoutUrl);
 
-  // 2) Au retour: on évite confirm_checkout_session (500 tip_cents)
+  // 2) Au retour: confirm_checkout_session est désactivée (410) — polling DB uniquement.
   // L'écran fera pollUntilPaid() + refetch order.
   return {
     ok: true,

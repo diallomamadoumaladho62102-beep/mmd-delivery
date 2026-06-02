@@ -1,6 +1,7 @@
 "use server";
 
 import { supabaseServer } from "@/lib/supabaseServer";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { getDistanceAndEta } from "@/lib/mapboxRoute";
 import {
   computeDeliveryPricing,
@@ -230,6 +231,7 @@ export async function createFoodOrderWithDelivery(
   validateNonNegative("tax", safeTax);
 
   const supabase = await supabaseServer();
+  const supabaseAdmin = buildSupabaseAdminClient();
 
   // 1) Distance + ETA
   const { distanceMiles, etaMinutes } = await getDistanceAndEta(
@@ -263,8 +265,8 @@ export async function createFoodOrderWithDelivery(
   validateNonNegative("deliveryFee", rawDeliveryFee);
   validateNonNegative("driverPayout", driverPayoutEstimate);
 
-  // 4) Promo + pricing engine in SQL
-  const { data: pricingData, error: pricingError } = await supabase.rpc(
+  // 4) Promo + pricing engine in SQL (service role only after S0-3 grants)
+  const { data: pricingData, error: pricingError } = await supabaseAdmin.rpc(
     "compute_order_pricing",
     {
       p_order_type: "food",

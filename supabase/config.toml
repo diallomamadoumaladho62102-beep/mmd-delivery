@@ -1,6 +1,12 @@
 [functions.stripe_webhook]
 verify_jwt = false
 
+[functions.confirm_checkout_session]
+verify_jwt = true
+
+[functions.pay-driver-now]
+verify_jwt = true
+
 [functions.restaurant-connect-link]
 enabled = true
 verify_jwt = true

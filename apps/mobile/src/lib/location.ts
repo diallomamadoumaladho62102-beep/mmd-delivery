@@ -25,11 +25,6 @@ type DriverLocationPayload = {
   updated_at: string;
 };
 
-const DEV_DRIVER_EMAIL = "diallomamadoumaladho62102@gmail.com";
-const DEV_DRIVER_PASSWORD = "mmd12345";
-
-const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
-
 function logInfo(message: string, ...args: unknown[]) {
   console.log(`ℹ️ ${message}`, ...args);
 }
@@ -63,36 +58,18 @@ async function sendDriverLocationToSupabase(
   logSuccess("GPS envoyé:", payload.lat, payload.lng);
 }
 
-async function getOrLoginDriverUser() {
+async function getAuthenticatedDriverUser() {
   const { data, error } = await supabase.auth.getUser();
 
   if (!error && data?.user) {
     return data.user;
   }
 
-  if (!IS_DEV) {
-    logError("Aucune session chauffeur active en production.");
-    return null;
-  }
-
-  logInfo("Pas de session active. Tentative de login DEV avec le chauffeur...");
-
-  const { data: loginData, error: loginError } =
-    await supabase.auth.signInWithPassword({
-      email: DEV_DRIVER_EMAIL,
-      password: DEV_DRIVER_PASSWORD,
-    });
-
-  if (loginError || !loginData?.user) {
-    logError(
-      "Impossible de se connecter avec le compte DEV:",
-      loginError?.message ?? "user manquant",
-    );
-    return null;
-  }
-
-  logSuccess("Login DEV réussi pour:", loginData.user.id);
-  return loginData.user;
+  logError(
+    "Aucune session chauffeur active:",
+    error?.message ?? "utilisateur manquant",
+  );
+  return null;
 }
 
 async function requestLocationPermissions(): Promise<{
@@ -295,7 +272,7 @@ TaskManager.defineTask(
     if (!latestLocation) return;
 
     try {
-      const user = await getOrLoginDriverUser();
+      const user = await getAuthenticatedDriverUser();
 
       if (!user) {
         logError("Background GPS: aucun chauffeur connecté.");
@@ -327,7 +304,7 @@ export async function startDriverLocationTracking(
       return;
     }
 
-    const user = await getOrLoginDriverUser();
+    const user = await getAuthenticatedDriverUser();
 
     if (!user) {
       logError("Aucun utilisateur chauffeur, tracking annulé.");
@@ -391,7 +368,7 @@ export async function stopDriverLocationTracking() {
 
     logSuccess("Tracking GPS arrêté.");
 
-    const user = await getOrLoginDriverUser();
+    const user = await getAuthenticatedDriverUser();
 
     if (!user) {
       logInfo("stopTracking: aucun user chauffeur disponible.");

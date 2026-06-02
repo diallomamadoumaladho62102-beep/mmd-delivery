@@ -19,6 +19,44 @@ function cleanEnv(value: string | undefined): string {
   return (value ?? "").trim();
 }
 
+function assertStripePublishableKeyForEasBuild(params: {
+  easBuildProfile: string;
+  stripePublishableKey: string;
+}) {
+  const { easBuildProfile, stripePublishableKey } = params;
+
+  if (easBuildProfile !== "production") {
+    if (
+      stripePublishableKey &&
+      !stripePublishableKey.startsWith("pk_test_") &&
+      !stripePublishableKey.startsWith("pk_live_")
+    ) {
+      throw new Error(
+        "[MMD] EXPO_PUBLIC_STRIPE_PK must start with pk_test_ or pk_live_."
+      );
+    }
+    return;
+  }
+
+  if (!stripePublishableKey) {
+    throw new Error(
+      "[MMD] Production EAS build requires EXPO_PUBLIC_STRIPE_PK. Set an EAS secret with your pk_live_ key."
+    );
+  }
+
+  if (stripePublishableKey.startsWith("pk_test_")) {
+    throw new Error(
+      "[MMD] Production EAS build cannot use a pk_test_ Stripe publishable key."
+    );
+  }
+
+  if (!stripePublishableKey.startsWith("pk_live_")) {
+    throw new Error(
+      "[MMD] Production EAS build requires a pk_live_ Stripe publishable key."
+    );
+  }
+}
+
 export default ({ config }: { config: AppConfigInput }) => {
   const env =
     (globalThis as typeof globalThis & {
@@ -39,6 +77,12 @@ export default ({ config }: { config: AppConfigInput }) => {
   const RNMAPBOX_MAPS_DOWNLOAD_TOKEN = cleanEnv(
     env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN
   );
+  const EAS_BUILD_PROFILE = cleanEnv(env.EAS_BUILD_PROFILE);
+
+  assertStripePublishableKeyForEasBuild({
+    easBuildProfile: EAS_BUILD_PROFILE,
+    stripePublishableKey: EXPO_PUBLIC_STRIPE_PK,
+  });
 
   const API_URL =
     APP_ENV === "production"
@@ -130,6 +174,7 @@ export default ({ config }: { config: AppConfigInput }) => {
       EXPO_PUBLIC_SUPABASE_ANON_KEY,
       EXPO_PUBLIC_MAPBOX_TOKEN,
       EXPO_PUBLIC_STRIPE_PK,
+      EAS_BUILD_PROFILE: EAS_BUILD_PROFILE || "",
       eas: {
         projectId: PROJECT_ID,
       },

@@ -44,7 +44,6 @@
     },
     "extra": {
       "EXPO_PUBLIC_WEB_BASE_URL": "https://mmd-delivery.vercel.app",
-      "EXPO_PUBLIC_STRIPE_PK": "pk_test_51SiVEKARYL6CPXX2vkJ7PP2gQ8HhajpgV3Q05D6Bs3aeo9owwmjUlJMvbWGYBbcwm2EMLLhinNcLk0unSK0MmOhc00jpgYyAFA",
       "eas": {
         "projectId": "127751ea-33ce-4f67-98ce-a9b29a46b838"
       }

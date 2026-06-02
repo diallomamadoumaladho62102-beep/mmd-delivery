@@ -327,7 +327,6 @@ export function DriverWalletScreen() {
 
               const { data, error } = await supabase.functions.invoke("pay-driver-now", {
                 body: {
-                  driver_id: driverId,
                   currency: "USD",
                   source: "mobile_wallet_cashout",
                 },
