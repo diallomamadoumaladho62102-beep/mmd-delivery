@@ -136,10 +136,14 @@ export default function RestaurantOrderPage() {
         delivery_fee,
         pickup_code,
         dropoff_code,
-        driver_id
+        driver_id,
+        payment_status,
+        kind
       `
       )
       .eq("id", orderId)
+      .eq("kind", "food")
+      .eq("payment_status", "paid")
       .maybeSingle();
 
     if (error) {

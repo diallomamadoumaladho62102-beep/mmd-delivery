@@ -15,6 +15,7 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { API_BASE_URL } from "../lib/apiBase";
+import { startCheckoutForOrder } from "../../lib/payments";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 
@@ -945,58 +946,47 @@ export function ClientRestaurantMenuScreen() {
       const { data, error } = await supabase
         .from("orders")
         .insert({
-    type: "food",
-    status: "pending",
-
-    restaurant_id: restaurantId,
-    restaurant_user_id: restaurantId,
-
-    // ✅ Production identity fields
-    // client_id is the canonical client owner for orders.
-    // user_id and client_user_id are kept for backward compatibility with older code.
-    client_id: userId,
-    user_id: userId,
-    client_user_id: userId,
-
-    restaurant_name: activeRestaurantProfile.restaurant_name || restaurantName,
-    created_by: userId,
-
-    items_json: safeCart.map((c) => ({
-      name: c.name,
-      category: c.category,
-      quantity: c.quantity,
-      unit_price: c.unit_price,
-      line_total: roundMoney(c.unit_price * c.quantity),
-    })),
-
-    subtotal: safeSubtotal,
-    tax: safeTax,
-    total: safeGrandTotal,
-    delivery_fee: safeDeliveryFee,
-    currency,
-
-    items_subtotal: safeSubtotal,
-    tax_amount: safeTax,
-    discounts: 0,
-
-    subtotal_cents: Math.round(safeSubtotal * 100),
-    delivery_fee_cents: Math.round(safeDeliveryFee * 100),
-    taxes_cents: Math.round(safeTax * 100),
-
-    pickup_address: normalizeAddress(pickup),
-    dropoff_address: normalizeAddress(dropoff),
-    distance_miles: distanceMiles,
-    eta_minutes: etaMinutesInt,
-
-    pickup_lat: pickupCoords.lat,
-    pickup_lng: pickupCoords.lng,
-    dropoff_lat: dropoffCoords.lat,
-    dropoff_lng: dropoffCoords.lng,
-
-    pickup_code: pickupCode,
-    dropoff_code: dropoffCode,
-
-    payment_status: "unpaid",
+          kind: "food",
+          order_type: "food",
+          pickup_kind: "restaurant",
+          status: "pending",
+          payment_status: "unpaid",
+          restaurant_id: restaurantId,
+          restaurant_user_id: restaurantId,
+          client_id: userId,
+          user_id: userId,
+          client_user_id: userId,
+          restaurant_name: activeRestaurantProfile.restaurant_name || restaurantName,
+          created_by: userId,
+          items_json: safeCart.map((c) => ({
+            name: c.name,
+            category: c.category,
+            quantity: c.quantity,
+            unit_price: c.unit_price,
+            line_total: roundMoney(c.unit_price * c.quantity),
+          })),
+          subtotal: safeSubtotal,
+          tax: safeTax,
+          total: safeGrandTotal,
+          delivery_fee: safeDeliveryFee,
+          currency,
+          items_subtotal: safeSubtotal,
+          tax_amount: safeTax,
+          discounts: 0,
+          subtotal_cents: Math.round(safeSubtotal * 100),
+          delivery_fee_cents: Math.round(safeDeliveryFee * 100),
+          taxes_cents: Math.round(safeTax * 100),
+          total_cents: totalCents,
+          pickup_address: normalizeAddress(pickup),
+          dropoff_address: normalizeAddress(dropoff),
+          distance_miles: distanceMiles,
+          eta_minutes: etaMinutesInt,
+          pickup_lat: pickupCoords.lat,
+          pickup_lng: pickupCoords.lng,
+          dropoff_lat: dropoffCoords.lat,
+          dropoff_lng: dropoffCoords.lng,
+          pickup_code: pickupCode,
+          dropoff_code: dropoffCode,
         })
         .select("id")
         .single();
@@ -1017,24 +1007,12 @@ export function ClientRestaurantMenuScreen() {
         console.log("Erreur insert order_members (non bloquant):", e);
       }
 
-      Alert.alert(
-        tr("clientRestaurantMenu.orderCreatedTitle", "Commande créée ✅"),
-        tr(
-          "clientRestaurantMenu.orderCreatedBody",
-          `Ta commande au restaurant a bien été créée.\n\nID : ${orderId.slice(0, 8)}…`
-        ),
-        [
-          {
-            text: tr("common.ok", "OK"),
-            onPress: () => {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "ClientOrderDetails", params: { orderId } }],
-              });
-            },
-          },
-        ]
-      );
+      await startCheckoutForOrder(orderId, sessionData.session.access_token);
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "ClientOrderDetails", params: { orderId } }],
+      });
     } catch (err: any) {
       console.error("Erreur création commande restaurant (mobile):", err);
       Alert.alert(

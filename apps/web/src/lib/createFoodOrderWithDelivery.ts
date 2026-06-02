@@ -379,6 +379,9 @@ export async function createFoodOrderWithDelivery(
       promo_discount_amount: promoDiscountAmount,
       delivery_discount_amount: deliveryDiscountAmount,
 
+      status: "pending",
+      payment_status: "unpaid",
+
       items_json: itemsJson,
 
       distance_miles_est: safeDistanceMiles,

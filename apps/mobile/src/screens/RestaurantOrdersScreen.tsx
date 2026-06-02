@@ -558,6 +558,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
             "id,kind,status,created_at,currency,total,grand_total,total_cents,restaurant_accept_expires_at"
           )
           .eq("kind", "food")
+          .eq("payment_status", "paid")
           .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .order("created_at", { ascending: false });
 
@@ -628,6 +629,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           .select("id,kind,status,created_at,restaurant_accept_expires_at,restaurant_user_id,restaurant_id")
           .eq("id", orderId)
           .eq("kind", "food")
+          .eq("payment_status", "paid")
           .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .maybeSingle();
 
@@ -689,6 +691,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           .update(updatePayload)
           .eq("id", orderId)
           .eq("kind", "food")
+          .eq("payment_status", "paid")
           .eq("status", (current as any).status)
           .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`);
 

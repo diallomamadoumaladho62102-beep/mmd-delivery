@@ -226,6 +226,8 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
         "pickup_code",
         "driver_id",
         "items_json",
+        "payment_status",
+        "kind",
       ].join(","),
     []
   );
@@ -339,6 +341,24 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
           t(
             "order.errors.notAllowed",
             "Tu n’as pas accès à cette commande."
+          )
+        );
+      }
+
+      if (String((data as any).payment_status ?? "").toLowerCase() !== "paid") {
+        throw new Error(
+          t(
+            "order.errors.awaitingPayment",
+            "Cette commande n’est pas encore payée et n’est pas visible."
+          )
+        );
+      }
+
+      if (String((data as any).kind ?? "food").toLowerCase() !== "food") {
+        throw new Error(
+          t(
+            "order.errors.notFoodOrder",
+            "Cette commande n’est pas une commande restaurant."
           )
         );
       }

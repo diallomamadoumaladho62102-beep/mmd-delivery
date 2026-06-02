@@ -659,14 +659,16 @@ export function RestaurantHomeScreen({ navigation }: any) {
         supabase
           .from("orders")
           .select("id,kind,status,total,subtotal,tax,currency,created_at")
-          .eq("restaurant_id", activeRestaurantId)
           .eq("kind", "food")
+          .eq("payment_status", "paid")
+          .eq("restaurant_id", activeRestaurantId)
           .gte("created_at", fromISO),
         supabase
           .from("orders")
           .select("id,kind,status,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,created_at,total")
-          .eq("restaurant_id", activeRestaurantId)
           .eq("kind", "food")
+          .eq("payment_status", "paid")
+          .eq("restaurant_id", activeRestaurantId)
           .in("status", ["pending", "accepted", "prepared", "ready"])
           .order("created_at", { ascending: false }),
       ]);
@@ -894,8 +896,9 @@ export function RestaurantHomeScreen({ navigation }: any) {
             updated_at: new Date().toISOString(),
           })
           .eq("id", order.id)
-          .eq("restaurant_id", activeRestaurantId)
-          .eq("kind", "food");
+          .eq("kind", "food")
+          .eq("payment_status", "paid")
+          .eq("restaurant_id", activeRestaurantId);
 
         if (error) throw error;
 
@@ -1150,8 +1153,16 @@ export function RestaurantHomeScreen({ navigation }: any) {
           const row: any = payload.new;
 
           const isFoodOrder = String(row?.kind ?? "food").toLowerCase() === "food";
+          const isPaid =
+            String(row?.payment_status ?? "").trim().toLowerCase() === "paid";
 
-          if (restaurantOnline && isFocused && row?.status === "pending" && isFoodOrder) {
+          if (
+            restaurantOnline &&
+            isFocused &&
+            row?.status === "pending" &&
+            isFoodOrder &&
+            isPaid
+          ) {
             setLiveOrder({
               id: String(row.id),
               kind: "food",
@@ -1180,8 +1191,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
         async (payload) => {
           const row: any = payload.new;
           const isFoodOrder = String(row?.kind ?? "food").toLowerCase() === "food";
+          const isPaid =
+            String(row?.payment_status ?? "").trim().toLowerCase() === "paid";
 
-          if (!isFoodOrder) return;
+          if (!isFoodOrder || !isPaid) return;
 
           setLiveOrder((current): RestaurantMapOrder | null => {
             if (!current || current.id !== String(row?.id ?? "")) {

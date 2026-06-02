@@ -151,6 +151,8 @@ export default function RestaurantOrdersDashboardPage() {
         `
         )
         .eq("restaurant_id", uid)
+        .eq("kind", "food")
+        .eq("payment_status", "paid")
         .order("created_at", { ascending: false });
 
       if (ordersError) {

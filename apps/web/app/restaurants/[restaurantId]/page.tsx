@@ -148,88 +148,12 @@ export default function RestaurantMenuPage() {
 
   const cartIsEmpty = totalItems === 0;
 
-  // ✅ Création de la commande "food" comme sur mobile
+  // ✅ Legacy path disabled — use canonical checkout flow (/orders/new).
   async function handleCreateOrder() {
     if (!restaurantId) return;
     if (cartIsEmpty) return;
 
-    try {
-      setCreatingOrder(true);
-      setError(null);
-
-      // 1) Vérifier que le client est connecté
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-      if (!sessionData.session) {
-        setError("Tu dois être connecté pour passer une commande.");
-        setCreatingOrder(false);
-        return;
-      }
-      const userId = sessionData.session.user.id;
-
-      // 2) Construire items_json
-      const itemsJson = Object.values(cart).map((c) => ({
-        name: c.item.name,
-        category: c.item.category,
-        quantity: c.quantity,
-        unit_price: c.item.price,
-        line_total: c.item.price * c.quantity,
-      }));
-
-      const roundedSubtotal = Number(subtotal.toFixed(2));
-      const roundedTax = Number(tax.toFixed(2));
-      const roundedTotal = Number(total.toFixed(2));
-
-      // 3) Insérer dans orders
-      const { data: insertData, error: insertError } = await supabase
-        .from("orders")
-        .insert({
-          type: "food", // 👈 type "food" pour les menus
-          status: "pending",
-          restaurant_id: restaurantId,
-          restaurant_name: restaurant?.restaurant_name ?? null,
-          pickup_address: restaurant?.address ?? null,
-          dropoff_address: null,
-          items_json: itemsJson,
-          subtotal: roundedSubtotal,
-          tax: roundedTax,
-          total: roundedTotal,
-          currency: "USD",
-          created_by: userId,
-        })
-        .select()
-        .single();
-
-      if (insertError || !insertData) {
-        console.error("Erreur création commande restaurant (web):", insertError);
-        throw insertError ?? new Error("Création de la commande échouée.");
-      }
-
-      const orderId = (insertData as any).id as string;
-
-      // 4) Enregistrer le client comme membre de la commande (chat / suivi)
-      try {
-        await supabase.rpc("join_order", {
-          p_order_id: orderId,
-          p_role: "client",
-        });
-      } catch (e) {
-        console.warn("Erreur join_order côté client (web):", e);
-      }
-
-      // 5) Vider panier + redirection vers page commande
-      setCart({});
-      router.push(`/orders/${orderId}`);
-    } catch (e: any) {
-      console.error("Erreur handleCreateOrder (web):", e);
-      setError(
-        e?.message ??
-          "Impossible de créer la commande pour le moment. Réessaie plus tard."
-      );
-    } finally {
-      setCreatingOrder(false);
-    }
+    router.push(`/orders/new?restaurantId=${encodeURIComponent(restaurantId)}`);
   }
 
   return (
