@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,34 +82,6 @@ function isClientOrderOwner(order: any, userId: string) {
     sameId(order.created_by, userId) ||
     sameId(order.user_id, userId)
   );
-}
-
-async function triggerSmartDispatch(req: NextRequest, orderId: string) {
-  try {
-    const url = new URL("/api/dispatch/smart", req.nextUrl.origin);
-
-    const res = await fetch(url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId, order_id: orderId }),
-      cache: "no-store",
-    });
-
-    const out = await res.json().catch(() => null);
-
-    return {
-      ok: res.ok,
-      status: res.status,
-      result: out,
-    };
-  } catch (e: any) {
-    console.log("Smart dispatch error:", e?.message ?? e);
-
-    return {
-      ok: false,
-      error: e?.message ?? "Smart dispatch failed",
-    };
-  }
 }
 
 async function refundStripePayment(params: {
@@ -545,7 +518,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const smartDispatch = await triggerSmartDispatch(req, orderId);
+      const smartDispatch = await triggerSmartDispatchForOrder({
+        origin: req.nextUrl.origin,
+        orderId,
+      });
 
       return successResponse({
         by: "driver",

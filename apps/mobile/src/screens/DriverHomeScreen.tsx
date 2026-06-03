@@ -1743,36 +1743,8 @@ export function DriverHomeScreen() {
             throw new Error(result?.message ?? getOfferUnavailableMessage(t));
           }
         } else if (offerSourceTable === "delivery_requests") {
-          const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-          if (sessionError) throw sessionError;
-
-          const userId = sessionData.session?.user?.id;
-          if (!userId) throw new Error(t("driver.home.errors.mustBeLoggedIn", "Tu dois être connecté."));
-
-          const { data: acceptedDelivery, error: acceptDeliveryError } = await supabase
-            .from("delivery_requests")
-            .update({
-              driver_id: userId,
-              status: "dispatched",
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", orderId)
-            .in("status", ["pending", "paid_pending", "processing_pending"])
-            .eq("payment_status", "paid")
-            .is("driver_id", null)
-            .select("id")
-            .maybeSingle();
-
-          if (acceptDeliveryError) throw acceptDeliveryError;
-
-          if (!acceptedDelivery) {
-            throw new Error(
-              t(
-                "driver.home.errors.deliveryAlreadyTaken",
-                "This delivery request is no longer available. It may already be accepted by another driver.",
-              ),
-            );
-          }
+          const { acceptDeliveryRequest } = await import("../lib/deliveryRequestDriverApi");
+          await acceptDeliveryRequest(orderId);
         } else {
           const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", { p_order_id: orderId });
           if (rpcError) throw rpcError;

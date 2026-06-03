@@ -1,6 +1,12 @@
 // apps/web/app/api/dispatch/smart/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createDriverOrderOffers } from "@/lib/createDriverOrderOffers";
+import {
+  assertUserMayDispatchOrder,
+  buildDispatchInternalHeaders,
+  resolveDispatchAccess,
+} from "@/lib/dispatchInternalAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -106,8 +112,17 @@ function scheduleNextWave(params: {
   currentWave: number;
   locationFreshMinutes: number;
   cooldownSeconds: number;
+  dispatchAuthHeaders: Record<string, string>;
 }) {
-  const { origin, supabase, orderId, currentWave, locationFreshMinutes, cooldownSeconds } = params;
+  const {
+    origin,
+    supabase,
+    orderId,
+    currentWave,
+    locationFreshMinutes,
+    cooldownSeconds,
+    dispatchAuthHeaders,
+  } = params;
 
   if (currentWave >= 3) return;
 
@@ -168,7 +183,10 @@ function scheduleNextWave(params: {
 
       await fetch(`${origin}/api/dispatch/smart`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...dispatchAuthHeaders,
+        },
         body: JSON.stringify({
           orderId,
           wave: nextWave,
@@ -210,16 +228,51 @@ export async function POST(req: NextRequest) {
       { auth: { persistSession: false } }
     );
 
+    const accessResult = await resolveDispatchAccess(req, supabase);
+    if (accessResult.ok === false) {
+      return json({ error: accessResult.error }, accessResult.status);
+    }
+
+    const dispatchAuthHeaders = buildDispatchInternalHeaders();
+
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select(
-        "id,kind,status,driver_id,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total"
+        "id,kind,status,driver_id,restaurant_id,payment_status,restaurant_name,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes"
       )
       .eq("id", orderId)
       .maybeSingle();
 
     if (orderError) return json({ error: orderError.message }, 500);
     if (!order) return json({ error: "Order not found" }, 404);
+
+    const scopeResult = assertUserMayDispatchOrder({
+      access: accessResult.access,
+      order,
+    });
+    if (scopeResult.ok === false) {
+      return json({ error: scopeResult.error }, scopeResult.status);
+    }
+
+    const orderKind = normalize(order.kind);
+    const paymentStatus = normalize(order.payment_status);
+
+    if (orderKind === "food" && paymentStatus !== "paid") {
+      await recordDispatchAttempt({
+        supabase,
+        orderId: order.id,
+        wave: requestedWave,
+        maxDrivers,
+        maxMiles,
+        notifiedCount: 0,
+        status: "not_paid",
+      });
+
+      return json(
+        { error: "Order is not paid", kind: orderKind, payment_status: paymentStatus },
+        403
+      );
+    }
 
     if (order.driver_id) {
       await recordDispatchAttempt({
@@ -309,6 +362,7 @@ export async function POST(req: NextRequest) {
         currentWave: requestedWave,
         locationFreshMinutes,
         cooldownSeconds,
+        dispatchAuthHeaders,
       });
 
       return json({
@@ -414,6 +468,7 @@ export async function POST(req: NextRequest) {
         currentWave: requestedWave,
         locationFreshMinutes,
         cooldownSeconds,
+        dispatchAuthHeaders,
       });
 
       return json({
@@ -471,6 +526,16 @@ export async function POST(req: NextRequest) {
 
     const pushResult = await sendExpoPush(messages);
 
+    const offerStats = await createDriverOrderOffers({
+      supabase,
+      order,
+      candidates: candidates.map((c: any) => ({
+        driverId: c.driverId,
+        distanceMiles: c.distanceMiles,
+      })),
+      wave: requestedWave,
+    });
+
     const notifiedDriverIds = Array.from(
       new Set(uniqueTokens.map((t: any) => String(t.user_id)).filter(Boolean))
     );
@@ -510,6 +575,7 @@ export async function POST(req: NextRequest) {
       currentWave: requestedWave,
       locationFreshMinutes,
       cooldownSeconds,
+      dispatchAuthHeaders,
     });
 
     return json({
@@ -524,6 +590,7 @@ export async function POST(req: NextRequest) {
       cooldownSeconds,
       selectedDrivers: candidates,
       pushResult,
+      offerStats,
     });
   } catch (e: any) {
     return json({ error: e?.message ?? "Server error" }, 500);

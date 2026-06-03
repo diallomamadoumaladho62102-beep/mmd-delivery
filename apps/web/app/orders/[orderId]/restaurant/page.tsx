@@ -189,23 +189,50 @@ export default function RestaurantOrderPage() {
   async function updateStatus(nextStatus: OrderStatus) {
     if (!order) return;
 
-    setSaving(nextStatus);
-    setErr(null);
-
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: nextStatus })
-      .eq("id", order.id);
-
-    if (error) {
-      console.error(error);
-      setErr("Impossible de mettre à jour le statut de la commande.");
-      setSaving(false);
+    if (nextStatus !== "accepted" && nextStatus !== "prepared" && nextStatus !== "ready") {
+      setErr("Transition de statut non supportée sur cette page.");
       return;
     }
 
-    await loadOrder();
-    setSaving(false);
+    setSaving(nextStatus);
+    setErr(null);
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error("Session invalide. Reconnecte-toi.");
+      }
+
+      const res = await fetch("/api/orders/restaurant/status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          status: nextStatus,
+        }),
+      });
+
+      const out = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(out?.error ?? "Impossible de mettre à jour le statut de la commande.");
+      }
+
+      await loadOrder();
+    } catch (e: unknown) {
+      console.error(e);
+      setErr(
+        e instanceof Error
+          ? e.message
+          : "Impossible de mettre à jour le statut de la commande."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleCancel() {

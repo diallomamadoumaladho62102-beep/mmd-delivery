@@ -686,48 +686,44 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           updatePayload.canceled_at = nowIso;
         }
 
-        const { error } = await supabase
-          .from("orders")
-          .update(updatePayload)
-          .eq("id", orderId)
-          .eq("kind", "food")
-          .eq("payment_status", "paid")
-          .eq("status", (current as any).status)
-          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`);
+        if (nextStatus === "canceled") {
+          const { error } = await supabase
+            .from("orders")
+            .update(updatePayload)
+            .eq("id", orderId)
+            .eq("kind", "food")
+            .eq("payment_status", "paid")
+            .eq("status", (current as any).status)
+            .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`);
 
-        if (error) throw error;
+          if (error) throw error;
 
-        const eventType =
-          nextStatus === "accepted"
-            ? "restaurant_accept"
-            : nextStatus === "canceled"
-              ? "restaurant_reject"
-              : "restaurant_status_change";
+          const { error: evErr } = await supabase.from("order_events").insert({
+            order_id: orderId,
+            event_type: "restaurant_reject",
+            old_status: oldStatus || null,
+            new_status: nextStatus,
+            note: null,
+            actor_id: actorId,
+            created_at: nowIso,
+            description: "Restaurant rejected the order",
+            triggered_by: actorId,
+            triggered_role: "restaurant",
+            metadata: {
+              source: "RestaurantOrdersScreen",
+              at: nowIso,
+            },
+          });
 
-        const { error: evErr } = await supabase.from("order_events").insert({
-          order_id: orderId,
-          event_type: eventType,
-          old_status: oldStatus || null,
-          new_status: nextStatus,
-          note: null,
-          actor_id: actorId,
-          created_at: nowIso,
-          description:
-            nextStatus === "accepted"
-              ? "Restaurant accepted the order"
-              : nextStatus === "canceled"
-                ? "Restaurant rejected the order"
-                : `Restaurant changed status to ${nextStatus}`,
-          triggered_by: actorId,
-          triggered_role: "restaurant",
-          metadata: {
-            source: "RestaurantOrdersScreen",
-            at: nowIso,
-          },
-        });
-
-        if (evErr) {
-          console.log("order_events insert error:", evErr);
+          if (evErr) {
+            console.log("order_events insert error:", evErr);
+          }
+        } else {
+          const { postRestaurantOrderStatus } = await import("../lib/restaurantOrderStatusApi");
+          await postRestaurantOrderStatus({
+            orderId,
+            status: nextStatus as "accepted" | "prepared" | "ready",
+          });
         }
 
         stopRepeatRinging();

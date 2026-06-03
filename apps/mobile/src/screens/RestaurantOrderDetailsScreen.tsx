@@ -656,51 +656,27 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
       setUpdating(true);
 
       try {
-        const { payload, nowIso } = withOptionalOrderTimestamps(next);
+        const { postRestaurantOrderStatus } = await import("../lib/restaurantOrderStatusApi");
+        await postRestaurantOrderStatus({
+          orderId: order.id,
+          status: next as "accepted" | "prepared" | "ready",
+        });
 
-        const { data, error } = await supabase
+        const { data, error: reloadError } = await supabase
           .from("orders")
-          .update(payload)
-          .eq("id", order.id)
-          .eq("status", order.status)
-          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .select(selectFields)
+          .eq("id", order.id)
+          .eq("kind", "food")
+          .eq("payment_status", "paid")
+          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
           .maybeSingle();
 
-        if (error) throw error;
+        if (reloadError) throw reloadError;
 
         if (!data) {
           throw new Error(
             t("order.errors.statusChanged", "Le statut a changé. Recharge la commande puis réessaie.")
           );
-        }
-
-        const { error: eventError } = await supabase.from("order_events").insert({
-          order_id: order.id,
-          event_type: statusEventType(next),
-          old_status: order.status,
-          new_status: next,
-          note: null,
-          actor_id: restaurantUserId,
-          created_at: nowIso,
-          description:
-            next === "accepted"
-              ? "Restaurant accepted the order"
-              : next === "prepared"
-                ? "Restaurant started preparing the order"
-                : next === "ready"
-                  ? "Restaurant marked the order ready"
-                  : `Restaurant changed status to ${next}`,
-          triggered_by: restaurantUserId,
-          triggered_role: "restaurant",
-          metadata: {
-            source: "RestaurantOrderDetailsScreen",
-            at: nowIso,
-          },
-        });
-
-        if (eventError) {
-          console.log("RestaurantOrderDetails order_events insert error:", eventError);
         }
 
         const nextOrder = data as unknown as Order;

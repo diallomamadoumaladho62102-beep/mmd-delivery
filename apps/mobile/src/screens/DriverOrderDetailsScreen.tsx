@@ -51,6 +51,7 @@ type OrderStatus =
   | "prepared"
   | "ready"
   | "dispatched"
+  | "picked_up"
   | "delivered"
   | "canceled";
 
@@ -765,6 +766,8 @@ export function DriverOrderDetailsScreen() {
         return t("driver.orderDetails.status.ready", "Prête pour retrait");
       case "dispatched":
         return t("driver.orderDetails.status.dispatched", "En livraison");
+      case "picked_up":
+        return t("driver.orderDetails.status.picked_up", "Colis récupéré — en route");
       case "delivered":
         return t("driver.orderDetails.status.delivered", "Livrée");
       case "canceled":
@@ -780,6 +783,9 @@ export function DriverOrderDetailsScreen() {
     }
     if (status === "dispatched") {
       return { bg: "#422006", border: "#F59E0B", text: "#FDE68A" };
+    }
+    if (status === "picked_up") {
+      return { bg: "#312E81", border: "#818CF8", text: "#E0E7FF" };
     }
     if (status === "ready") {
       return { bg: "#1E293B", border: "#60A5FA", text: "#BFDBFE" };
@@ -885,7 +891,8 @@ export function DriverOrderDetailsScreen() {
              pickup_address,dropoff_address,
              pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
              distance_miles,eta_minutes,delivery_fee,total,currency,
-             driver_delivery_payout,platform_fee`
+             driver_delivery_payout,platform_fee,
+             pickup_code,dropoff_code,picked_up_at,delivered_at`
           )
           .eq("id", orderId)
           .maybeSingle();
@@ -1276,13 +1283,18 @@ export function DriverOrderDetailsScreen() {
   const canPickup =
     !!order &&
     isAssignedDriver &&
-    !isDeliveryRequest &&
     (
-      (isPickupDropoff && ["accepted", "prepared", "ready"].includes(order.status)) ||
-      (!isPickupDropoff && order.status === "ready")
+      (isDeliveryRequest && order.status === "dispatched") ||
+      (!isDeliveryRequest &&
+        ((isPickupDropoff && ["accepted", "prepared", "ready"].includes(order.status)) ||
+          (!isPickupDropoff && order.status === "ready")))
     );
 
-  const canDeliver = !!order && order.status === "dispatched" && isAssignedDriver;
+  const canDeliver =
+    !!order &&
+    isAssignedDriver &&
+    ((isDeliveryRequest && order.status === "picked_up") ||
+      (!isDeliveryRequest && order.status === "dispatched"));
 
   const canAccept =
     !!order &&
@@ -1589,30 +1601,8 @@ export function DriverOrderDetailsScreen() {
       setAccepting(true);
 
       if (getOrderSourceTable(order) === "delivery_requests") {
-        const { data: acceptedDelivery, error: acceptDeliveryError } = await supabase
-          .from("delivery_requests")
-          .update({
-            driver_id: myUserId,
-            status: "dispatched",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", order.id)
-          .in("status", ["pending", "paid_pending", "processing_pending"])
-          .eq("payment_status", "paid")
-          .is("driver_id", null)
-          .select("id")
-          .maybeSingle();
-
-        if (acceptDeliveryError) throw acceptDeliveryError;
-
-        if (!acceptedDelivery) {
-          throw new Error(
-            t(
-              "driver.orderDetails.acceptDeniedGeneric",
-              "Impossible d'accepter cette course."
-            )
-          );
-        }
+        const { acceptDeliveryRequest } = await import("../lib/deliveryRequestDriverApi");
+        await acceptDeliveryRequest(order.id);
       } else {
         const { data: accepted, error: accErr } = await supabase.rpc("driver_accept_ready_order", {
           p_order_id: order.id,
@@ -1705,17 +1695,10 @@ export function DriverOrderDetailsScreen() {
               setCanceling(true);
 
               if (getOrderSourceTable(order) === "delivery_requests") {
-                const { error: deliveryCancelError } = await supabase
-                  .from("delivery_requests")
-                  .update({
-                    driver_id: null,
-                    status: "pending",
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", order.id)
-                  .eq("driver_id", myUserId);
-
-                if (deliveryCancelError) throw deliveryCancelError;
+                const { cancelDeliveryRequestAsDriver } = await import(
+                  "../lib/deliveryRequestDriverApi"
+                );
+                await cancelDeliveryRequestAsDriver(order.id);
 
                 stopDriverLocationTracking();
                 await fetchOrder();
@@ -1864,77 +1847,31 @@ export function DriverOrderDetailsScreen() {
       const kind = verifyingKind;
 
       if (getOrderSourceTable(order) === "delivery_requests") {
-        const codeColumn = kind === "pickup" ? "pickup_code" : "dropoff_code";
-        const verifiedAtColumn =
-          kind === "pickup" ? "pickup_code_verified_at" : "dropoff_code_verified_at";
-
-        const { data: matchingDeliveryRequest, error: matchingDeliveryRequestError } =
-          await supabase
-            .from("delivery_requests")
-            .select("id")
-            .eq("id", order.id)
-            .eq("driver_id", myUserId)
-            .eq("status", "dispatched")
-            .eq(codeColumn, normalizedCode)
-            .maybeSingle();
-
-        console.log("[MMD_PROOF] STEP delivery_requests code SELECT", {
-          ok: !matchingDeliveryRequestError,
-          matched: !!matchingDeliveryRequest,
-          error: matchingDeliveryRequestError?.message,
-        });
-
-        if (matchingDeliveryRequestError) throw matchingDeliveryRequestError;
-
-        if (!matchingDeliveryRequest) {
-          Alert.alert(
-            t("driver.orderDetails.codeInvalidTitle", "Code invalide"),
-            kind === "pickup"
-              ? t("driver.orderDetails.codePickupInvalid", "Code de retrait invalide.")
-              : t("driver.orderDetails.codeDropoffInvalid", "Code de livraison invalide.")
-          );
-          return;
-        }
-
         const uploaded = await uploadProofPhoto({
           orderId: order.id,
           kind,
           photoUri: proofPhotoUri,
         });
 
-        const nextStatus = kind === "dropoff" ? "delivered" : order.status;
-        const nowIso = new Date().toISOString();
+        const {
+          confirmDeliveryRequestPickup,
+          confirmDeliveryRequestDelivered,
+        } = await import("../lib/deliveryRequestDriverApi");
 
-        const { data: verifiedDeliveryRequest, error: verifyDeliveryRequestError } =
-          await supabase
-            .from("delivery_requests")
-            .update({
-              status: nextStatus,
-              updated_at: nowIso,
-              [verifiedAtColumn]: nowIso,
-              [kind === "pickup" ? "pickup_photo_url" : "dropoff_photo_url"]:
-                uploaded.publicUrl,
-            })
-            .eq("id", order.id)
-            .eq("driver_id", myUserId)
-            .eq("status", "dispatched")
-            .eq(codeColumn, normalizedCode)
-            .select("id")
-            .maybeSingle();
-
-        if (verifyDeliveryRequestError) throw verifyDeliveryRequestError;
-
-        if (!verifiedDeliveryRequest) {
-          Alert.alert(
-            t("driver.orderDetails.codeInvalidTitle", "Code invalide"),
-            kind === "pickup"
-              ? t("driver.orderDetails.codePickupInvalid", "Code de retrait invalide.")
-              : t("driver.orderDetails.codeDropoffInvalid", "Code de livraison invalide.")
-          );
-          return;
+        if (kind === "pickup") {
+          await confirmDeliveryRequestPickup({
+            deliveryRequestId: order.id,
+            pickupCode: normalizedCode,
+            proofPhotoUrl: uploaded.publicUrl,
+          });
+        } else {
+          await confirmDeliveryRequestDelivered({
+            deliveryRequestId: order.id,
+            dropoffCode: normalizedCode,
+            proofPhotoUrl: uploaded.publicUrl,
+          });
         }
 
-        console.log("delivery_request proof uploaded:", uploaded.publicUrl);
         await fetchOrder();
         closeCodeModal();
 

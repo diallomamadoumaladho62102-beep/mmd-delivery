@@ -1,0 +1,133 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import {
+  getDeliveryRequestId,
+  mapDeliveryRpcError,
+  syncLinkedOrderAfterDelivery,
+  type DeliveryRequestRpcResult,
+} from "@/lib/deliveryRequestDriver";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, { status });
+}
+
+function getBearer(req: NextRequest) {
+  const auth = req.headers.get("authorization") || "";
+  return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+}
+
+function getAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+}
+
+async function triggerDriverPayoutForOrder(req: NextRequest, orderId: string) {
+  const adminSecret = process.env.STRIPE_TRANSFERS_ADMIN_SECRET?.trim() || "";
+  if (!adminSecret) {
+    return { ok: false, error: "Missing STRIPE_TRANSFERS_ADMIN_SECRET" };
+  }
+
+  const endpoint = `${req.nextUrl.origin}/api/stripe/transfers/run`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-secret": adminSecret,
+    },
+    body: JSON.stringify({ order_id: orderId, target: "driver" }),
+    cache: "no-store",
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  return {
+    ok: response.ok && payload?.ok === true,
+    status: response.status,
+    payload,
+  };
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const token = getBearer(req);
+    if (!token) return json({ error: "Missing Authorization Bearer token" }, 401);
+
+    const body = await req.json().catch(() => ({}));
+    let requestId = "";
+
+    try {
+      requestId = getDeliveryRequestId(body as Record<string, unknown>);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Invalid request";
+      return json({ error: message }, 400);
+    }
+
+    const dropoffCode = String(body.dropoff_code ?? body.code ?? "").trim() || null;
+    const proofPhotoUrl = String(body.proof_photo_url ?? "").trim() || null;
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } },
+      }
+    );
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user?.id) {
+      return json({ error: "Invalid token" }, 401);
+    }
+
+    const { data, error } = await supabase.rpc("confirm_delivery_request_delivery", {
+      p_request_id: requestId,
+      p_dropoff_code: dropoffCode,
+      p_proof_photo_url: proofPhotoUrl,
+    });
+
+    if (error) {
+      return json({ error: error.message }, 500);
+    }
+
+    const result = (data ?? null) as DeliveryRequestRpcResult | null;
+
+    if (!result?.ok) {
+      const mapped = mapDeliveryRpcError(result?.error ?? result?.message ?? "");
+      return json({ error: mapped.message }, mapped.status);
+    }
+
+    const supabaseAdmin = getAdminClient();
+    const linkedOrderId = await syncLinkedOrderAfterDelivery({
+      supabaseAdmin,
+      deliveryRequestId: requestId,
+      proofPhotoUrl,
+    });
+
+    let payout: Record<string, unknown> = { attempted: false };
+
+    if (linkedOrderId) {
+      payout = {
+        attempted: true,
+        ...(await triggerDriverPayoutForOrder(req, linkedOrderId)),
+      };
+    }
+
+    return json({
+      ok: true,
+      delivery_request_id: requestId,
+      linked_order_id: linkedOrderId,
+      result,
+      payout,
+    });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Server error";
+    return json({ error: message }, 500);
+  }
+}
