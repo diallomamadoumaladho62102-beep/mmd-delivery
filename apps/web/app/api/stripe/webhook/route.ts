@@ -10,6 +10,11 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe, webhookSecret } from "@/lib/stripe";
+import {
+  refreshCommissionsForDeliveryRequest,
+  refreshOrderCommissions,
+} from "@/lib/refreshOrderCommissions";
+import { stripeEventNeedsReprocessing } from "@/lib/stripeWebhookReprocess";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1386,6 +1391,8 @@ async function handleCheckoutCompletedLikeEvent(
       );
     }
 
+    await refreshOrderCommissions(supabaseAdmin, orderId);
+
     return json({
       received: true,
       ok: true,
@@ -1542,11 +1549,11 @@ async function handleCheckoutCompletedLikeEvent(
   }
 
   const result = await markDeliveryRequestPaidRobustly({
-  supabaseAdmin,
-  deliveryRequestId,
-  sessionId: null,
-  paymentIntentId,
-});
+    supabaseAdmin,
+    deliveryRequestId,
+    sessionId,
+    paymentIntentId,
+  });
 
 if (isDeliveryRobustMarkPaidFailure(result)) {
   console.log("❌ WEBHOOK: could not mark delivery_request paid (PI)", {
@@ -1602,6 +1609,8 @@ if (releaseOrderError) {
 console.log("✅ WEBHOOK PI: order released to drivers", {
   deliveryRequestId,
 });
+
+await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
 
 return json({
   received: true,
@@ -1783,7 +1792,7 @@ async function handlePaymentIntentSucceeded(
     const result = await markOrderPaidRobustly({
       supabaseAdmin,
       orderId,
-      sessionId: null,
+      sessionId: order.stripe_session_id ?? null,
       paymentIntentId,
     });
 
@@ -1823,6 +1832,8 @@ async function handlePaymentIntentSucceeded(
       snapshot: stripeFeeSnapshot,
       orderId,
     });
+
+    await refreshOrderCommissions(supabaseAdmin, orderId);
 
     return json({
       received: true,
@@ -1992,11 +2003,11 @@ async function handlePaymentIntentSucceeded(
   }
 
   const result = await markDeliveryRequestPaidRobustly({
-  supabaseAdmin,
-  deliveryRequestId,
-  sessionId: null,
-  paymentIntentId,
-});
+    supabaseAdmin,
+    deliveryRequestId,
+    sessionId: deliveryRequest.stripe_session_id ?? null,
+    paymentIntentId,
+  });
 
 if (isDeliveryRobustMarkPaidFailure(result)) {
   console.log("❌ WEBHOOK: could not mark delivery_request paid (PI)", {
@@ -2060,6 +2071,8 @@ await persistStripeFeeSnapshot({
   deliveryRequestId,
 });
 
+await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
+
 return json({
   received: true,
   ok: true,
@@ -2111,15 +2124,26 @@ export async function POST(req: NextRequest) {
     const persisted = await persistStripeEvent({ supabaseAdmin, event });
 
     if (persisted.duplicate) {
-      return json({
-        received: true,
-        duplicate: true,
-        type: event.type,
-        event_id: event.id,
-      });
-    }
+      const needsRecovery = await stripeEventNeedsReprocessing(
+        supabaseAdmin,
+        event
+      );
 
-    if (!persisted.inserted) {
+      if (!needsRecovery) {
+        return json({
+          received: true,
+          duplicate: true,
+          skipped: "already_complete",
+          type: event.type,
+          event_id: event.id,
+        });
+      }
+
+      console.log("ℹ️ WEBHOOK: duplicate event — reprocessing unpaid target", {
+        event_id: event.id,
+        type: event.type,
+      });
+    } else if (!persisted.inserted) {
       console.log("❌ WEBHOOK: idempotency record failed — skipping handler", {
         event_id: event.id,
         type: event.type,

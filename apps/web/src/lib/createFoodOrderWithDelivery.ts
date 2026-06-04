@@ -401,8 +401,23 @@ export async function createFoodOrderWithDelivery(
     throw new Error(error.message);
   }
 
+  const orderId = data.id as string;
+
+  const { error: commissionErr } = await supabaseAdmin.rpc(
+    "refresh_order_commissions",
+    { p_order_id: orderId }
+  );
+
+  if (commissionErr) {
+    console.error("[createFoodOrderWithDelivery] refresh_order_commissions failed", {
+      orderId,
+      message: commissionErr.message,
+    });
+    throw new Error(`Commission refresh failed: ${commissionErr.message}`);
+  }
+
   return {
-    orderId: data.id as string,
+    orderId,
     deliveryFee: deliveryFeeAfterDiscount,
     rawDeliveryFee,
     deliveryDiscountAmount,

@@ -8,6 +8,7 @@ import {
   AdminAccessError,
   assertCanRetryPayout,
 } from "@/lib/adminServer";
+import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -353,25 +354,23 @@ function resolveTransferSourcePaymentIntent(
 }
 
 function resolveRestaurantAmountCents(
-  order: OrderRow,
+  _order: OrderRow,
   commission: CommissionRow | null
 ): number | null {
   return (
     toPositiveIntOrNull(commission?.restaurant_cents) ??
     dollarsToCentsOrNull(commission?.restaurant_amount) ??
-    toPositiveIntOrNull(order.subtotal_cents) ??
     null
   );
 }
 
 function resolveDriverAmountCents(
-  order: OrderRow,
+  _order: OrderRow,
   commission: CommissionRow | null
 ): number | null {
   return (
     toPositiveIntOrNull(commission?.driver_cents) ??
     dollarsToCentsOrNull(commission?.driver_amount) ??
-    toPositiveIntOrNull(order.delivery_fee_cents) ??
     null
   );
 }
@@ -532,7 +531,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: commission, error: comErr } = await supabaseAdmin
+    let { data: commission, error: comErr } = await supabaseAdmin
       .from("order_commissions")
       .select(
         `
@@ -562,6 +561,59 @@ export async function POST(req: NextRequest) {
       });
 
       return json({ error: "Order commissions lookup failed" }, 500);
+    }
+
+    if (!commission) {
+      const refreshed = await refreshOrderCommissions(supabaseAdmin, order.id);
+      if (!refreshed.ok) {
+        return json(
+          {
+            error: "Order commissions missing and refresh failed",
+            details: refreshed.error ?? null,
+          },
+          409
+        );
+      }
+
+      const reload = await supabaseAdmin
+        .from("order_commissions")
+        .select(
+          `
+          order_id,
+          restaurant_release_status,
+          restaurant_released_at,
+          driver_release_status,
+          driver_released_at,
+          platform_release_status,
+          platform_released_at,
+          driver_cents,
+          restaurant_cents,
+          platform_cents,
+          driver_amount,
+          restaurant_amount,
+          platform_amount,
+          currency
+        `
+        )
+        .eq("order_id", orderId)
+        .maybeSingle<CommissionRow>();
+
+      commission = reload.data ?? null;
+      comErr = reload.error;
+
+      if (comErr) {
+        return json({ error: "Order commissions lookup failed after refresh" }, 500);
+      }
+    }
+
+    if (!commission) {
+      return json(
+        {
+          error:
+            "Order commissions required before payout. Run refresh_order_commissions.",
+        },
+        409
+      );
     }
 
     const currency = normalizeCurrency(order.currency || commission?.currency);

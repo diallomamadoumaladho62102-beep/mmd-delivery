@@ -2,9 +2,20 @@
 
 ## Canonical system (Live)
 
-- **Vercel cron (Sunday 03:00 UTC):** `GET /api/admin/process-payouts`
+- **Immediate (primary):** `POST /api/orders/delivered-confirm` triggers `transfers/run` for driver + restaurant right after delivery.
+- **Safety-net cron:** `GET /api/admin/process-payouts` (Vercel cron) catches unpaid delivered orders.
 - **Implementation:** `apps/web/app/api/admin/process-payouts/route.ts` → `POST /api/stripe/transfers/run`
 - **Config:** `vercel.json` crons
+
+### Payout mode (`MMD_PAYOUT_MODE` on Vercel)
+
+| Mode | Behavior |
+|------|----------|
+| `hybrid` (default) | Cron runs daily; processes delivered orders from the last 14 days that are still unpaid. |
+| `weekly` | Cron only on Sunday UTC; previous-week window on `created_at`. |
+| `immediate` | No batch cron payouts; rely on `delivered-confirm` only. |
+
+Commissions are computed by `refresh_order_commissions` (migration `20260604120000_*`) before any transfer. Payout amounts come **only** from `order_commissions` (no subtotal/delivery_fee fallbacks).
 
 ## Supabase Edge — disable batch/cron payouts in production
 

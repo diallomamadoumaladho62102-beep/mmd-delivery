@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -636,6 +637,8 @@ export async function POST(req: NextRequest) {
     };
 
     try {
+      await refreshOrderCommissions(supabaseAdmin, orderId);
+
       payoutResult = await triggerOrderPayoutsAfterDelivery({
         req,
         orderId,

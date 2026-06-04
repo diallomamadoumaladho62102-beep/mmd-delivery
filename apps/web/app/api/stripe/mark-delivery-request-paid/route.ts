@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { verifyStripePaidMatchesDeliveryRequest } from "@/lib/verifyStripePaidAmount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,9 @@ type DeliveryRequestRow = {
   stripe_session_id: string | null;
   paid_at: string | null;
   updated_at?: string | null;
+  total_cents: number | null;
+  total: number | null;
+  currency: string | null;
 };
 
 type GenericErrorLike = {
@@ -340,7 +344,7 @@ async function getDeliveryRequestById(
   const { data, error } = await supabaseAdmin
     .from("delivery_requests")
     .select(
-      "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, updated_at"
+      "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, updated_at, total_cents, total, currency"
     )
     .eq("id", requestId)
     .single();
@@ -463,6 +467,34 @@ export async function POST(req: NextRequest) {
           error: "Stripe payment not confirmed yet",
         },
         409
+      );
+    }
+
+    const amountCheck = await verifyStripePaidMatchesDeliveryRequest(
+      deliveryRequest,
+      {
+        paymentIntentId:
+          stripeCheck.payment_intent_id ??
+          deliveryRequest.stripe_payment_intent_id,
+        sessionId:
+          stripeCheck.session_id ??
+          (requestedSessionId || deliveryRequest.stripe_session_id),
+      }
+    );
+
+    if (!amountCheck.ok) {
+      return json(
+        {
+          ok: false,
+          error: amountCheck.error,
+          delivery_request_id: deliveryRequest.id,
+          expected_cents: amountCheck.expected_cents ?? null,
+          actual_cents: amountCheck.actual_cents ?? null,
+          expected_currency: amountCheck.expected_currency ?? null,
+          actual_currency: amountCheck.actual_currency ?? null,
+          message: amountCheck.message ?? null,
+        },
+        amountCheck.error === "missing_expected_amount" ? 400 : 409
       );
     }
 

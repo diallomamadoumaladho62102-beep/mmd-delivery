@@ -6,6 +6,10 @@ Apply after prior H2/H3 migrations:
 
 `supabase/migrations/20260603130000_commercial_production_hardening_v2.sql`
 
+Then apply:
+
+`supabase/migrations/20260604120000_production_payment_commission_hardening.sql`
+
 **Do not apply** `20260603120000_commercial_production_hardening.sql` (deprecated).
 
 ## Env / secrets (unchanged + confirm)
@@ -14,6 +18,7 @@ Apply after prior H2/H3 migrations:
 |----------|--------|
 | `MMD_STRIPE_WEBHOOK_DISABLED=true` | Supabase Edge `stripe_webhook` |
 | `MMD_EDGE_PAYOUTS_DISABLED=true` | All Edge payout functions including `pay_restaurant_now`, `pay-driver-now` |
+| `MMD_PAYOUT_MODE` | Vercel — `hybrid` (default), `weekly`, or `immediate` (see `PAYOUTS_SINGLE_HANDLER.md`) |
 | `CRON_SECRET` | Vercel |
 | `STRIPE_TRANSFERS_ADMIN_SECRET` | Vercel |
 | EAS secrets | `EXPO_PUBLIC_STRIPE_PK`, Supabase, Mapbox, `RNMAPBOX_MAPS_DOWNLOAD_TOKEN` |

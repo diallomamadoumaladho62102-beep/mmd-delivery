@@ -6,6 +6,7 @@ import {
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 import { scheduleDeliveryRequestDispatch } from "@/lib/scheduleDeliveryRequestDispatch";
+import { verifyStripePaidMatchesDeliveryRequest } from "@/lib/verifyStripePaidAmount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,9 @@ type DeliveryRequestRow = {
   stripe_payment_intent_id: string | null;
   stripe_session_id: string | null;
   paid_at: string | null;
+  total_cents: number | null;
+  total: number | null;
+  currency: string | null;
 };
 
 type GenericErrorLike = {
@@ -357,7 +361,7 @@ export async function POST(req: NextRequest) {
     const { data, error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
       .select(
-        "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at"
+        "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, total_cents, total, currency"
       )
       .eq("id", requestedId)
       .single();
@@ -426,6 +430,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const amountCheck = await verifyStripePaidMatchesDeliveryRequest(
+      deliveryRequest,
+      {
+        paymentIntentId:
+          stripeCheck.payment_intent_id ??
+          deliveryRequest.stripe_payment_intent_id,
+        sessionId: deliveryRequest.stripe_session_id,
+      }
+    );
+
+    if (!amountCheck.ok) {
+      return json(
+        {
+          ok: false,
+          error: amountCheck.error,
+          delivery_request_id: deliveryRequest.id,
+          expected_cents: amountCheck.expected_cents ?? null,
+          actual_cents: amountCheck.actual_cents ?? null,
+          expected_currency: amountCheck.expected_currency ?? null,
+          actual_currency: amountCheck.actual_currency ?? null,
+          message: amountCheck.message ?? null,
+        },
+        amountCheck.error === "missing_expected_amount" ? 400 : 409
+      );
+    }
+
     const nowIso = new Date().toISOString();
 
     const { data: updatedRow, error: updErr } = await supabaseAdmin
@@ -434,9 +464,12 @@ export async function POST(req: NextRequest) {
         payment_status: "paid",
         paid_at: deliveryRequest.paid_at ?? nowIso,
         stripe_payment_intent_id:
+          amountCheck.payment_intent_id ??
           stripeCheck.payment_intent_id ??
           deliveryRequest.stripe_payment_intent_id ??
           null,
+        stripe_session_id:
+          amountCheck.session_id ?? deliveryRequest.stripe_session_id ?? null,
         updated_at: nowIso,
       })
       .eq("id", deliveryRequest.id)

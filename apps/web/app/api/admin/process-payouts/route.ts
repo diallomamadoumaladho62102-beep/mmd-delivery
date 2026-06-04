@@ -6,6 +6,21 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const WEEKLY_PAYOUT_DAY_UTC = 0; // 0 = Sunday
+const HYBRID_LOOKBACK_DAYS = 14;
+
+type PayoutMode = "hybrid" | "weekly" | "immediate";
+
+function getPayoutMode(): PayoutMode {
+  const raw = String(process.env.MMD_PAYOUT_MODE ?? "hybrid")
+    .trim()
+    .toLowerCase();
+
+  if (raw === "weekly" || raw === "immediate") {
+    return raw;
+  }
+
+  return "hybrid";
+}
 
 type OrderRow = {
   id: string;
@@ -269,13 +284,16 @@ async function runProcessPayouts(request: NextRequest) {
     const forceRun =
       searchParams.get("force") === "true" || searchParams.get("force") === "1";
 
-    if (!forceRun && !isWeeklyPayoutDay()) {
+    const payoutMode = getPayoutMode();
+
+    if (!forceRun && payoutMode === "weekly" && !isWeeklyPayoutDay()) {
       return json({
         ok: true,
         skipped: true,
         actor,
         cron,
-        message: "Weekly payouts only run on Sunday.",
+        message: "Weekly payouts only run on Sunday (MMD_PAYOUT_MODE=weekly).",
+        payout_mode: payoutMode,
         weekly_payout_day_utc: "Sunday",
       });
     }
@@ -286,6 +304,9 @@ async function runProcessPayouts(request: NextRequest) {
     );
 
     const { weekStartIso, weekEndIso } = getPreviousWeekWindowUtc();
+    const hybridSinceIso = new Date(
+      Date.now() - HYBRID_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString();
 
     let query = supabase
       .from("orders")
@@ -293,6 +314,7 @@ async function runProcessPayouts(request: NextRequest) {
         `
           id,
           created_at,
+          delivered_confirmed_at,
           payment_status,
           status,
           restaurant_id,
@@ -305,11 +327,17 @@ async function runProcessPayouts(request: NextRequest) {
       )
       .eq("payment_status", "paid")
       .in("status", ["delivered", "completed"])
-      .order("created_at", { ascending: true })
+      .order("delivered_confirmed_at", { ascending: true, nullsFirst: false })
       .limit(limit);
 
     if (!forceRun) {
-      query = query.gte("created_at", weekStartIso).lt("created_at", weekEndIso);
+      if (payoutMode === "weekly") {
+        query = query
+          .gte("created_at", weekStartIso)
+          .lt("created_at", weekEndIso);
+      } else {
+        query = query.gte("delivered_confirmed_at", hybridSinceIso);
+      }
     }
 
     const { data: orders, error } = await query;
@@ -359,11 +387,14 @@ async function runProcessPayouts(request: NextRequest) {
       ok: true,
       actor,
       cron,
-      weekly: !forceRun,
+      payout_mode: payoutMode,
+      weekly: payoutMode === "weekly" && !forceRun,
       force_run: forceRun,
       payout_day_utc: "Sunday",
-      payout_window_start: forceRun ? null : weekStartIso,
-      payout_window_end: forceRun ? null : weekEndIso,
+      payout_window_start:
+        forceRun || payoutMode !== "weekly" ? null : weekStartIso,
+      payout_window_end: forceRun || payoutMode !== "weekly" ? null : weekEndIso,
+      hybrid_lookback_since: forceRun || payoutMode === "weekly" ? null : hybridSinceIso,
       checked_orders: typedOrders.length,
       processed,
       skipped,

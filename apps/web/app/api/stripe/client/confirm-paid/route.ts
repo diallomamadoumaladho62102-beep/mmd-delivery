@@ -6,6 +6,7 @@ import {
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 import { resolveOrderAmountCents } from "@/lib/orderAmountCents";
+import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -468,6 +469,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      await refreshOrderCommissions(supabaseAdmin, orderId);
+
       return json({
         ok: true,
         orderId,
@@ -588,6 +591,8 @@ export async function POST(req: NextRequest) {
         500
       );
     }
+
+    await refreshOrderCommissions(supabaseAdmin, orderId);
 
     return json({
       ok: true,
