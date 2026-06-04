@@ -849,22 +849,43 @@ export function RestaurantEarningsScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity
-              onPress={() => navigation.navigate("RestaurantTax")}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: "#1D4ED8",
-                backgroundColor: "rgba(59,130,246,0.12)",
-                opacity: payoutLoading ? 0.65 : 1,
-              }}
-            >
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                {t("restaurant.earnings.financial.taxCenter", "Open Tax Center")}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("RestaurantFinancialCenter")}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: "#059669",
+                  backgroundColor: "rgba(16,185,129,0.12)",
+                  opacity: payoutLoading ? 0.65 : 1,
+                }}
+              >
+                <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+                  {t(
+                    "restaurant.earnings.financial.center",
+                    "Financial Center",
+                  )}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("RestaurantTax")}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 999,
+                  borderWidth: 1,
+                  borderColor: "#1D4ED8",
+                  backgroundColor: "rgba(59,130,246,0.12)",
+                  opacity: payoutLoading ? 0.65 : 1,
+                }}
+              >
+                <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+                  {t("restaurant.earnings.financial.taxCenter", "Open Tax Center")}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>

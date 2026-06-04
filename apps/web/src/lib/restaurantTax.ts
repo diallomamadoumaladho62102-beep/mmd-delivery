@@ -87,7 +87,7 @@ function pickFirstFiniteNumber(row: GenericRow, keys: readonly string[]): number
   return 0;
 }
 
-async function getRestaurantCommissionRate(supabase: any): Promise<number> {
+export async function getRestaurantCommissionRate(supabase: any): Promise<number> {
   const { data, error } = await supabase
     .from("pricing_config")
     .select("restaurant_pct")

@@ -1713,6 +1713,11 @@ export function RestaurantHomeScreen({ navigation }: any) {
             onPress={() => navigation.navigate("RestaurantEarnings")}
           />
           <MapActionButton
+            icon="💼"
+            label="Finance"
+            onPress={() => navigation.navigate("RestaurantFinancialCenter")}
+          />
+          <MapActionButton
             icon="📋"
             label="Orders"
             badge={stats.pendingOrders > 0 ? stats.pendingOrders : undefined}
@@ -1908,6 +1913,11 @@ export function RestaurantHomeScreen({ navigation }: any) {
             icon="💲"
             label="Earnings"
             onPress={() => navigation.navigate("RestaurantEarnings")}
+          />
+          <BottomMapButton
+            icon="💼"
+            label="Finance"
+            onPress={() => navigation.navigate("RestaurantFinancialCenter")}
           />
           <BottomMapButton
             icon="🧾"

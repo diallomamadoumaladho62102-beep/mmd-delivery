@@ -5,10 +5,15 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
+import type { RootStackParamList } from "../navigation/AppNavigator";
 
 type ChartPoint = {
   label: string;
@@ -113,6 +118,8 @@ function SimpleBarChart({ data }: { data: ChartPoint[] }) {
 }
 
 export default function RestaurantFinancialCenterScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,22 +186,37 @@ export default function RestaurantFinancialCenterScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator />
-        <Text style={styles.loadingText}>Loading Financial Center...</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" />
+          <Text style={styles.loadingText}>Chargement du centre financier...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !overview) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error || "No data available"}</Text>
-      </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>← Retour</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>
+            {error || "Aucune donnée financière disponible pour le moment."}
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => void loadOverview()}>
+            <Text style={styles.retryBtnText}>Réessayer</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
+    <SafeAreaView style={styles.safeArea}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -202,6 +224,11 @@ export default function RestaurantFinancialCenterScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backBtnText}>← Retour</Text>
+        </TouchableOpacity>
+      </View>
       <Text style={styles.headerTitle}>Financial Center</Text>
       <Text style={styles.headerSubtitle}>
         Restaurant revenue, payouts, statements, and taxes
@@ -293,10 +320,40 @@ export default function RestaurantFinancialCenterScreen() {
         </Text>
       </SectionCard>
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F6F7FB",
+  },
+  topBar: {
+    marginBottom: 8,
+  },
+  backBtn: {
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  backBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#2563EB",
+  },
+  retryBtn: {
+    marginTop: 16,
+    backgroundColor: "#111827",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  retryBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
   container: {
     flex: 1,
     backgroundColor: "#F6F7FB",

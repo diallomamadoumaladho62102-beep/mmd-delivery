@@ -71,6 +71,24 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    const { data: profileRow, error: profileError } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", restaurantUserId)
+      .maybeSingle();
+
+    if (profileError) {
+      return jsonError(profileError.message || "Failed to verify profile", 500);
+    }
+
+    const role = String(profileRow?.role ?? "")
+      .trim()
+      .toLowerCase();
+
+    if (role !== "restaurant") {
+      return jsonError("Forbidden: restaurant role required", 403);
+    }
+
     const data = await getRestaurantFinancialOverview({
       supabase: admin,
       restaurantUserId,

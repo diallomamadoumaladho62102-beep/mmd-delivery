@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { scheduleDeliveryRequestDispatch } from "@/lib/scheduleDeliveryRequestDispatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -470,6 +471,11 @@ export async function POST(req: NextRequest) {
         500
       );
     }
+
+    scheduleDeliveryRequestDispatch({
+      origin: req.nextUrl.origin,
+      deliveryRequestId: deliveryRequest.id,
+    });
 
     return json({
       ok: true,

@@ -1740,7 +1740,18 @@ export function DriverHomeScreen() {
           const result = getRpcRow<{ ok?: boolean; message?: string }>(data as any);
 
           if (!result?.ok) {
-            throw new Error(result?.message ?? getOfferUnavailableMessage(t));
+            if (
+              offerSourceTable === "delivery_requests" &&
+              (result?.message === "request_no_longer_available" ||
+                result?.message === "offer_not_available")
+            ) {
+              const { acceptDeliveryRequest } = await import(
+                "../lib/deliveryRequestDriverApi"
+              );
+              await acceptDeliveryRequest(orderId);
+            } else {
+              throw new Error(result?.message ?? getOfferUnavailableMessage(t));
+            }
           }
         } else if (offerSourceTable === "delivery_requests") {
           const { acceptDeliveryRequest } = await import("../lib/deliveryRequestDriverApi");

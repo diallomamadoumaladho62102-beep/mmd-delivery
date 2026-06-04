@@ -60,6 +60,7 @@ import { RestaurantHomeScreen } from "../screens/RestaurantHomeScreen";
 import { RestaurantOrdersScreen } from "../screens/RestaurantOrdersScreen";
 import { RestaurantOrderDetailsScreen } from "../screens/RestaurantOrderDetailsScreen";
 import { RestaurantEarningsScreen } from "../screens/RestaurantEarningsScreen";
+import RestaurantFinancialCenterScreen from "../screens/RestaurantFinancialCenterScreen";
 import RestaurantTaxScreen from "../screens/RestaurantTaxScreen";
 import { RestaurantLanguageScreen } from "../screens/RestaurantLanguageScreen";
 import { RestaurantSecurityScreen } from "../screens/RestaurantSecurityScreen";
@@ -131,6 +132,7 @@ export type RootStackParamList = {
   RestaurantOrders: undefined;
   RestaurantOrderDetails: { orderId: string };
   RestaurantEarnings: undefined;
+  RestaurantFinancialCenter: undefined;
   RestaurantTax: undefined;
   RestaurantLanguage: undefined;
   RestaurantSecurity: undefined;
@@ -412,6 +414,7 @@ export function AppNavigator({
         r === "RestaurantOrders" ||
         r === "RestaurantOrderDetails" ||
         r === "RestaurantEarnings" ||
+        r === "RestaurantFinancialCenter" ||
         r === "RestaurantTax" ||
         r === "RestaurantLanguage" ||
         r === "RestaurantSecurity" ||
@@ -810,6 +813,10 @@ export function AppNavigator({
         <Stack.Screen
           name="RestaurantEarnings"
           component={RestaurantEarningsScreen}
+        />
+        <Stack.Screen
+          name="RestaurantFinancialCenter"
+          component={RestaurantFinancialCenterScreen}
         />
         <Stack.Screen name="RestaurantTax" component={RestaurantTaxScreen} />
         <Stack.Screen
