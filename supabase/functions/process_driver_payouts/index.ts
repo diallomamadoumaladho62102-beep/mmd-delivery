@@ -23,6 +23,16 @@ function errMsg(e: unknown) {
 }
 
 serve(async (req) => {
+  // Canonical payouts: Vercel /api/admin/process-payouts (Sunday cron).
+  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
+    return json({
+      ok: true,
+      disabled: true,
+      handler: "vercel",
+      path: "/api/admin/process-payouts",
+    });
+  }
+
   try {
     if (req.method !== "POST") {
       return json({ ok: false, error: "Method not allowed" }, 405);

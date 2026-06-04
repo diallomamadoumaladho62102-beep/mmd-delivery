@@ -17,6 +17,17 @@
 3. Remove or disable any Supabase project URL pointing at `stripe_webhook`.
 4. Signing secret must match `STRIPE_WEBHOOK_SECRET` in Vercel production env.
 
+## Idempotency table (Vercel webhook)
+
+The Next.js handler records each Stripe `event.id` in **`public.stripe_webhook_events`** (`stripe_event_id` UNIQUE). Duplicate events return early without re-processing.
+
+```sql
+select stripe_event_id, event_type, created_at
+from public.stripe_webhook_events
+order by created_at desc
+limit 20;
+```
+
 ## Verification
 
-After deploy, send a test event from Stripe Dashboard to the Vercel URL only. Confirm `stripe_webhook_events` (or order `payment_status`) updates once per event.
+After deploy, send a test event from Stripe Dashboard to the Vercel URL only. Confirm `stripe_webhook_events` and order `payment_status` update once per event.

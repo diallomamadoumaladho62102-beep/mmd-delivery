@@ -49,6 +49,15 @@ async function stripePOST(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
+    return json({
+      ok: true,
+      disabled: true,
+      handler: "vercel",
+      path: "/api/admin/process-payouts",
+    });
+  }
+
   try {
     if (req.method !== "POST") return json({ error: "Use POST" }, 405);
 

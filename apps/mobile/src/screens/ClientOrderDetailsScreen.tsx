@@ -22,6 +22,7 @@ import { supabase } from "../lib/supabase";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { openStripeCheckout } from "../lib/stripe";
+import { confirmOrderPaid } from "../../lib/payments";
 import { useTranslation } from "react-i18next";
 import Mapbox from "@rnmapbox/maps";
 
@@ -822,7 +823,23 @@ export function ClientOrderDetailsScreen() {
         await WebBrowser.openBrowserAsync(out.url);
       }
 
+      const confirm = await confirmOrderPaid(order.id, accessToken, {
+        attempts: 3,
+        timeoutMs: 12000,
+      });
+
       await fetchOrder();
+
+      if (confirm.ok) {
+        const latestPaid = await fetchPaymentStatusOnly();
+        if (latestPaid === "paid") {
+          Alert.alert(
+            paymentTitle,
+            `${ts("client.orderDetails.paymentConfirmed", "Payment confirmed")} ✅`
+          );
+          return;
+        }
+      }
 
       const latestStatus = await fetchPaymentStatusOnly();
 

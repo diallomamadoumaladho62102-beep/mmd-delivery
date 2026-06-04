@@ -1,6 +1,7 @@
 // apps/web/app/api/stripe/webhook/route.ts
 // Canonical Stripe webhook (Live): https://www.mmddelivery.com/api/stripe/webhook
 // Disable Supabase Edge stripe_webhook in production (MMD_STRIPE_WEBHOOK_DISABLED=true).
+// Idempotency: public.stripe_webhook_events.stripe_event_id (unique).
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import {
@@ -727,24 +728,41 @@ async function verifyDeliveryRequestPaidState(opts: {
   };
 }
 
+function stripeEventLivemode(event: Stripe.Event): boolean {
+  const raw = event as Stripe.Event & { livemode?: boolean };
+  return Boolean(raw.livemode);
+}
+
 async function persistStripeEvent(opts: {
   supabaseAdmin: SupabaseClient;
   event: Stripe.Event;
-}): Promise<{ inserted: boolean; duplicate: boolean }> {
+}): Promise<{ inserted: boolean; duplicate: boolean; failed: boolean }> {
   const { supabaseAdmin, event } = opts;
+  const stripeEventId = String(event.id ?? "").trim();
+  const eventType = String(event.type ?? "").trim();
+
+  if (!stripeEventId || !eventType) {
+    return { inserted: false, duplicate: false, failed: true };
+  }
 
   try {
-    const { error } = await supabaseAdmin.from("stripe_events").insert({
-      event_id: event.id,
-      created_at: new Date().toISOString(),
+    const { error } = await supabaseAdmin.from("stripe_webhook_events").insert({
+      stripe_event_id: stripeEventId,
+      event_type: eventType,
+      livemode: stripeEventLivemode(event),
+      payload: {
+        id: stripeEventId,
+        type: eventType,
+        created: event.created ?? null,
+      },
     });
 
     if (!error) {
-      console.log("✅ WEBHOOK: stripe_events saved", {
-        event_id: event.id,
-        type: event.type,
+      console.log("✅ WEBHOOK: stripe_webhook_events saved", {
+        event_id: stripeEventId,
+        type: eventType,
       });
-      return { inserted: true, duplicate: false };
+      return { inserted: true, duplicate: false, failed: false };
     }
 
     const code = getErrorCode(error);
@@ -758,27 +776,40 @@ async function persistStripeEvent(opts: {
 
     if (looksDuplicate) {
       console.log("ℹ️ WEBHOOK: duplicate event ignored", {
-        event_id: event.id,
-        type: event.type,
+        event_id: stripeEventId,
+        type: eventType,
         code,
         message: getErrorMessage(error),
       });
-      return { inserted: false, duplicate: true };
+      return { inserted: false, duplicate: true, failed: false };
     }
 
-    console.log("⚠️ WEBHOOK: could not insert stripe_events row", {
+    const { data: existing, error: existingError } = await supabaseAdmin
+      .from("stripe_webhook_events")
+      .select("id")
+      .eq("stripe_event_id", stripeEventId)
+      .maybeSingle();
+
+    if (!existingError && existing?.id != null) {
+      return { inserted: false, duplicate: true, failed: false };
+    }
+
+    console.log("⚠️ WEBHOOK: could not insert stripe_webhook_events row", {
       code,
       message: getErrorMessage(error),
       details: getErrorDetails(error),
       hint: getErrorHint(error),
-      event_id: event.id,
-      type: event.type,
+      event_id: stripeEventId,
+      type: eventType,
     });
 
-    return { inserted: false, duplicate: false };
+    return { inserted: false, duplicate: false, failed: true };
   } catch (e: unknown) {
-    console.log("⚠️ WEBHOOK: stripe_events insert crashed", getErrorMessage(e));
-    return { inserted: false, duplicate: false };
+    console.log(
+      "⚠️ WEBHOOK: stripe_webhook_events insert crashed",
+      getErrorMessage(e)
+    );
+    return { inserted: false, duplicate: false, failed: true };
   }
 }
 
@@ -2086,6 +2117,25 @@ export async function POST(req: NextRequest) {
         type: event.type,
         event_id: event.id,
       });
+    }
+
+    if (!persisted.inserted) {
+      console.log("❌ WEBHOOK: idempotency record failed — skipping handler", {
+        event_id: event.id,
+        type: event.type,
+        failed: persisted.failed,
+      });
+
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "webhook_idempotency_record_failed",
+          event_id: event.id,
+          type: event.type,
+        },
+        503
+      );
     }
 
     if (
