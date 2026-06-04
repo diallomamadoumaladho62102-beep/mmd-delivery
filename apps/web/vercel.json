@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/process-payouts",
+      "schedule": "0 3 * * 0"
+    },
+    {
+      "path": "/api/orders/expire-unpaid",
+      "schedule": "0 5 * * *"
+    }
+  ]
+}
