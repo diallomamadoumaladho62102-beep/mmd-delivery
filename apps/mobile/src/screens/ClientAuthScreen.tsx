@@ -202,6 +202,7 @@ export function ClientAuthScreen() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [referralCode, setReferralCode] = useState("");
 
@@ -368,6 +369,26 @@ export function ClientAuthScreen() {
     avatarUrl: string | null;
   }) {
     const { userId, email, avatarUrl } = params;
+
+    try {
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          role: "client",
+          full_name: trimOrEmpty(fullName),
+          phone: cleanPhone(phone),
+          email,
+          avatar_url: avatarUrl,
+        },
+        { onConflict: "id" }
+      );
+
+      if (profileError) {
+        console.log("profiles upsert error:", profileError);
+      }
+    } catch (err) {
+      console.log("profiles upsert exception:", err);
+    }
 
     try {
       await supabase.auth.updateUser({
@@ -542,7 +563,7 @@ export function ClientAuthScreen() {
             uri: avatar.uri,
             mime: avatar.mime,
           });
-          avatarUrl = up.publicUrl;
+          avatarUrl = up.path;
         } catch (err) {
           console.log("avatar upload error:", err);
           Alert.alert(
@@ -931,22 +952,44 @@ export function ClientAuthScreen() {
             <Text style={{ color: "#E5E7EB", marginBottom: 8 }}>
               {t("client.auth.password")}
             </Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t("client.auth.passwordPlaceholder")}
-              placeholderTextColor="#6B7280"
-              secureTextEntry
-              style={{
-                borderWidth: 1,
-                borderColor: "#374151",
-                borderRadius: 8,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                color: "white",
-                marginBottom: 24,
-              }}
-            />
+            <View style={{ position: "relative", marginBottom: 24 }}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t("client.auth.passwordPlaceholder")}
+                placeholderTextColor="#6B7280"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#374151",
+                  borderRadius: 8,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  paddingRight: 88,
+                  color: "white",
+                  opacity: loading ? 0.8 : 1,
+                }}
+              />
+              <TouchableOpacity
+                disabled={loading}
+                onPress={() => setShowPassword((value) => !value)}
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: 0,
+                  bottom: 0,
+                  justifyContent: "center",
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ color: "#93C5FD", fontWeight: "800", fontSize: 12 }}>
+                  {showPassword ? "Cacher" : "Voir"}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {mode === "login" ? (
               <TouchableOpacity

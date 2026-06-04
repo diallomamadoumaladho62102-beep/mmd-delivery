@@ -92,6 +92,7 @@ export default function SignupClientPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [referralCode, setReferralCode] = useState("");
 
   const [fullName, setFullName] = useState("");
@@ -161,6 +162,26 @@ export default function SignupClientPage() {
     avatarUrl: string | null;
   }) {
     const { userId, email: userEmail, avatarUrl } = params;
+
+    try {
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          role: ROLE,
+          full_name: trimOrEmpty(fullName),
+          phone: cleanPhone(phone),
+          email: userEmail,
+          avatar_url: avatarUrl,
+        },
+        { onConflict: "id" }
+      );
+
+      if (profileError) {
+        console.log("profiles upsert error:", profileError);
+      }
+    } catch (error) {
+      console.log("profiles upsert exception:", error);
+    }
 
     try {
       await supabase.auth.updateUser({
@@ -379,7 +400,7 @@ export default function SignupClientPage() {
       if (avatarFile) {
         try {
           const uploaded = await uploadAvatarToSupabase({ userId, file: avatarFile });
-          avatarUrl = uploaded.publicUrl;
+          avatarUrl = uploaded.path;
         } catch (error) {
           console.log("avatar upload error:", error);
           setMessage("Compte créé, mais la photo n’a pas été envoyée. Tu pourras l’ajouter plus tard.");
@@ -592,14 +613,25 @@ export default function SignupClientPage() {
 
             <div>
               <label className="mb-2 block text-sm font-bold text-slate-200">Mot de passe</label>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Minimum 6 caractères"
-                type="password"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500"
-              />
+              <div className="relative">
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Minimum 6 caractères"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  disabled={loading}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 pr-24 font-semibold outline-none transition placeholder:text-slate-600 focus:border-blue-500 disabled:opacity-70"
+                />
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-blue-300 hover:text-blue-200 disabled:opacity-60"
+                >
+                  {showPassword ? "Cacher" : "Voir"}
+                </button>
+              </div>
             </div>
           </div>
 

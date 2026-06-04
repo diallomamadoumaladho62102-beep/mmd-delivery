@@ -11,6 +11,8 @@ const supabase = createClient(
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -72,61 +74,102 @@ export default function ResetPasswordPage() {
           Entre ton nouveau mot de passe MMD Delivery.
         </p>
 
-        <input
-          type="password"
-          placeholder="Nouveau mot de passe"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 12,
-            marginBottom: 12,
-            background: "#020617",
-            border: "1px solid #1F2937",
-            color: "white",
-          }}
-        />
+        <div style={{ position: "relative", marginBottom: 12 }}>
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Nouveau mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: 14,
+              paddingRight: 72,
+              borderRadius: 12,
+              background: "#020617",
+              border: "1px solid #1F2937",
+              color: "white",
+            }}
+          />
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setShowPassword((value) => !value)}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "#93C5FD",
+              fontWeight: 800,
+              fontSize: 12,
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            {showPassword ? "Cacher" : "Voir"}
+          </button>
+        </div>
 
-        <input
-          type="password"
-          placeholder="Confirmer le mot de passe"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 14,
-            borderRadius: 12,
-            marginBottom: 16,
-            background: "#020617",
-            border: "1px solid #1F2937",
-            color: "white",
-          }}
-        />
+        <div style={{ position: "relative", marginBottom: 16 }}>
+          <input
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="Confirmer le mot de passe"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: 14,
+              paddingRight: 72,
+              borderRadius: 12,
+              background: "#020617",
+              border: "1px solid #1F2937",
+              color: "white",
+            }}
+          />
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setShowConfirmPassword((value) => !value)}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "transparent",
+              border: "none",
+              color: "#93C5FD",
+              fontWeight: 800,
+              fontSize: 12,
+              cursor: loading ? "not-allowed" : "pointer",
+            }}
+          >
+            {showConfirmPassword ? "Cacher" : "Voir"}
+          </button>
+        </div>
 
         <button
-          type="button"
           onClick={handleUpdate}
           disabled={loading}
           style={{
             width: "100%",
             padding: 14,
             borderRadius: 12,
-            background: loading ? "#111827" : "#2563EB",
+            background: loading ? "#1E3A8A" : "#2563EB",
             color: "white",
             fontWeight: 900,
             border: "none",
             cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          {loading ? "Chargement..." : "Mettre à jour"}
+          {loading ? "Mise à jour..." : "Mettre à jour"}
         </button>
 
-        {message ? (
-          <p style={{ marginTop: 14, color: "#CBD5E1", fontWeight: 700 }}>
-            {message}
-          </p>
-        ) : null}
+        {message && (
+          <p style={{ marginTop: 16, color: "#E5E7EB", fontSize: 14 }}>{message}</p>
+        )}
       </section>
     </main>
   );

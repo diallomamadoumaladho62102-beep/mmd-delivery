@@ -32,6 +32,15 @@ type DriverStatus =
 const RESET_PASSWORD_URL =
   "https://mmd-delivery.vercel.app/auth/reset-password";
 
+const AVATARS_BUCKET = "avatars";
+
+function getAvatarExtFromUri(uri: string): string {
+  const lower = uri.toLowerCase();
+  if (lower.endsWith(".png")) return "png";
+  if (lower.endsWith(".webp")) return "webp";
+  return "jpg";
+}
+
 function getResetPasswordRedirectUrl() {
   return RESET_PASSWORD_URL;
 }
@@ -337,6 +346,7 @@ export function DriverAuthScreen() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [referralCode, setReferralCode] = useState("");
 
@@ -702,11 +712,12 @@ export function DriverAuthScreen() {
   }, [pickAvatarFromCamera, pickAvatarFromFiles, t]);
 
   const uploadAvatarIfAny = useCallback(
-    async (uid: string) => {
-      if (!avatarLocalUri) return;
+    async (uid: string): Promise<string | null> => {
+      if (!avatarLocalUri) return null;
 
       try {
-        const path = `${uid}/avatar/${Date.now()}.jpg`;
+        const ext = getAvatarExtFromUri(avatarLocalUri);
+        const storagePath = `drivers/${uid}/avatar.${ext}`;
 
         const base64 = await FileSystem.readAsStringAsync(avatarLocalUri, {
           encoding: FileSystem.EncodingType.Base64,
@@ -714,25 +725,29 @@ export function DriverAuthScreen() {
 
         const bytes = base64ToUint8Array(base64);
 
+        const contentType =
+          ext === "png"
+            ? "image/png"
+            : ext === "webp"
+              ? "image/webp"
+              : "image/jpeg";
+
         const { error: upErr } = await supabase.storage
-          .from("driver-documents")
-          .upload(path, bytes, {
-            contentType: "image/jpeg",
+          .from(AVATARS_BUCKET)
+          .upload(storagePath, bytes, {
+            contentType,
             upsert: true,
           });
 
         if (upErr) {
           console.log("avatar upload error", upErr);
-          return;
+          return null;
         }
 
-        const { error: metaErr } = await supabase.auth.updateUser({
-          data: { avatar_path: path },
-        });
-
-        if (metaErr) console.log("updateUser avatar_path error", metaErr);
+        return storagePath;
       } catch (e) {
         console.log("uploadAvatarIfAny error", e);
+        return null;
       }
     },
     [avatarLocalUri]
@@ -827,7 +842,7 @@ export function DriverAuthScreen() {
       const uid = user.id;
 
       await applyReferralIfAny();
-      await uploadAvatarIfAny(uid);
+      const avatarPath = await uploadAvatarIfAny(uid);
 
       await supabase.from("profiles").upsert(
         {
@@ -835,6 +850,7 @@ export function DriverAuthScreen() {
           role: "driver",
           full_name: cleanedFullName,
           phone: cleanedPhone,
+          avatar_url: avatarPath,
         },
         { onConflict: "id" }
       );
@@ -1015,14 +1031,50 @@ export function DriverAuthScreen() {
             keyboardType="email-address"
           />
 
-          <Input
-            label={t("driver.auth.fields.password")}
-            value={password}
-            onChangeText={setPassword}
-            placeholder={t("driver.auth.fields.passwordPlaceholder")}
-            secureTextEntry
-            autoCapitalize="none"
-          />
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
+              {t("driver.auth.fields.password")}
+            </Text>
+            <View style={{ position: "relative", marginTop: 8 }}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder={t("driver.auth.fields.passwordPlaceholder")}
+                placeholderTextColor="#475569"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loading}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: Platform.OS === "ios" ? 12 : 10,
+                  paddingRight: 92,
+                  borderRadius: 14,
+                  borderWidth: 1,
+                  borderColor: "#111827",
+                  color: "white",
+                  backgroundColor: "#0B1220",
+                  opacity: loading ? 0.8 : 1,
+                }}
+              />
+              <TouchableOpacity
+                disabled={loading}
+                onPress={() => setShowPassword((value) => !value)}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: 0,
+                  bottom: 0,
+                  justifyContent: "center",
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ color: "#93C5FD", fontWeight: "900", fontSize: 12 }}>
+                  {showPassword ? "Cacher" : "Voir"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {mode === "login" ? (
             <View

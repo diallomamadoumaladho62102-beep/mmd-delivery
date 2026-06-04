@@ -70,6 +70,7 @@ export default function SignupRestaurantPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -330,15 +331,25 @@ export default function SignupRestaurantPage() {
 
             <div>
               <label className="mb-2 block text-sm font-bold text-slate-200">Mot de passe</label>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Mot de passe (min 6)"
-                type="password"
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                disabled={loading}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 font-semibold outline-none transition placeholder:text-slate-600 focus:border-emerald-500 disabled:opacity-70"
-              />
+              <div className="relative">
+                <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Mot de passe (min 6)"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  disabled={loading}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 pr-24 font-semibold outline-none transition placeholder:text-slate-600 focus:border-emerald-500 disabled:opacity-70"
+                />
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-extrabold text-emerald-300 hover:text-emerald-200 disabled:opacity-60"
+                >
+                  {showPassword ? "Cacher" : "Voir"}
+                </button>
+              </div>
             </div>
           </div>
 
