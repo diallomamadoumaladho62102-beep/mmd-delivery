@@ -1,39 +1,9 @@
 {
   "cli": {
-    "version": ">= 16.28.0",
+    "version": ">= 18.4.0",
     "appVersionSource": "remote"
   },
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "env": {
-        "APP_ENV": "development",
-        "EXPO_PUBLIC_API_URL_LOCAL": "http://192.168.1.203:3000",
-        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
-      }
-    },
-    "preview": {
-      "distribution": "internal",
-      "env": {
-        "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
-      }
-    },
-    "production": {
-      "autoIncrement": true,
-      "environment": "production",
-      "env": {
-        "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
-      }
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": {
-        "ascAppId": "6761693075"
-      }
-    }
-  }
+  "build": {},
+  "submit": {},
+  "_comment": "Canonical EAS config is at repository root: ../../eas.json. Run eas build from repo root."
 }

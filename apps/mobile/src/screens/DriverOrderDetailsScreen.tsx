@@ -1479,18 +1479,24 @@ export function DriverOrderDetailsScreen() {
 
       console.log("[MMD_PROOF] STEP storage.upload OK", { filePath });
 
-      const { data: publicData } = supabase.storage
+      const { data: signedData, error: signErr } = await supabase.storage
         .from(PROOF_BUCKET)
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 60 * 60 * 24 * 7);
+
+      if (signErr) {
+        console.warn("[MMD_PROOF] createSignedUrl failed", signErr);
+      }
+
+      const signedUrl = signedData?.signedUrl ?? null;
 
       console.log("[MMD_PROOF] uploadProofPhoto DONE", {
         storagePath: filePath,
-        publicUrl: publicData?.publicUrl,
+        signedUrl: signedUrl?.slice(0, 80),
       });
 
       return {
         storagePath: filePath,
-        publicUrl: publicData?.publicUrl ?? null,
+        publicUrl: signedUrl,
       };
     } finally {
       setProofUploading(false);

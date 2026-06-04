@@ -11,6 +11,7 @@ type OrderStatus =
   | "prepared"
   | "ready"
   | "dispatched"
+  | "picked_up"
   | "delivered"
   | "canceled";
 
@@ -114,9 +115,12 @@ export default function DriverOrderDetailsPage() {
     }
   }
 
-  const canPickup = order?.status === "ready";
-  const canDeliver = order?.status === "dispatched";
-  const canAccept = !!order && order.status === "pending" && !order.driver_id;
+  const canPickup = order?.status === "ready" || order?.status === "dispatched";
+  const canDeliver = order?.status === "dispatched" || order?.status === "picked_up";
+  const canAccept =
+    !!order &&
+    !order.driver_id &&
+    (order.status === "ready" || order.status === "pending");
 
   function openCodeModal(kind: VerifyKind) {
     if (kind === "pickup" && !canPickup) return;
@@ -147,32 +151,27 @@ export default function DriverOrderDetailsPage() {
         return;
       }
 
-      console.log("📦 Acceptation commande (web) pour chauffeur :", user.id);
+      const { data: acceptData, error: acceptError } = await supabase.rpc(
+        "driver_accept_ready_order",
+        { p_order_id: order.id }
+      );
 
-      const { error: updateError } = await supabase
-        .from("orders")
-        .update({
-          driver_id: user.id,
-          status: "accepted",
-        })
-        .eq("id", order.id)
-        .is("driver_id", null);
-
-      if (updateError) {
-        console.error("❌ Erreur update orders (web):", updateError);
+      if (acceptError) {
+        console.error("driver_accept_ready_order (web):", acceptError);
         alert(
-          updateError.message ?? "Impossible d'accepter cette course pour le moment."
+          acceptError.message ??
+            "Impossible d'accepter cette course (commande non prête ou non payée)."
         );
         return;
       }
 
-      const { error: joinError } = await supabase.rpc("join_order", {
-        p_order_id: order.id,
-        p_role: "driver",
-      });
-
-      if (joinError) {
-        console.error("⚠️ Erreur join_order (web):", joinError);
+      const ok = (acceptData as { ok?: boolean })?.ok === true;
+      if (!ok) {
+        const message =
+          (acceptData as { message?: string })?.message ??
+          "Course non disponible.";
+        alert(message);
+        return;
       }
 
       await fetchOrder();
@@ -220,8 +219,48 @@ export default function DriverOrderDetailsPage() {
         return;
       }
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        alert("Session expirée. Reconnecte-toi.");
+        return;
+      }
+
+      const apiBase =
+        process.env.NEXT_PUBLIC_WEB_BASE_URL?.trim() ||
+        "https://www.mmddelivery.com";
+      const proofUrl = `${apiBase.replace(/\/+$/, "")}/api/orders/driver-web-proof-placeholder`;
+      const endpoint =
+        verifyingKind === "pickup"
+          ? `${apiBase.replace(/\/+$/, "")}/api/orders/pickup-confirm`
+          : `${apiBase.replace(/\/+$/, "")}/api/orders/delivered-confirm`;
+
+      const confirmRes = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          order_id: order.id,
+          proof_photo_url: proofUrl,
+        }),
+      });
+
+      const confirmBody = await confirmRes.json().catch(() => null);
+      if (!confirmRes.ok) {
+        alert(confirmBody?.error ?? "Confirmation serveur échouée.");
+        return;
+      }
+
       await fetchOrder();
-      alert(message);
+      alert(
+        verifyingKind === "pickup"
+          ? "Pickup confirmé ✅"
+          : "Livraison confirmée ✅"
+      );
       closeCodeModal();
     } catch (e: any) {
       console.error("Erreur handleSubmitCode (web):", e);

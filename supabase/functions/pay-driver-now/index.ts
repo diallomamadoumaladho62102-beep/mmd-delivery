@@ -33,6 +33,15 @@ function isDriverRole(role: string | null | undefined) {
 }
 
 serve(async (req) => {
+  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
+    return json({
+      ok: false,
+      disabled: true,
+      message:
+        "Edge driver payouts disabled. Use Vercel /api/admin/process-payouts.",
+    });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

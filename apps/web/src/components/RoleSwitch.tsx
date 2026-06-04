@@ -31,10 +31,9 @@ export default function RoleSwitch({ orderId }: { orderId: string }) {
     try {
       setLoading(true); setErr(null); setMsg(null);
       if (!uid) { setErr('Connecte-toi.'); return; }
-      const { data, error } = await supabase.rpc('join_order_rpc', {
+      const { data, error } = await supabase.rpc("join_order", {
         p_order_id: orderId,
-        p_user_id: uid,
-        p_role: role
+        p_role: role,
       });
       if (error) throw error;
       setMsg(JSON.stringify(data));

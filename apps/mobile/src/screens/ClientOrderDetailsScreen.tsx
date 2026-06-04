@@ -22,7 +22,9 @@ import { supabase } from "../lib/supabase";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { openStripeCheckout } from "../lib/stripe";
+import { payOrderWithPaymentSheet } from "../utils/stripe";
 import { confirmOrderPaid } from "../../lib/payments";
+import { getApiBaseUrl } from "../../lib/apiBase";
 import { useTranslation } from "react-i18next";
 import Mapbox from "@rnmapbox/maps";
 
@@ -776,7 +778,7 @@ export function ClientOrderDetailsScreen() {
       setPaying(true);
       setPaymentPending(false);
 
-      const apiUrl = cleanApiUrl();
+      const apiUrl = cleanApiUrl() || getApiBaseUrl();
 
       if (!apiUrl) throw new Error("EXPO_PUBLIC_API_URL is missing");
 
@@ -787,6 +789,34 @@ export function ClientOrderDetailsScreen() {
 
       if (!accessToken) {
         throw new Error(ts("client.orderDetails.mustBeLoggedInToPay", "You must be logged in to pay."));
+      }
+
+      try {
+        const sheetPaid = await payOrderWithPaymentSheet(order.id);
+        if (sheetPaid) {
+          const confirmSheet = await confirmOrderPaid(order.id, accessToken, {
+            attempts: 3,
+            timeoutMs: 12000,
+          });
+          await fetchOrder();
+          const latestPaid = await fetchPaymentStatusOnly();
+          if (confirmSheet.ok || latestPaid === "paid") {
+            Alert.alert(
+              paymentTitle,
+              `${ts("client.orderDetails.paymentConfirmed", "Payment confirmed")} ✅`
+            );
+            return;
+          }
+        }
+      } catch (sheetErr: unknown) {
+        const msg =
+          sheetErr instanceof Error ? sheetErr.message : String(sheetErr);
+        if (msg.includes("already paid") || msg.includes("Order already paid")) {
+          await fetchOrder();
+          Alert.alert(paymentTitle, ts("client.orderDetails.alreadyPaid", "Already paid ✅"));
+          return;
+        }
+        console.warn("[ClientOrderDetails] PaymentSheet fallback to Checkout:", msg);
       }
 
       const endpoint = `${apiUrl}/api/stripe/client/create-checkout-session`;

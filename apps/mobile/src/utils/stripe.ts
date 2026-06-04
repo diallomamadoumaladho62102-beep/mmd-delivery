@@ -514,12 +514,18 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
   }
 
   const d = (data ?? {}) as any;
+
+  if (d?.alreadyPaid === true) {
+    return true;
+  }
+
   const clientSecret =
     asNonEmptyString(d?.clientSecret) ??
     asNonEmptyString(d?.client_secret) ??
     asNonEmptyString(d?.payment_intent_client_secret);
 
   if (!clientSecret) {
+    if (d?.alreadyPaid) return true;
     throw new Error("clientSecret manquant depuis create_payment_intent.");
   }
 

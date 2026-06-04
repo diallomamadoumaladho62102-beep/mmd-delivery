@@ -18,11 +18,33 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function toPositiveNumber(value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function resolveOrderAmountCents(order: {
+  total_cents?: unknown;
+  total?: unknown;
+  grand_total?: unknown;
+}): number | null {
+  const totalCents = toPositiveNumber(order.total_cents);
+  if (totalCents != null) return Math.round(totalCents);
+
+  const total = toPositiveNumber(order.total);
+  if (total != null) return Math.round(total * 100);
+
+  const grandTotal = toPositiveNumber(order.grand_total);
+  if (grandTotal != null) return Math.round(grandTotal * 100);
+
+  return null;
+}
+
 Deno.serve(async (req) => {
   try {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-    // ✅ Auth via JWT Supabase (supabase.functions.invoke envoie Authorization automatiquement)
     const authHeader = req.headers.get("Authorization") ?? "";
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -34,43 +56,58 @@ Deno.serve(async (req) => {
     const { orderId } = await req.json().catch(() => ({}));
     if (!orderId) return json({ error: "orderId is required" }, 400);
 
-    // ✅ Lire la commande en DB (montant réel calculé depuis la DB, pas depuis le client)
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("id, created_by, total, currency, payment_status, stripe_payment_intent_id")
+      .select(
+        "id, created_by, client_user_id, total, total_cents, grand_total, currency, payment_status, stripe_payment_intent_id"
+      )
       .eq("id", orderId)
       .single();
 
     if (orderErr || !order) return json({ error: "Order not found" }, 404);
-    if (order.created_by !== userData.user.id) return json({ error: "Forbidden" }, 403);
 
-    if (order.payment_status === "paid") {
-      return json({ error: "Order already paid" }, 409);
+    const ownerId = order.client_user_id ?? order.created_by;
+    if (ownerId !== userData.user.id) return json({ error: "Forbidden" }, 403);
+
+    if (String(order.payment_status ?? "").toLowerCase() === "paid") {
+      return json({ error: "Order already paid", alreadyPaid: true }, 409);
     }
 
+    const amount = resolveOrderAmountCents(order);
+    if (amount == null) return json({ error: "Invalid order total" }, 400);
+
     const currency = (order.currency || "USD").toLowerCase();
-    const total = Number(order.total ?? 0);
-    if (!Number.isFinite(total) || total <= 0) return json({ error: "Invalid order total" }, 400);
 
-    const amount = Math.round(total * 100); // cents
-
-    // ✅ Reuse PI if exists (sinon create)
     let paymentIntent: Stripe.PaymentIntent;
 
     if (order.stripe_payment_intent_id) {
-      paymentIntent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
+      paymentIntent = await stripe.paymentIntents.retrieve(
+        order.stripe_payment_intent_id
+      );
 
-      // Si le PI est dans un état "final", on en recrée un (simple et safe)
-      const finalStates = ["succeeded", "canceled"] as const;
-      if (finalStates.includes(paymentIntent.status as any)) {
+      if (paymentIntent.status === "succeeded") {
+        return json({
+          ok: true,
+          alreadyPaid: true,
+          paymentIntentId: paymentIntent.id,
+          clientSecret: null,
+          message:
+            "Payment already succeeded — sync via confirm-paid or webhook.",
+        });
+      }
+
+      const finalStates = ["canceled"] as const;
+      if (finalStates.includes(paymentIntent.status as "canceled")) {
         paymentIntent = await stripe.paymentIntents.create({
           amount,
           currency,
           automatic_payment_methods: { enabled: true },
           metadata: { order_id: order.id, user_id: userData.user.id },
         });
-      } else if (paymentIntent.amount !== amount || paymentIntent.currency !== currency) {
-        // Si le montant a changé, on recrée (plus simple que update)
+      } else if (
+        paymentIntent.amount !== amount ||
+        paymentIntent.currency !== currency
+      ) {
         paymentIntent = await stripe.paymentIntents.create({
           amount,
           currency,
@@ -87,7 +124,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ✅ Enregistrer PI dans orders
     const { error: updErr } = await supabase
       .from("orders")
       .update({
@@ -103,8 +139,9 @@ Deno.serve(async (req) => {
       paymentIntentId: paymentIntent.id,
       clientSecret: paymentIntent.client_secret,
     });
-  } catch (e: any) {
-    console.log("create_payment_intent error:", e?.message ?? e);
-    return json({ error: e?.message ?? "Server error" }, 500);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.log("create_payment_intent error:", message);
+    return json({ error: message || "Server error" }, 500);
   }
 });

@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { resolveOrderAmountCents } from "@/lib/orderAmountCents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,9 @@ type OrderRow = {
   payment_status: string | null;
   client_user_id: string | null;
   created_by: string | null;
+  total_cents: number | null;
+  total: number | null;
+  grand_total: number | null;
 };
 
 type VerifyOrderRow = {
@@ -325,7 +329,7 @@ export async function POST(req: NextRequest) {
     const { data: order, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by"
+        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, total_cents, total, grand_total"
       )
       .eq("id", orderId)
       .single<OrderRow>();
@@ -395,6 +399,23 @@ export async function POST(req: NextRequest) {
           orderId,
           stripe_status: piStatus,
         });
+      }
+
+      const expectedCents = resolveOrderAmountCents(order);
+      if (
+        expectedCents != null &&
+        Number.isFinite(paymentIntent.amount) &&
+        paymentIntent.amount !== expectedCents
+      ) {
+        return json(
+          {
+            error: "Payment amount mismatch",
+            orderId,
+            expected_cents: expectedCents,
+            actual_cents: paymentIntent.amount,
+          },
+          409
+        );
       }
 
       const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
@@ -477,6 +498,26 @@ export async function POST(req: NextRequest) {
         stripe_status: stripePayStatus,
         orderId,
       });
+    }
+
+    const expectedCheckoutCents = resolveOrderAmountCents(order);
+    const sessionAmountTotal =
+      typeof session.amount_total === "number" ? session.amount_total : null;
+
+    if (
+      expectedCheckoutCents != null &&
+      sessionAmountTotal != null &&
+      sessionAmountTotal !== expectedCheckoutCents
+    ) {
+      return json(
+        {
+          error: "Checkout amount mismatch",
+          orderId,
+          expected_cents: expectedCheckoutCents,
+          actual_cents: sessionAmountTotal,
+        },
+        409
+      );
     }
 
     const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);

@@ -57,36 +57,11 @@ async function geocodeRestaurantAddress(address: string): Promise<GeocodedAddres
     throw new Error("Adresse du restaurant obligatoire.");
   }
 
-  if (!MAPBOX_TOKEN) {
-    throw new Error(
-      "Token Mapbox manquant. Ajoute EXPO_PUBLIC_MAPBOX_TOKEN dans les variables d’environnement."
-    );
-  }
+  const { geocodeAddressViaApi } = await import("../lib/serverGeocode");
+  const result = await geocodeAddressViaApi(cleanAddress);
 
-  const params = new URLSearchParams({
-    access_token: MAPBOX_TOKEN,
-    limit: "1",
-    country: "us",
-    language: "en",
-    types: "address,poi",
-  });
-
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-    cleanAddress
-  )}.json?${params.toString()}`;
-
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error("Impossible de vérifier l’adresse du restaurant.");
-  }
-
-  const json = await response.json();
-  const feature = json?.features?.[0];
-  const center = feature?.center;
-
-  const longitude = Number(center?.[0]);
-  const latitude = Number(center?.[1]);
+  const latitude = result.latitude;
+  const longitude = result.longitude;
 
   if (!isValidCoordinate(latitude, longitude)) {
     throw new Error(
@@ -97,7 +72,7 @@ async function geocodeRestaurantAddress(address: string): Promise<GeocodedAddres
   return {
     latitude,
     longitude,
-    formattedAddress: String(feature?.place_name || cleanAddress),
+    formattedAddress: result.formattedAddress,
   };
 }
 

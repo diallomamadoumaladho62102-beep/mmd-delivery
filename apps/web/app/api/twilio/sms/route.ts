@@ -16,6 +16,13 @@ function buildSmsTwiml() {
 }
 
 export async function GET() {
+  if (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "POST" },
+    });
+  }
+
   return new Response(buildSmsTwiml(), {
     status: 200,
     headers: { "Content-Type": "text/xml" },

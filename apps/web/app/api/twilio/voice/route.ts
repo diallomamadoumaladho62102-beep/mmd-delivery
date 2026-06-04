@@ -82,7 +82,14 @@ function publicSupportDialAdmin() {
 }
 
 export async function GET() {
-  return say("MMD Delivery and Ride voice system is active.");
+  if (process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "POST" },
+    });
+  }
+
+  return say("MMD Delivery voice webhook (dev only). Use POST from Twilio.");
 }
 
 export async function POST(req: NextRequest) {

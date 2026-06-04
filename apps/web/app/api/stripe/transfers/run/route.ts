@@ -849,6 +849,66 @@ export async function POST(req: NextRequest) {
       return json({ error: "Reserved payout state mismatch" }, 409);
     }
 
+    const lockNowIso = new Date().toISOString();
+
+    if (payout.status === "pending") {
+      const { data: lockedRow, error: lockErr } = await supabaseAdmin
+        .from("order_payouts")
+        .update({
+          status: "locked",
+          locked_by: actor,
+          locked_at: lockNowIso,
+          updated_at: lockNowIso,
+        })
+        .eq("id", payout.id)
+        .eq("status", "pending")
+        .select("id, status")
+        .maybeSingle();
+
+      if (lockErr) {
+        logSupabaseError("[transfers/run] lock payout failed", lockErr, {
+          order_id: order.id,
+          payout_id: payout.id,
+          actor,
+        });
+        return json({ error: "Failed to lock payout reservation" }, 500);
+      }
+
+      if (!lockedRow) {
+        const { data: currentPayout, error: currentErr } = await supabaseAdmin
+          .from("order_payouts")
+          .select("id, status, stripe_transfer_id")
+          .eq("id", payout.id)
+          .maybeSingle();
+
+        if (currentErr) {
+          return json({ error: "Failed to read payout state" }, 500);
+        }
+
+        if (
+          currentPayout?.status === "succeeded" &&
+          currentPayout.stripe_transfer_id
+        ) {
+          return json(
+            {
+              ok: true,
+              dry_run: false,
+              already_succeeded: true,
+              order_id: order.id,
+              payout_id: payout.id,
+              target,
+              transfer_id: currentPayout.stripe_transfer_id,
+            },
+            200
+          );
+        }
+
+        if (currentPayout?.status !== "locked") {
+          return json({ error: "Payout lock race — retry later" }, 409);
+        }
+      }
+    }
+
     let transfer: Stripe.Transfer;
 
     try {
@@ -898,7 +958,8 @@ export async function POST(req: NextRequest) {
           failed_at: nowIso,
           updated_at: nowIso,
         })
-        .eq("id", payout.id);
+        .eq("id", payout.id)
+        .in("status", ["pending", "locked"]);
 
       if (failErr) {
         logSupabaseError("[transfers/run] mark payout failed failed", failErr, {

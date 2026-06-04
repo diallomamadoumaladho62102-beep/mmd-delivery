@@ -127,8 +127,19 @@ export default ({ config }: { config: AppConfigInput }) => {
           RNMapboxMapsDownloadToken: RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
         },
       ],
+      "expo-image-picker",
+      "expo-location",
+      "expo-task-manager",
       "expo-web-browser",
     ],
+
+    updates: {
+      url: `https://u.expo.dev/${PROJECT_ID}`,
+      fallbackToCacheTimeout: 0,
+    },
+    runtimeVersion: {
+      policy: "appVersion",
+    },
 
     splash: {
       image: "./apps/mobile/assets/brand/mmd-logo.png",
@@ -141,15 +152,26 @@ export default ({ config }: { config: AppConfigInput }) => {
       bundleIdentifier: IOS_BUNDLE_ID,
       buildNumber: "1.0.0",
       supportsTablet: true,
+      associatedDomains: [
+        "applinks:www.mmddelivery.com",
+        "applinks:mmddelivery.com",
+      ],
       infoPlist: {
         ...existingInfoPlist,
         ITSAppUsesNonExemptEncryption: false,
+        NSCameraUsageDescription:
+          "MMD Delivery utilise la caméra pour les preuves de pickup et de livraison.",
+        NSPhotoLibraryUsageDescription:
+          "MMD Delivery accède à vos photos pour joindre des preuves ou images au chat.",
+        NSPhotoLibraryAddUsageDescription:
+          "MMD Delivery peut enregistrer des photos de preuve dans votre galerie.",
         NSLocationWhenInUseUsageDescription:
           "MMD Delivery utilise votre position pour localiser le chauffeur et afficher les livraisons proches.",
         NSLocationAlwaysAndWhenInUseUsageDescription:
           "MMD Delivery utilise votre position pour les livraisons en temps réel.",
         NSLocationAlwaysUsageDescription:
           "MMD Delivery utilise votre position pour suivre les livraisons en temps réel lorsque vous êtes en ligne.",
+        UIBackgroundModes: ["location"],
       },
     },
 
@@ -157,7 +179,35 @@ export default ({ config }: { config: AppConfigInput }) => {
       ...existingAndroid,
       package: ANDROID_PACKAGE,
       versionCode: 1,
-      permissions: ["INTERNET", "POST_NOTIFICATIONS"],
+      permissions: [
+        "INTERNET",
+        "POST_NOTIFICATIONS",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE",
+      ],
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            {
+              scheme: "https",
+              host: "www.mmddelivery.com",
+              pathPrefix: "/",
+            },
+            {
+              scheme: "https",
+              host: "mmddelivery.com",
+              pathPrefix: "/",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
       adaptiveIcon: {
         foregroundImage: "./apps/mobile/assets/icon.png",
         backgroundColor: "#FF8C00",

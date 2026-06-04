@@ -44,6 +44,8 @@ import { DriverOpportunitiesScreen } from "../screens/DriverOpportunitiesScreen"
 import { DriverAccountScreen } from "../screens/DriverAccountScreen";
 import { DriverHelpScreen } from "../screens/DriverHelpScreen";
 import { DriverWorkAccountScreen } from "../screens/DriverWorkAccountScreen";
+import DriverPrivacyScreen from "../screens/DriverPrivacyScreen";
+import DriverAboutScreen from "../screens/DriverAboutScreen";
 import { DriverSecurityScreen } from "../screens/DriverSecurityScreen";
 import { DriverLanguageScreen } from "../screens/DriverLanguageScreen";
 
@@ -117,6 +119,8 @@ export type RootStackParamList = {
   DriverAccount: undefined;
   DriverHelp: undefined;
   DriverWorkAccount: undefined;
+  DriverPrivacyScreen: undefined;
+  DriverAboutScreen: undefined;
   DriverSecurity: undefined;
   DriverLanguage: undefined;
 
@@ -777,6 +781,14 @@ export function AppNavigator({
         <Stack.Screen
           name="DriverWorkAccount"
           component={DriverWorkAccountScreen}
+        />
+        <Stack.Screen
+          name="DriverPrivacyScreen"
+          component={DriverPrivacyScreen}
+        />
+        <Stack.Screen
+          name="DriverAboutScreen"
+          component={DriverAboutScreen}
         />
         <Stack.Screen
           name="DriverSecurity"

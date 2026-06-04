@@ -20,10 +20,10 @@ Affected functions (return `200` + `disabled: true` without moving money):
 - `process_driver_payouts`
 - `pay_restaurant_scheduled`
 
-**Not disabled by default** (manual / driver wallet flows):
+**Also disabled when `MMD_EDGE_PAYOUTS_DISABLED=true`:**
 
-- `pay_restaurant_now` — manual restaurant transfer from authenticated UI
-- `pay-driver-now` — driver wallet cashout
+- `pay_restaurant_now` — manual restaurant transfer (use Vercel `transfers/run` / admin)
+- `pay-driver-now` — driver wallet cashout (use Vercel canonical payouts)
 
 ## Verification SQL
 
