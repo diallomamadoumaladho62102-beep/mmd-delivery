@@ -357,8 +357,103 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const paymentIntentIdOnOrder = String(
+      order.stripe_payment_intent_id ?? ""
+    ).trim();
+
     if (!order.stripe_session_id) {
-      return json({ error: "No stripe_session_id on order" }, 400);
+      if (!paymentIntentIdOnOrder) {
+        return json(
+          { error: "No stripe_session_id or stripe_payment_intent_id on order" },
+          400
+        );
+      }
+
+      const paymentIntent =
+        await stripe.paymentIntents.retrieve(paymentIntentIdOnOrder);
+      const piStatus = String(paymentIntent.status ?? "").toLowerCase();
+      const metadata = (paymentIntent.metadata ?? {}) as Record<string, unknown>;
+      const metadataOrderId = String(
+        metadata.order_id ?? metadata.orderId ?? ""
+      ).trim();
+
+      if (metadataOrderId && metadataOrderId !== orderId) {
+        return json(
+          {
+            error: "Payment intent does not belong to this order",
+            orderId,
+            stripe_payment_intent_id: paymentIntentIdOnOrder,
+          },
+          409
+        );
+      }
+
+      if (piStatus !== "succeeded") {
+        return json({
+          ok: false,
+          message: "Payment intent not succeeded yet",
+          orderId,
+          stripe_status: piStatus,
+        });
+      }
+
+      const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
+        "mark_order_paid",
+        {
+          p_order_id: orderId,
+          p_session_id: null,
+          p_payment_intent_id: paymentIntentIdOnOrder,
+        }
+      );
+
+      if (rpcErr) {
+        logSupabaseError("[confirm-paid] mark_order_paid (PI) failed", rpcErr, {
+          order_id: orderId,
+          user_id: user.id,
+          payment_intent_id: paymentIntentIdOnOrder,
+        });
+
+        return json(
+          {
+            error: "Failed to confirm paid status",
+            details: rpcErr.message,
+          },
+          500
+        );
+      }
+
+      const verified = await verifyOrderPaidState({
+        supabaseUrl,
+        serviceKey,
+        orderId,
+        expectedSessionId: null,
+        expectedPaymentIntentId: paymentIntentIdOnOrder,
+      });
+
+      if (!verified.ok) {
+        console.error("[confirm-paid] PI verification failed after rpc", {
+          order_id: orderId,
+          reason: verified.reason,
+          order: verified.order,
+        });
+
+        return json(
+          {
+            error: "Paid confirmation verification failed",
+            orderId,
+            reason: verified.reason,
+          },
+          500
+        );
+      }
+
+      return json({
+        ok: true,
+        orderId,
+        stripe_status: piStatus,
+        via: "payment_intent",
+        rpcData,
+      });
     }
 
     const session = await stripe.checkout.sessions.retrieve(order.stripe_session_id);

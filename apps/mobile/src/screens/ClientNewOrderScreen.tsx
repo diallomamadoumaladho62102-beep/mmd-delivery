@@ -18,6 +18,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { API_BASE_URL } from "../lib/apiBase";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { confirmOrderPaid } from "../../lib/payments";
 import { payOrderWithPaymentSheet } from "../utils/stripe";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientNewOrder">;
@@ -397,32 +398,6 @@ export function ClientNewOrderScreen() {
       restaurant_lat: restaurantLat,
       restaurant_lng: restaurantLng,
     };
-  }
-
-  async function notifyBackendPaymentSuccess(orderId: string) {
-    const apiBaseUrl = cleanApiBaseUrl();
-
-    if (!apiBaseUrl) return;
-
-    const url = `${apiBaseUrl}/api/stripe/mark-paid`;
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
-      });
-
-      const text = await res.text();
-      if (!res.ok) {
-        console.log("mark-paid failed:", res.status, text);
-        return { ok: false, message: text || `HTTP ${res.status}` };
-      }
-
-      return { ok: true, message: text };
-    } catch (e: any) {
-      console.log("mark-paid error:", e?.message ?? e);
-      return { ok: false, message: e?.message ?? "Network error" };
-    }
   }
 
   function resetEstimateState() {
@@ -1037,14 +1012,30 @@ export function ClientNewOrderScreen() {
 
       await payOrderWithPaymentSheet(newOrderId);
 
-      const mark = await notifyBackendPaymentSuccess(newOrderId);
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token?.trim() ?? "";
 
-      if (!mark?.ok) {
+      if (sessionError || !accessToken) {
+        throw new Error(
+          t(
+            "client.newOrder.errors.missingSession",
+            "Session expirée. Reconnecte-toi puis réessaie."
+          )
+        );
+      }
+
+      const confirm = await confirmOrderPaid(newOrderId, accessToken, {
+        attempts: 3,
+        timeoutMs: 12000,
+      });
+
+      if (!confirm.ok) {
         Alert.alert(
           t("client.newOrder.alerts.paymentSuccessTitle", "Paiement réussi ✅"),
           t(
             "client.newOrder.alerts.paymentSuccessBodyWarn",
-            "Merci ! Ton paiement est confirmé.\n\n⚠️ Le serveur n’a pas encore marqué la commande comme payée automatiquement. Assure-toi que le webhook Stripe ou /api/stripe/mark-paid est en place."
+            "Merci ! Ton paiement Stripe est confirmé.\n\n⚠️ Le serveur n’a pas encore enregistré la commande comme payée. Elle le sera sous peu via Stripe, ou réessaie dans quelques secondes."
           ),
           [{ text: t("common.ok", "OK"), onPress: () => navigation.goBack() }]
         );

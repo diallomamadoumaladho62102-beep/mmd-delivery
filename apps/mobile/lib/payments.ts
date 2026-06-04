@@ -7,11 +7,16 @@ type CreateCheckoutResponse = {
   id?: string;
 };
 
-type ConfirmPaidResponse = {
+export type ConfirmPaidResponse = {
   ok: boolean;
   stripe_paid?: boolean;
   already?: boolean;
   order_id?: string;
+  orderId?: string;
+  message?: string;
+  error?: string;
+  db_status?: string;
+  via?: string;
 };
 
 type CreateDeliveryCheckoutResponse = {
@@ -110,6 +115,56 @@ async function postJsonWithRetry<T>(
   throw lastErr ?? new Error("Request failed");
 }
 
+function isConfirmPaidSuccess(data: ConfirmPaidResponse): boolean {
+  if (data.ok !== true) return false;
+
+  const status = String(data.db_status ?? "").trim().toLowerCase();
+  if (status === "paid") return true;
+
+  return (
+    data.already === true ||
+    data.stripe_paid === true ||
+    data.via === "already_paid" ||
+    data.via === "rpc_resync" ||
+    data.via === "payment_intent"
+  );
+}
+
+/**
+ * Confirme côté serveur qu'une commande est payée (fallback si webhook en retard).
+ * Utilisé après PaymentSheet ou après Checkout navigateur.
+ */
+export async function confirmOrderPaid(
+  orderId: string,
+  accessToken: string,
+  opts?: { attempts?: number; timeoutMs?: number }
+): Promise<{ ok: boolean; data?: ConfirmPaidResponse; error?: string }> {
+  if (!orderId) throw new Error("orderId is required");
+  if (!accessToken) throw new Error("accessToken is required");
+
+  const base = apiBase();
+  const confirmEndpoint = `${base}/api/stripe/client/confirm-paid`;
+
+  try {
+    const data = await postJsonWithRetry<ConfirmPaidResponse>(
+      confirmEndpoint,
+      accessToken,
+      { orderId, order_id: orderId },
+      { attempts: opts?.attempts ?? 3, timeoutMs: opts?.timeoutMs ?? 12000 }
+    );
+
+    return {
+      ok: isConfirmPaidSuccess(data),
+      data,
+      error: data.ok ? undefined : data.message ?? data.error,
+    };
+  } catch (e) {
+    const message = (e as Error)?.message ?? String(e);
+    console.warn("[payments] confirm-paid failed:", message);
+    return { ok: false, error: message };
+  }
+}
+
 /**
  * ✅ Paiement Stripe robuste (restaurants/orders)
  * - Crée une session checkout (retry + timeout)
@@ -145,16 +200,10 @@ export async function startCheckoutForOrder(
     return;
   }
 
-  try {
-    await postJsonWithRetry<ConfirmPaidResponse>(
-      confirmEndpoint,
-      accessToken,
-      { orderId },
-      { attempts: 2, timeoutMs: 12000 }
-    );
-  } catch (e) {
-    console.warn("[payments] confirm-paid failed:", (e as any)?.message ?? e);
-  }
+  await confirmOrderPaid(orderId, accessToken, {
+    attempts: 2,
+    timeoutMs: 12000,
+  });
 }
 
 /**
