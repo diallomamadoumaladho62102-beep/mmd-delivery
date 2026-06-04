@@ -11,9 +11,13 @@ import {
 } from "@supabase/supabase-js";
 import { stripe, webhookSecret } from "@/lib/stripe";
 import {
+  ensureOrderCommissionsReady,
   refreshCommissionsForDeliveryRequest,
-  refreshOrderCommissions,
 } from "@/lib/refreshOrderCommissions";
+import {
+  getDispatchSiteOrigin,
+  scheduleDeliveryRequestDispatch,
+} from "@/lib/scheduleDeliveryRequestDispatch";
 import { stripeEventNeedsReprocessing } from "@/lib/stripeWebhookReprocess";
 
 export const runtime = "nodejs";
@@ -1391,7 +1395,28 @@ async function handleCheckoutCompletedLikeEvent(
       );
     }
 
-    await refreshOrderCommissions(supabaseAdmin, orderId);
+    const commissions = await ensureOrderCommissionsReady(
+      supabaseAdmin,
+      orderId,
+      "webhook:checkout_session"
+    );
+
+    if (commissions.ok === false) {
+      console.error("[webhook] order commissions refresh failed", {
+        order_id: orderId,
+        error: commissions.error,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "order_commissions_refresh_failed",
+          order_id: orderId,
+          details: commissions.error,
+        },
+        500
+      );
+    }
 
     return json({
       received: true,
@@ -1611,6 +1636,14 @@ console.log("✅ WEBHOOK PI: order released to drivers", {
 });
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
+
+  const dispatchOriginCheckout = getDispatchSiteOrigin();
+  if (dispatchOriginCheckout) {
+    scheduleDeliveryRequestDispatch({
+      origin: dispatchOriginCheckout,
+      deliveryRequestId,
+    });
+  }
 
 return json({
   received: true,
@@ -1833,7 +1866,28 @@ async function handlePaymentIntentSucceeded(
       orderId,
     });
 
-    await refreshOrderCommissions(supabaseAdmin, orderId);
+    const commissionsPi = await ensureOrderCommissionsReady(
+      supabaseAdmin,
+      orderId,
+      "webhook:payment_intent"
+    );
+
+    if (commissionsPi.ok === false) {
+      console.error("[webhook] order commissions refresh failed (PI)", {
+        order_id: orderId,
+        error: commissionsPi.error,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "order_commissions_refresh_failed",
+          order_id: orderId,
+          details: commissionsPi.error,
+        },
+        500
+      );
+    }
 
     return json({
       received: true,
@@ -2072,6 +2126,14 @@ await persistStripeFeeSnapshot({
 });
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
+
+  const dispatchOriginPi = getDispatchSiteOrigin();
+  if (dispatchOriginPi) {
+    scheduleDeliveryRequestDispatch({
+      origin: dispatchOriginPi,
+      deliveryRequestId,
+    });
+  }
 
 return json({
   received: true,

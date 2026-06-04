@@ -70,6 +70,30 @@ async function isDeliveryRequestUnpaid(
   return !isPaidStatus(data.payment_status);
 }
 
+async function orderMissingCommissions(
+  supabaseAdmin: SupabaseClient,
+  orderId: string
+): Promise<boolean> {
+  const { data: order, error: orderErr } = await supabaseAdmin
+    .from("orders")
+    .select("payment_status")
+    .eq("id", orderId)
+    .maybeSingle<OrderPaymentRow>();
+
+  if (orderErr || !order || !isPaidStatus(order.payment_status)) {
+    return false;
+  }
+
+  const { data: commission, error: commErr } = await supabaseAdmin
+    .from("order_commissions")
+    .select("order_id")
+    .eq("order_id", orderId)
+    .maybeSingle<{ order_id: string }>();
+
+  if (commErr) return false;
+  return !commission?.order_id;
+}
+
 async function resolveOrderIdForPaymentIntent(
   supabaseAdmin: SupabaseClient,
   paymentIntentId: string,
@@ -129,15 +153,19 @@ export async function stripeEventNeedsReprocessing(
 
     const deliveryRequestId = pickDeliveryRequestIdFromMetadata(metadata);
 
-    if (orderId && (await isOrderUnpaid(supabaseAdmin, orderId))) {
-      return true;
+    if (orderId) {
+      if (await isOrderUnpaid(supabaseAdmin, orderId)) {
+        return true;
+      }
+      if (await orderMissingCommissions(supabaseAdmin, orderId)) {
+        return true;
+      }
     }
 
-    if (
-      deliveryRequestId &&
-      (await isDeliveryRequestUnpaid(supabaseAdmin, deliveryRequestId))
-    ) {
-      return true;
+    if (deliveryRequestId) {
+      if (await isDeliveryRequestUnpaid(supabaseAdmin, deliveryRequestId)) {
+        return true;
+      }
     }
 
     return false;
@@ -156,8 +184,13 @@ export async function stripeEventNeedsReprocessing(
       metadata
     );
 
-    if (orderId && (await isOrderUnpaid(supabaseAdmin, orderId))) {
-      return true;
+    if (orderId) {
+      if (await isOrderUnpaid(supabaseAdmin, orderId)) {
+        return true;
+      }
+      if (await orderMissingCommissions(supabaseAdmin, orderId)) {
+        return true;
+      }
     }
 
     const deliveryRequestId = await resolveDeliveryRequestIdForPaymentIntent(

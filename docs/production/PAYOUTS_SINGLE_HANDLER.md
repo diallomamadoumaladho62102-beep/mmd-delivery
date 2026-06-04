@@ -11,9 +11,9 @@
 
 | Mode | Behavior |
 |------|----------|
-| `hybrid` (default) | Cron runs daily; processes delivered orders from the last 14 days that are still unpaid. |
-| `weekly` | Cron only on Sunday UTC; previous-week window on `created_at`. |
-| `immediate` | No batch cron payouts; rely on `delivered-confirm` only. |
+| `hybrid` (default) | **Primary:** `delivered-confirm` → `transfers/run` at delivery. **Safety-net:** Vercel cron `process-payouts` daily for delivered orders in the last 14 days still missing payout flags. |
+| `weekly` | Cron only on Sunday UTC; previous-week window on `created_at`. `delivered-confirm` still triggers immediate transfer when configured. |
+| `immediate` | **No batch cron payouts** (`process-payouts` returns `skipped` for cron). All restaurant/driver transfers must go through `delivered-confirm` → `transfers/run`. |
 
 Commissions are computed by `refresh_order_commissions` (migration `20260604120000_*`) before any transfer. Payout amounts come **only** from `order_commissions` (no subtotal/delivery_fee fallbacks).
 

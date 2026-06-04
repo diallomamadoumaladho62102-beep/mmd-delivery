@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from "../../lib/apiBase";
+import { getMapboxAuthHeaders } from "./mapboxComputeDistance";
 
 export type GeocodedAddress = {
   formattedAddress: string;
@@ -8,9 +9,10 @@ export type GeocodedAddress = {
 
 export async function geocodeAddressViaApi(address: string): Promise<GeocodedAddress> {
   const base = getApiBaseUrl().replace(/\/+$/, "");
+  const headers = await getMapboxAuthHeaders();
   const res = await fetch(`${base}/api/mapbox/geocode`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ address }),
   });
 

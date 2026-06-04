@@ -286,6 +286,18 @@ async function runProcessPayouts(request: NextRequest) {
 
     const payoutMode = getPayoutMode();
 
+    if (!forceRun && payoutMode === "immediate" && cron) {
+      return json({
+        ok: true,
+        skipped: true,
+        actor,
+        cron,
+        message:
+          "MMD_PAYOUT_MODE=immediate: batch cron disabled; payouts run via delivered-confirm → transfers/run.",
+        payout_mode: payoutMode,
+      });
+    }
+
     if (!forceRun && payoutMode === "weekly" && !isWeeklyPayoutDay()) {
       return json({
         ok: true,
@@ -350,6 +362,34 @@ async function runProcessPayouts(request: NextRequest) {
     const results: ProcessResult[] = [];
 
     for (const order of typedOrders) {
+      const { data: commissionRow, error: commissionErr } = await supabase
+        .from("order_commissions")
+        .select("order_id")
+        .eq("order_id", order.id)
+        .maybeSingle<{ order_id: string }>();
+
+      if (commissionErr || !commissionRow?.order_id) {
+        console.error("[process-payouts] skipping order without commissions", {
+          order_id: order.id,
+          error: commissionErr?.message ?? "order_commissions_missing",
+        });
+        results.push({
+          order_id: order.id,
+          target: "restaurant",
+          ok: false,
+          skipped: true,
+          error: "order_commissions_missing",
+        });
+        results.push({
+          order_id: order.id,
+          target: "driver",
+          ok: false,
+          skipped: true,
+          error: "order_commissions_missing",
+        });
+        continue;
+      }
+
       if (hasRestaurant(order)) {
         results.push(
           await processTarget({

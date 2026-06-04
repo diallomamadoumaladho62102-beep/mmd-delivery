@@ -791,9 +791,12 @@ export function ClientOrderDetailsScreen() {
         throw new Error(ts("client.orderDetails.mustBeLoggedInToPay", "You must be logged in to pay."));
       }
 
+      let paymentSheetSucceeded = false;
+
       try {
         const sheetPaid = await payOrderWithPaymentSheet(order.id);
         if (sheetPaid) {
+          paymentSheetSucceeded = true;
           const confirmSheet = await confirmOrderPaid(order.id, accessToken, {
             attempts: 3,
             timeoutMs: 12000,
@@ -807,6 +810,15 @@ export function ClientOrderDetailsScreen() {
             );
             return;
           }
+
+          Alert.alert(
+            paymentTitle,
+            ts(
+              "client.orderDetails.paymentSheetPendingConfirm",
+              "Payment received. Your order will be marked paid shortly via Stripe. Pull to refresh in a few seconds — do not pay again."
+            )
+          );
+          return;
         }
       } catch (sheetErr: unknown) {
         const msg =
@@ -816,7 +828,18 @@ export function ClientOrderDetailsScreen() {
           Alert.alert(paymentTitle, ts("client.orderDetails.alreadyPaid", "Already paid ✅"));
           return;
         }
-        console.warn("[ClientOrderDetails] PaymentSheet fallback to Checkout:", msg);
+        if (paymentSheetSucceeded) {
+          await fetchOrder();
+          Alert.alert(
+            paymentTitle,
+            ts(
+              "client.orderDetails.paymentSheetPendingConfirm",
+              "Payment received. Your order will be marked paid shortly via Stripe. Pull to refresh in a few seconds — do not pay again."
+            )
+          );
+          return;
+        }
+        console.warn("[ClientOrderDetails] PaymentSheet failed, trying Checkout:", msg);
       }
 
       const endpoint = `${apiUrl}/api/stripe/client/create-checkout-session`;

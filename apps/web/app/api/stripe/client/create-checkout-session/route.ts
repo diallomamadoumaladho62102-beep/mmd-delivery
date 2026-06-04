@@ -497,6 +497,64 @@ export async function POST(req: NextRequest) {
       return json({ error: "Order already paid", order_id: orderId }, 409);
     }
 
+    const existingPiId = String(order.stripe_payment_intent_id ?? "").trim();
+
+    if (existingPiId) {
+      try {
+        const existingPi = await stripe.paymentIntents.retrieve(existingPiId);
+        const piStatus = String(existingPi.status ?? "").toLowerCase();
+
+        if (piStatus === "succeeded") {
+          const { error: rpcErr } = await supabaseAdmin.rpc("mark_order_paid", {
+            p_order_id: orderId,
+            p_session_id: order.stripe_session_id,
+            p_payment_intent_id: existingPiId,
+          });
+
+          if (rpcErr) {
+            logSupabaseError(
+              "[create-checkout-session] mark_order_paid after PI succeeded failed",
+              rpcErr,
+              { order_id: orderId, payment_intent_id: existingPiId }
+            );
+          }
+
+          return json(
+            {
+              error: "payment_already_succeeded",
+              order_id: orderId,
+              payment_intent_id: existingPiId,
+              payment_status: "paid",
+            },
+            409
+          );
+        }
+
+        if (
+          piStatus === "processing" ||
+          piStatus === "requires_capture" ||
+          piStatus === "requires_confirmation" ||
+          piStatus === "requires_action"
+        ) {
+          return json(
+            {
+              error: "payment_intent_in_progress",
+              order_id: orderId,
+              payment_intent_id: existingPiId,
+              stripe_status: piStatus,
+            },
+            409
+          );
+        }
+      } catch (e: unknown) {
+        console.warn(
+          "[create-checkout-session] existing PI retrieve failed",
+          getErrorMessage(e),
+          { order_id: orderId, payment_intent_id: existingPiId }
+        );
+      }
+    }
+
     const nowMs = Date.now();
     const defaultExpiresAtMs = nowMs + DEFAULT_TTL_MINUTES * 60 * 1000;
     const minStripeExpiresAtMs =

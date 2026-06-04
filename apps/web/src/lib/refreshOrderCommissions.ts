@@ -28,6 +28,51 @@ export async function refreshOrderCommissions(
   return { ok: true };
 }
 
+export async function ensureOrderCommissionsReady(
+  supabaseAdmin: SupabaseClient,
+  orderId: string,
+  context: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const refreshed = await refreshOrderCommissions(supabaseAdmin, orderId);
+
+  if (!refreshed.ok) {
+    console.error("[ensureOrderCommissionsReady] refresh failed", {
+      orderId,
+      context,
+      error: refreshed.error ?? "refresh_order_commissions_failed",
+    });
+    return {
+      ok: false,
+      error: refreshed.error ?? "refresh_order_commissions_failed",
+    };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("order_commissions")
+    .select("order_id")
+    .eq("order_id", orderId)
+    .maybeSingle<{ order_id: string }>();
+
+  if (error) {
+    console.error("[ensureOrderCommissionsReady] read failed", {
+      orderId,
+      context,
+      message: error.message,
+    });
+    return { ok: false, error: error.message };
+  }
+
+  if (!data?.order_id) {
+    console.error("[ensureOrderCommissionsReady] row missing", {
+      orderId,
+      context,
+    });
+    return { ok: false, error: "order_commissions_missing" };
+  }
+
+  return { ok: true };
+}
+
 export async function refreshCommissionsForDeliveryRequest(
   supabaseAdmin: SupabaseClient,
   deliveryRequestId: string

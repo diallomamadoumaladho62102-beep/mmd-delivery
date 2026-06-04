@@ -6,7 +6,7 @@ import {
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 import { resolveOrderAmountCents } from "@/lib/orderAmountCents";
-import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
+import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -469,7 +469,22 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await refreshOrderCommissions(supabaseAdmin, orderId);
+      const commissions = await ensureOrderCommissionsReady(
+        supabaseAdmin,
+        orderId,
+        "confirm-paid:payment_intent"
+      );
+
+      if (commissions.ok === false) {
+        return json(
+          {
+            error: "order_commissions_refresh_failed",
+            orderId,
+            details: commissions.error,
+          },
+          503
+        );
+      }
 
       return json({
         ok: true,
@@ -592,7 +607,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await refreshOrderCommissions(supabaseAdmin, orderId);
+    const commissions = await ensureOrderCommissionsReady(
+      supabaseAdmin,
+      orderId,
+      "confirm-paid:checkout_session"
+    );
+
+    if (commissions.ok === false) {
+      return json(
+        {
+          error: "order_commissions_refresh_failed",
+          orderId,
+          details: commissions.error,
+        },
+        503
+      );
+    }
 
     return json({
       ok: true,

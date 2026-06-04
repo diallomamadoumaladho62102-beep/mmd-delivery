@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getAvatarSrc } from "@/lib/avatarUrl";
 import { DriverLiveMap } from "@/components/DriverLiveMap";
+import PayButton from "@/components/checkout/PayButton";
 
 type OrderStatus =
   | "pending"
@@ -29,6 +30,7 @@ type OrderItem = {
 type Order = {
   id: string;
   status: OrderStatus;
+  payment_status: string | null;
   subtotal: number | null;
   tax: number | null;
   total: number | null;
@@ -77,6 +79,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 const ORDER_SELECT = `
   id,
   status,
+  payment_status,
   subtotal,
   tax,
   total,
@@ -118,6 +121,11 @@ function formatMoney(value: number | null | undefined, currency = "USD") {
   if (value == null || Number.isNaN(value)) return "—";
 
   return `${value.toFixed(2)} ${currency}`;
+}
+
+function isOrderUnpaid(paymentStatus: string | null | undefined) {
+  const normalized = String(paymentStatus ?? "").trim().toLowerCase();
+  return normalized !== "paid" && normalized !== "succeeded";
 }
 
 function canRestaurantCancel(status: OrderStatus) {
@@ -888,6 +896,15 @@ export default function OrderPage() {
           Tu peux suivre le chauffeur en temps réel plus bas si un driver est
           assigné.
         </p>
+
+        {isOrderUnpaid(order.payment_status) && order.status !== "canceled" ? (
+          <div className="pt-2 border-t border-sky-200">
+            <p className="text-xs font-semibold text-sky-900 mb-2">
+              Paiement requis pour confirmer la commande
+            </p>
+            <PayButton orderId={order.id} />
+          </div>
+        ) : null}
       </section>
     );
   }

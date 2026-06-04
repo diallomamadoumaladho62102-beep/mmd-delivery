@@ -1,12 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useCallback, useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseBrowser";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+function getUrlParams(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+
+  const params: Record<string, string> = {};
+  const hash = window.location.hash.startsWith("#")
+    ? window.location.hash.slice(1)
+    : "";
+  const query = window.location.search.startsWith("?")
+    ? window.location.search.slice(1)
+    : "";
+
+  const raw = [hash, query].filter(Boolean).join("&");
+
+  raw.split("&").forEach((part) => {
+    const [key, value] = part.split("=");
+    if (key && value) {
+      params[decodeURIComponent(key)] = decodeURIComponent(value);
+    }
+  });
+
+  return params;
+}
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
@@ -14,7 +32,43 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [message, setMessage] = useState("");
+
+  const prepareRecoverySession = useCallback(async () => {
+    try {
+      const params = getUrlParams();
+      const accessToken = params.access_token;
+      const refreshToken = params.refresh_token;
+
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error) {
+          setMessage("Lien invalide ou expiré. Demande un nouveau lien par email.");
+          return;
+        }
+      }
+
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !data.session) {
+        setMessage(
+          "Session de réinitialisation introuvable. Ouvre le lien depuis l’email récent."
+        );
+      }
+    } catch {
+      setMessage("Impossible de préparer la réinitialisation.");
+    } finally {
+      setCheckingSession(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void prepareRecoverySession();
+  }, [prepareRecoverySession]);
 
   const handleUpdate = async () => {
     if (password.length < 6) {
@@ -74,13 +128,19 @@ export default function ResetPasswordPage() {
           Entre ton nouveau mot de passe MMD Delivery.
         </p>
 
+        {checkingSession ? (
+          <p style={{ color: "#9CA3AF", marginBottom: 16 }}>
+            Vérification du lien de réinitialisation…
+          </p>
+        ) : null}
+
         <div style={{ position: "relative", marginBottom: 12 }}>
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Nouveau mot de passe"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            disabled={loading}
+            disabled={loading || checkingSession}
             style={{
               width: "100%",
               padding: 14,
@@ -93,7 +153,7 @@ export default function ResetPasswordPage() {
           />
           <button
             type="button"
-            disabled={loading}
+            disabled={loading || checkingSession}
             onClick={() => setShowPassword((value) => !value)}
             style={{
               position: "absolute",
@@ -102,23 +162,22 @@ export default function ResetPasswordPage() {
               transform: "translateY(-50%)",
               background: "transparent",
               border: "none",
-              color: "#93C5FD",
-              fontWeight: 800,
+              color: "#9CA3AF",
+              cursor: "pointer",
               fontSize: 12,
-              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {showPassword ? "Cacher" : "Voir"}
+            {showPassword ? "Masquer" : "Afficher"}
           </button>
         </div>
 
-        <div style={{ position: "relative", marginBottom: 16 }}>
+        <div style={{ position: "relative", marginBottom: 12 }}>
           <input
             type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirmer le mot de passe"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            disabled={loading}
+            disabled={loading || checkingSession}
             style={{
               width: "100%",
               padding: 14,
@@ -131,7 +190,7 @@ export default function ResetPasswordPage() {
           />
           <button
             type="button"
-            disabled={loading}
+            disabled={loading || checkingSession}
             onClick={() => setShowConfirmPassword((value) => !value)}
             style={{
               position: "absolute",
@@ -140,36 +199,37 @@ export default function ResetPasswordPage() {
               transform: "translateY(-50%)",
               background: "transparent",
               border: "none",
-              color: "#93C5FD",
-              fontWeight: 800,
+              color: "#9CA3AF",
+              cursor: "pointer",
               fontSize: 12,
-              cursor: loading ? "not-allowed" : "pointer",
             }}
           >
-            {showConfirmPassword ? "Cacher" : "Voir"}
+            {showConfirmPassword ? "Masquer" : "Afficher"}
           </button>
         </div>
 
         <button
+          type="button"
           onClick={handleUpdate}
-          disabled={loading}
+          disabled={loading || checkingSession}
           style={{
             width: "100%",
             padding: 14,
             borderRadius: 12,
-            background: loading ? "#1E3A8A" : "#2563EB",
-            color: "white",
-            fontWeight: 900,
+            background: "#10B981",
             border: "none",
-            cursor: loading ? "not-allowed" : "pointer",
+            color: "white",
+            fontWeight: 800,
+            cursor: loading || checkingSession ? "not-allowed" : "pointer",
+            opacity: loading || checkingSession ? 0.6 : 1,
           }}
         >
-          {loading ? "Mise à jour..." : "Mettre à jour"}
+          {loading ? "Mise à jour…" : "Mettre à jour"}
         </button>
 
-        {message && (
-          <p style={{ marginTop: 16, color: "#E5E7EB", fontSize: 14 }}>{message}</p>
-        )}
+        {message ? (
+          <p style={{ marginTop: 16, color: "#D1D5DB", fontSize: 14 }}>{message}</p>
+        ) : null}
       </section>
     </main>
   );

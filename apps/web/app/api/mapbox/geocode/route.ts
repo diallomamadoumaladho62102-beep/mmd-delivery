@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAPBOX_TOKEN =
-  process.env.MAPBOX_ACCESS_TOKEN ??
-  process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
@@ -15,6 +14,11 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 export async function POST(req: NextRequest) {
+  const access = await assertMapboxComputeDistanceAccess(req);
+  if (access.ok === false) {
+    return json({ error: access.error }, access.status);
+  }
+
   if (!MAPBOX_TOKEN) {
     return json({ error: "Mapbox token not configured" }, 500);
   }

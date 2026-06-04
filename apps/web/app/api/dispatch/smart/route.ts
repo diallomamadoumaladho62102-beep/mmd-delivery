@@ -1,4 +1,5 @@
 // apps/web/app/api/dispatch/smart/route.ts
+import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createDriverOrderOffers } from "@/lib/createDriverOrderOffers";
@@ -126,7 +127,9 @@ function scheduleNextWave(params: {
 
   if (currentWave >= 3) return;
 
-  setTimeout(async () => {
+  after(async () => {
+    await new Promise((resolve) => setTimeout(resolve, AUTO_RETRY_DELAY_MS));
+
     try {
       const nextWave = currentWave + 1;
       const waveConfig = DISPATCH_WAVES[nextWave] ?? DISPATCH_WAVES[3];
@@ -198,7 +201,7 @@ function scheduleNextWave(params: {
     } catch (err) {
       console.log("auto retry dispatch error:", err);
     }
-  }, AUTO_RETRY_DELAY_MS);
+  });
 }
 
 export async function POST(req: NextRequest) {
