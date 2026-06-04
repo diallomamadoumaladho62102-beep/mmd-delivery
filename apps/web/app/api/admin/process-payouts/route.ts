@@ -62,13 +62,18 @@ function getSupabaseAdmin(): SupabaseClient {
 
 function isCronAuthorized(request: NextRequest): boolean {
   const vercelCron = request.headers.get("x-vercel-cron");
-
   if (vercelCron) return true;
 
-  const expected = process.env.CRON_SECRET;
-  const provided = request.headers.get("x-cron-secret");
+  const expected = (process.env.CRON_SECRET || "").trim();
+  if (!expected) return false;
 
-  return Boolean(expected && provided && expected === provided);
+  const headerSecret = (request.headers.get("x-cron-secret") || "").trim();
+  if (headerSecret && headerSecret === expected) return true;
+
+  const authHeader = request.headers.get("authorization") || "";
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  const bearer = bearerMatch?.[1]?.trim() ?? "";
+  return bearer.length > 0 && bearer === expected;
 }
 
 async function authorize(request: NextRequest): Promise<{
@@ -254,7 +259,7 @@ async function processTarget(params: {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function runProcessPayouts(request: NextRequest) {
   try {
     const { actor, cron } = await authorize(request);
     const supabase = getSupabaseAdmin();
@@ -376,4 +381,12 @@ export async function POST(request: NextRequest) {
       status
     );
   }
+}
+
+export async function GET(request: NextRequest) {
+  return runProcessPayouts(request);
+}
+
+export async function POST(request: NextRequest) {
+  return runProcessPayouts(request);
 }

@@ -231,6 +231,18 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return preflight();
   if (req.method !== "POST") return json({ ok: false, error: "Method Not Allowed" }, 405);
 
+  // Production: Stripe Dashboard must point only to Vercel
+  // https://www.mmddelivery.com/api/stripe/webhook
+  // Set MMD_STRIPE_WEBHOOK_DISABLED=true on this Edge function to avoid double-processing.
+  if (Deno.env.get("MMD_STRIPE_WEBHOOK_DISABLED") === "true") {
+    log("info", "stripe_webhook.disabled", {
+      request_id,
+      handler: "vercel",
+      path: "/api/stripe/webhook",
+    });
+    return json({ received: true, ok: true, disabled: true, handler: "vercel" }, 200);
+  }
+
   const sig = req.headers.get("stripe-signature") ?? "";
   if (!sig || !STRIPE_WEBHOOK_SECRET) return new Response("Missing signature", { status: 400 });
   if (!stripe) return new Response("Missing STRIPE_SECRET_KEY", { status: 500 });

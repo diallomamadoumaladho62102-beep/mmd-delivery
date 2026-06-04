@@ -1,67 +1,92 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { getRestaurantFinancialOverview } from "@/lib/restaurantFinancialOverview";
 
-export async function GET() {
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function jsonError(message: string, status = 400) {
+  return NextResponse.json(
+    { ok: false, error: message },
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+      },
+    }
+  );
+}
+
+function getBearerToken(req: NextRequest): string | null {
+  const authHeader = req.headers.get("authorization");
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  return token || null;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    // TODO:
-    // 1. vérifier le restaurant connecté via Supabase auth
-    // 2. récupérer ses orders
-    // 3. calculer grossSales, platformCommission, netRevenue, totalOrders
-    // 4. récupérer les infos de payouts et statements si dispo
+    const token = getBearerToken(req);
 
-    const grossSales = 2132.0;
-    const platformCommission = 319.8;
-    const netRevenue = 1812.2;
-    const totalOrders = 16;
+    if (!token) {
+      return jsonError("Missing bearer token", 401);
+    }
 
-    const pendingPayout = 420.0;
-    const lastPayoutAmount = 250.0;
-    const lastPayoutDate = "2026-03-01";
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    return NextResponse.json({
-      ok: true,
-      data: {
-        currency: "USD",
-        grossSales,
-        platformCommission,
-        netRevenue,
-        totalOrders,
-        pendingPayout,
-        lastPayoutAmount,
-        lastPayoutDate,
-        profileComplete: false,
-        missingFields: ["tax_id"],
-        chart: [
-          { label: "Mon", gross: 220, net: 187 },
-          { label: "Tue", gross: 310, net: 263.5 },
-          { label: "Wed", gross: 280, net: 238 },
-          { label: "Thu", gross: 190, net: 161.5 },
-          { label: "Fri", gross: 420, net: 357 },
-          { label: "Sat", gross: 390, net: 331.5 },
-          { label: "Sun", gross: 322, net: 273.7 },
-        ],
-        recentStatements: [
-          {
-            id: "stmt_2026_02",
-            label: "February 2026",
-            status: "available",
-            type: "monthly",
-          },
-        ],
-        recentPayouts: [
-          {
-            id: "po_1",
-            amount: 250,
-            status: "paid",
-            date: "2026-03-01",
-          },
-        ],
+    if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
+      return jsonError(
+        "Missing Supabase environment variables (URL / ANON / SERVICE ROLE)",
+        500
+      );
+    }
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
     });
+
+    const { data: authData, error: authError } =
+      await authClient.auth.getUser(token);
+
+    if (authError || !authData.user) {
+      return jsonError("Invalid session", 401);
+    }
+
+    const restaurantUserId = authData.user.id;
+
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+
+    const data = await getRestaurantFinancialOverview({
+      supabase: admin,
+      restaurantUserId,
+    });
+
+    return NextResponse.json(
+      { ok: true, data },
+      {
+        headers: {
+          "Cache-Control": "no-store",
+          "X-Content-Type-Options": "nosniff",
+        },
+      }
+    );
   } catch (error) {
     console.error("restaurant financial overview error:", error);
-    return NextResponse.json(
-      { ok: false, error: "Failed to load restaurant financial overview" },
-      { status: 500 }
-    );
+    return jsonError("Failed to load restaurant financial overview", 500);
   }
 }

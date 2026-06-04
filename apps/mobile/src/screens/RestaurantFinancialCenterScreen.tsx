@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { API_BASE_URL } from "../lib/apiBase";
+import { supabase } from "../lib/supabase";
 
 type ChartPoint = {
   label: string;
@@ -132,8 +133,22 @@ export default function RestaurantFinancialCenterScreen() {
         );
       }
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const accessToken = session?.access_token?.trim();
+      if (!accessToken) {
+        throw new Error("Session expirée. Reconnecte-toi pour voir le centre financier.");
+      }
+
       const response = await fetch(
         `${apiBase}/api/restaurant/financial/overview`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
       );
 
       const json = await response.json().catch(() => null);

@@ -1,4 +1,6 @@
 // apps/web/app/api/stripe/webhook/route.ts
+// Canonical Stripe webhook (Live): https://www.mmddelivery.com/api/stripe/webhook
+// Disable Supabase Edge stripe_webhook in production (MMD_STRIPE_WEBHOOK_DISABLED=true).
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import {
