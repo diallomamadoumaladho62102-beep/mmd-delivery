@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
 
 const ROLE = "client";
-const RESET_PASSWORD_URL = "https://mmd-delivery.vercel.app/auth/reset-password";
+const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
 
 type Mode = "login" | "signup";
 

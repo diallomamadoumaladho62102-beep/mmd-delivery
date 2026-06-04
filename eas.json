@@ -10,14 +10,14 @@
       "env": {
         "APP_ENV": "development",
         "EXPO_PUBLIC_API_URL_LOCAL": "http://192.168.1.203:3000",
-        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
       }
     },
     "production": {
@@ -25,7 +25,7 @@
       "environment": "production",
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://mmd-delivery.vercel.app"
+        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
       }
     }
   },

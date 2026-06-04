@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { NativeModules } from "react-native";
 
-const PRODUCTION_API_URL = "https://mmd-delivery.vercel.app";
+const PRODUCTION_API_URL = "https://www.mmddelivery.com";
 const LOCAL_API_PORT = "3000";
 
 function safeTrim(value: unknown): string {

@@ -57,7 +57,7 @@ function getApiBaseUrl(): string {
     return `http://${metroHost}:3000`;
   }
 
-  return "https://mmd-delivery.vercel.app";
+  return "https://www.mmddelivery.com";
 }
 
 export const API_BASE_URL = getApiBaseUrl();

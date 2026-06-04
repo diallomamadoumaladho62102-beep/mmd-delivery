@@ -14,8 +14,9 @@ import {
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 
-const RESET_PASSWORD_URL =
-  "https://mmd-delivery.vercel.app/auth/reset-password";
+import { getResetPasswordRedirectUrl } from "../lib/productionSite";
+
+const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
 

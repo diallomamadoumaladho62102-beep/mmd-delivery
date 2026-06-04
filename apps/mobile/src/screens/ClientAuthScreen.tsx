@@ -21,11 +21,11 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
+import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientAuth">;
 
-const RESET_PASSWORD_URL =
-  "https://mmd-delivery.vercel.app/auth/reset-password";
+const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
 
 function normalizeReferralCode(value: unknown) {
   const raw = String(value ?? "").trim();

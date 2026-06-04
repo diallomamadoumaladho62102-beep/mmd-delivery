@@ -20,6 +20,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
+import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 
 type TransportMode = "bike" | "moto" | "car";
 type DriverStatus =
@@ -29,9 +30,6 @@ type DriverStatus =
   | "incomplete"
   | "suspended";
 
-const RESET_PASSWORD_URL =
-  "https://mmd-delivery.vercel.app/auth/reset-password";
-
 const AVATARS_BUCKET = "avatars";
 
 function getAvatarExtFromUri(uri: string): string {
@@ -39,10 +37,6 @@ function getAvatarExtFromUri(uri: string): string {
   if (lower.endsWith(".png")) return "png";
   if (lower.endsWith(".webp")) return "webp";
   return "jpg";
-}
-
-function getResetPasswordRedirectUrl() {
-  return RESET_PASSWORD_URL;
 }
 
 function cleanReferralCode(value: unknown): string | null {

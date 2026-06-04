@@ -105,25 +105,28 @@ function getSupabaseAdminClient(): SupabaseClient {
 }
 
 function isAuthorizedCronRequest(req: NextRequest): boolean {
-  const provided = (req.headers.get("x-cron-secret") || "").trim();
-  const expected = (process.env.CRON_SECRET || "").trim();
+  const vercelCron = req.headers.get("x-vercel-cron");
+  if (vercelCron) return true;
 
-  if (!expected || !provided) return false;
-  return provided === expected;
+  const expected = (process.env.CRON_SECRET || "").trim();
+  if (!expected) return false;
+
+  const headerSecret = (req.headers.get("x-cron-secret") || "").trim();
+  if (headerSecret && headerSecret === expected) return true;
+
+  const authHeader = req.headers.get("authorization") || "";
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  const bearer = bearerMatch?.[1]?.trim() ?? "";
+  return bearer.length > 0 && bearer === expected;
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    if (!isAuthorizedCronRequest(req)) {
-      return json({ error: "Unauthorized" }, 401);
-    }
+async function runExpireUnpaid() {
+  const supabaseAdmin = getSupabaseAdminClient();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const nowMs = now.getTime();
 
-    const supabaseAdmin = getSupabaseAdminClient();
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const nowMs = now.getTime();
-
-    const { data, error: selErr } = await supabaseAdmin
+  const { data, error: selErr } = await supabaseAdmin
       .from("orders")
       .select(
         "id, status, payment_status, expires_at, paid_at, stripe_session_id, stripe_payment_intent_id"
@@ -133,70 +136,77 @@ export async function POST(req: NextRequest) {
       .lt("expires_at", nowIso)
       .limit(EXPIRE_BATCH_LIMIT);
 
-    if (selErr) {
-      console.error("[expire-unpaid] select failed", {
-        message: selErr.message,
-        code: selErr.code,
-        details: selErr.details,
-        hint: selErr.hint,
-      });
+  if (selErr) {
+    console.error("[expire-unpaid] select failed", {
+      message: selErr.message,
+      code: selErr.code,
+      details: selErr.details,
+      hint: selErr.hint,
+    });
 
-      return json({ error: "Failed to query expired orders" }, 500);
-    }
+    return json({ error: "Failed to query expired orders" }, 500);
+  }
 
-    const expired = Array.isArray(data)
-      ? (data as ExpirableOrderRow[])
-      : [];
+  const expired = Array.isArray(data) ? (data as ExpirableOrderRow[]) : [];
 
-    if (!expired.length) {
-      return json({
-        ok: true,
-        expired: 0,
-        canceled: 0,
-      });
-    }
+  if (!expired.length) {
+    return json({
+      ok: true,
+      expired: 0,
+      canceled: 0,
+    });
+  }
 
-    const ids = expired
-      .filter((order) => shouldCancelExpiredOrder(order, nowMs))
-      .map((order) => order.id);
+  const ids = expired
+    .filter((order) => shouldCancelExpiredOrder(order, nowMs))
+    .map((order) => order.id);
 
-    if (!ids.length) {
-      return json({
-        ok: true,
-        expired: expired.length,
-        canceled: 0,
-        note: "No cancellable rows",
-      });
-    }
-
-    const { error: updErr } = await supabaseAdmin
-      .from("orders")
-      .update({
-        status: "canceled",
-        payment_status: "unpaid",
-        updated_at: nowIso,
-      })
-      .in("id", ids)
-      .neq("payment_status", "paid");
-
-    if (updErr) {
-      console.error("[expire-unpaid] update failed", {
-        message: updErr.message,
-        code: updErr.code,
-        details: updErr.details,
-        hint: updErr.hint,
-        ids_count: ids.length,
-      });
-
-      return json({ error: "Failed to cancel expired orders" }, 500);
-    }
-
+  if (!ids.length) {
     return json({
       ok: true,
       expired: expired.length,
-      canceled: ids.length,
-      ids,
+      canceled: 0,
+      note: "No cancellable rows",
     });
+  }
+
+  const { error: updErr } = await supabaseAdmin
+    .from("orders")
+    .update({
+      status: "canceled",
+      payment_status: "unpaid",
+      updated_at: nowIso,
+    })
+    .in("id", ids)
+    .neq("payment_status", "paid");
+
+  if (updErr) {
+    console.error("[expire-unpaid] update failed", {
+      message: updErr.message,
+      code: updErr.code,
+      details: updErr.details,
+      hint: updErr.hint,
+      ids_count: ids.length,
+    });
+
+    return json({ error: "Failed to cancel expired orders" }, 500);
+  }
+
+  return json({
+    ok: true,
+    expired: expired.length,
+    canceled: ids.length,
+    ids,
+  });
+}
+
+async function handleExpireUnpaidRequest(req: NextRequest) {
+  try {
+    if (!isAuthorizedCronRequest(req)) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+
+    return await runExpireUnpaid();
   } catch (e: unknown) {
     const message = getErrorMessage(e);
 
@@ -208,8 +218,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
-  return methodNotAllowed();
+export async function GET(req: NextRequest) {
+  return handleExpireUnpaidRequest(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handleExpireUnpaidRequest(req);
 }
 
 export async function PUT() {

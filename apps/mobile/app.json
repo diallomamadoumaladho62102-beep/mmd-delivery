@@ -43,7 +43,7 @@
       }
     },
     "extra": {
-      "EXPO_PUBLIC_WEB_BASE_URL": "https://mmd-delivery.vercel.app",
+      "EXPO_PUBLIC_WEB_BASE_URL": "https://www.mmddelivery.com",
       "eas": {
         "projectId": "127751ea-33ce-4f67-98ce-a9b29a46b838"
       }
