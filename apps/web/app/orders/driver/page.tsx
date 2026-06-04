@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseBrowser";
+import { getAvatarSrc } from "@/lib/avatarUrl";
 import { computeDriverPay } from "@/lib/deliveryPricing";
 
 type OrderStatus =
@@ -141,13 +142,6 @@ function orderKindLabel(kind: OrderKind | null | undefined): string {
   if (kind === "pickup_dropoff") return "Pickup & dropoff";
   if (kind === "food") return "Commande restaurant";
   return "Commande";
-}
-
-function getAvatarSrc(url: string | null): string | null {
-  if (!url) return null;
-  const u = url.trim();
-  if (u.startsWith("http://") || u.startsWith("https://")) return u;
-  return null;
 }
 
 function transportModeLabel(value: string | null | undefined): string {

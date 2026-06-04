@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
+import { getAvatarSrc } from "@/lib/avatarUrl";
 import { DriverLiveMap } from "@/components/DriverLiveMap";
 
 type OrderStatus =
@@ -112,13 +113,6 @@ const roleLabel: Record<Role, string> = {
   admin: "Admin",
   unknown: "Inconnu",
 };
-
-function getAvatarSrc(url: string | null): string | null {
-  if (!url) return null;
-  const u = url.trim();
-  if (u.startsWith("http://") || u.startsWith("https://")) return u;
-  return null;
-}
 
 function formatMoney(value: number | null | undefined, currency = "USD") {
   if (value == null || Number.isNaN(value)) return "—";

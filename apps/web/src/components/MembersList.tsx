@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { getAvatarSrc } from "@/lib/avatarUrl";
 
 type Profile = { full_name?: string | null; avatar_url?: string | null };
 type Member = {
@@ -81,11 +82,12 @@ export default function MembersList({ orderId }: { orderId: string }) {
       <ul className="space-y-2">
         {rows.map((m) => {
           const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+          const avatarSrc = getAvatarSrc(p?.avatar_url);
           return (
             <li key={m.user_id} className="flex items-center justify-between border rounded-lg p-2">
               <div className="flex items-center gap-3">
-                {p?.avatar_url ? (
-                  <img src={p.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt="" className="w-8 h-8 rounded-full object-cover" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-gray-200" />
                 )}

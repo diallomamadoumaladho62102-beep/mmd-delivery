@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
+import { getAvatarSrc } from "@/lib/avatarUrl";
 
 type OrderStatus =
   | "pending"
@@ -73,13 +74,6 @@ function formatDate(iso: string | null): string {
   } catch {
     return iso;
   }
-}
-
-function getAvatarSrc(url: string | null): string | null {
-  if (!url) return null;
-  const u = url.trim();
-  if (u.startsWith("http://") || u.startsWith("https://")) return u;
-  return null;
 }
 
 export default function RestaurantOrderPage() {

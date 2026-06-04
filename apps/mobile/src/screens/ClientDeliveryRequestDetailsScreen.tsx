@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Constants from "expo-constants";
@@ -17,6 +18,35 @@ const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL ||
   (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_WEB_BASE_URL;
+
+const AVATARS_BUCKET = "avatars";
+
+function normalizeAvatarUrl(value: string | null | undefined) {
+  const clean = String(value ?? "").trim();
+  if (!clean) return null;
+
+  if (/^https?:\/\//i.test(clean)) {
+    return clean;
+  }
+
+  const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(clean);
+  return data?.publicUrl ?? null;
+}
+
+function getInitials(name: string | null | undefined, fallback = "D") {
+  const clean = String(name ?? "").trim();
+  if (!clean) return fallback;
+
+  const parts = clean.split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (first + last).toUpperCase() || fallback;
+}
+
+type DriverProfile = {
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
 type DeliveryRequestRecord = {
   id: string;
@@ -32,6 +62,7 @@ type DeliveryRequestRecord = {
   delivery_fee: number | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  driver_id: string | null;
 };
 
 type OrderRecord = {
@@ -320,7 +351,7 @@ function mapDeliveryRequestToScreenData(
     delivered_confirmed_at: null,
     pickup_photo_url: null,
     dropoff_photo_url: null,
-    driver_id: null,
+    driver_id: request.driver_id,
   };
 }
 
@@ -365,6 +396,7 @@ export function ClientDeliveryRequestDetailsScreen() {
   const [canceling, setCanceling] = useState(false);
   const [data, setData] = useState<ScreenData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [driverProfile, setDriverProfile] = useState<DriverProfile | null>(null);
 
   const loadDetails = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -472,7 +504,8 @@ export function ClientDeliveryRequestDetailsScreen() {
             total,
             delivery_fee,
             stripe_session_id,
-            stripe_payment_intent_id
+            stripe_payment_intent_id,
+            driver_id
           `
           )
           .eq("id", requestId)
@@ -503,6 +536,7 @@ export function ClientDeliveryRequestDetailsScreen() {
           stripe_payment_intent_id: toSafeString(
             requestData.stripe_payment_intent_id
           ),
+          driver_id: toSafeString(requestData.driver_id),
         };
 
         const { data: linkedOrder, error: linkedOrderError } = await supabase
@@ -609,6 +643,45 @@ export function ClientDeliveryRequestDetailsScreen() {
     };
   }, [loadDetails]);
 
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      const driverId = data?.driver_id;
+      if (!driverId) {
+        setDriverProfile(null);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url, role")
+        .eq("id", driverId)
+        .maybeSingle();
+
+      if (!alive) return;
+
+      if (profileError) {
+        console.log("driver profile error (delivery request):", profileError.message);
+        setDriverProfile(null);
+        return;
+      }
+
+      setDriverProfile(
+        profile
+          ? {
+              full_name: toSafeString(profile.full_name),
+              avatar_url: toSafeString(profile.avatar_url),
+            }
+          : null
+      );
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [data?.driver_id]);
+
   const primaryReference = useMemo(() => {
     if (data?.orderId) return shortRef(data.orderId);
     if (data?.requestId) return shortRef(data.requestId);
@@ -636,6 +709,11 @@ export function ClientDeliveryRequestDetailsScreen() {
     const status = normalizeStatus(data?.status);
     return !!data && (status === "pending" || status === "accepted") && !canceling;
   }, [data, canceling]);
+
+  const driverAvatarUri = normalizeAvatarUrl(driverProfile?.avatar_url);
+  const driverInitials = getInitials(driverProfile?.full_name, "D");
+  const driverDisplayName =
+    String(driverProfile?.full_name ?? "").trim() || "Assigned driver";
 
   async function handleCancelDeliveryRequest() {
     if (!data) return;
@@ -899,6 +977,75 @@ export function ClientDeliveryRequestDetailsScreen() {
             >
               {driverState}
             </Text>
+
+            {data.driver_id ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 14,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  padding: 12,
+                }}
+              >
+                {driverAvatarUri ? (
+                  <Image
+                    source={{ uri: driverAvatarUri }}
+                    style={{
+                      width: 46,
+                      height: 46,
+                      borderRadius: 23,
+                      borderWidth: 1,
+                      borderColor: "rgba(147,197,253,0.45)",
+                      backgroundColor: "#0B1220",
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 46,
+                      height: 46,
+                      borderRadius: 23,
+                      borderWidth: 1,
+                      borderColor: "rgba(147,197,253,0.45)",
+                      backgroundColor: "rgba(15,23,42,0.95)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 13 }}>
+                      {driverInitials}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: "#94A3B8",
+                      fontSize: 12,
+                      fontWeight: "700",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Your driver
+                  </Text>
+                  <Text
+                    style={{
+                      color: "white",
+                      fontSize: 16,
+                      fontWeight: "900",
+                    }}
+                  >
+                    {driverDisplayName}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             <View
               style={{
