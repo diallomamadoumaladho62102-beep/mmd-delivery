@@ -58,7 +58,7 @@ function extractReferralCode(url: string | null): string | null {
     const q = parsed.queryParams ?? {};
 
     // ✅ Supporte les liens:
-    // mmd://r/CODE
+    // mmddelivery://r/CODE (legacy mmd://r/CODE still supported via normalizeDeepLinkUrl)
     // https://mmdelivery.com/r/CODE
     // https://mmdelivery.com/signup?ref=CODE
     // https://mmdelivery.com/signup?code=CODE

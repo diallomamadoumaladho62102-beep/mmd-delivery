@@ -1,6 +1,11 @@
 import * as React from "react";
 import { AppState } from "react-native";
 import * as Linking from "expo-linking";
+import {
+  CANONICAL_APP_SCHEME,
+  LEGACY_APP_SCHEME,
+  normalizeDeepLinkUrl,
+} from "../lib/deepLinks";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -137,7 +142,6 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const MMD_APP_SCHEME = "mmd://";
 const MMD_WEB_DOMAIN = "https://mmddelivery.com";
 const MMD_WEB_WWW_DOMAIN = "https://www.mmddelivery.com";
 const MMD_LEGACY_WEB_DOMAIN = "https://mmd-delivery.vercel.app";
@@ -191,10 +195,11 @@ function cleanReferralCode(value: unknown): string | null {
 }
 
 function extractReferralCodeFromUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
+  const normalized = normalizeDeepLinkUrl(url);
+  if (!normalized) return null;
 
   try {
-    const parsed = Linking.parse(url);
+    const parsed = Linking.parse(normalized);
     const qp = parsed.queryParams ?? {};
 
     const fromRef = cleanReferralCode((qp as any).ref);
@@ -211,8 +216,7 @@ function extractReferralCodeFromUrl(url: string | null | undefined): string | nu
     }
 
     // Referral links must stay limited to referral-specific paths.
-    // Signup deep links such as mmd://signup/client, mmd://signup/driver,
-    // and mmd://signup/restaurant are handled by React Navigation below.
+    // Signup deep links: mmddelivery://signup/* (canonical) and legacy mmd://signup/*
     return null;
   } catch {
     return null;
@@ -239,7 +243,8 @@ export function AppNavigator({
   const linking = React.useMemo(
     () => ({
       prefixes: [
-        MMD_APP_SCHEME,
+        CANONICAL_APP_SCHEME,
+        LEGACY_APP_SCHEME,
         Linking.createURL("/"),
         MMD_WEB_DOMAIN,
         MMD_WEB_WWW_DOMAIN,
@@ -603,13 +608,15 @@ export function AppNavigator({
     const handleUrl = (url: string | null) => {
       if (!alive) return;
 
-      if (isResetPasswordUrl(url)) {
-        console.log("RESET PASSWORD DEEP LINK RECEIVED =", url);
+      const normalizedUrl = normalizeDeepLinkUrl(url);
+
+      if (isResetPasswordUrl(normalizedUrl)) {
+        console.log("RESET PASSWORD DEEP LINK RECEIVED =", normalizedUrl);
         openResetPassword();
         return;
       }
 
-      const referralCode = extractReferralCodeFromUrl(url);
+      const referralCode = extractReferralCodeFromUrl(normalizedUrl);
       if (referralCode) {
         console.log("DRIVER REFERRAL DEEP LINK RECEIVED =", referralCode);
         openDriverReferralAuth(referralCode);
@@ -679,12 +686,14 @@ export function AppNavigator({
         scheduleSync();
         Linking.getInitialURL()
           .then((url) => {
-            if (isResetPasswordUrl(url)) {
+            const normalizedUrl = normalizeDeepLinkUrl(url);
+
+            if (isResetPasswordUrl(normalizedUrl)) {
               openResetPassword();
               return;
             }
 
-            const referralCode = extractReferralCodeFromUrl(url);
+            const referralCode = extractReferralCodeFromUrl(normalizedUrl);
             if (referralCode) openDriverReferralAuth(referralCode);
           })
           .catch((e) => console.log("onReady getInitialURL error", e));

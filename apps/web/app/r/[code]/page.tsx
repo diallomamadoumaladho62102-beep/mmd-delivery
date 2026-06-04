@@ -21,7 +21,8 @@ export default function ReferralPage() {
   useEffect(() => {
     if (!referralCode) return;
 
-    const appUrl = `mmd://r/${referralCode}`;
+    const appUrl = `mmddelivery://r/${referralCode}`;
+    const legacyAppUrl = `mmd://r/${referralCode}`;
 
     const timeout = setTimeout(() => {
       setShowFallback(true);
@@ -29,6 +30,13 @@ export default function ReferralPage() {
 
     try {
       window.location.href = appUrl;
+      setTimeout(() => {
+        try {
+          window.location.href = legacyAppUrl;
+        } catch {
+          // ignore legacy fallback errors
+        }
+      }, 600);
     } catch (e) {
       console.log("Deep link error", e);
       setShowFallback(true);

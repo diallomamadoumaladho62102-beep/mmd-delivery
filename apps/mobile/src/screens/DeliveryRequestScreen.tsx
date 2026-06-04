@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
+import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { startCheckoutForDeliveryRequest } from "../utils/stripe";
 import { useTranslation } from "react-i18next";
 
@@ -381,15 +382,12 @@ export function DeliveryRequestScreen() {
         const controller = new AbortController();
         timeout = setTimeout(() => controller.abort(), 20000);
 
-        const url = `${API_BASE_URL}/api/mapbox/compute-distance`;
-
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const res = await fetchMapboxComputeDistance({
+          apiBaseUrl: API_BASE_URL,
+          body: {
             pickupAddress: pickupValue,
             dropoffAddress: dropoffValue,
-          }),
+          },
           signal: controller.signal,
         });
 

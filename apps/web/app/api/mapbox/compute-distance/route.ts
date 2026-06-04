@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { computeDeliveryPricing } from "@/lib/deliveryPricing";
+import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
 
 // ✅ On accepte MAPBOX_ACCESS_TOKEN ou NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
 const MAPBOX_TOKEN =
@@ -101,8 +102,17 @@ async function getDistanceAndDuration(
   };
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const access = await assertMapboxComputeDistanceAccess(req);
+
+    if (access.ok === false) {
+      return NextResponse.json(
+        { ok: false, error: access.error },
+        { status: access.status }
+      );
+    }
+
     const body = (await req.json()) as BodyShape;
 
     let pickupLat: number;

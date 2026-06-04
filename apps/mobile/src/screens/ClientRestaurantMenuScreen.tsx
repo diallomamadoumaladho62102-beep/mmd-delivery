@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { API_BASE_URL } from "../lib/apiBase";
 import { startCheckoutForOrder } from "../../lib/payments";
+import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 
@@ -537,15 +538,12 @@ export function ClientRestaurantMenuScreen() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20000);
 
-      const url = `${apiBaseUrl}/api/mapbox/compute-distance`;
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await fetchMapboxComputeDistance({
+        apiBaseUrl,
+        body: {
           pickupAddress: pickupValue,
           dropoffAddress: dropoffValue,
-        }),
+        },
         signal: controller.signal,
       });
 

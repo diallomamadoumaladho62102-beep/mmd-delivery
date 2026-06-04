@@ -1,3 +1,9 @@
+import type { NextRequest } from "next/server";
+import {
+  assertTwilioWebhookRequest,
+  formDataToParamRecord,
+} from "@/lib/twilioRequestValidation";
+
 export const runtime = "nodejs";
 
 function buildSmsTwiml() {
@@ -16,7 +22,15 @@ export async function GET() {
   });
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const formData = await req.formData();
+  const twilioParams = await formDataToParamRecord(formData);
+  const twilioAuth = await assertTwilioWebhookRequest(req, twilioParams);
+
+  if (twilioAuth.ok === false) {
+    return new Response(twilioAuth.message, { status: twilioAuth.status });
+  }
+
   return new Response(buildSmsTwiml(), {
     status: 200,
     headers: { "Content-Type": "text/xml" },

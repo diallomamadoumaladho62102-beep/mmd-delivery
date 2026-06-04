@@ -9,17 +9,27 @@ export type MapboxDistanceResult = {
  * Appelle ton endpoint interne /api/mapbox/compute-distance
  * et renvoie distance + temps estimé.
  */
-export async function computeDistanceFromMapbox(params: {
-  pickupLat: number;
-  pickupLng: number;
-  dropoffLat: number;
-  dropoffLng: number;
-}): Promise<MapboxDistanceResult> {
+export async function computeDistanceFromMapbox(
+  params: {
+    pickupLat: number;
+    pickupLng: number;
+    dropoffLat: number;
+    dropoffLng: number;
+  },
+  accessToken?: string
+): Promise<MapboxDistanceResult> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  const token = accessToken?.trim();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const res = await fetch("/api/mapbox/compute-distance", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(params),
   });
 
