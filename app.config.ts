@@ -78,6 +78,15 @@ export default ({ config }: { config: AppConfigInput }) => {
     env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN
   );
   const EAS_BUILD_PROFILE = cleanEnv(env.EAS_BUILD_PROFILE);
+  const EXPO_PUBLIC_LEGAL_PRIVACY_URL =
+    cleanEnv(env.EXPO_PUBLIC_LEGAL_PRIVACY_URL) ||
+    "https://www.mmddelivery.com/legal/privacy";
+  const EXPO_PUBLIC_LEGAL_TERMS_URL =
+    cleanEnv(env.EXPO_PUBLIC_LEGAL_TERMS_URL) ||
+    "https://www.mmddelivery.com/legal/terms";
+  const EXPO_PUBLIC_SUPPORT_URL =
+    cleanEnv(env.EXPO_PUBLIC_SUPPORT_URL) ||
+    "https://www.mmddelivery.com/legal/support";
 
   assertStripePublishableKeyForEasBuild({
     easBuildProfile: EAS_BUILD_PROFILE,
@@ -224,6 +233,9 @@ export default ({ config }: { config: AppConfigInput }) => {
       EXPO_PUBLIC_SUPABASE_ANON_KEY,
       EXPO_PUBLIC_MAPBOX_TOKEN,
       EXPO_PUBLIC_STRIPE_PK,
+      EXPO_PUBLIC_LEGAL_PRIVACY_URL,
+      EXPO_PUBLIC_LEGAL_TERMS_URL,
+      EXPO_PUBLIC_SUPPORT_URL,
       EAS_BUILD_PROFILE: EAS_BUILD_PROFILE || "",
       eas: {
         projectId: PROJECT_ID,

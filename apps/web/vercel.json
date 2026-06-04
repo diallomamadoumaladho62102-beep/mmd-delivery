@@ -7,6 +7,10 @@
     {
       "path": "/api/orders/expire-unpaid",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/retry-order-dispatch",
+      "schedule": "*/2 * * * *"
     }
   ]
 }

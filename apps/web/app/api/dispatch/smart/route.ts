@@ -1,5 +1,4 @@
 // apps/web/app/api/dispatch/smart/route.ts
-import { after } from "next/server";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createDriverOrderOffers } from "@/lib/createDriverOrderOffers";
@@ -106,101 +105,58 @@ async function recordDispatchAttempt(params: {
   }
 }
 
-function scheduleNextWave(params: {
-  origin: string;
+async function scheduleNextWave(params: {
   supabase: any;
   orderId: string;
   currentWave: number;
   locationFreshMinutes: number;
   cooldownSeconds: number;
-  dispatchAuthHeaders: Record<string, string>;
 }) {
   const {
-    origin,
     supabase,
     orderId,
     currentWave,
     locationFreshMinutes,
     cooldownSeconds,
-    dispatchAuthHeaders,
   } = params;
 
   if (currentWave >= 3) return;
 
-  after(async () => {
-    await new Promise((resolve) => setTimeout(resolve, AUTO_RETRY_DELAY_MS));
+  const nextWave = currentWave + 1;
+  const waveConfig = DISPATCH_WAVES[nextWave] ?? DISPATCH_WAVES[3];
+  const runAt = new Date(Date.now() + AUTO_RETRY_DELAY_MS).toISOString();
 
-    try {
-      const nextWave = currentWave + 1;
-      const waveConfig = DISPATCH_WAVES[nextWave] ?? DISPATCH_WAVES[3];
+  const { error } = await supabase.from("order_dispatch_wave_schedule").insert({
+    order_id: orderId,
+    next_wave: nextWave,
+    run_at: runAt,
+    location_fresh_minutes: locationFreshMinutes,
+    cooldown_seconds: cooldownSeconds,
+    status: "pending",
+  });
 
-      const { data: latestOrder, error: latestError } = await supabase
-        .from("orders")
-        .select("id,kind,status,driver_id")
-        .eq("id", orderId)
-        .maybeSingle();
+  if (error) {
+    console.log("order_dispatch_wave_schedule insert error:", error.message);
+    await recordDispatchAttempt({
+      supabase,
+      orderId,
+      wave: nextWave,
+      maxDrivers: waveConfig.maxDrivers,
+      maxMiles: waveConfig.maxMiles,
+      notifiedCount: 0,
+      status: "retry_schedule_failed",
+    });
+    return;
+  }
 
-      if (latestError) {
-        console.log("auto retry read error:", latestError.message);
-        return;
-      }
-
-      if (!latestOrder) {
-        await recordDispatchAttempt({
-          supabase,
-          orderId,
-          wave: nextWave,
-          maxDrivers: waveConfig.maxDrivers,
-          maxMiles: waveConfig.maxMiles,
-          notifiedCount: 0,
-          status: "retry_stopped_order_not_found",
-        });
-        return;
-      }
-
-      if (latestOrder.driver_id) {
-        await recordDispatchAttempt({
-          supabase,
-          orderId,
-          wave: nextWave,
-          maxDrivers: waveConfig.maxDrivers,
-          maxMiles: waveConfig.maxMiles,
-          notifiedCount: 0,
-          status: "retry_stopped_driver_assigned",
-        });
-        return;
-      }
-
-      if (!isDispatchableOrder(latestOrder)) {
-        await recordDispatchAttempt({
-          supabase,
-          orderId,
-          wave: nextWave,
-          maxDrivers: waveConfig.maxDrivers,
-          maxMiles: waveConfig.maxMiles,
-          notifiedCount: 0,
-          status: "retry_stopped_not_dispatchable",
-        });
-        return;
-      }
-
-      await fetch(`${origin}/api/dispatch/smart`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...dispatchAuthHeaders,
-        },
-        body: JSON.stringify({
-          orderId,
-          wave: nextWave,
-          locationFreshMinutes,
-          cooldownSeconds,
-          autoRetry: true,
-        }),
-      });
-    } catch (err) {
-      console.log("auto retry dispatch error:", err);
-    }
+  await recordDispatchAttempt({
+    supabase,
+    orderId,
+    wave: nextWave,
+    maxDrivers: waveConfig.maxDrivers,
+    maxMiles: waveConfig.maxMiles,
+    notifiedCount: 0,
+    status: "retry_scheduled_cron",
   });
 }
 
@@ -358,14 +314,12 @@ export async function POST(req: NextRequest) {
         status: "no_fresh_locations",
       });
 
-      scheduleNextWave({
-        origin: req.nextUrl.origin,
+      await scheduleNextWave({
         supabase,
         orderId: order.id,
         currentWave: requestedWave,
         locationFreshMinutes,
         cooldownSeconds,
-        dispatchAuthHeaders,
       });
 
       return json({
@@ -464,14 +418,12 @@ export async function POST(req: NextRequest) {
         status: "no_candidates_outside_cooldown",
       });
 
-      scheduleNextWave({
-        origin: req.nextUrl.origin,
+      await scheduleNextWave({
         supabase,
         orderId: order.id,
         currentWave: requestedWave,
         locationFreshMinutes,
         cooldownSeconds,
-        dispatchAuthHeaders,
       });
 
       return json({
@@ -571,14 +523,12 @@ export async function POST(req: NextRequest) {
       status: messages.length > 0 ? "sent" : "no_tokens",
     });
 
-    scheduleNextWave({
-      origin: req.nextUrl.origin,
+    await scheduleNextWave({
       supabase,
       orderId: order.id,
       currentWave: requestedWave,
       locationFreshMinutes,
       cooldownSeconds,
-      dispatchAuthHeaders,
     });
 
     return json({

@@ -45,6 +45,11 @@ export default function PayButton({ orderId, disabled, className }: Props) {
             "Paiement déjà reçu. Actualise la page dans quelques secondes."
           );
         }
+        if (data?.error === "payment_intent_in_progress") {
+          throw new Error(
+            "Un paiement est déjà en cours. Attends quelques secondes puis actualise."
+          );
+        }
         throw new Error(data?.error || `Checkout failed (${res.status})`);
       }
 

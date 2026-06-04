@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getAvatarSrc } from "@/lib/avatarUrl";
 import { DriverLiveMap } from "@/components/DriverLiveMap";
@@ -152,7 +152,9 @@ function getRestaurantNextActions(status: OrderStatus) {
 
 export default function OrderPage() {
   const params = useParams<{ orderId: string }>();
+  const searchParams = useSearchParams();
   const orderId = params.orderId;
+  const payNow = searchParams.get("pay") === "1";
 
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
@@ -898,9 +900,14 @@ export default function OrderPage() {
         </p>
 
         {isOrderUnpaid(order.payment_status) && order.status !== "canceled" ? (
-          <div className="pt-2 border-t border-sky-200">
+          <div
+            id="order-payment-section"
+            className={`pt-2 border-t border-sky-200 ${payNow ? "ring-2 ring-amber-400 rounded-md p-2 bg-amber-50" : ""}`}
+          >
             <p className="text-xs font-semibold text-sky-900 mb-2">
-              Paiement requis pour confirmer la commande
+              {payNow
+                ? "Étape suivante : payer ta commande pour la confirmer"
+                : "Paiement requis pour confirmer la commande"}
             </p>
             <PayButton orderId={order.id} />
           </div>

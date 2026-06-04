@@ -140,6 +140,39 @@ export async function runDeliveryRequestDispatch(params: {
     };
   }
 
+  if (wave === 1) {
+    const wave1StartedAt = new Date().toISOString();
+    const { data: locked, error: lockError } = await supabase
+      .from("delivery_requests")
+      .update({ dispatch_wave_1_started_at: wave1StartedAt })
+      .eq("id", deliveryRequestId)
+      .is("dispatch_wave_1_started_at", null)
+      .select("id")
+      .maybeSingle();
+
+    if (lockError) {
+      return {
+        ok: false,
+        deliveryRequestId,
+        wave,
+        notified: 0,
+        candidates: 0,
+        error: lockError.message,
+      };
+    }
+
+    if (!locked?.id) {
+      return {
+        ok: true,
+        deliveryRequestId,
+        wave,
+        notified: 0,
+        candidates: 0,
+        message: "Wave 1 dispatch already started",
+      };
+    }
+  }
+
   const pickupLat = toNumber(request.pickup_lat);
   const pickupLng = toNumber(request.pickup_lng);
 

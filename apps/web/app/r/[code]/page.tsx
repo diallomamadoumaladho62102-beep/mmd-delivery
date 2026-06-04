@@ -3,8 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
-const APP_STORE_URL = "https://apps.apple.com";
-const PLAY_STORE_URL = "https://play.google.com/store";
+const APP_STORE_URL =
+  process.env.NEXT_PUBLIC_APP_STORE_URL?.trim() ||
+  "https://www.mmddelivery.com/download";
+const PLAY_STORE_URL =
+  process.env.NEXT_PUBLIC_PLAY_STORE_URL?.trim() ||
+  "https://www.mmddelivery.com/download";
 
 export default function ReferralPage() {
   const params = useParams();

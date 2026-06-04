@@ -508,7 +508,7 @@ export default function NewOrderPage() {
         );
       }
 
-      router.push(`/orders/${orderId}`);
+      router.push(`/orders/${orderId}?pay=1`);
     } catch (e: unknown) {
       const message =
         e instanceof Error
