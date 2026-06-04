@@ -5,7 +5,10 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
-import { verifyStripePaidMatchesDeliveryRequest } from "@/lib/verifyStripePaidAmount";
+import {
+  isAmountVerificationFailure,
+  verifyStripePaidMatchesDeliveryRequest,
+} from "@/lib/verifyStripePaidAmount";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -482,7 +485,7 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    if (!amountCheck.ok) {
+    if (isAmountVerificationFailure(amountCheck)) {
       return json(
         {
           ok: false,

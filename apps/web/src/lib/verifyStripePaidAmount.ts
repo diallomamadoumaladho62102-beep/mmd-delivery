@@ -31,6 +31,17 @@ export type AmountVerificationResult =
       message?: string;
     };
 
+export type AmountVerificationFailure = Extract<
+  AmountVerificationResult,
+  { ok: false }
+>;
+
+export function isAmountVerificationFailure(
+  result: AmountVerificationResult
+): result is AmountVerificationFailure {
+  return result.ok === false;
+}
+
 function paymentIntentIdFromUnknown(value: unknown): string | null {
   if (typeof value === "string" && value.trim()) return value.trim();
   if (value && typeof value === "object" && "id" in value) {
@@ -67,10 +78,7 @@ function readStripeCurrency(
   return normalizeCurrencyCode((obj as Stripe.Checkout.Session).currency);
 }
 
-async function loadPaidStripeAmount(params: {
-  paymentIntentId?: string | null;
-  sessionId?: string | null;
-}): Promise<
+type PaidStripeAmountResult =
   | {
       paid: true;
       amount_cents: number;
@@ -78,8 +86,20 @@ async function loadPaidStripeAmount(params: {
       payment_intent_id: string | null;
       session_id: string | null;
     }
-  | { paid: false; reason: string }
-> {
+  | { paid: false; reason: string };
+
+type StripePaidAmountFailure = Extract<PaidStripeAmountResult, { paid: false }>;
+
+function isStripePaidAmountFailure(
+  result: PaidStripeAmountResult
+): result is StripePaidAmountFailure {
+  return result.paid === false;
+}
+
+async function loadPaidStripeAmount(params: {
+  paymentIntentId?: string | null;
+  sessionId?: string | null;
+}): Promise<PaidStripeAmountResult> {
   const piId = String(params.paymentIntentId ?? "").trim();
   const sessionId = String(params.sessionId ?? "").trim();
 
@@ -175,7 +195,7 @@ export async function verifyStripePaidMatchesDeliveryRequest(
       opts?.sessionId ?? deliveryRequest.stripe_session_id ?? null,
   });
 
-  if (!stripePaid.paid) {
+  if (isStripePaidAmountFailure(stripePaid)) {
     return {
       ok: false,
       error: "stripe_not_paid",
@@ -237,7 +257,7 @@ export async function verifyStripePaidMatchesOrder(
     sessionId: opts?.sessionId ?? order.stripe_session_id ?? null,
   });
 
-  if (!stripePaid.paid) {
+  if (isStripePaidAmountFailure(stripePaid)) {
     return {
       ok: false,
       error: "stripe_not_paid",
