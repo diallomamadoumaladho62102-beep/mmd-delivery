@@ -2,77 +2,107 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import {
+  resolveBrowserStaffSession,
+  waitForBrowserSession,
+} from "@/lib/adminBrowserAuth";
+import {
+  hasPermission,
+  roleDisplayName,
+  type AdminPermission,
+} from "@/lib/adminRbac";
 import { supabase } from "@/lib/supabaseBrowser";
-import { canAccessAdminDashboard } from "@/lib/adminAccess";
-import { roleDisplayName } from "@/lib/adminRbac";
-import { normalizeUserRole, type UserRole } from "@/lib/roles";
+import type { UserRole } from "@/lib/roles";
 
 type Props = {
   children: ReactNode;
-  requiredPermission?: import("@/lib/adminRbac").AdminPermission;
+  requiredPermission?: AdminPermission;
 };
 
+type GateState = "loading" | "allowed" | "no-session" | "forbidden";
+
 export default function AdminGate({ children, requiredPermission }: Props) {
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<GateState>("loading");
   const [role, setRole] = useState<UserRole>(null);
-  const [denied, setDenied] = useState(false);
 
   useEffect(() => {
     let alive = true;
 
-    (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
-
-      if (!uid) {
-        if (alive) {
-          setDenied(true);
-          setLoading(false);
-        }
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", uid)
-        .maybeSingle();
-
-      const normalized = normalizeUserRole(profile?.role);
-
+    const evaluate = async () => {
+      const token = await waitForBrowserSession();
       if (!alive) return;
 
-      if (!normalized || !canAccessAdminDashboard(normalized)) {
-        setDenied(true);
-        setLoading(false);
+      if (!token) {
+        setState("no-session");
+        setRole(null);
         return;
       }
 
-      if (requiredPermission) {
-        const { hasPermission } = await import("@/lib/adminRbac");
-        if (!hasPermission(normalized, requiredPermission)) {
-          setDenied(true);
-          setLoading(false);
-          return;
-        }
+      const session = await resolveBrowserStaffSession();
+      if (!alive) return;
+
+      if (!session) {
+        setState("forbidden");
+        setRole(null);
+        return;
       }
 
-      setRole(normalized);
-      setLoading(false);
-    })();
+      if (
+        requiredPermission &&
+        !hasPermission(session.role, requiredPermission)
+      ) {
+        setState("forbidden");
+        setRole(null);
+        return;
+      }
+
+      setRole(session.role);
+      setState("allowed");
+    };
+
+    void evaluate();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void evaluate();
+    });
 
     return () => {
       alive = false;
+      subscription.unsubscribe();
     };
   }, [requiredPermission]);
 
-  if (loading) {
+  if (state === "loading") {
     return (
       <div className="p-6 text-sm text-slate-500">Chargement espace admin…</div>
     );
   }
 
-  if (denied) {
+  if (state === "no-session") {
+    return (
+      <div className="mx-auto max-w-xl p-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="text-lg font-semibold text-slate-900">
+            Connexion requise
+          </div>
+          <p className="mt-2 text-sm text-slate-600">
+            Connecte-toi avec ton compte staff MMD Delivery pour accéder à
+            l&apos;espace admin.
+          </p>
+          <Link
+            href="/auth"
+            className="mt-4 inline-block text-sm font-medium text-blue-700 underline"
+          >
+            Se connecter
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "forbidden") {
     return (
       <div className="mx-auto max-w-xl p-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -81,10 +111,10 @@ export default function AdminGate({ children, requiredPermission }: Props) {
             Cette section est réservée au personnel MMD Delivery autorisé.
           </p>
           <Link
-            href="/auth/sign-in"
+            href="/dashboard"
             className="mt-4 inline-block text-sm font-medium text-blue-700 underline"
           >
-            Se connecter
+            Retour au dashboard
           </Link>
         </div>
       </div>

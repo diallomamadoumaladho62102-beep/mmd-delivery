@@ -14,7 +14,7 @@ export default function SignIn() {
       email,
       options: {
         emailRedirectTo: typeof window !== "undefined"
-          ? `${window.location.origin}/auth/whoami`
+          ? `${window.location.origin}/auth/callback`
           : undefined,
       }
     });

@@ -17,11 +17,24 @@ export default function CallbackClient() {
 
     (async () => {
       try {
-        const next = params.get("next") || "/auth/whoami";
+        const next = params.get("next") || "/dashboard";
+        const code = params.get("code");
 
-        // Finalise la session depuis l’URL (OAuth / magic link)
-        const { data, error } = await supabase.auth.getSession();
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+
+        await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+        let { data, error } = await supabase.auth.getSession();
         if (error) throw error;
+
+        if (!data.session) {
+          const refreshed = await supabase.auth.refreshSession();
+          if (refreshed.error) throw refreshed.error;
+          data = refreshed.data;
+        }
 
         if (cancelled) return;
 
@@ -29,19 +42,18 @@ export default function CallbackClient() {
           setStatus("success");
           setMessage("Connecté ✅ Redirection…");
         } else {
-          // Pas de session détectée → on redirige quand même vers whoami/login
           setStatus("error");
           setMessage("Session introuvable. Redirection…");
         }
 
         router.replace(next);
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Auth callback error:", e);
         if (cancelled) return;
 
         setStatus("error");
         setMessage("Erreur de connexion. Redirection…");
-        router.replace("/auth/login");
+        router.replace("/auth");
       }
     })();
 

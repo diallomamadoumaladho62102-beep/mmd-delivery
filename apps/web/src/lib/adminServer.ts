@@ -117,7 +117,7 @@ async function getAuthenticatedUser(request?: NextRequest): Promise<User> {
   return getUserFromCookies();
 }
 
-async function requireAuthenticatedProfile(
+export async function resolveAdminSession(
   request?: NextRequest
 ): Promise<AdminSession> {
   const user = await getAuthenticatedUser(request);
@@ -142,7 +142,7 @@ async function assertPermission(
   checker: (role: UserRole) => boolean,
   request?: NextRequest
 ): Promise<AdminSession> {
-  const session = await requireAuthenticatedProfile(request);
+  const session = await resolveAdminSession(request);
 
   if (!checker(session.role)) {
     throw new AdminAccessError("Forbidden", 403);
