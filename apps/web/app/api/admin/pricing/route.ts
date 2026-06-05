@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { canAccessAdmin, normalizeUserRole } from "@/lib/roles";
+import { canModifyPricing } from "@/lib/adminAccess";
+import { normalizeUserRole } from "@/lib/roles";
 
 const PRICING_REDIRECT_PATH = "/admin/pricing";
 const MAX_MONEY_VALUE = 1_000_000;
@@ -214,7 +215,7 @@ async function requireAdminAccess(request: Request): Promise<AuthFailure | AuthS
 
   const role = normalizeUserRole(profile.role);
 
-  if (!canAccessAdmin(role)) {
+  if (!canModifyPricing(role)) {
     return { ok: false, response: jsonError("Forbidden", 403) };
   }
 

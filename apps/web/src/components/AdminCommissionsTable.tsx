@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseBrowser";
 
 type OrdersJoin =
   | { order_type: string | null }
@@ -46,40 +45,29 @@ export default function AdminCommissionsTable() {
     setLoading(true);
     setErr(null);
 
-    // on joint 'orders' pour avoir order_type
-    let query = supabase
-      .from("order_commissions")
-      .select(
-        "order_id, platform_pct, platform_amount, driver_pct, driver_amount, restaurant_pct, restaurant_amount, currency, updated_at, orders:orders(order_type)"
-      )
-      .order("updated_at", { ascending: false })
-      .limit(100);
+    const res = await fetch("/api/admin/commissions?limit=100", {
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => ({}));
 
-    // filtre côté SQL si demandé
-    if (currentFilter !== "all") {
-      query = query.eq("orders.order_type", currentFilter);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      setErr(error.message);
+    if (!res.ok || !body.ok) {
+      setErr(body.error ?? "Échec chargement commissions");
       setRows([]);
       setLoading(false);
       return;
     }
 
-    // ✅ data est unknown-ish (selon typings supabase) -> on sécurise
-    const list: Row[] = Array.isArray(data) ? (data as unknown as Row[]) : [];
+    const list: Row[] = Array.isArray(body.items) ? body.items : [];
 
-    // on ne garde que les lignes avec montants > 0
-    const filtered = list.filter(
-      (r) =>
+    const filtered = list.filter((r) => {
+      const total =
         (r.platform_amount ?? 0) +
-          (r.driver_amount ?? 0) +
-          (r.restaurant_amount ?? 0) >
-        0
-    );
+        (r.driver_amount ?? 0) +
+        (r.restaurant_amount ?? 0);
+      if (total <= 0) return false;
+      if (currentFilter === "all") return true;
+      return getOrderType(r.orders) === currentFilter;
+    });
 
     setRows(filtered);
     setLoading(false);

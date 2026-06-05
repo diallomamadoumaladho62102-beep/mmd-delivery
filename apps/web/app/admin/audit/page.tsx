@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { canAccessAuditLogs } from "@/lib/adminAccess";
+import { normalizeUserRole } from "@/lib/roles";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type AuditAction =
@@ -31,8 +33,8 @@ type AdminProfile = {
   role: string | null;
 };
 
-function isAdminRole(role: string | null | undefined) {
-  return role === "admin";
+function canAccessAuditPage(role: string | null | undefined) {
+  return canAccessAuditLogs(normalizeUserRole(role ?? null));
 }
 
 function formatDate(value: string | null | undefined) {
@@ -177,7 +179,7 @@ export default function AdminAuditPage() {
 
         const profile = (me as AdminProfile | null) ?? null;
 
-        if (!profile || !isAdminRole(profile.role)) {
+        if (!profile || !canAccessAuditPage(profile.role)) {
           setAuthChecked(true);
           setIsAdmin(false);
           setErr("Accès réservé aux administrateurs.");

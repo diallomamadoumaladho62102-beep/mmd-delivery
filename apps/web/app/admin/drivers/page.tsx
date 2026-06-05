@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
-import { canReviewDrivers } from "@/lib/adminAccess";
+import { canReviewDrivers, canViewDrivers } from "@/lib/adminAccess";
 
 type VehicleType = "bike" | "moto" | "car" | "other";
 
@@ -171,6 +171,10 @@ function isReviewDriverRole(value: string | null): value is ReviewDriverRole {
   return (
     typeof value === "string" && canReviewDrivers(value as ReviewDriverRole)
   );
+}
+
+function canAccessDriversPage(value: string | null): boolean {
+  return typeof value === "string" && canViewDrivers(value as ReviewDriverRole);
 }
 
 function isImagePath(path: string): boolean {
@@ -595,7 +599,7 @@ export default function AdminDriversPage() {
           throw new Error(meError.message);
         }
 
-        if (!me || !isReviewDriverRole(me.role)) {
+        if (!me || !canAccessDriversPage(me.role)) {
           if (!cancelledRef?.cancelled) {
             setAuthChecked(true);
             setIsAdmin(false);

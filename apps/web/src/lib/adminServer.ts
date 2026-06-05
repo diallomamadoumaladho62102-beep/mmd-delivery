@@ -5,11 +5,20 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   canAccessAdminDashboard,
   canAccessAuditLogs,
+  canAccessCommunication,
   canAccessPayouts,
+  canAccessStripeMonitoring,
+  canManageAdmins,
+  canManageClients,
+  canManageDispatch,
+  canModifyPricing,
+  canReadPricing,
   canReviewDrivers,
   canReviewRestaurants,
   canRetryPayout,
+  staffHasPermission,
 } from "@/lib/adminAccess";
+import type { AdminPermission } from "@/lib/adminRbac";
 import { type UserRole } from "@/lib/roles";
 
 export type AdminSession = {
@@ -164,4 +173,51 @@ export async function assertCanReviewRestaurants(request?: NextRequest) {
 
 export async function assertCanAccessAuditLogs(request?: NextRequest) {
   return assertPermission(canAccessAuditLogs, request);
+}
+
+export async function assertCanModifyPricing(request?: NextRequest) {
+  return assertPermission(canModifyPricing, request);
+}
+
+export async function assertCanReadPricing(request?: NextRequest) {
+  return assertPermission(canReadPricing, request);
+}
+
+export async function assertCanManageAdmins(request?: NextRequest) {
+  return assertPermission(canManageAdmins, request);
+}
+
+export async function assertStaffPermission(
+  permission: AdminPermission,
+  request?: NextRequest
+) {
+  return assertPermission(
+    (role) => staffHasPermission(role, permission),
+    request
+  );
+}
+
+export async function assertCanAccessStripeMonitoring(
+  request?: NextRequest
+) {
+  return assertPermission(canAccessStripeMonitoring, request);
+}
+
+export async function assertCanManageDispatch(request?: NextRequest) {
+  return assertPermission(canManageDispatch, request);
+}
+
+export async function assertCanAccessCommunication(request?: NextRequest) {
+  return assertPermission(canAccessCommunication, request);
+}
+
+export async function assertCanManageClients(request?: NextRequest) {
+  return assertPermission(canManageClients, request);
+}
+
+export async function assertCanSendCommunication(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "communication.notify"),
+    request
+  );
 }

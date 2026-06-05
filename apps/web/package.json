@@ -5,7 +5,8 @@
     "dev": "next dev",
     "dev:webpack": "cross-env NEXT_DISABLE_TURBOPACK=1 next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:rbac": "npx tsx src/lib/adminRbac.test.ts && npx tsx src/lib/adminOutbound.test.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "latest",

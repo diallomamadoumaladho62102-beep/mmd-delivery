@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
-import { canReviewRestaurants } from "@/lib/adminAccess";
+import { canReviewRestaurants, canViewRestaurants } from "@/lib/adminAccess";
 
 type RestaurantDocStatus = "pending" | "approved" | "rejected";
 type RestaurantDocType = "logo" | "business_license" | "other";
@@ -115,6 +115,13 @@ function isReviewRestaurantRole(
   return (
     typeof value === "string" &&
     canReviewRestaurants(value as ReviewRestaurantRole)
+  );
+}
+
+function canAccessRestaurantsPage(value: string | null): boolean {
+  return (
+    typeof value === "string" &&
+    canViewRestaurants(value as ReviewRestaurantRole)
   );
 }
 
@@ -389,7 +396,7 @@ export default function AdminRestaurantsPage() {
 
         const meRow = me as AdminRoleRow | null;
 
-        if (!meRow || !isReviewRestaurantRole(meRow.role)) {
+        if (!meRow || !canAccessRestaurantsPage(meRow.role)) {
           if (!cancelledRef?.cancelled) {
             setAuthChecked(true);
             setIsAdmin(false);

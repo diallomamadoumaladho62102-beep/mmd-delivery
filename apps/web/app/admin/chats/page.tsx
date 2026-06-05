@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
-import { canReviewDrivers } from "@/lib/adminAccess";
+import { canAccessCommunication } from "@/lib/adminAccess";
+import { normalizeUserRole } from "@/lib/roles";
 
 type ChatRole = "client" | "driver" | "restaurant" | "admin";
-type AdminRole = Parameters<typeof canReviewDrivers>[0];
 
 type OrderRow = {
   id: string;
@@ -56,8 +56,8 @@ const CHAT_TARGETS: Exclude<ChatRole, "admin">[] = [
   "restaurant",
 ];
 
-function isAdminRole(value: string | null): value is AdminRole {
-  return typeof value === "string" && canReviewDrivers(value as AdminRole);
+function canAccessChats(role: string | null): boolean {
+  return canAccessCommunication(normalizeUserRole(role));
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -148,7 +148,7 @@ export default function AdminChatsPage() {
 
       if (meError) throw new Error(meError.message);
 
-      if (!me || !isAdminRole(me.role)) {
+      if (!me || !canAccessChats(me.role)) {
         setAuthChecked(true);
         setIsAdmin(false);
         setErr("Accès réservé aux administrateurs.");

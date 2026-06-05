@@ -1,6 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import AdminCancelRefundPanel from "@/components/AdminCancelRefundPanel";
+import AdminPricingHistory from "@/components/admin/AdminPricingHistory";
+import { canModifyPricing } from "@/lib/adminAccess";
+import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { requirePricingPageAccess } from "@/lib/adminPageAuth";
+import { normalizeUserRole } from "@/lib/roles";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 const PRICING_PAGE_PATH = "/admin/pricing";
 const MAX_MONEY_VALUE = 1_000_000;
@@ -26,6 +32,13 @@ type PricingRow = {
   promo_type: "percent" | "fixed" | "free_delivery" | null;
   promo_value: number | null;
   promo_code: string | null;
+  promo_starts_at: string | null;
+  promo_ends_at: string | null;
+  region: "global" | "us" | "africa" | null;
+  tax_enabled: boolean;
+  tax_pct: number | null;
+  tax_label: string | null;
+  fixed_client_fee: number | null;
   currency: string | null;
   updated_at: string | null;
 };
@@ -57,6 +70,13 @@ type PricingPayload = {
   promo_type: PromoType;
   promo_value: number | null;
   promo_code: string | null;
+  promo_starts_at: string | null;
+  promo_ends_at: string | null;
+  region: "global" | "us" | "africa";
+  tax_enabled: boolean;
+  tax_pct: number;
+  tax_label: string | null;
+  fixed_client_fee: number;
   updated_at: string;
 };
 
@@ -87,6 +107,8 @@ async function getPricingConfig(): Promise<PricingRow[]> {
        delivery_fee_base, delivery_fee_per_mile, delivery_fee_per_minute,
        minimum_order_amount,
        promo_enabled, promo_type, promo_value, promo_code,
+       promo_starts_at, promo_ends_at,
+       region, tax_enabled, tax_pct, tax_label, fixed_client_fee,
        updated_at`
     )
     .order("config_key", { ascending: true });
@@ -228,6 +250,17 @@ function buildPayload(formData: FormData): { id: string; payload: PricingPayload
   const promoType = normalizePromoType(nullableText(formData.get("promo_type")));
   const promoValue = parseNullableNumber(formData.get("promo_value"));
   const promoCode = normalizePromoCode(nullableText(formData.get("promo_code")));
+  const promoStartsAt = nullableText(formData.get("promo_starts_at"));
+  const promoEndsAt = nullableText(formData.get("promo_ends_at"));
+  const regionRaw = text(formData.get("region"), "global").toLowerCase();
+  const region =
+    regionRaw === "us" || regionRaw === "africa" || regionRaw === "global"
+      ? regionRaw
+      : "global";
+  const taxEnabled = bool(formData.get("tax_enabled"));
+  const taxPct = round2(parseNumber(formData.get("tax_pct")));
+  const taxLabel = nullableText(formData.get("tax_label"));
+  const fixedClientFee = round2(parseNumber(formData.get("fixed_client_fee")));
   const currency = normalizeCurrency(text(formData.get("currency"), "USD"));
 
   assertPercent("client_pct", clientPct);
@@ -241,6 +274,8 @@ function buildPayload(formData: FormData): { id: string; payload: PricingPayload
   assertMoney("delivery_fee_per_mile", deliveryFeePerMile);
   assertMoney("delivery_fee_per_minute", deliveryFeePerMinute);
   assertMoney("minimum_order_amount", minimumOrderAmount);
+  assertMoney("fixed_client_fee", fixedClientFee);
+  assertPercent("tax_pct", taxPct);
 
   const deliveryTotal = round2(deliveryDriverPct + deliveryPlatformPct);
   if (deliveryTotal !== 100) {
@@ -299,6 +334,13 @@ function buildPayload(formData: FormData): { id: string; payload: PricingPayload
           ? round2(promoValue)
           : null,
       promo_code: promoEnabled ? promoCode : null,
+      promo_starts_at: promoEnabled ? promoStartsAt : null,
+      promo_ends_at: promoEnabled ? promoEndsAt : null,
+      region,
+      tax_enabled: taxEnabled,
+      tax_pct: taxPct,
+      tax_label: taxLabel,
+      fixed_client_fee: fixedClientFee,
       updated_at: new Date().toISOString(),
     },
   };
@@ -307,8 +349,34 @@ function buildPayload(formData: FormData): { id: string; payload: PricingPayload
 async function updatePricingConfig(formData: FormData) {
   "use server";
 
-  const { id, payload } = buildPayload(formData);
+  const session = await supabaseServer();
+  const {
+    data: { user },
+  } = await session.auth.getUser();
+
+  if (!user) throw new Error("Unauthorized");
+
   const supabase = getAdminClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const role = normalizeUserRole(profile?.role);
+  if (!canModifyPricing(role)) throw new Error("Forbidden");
+
+  const { id, payload } = buildPayload(formData);
+
+  const { data: before, error: readErr } = await supabase
+    .from("pricing_config")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (readErr || !before) {
+    throw new Error("pricing_config row not found");
+  }
 
   const { error } = await supabase
     .from("pricing_config")
@@ -318,6 +386,24 @@ async function updatePricingConfig(formData: FormData) {
   if (error) {
     throw new Error(`Failed to save pricing_config / Échec sauvegarde pricing_config: ${error.message}`);
   }
+
+  await supabase.from("pricing_config_history").insert({
+    pricing_config_id: id,
+    changed_by: user.id,
+    old_values: before,
+    new_values: payload,
+    change_type: "update",
+  });
+
+  await writeAdminAuditServer({
+    supabaseAdmin: supabase,
+    adminUserId: user.id,
+    action: "pricing_updated",
+    targetType: "pricing_config",
+    targetId: id,
+    oldValues: before as Record<string, unknown>,
+    newValues: payload as unknown as Record<string, unknown>,
+  });
 
   revalidatePath(PRICING_PAGE_PATH);
 }
@@ -527,6 +613,7 @@ function SplitSummary({
 }
 
 export default async function AdminPricingPage() {
+  const { canWrite } = await requirePricingPageAccess();
   const rows = await getPricingConfig();
 
   return (
@@ -548,6 +635,11 @@ export default async function AdminPricingPage() {
               <span className="font-semibold text-slate-900">Supabase pricing_config</span>{" "}
               sans toucher au code mobile.
             </p>
+            {!canWrite ? (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                Mode lecture seule — seul le Super Admin peut modifier le pricing.
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -580,12 +672,13 @@ export default async function AdminPricingPage() {
           return (
             <form
               key={row.id}
-              action={updatePricingConfig}
+              action={canWrite ? updatePricingConfig : undefined}
               className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
             >
               <input type="hidden" name="id" value={row.id} />
               <input type="hidden" name="config_key" value={row.config_key} />
 
+              <fieldset disabled={!canWrite} className="disabled:opacity-80">
               <div className="border-b border-slate-100 bg-white p-5">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
@@ -614,12 +707,14 @@ export default async function AdminPricingPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
-                  >
-                    Save changes / Enregistrer
-                  </button>
+                  {canWrite ? (
+                    <button
+                      type="submit"
+                      className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
+                    >
+                      Save changes / Enregistrer
+                    </button>
+                  ) : null}
                 </div>
               </div>
 
@@ -813,6 +908,69 @@ export default async function AdminPricingPage() {
                       placeholder="SAVE10"
                     />
                   </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <TextInputField
+                      name="promo_starts_at"
+                      label="Promo starts (ISO) / Début promo"
+                      value={row.promo_starts_at}
+                      placeholder="2026-07-01T00:00:00Z"
+                    />
+                    <TextInputField
+                      name="promo_ends_at"
+                      label="Promo ends (ISO) / Fin promo"
+                      value={row.promo_ends_at}
+                      placeholder="2026-12-31T23:59:59Z"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 p-4">
+                  {sectionTitle(
+                    "Region & taxes / Région & taxes",
+                    "US, Africa or global — editable without redeploy. / US, Afrique ou global."
+                  )}
+                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="space-y-1">
+                      <div className="text-sm font-medium text-slate-800">Region</div>
+                      <select
+                        name="region"
+                        defaultValue={row.region ?? "global"}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                      >
+                        <option value="global">global</option>
+                        <option value="us">us</option>
+                        <option value="africa">africa</option>
+                      </select>
+                    </label>
+                    <MoneyInput
+                      name="fixed_client_fee"
+                      label="Fixed client fee / Frais fixe client"
+                      value={row.fixed_client_fee}
+                    />
+                    <label className="space-y-1">
+                      <div className="text-sm font-medium text-slate-800">Tax enabled</div>
+                      <select
+                        name="tax_enabled"
+                        defaultValue={row.tax_enabled ? "true" : "false"}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                      >
+                        <option value="false">false</option>
+                        <option value="true">true</option>
+                      </select>
+                    </label>
+                    <PercentInput
+                      name="tax_pct"
+                      label="Tax % / Taxe %"
+                      value={row.tax_pct}
+                    />
+                    <TextInputField
+                      name="tax_label"
+                      label="Tax label / Libellé taxe"
+                      value={row.tax_label}
+                      placeholder="Sales tax / TVA"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 md:flex-row md:items-center md:justify-between">
@@ -823,18 +981,33 @@ export default async function AdminPricingPage() {
                     Supabase lisent ces valeurs pour les prochaines commandes.
                   </div>
 
-                  <button
-                    type="submit"
-                    className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
-                  >
-                    Save changes / Enregistrer
-                  </button>
+                  {canWrite ? (
+                    <button
+                      type="submit"
+                      className="rounded-2xl bg-black px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800"
+                    >
+                      Save changes / Enregistrer
+                    </button>
+                  ) : null}
                 </div>
               </div>
+              </fieldset>
             </form>
           );
         })}
       </div>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-slate-900">
+          Historique pricing & rollback
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Toutes les modifications et restaurations de versions précédentes.
+        </p>
+        <div className="mt-4">
+          <AdminPricingHistory canRollback={canWrite} />
+        </div>
+      </section>
     </main>
   );
 }

@@ -5,6 +5,7 @@ export const USER_ROLES = [
   "ops",
   "support",
   "finance",
+  "review",
   "restaurant",
   "driver",
   "client",
@@ -56,6 +57,10 @@ export function isSupport(role: UserRole): boolean {
 
 export function isFinance(role: UserRole): boolean {
   return role === "finance";
+}
+
+export function isReview(role: UserRole): boolean {
+  return role === "review";
 }
 
 export function isRestaurant(role: UserRole): boolean {
