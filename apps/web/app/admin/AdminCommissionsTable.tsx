@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseBrowser";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type Row = {
   order_id: string;
@@ -11,7 +11,6 @@ type Row = {
   restaurant_pct: number | null;
   restaurant_amount: number | null;
   currency: string | null;
-  // updated_at peut ne pas exister selon ton schéma — pas bloquant
 };
 
 export default function AdminCommissionsTable() {
@@ -19,7 +18,6 @@ export default function AdminCommissionsTable() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Helpers sécurisés
   const pct = (v: number | null | undefined) =>
     typeof v === "number" && Number.isFinite(v) ? `${v}%` : "0%";
 
@@ -31,22 +29,29 @@ export default function AdminCommissionsTable() {
 
   async function load() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("order_commissions")
-      .select(
-        "order_id, platform_pct, platform_amount, driver_pct, driver_amount, restaurant_pct, restaurant_amount, currency, updated_at"
-      )
-      // ⚠️ Si ta table n’a pas `updated_at`, remplace par `.order("order_id", { ascending:false })`
-      .order("updated_at", { ascending: false })
-      .limit(50);
+    setErr(null);
 
-    if (error) setErr(error.message);
-    else setRows((data as Row[]) ?? []);
-    setLoading(false);
+    try {
+      const res = await adminFetch("/api/admin/commissions?limit=50");
+      const body = await res.json().catch(() => ({}));
+
+      if (!res.ok || !body.ok) {
+        setErr(body.error ?? "Impossible de charger les commissions");
+        setRows([]);
+        return;
+      }
+
+      setRows((body.items as Row[]) ?? []);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Impossible de charger les commissions");
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   if (err) return <div className="text-red-600">{err}</div>;
@@ -65,7 +70,7 @@ export default function AdminCommissionsTable() {
       <div className="mb-2 flex items-center gap-2">
         <h2 className="text-lg font-semibold">💰 Dernières commissions</h2>
         <button
-          onClick={load}
+          onClick={() => void load()}
           className="ml-auto text-xs px-2 py-1 rounded bg-black text-white"
           title="Rafraîchir"
         >
