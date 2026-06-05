@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type Column<T> = {
   key: string;
@@ -41,7 +42,7 @@ export default function AdminApiTable<T extends Record<string, unknown>>({
     const url = new URL(apiPath, window.location.origin);
     if (query.trim()) url.searchParams.set("q", query.trim());
 
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await adminFetch(url.toString());
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok || !body.ok) {

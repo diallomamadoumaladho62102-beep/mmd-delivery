@@ -5,6 +5,7 @@ import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
 import AdminCommissionsTable from "@/components/AdminCommissionsTable";
 import AdminRefundBackfillPanel from "@/components/AdminRefundBackfillPanel";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 import { ADMIN_HUB_LINKS } from "@/lib/adminHubLinks";
 import { hasPermission, roleDisplayName } from "@/lib/adminRbac";
 import { supabase } from "@/lib/supabaseBrowser";
@@ -45,7 +46,7 @@ export default function AdminControlCenter() {
         return;
       }
 
-      const res = await fetch("/api/admin/overview", { cache: "no-store" });
+      const res = await adminFetch("/api/admin/overview");
       const body = await res.json().catch(() => ({}));
       if (!alive) return;
 

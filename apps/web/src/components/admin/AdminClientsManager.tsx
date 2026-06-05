@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 import { hasPermission } from "@/lib/adminRbac";
 import { supabase } from "@/lib/supabaseBrowser";
 import { normalizeUserRole } from "@/lib/roles";
@@ -40,7 +41,7 @@ export default function AdminClientsManager() {
     setError(null);
     const url = new URL("/api/admin/clients", window.location.origin);
     if (query.trim()) url.searchParams.set("q", query.trim());
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await adminFetch(url.toString());
     const body = await res.json().catch(() => ({}));
     if (!res.ok || !body.ok) {
       setError(body.error ?? "Échec chargement");
@@ -72,9 +73,7 @@ export default function AdminClientsManager() {
     setEditName(client.full_name ?? "");
     setEditPhone(client.phone ?? "");
     setEditEmail(client.email ?? "");
-    const res = await fetch(`/api/admin/clients/${client.id}/history`, {
-      cache: "no-store",
-    });
+    const res = await adminFetch(`/api/admin/clients/${client.id}/history`);
     const body = await res.json().catch(() => ({}));
     setHistory(res.ok && body.ok ? body.items ?? [] : []);
   }
@@ -82,7 +81,7 @@ export default function AdminClientsManager() {
   async function runAction(action: string) {
     if (!selected) return;
     setSaving(true);
-    const res = await fetch(`/api/admin/clients/${selected.id}`, {
+    const res = await adminFetch(`/api/admin/clients/${selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
@@ -100,7 +99,7 @@ export default function AdminClientsManager() {
   async function saveEdits() {
     if (!selected) return;
     setSaving(true);
-    const res = await fetch(`/api/admin/clients/${selected.id}`, {
+    const res = await adminFetch(`/api/admin/clients/${selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

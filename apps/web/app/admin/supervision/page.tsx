@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type Metrics = {
   pending_orders: number;
@@ -19,7 +20,7 @@ export default function AdminSupervisionPage() {
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/admin/overview", { cache: "no-store" });
+      const res = await adminFetch("/api/admin/overview");
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.ok) {
         setError(body.error ?? "Échec chargement");
