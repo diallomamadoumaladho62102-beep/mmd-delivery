@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
 import { canAccessAuditLogs } from "@/lib/adminAccess";
+import { adminFetch } from "@/lib/adminBrowserAuth";
+import { supabase } from "@/lib/supabaseBrowser";
 
 type AuditStatus = "requested" | "rejected" | "succeeded" | "failed";
 type AuditTarget = "restaurant" | "driver";
@@ -217,12 +218,8 @@ export default function AdminPayoutAuditLogsPage() {
         params.set("sort", sort);
         params.set("limit", "200");
 
-        const response = await fetch(
-          `/api/admin/payouts/audit?${params.toString()}`,
-          {
-            method: "GET",
-            cache: "no-store",
-          }
+        const response = await adminFetch(
+          `/api/admin/payouts/audit?${params.toString()}`
         );
 
         const json = (await response.json()) as ApiResponse;

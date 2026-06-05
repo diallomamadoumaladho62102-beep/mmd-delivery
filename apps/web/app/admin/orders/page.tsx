@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type Order = {
   id: string;
@@ -42,7 +43,7 @@ export default function AdminOrdersPage() {
     const url = new URL("/api/admin/orders", window.location.origin);
     if (statusFilter) url.searchParams.set("status", statusFilter);
 
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await adminFetch(url.toString());
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok || !body.ok) {

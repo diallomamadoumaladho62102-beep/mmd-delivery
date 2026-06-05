@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type HistoryRow = {
   id: string;
@@ -27,7 +28,7 @@ export default function AdminPricingHistory({
     setLoading(true);
     const url = new URL("/api/admin/pricing/history", window.location.origin);
     if (configId) url.searchParams.set("configId", configId);
-    const res = await fetch(url.toString(), { cache: "no-store" });
+    const res = await adminFetch(url.toString());
     const body = await res.json().catch(() => ({}));
     setRows(res.ok && body.ok ? body.items ?? [] : []);
     setLoading(false);
@@ -40,7 +41,7 @@ export default function AdminPricingHistory({
   async function rollback(historyId: string) {
     if (!confirm("Restaurer cette version du pricing ?")) return;
     setRolling(historyId);
-    const res = await fetch("/api/admin/pricing/rollback", {
+    const res = await adminFetch("/api/admin/pricing/rollback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ historyId }),

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
 import { canAccessPayouts } from "@/lib/adminAccess";
+import { adminFetch } from "@/lib/adminBrowserAuth";
+import { supabase } from "@/lib/supabaseBrowser";
 
 type DashboardStatus =
   | "completed"
@@ -345,10 +346,7 @@ export default function AdminPayoutDetailPage({
         setIsAdmin(true);
         setAuthChecked(true);
 
-        const response = await fetch(`/api/admin/payouts/${currentOrderId}`, {
-          method: "GET",
-          cache: "no-store",
-        });
+        const response = await adminFetch(`/api/admin/payouts/${currentOrderId}`);
 
         const json = (await response.json()) as ApiResponse;
 
@@ -401,11 +399,9 @@ export default function AdminPayoutDetailPage({
       setRetryMessage(null);
       setRetryingTarget(target);
 
-      const response = await fetch("/api/admin/payouts/retry", {
+      const response = await adminFetch("/api/admin/payouts/retry", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, target }),
       });
 

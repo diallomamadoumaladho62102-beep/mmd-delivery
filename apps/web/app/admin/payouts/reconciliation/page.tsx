@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
 import { canAccessAuditLogs } from "@/lib/adminAccess";
+import { adminFetch } from "@/lib/adminBrowserAuth";
+import { supabase } from "@/lib/supabaseBrowser";
 
 type Severity = "high" | "medium" | "low";
 
@@ -282,10 +283,7 @@ export default function AdminPayoutsReconciliationPage() {
         setIsAdmin(true);
         setAuthChecked(true);
 
-        const response = await fetch("/api/admin/payouts/reconciliation", {
-          method: "GET",
-          cache: "no-store",
-        });
+        const response = await adminFetch("/api/admin/payouts/reconciliation");
 
         const json = (await response.json()) as ApiResponse;
 
@@ -328,11 +326,9 @@ export default function AdminPayoutsReconciliationPage() {
       setActionMessage(null);
       setRetryingKey(`${orderId}:${target}`);
 
-      const response = await fetch("/api/admin/payouts/retry", {
+      const response = await adminFetch("/api/admin/payouts/retry", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderId, target }),
       });
 
@@ -367,11 +363,9 @@ export default function AdminPayoutsReconciliationPage() {
       setActionMessage(null);
       setSavingKey(key);
 
-      const response = await fetch("/api/admin/payouts/reviews", {
+      const response = await adminFetch("/api/admin/payouts/reviews", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: item.order_id,
           anomalyKind: item.anomaly_kind,
@@ -454,11 +448,9 @@ export default function AdminPayoutsReconciliationPage() {
       setActionMessage(null);
       setBulkSaving(action);
 
-      const response = await fetch("/api/admin/payouts/reviews/bulk", {
+      const response = await adminFetch("/api/admin/payouts/reviews/bulk", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action,
           items: filtered.map((item) => ({

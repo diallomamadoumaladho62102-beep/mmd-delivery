@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 import { hasPermission } from "@/lib/adminRbac";
 import { supabase } from "@/lib/supabaseBrowser";
 import { normalizeUserRole } from "@/lib/roles";
@@ -23,7 +24,7 @@ export default function AdminDispatchPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await fetch("/api/admin/dispatch", { cache: "no-store" });
+    const res = await adminFetch("/api/admin/dispatch");
     const body = await res.json().catch(() => ({}));
     if (!res.ok || !body.ok) {
       setError(body.error ?? "Échec chargement");
@@ -50,7 +51,7 @@ export default function AdminDispatchPage() {
 
   async function triggerDispatch(orderId: string) {
     setTriggering(orderId);
-    const res = await fetch("/api/admin/dispatch", {
+    const res = await adminFetch("/api/admin/dispatch", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId, wave: 1 }),

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type OfferRow = {
   id: string;
@@ -23,7 +24,7 @@ export default function AdminDriverOffersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await fetch("/api/admin/driver-offers", { cache: "no-store" });
+    const res = await adminFetch("/api/admin/driver-offers");
     const body = await res.json().catch(() => ({}));
     if (!res.ok || !body.ok) {
       setError(body.error ?? "Échec chargement");

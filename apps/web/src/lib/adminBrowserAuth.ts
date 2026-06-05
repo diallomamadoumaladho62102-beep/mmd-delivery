@@ -1,10 +1,18 @@
 import { supabase } from "@/lib/supabaseBrowser";
 
 export async function getAdminAccessToken(): Promise<string> {
-  const { data, error } = await supabase.auth.getSession();
+  let { data, error } = await supabase.auth.getSession();
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  if (!data.session?.access_token) {
+    const refreshed = await supabase.auth.refreshSession();
+    if (refreshed.error) {
+      throw new Error(refreshed.error.message);
+    }
+    data = refreshed.data;
   }
 
   const token = data.session?.access_token;

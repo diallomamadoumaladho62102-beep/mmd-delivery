@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseBrowser";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 export default function AdminRefundBackfillPanel() {
   const [loading, setLoading] = useState(false);
@@ -12,19 +12,9 @@ export default function AdminRefundBackfillPanel() {
     setResult(null);
 
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-
-      if (!token) {
-        throw new Error("Session admin expirée. Reconnecte-toi.");
-      }
-
-      const res = await fetch("/api/admin/refunds/backfill-canceled-orders", {
+      const res = await adminFetch("/api/admin/refunds/backfill-canceled-orders", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dryRun,
           limit: 10,

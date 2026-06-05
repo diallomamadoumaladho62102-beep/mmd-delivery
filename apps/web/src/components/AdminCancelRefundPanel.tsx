@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseBrowser";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type AdminCancelRefundPanelProps = {
   defaultOrderId?: string;
@@ -38,19 +38,9 @@ export default function AdminCancelRefundPanel({
     setResult(null);
 
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-
-      if (!token) {
-        throw new Error("Session admin expirée. Reconnecte-toi.");
-      }
-
-      const res = await fetch("/api/admin/orders/cancel-refund", {
+      const res = await adminFetch("/api/admin/orders/cancel-refund", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: trimmedOrderId,
           reason: trimmedReason,

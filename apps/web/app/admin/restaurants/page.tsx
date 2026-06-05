@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
 import { canReviewRestaurants, canViewRestaurants } from "@/lib/adminAccess";
+import { adminFetch } from "@/lib/adminBrowserAuth";
+import { supabase } from "@/lib/supabaseBrowser";
 
 type RestaurantDocStatus = "pending" | "approved" | "rejected";
 type RestaurantDocType = "logo" | "business_license" | "other";
@@ -559,25 +560,9 @@ export default function AdminRestaurantsPage() {
     try {
       const reviewNotes = (noteDrafts[targetUserId] ?? "").trim();
 
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw new Error(sessionError.message);
-      }
-
-      if (!session?.access_token) {
-        throw new Error("Session utilisateur introuvable");
-      }
-
-      const response = await fetch("/api/admin/restaurants/review", {
+      const response = await adminFetch("/api/admin/restaurants/review", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: targetUserId,
           status: newStatus,

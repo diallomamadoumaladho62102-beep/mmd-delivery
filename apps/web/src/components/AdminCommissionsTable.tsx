@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type OrdersJoin =
   | { order_type: string | null }
@@ -45,9 +46,7 @@ export default function AdminCommissionsTable() {
     setLoading(true);
     setErr(null);
 
-    const res = await fetch("/api/admin/commissions?limit=100", {
-      cache: "no-store",
-    });
+    const res = await adminFetch("/api/admin/commissions?limit=100");
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok || !body.ok) {

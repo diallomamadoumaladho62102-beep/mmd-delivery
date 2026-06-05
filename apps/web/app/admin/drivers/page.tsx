@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
 import { canReviewDrivers, canViewDrivers } from "@/lib/adminAccess";
+import { adminFetch } from "@/lib/adminBrowserAuth";
+import { supabase } from "@/lib/supabaseBrowser";
 
 type VehicleType = "bike" | "moto" | "car" | "other";
 
@@ -520,23 +521,6 @@ function buildProfileDraft(row: DriverAdminRow): DriverProfileDraft {
   };
 }
 
-async function getAdminAccessToken(): Promise<string> {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!session?.access_token) {
-    throw new Error("Session utilisateur introuvable");
-  }
-
-  return session.access_token;
-}
-
 export default function AdminDriversPage() {
   const router = useRouter();
 
@@ -853,14 +837,9 @@ export default function AdminDriversPage() {
         return;
       }
 
-      const accessToken = await getAdminAccessToken();
-
-      const response = await fetch("/api/admin/drivers/review", {
+      const response = await adminFetch("/api/admin/drivers/review", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: targetUserId,
           status: newStatus,
@@ -980,13 +959,9 @@ export default function AdminDriversPage() {
       if (!draft)
         throw new Error("Profil chauffeur introuvable dans le formulaire.");
 
-      const accessToken = await getAdminAccessToken();
-      const response = await fetch("/api/admin/drivers/update-profile", {
+      const response = await adminFetch("/api/admin/drivers/update-profile", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: targetUserId, profile: draft }),
       });
 
@@ -1072,16 +1047,12 @@ export default function AdminDriversPage() {
     setOk(null);
 
     try {
-      const accessToken = await getAdminAccessToken();
       const status = documentStatusDrafts[documentId] ?? "pending";
       const reviewNotes = (documentNoteDrafts[documentId] ?? "").trim();
 
-      const response = await fetch("/api/admin/drivers/update-document", {
+      const response = await adminFetch("/api/admin/drivers/update-document", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
           documentId,
@@ -1174,15 +1145,11 @@ export default function AdminDriversPage() {
     setOk(null);
 
     try {
-      const accessToken = await getAdminAccessToken();
       const reviewNotes = (documentNoteDrafts[documentId] ?? "").trim();
 
-      const response = await fetch("/api/admin/drivers/update-document", {
+      const response = await adminFetch("/api/admin/drivers/update-document", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
           documentId,

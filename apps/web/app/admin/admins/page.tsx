@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 import { STAFF_ROLES, roleDisplayName } from "@/lib/adminRbac";
 
 type AdminRow = {
@@ -21,7 +22,7 @@ export default function AdminAdminsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await fetch("/api/admin/admins", { cache: "no-store" });
+    const res = await adminFetch("/api/admin/admins");
     const body = await res.json().catch(() => ({}));
     if (!res.ok || !body.ok) {
       setError(body.error ?? "Échec chargement");
@@ -38,7 +39,7 @@ export default function AdminAdminsPage() {
 
   async function changeRole(userId: string, role: string) {
     setSavingId(userId);
-    const res = await fetch("/api/admin/admins", {
+    const res = await adminFetch("/api/admin/admins", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, role }),

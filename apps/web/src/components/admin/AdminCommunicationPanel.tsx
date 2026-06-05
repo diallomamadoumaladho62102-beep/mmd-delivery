@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type Channel = "push" | "sms" | "email";
 
@@ -17,7 +18,7 @@ export default function AdminCommunicationPanel() {
   async function send() {
     setSending(true);
     setResult(null);
-    const res = await fetch("/api/admin/communication/send", {
+    const res = await adminFetch("/api/admin/communication/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

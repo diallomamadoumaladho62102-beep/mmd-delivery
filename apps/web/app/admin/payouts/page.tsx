@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseBrowser";
 import { canAccessPayouts } from "@/lib/adminAccess";
+import { adminFetch } from "@/lib/adminBrowserAuth";
+import { supabase } from "@/lib/supabaseBrowser";
 
 type DashboardStatus =
   | "completed"
@@ -1140,7 +1141,6 @@ export default function AdminPayoutsPage() {
 
         const session = await getRequiredSession();
         const user = session.user;
-        const accessToken = session.access_token;
 
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
@@ -1162,14 +1162,8 @@ export default function AdminPayoutsPage() {
         setIsAdmin(true);
         setAuthChecked(true);
 
-        const response = await fetch("/api/admin/payouts", {
-          method: "GET",
-          cache: "no-store",
-          credentials: "include",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+        const response = await adminFetch("/api/admin/payouts", {
+          headers: { Accept: "application/json" },
         });
 
         const json = (await response.json()) as ApiResponse;
@@ -1285,18 +1279,11 @@ export default function AdminPayoutsPage() {
     try {
       setProcessingPayouts(true);
 
-      const accessToken = await getRequiredAccessToken();
-
-      const response = await fetch(
+      const response = await adminFetch(
         "/api/admin/process-payouts?force=true&limit=100",
         {
           method: "POST",
-          cache: "no-store",
-          credentials: "include",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+          headers: { Accept: "application/json" },
         }
       );
 
