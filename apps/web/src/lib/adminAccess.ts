@@ -93,6 +93,16 @@ export function canAccessCommunication(role: UserRole | null): boolean {
   );
 }
 
+export function canManageOrders(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "orders.manage");
+}
+
+export function canManageDeliveryRequests(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "delivery_requests.manage");
+}
+
 export function staffHasPermission(
   role: UserRole | null,
   permission: AdminPermission

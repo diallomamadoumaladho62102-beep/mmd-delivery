@@ -531,6 +531,8 @@ export default function AdminDriversPage() {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [staffRole, setStaffRole] = useState<string | null>(null);
+  const canManageDrivers = isReviewDriverRole(staffRole);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [profileDrafts, setProfileDrafts] = useState<
     Record<string, DriverProfileDraft>
@@ -595,6 +597,7 @@ export default function AdminDriversPage() {
         if (!cancelledRef?.cancelled) {
           setAuthChecked(true);
           setIsAdmin(true);
+          setStaffRole(me.role);
         }
 
         const { data: driverProfiles, error: dpError } = await supabase
@@ -1583,6 +1586,8 @@ export default function AdminDriversPage() {
                             Actions rapides
                           </div>
 
+                          {canManageDrivers ? (
+                          <>
                           <div className="text-xs text-slate-600 mb-4">
                             L’API recalculera automatiquement les documents et
                             champs manquants.
@@ -1713,6 +1718,12 @@ export default function AdminDriversPage() {
                                 : "Désactiver"}
                             </button>
                           </div>
+                          </>
+                          ) : (
+                            <p className="text-xs text-slate-500">
+                              Mode lecture seule — permissions insuffisantes.
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

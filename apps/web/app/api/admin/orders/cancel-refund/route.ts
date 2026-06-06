@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import {
+  AdminAccessError,
+  assertCanManageOrders,
+} from "@/lib/adminServer";
+import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,29 +24,6 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function extractBearerToken(req: NextRequest) {
-  const auth = req.headers.get("authorization") || "";
-  if (!auth.startsWith("Bearer ")) return "";
-  return auth.slice(7).trim();
-}
-
-function isAdminEmail(email: string | null | undefined) {
-  const allowed = getEnv("ADMIN_EMAILS")
-    .split(",")
-    .map((x) => x.trim().toLowerCase())
-    .filter(Boolean);
-
-  return !!email && allowed.includes(email.toLowerCase());
-}
-
-async function safeReadJson(req: NextRequest) {
-  try {
-    return await req.json();
-  } catch {
-    return {};
-  }
-}
-
 function getStripe() {
   return new Stripe(getEnv("STRIPE_SECRET_KEY"), {
     apiVersion: "2023-10-16",
@@ -50,60 +32,30 @@ function getStripe() {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = extractBearerToken(req);
+    const session = await assertCanManageOrders(req);
 
-    if (!token) {
-      return json({ error: "Missing Authorization Bearer token" }, 401);
-    }
-
-    const body = await safeReadJson(req);
-    const orderId = String(body.orderId ?? body.order_id ?? "").trim();
-    const adminReason = String(body.reason ?? "admin_cancel_refund").trim();
+    const body = await req.json().catch(() => ({}));
+    const orderId = String(
+      (body as { orderId?: string; order_id?: string }).orderId ??
+        (body as { order_id?: string }).order_id ??
+        ""
+    ).trim();
+    const adminReason = String(
+      (body as { reason?: string }).reason ?? "admin_cancel_refund"
+    ).trim();
 
     if (!orderId) {
       return json({ error: "Missing orderId" }, 400);
     }
 
-    const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-    const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
-
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false },
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    });
-
-    const { data: userData, error: userError } =
-      await supabaseUser.auth.getUser();
-
-    const user = userData?.user;
-
-    if (userError || !user?.id) {
-      return json({ error: "Invalid token" }, 401);
-    }
-
-    if (!isAdminEmail(user.email)) {
-      return json({ error: "Forbidden: admin only" }, 403);
-    }
-
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { persistSession: false },
-    });
+    const supabaseAdmin = buildSupabaseAdminClient();
 
     const { data: order, error: readError } = await supabaseAdmin
       .from("orders")
       .select(
-        `
-        id,
-        status,
-        payment_status,
-        refund_status,
-        stripe_payment_intent_id,
-        stripe_refund_id,
-        stripe_refunded_at
-      `
+        `id, status, payment_status, refund_status,
+         stripe_payment_intent_id, stripe_refund_id, stripe_refunded_at,
+         driver_id, cancel_reason, cancelled_by, cancelled_at`
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -116,7 +68,7 @@ export async function POST(req: NextRequest) {
       return json({ error: "Order not found" }, 404);
     }
 
-    let stripeRefund: any = null;
+    let stripeRefund: { id: string; status: string | null } | null = null;
 
     const alreadyRefunded =
       !!order.stripe_refund_id || !!order.stripe_refunded_at;
@@ -135,8 +87,7 @@ export async function POST(req: NextRequest) {
           reason: "requested_by_customer",
           metadata: {
             order_id: orderId,
-            admin_id: user.id,
-            admin_email: user.email ?? "",
+            admin_id: session.userId,
             reason: adminReason,
           },
         },
@@ -175,12 +126,30 @@ export async function POST(req: NextRequest) {
       .from("orders")
       .update(updatePayload)
       .eq("id", orderId)
-      .select("id,status,refund_status,stripe_refund_id,stripe_refunded_at")
+      .select(
+        "id,status,refund_status,stripe_refund_id,stripe_refunded_at,driver_id"
+      )
       .maybeSingle();
 
     if (updateError) {
       return json({ error: updateError.message }, 500);
     }
+
+    await writeAdminAuditServer({
+      supabaseAdmin,
+      adminUserId: session.userId,
+      action: "order_cancel_refund",
+      targetType: "order",
+      targetId: orderId,
+      oldValues: order as Record<string, unknown>,
+      newValues: (updated ?? updatePayload) as Record<string, unknown>,
+      metadata: {
+        reason: adminReason,
+        refunded_now: !!stripeRefund?.id,
+        stripe_refund: stripeRefund,
+      },
+      request: req,
+    });
 
     return json({
       ok: true,
@@ -190,9 +159,13 @@ export async function POST(req: NextRequest) {
       stripeRefund,
       message: "Admin cancel/refund completed.",
     });
-  } catch (e: any) {
-    console.log("Admin cancel refund error:", e?.message ?? e);
-    return json({ error: e?.message ?? "Server error" }, 500);
+  } catch (e) {
+    const status = e instanceof AdminAccessError ? e.status : 500;
+    console.log("Admin cancel refund error:", e);
+    return json(
+      { error: e instanceof Error ? e.message : "Server error" },
+      status
+    );
   }
 }
 

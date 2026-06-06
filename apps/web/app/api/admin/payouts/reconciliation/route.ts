@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   AdminAccessError,
   assertCanAccessAuditLogs,
@@ -362,9 +362,9 @@ function sortAnomalies(anomalies: AnomalyItem[]): AnomalyItem[] {
   });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    await assertCanAccessAuditLogs();
+    await assertCanAccessAuditLogs(request);
 
     const supabase = buildSupabaseAdminClient();
 

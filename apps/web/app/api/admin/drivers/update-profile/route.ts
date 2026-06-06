@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AdminAccessError, assertAdminAccess } from "@/lib/adminServer";
+import { AdminAccessError, assertCanReviewDrivers } from "@/lib/adminServer";
+import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +85,7 @@ function buildPatch(profile: Record<string, unknown>) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertAdminAccess(request);
+    const admin = await assertCanReviewDrivers(request);
     const body = (await request.json().catch(() => null)) as Body | null;
 
     const userId = typeof body?.userId === "string" ? body.userId.trim() : "";
@@ -104,6 +105,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = buildSupabaseAdminClient();
 
+    const { data: before, error: readErr } = await supabase
+      .from("driver_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (readErr) throw new Error(readErr.message);
+    if (!before) return badRequest("Driver profile not found.");
+
     const { data, error } = await supabase
       .from("driver_profiles")
       .update(patch)
@@ -114,15 +124,21 @@ export async function POST(request: NextRequest) {
     if (error) throw new Error(error.message);
     if (!data) return badRequest("Driver profile not found.");
 
-    const now = new Date().toISOString();
+    const { data: after } = await supabase
+      .from("driver_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    await supabase.from("admin_audit_logs").insert({
-      admin_user_id: admin.userId,
+    await writeAdminAuditServer({
+      supabaseAdmin: supabase,
+      adminUserId: admin.userId,
       action: "driver_profile_updated",
-      target_type: "driver",
-      target_id: userId,
-      metadata: { updated_fields: Object.keys(patch), patch },
-      created_at: now,
+      targetType: "driver",
+      targetId: userId,
+      oldValues: before as Record<string, unknown>,
+      newValues: (after ?? patch) as Record<string, unknown>,
+      request,
     });
 
     return NextResponse.json({

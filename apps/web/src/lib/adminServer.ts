@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { isAccountActive } from "@/lib/accountStatus";
 import {
   canAccessAdminDashboard,
   canAccessAuditLogs,
@@ -10,7 +11,9 @@ import {
   canAccessStripeMonitoring,
   canManageAdmins,
   canManageClients,
+  canManageDeliveryRequests,
   canManageDispatch,
+  canManageOrders,
   canModifyPricing,
   canReadPricing,
   canReviewDrivers,
@@ -18,12 +21,14 @@ import {
   canRetryPayout,
   staffHasPermission,
 } from "@/lib/adminAccess";
+import { isStaffRole } from "@/lib/adminRbac";
 import type { AdminPermission } from "@/lib/adminRbac";
 import { type UserRole } from "@/lib/roles";
 
 export type AdminSession = {
   userId: string;
   role: UserRole;
+  accountStatus: string;
 };
 
 export class AdminAccessError extends Error {
@@ -125,7 +130,7 @@ export async function resolveAdminSession(
 
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, role")
+    .select("id, role, account_status")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -135,7 +140,17 @@ export async function resolveAdminSession(
   const role = normalizeRole(profile.role);
   if (!role) throw new AdminAccessError("Forbidden", 403);
 
-  return { userId: user.id, role };
+  const accountStatus = String(profile.account_status ?? "active");
+
+  if (isStaffRole(role) && !isAccountActive(accountStatus)) {
+    throw new AdminAccessError("Staff account is suspended or disabled", 403);
+  }
+
+  if (!isAccountActive(accountStatus) && !isStaffRole(role)) {
+    throw new AdminAccessError("Account is suspended or disabled", 403);
+  }
+
+  return { userId: user.id, role, accountStatus };
 }
 
 async function assertPermission(
@@ -213,6 +228,14 @@ export async function assertCanAccessCommunication(request?: NextRequest) {
 
 export async function assertCanManageClients(request?: NextRequest) {
   return assertPermission(canManageClients, request);
+}
+
+export async function assertCanManageOrders(request?: NextRequest) {
+  return assertPermission(canManageOrders, request);
+}
+
+export async function assertCanManageDeliveryRequests(request?: NextRequest) {
+  return assertPermission(canManageDeliveryRequests, request);
 }
 
 export async function assertCanSendCommunication(request?: NextRequest) {

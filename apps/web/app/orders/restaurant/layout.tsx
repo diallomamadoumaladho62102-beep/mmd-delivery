@@ -49,8 +49,20 @@ export default async function OrdersRestaurantLayout({
     redirect("/restaurant/profile");
   }
 
-  if (restaurantProfile.status !== "approved") {
+  const restaurantStatus = String(restaurantProfile.status ?? "").toLowerCase();
+
+  if (restaurantStatus !== "approved") {
     redirect("/restaurant/profile");
+  }
+
+  const { data: accountProfile } = await supabase
+    .from("profiles")
+    .select("account_status")
+    .eq("id", auth.user.id)
+    .maybeSingle();
+
+  if (accountProfile?.account_status && accountProfile.account_status !== "active") {
+    redirect("/auth/sign-in");
   }
 
   return <>{children}</>;

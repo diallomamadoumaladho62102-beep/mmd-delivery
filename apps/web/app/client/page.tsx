@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useAccountAccessGuard } from "@/hooks/useAccountAccessGuard";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type OrderStatus =
@@ -25,11 +26,13 @@ type OrderRow = {
 };
 
 export default function ClientHomePage() {
+  const { state: accessState, message: accessMessage } = useAccountAccessGuard();
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
+    if (accessState !== "allowed") return;
     try {
       setLoading(true);
       setError(null);
@@ -79,11 +82,29 @@ export default function ClientHomePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [accessState]);
 
   useEffect(() => {
-    void fetchOrders();
-  }, [fetchOrders]);
+    if (accessState === "allowed") {
+      void fetchOrders();
+    }
+  }, [fetchOrders, accessState]);
+
+  if (accessState === "loading") {
+    return (
+      <main className="mx-auto max-w-3xl p-6 text-sm text-slate-500">
+        Vérification du compte…
+      </main>
+    );
+  }
+
+  if (accessState === "blocked") {
+    return (
+      <main className="mx-auto max-w-3xl p-6 text-sm text-red-700">
+        {accessMessage ?? "Compte suspendu ou désactivé."}
+      </main>
+    );
+  }
 
   function formatDate(iso: string | null) {
     if (!iso) return "—";

@@ -355,7 +355,8 @@ export async function POST(req: NextRequest) {
         "user_id,is_online,status,rating,rating_count,driver_score,driver_tier,cancellation_rate,last_assigned_at"
       )
       .in("user_id", driverIds)
-      .eq("is_online", true);
+      .eq("is_online", true)
+      .eq("status", "approved");
 
     if (profilesError) return json({ error: profilesError.message }, 500);
 

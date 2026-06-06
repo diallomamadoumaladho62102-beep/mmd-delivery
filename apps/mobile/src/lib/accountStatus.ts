@@ -1,0 +1,38 @@
+export type AccountStatus = "active" | "suspended" | "disabled";
+
+export function normalizeAccountStatus(
+  value: string | null | undefined
+): AccountStatus {
+  const clean = String(value ?? "active").trim().toLowerCase();
+  if (clean === "suspended" || clean === "disabled") return clean;
+  return "active";
+}
+
+export function isAccountActive(status: string | null | undefined): boolean {
+  return normalizeAccountStatus(status) === "active";
+}
+
+export function accountStatusBlockMessage(
+  status: string | null | undefined
+): string | null {
+  const normalized = normalizeAccountStatus(status);
+  if (normalized === "suspended") {
+    return "Votre compte est suspendu. Contactez le support MMD Delivery.";
+  }
+  if (normalized === "disabled") {
+    return "Votre compte est désactivé. Contactez le support MMD Delivery.";
+  }
+  return null;
+}
+
+export function isDriverDispatchEligible(
+  status: string | null | undefined
+): boolean {
+  return String(status ?? "").trim().toLowerCase() === "approved";
+}
+
+export function isRestaurantOrderEligible(
+  status: string | null | undefined
+): boolean {
+  return String(status ?? "").trim().toLowerCase() === "approved";
+}

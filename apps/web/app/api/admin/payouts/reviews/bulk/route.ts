@@ -164,7 +164,7 @@ function badRequest(message: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertCanAccessAuditLogs();
+    const admin = await assertCanAccessAuditLogs(request);
     const actor = admin.userId;
 
     const body = await parseBody(request);

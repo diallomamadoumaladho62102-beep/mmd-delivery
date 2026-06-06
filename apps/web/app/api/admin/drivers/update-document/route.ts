@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AdminAccessError, assertAdminAccess } from "@/lib/adminServer";
+import { AdminAccessError, assertCanReviewDrivers } from "@/lib/adminServer";
+import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ function normalizeText(value: unknown): string | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertAdminAccess(request);
+    const admin = await assertCanReviewDrivers(request);
     const body = (await request.json().catch(() => null)) as Body | null;
 
     const documentId =
@@ -70,17 +71,16 @@ export async function POST(request: NextRequest) {
 
       if (deleteError) throw new Error(deleteError.message);
 
-      await supabase.from("admin_audit_logs").insert({
-        admin_user_id: admin.userId,
+      await writeAdminAuditServer({
+        supabaseAdmin: supabase,
+        adminUserId: admin.userId,
         action: "driver_document_deleted",
-        target_type: "driver",
-        target_id: userId,
-        metadata: {
-          document_id: documentId,
-          document: existing,
-          review_notes: reviewNotes,
-        },
-        created_at: now,
+        targetType: "driver",
+        targetId: userId,
+        oldValues: existing as Record<string, unknown>,
+        newValues: { deleted: true },
+        metadata: { document_id: documentId, review_notes: reviewNotes },
+        request,
       });
 
       return NextResponse.json({
@@ -114,17 +114,16 @@ export async function POST(request: NextRequest) {
     if (error) throw new Error(error.message);
     if (!data) return badRequest("Driver document not found after update.");
 
-    await supabase.from("admin_audit_logs").insert({
-      admin_user_id: admin.userId,
+    await writeAdminAuditServer({
+      supabaseAdmin: supabase,
+      adminUserId: admin.userId,
       action: "driver_document_updated",
-      target_type: "driver",
-      target_id: userId,
-      metadata: {
-        document_id: documentId,
-        before: existing,
-        after: data,
-      },
-      created_at: now,
+      targetType: "driver",
+      targetId: userId,
+      oldValues: existing as Record<string, unknown>,
+      newValues: data as Record<string, unknown>,
+      metadata: { document_id: documentId },
+      request,
     });
 
     return NextResponse.json({

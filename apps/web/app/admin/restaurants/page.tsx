@@ -6,7 +6,12 @@ import { canReviewRestaurants, canViewRestaurants } from "@/lib/adminAccess";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 import { supabase } from "@/lib/supabaseBrowser";
 
-type RestaurantDocStatus = "pending" | "approved" | "rejected";
+type RestaurantDocStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "suspended"
+  | "disabled";
 type RestaurantDocType = "logo" | "business_license" | "other";
 type ReviewRestaurantRole = Parameters<typeof canReviewRestaurants>[0];
 
@@ -103,7 +108,7 @@ type AdminRoleRow = {
 type ReviewRestaurantApiResponse = {
   ok: boolean;
   userId?: string;
-  status?: "approved" | "rejected";
+  status?: RestaurantDocStatus;
   reviewedAt?: string;
   reviewNotes?: string | null;
   message?: string;
@@ -357,6 +362,8 @@ export default function AdminRestaurantsPage() {
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [staffRole, setStaffRole] = useState<string | null>(null);
+  const canManageRestaurants = isReviewRestaurantRole(staffRole);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
   const loadPage = useCallback(
@@ -409,6 +416,7 @@ export default function AdminRestaurantsPage() {
         if (!cancelledRef?.cancelled) {
           setAuthChecked(true);
           setIsAdmin(true);
+          setStaffRole(meRow.role);
         }
 
         const { data: restaurantProfiles, error: rpError } = await supabase
@@ -551,7 +559,7 @@ export default function AdminRestaurantsPage() {
 
   async function updateRestaurantStatus(
     targetUserId: string,
-    newStatus: Extract<RestaurantDocStatus, "approved" | "rejected">
+    newStatus: RestaurantDocStatus
   ) {
     setUpdatingUserId(targetUserId);
     setErr(null);
@@ -831,7 +839,8 @@ export default function AdminRestaurantsPage() {
                             Actions rapides
                           </div>
 
-                          <div className="mt-4 grid grid-cols-2 gap-4">
+                          {canManageRestaurants ? (
+                          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
                             <button
                               type="button"
                               disabled={updatingUserId === r.user_id}
@@ -883,7 +892,52 @@ export default function AdminRestaurantsPage() {
                                 ? "Traitement..."
                                 : "Refuser"}
                             </button>
+
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateRestaurantStatus(r.user_id, "suspended")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#ea580c",
+                                color: "#ffffff",
+                                border: "2px solid #9a3412",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Suspendre
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={updatingUserId === r.user_id}
+                              onClick={() =>
+                                void updateRestaurantStatus(r.user_id, "disabled")
+                              }
+                              style={{
+                                minHeight: "54px",
+                                width: "100%",
+                                borderRadius: "12px",
+                                backgroundColor: "#334155",
+                                color: "#ffffff",
+                                border: "2px solid #0f172a",
+                                fontSize: "16px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              Désactiver
+                            </button>
                           </div>
+                          ) : (
+                            <p className="text-xs text-slate-500">
+                              Mode lecture seule — permissions insuffisantes.
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

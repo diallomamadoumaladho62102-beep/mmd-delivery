@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AdminAccessError, assertAdminAccess } from "@/lib/adminServer";
+import { AdminAccessError, assertCanReviewDrivers } from "@/lib/adminServer";
+import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -332,48 +333,6 @@ async function updateDriverProfileStatus(params: {
   return payload;
 }
 
-async function writeDriverAuditLog(params: {
-  supabase: ReturnType<typeof buildSupabaseAdminClient>;
-  adminUserId: string;
-  targetUserId: string;
-  status: DriverReviewStatus;
-  reviewedAt: string;
-  reviewNotes: string;
-  missingRequirements: string[];
-  profileUpdate: DriverProfileStatusUpdate;
-}): Promise<void> {
-  const {
-    supabase,
-    adminUserId,
-    targetUserId,
-    status,
-    reviewedAt,
-    reviewNotes,
-    missingRequirements,
-    profileUpdate,
-  } = params;
-
-  const { error } = await supabase.from("admin_audit_logs").insert({
-    admin_user_id: adminUserId,
-    action: getAuditAction(status),
-    target_type: "driver",
-    target_id: targetUserId,
-    metadata: {
-      status,
-      reviewed_at: reviewedAt,
-      review_notes: reviewNotes.length > 0 ? reviewNotes : null,
-      documents_required: profileUpdate.documents_required,
-      missing_requirements: missingRequirements,
-      missing_requirements_text: profileUpdate.missing_requirements,
-      is_online: profileUpdate.is_online,
-    },
-    created_at: reviewedAt,
-  });
-
-  if (error) {
-    throw new Error(`Failed to write driver audit log: ${error.message}`);
-  }
-}
 
 function badRequest(message: string) {
   return NextResponse.json(
@@ -387,7 +346,7 @@ function badRequest(message: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertAdminAccess(request);
+    const admin = await assertCanReviewDrivers(request);
     const actor = admin.userId;
 
     const body = await parseBody(request);
@@ -413,6 +372,13 @@ export async function POST(request: NextRequest) {
       getDriverProfile({ supabase, userId }),
       getDriverDocuments({ supabase, userId }),
     ]);
+
+    const beforeAudit = {
+      status: driverProfile.status,
+      is_online: driverProfile.is_online,
+      documents_required: driverProfile.documents_required,
+      missing_requirements: driverProfile.missing_requirements,
+    };
 
     const missingRequirements = computeMissingRequirements({
       profile: driverProfile,
@@ -446,15 +412,25 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    await writeDriverAuditLog({
-      supabase,
+    await writeAdminAuditServer({
+      supabaseAdmin: supabase,
       adminUserId: actor,
-      targetUserId: userId,
-      status,
-      reviewedAt,
-      reviewNotes,
-      missingRequirements,
-      profileUpdate,
+      action: getAuditAction(status),
+      targetType: "driver",
+      targetId: userId,
+      oldValues: beforeAudit,
+      newValues: {
+        status,
+        is_online: profileUpdate.is_online,
+        documents_required: profileUpdate.documents_required,
+        missing_requirements: profileUpdate.missing_requirements,
+        review_notes: reviewNotes.length > 0 ? reviewNotes : null,
+      },
+      metadata: {
+        reviewed_at: reviewedAt,
+        missing_requirements: missingRequirements,
+      },
+      request,
     });
 
     return NextResponse.json(

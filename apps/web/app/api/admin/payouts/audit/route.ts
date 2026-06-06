@@ -123,7 +123,7 @@ function buildSearchClause(q: string): string | null {
 
 export async function GET(request: NextRequest) {
   try {
-    await assertCanAccessAuditLogs();
+    await assertCanAccessAuditLogs(request);
 
     const supabase = buildSupabaseAdminClient();
     const filters = parseFilters(request);

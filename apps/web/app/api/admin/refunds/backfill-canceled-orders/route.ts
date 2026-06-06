@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import {
+  AdminAccessError,
+  assertCanManageOrders,
+} from "@/lib/adminServer";
+import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,21 +30,6 @@ function getStripe() {
   });
 }
 
-function isAdminEmail(email: string | null | undefined) {
-  const allowed = getEnv("ADMIN_EMAILS")
-    .split(",")
-    .map((x) => x.trim().toLowerCase())
-    .filter(Boolean);
-
-  return !!email && allowed.includes(email.toLowerCase());
-}
-
-function extractBearerToken(req: NextRequest) {
-  const auth = req.headers.get("authorization") || "";
-  if (!auth.startsWith("Bearer ")) return "";
-  return auth.slice(7).trim();
-}
-
 async function safeReadJson(req: NextRequest) {
   try {
     return await req.json();
@@ -50,39 +40,14 @@ async function safeReadJson(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = extractBearerToken(req);
-
-    if (!token) {
-      return json({ error: "Missing Authorization Bearer token" }, 401);
-    }
+    const session = await assertCanManageOrders(req);
 
     const body = await safeReadJson(req);
     const dryRun = body.dryRun !== false;
     const limit = Math.min(Math.max(Number(body.limit ?? 10), 1), 25);
 
     const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL");
-    const supabaseAnonKey = getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
     const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
-
-    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: false },
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    });
-
-    const { data: userData, error: userError } =
-      await supabaseUser.auth.getUser();
-
-    const user = userData?.user;
-
-    if (userError || !user?.id) {
-      return json({ error: "Invalid token" }, 401);
-    }
-
-    if (!isAdminEmail(user.email)) {
-      return json({ error: "Forbidden: admin only" }, 403);
-    }
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
@@ -202,14 +167,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    await writeAdminAuditServer({
+      supabaseAdmin,
+      adminUserId: session.userId,
+      action: "refund_backfill_run",
+      targetType: "orders",
+      targetId: "batch",
+      newValues: {
+        dryRun: false,
+        processed: results.length,
+        results,
+      },
+      request: req,
+    });
+
     return json({
       ok: true,
       dryRun: false,
       processed: results.length,
       results,
     });
-  } catch (e: any) {
-    return json({ error: e?.message ?? "Server error" }, 500);
+  } catch (e: unknown) {
+    const status = e instanceof AdminAccessError ? e.status : 500;
+    return json(
+      { error: e instanceof Error ? e.message : "Server error" },
+      status
+    );
   }
 }
 

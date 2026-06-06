@@ -10,6 +10,11 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 
+import {
+  accountStatusBlockMessage,
+  isAccountActive,
+  isRestaurantOrderEligible,
+} from "../lib/accountStatus";
 import { supabase } from "../lib/supabase";
 import { getSelectedRole } from "../lib/authRole";
 
@@ -161,7 +166,8 @@ type DriverStatus =
   | "approved"
   | "rejected"
   | "incomplete"
-  | "suspended";
+  | "suspended"
+  | "disabled";
 
 type AppRole = "client" | "driver" | "restaurant" | "admin" | null;
 
@@ -295,6 +301,36 @@ export function AppNavigator({
     },
     [currentRoute, navReady]
   );
+
+  const getAccountStatus = React.useCallback(async (uid: string): Promise<string> => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("account_status")
+        .eq("id", uid)
+        .maybeSingle();
+
+      if (error) return "active";
+      return String((data as { account_status?: string } | null)?.account_status ?? "active");
+    } catch {
+      return "active";
+    }
+  }, []);
+
+  const getRestaurantStatus = React.useCallback(async (uid: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("restaurant_profiles")
+        .select("status")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      if (error) return null;
+      return String((data as { status?: string } | null)?.status ?? null);
+    } catch {
+      return null;
+    }
+  }, []);
 
   const resolveUserRole = React.useCallback(async (uid: string): Promise<AppRole> => {
     try {
@@ -520,6 +556,18 @@ export function AppNavigator({
       }
 
       const uid = session.user.id;
+      const accountStatus = await getAccountStatus(uid);
+
+      if (!isAccountActive(accountStatus)) {
+        const blockMessage = accountStatusBlockMessage(accountStatus);
+        if (blockMessage) {
+          console.log("Account blocked:", blockMessage);
+        }
+        await supabase.auth.signOut();
+        resetTo("RoleSelect");
+        return;
+      }
+
       const role = await resolveUserRole(uid);
 
       if (role === "client") {
@@ -536,7 +584,8 @@ export function AppNavigator({
       if (role === "driver") {
         const status = await getDriverStatus(uid);
 
-        if (status === "suspended") {
+        if (status === "suspended" || status === "disabled") {
+          await supabase.auth.signOut();
           resetTo("DriverAuth");
           return;
         }
@@ -562,6 +611,15 @@ export function AppNavigator({
       }
 
       if (role === "restaurant") {
+        const restaurantStatus = await getRestaurantStatus(uid);
+
+        if (!isRestaurantOrderEligible(restaurantStatus)) {
+          if (cur !== "RestaurantGate" && cur !== "RestaurantSetup") {
+            resetTo("RestaurantGate");
+          }
+          return;
+        }
+
         const ok = await isRestaurantProfileComplete(uid);
 
         if (!ok) {
@@ -592,6 +650,8 @@ export function AppNavigator({
     openResetPassword,
     isClientProfileComplete,
     isRestaurantProfileComplete,
+    getAccountStatus,
+    getRestaurantStatus,
     resolveUserRole,
     getDriverStatus,
     isInClientArea,

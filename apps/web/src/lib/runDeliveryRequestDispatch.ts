@@ -226,7 +226,8 @@ export async function runDeliveryRequestDispatch(params: {
     .from("driver_profiles")
     .select("user_id,is_online,status")
     .in("user_id", driverIds)
-    .eq("is_online", true);
+    .eq("is_online", true)
+    .eq("status", "approved");
 
   if (profilesError) {
     return {

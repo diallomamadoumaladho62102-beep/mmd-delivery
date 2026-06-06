@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AdminAccessError, assertAdminAccess } from "@/lib/adminServer";
+import { AdminAccessError, assertCanReviewRestaurants } from "@/lib/adminServer";
+import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type RestaurantReviewStatus = "approved" | "rejected";
+type RestaurantReviewStatus =
+  | "approved"
+  | "rejected"
+  | "suspended"
+  | "disabled";
 
 type RestaurantReviewBody = {
   userId?: unknown;
@@ -28,7 +33,25 @@ type RestaurantProfileStatusUpdate = {
 function isRestaurantReviewStatus(
   value: unknown
 ): value is RestaurantReviewStatus {
-  return value === "approved" || value === "rejected";
+  return (
+    value === "approved" ||
+    value === "rejected" ||
+    value === "suspended" ||
+    value === "disabled"
+  );
+}
+
+function isDocumentReviewStatus(
+  status: RestaurantReviewStatus
+): status is "approved" | "rejected" {
+  return status === "approved" || status === "rejected";
+}
+
+function getAuditAction(status: RestaurantReviewStatus): string {
+  if (status === "approved") return "restaurant_approved";
+  if (status === "rejected") return "restaurant_rejected";
+  if (status === "suspended") return "restaurant_suspended";
+  return "restaurant_disabled";
 }
 
 async function parseBody(
@@ -56,7 +79,7 @@ function normalizeReviewNotes(value: unknown): string {
 }
 
 function buildRestaurantDocumentUpdate(params: {
-  status: RestaurantReviewStatus;
+  status: "approved" | "rejected";
   reviewedAt: string;
   reviewedBy: string;
   reviewNotes: string;
@@ -105,7 +128,7 @@ async function updateRestaurantProfileStatus(params: {
   userId: string;
   status: RestaurantReviewStatus;
   reviewedAt: string;
-}): Promise<void> {
+}): Promise<RestaurantProfileStatusUpdate> {
   const { supabase, userId, status, reviewedAt } = params;
 
   const payload = buildRestaurantProfileStatusUpdate({
@@ -117,7 +140,7 @@ async function updateRestaurantProfileStatus(params: {
     .from("restaurant_profiles")
     .update(payload)
     .eq("user_id", userId)
-    .select("user_id")
+    .select("user_id, status, updated_at")
     .maybeSingle();
 
   if (error) {
@@ -127,44 +150,8 @@ async function updateRestaurantProfileStatus(params: {
   if (!data) {
     throw new Error("Restaurant profile not found.");
   }
-}
 
-async function writeRestaurantAuditLog(params: {
-  supabase: ReturnType<typeof buildSupabaseAdminClient>;
-  adminUserId: string;
-  targetUserId: string;
-  status: RestaurantReviewStatus;
-  reviewedAt: string;
-  reviewNotes: string;
-}): Promise<void> {
-  const {
-    supabase,
-    adminUserId,
-    targetUserId,
-    status,
-    reviewedAt,
-    reviewNotes,
-  } = params;
-
-  const { error } = await supabase.from("admin_audit_logs").insert({
-    admin_user_id: adminUserId,
-    action:
-      status === "approved"
-        ? "restaurant_approved"
-        : "restaurant_rejected",
-    target_type: "restaurant",
-    target_id: targetUserId,
-    metadata: {
-      status,
-      reviewed_at: reviewedAt,
-      review_notes: reviewNotes.length > 0 ? reviewNotes : null,
-    },
-    created_at: reviewedAt,
-  });
-
-  if (error) {
-    throw new Error(`Failed to write restaurant audit log: ${error.message}`);
-  }
+  return payload;
 }
 
 function badRequest(message: string) {
@@ -179,7 +166,7 @@ function badRequest(message: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await assertAdminAccess(request);
+    const admin = await assertCanReviewRestaurants(request);
     const actor = admin.userId;
 
     const body = await parseBody(request);
@@ -193,39 +180,59 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isRestaurantReviewStatus(status)) {
-      return badRequest("status must be 'approved' or 'rejected'.");
+      return badRequest(
+        "status must be approved, rejected, suspended or disabled."
+      );
     }
 
     const supabase = buildSupabaseAdminClient();
     const reviewedAt = new Date().toISOString();
 
-    const updatePayload = buildRestaurantDocumentUpdate({
-      status,
-      reviewedAt,
-      reviewedBy: actor,
-      reviewNotes,
-    });
+    const { data: before, error: readErr } = await supabase
+      .from("restaurant_profiles")
+      .select("user_id, status, updated_at")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    await updateRestaurantProfileStatus({
+    if (readErr || !before) {
+      return badRequest("Restaurant profile not found.");
+    }
+
+    const profileUpdate = await updateRestaurantProfileStatus({
       supabase,
       userId,
       status,
       reviewedAt,
     });
 
-    await updateRestaurantDocuments({
-      supabase,
-      userId,
-      payload: updatePayload,
-    });
+    if (isDocumentReviewStatus(status)) {
+      const updatePayload = buildRestaurantDocumentUpdate({
+        status,
+        reviewedAt,
+        reviewedBy: actor,
+        reviewNotes,
+      });
 
-    await writeRestaurantAuditLog({
-      supabase,
+      await updateRestaurantDocuments({
+        supabase,
+        userId,
+        payload: updatePayload,
+      });
+    }
+
+    await writeAdminAuditServer({
+      supabaseAdmin: supabase,
       adminUserId: actor,
-      targetUserId: userId,
-      status,
-      reviewedAt,
-      reviewNotes,
+      action: getAuditAction(status),
+      targetType: "restaurant",
+      targetId: userId,
+      oldValues: before as Record<string, unknown>,
+      newValues: profileUpdate as unknown as Record<string, unknown>,
+      metadata: {
+        reviewed_at: reviewedAt,
+        review_notes: reviewNotes.length > 0 ? reviewNotes : null,
+      },
+      request,
     });
 
     return NextResponse.json(
@@ -238,7 +245,11 @@ export async function POST(request: NextRequest) {
         message:
           status === "approved"
             ? "Restaurant approved successfully."
-            : "Restaurant rejected successfully.",
+            : status === "rejected"
+              ? "Restaurant rejected successfully."
+              : status === "suspended"
+                ? "Restaurant suspended successfully."
+                : "Restaurant disabled successfully.",
       },
       { status: 200 }
     );

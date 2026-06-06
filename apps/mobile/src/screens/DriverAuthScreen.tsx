@@ -28,7 +28,8 @@ type DriverStatus =
   | "approved"
   | "rejected"
   | "incomplete"
-  | "suspended";
+  | "suspended"
+  | "disabled";
 
 const AVATARS_BUCKET = "avatars";
 
@@ -488,10 +489,12 @@ export function DriverAuthScreen() {
       return;
     }
 
-    if (status === "suspended") {
+    if (status === "suspended" || status === "disabled") {
       Alert.alert(
-        "Compte suspendu",
-        "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery."
+        status === "disabled" ? "Compte désactivé" : "Compte suspendu",
+        status === "disabled"
+          ? "Ton compte chauffeur est désactivé. Contacte le support MMD Delivery."
+          : "Ton compte chauffeur est suspendu. Contacte le support MMD Delivery."
       );
       await clearSelectedRole();
       await supabase.auth.signOut();

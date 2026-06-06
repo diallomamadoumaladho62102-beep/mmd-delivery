@@ -25,6 +25,9 @@ type AuditRow = {
   target_type: AuditTargetType;
   target_id: string;
   metadata: Record<string, unknown> | null;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
+  ip_address: string | null;
   created_at: string;
 };
 
@@ -192,7 +195,7 @@ export default function AdminAuditPage() {
         const { data, error } = await supabase
           .from("admin_audit_logs")
           .select(
-            "id, admin_user_id, action, target_type, target_id, metadata, created_at"
+            "id, admin_user_id, action, target_type, target_id, metadata, old_values, new_values, ip_address, created_at"
           )
           .order("created_at", { ascending: false })
           .limit(300);
@@ -449,6 +452,9 @@ export default function AdminAuditPage() {
                   <th className="px-4 py-3 font-medium">Target type</th>
                   <th className="px-4 py-3 font-medium">Target ID</th>
                   <th className="px-4 py-3 font-medium">Admin user</th>
+                  <th className="px-4 py-3 font-medium">IP</th>
+                  <th className="px-4 py-3 font-medium">Avant</th>
+                  <th className="px-4 py-3 font-medium">Après</th>
                   <th className="px-4 py-3 font-medium">Metadata</th>
                 </tr>
               </thead>
@@ -457,7 +463,7 @@ export default function AdminAuditPage() {
                 {filteredRows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={9}
                       className="px-4 py-12 text-center text-sm text-slate-500"
                     >
                       Aucun log trouvé pour les filtres actuels.
@@ -506,6 +512,22 @@ export default function AdminAuditPage() {
                         >
                           {truncateMiddle(row.admin_user_id, 12, 10)}
                         </div>
+                      </td>
+
+                      <td className="px-4 py-4 text-xs text-slate-600">
+                        {row.ip_address ?? "—"}
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <pre className="max-w-[280px] overflow-auto rounded-xl bg-slate-50 p-2 text-xs text-slate-700">
+                          {safeJsonPreview(row.old_values)}
+                        </pre>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <pre className="max-w-[280px] overflow-auto rounded-xl bg-slate-50 p-2 text-xs text-slate-700">
+                          {safeJsonPreview(row.new_values)}
+                        </pre>
                       </td>
 
                       <td className="px-4 py-4">
