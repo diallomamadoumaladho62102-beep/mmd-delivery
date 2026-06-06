@@ -63,7 +63,9 @@ export async function sendAdminPush(
   });
 
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return { ok: res.ok && data.ok === true, response: data };
+  const delivered =
+    res.ok && data.ok === true && data.reason !== "no_tokens" && data.sent !== 0;
+  return { ok: delivered, response: data };
 }
 
 export async function sendAdminSms(

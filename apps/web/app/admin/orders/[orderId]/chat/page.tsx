@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
+import { adminFetch } from "@/lib/adminBrowserAuth";
 import { supabase } from "@/lib/supabaseBrowser";
 
 type ChatRole = "client" | "driver" | "restaurant" | "admin";
@@ -94,29 +95,18 @@ export default function AdminOrderChatPage() {
       setLoading(true);
       setLoadError(null);
 
-      const { data, error } = await supabase
-        .from("order_messages")
-        .select(
-          `
-          id,
-          order_id,
-          user_id,
-          text,
-          image_path,
-          created_at,
-          sender_role,
-          target_role
-        `
-        )
-        .eq("order_id", orderId)
-        .or(
-          `target_role.eq.${targetRole},sender_role.eq.${targetRole},target_role.is.null`
-        )
-        .order("created_at", { ascending: true });
+      const res = await adminFetch(
+        `/api/admin/chats/messages?orderId=${encodeURIComponent(orderId)}&targetRole=${encodeURIComponent(targetRole)}`
+      );
+      const payload = await res.json().catch(() => ({}));
 
-      if (error) throw error;
+      if (!res.ok || !payload.ok) {
+        throw new Error(
+          String(payload.error ?? "Impossible de charger les messages.")
+        );
+      }
 
-      setRows((data ?? []) as MessageRow[]);
+      setRows((payload.items ?? []) as MessageRow[]);
       scrollToBottom();
     } catch (error) {
       console.error("admin order chat load error:", error);
@@ -167,14 +157,22 @@ export default function AdminOrderChatPage() {
       setSending(true);
       setLoadError(null);
 
-      const { error } = await supabase.from("order_messages").insert({
-        order_id: orderId,
-        text: trimmed,
-        sender_role: "admin",
-        target_role: targetRole,
+      const res = await adminFetch("/api/admin/chats/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          text: trimmed,
+          targetRole,
+        }),
       });
+      const payload = await res.json().catch(() => ({}));
 
-      if (error) throw error;
+      if (!res.ok || !payload.ok) {
+        throw new Error(
+          String(payload.error ?? "Impossible d'envoyer le message.")
+        );
+      }
 
       setText("");
       await load();

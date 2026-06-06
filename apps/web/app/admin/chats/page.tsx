@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { canAccessCommunication } from "@/lib/adminAccess";
+import {
+  messagePreview,
+  ORDER_MESSAGE_SELECT,
+} from "@/lib/orderMessages";
 import { normalizeUserRole } from "@/lib/roles";
 
 type ChatRole = "client" | "driver" | "restaurant" | "admin";
@@ -14,6 +18,7 @@ type OrderRow = {
   status: string | null;
   created_at: string | null;
   client_id: string | null;
+  client_user_id: string | null;
   driver_id: string | null;
   restaurant_id: string | null;
 };
@@ -21,8 +26,8 @@ type OrderRow = {
 type MessageRow = {
   id: string;
   order_id: string;
-  body: string | null;
-  image_url: string | null;
+  text: string | null;
+  image_path: string | null;
   sender_role: ChatRole | null;
   target_role: ChatRole | null;
   created_at: string | null;
@@ -160,7 +165,7 @@ export default function AdminChatsPage() {
 
       const { data: messagesRaw, error: messagesError } = await supabase
         .from("order_messages")
-        .select("id, order_id, body, image_url, sender_role, target_role, created_at")
+        .select(ORDER_MESSAGE_SELECT)
         .order("created_at", { ascending: false })
         .limit(300);
 
@@ -176,7 +181,9 @@ export default function AdminChatsPage() {
 
       const { data: ordersRaw, error: ordersError } = await supabase
         .from("orders")
-        .select("id, status, created_at, client_id, driver_id, restaurant_id")
+        .select(
+          "id, status, created_at, client_id, client_user_id, driver_id, restaurant_id"
+        )
         .in("id", orderIds);
 
       if (ordersError) throw new Error(ordersError.message);
@@ -186,7 +193,11 @@ export default function AdminChatsPage() {
       const profileIds = Array.from(
         new Set(
           orders
-            .flatMap((o) => [o.client_id, o.driver_id, o.restaurant_id])
+            .flatMap((o) => [
+              o.client_id ?? o.client_user_id,
+              o.driver_id,
+              o.restaurant_id,
+            ])
             .filter((id): id is string => typeof id === "string" && id.length > 0),
         ),
       );
@@ -224,7 +235,11 @@ export default function AdminChatsPage() {
             lastMessage,
             messagesCount: orderMessages.length,
             participants: {
-              client: order.client_id ? profilesById.get(order.client_id) ?? null : null,
+              client:
+                order.client_id || order.client_user_id
+                  ? profilesById.get(order.client_id ?? order.client_user_id ?? "") ??
+                    null
+                  : null,
               driver: order.driver_id ? profilesById.get(order.driver_id) ?? null : null,
               restaurant: order.restaurant_id
                 ? profilesById.get(order.restaurant_id) ?? null
@@ -288,7 +303,7 @@ export default function AdminChatsPage() {
       const searchable = [
         thread.order.id,
         thread.order.status,
-        thread.lastMessage?.body,
+        thread.lastMessage?.text,
         thread.lastMessage?.sender_role,
         thread.lastMessage?.target_role,
         displayName(thread.participants.client),
@@ -467,7 +482,7 @@ export default function AdminChatsPage() {
                               {formatDate(last.created_at)}
                             </div>
                             <div className="line-clamp-2">
-                              {last.body || (last.image_url ? "Image jointe" : "—")}
+                              {messagePreview(last)}
                             </div>
                           </>
                         ) : (

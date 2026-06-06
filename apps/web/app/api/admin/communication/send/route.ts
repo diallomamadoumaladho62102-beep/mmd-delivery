@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertCanSendCommunication } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import {
+  communicationErrorMessage,
+  isSupabaseUserId,
+  mapProviderFailure,
+  type CommunicationErrorCode,
+} from "@/lib/adminCommunicationErrors";
+import {
   sendAdminEmail,
   sendAdminPush,
   sendAdminSms,
@@ -13,6 +19,18 @@ export const dynamic = "force-dynamic";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
+}
+
+function fail(code: CommunicationErrorCode, status = 400, details?: unknown) {
+  return json(
+    {
+      ok: false,
+      code,
+      error: communicationErrorMessage(code),
+      details: details ?? null,
+    },
+    status
+  );
 }
 
 function getClientIp(request: NextRequest): string | null {
@@ -40,21 +58,28 @@ export async function POST(request: NextRequest) {
     const userId = String(body.userId ?? "").trim();
 
     if (!["push", "sms", "email"].includes(channel)) {
-      return json({ ok: false, error: "Invalid channel" }, 400);
+      return fail("invalid_channel", 400);
     }
-    if (!message) return json({ ok: false, error: "message required" }, 400);
+    if (!message) return fail("missing_message", 400);
 
     let recipientAddress = String(body.to ?? "").trim();
     let recipientUserId: string | null = userId || null;
+    let profileRole: string | null = null;
 
     if (userId) {
+      if (!isSupabaseUserId(userId)) {
+        return fail("invalid_user_id", 400, { provided: userId });
+      }
+
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, email, phone")
+        .select("id, email, phone, role")
         .eq("id", userId)
         .maybeSingle();
 
-      if (!profile) return json({ ok: false, error: "User not found" }, 404);
+      if (!profile) return fail("user_not_found", 404);
+
+      profileRole = String(profile.role ?? "").trim() || null;
 
       if (channel === "email" && !recipientAddress) {
         recipientAddress = String(profile.email ?? "").trim();
@@ -64,24 +89,48 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (channel === "push") {
+      if (!userId) return fail("invalid_user_id", 400);
+      if (!process.env.PUSH_API_KEY?.trim()) {
+        return fail("missing_push_config", 503);
+      }
+    }
+
+    if (channel === "sms" && !recipientAddress) {
+      return fail("missing_phone", 400);
+    }
+
+    if (channel === "email" && !recipientAddress) {
+      return fail("missing_email", 400);
+    }
+
     let result: { ok: boolean; response: Record<string, unknown> };
 
     if (channel === "push") {
-      if (!userId) return json({ ok: false, error: "userId required for push" }, 400);
+      const pushRole =
+        profileRole === "driver" ||
+        profileRole === "restaurant" ||
+        profileRole === "client"
+          ? profileRole
+          : "client";
+
       result = await sendAdminPush({
         userId,
         title: String(body.title ?? "MMD Delivery").trim(),
         body: message,
-        role: "client",
+        role: pushRole,
       });
     } else if (channel === "sms") {
-      if (!recipientAddress) {
-        return json({ ok: false, error: "Phone number required" }, 400);
+      if (!process.env.TWILIO_ACCOUNT_SID?.trim()) {
+        return fail("missing_push_config", 503, { provider: "twilio" });
       }
       result = await sendAdminSms({ to: recipientAddress, body: message });
     } else {
-      if (!recipientAddress) {
-        return json({ ok: false, error: "Email address required" }, 400);
+      if (
+        !process.env.RESEND_API_KEY?.trim() ||
+        !process.env.ADMIN_EMAIL_FROM?.trim()
+      ) {
+        return fail("missing_push_config", 503, { provider: "resend" });
       }
       result = await sendAdminEmail({
         to: recipientAddress,
@@ -91,6 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = getClientIp(request);
+    const failureCode = result.ok ? null : mapProviderFailure(result.response);
 
     await supabase.from("admin_communication_logs").insert({
       sent_by: session.userId,
@@ -100,7 +150,10 @@ export async function POST(request: NextRequest) {
       subject: channel === "email" ? String(body.subject ?? "").trim() || null : null,
       body: message,
       status: result.ok ? "sent" : "failed",
-      provider_response: result.response,
+      provider_response: {
+        ...result.response,
+        failure_code: failureCode,
+      },
       ip_address: ip,
     });
 
@@ -113,24 +166,37 @@ export async function POST(request: NextRequest) {
       newValues: {
         channel,
         status: result.ok ? "sent" : "failed",
+        failure_code: failureCode,
         recipient: recipientAddress || userId,
       },
       request,
     });
 
     if (!result.ok) {
+      const code = failureCode ?? "provider_error";
       return json(
-        { ok: false, error: "Send failed", details: result.response },
-        502
+        {
+          ok: false,
+          code,
+          error: communicationErrorMessage(code),
+          details: result.response,
+        },
+        code === "missing_push_config" ? 503 : 502
       );
     }
 
     return json({ ok: true, channel, details: result.response });
   } catch (e) {
-    const status = e instanceof AdminAccessError ? e.status : 500;
+    if (e instanceof AdminAccessError) {
+      return fail("unauthorized", e.status, { message: e.message });
+    }
     return json(
-      { ok: false, error: e instanceof Error ? e.message : "Server error" },
-      status
+      {
+        ok: false,
+        code: "provider_error",
+        error: e instanceof Error ? e.message : "Server error",
+      },
+      500
     );
   }
 }
