@@ -163,8 +163,8 @@ type DriverProfileDraft = {
 const DOCUMENT_SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 const DRIVER_DOCUMENT_BUCKETS = [
-  "driver-documents",
   "driver-docs",
+  "driver-documents",
   "avatars",
 ] as const;
 

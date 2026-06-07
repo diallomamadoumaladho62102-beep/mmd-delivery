@@ -6,6 +6,7 @@ import {
 } from "expo-keep-awake";
 import { AppState, Platform, type AppStateStatus } from "react-native";
 import { supabase } from "./supabase";
+import { isDriverOnlineEligible } from "./accountStatus";
 
 const DRIVER_LOCATION_TASK = "MMD_DRIVER_BACKGROUND_LOCATION_TASK";
 const KEEP_AWAKE_TAG = "mmd-driver-location-tracking";
@@ -209,6 +210,24 @@ async function updateDriverOnlineStatus(
   driverId: string,
   isOnline: boolean,
 ): Promise<void> {
+  if (isOnline) {
+    const { data: profile, error: profileError } = await supabase
+      .from("driver_profiles")
+      .select("status")
+      .eq("user_id", driverId)
+      .maybeSingle();
+
+    if (profileError) {
+      logError("Erreur lecture driver_profiles.status:", profileError);
+      return;
+    }
+
+    if (!isDriverOnlineEligible(profile?.status ?? null)) {
+      logError("Passage en ligne refusé: chauffeur non approuvé ou suspendu.");
+      return;
+    }
+  }
+
   const { error } = await supabase
     .from("driver_profiles")
     .update({ is_online: isOnline })

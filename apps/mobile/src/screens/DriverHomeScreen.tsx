@@ -32,6 +32,10 @@ import {
   setDriverOnlineStatus,
 } from "../lib/driverStatus";
 import { registerUserPushToken } from "../lib/notifications";
+import {
+  driverOnlineBlockMessage,
+  isDriverOnlineEligible,
+} from "../lib/accountStatus";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -871,6 +875,31 @@ export function DriverHomeScreen() {
     }
   }, []);
 
+  const ensureDriverCanGoOnline = useCallback(
+    async (userId: string): Promise<boolean> => {
+      const { data: profile, error } = await supabase
+        .from("driver_profiles")
+        .select("status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const blockMessage = driverOnlineBlockMessage(profile?.status ?? null);
+      if (blockMessage) {
+        await setDriverOnlineStatus(false);
+        Alert.alert(
+          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          blockMessage,
+        );
+        return false;
+      }
+
+      return isDriverOnlineEligible(profile?.status ?? null);
+    },
+    [t],
+  );
+
   const getUserIdOrThrow = useCallback(async () => {
     const { data: sessionData, error: sErr } = await supabase.auth.getSession();
     if (sErr) throw sErr;
@@ -1587,6 +1616,12 @@ export function DriverHomeScreen() {
         }
 
         const userId = await getUserIdOrThrow();
+        const canGoOnline = await ensureDriverCanGoOnline(userId);
+        if (!canGoOnline) {
+          setIsOnline(false);
+          return;
+        }
+
         await setDriverProfileOnline(userId, true);
         await setDriverOnlineStatus(true);
 
@@ -1607,7 +1642,7 @@ export function DriverHomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [fetchDriverOrders, getUserIdOrThrow, setDriverProfileOnline, startDbGpsTracking]);
+  }, [ensureDriverCanGoOnline, fetchDriverOrders, getUserIdOrThrow, setDriverProfileOnline, startDbGpsTracking]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
@@ -1633,6 +1668,12 @@ export function DriverHomeScreen() {
           }
 
           const userId = await getUserIdOrThrow();
+          const canGoOnline = await ensureDriverCanGoOnline(userId);
+          if (!canGoOnline) {
+            setIsOnline(false);
+            return;
+          }
+
           await setDriverProfileOnline(userId, true);
           await setDriverOnlineStatus(true);
 
@@ -1651,6 +1692,7 @@ export function DriverHomeScreen() {
 
     return () => sub.remove();
   }, [
+    ensureDriverCanGoOnline,
     fetchDriverOrders,
     getUserIdOrThrow,
     isOnline,
@@ -2018,6 +2060,13 @@ export function DriverHomeScreen() {
         return;
       }
 
+      const onlineBlockMessage = driverOnlineBlockMessage(driver?.status ?? null);
+      if (next && onlineBlockMessage) {
+        await setDriverOnlineStatus(false);
+        Alert.alert("Erreur", onlineBlockMessage);
+        return;
+      }
+
       if (next) {
         const ok = await ensureGpsPermission();
         if (!ok) {
@@ -2050,7 +2099,7 @@ export function DriverHomeScreen() {
       console.log("toggleOnline error:", e);
       Alert.alert(t("shared.orderChat.alerts.errorTitle", "Erreur"), e?.message ?? "Impossible de changer le statut.");
     }
-  }, [ensureGpsPermission, fetchDriverOrders, getUserIdOrThrow, isOnline, setDriverProfileOnline, startDbGpsTracking, stopDbGpsTracking, stopSound, t]);
+  }, [ensureDriverCanGoOnline, ensureGpsPermission, fetchDriverOrders, getUserIdOrThrow, isOnline, setDriverProfileOnline, startDbGpsTracking, stopDbGpsTracking, stopSound, t]);
 
   const openDriverMenu = useCallback(() => {
     hapticLight();

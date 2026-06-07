@@ -76,32 +76,90 @@ create table if not exists courier_locations (
 -- DRIVER PROFILES (détails chauffeur – mobile + web)
 -- =====================================================
 create table if not exists driver_profiles (
-  courier_id uuid primary key references profiles(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
 
+  full_name text,
+  phone text,
+  emergency_phone text,
+  address text,
+  city text,
+  state text,
+  zip_code text,
+  date_of_birth date,
+  transport_mode text default 'bike',
+  vehicle_type text,
+  vehicle_brand text,
+  vehicle_model text,
+  vehicle_year integer,
+  vehicle_color text,
+  plate_number text,
+  license_number text,
+  license_expiry date,
   photo_url text,
 
+  is_online boolean not null default false,
+  total_deliveries integer not null default 0,
+  acceptance_rate numeric,
+  cancellation_rate numeric,
   rating numeric,
-  total_deliveries int default 0,
-  acceptance_rate int,
-  cancellation_rate int,
+  rating_count integer not null default 0,
+  vehicle_verified boolean not null default false,
+  payout_enabled boolean not null default false,
+  documents_required boolean not null default true,
+  stripe_account_id text,
+  stripe_onboarded boolean not null default false,
+  stripe_onboarded_at timestamptz,
+  driver_score numeric,
+  driver_tier integer,
+  last_assigned_at timestamptz,
+  status text not null default 'pending',
+  missing_requirements text,
+  onboarding_status text not null default 'draft',
+  is_locked boolean not null default false,
+  locked_at timestamptz,
 
-  vehicle_make text,
-  vehicle_model text,
-  vehicle_year int,
-  vehicle_plate text,
-
-  is_verified boolean default false,
-
-  doc_driver_license boolean default false,
-  doc_insurance boolean default false,
-  doc_registration boolean default false,
-
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
-create index if not exists driver_profiles_courier_id_idx
-on driver_profiles(courier_id);
+create index if not exists driver_profiles_user_id_idx
+on driver_profiles(user_id);
+
+create index if not exists driver_profiles_status_online_idx
+on driver_profiles(status, is_online);
+
+-- =====================================================
+-- DRIVER DOCUMENTS
+-- =====================================================
+create table if not exists driver_documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  driver_id uuid references driver_profiles(id) on delete cascade,
+  doc_type text not null,
+  file_path text not null,
+  country text,
+  state text,
+  doc_number text,
+  expires_at text,
+  status text not null default 'pending',
+  reviewed_at timestamptz,
+  reviewed_by uuid references auth.users(id),
+  review_notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, doc_type)
+);
+
+-- =====================================================
+-- DRIVER LOCATIONS (GPS temps réel)
+-- =====================================================
+create table if not exists driver_locations (
+  driver_id uuid primary key references auth.users(id) on delete cascade,
+  lat double precision not null,
+  lng double precision not null,
+  updated_at timestamptz not null default now()
+);
 
 -- =========================
 -- Auto update updated_at
@@ -128,17 +186,17 @@ drop policy if exists driver_profiles_select_own on driver_profiles;
 create policy driver_profiles_select_own
 on driver_profiles
 for select
-using (auth.uid() = courier_id);
+using (auth.uid() = user_id);
 
 drop policy if exists driver_profiles_insert_own on driver_profiles;
 create policy driver_profiles_insert_own
 on driver_profiles
 for insert
-with check (auth.uid() = courier_id);
+with check (auth.uid() = user_id);
 
-drop policy if exists driver_profiles_update_own on driver_profiles;
-create policy driver_profiles_update_own
+drop policy if exists driver_profiles_update_if_not_locked on driver_profiles;
+create policy driver_profiles_update_if_not_locked
 on driver_profiles
 for update
-using (auth.uid() = courier_id)
-with check (auth.uid() = courier_id);
+using (auth.uid() = user_id and coalesce(is_locked, false) = false)
+with check (auth.uid() = user_id and coalesce(is_locked, false) = false);

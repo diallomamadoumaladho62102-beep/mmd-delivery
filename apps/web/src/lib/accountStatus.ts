@@ -39,6 +39,28 @@ export function isDriverDispatchEligible(
   return String(status ?? "").trim().toLowerCase() === "approved";
 }
 
+export function driverOnlineBlockMessage(
+  status: string | null | undefined
+): string | null {
+  const normalized = String(status ?? "").trim().toLowerCase();
+  if (normalized === "suspended") {
+    return "Votre compte chauffeur est suspendu. Contactez le support MMD Delivery.";
+  }
+  if (normalized === "disabled") {
+    return "Votre compte chauffeur est désactivé. Contactez le support MMD Delivery.";
+  }
+  if (normalized !== "approved") {
+    return "Votre profil chauffeur doit être approuvé avant de passer en ligne.";
+  }
+  return null;
+}
+
+export function isDriverOnlineEligible(
+  status: string | null | undefined
+): boolean {
+  return driverOnlineBlockMessage(status) === null;
+}
+
 export type RestaurantOperationalStatus =
   | "pending"
   | "approved"
