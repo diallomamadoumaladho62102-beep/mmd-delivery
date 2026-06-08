@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import RecalcOrderButton from "@/components/RecalcOrderButton";
+import { ORDER_MESSAGE_SELECT } from "@/lib/orderMessages";
 
 type Msg = {
   id: number;
   order_id: string;
   user_id: string | null;
-  message: string;
+  text: string;
   image_path?: string | null;
   created_at: string;
   profiles?: { full_name?: string | null; avatar_url?: string | null } | null;
@@ -37,7 +38,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
         .from("order_messages")
         .select(
           `
-          id, order_id, user_id, message, image_path, created_at,
+          ${ORDER_MESSAGE_SELECT},
           profiles:profiles!order_messages_user_id_fkey(full_name, avatar_url)
         `
         )
@@ -79,8 +80,11 @@ export default function ChatBox({ orderId }: { orderId: string }) {
     });
   }, [msgs.length]);
 
-  const publicUrl = (p?: string | null) =>
-    p ? supabase.storage.from("chat-uploads").getPublicUrl(p).data.publicUrl : null;
+  const publicUrl = (p?: string | null) => {
+    if (!p) return null;
+    const key = p.replace(/^chat-images\//, "");
+    return supabase.storage.from("chat-images").getPublicUrl(key).data.publicUrl;
+  };
 
   const send = async () => {
     const text = input.trim();
@@ -104,17 +108,17 @@ export default function ChatBox({ orderId }: { orderId: string }) {
         const objectPath = `${orderId}/${filename}`;
 
         const { error: upErr } = await supabase.storage
-          .from("chat-uploads")
+          .from("chat-images")
           .upload(objectPath, file, { cacheControl: "3600", upsert: false });
 
         if (upErr) throw new Error(`Upload image: ${upErr.message}`);
-        image_path = objectPath;
+        image_path = `chat-images/${objectPath}`;
       }
 
       const { error: insErr } = await supabase.from("order_messages").insert({
         order_id: orderId,
         user_id: uid,
-        message: text || "",
+        text: text || null,
         image_path,
       });
 
@@ -166,8 +170,8 @@ export default function ChatBox({ orderId }: { orderId: string }) {
                     {name} • {time}
                   </div>
 
-                  {m.message?.trim() && (
-                    <div className="whitespace-pre-wrap break-words">{m.message}</div>
+                  {m.text?.trim() && (
+                    <div className="whitespace-pre-wrap break-words">{m.text}</div>
                   )}
 
                   {img && (

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
+import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 
 export const runtime = "nodejs";
@@ -161,6 +162,102 @@ async function refundStripePayment(params: {
   }
 }
 
+async function insertClientCancelEvent(params: {
+  supabaseAdmin: any;
+  orderId: string;
+  oldStatus: string;
+  reason: string;
+  userId: string;
+  refund: CancelRefund;
+  stripeRefund?: unknown;
+}) {
+  const canceledAt = nowIso();
+  const { error } = await params.supabaseAdmin.from("order_events").insert({
+    order_id: params.orderId,
+    event_type: "client_cancel",
+    old_status: params.oldStatus,
+    new_status: "canceled",
+    note: params.reason,
+    actor_id: params.userId,
+    created_at: canceledAt,
+    description: "Client cancelled the order",
+    triggered_by: params.userId,
+    triggered_role: "client",
+    metadata: {
+      source: "api/orders/cancel",
+      refund: params.refund,
+      stripe_refund: params.stripeRefund ?? null,
+      at: canceledAt,
+    },
+  });
+
+  if (error) {
+    console.log("order_events insert error (client cancel):", error.message);
+  }
+}
+
+async function notifyClientAfterCancel(params: {
+  supabaseAdmin: any;
+  order: any;
+  userId: string;
+  orderId: string;
+  refund: CancelRefund;
+}) {
+  try {
+    await notifyClientOrderCancelled({
+      supabaseAdmin: params.supabaseAdmin,
+      userIds: [
+        params.order.client_user_id,
+        params.order.client_id,
+        params.order.created_by,
+        params.order.user_id,
+        params.userId,
+      ],
+      orderId: params.orderId,
+      refund: params.refund,
+    });
+  } catch (notifyErr: unknown) {
+    console.log(
+      "client cancel push error:",
+      notifyErr instanceof Error ? notifyErr.message : notifyErr
+    );
+  }
+}
+
+async function syncLinkedDeliveryRequestCancel(params: {
+  supabaseAdmin: any;
+  order: any;
+  reason: string;
+  refundStatus: string;
+}) {
+  const requestId = String(params.order.external_ref_id ?? "").trim();
+  const refType = String(params.order.external_ref_type ?? "").trim();
+
+  if (!requestId || refType !== "delivery_request") {
+    return;
+  }
+
+  const canceledAt = nowIso();
+
+  const { error } = await params.supabaseAdmin
+    .from("delivery_requests")
+    .update({
+      status: "canceled",
+      driver_id: null,
+      cancel_reason: params.reason,
+      cancelled_by: "client",
+      cancelled_at: canceledAt,
+      refund_status: params.refundStatus,
+      updated_at: canceledAt,
+    })
+    .eq("id", requestId)
+    .neq("status", "delivered");
+
+  if (error) {
+    console.log("delivery_requests sync cancel error:", error.message);
+  }
+}
+
 function successResponse(params: {
   by: CancelRole;
   refund: CancelRefund;
@@ -245,7 +342,9 @@ export async function POST(req: NextRequest) {
         stripe_session_id,
         stripe_payment_intent_id,
         stripe_refund_id,
-        stripe_refunded_at
+        stripe_refunded_at,
+        external_ref_id,
+        external_ref_type
       `
       )
       .eq("id", orderId)
@@ -336,6 +435,31 @@ export async function POST(req: NextRequest) {
           reason,
         });
 
+        await insertClientCancelEvent({
+          supabaseAdmin,
+          orderId,
+          oldStatus: status,
+          reason,
+          userId: user.id,
+          refund: "FULL",
+          stripeRefund,
+        });
+
+        await notifyClientAfterCancel({
+          supabaseAdmin,
+          order,
+          userId: user.id,
+          orderId,
+          refund: "FULL",
+        });
+
+        await syncLinkedDeliveryRequestCancel({
+          supabaseAdmin,
+          order,
+          reason,
+          refundStatus: "full_refund_required",
+        });
+
         return successResponse({
           by: "client",
           refund: "FULL",
@@ -372,6 +496,30 @@ export async function POST(req: NextRequest) {
             409
           );
         }
+
+        await insertClientCancelEvent({
+          supabaseAdmin,
+          orderId,
+          oldStatus: status,
+          reason: "client_cancelled_after_restaurant_accept",
+          userId: user.id,
+          refund: "NONE",
+        });
+
+        await notifyClientAfterCancel({
+          supabaseAdmin,
+          order,
+          userId: user.id,
+          orderId,
+          refund: "NONE",
+        });
+
+        await syncLinkedDeliveryRequestCancel({
+          supabaseAdmin,
+          order,
+          reason: "client_cancelled_after_restaurant_accept",
+          refundStatus: "no_refund",
+        });
 
         return successResponse({
           by: "client",

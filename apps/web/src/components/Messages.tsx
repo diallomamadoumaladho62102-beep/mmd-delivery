@@ -2,16 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseBrowser";
+import { ORDER_MESSAGE_SELECT } from "../lib/orderMessages";
 
 type Msg = {
   id: number;
   order_id: string;
   user_id: string;
-  message: string;
+  text: string;
   created_at: string;
   image_path?: string | null;
-  _optimistic?: boolean;       // client-only
-  _imageUrl?: string | null;   // client-only (URL publique)
+  _optimistic?: boolean;
+  _imageUrl?: string | null;
 };
 
 type Profile = { id: string; full_name?: string | null; avatar_url?: string | null };
@@ -30,7 +31,8 @@ function formatTs(ts: string) {
 
 function publicUrl(path?: string | null) {
   if (!path) return null;
-  const { data } = supabase.storage.from("chat-uploads").getPublicUrl(path);
+  const key = path.replace(/^chat-images\//, "");
+  const { data } = supabase.storage.from("chat-images").getPublicUrl(key);
   return data?.publicUrl ?? null;
 }
 
@@ -107,7 +109,7 @@ export default function Messages({ orderId }: { orderId: string }) {
     setErr(null);
     const { data, error } = await supabase
       .from("order_messages")
-      .select("id, order_id, user_id, message, created_at, image_path")
+      .select(ORDER_MESSAGE_SELECT)
       .eq("order_id", orderId)
       .order("created_at", { ascending: true });
 
@@ -205,11 +207,11 @@ export default function Messages({ orderId }: { orderId: string }) {
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const key = `${orderId}/${user.id}/${Date.now()}_${safeName}`;
         const { error: upErr } = await supabase.storage
-          .from("chat-uploads")
+          .from("chat-images")
           .upload(key, file, { cacheControl: "3600", upsert: false, contentType: file.type });
 
         if (upErr) throw upErr;
-        image_path = key;
+        image_path = `chat-images/${key}`;
       }
 
       // 2) Optimistic UI
@@ -217,7 +219,7 @@ export default function Messages({ orderId }: { orderId: string }) {
         id: Date.now(),
         order_id: orderId,
         user_id: user.id,
-        message: raw,
+        text: raw,
         created_at: new Date().toISOString(),
         image_path,
         _optimistic: true,
@@ -231,7 +233,7 @@ export default function Messages({ orderId }: { orderId: string }) {
       // 3) Insert DB
       const { error } = await supabase
         .from("order_messages")
-        .insert({ order_id: orderId, user_id: user.id, message: raw, image_path });
+        .insert({ order_id: orderId, user_id: user.id, text: raw, image_path });
 
       if (error) throw error;
 
@@ -272,7 +274,7 @@ export default function Messages({ orderId }: { orderId: string }) {
                         m._optimistic ? "opacity-70" : "",
                       ].join(" ")}
                     >
-                      {m.message && <div className="leading-relaxed whitespace-pre-wrap">{m.message}</div>}
+                      {m.text && <div className="leading-relaxed whitespace-pre-wrap">{m.text}</div>}
                       {m._imageUrl && (
                         <a href={m._imageUrl} target="_blank" rel="noreferrer" className="block">
                           <img

@@ -6,6 +6,7 @@ import {
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
 import { scheduleDeliveryRequestDispatch } from "@/lib/scheduleDeliveryRequestDispatch";
+import { notifyClientDeliveryRequestPaid } from "@/lib/clientPushNotifications";
 import {
   isAmountVerificationFailure,
   verifyStripePaidMatchesDeliveryRequest,
@@ -510,6 +511,16 @@ export async function POST(req: NextRequest) {
 
     scheduleDeliveryRequestDispatch({
       origin: req.nextUrl.origin,
+      deliveryRequestId: deliveryRequest.id,
+    });
+
+    await notifyClientDeliveryRequestPaid({
+      supabaseAdmin,
+      userIds: [
+        deliveryRequest.client_user_id,
+        deliveryRequest.created_by,
+        user.id,
+      ],
       deliveryRequestId: deliveryRequest.id,
     });
 

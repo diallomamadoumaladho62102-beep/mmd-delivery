@@ -48,6 +48,12 @@ export function cancelDeliveryRequestAsDriver(deliveryRequestId: string) {
   });
 }
 
+export function cancelDeliveryRequestAsClient(deliveryRequestId: string) {
+  return postDeliveryRequestApi("/api/delivery-requests/cancel", {
+    delivery_request_id: deliveryRequestId,
+  });
+}
+
 export function confirmDeliveryRequestPickup(params: {
   deliveryRequestId: string;
   pickupCode: string;

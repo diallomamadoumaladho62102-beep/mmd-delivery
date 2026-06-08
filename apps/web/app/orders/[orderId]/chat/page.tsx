@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
+import { ORDER_MESSAGE_SELECT } from "@/lib/orderMessages";
 
 type MessageRow = {
   id: string;
   order_id: string;
   user_id: string;
-  content: string | null;
+  text: string | null;
+  image_path: string | null;
   created_at: string;
 };
 
@@ -87,7 +89,7 @@ export default function OrderChatPage() {
     // 1) Charger les messages (⚠️ plus de colonne role ici)
     const { data, error } = await supabase
       .from("order_messages")
-      .select("id, order_id, user_id, content, created_at")
+      .select(ORDER_MESSAGE_SELECT)
       .eq("order_id", orderId)
       .order("created_at", { ascending: true });
 
@@ -168,7 +170,7 @@ export default function OrderChatPage() {
     const { error: insertError } = await supabase.from("order_messages").insert({
       order_id: orderId,
       user_id: user.id,
-      content: newMessage.trim(),
+      text: newMessage.trim(),
     });
 
     if (insertError) {
@@ -262,7 +264,7 @@ export default function OrderChatPage() {
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-800 whitespace-pre-wrap">
-                  {msg.content}
+                  {msg.text}
                 </p>
               </div>
             </div>

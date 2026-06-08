@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { notifyClientOrderCreated } from "@/lib/clientPushNotifications";
 import { resolveOrderAmountCents } from "@/lib/orderAmountCents";
 import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
 
@@ -23,6 +24,7 @@ type OrderRow = {
   payment_status: string | null;
   client_user_id: string | null;
   created_by: string | null;
+  kind: string | null;
   total_cents: number | null;
   total: number | null;
   grand_total: number | null;
@@ -330,7 +332,7 @@ export async function POST(req: NextRequest) {
     const { data: order, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, total_cents, total, grand_total"
+        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, kind, total_cents, total, grand_total"
       )
       .eq("id", orderId)
       .single<OrderRow>();
@@ -486,6 +488,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      await notifyClientOrderCreated({
+        supabaseAdmin,
+        userIds: [order.client_user_id, order.created_by, user.id],
+        orderId,
+        kind: order.kind,
+      });
+
       return json({
         ok: true,
         orderId,
@@ -623,6 +632,13 @@ export async function POST(req: NextRequest) {
         503
       );
     }
+
+    await notifyClientOrderCreated({
+      supabaseAdmin,
+      userIds: [order.client_user_id, order.created_by, user.id],
+      orderId,
+      kind: order.kind,
+    });
 
     return json({
       ok: true,

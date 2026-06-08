@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
 import Avatar from '@/components/Avatar';
+import { ORDER_MESSAGE_SELECT } from '@/lib/orderMessages';
 
 type Profile = { full_name: string | null; avatar_url: string | null };
 type ProfileJoin = Profile | Profile[] | null | undefined;
@@ -11,10 +12,10 @@ type Msg = {
   id: number;
   user_id: string;
   order_id: string;
-  message: string | null;
+  text: string | null;
   image_path: string | null;
   created_at: string;
-  profiles?: ProfileJoin; // ✅ via FK (Supabase peut renvoyer un tableau)
+  profiles?: ProfileJoin;
 };
 
 type Props = { orderId: string };
@@ -61,7 +62,7 @@ export default function MessagesList({ orderId }: Props) {
   // ✅ Helper: supprimer une image (si tu ajoutes un bouton delete plus tard)
   async function removeImage(msgId: number, imagePath: string) {
     try {
-      await supabase.storage.from('chat-uploads').remove([imagePath]);
+      await supabase.storage.from('chat-images').remove([imagePath.replace(/^chat-images\//, '')]);
       signedCache.delete(imagePath);
 
       // On met à jour l’UI localement
@@ -85,7 +86,7 @@ export default function MessagesList({ orderId }: Props) {
         .from('order_messages')
         .select(
           `
-          id, user_id, order_id, message, image_path, created_at,
+          ${ORDER_MESSAGE_SELECT},
           profiles:profiles!order_messages_user_id_fkey ( full_name, avatar_url )
         `
         )
@@ -111,8 +112,8 @@ export default function MessagesList({ orderId }: Props) {
               _signedUrl = signedCache.get(key)!;
             } else {
               const { data: signed } = await supabase.storage
-                .from('chat-uploads')
-                .createSignedUrl(msg.image_path, 60 * 10);
+                .from('chat-images')
+                .createSignedUrl(msg.image_path.replace(/^chat-images\//, ''), 60 * 10);
 
               _signedUrl = signed?.signedUrl || null;
               if (_signedUrl) signedCache.set(key, _signedUrl);
@@ -176,8 +177,8 @@ export default function MessagesList({ orderId }: Props) {
               if (signedCache.has(key)) _signedUrl = signedCache.get(key)!;
               else {
                 const { data: signed } = await supabase.storage
-                  .from('chat-uploads')
-                  .createSignedUrl(m.image_path, 60 * 10);
+                  .from('chat-images')
+                  .createSignedUrl(m.image_path.replace(/^chat-images\//, ''), 60 * 10);
 
                 _signedUrl = signed?.signedUrl || null;
                 if (_signedUrl) signedCache.set(key, _signedUrl);
@@ -250,7 +251,7 @@ export default function MessagesList({ orderId }: Props) {
               {m.profiles?.full_name || m.user_id}
             </div>
 
-            {m.message && <div className="whitespace-pre-wrap">{m.message}</div>}
+            {m.text && <div className="whitespace-pre-wrap">{m.text}</div>}
 
             {m._signedUrl ? (
               <div className="mt-2">

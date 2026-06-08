@@ -757,25 +757,31 @@ export function ClientDeliveryRequestDetailsScreen() {
               throw new Error("You must be logged in.");
             }
 
-            const endpoint = `${String(API_URL).replace(/\/$/, "")}/api/orders/cancel`;
+            let out: CancelOrderResponse;
 
-            const res = await fetch(endpoint, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify({
-                orderId: targetId,
-                order_id: targetId,
-                role: "client",
-              }),
-            });
-
-            const out = (await res.json().catch(() => ({}))) as CancelOrderResponse;
-
-            if (!res.ok || !out?.ok) {
-              throw new Error(out?.error || `Cancel failed (${res.status})`);
+            if (data.orderId) {
+              const endpoint = `${String(API_URL).replace(/\/$/, "")}/api/orders/cancel`;
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                  orderId: data.orderId,
+                  order_id: data.orderId,
+                  role: "client",
+                }),
+              });
+              out = (await res.json().catch(() => ({}))) as CancelOrderResponse;
+              if (!res.ok || !out?.ok) {
+                throw new Error(out?.error || `Cancel failed (${res.status})`);
+              }
+            } else {
+              const { cancelDeliveryRequestAsClient } = await import(
+                "../lib/deliveryRequestDriverApi"
+              );
+              out = (await cancelDeliveryRequestAsClient(data.requestId)) as CancelOrderResponse;
             }
 
             await loadDetails({ silent: true });
