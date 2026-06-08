@@ -76,6 +76,18 @@ import RestaurantSetupScreen from "../screens/restaurant/RestaurantSetupScreen";
 import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
 import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
 
+import TaxiHomeScreen from "../screens/taxi/TaxiHomeScreen";
+import TaxiQuoteScreen from "../screens/taxi/TaxiQuoteScreen";
+import TaxiRideTrackingScreen from "../screens/taxi/TaxiRideTrackingScreen";
+import TaxiHistoryScreen from "../screens/taxi/TaxiHistoryScreen";
+import TaxiChatScreen from "../screens/taxi/TaxiChatScreen";
+import DriverTaxiChatScreen from "../screens/taxi/DriverTaxiChatScreen";
+import * as Notifications from "expo-notifications";
+import {
+  extractTaxiPushPayload,
+  notifyTaxiOfferPushReceived,
+} from "../lib/taxiPushEvents";
+
 export type RootStackParamList = {
   Home: undefined;
   RoleSelect: undefined;
@@ -105,13 +117,26 @@ export type RootStackParamList = {
     targetRole?: "restaurant" | "driver" | "admin" | "";
   };
 
+  TaxiHome: undefined;
+  TaxiQuote: {
+    pickupAddress: string;
+    dropoffAddress: string;
+    vehicleClass: string;
+    quote: Record<string, unknown>;
+    route: Record<string, unknown>;
+  };
+  TaxiRideTracking: { rideId: string };
+  TaxiHistory: undefined;
+  TaxiChat: { rideId: string };
+
   DriverTabs: undefined;
   DriverOrderDetails: { orderId: string };
   DriverMap: {
     orderId: string;
-    sourceTable?: "orders" | "delivery_requests";
+    sourceTable?: "orders" | "delivery_requests" | "taxi_rides";
     destinationStage?: "pickup" | "dropoff";
   };
+  DriverTaxiChat: { rideId: string };
   DriverChat: {
     orderId: string;
     targetRole?: "client" | "restaurant" | "admin" | "";
@@ -278,6 +303,35 @@ export function AppNavigator({
     return !!navRef.current?.isReady?.();
   }, []);
 
+  React.useEffect(() => {
+    function handleTaxiPush(data: unknown) {
+      const payload = extractTaxiPushPayload(data);
+      if (payload.type !== "taxi_offer_dispatch") return;
+
+      notifyTaxiOfferPushReceived();
+
+      if (navReady()) {
+        navRef.current?.navigate("DriverTabs");
+      }
+    }
+
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        handleTaxiPush(response.notification.request.content.data);
+      }
+    );
+
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        handleTaxiPush(response.notification.request.content.data);
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [navReady]);
+
   const currentRoute = React.useCallback(():
     | keyof RootStackParamList
     | undefined => {
@@ -417,7 +471,12 @@ export function AppNavigator({
       r === "ClientDeliveryRequestDetails" ||
       r === "ClientInbox" ||
       r === "ClientChat" ||
-      r === "ClientProfile"
+      r === "ClientProfile" ||
+      r === "TaxiHome" ||
+      r === "TaxiQuote" ||
+      r === "TaxiRideTracking" ||
+      r === "TaxiHistory" ||
+      r === "TaxiChat"
     );
   }, []);
 
@@ -428,6 +487,7 @@ export function AppNavigator({
       r === "DriverOrderDetails" ||
       r === "DriverMap" ||
       r === "DriverChat" ||
+      r === "DriverTaxiChat" ||
       r === "DriverOnboarding" ||
       r === "DriverProfile" ||
       r === "DriverReferrals" ||
@@ -815,6 +875,15 @@ export function AppNavigator({
         <Stack.Screen name="ClientInbox" component={ClientInboxScreen} />
         <Stack.Screen name="ClientChat" component={ClientChatScreen} />
 
+        <Stack.Screen name="TaxiHome" component={TaxiHomeScreen} />
+        <Stack.Screen name="TaxiQuote" component={TaxiQuoteScreen} />
+        <Stack.Screen
+          name="TaxiRideTracking"
+          component={TaxiRideTrackingScreen}
+        />
+        <Stack.Screen name="TaxiHistory" component={TaxiHistoryScreen} />
+        <Stack.Screen name="TaxiChat" component={TaxiChatScreen} />
+
         <Stack.Screen name="DriverTabs" component={DriverTabs} />
         <Stack.Screen
           name="DriverOrderDetails"
@@ -822,6 +891,7 @@ export function AppNavigator({
         />
         <Stack.Screen name="DriverMap" component={DriverMapScreen} />
         <Stack.Screen name="DriverChat" component={DriverChatScreen} />
+        <Stack.Screen name="DriverTaxiChat" component={DriverTaxiChatScreen} />
         <Stack.Screen
           name="DriverOnboarding"
           component={DriverOnboardingScreen}

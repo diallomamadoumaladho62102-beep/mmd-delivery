@@ -38,7 +38,7 @@ export type DriverMapCountryCode =
   | "GB"
   | "DE";
 
-export type DriverMapReportSourceTable = "orders" | "delivery_requests";
+export type DriverMapReportSourceTable = "orders" | "delivery_requests" | "taxi_rides";
 
 export const DRIVER_MAP_SUPPORTED_COUNTRY_CODES: readonly DriverMapCountryCode[] = [
   "US",

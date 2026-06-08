@@ -80,7 +80,9 @@ type DriverMapRouteParams = {
 };
 
 function normalizeSourceTable(value: unknown): OrderSourceTable {
-  return value === "delivery_requests" ? "delivery_requests" : "orders";
+  if (value === "delivery_requests") return "delivery_requests";
+  if (value === "taxi_rides") return "taxi_rides";
+  return "orders";
 }
 
 function normalizeStage(value: unknown): NavigationStage {
@@ -88,6 +90,9 @@ function normalizeStage(value: unknown): NavigationStage {
 }
 
 function getDriverPayout(row: Record<string, unknown>) {
+  const taxiCents = numberOrNull(row.driver_payout_cents);
+  if (taxiCents != null) return taxiCents / 100;
+
   const candidates = [
     row.driver_delivery_payout,
     row.driver_payout,
@@ -121,7 +126,11 @@ function buildTripFromRow(params: {
     sourceTable,
     restaurantName:
       String(row.restaurant_name || "").trim() ||
-      (sourceTable === "delivery_requests" ? "MMD Delivery" : "Restaurant"),
+      (sourceTable === "delivery_requests"
+        ? "MMD Delivery"
+        : sourceTable === "taxi_rides"
+          ? "MMD Taxi"
+          : "Restaurant"),
     pickupAddress: String(row.pickup_address || "Pickup location"),
     dropoffAddress: String(row.dropoff_address || "Dropoff location"),
     pickup: toCoordinatePoint(row.pickup_lat, pickupLng),
@@ -129,7 +138,10 @@ function buildTripFromRow(params: {
     stage,
     price: getDriverPayout(row),
     distanceMiles: numberOrNull(row.distance_miles) ?? 0,
-    etaMinutes: numberOrNull(row.eta_minutes) ?? 0,
+    etaMinutes:
+      numberOrNull(row.eta_minutes) ??
+      numberOrNull(row.duration_minutes) ??
+      0,
     orderCountryCode: extractCountryCodeField(row),
   };
 }
@@ -304,13 +316,21 @@ export default function DriverMapScreen() {
               )
               .eq("id", routeOrderId)
               .maybeSingle()
-          : await supabase
-              .from("orders")
-              .select(
-                "id,status,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout",
-              )
-              .eq("id", routeOrderId)
-              .maybeSingle();
+          : routeSourceTable === "taxi_rides"
+            ? await supabase
+                .from("taxi_rides")
+                .select(
+                  "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code",
+                )
+                .eq("id", routeOrderId)
+                .maybeSingle()
+            : await supabase
+                .from("orders")
+                .select(
+                  "id,status,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout",
+                )
+                .eq("id", routeOrderId)
+                .maybeSingle();
 
       if (result.error) throw result.error;
       if (!result.data) {

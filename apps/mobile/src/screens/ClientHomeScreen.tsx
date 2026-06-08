@@ -1680,6 +1680,19 @@ export function ClientHomeScreen() {
                 borderColor="rgba(167,139,250,0.32)"
                 onPress={() => navigation.navigate("DeliveryRequest" as never)}
               />
+
+              <ActionBanner
+                title={ts("client.home.banner.taxi.title", "Book a Taxi")}
+                subtitle={ts(
+                  "client.home.banner.taxi.subtitle",
+                  "Ride with MMD Taxi — separate from delivery"
+                )}
+                emoji="🚕"
+                tileEmoji="🚕"
+                backgroundColor="rgba(180,83,9,0.82)"
+                borderColor="rgba(251,191,36,0.32)"
+                onPress={() => navigation.navigate("TaxiHome" as never)}
+              />
             </View>
 
             <View style={premiumStyles.activityCard}>

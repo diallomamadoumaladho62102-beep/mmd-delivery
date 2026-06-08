@@ -46,7 +46,11 @@ export function useDriverMapCountryCode(params: Params): ResolvedDriverMapCountr
 
       try {
         const table =
-          sourceTable === "delivery_requests" ? "delivery_requests" : "orders";
+          sourceTable === "delivery_requests"
+            ? "delivery_requests"
+            : sourceTable === "taxi_rides"
+              ? "taxi_rides"
+              : "orders";
 
         const { data, error } = await supabase
           .from(table)

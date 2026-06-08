@@ -42,6 +42,7 @@ import * as Location from "expo-location";
 import { Audio } from "expo-av";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
+import { DriverTaxiPanel } from "../components/driver/DriverTaxiPanel";
 
 Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
 
@@ -2403,6 +2404,8 @@ export function DriverHomeScreen() {
             </Animated.View>
           )}
         </View>
+
+        <DriverTaxiPanel isOnline={isOnline} />
       </View>
     </SafeAreaView>
   );
