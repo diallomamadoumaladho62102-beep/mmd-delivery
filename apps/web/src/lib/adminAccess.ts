@@ -110,3 +110,23 @@ export function staffHasPermission(
   if (!role) return false;
   return hasPermission(role, permission);
 }
+
+export function canManageTaxiRides(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_rides.manage");
+}
+
+export function canWriteTaxiPricing(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_pricing.write");
+}
+
+export function canManageTaxiDrivers(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_drivers.manage");
+}
+
+export function canManageTaxiPayouts(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_payouts.manage");
+}

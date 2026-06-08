@@ -104,4 +104,22 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Commissions, frais, promos — sans redéploiement",
     permission: "pricing.read",
   },
+  {
+    href: "/admin/taxi-rides",
+    title: "Taxi Rides",
+    description: "Courses taxi, timeline, remboursements admin",
+    permission: "taxi_rides.read",
+  },
+  {
+    href: "/admin/taxi-pricing",
+    title: "Taxi Pricing",
+    description: "Tarifs standard / XL / premium",
+    permission: "taxi_pricing.read",
+  },
+  {
+    href: "/admin/taxi-drivers",
+    title: "Taxi Drivers",
+    description: "Chauffeurs taxi, classes véhicule et éligibilité",
+    permission: "taxi_drivers.read",
+  },
 ];

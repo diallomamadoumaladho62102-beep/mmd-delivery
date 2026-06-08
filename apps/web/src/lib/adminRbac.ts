@@ -36,6 +36,14 @@ export type AdminPermission =
   | "commissions.read"
   | "pricing.read"
   | "pricing.write"
+  | "taxi_rides.read"
+  | "taxi_rides.manage"
+  | "taxi_pricing.read"
+  | "taxi_pricing.write"
+  | "taxi_drivers.read"
+  | "taxi_drivers.manage"
+  | "taxi_payouts.read"
+  | "taxi_payouts.manage"
   | "communication.chats"
   | "communication.calls"
   | "communication.notify"
@@ -66,6 +74,14 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "commissions.read",
     "pricing.read",
     "pricing.write",
+    "taxi_rides.read",
+    "taxi_rides.manage",
+    "taxi_pricing.read",
+    "taxi_pricing.write",
+    "taxi_drivers.read",
+    "taxi_drivers.manage",
+    "taxi_payouts.read",
+    "taxi_payouts.manage",
     "communication.chats",
     "communication.calls",
     "communication.notify",
@@ -87,6 +103,10 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "driver_offers.read",
     "dispatch.read",
     "dispatch.manage",
+    "taxi_rides.read",
+    "taxi_rides.manage",
+    "taxi_drivers.read",
+    "taxi_drivers.manage",
     "communication.chats",
     "communication.calls",
     "communication.notify",
@@ -99,6 +119,9 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "payouts.read",
     "payouts.retry",
     "commissions.read",
+    "taxi_pricing.read",
+    "taxi_payouts.read",
+    "taxi_payouts.manage",
     "audit.read",
     "supervision.read",
   ]),
@@ -108,6 +131,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "users.drivers.read",
     "users.restaurants.read",
     "orders.read",
+    "taxi_rides.read",
     "communication.chats",
     "communication.calls",
     "communication.notify",

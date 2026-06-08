@@ -244,3 +244,31 @@ export async function assertCanSendCommunication(request?: NextRequest) {
     request
   );
 }
+
+export async function assertCanManageTaxiRides(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_rides.manage"),
+    request
+  );
+}
+
+export async function assertCanWriteTaxiPricing(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_pricing.write"),
+    request
+  );
+}
+
+export async function assertCanManageTaxiDrivers(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_drivers.manage"),
+    request
+  );
+}
+
+export async function assertCanManageTaxiPayouts(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_payouts.manage"),
+    request
+  );
+}

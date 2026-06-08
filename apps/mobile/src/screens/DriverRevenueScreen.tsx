@@ -12,6 +12,10 @@ import {
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import {
+  loadTaxiDriverEarnings,
+  type TaxiEarningsSummary,
+} from "../lib/taxiEarnings";
 
 type RangeKey = "week" | "today" | "month";
 
@@ -103,6 +107,7 @@ export function DriverRevenueScreen() {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [driverId, setDriverId] = useState<string | null>(null);
+  const [taxiEarnings, setTaxiEarnings] = useState<TaxiEarningsSummary | null>(null);
 
   const locale = useMemo(() => {
     const lng = (i18n.language || "en").toLowerCase();
@@ -254,6 +259,14 @@ export function DriverRevenueScreen() {
             new Date(a.created_at ?? 0).getTime(),
         ),
       );
+
+      try {
+        const taxi = await loadTaxiDriverEarnings(uid);
+        setTaxiEarnings(taxi);
+      } catch (taxiErr) {
+        console.log("loadTaxiDriverEarnings error:", taxiErr);
+        setTaxiEarnings(null);
+      }
     } catch (e: any) {
       console.log("fetchRevenue error:", e);
       Alert.alert(
@@ -261,6 +274,7 @@ export function DriverRevenueScreen() {
         e?.message ?? t("driver.revenue.load_error", "Unable to load earnings."),
       );
       setOrders([]);
+      setTaxiEarnings(null);
     } finally {
       setLoading(false);
     }
@@ -435,6 +449,32 @@ export function DriverRevenueScreen() {
             />
           </View>
 
+          {taxiEarnings && taxiEarnings.completedRides > 0 ? (
+            <View style={styles.taxiCard}>
+              <Text style={styles.sectionTitle}>
+                {t("driver.revenue.taxi_title", "Taxi earnings")}
+              </Text>
+              <View style={styles.metricsGrid}>
+                <Metric
+                  label={t("driver.revenue.taxi_total", "Total taxi")}
+                  value={fmtMoney(taxiEarnings.totalDriverCents / 100)}
+                />
+                <Metric
+                  label={t("driver.revenue.taxi_rides", "Completed rides")}
+                  value={String(taxiEarnings.completedRides)}
+                />
+                <Metric
+                  label={t("driver.revenue.taxi_pending", "Pending payout")}
+                  value={fmtMoney(taxiEarnings.pendingPayoutCents / 100)}
+                />
+                <Metric
+                  label={t("driver.revenue.taxi_paid", "Paid payout")}
+                  value={fmtMoney(taxiEarnings.paidPayoutCents / 100)}
+                />
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>{t("driver.revenue.recent_sessions", "Recent sessions")}</Text>
             <TouchableOpacity onPress={() => void fetchRevenue()} disabled={loading} style={styles.refreshPill} activeOpacity={0.85}>
@@ -582,6 +622,14 @@ const styles = StyleSheet.create({
   primaryButton: { marginTop: 16, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(139,92,246,0.18)", borderWidth: 1, borderColor: "rgba(167,139,250,0.54)" },
   primaryButtonText: { color: "#DDD6FE", fontWeight: "900", fontSize: 15 },
   quickGrid: { flexDirection: "row", gap: 10, marginTop: 14 },
+  taxiCard: {
+    marginTop: 14,
+    borderRadius: 22,
+    backgroundColor: CARD,
+    borderWidth: 1,
+    borderColor: "rgba(167,139,250,0.35)",
+    padding: 16,
+  },
   quickCard: { flex: 1, minHeight: 110, borderRadius: 24, padding: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, justifyContent: "space-between" },
   quickIconBox: { width: 38, height: 38, borderRadius: 14, backgroundColor: "rgba(139,92,246,0.14)", alignItems: "center", justifyContent: "center" },
   quickTitle: { color: TEXT, fontSize: 13, fontWeight: "900", marginTop: 8 },
