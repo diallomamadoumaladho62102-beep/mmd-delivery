@@ -136,13 +136,24 @@ export async function handleTaxiStripePayment(params: {
     return { ok: false, error: "payment_intent_mismatch" };
   }
 
-  const expectedAmountCents =
-    params.expectedAmountCents ?? resolveTaxiRideAmountCents(row);
-  const expectedCurrency =
-    params.expectedCurrency ?? normalizeCurrency(row.currency);
+  const rideAmountCents = resolveTaxiRideAmountCents(row);
+  if (!rideAmountCents) {
+    return { ok: false, error: "missing_expected_amount" };
+  }
 
-  if (expectedAmountCents && params.expectedAmountCents == null) {
-    // amount verified upstream when provided
+  const stripeAmountCents = toPositiveNumber(params.expectedAmountCents);
+  if (!stripeAmountCents) {
+    return { ok: false, error: "missing_stripe_amount" };
+  }
+
+  if (stripeAmountCents !== rideAmountCents) {
+    return { ok: false, error: "amount_mismatch" };
+  }
+
+  const rideCurrency = normalizeCurrency(row.currency);
+  const stripeCurrency = normalizeCurrency(params.expectedCurrency);
+  if (stripeCurrency !== rideCurrency) {
+    return { ok: false, error: "currency_mismatch" };
   }
 
   const markResult = await markTaxiRidePaidRobustly(supabaseAdmin, {
@@ -167,8 +178,9 @@ export async function handleTaxiStripePayment(params: {
         source,
         session_id: sessionId,
         payment_intent_id: paymentIntentId,
-        expected_amount_cents: expectedAmountCents,
-        expected_currency: expectedCurrency,
+        expected_amount_cents: rideAmountCents,
+        actual_amount_cents: stripeAmountCents,
+        expected_currency: rideCurrency,
       },
     });
   }

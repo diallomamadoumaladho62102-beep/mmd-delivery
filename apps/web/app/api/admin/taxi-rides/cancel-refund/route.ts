@@ -69,6 +69,24 @@ export async function POST(req: NextRequest) {
       return json({ error: "Taxi ride not found" }, 404);
     }
 
+    const { data: commission, error: commissionError } = await supabaseAdmin
+      .from("taxi_commissions")
+      .select("driver_paid_out, driver_transfer_id")
+      .eq("taxi_ride_id", rideId)
+      .maybeSingle();
+
+    if (commissionError) {
+      return json({ error: commissionError.message }, 500);
+    }
+
+    const payoutAlreadySent =
+      commission?.driver_paid_out === true ||
+      !!String(commission?.driver_transfer_id ?? "").trim();
+
+    if (payoutAlreadySent) {
+      return json({ error: "taxi_refund_not_allowed_after_payout" }, 409);
+    }
+
     let stripeRefund: { id: string; status: string | null } | null = null;
 
     const alreadyRefunded =
@@ -106,7 +124,7 @@ export async function POST(req: NextRequest) {
 
     const oldStatus = ride.status;
     const updatePayload: Record<string, unknown> = {
-      status: "cancelled",
+      status: "canceled",
       driver_id: null,
       cancel_reason: adminReason,
       cancelled_by: "admin",
@@ -142,7 +160,7 @@ export async function POST(req: NextRequest) {
       rideId,
       eventType: "admin_cancel_refund",
       oldStatus,
-      newStatus: "cancelled",
+      newStatus: "canceled",
       actorId: session.userId,
       triggeredRole: "admin",
       description: adminReason,

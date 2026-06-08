@@ -89,7 +89,7 @@ export default function AdminTaxiRidesPage() {
               <option value="driver_arrived">driver_arrived</option>
               <option value="in_progress">in_progress</option>
               <option value="completed">completed</option>
-              <option value="cancelled">cancelled</option>
+              <option value="canceled">canceled</option>
             </select>
 
             <select
