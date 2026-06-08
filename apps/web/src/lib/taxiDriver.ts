@@ -16,6 +16,11 @@ export function mapTaxiRpcError(errorCode: string): {
     case "offer_not_found":
     case "ride_not_found":
       return { status: 404, message: "Not found" };
+    case "driver_already_has_active_taxi_ride":
+      return {
+        status: 409,
+        message: "Driver already has an active taxi ride",
+      };
     case "invalid_status":
     case "offer_not_available":
     case "ride_not_available":

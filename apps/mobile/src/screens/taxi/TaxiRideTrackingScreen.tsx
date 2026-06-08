@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import {
   cancelTaxiRide,
+  confirmTaxiPaid,
   fetchTaxiRide,
   formatTaxiCents,
 } from "../../lib/taxiClientApi";
@@ -30,6 +31,9 @@ const CANCELABLE = new Set([
   "dispatching",
 ]);
 
+const PAYMENT_PENDING = new Set(["pending_payment", "processing"]);
+const PAID_PAYMENT = new Set(["paid", "refunded"]);
+
 export default function TaxiRideTrackingScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<TrackingRoute>();
@@ -37,18 +41,65 @@ export default function TaxiRideTrackingScreen() {
 
   const [ride, setRide] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+
+  const maybeConfirmPayment = useCallback(
+    async (rideRow: Record<string, unknown> | null) => {
+      if (!rideRow || confirmingPayment) return rideRow;
+
+      const paymentStatus = String(rideRow.payment_status ?? "").toLowerCase();
+      const rideStatus = String(rideRow.status ?? "").toLowerCase();
+
+      if (
+        PAID_PAYMENT.has(paymentStatus) ||
+        rideStatus === "paid" ||
+        rideStatus === "dispatching" ||
+        rideStatus === "accepted"
+      ) {
+        return rideRow;
+      }
+
+      const needsConfirm =
+        PAYMENT_PENDING.has(paymentStatus) ||
+        (paymentStatus === "unpaid" && rideStatus === "pending_payment");
+
+      if (!needsConfirm) {
+        return rideRow;
+      }
+
+      setConfirmingPayment(true);
+
+      try {
+        await confirmTaxiPaid(rideId);
+        const refreshed = await fetchTaxiRide(rideId);
+        return (refreshed?.ride as Record<string, unknown>) ?? rideRow;
+      } catch (e: unknown) {
+        console.log("[TaxiRideTracking] confirm retry:", e);
+        return rideRow;
+      } finally {
+        setConfirmingPayment(false);
+      }
+    },
+    [rideId, confirmingPayment]
+  );
 
   const load = useCallback(async () => {
     try {
+      setLoadError(null);
       const result = await fetchTaxiRide(rideId);
-      setRide((result?.ride as Record<string, unknown>) ?? null);
+      let nextRide = (result?.ride as Record<string, unknown>) ?? null;
+      nextRide = await maybeConfirmPayment(nextRide);
+      setRide(nextRide);
     } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Unable to load ride";
+      setLoadError(message);
       console.log("[TaxiRideTracking]", e);
     } finally {
       setLoading(false);
     }
-  }, [rideId]);
+  }, [rideId, maybeConfirmPayment]);
 
   useEffect(() => {
     void load();
@@ -57,11 +108,19 @@ export default function TaxiRideTrackingScreen() {
   }, [load]);
 
   const status = String(ride?.status ?? "").toLowerCase();
+  const paymentStatus = String(ride?.payment_status ?? "").toLowerCase();
   const canCancel = CANCELABLE.has(status) && !ride?.driver_id;
+  const awaitingPayment =
+    PAYMENT_PENDING.has(paymentStatus) ||
+    (paymentStatus === "unpaid" && status === "pending_payment");
   const pickupLat = Number(ride?.pickup_lat);
   const pickupLng = Number(ride?.pickup_lng);
   const dropoffLat = Number(ride?.dropoff_lat);
   const dropoffLng = Number(ride?.dropoff_lng);
+
+  async function handleRetryPayment() {
+    await load();
+  }
 
   async function handleCancel() {
     Alert.alert("Cancel ride", "Cancel this taxi ride?", [
@@ -148,7 +207,7 @@ export default function TaxiRideTrackingScreen() {
 
         <ScrollView
           style={{
-            maxHeight: 320,
+            maxHeight: 360,
             backgroundColor: "rgba(15,23,42,0.96)",
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
@@ -162,6 +221,46 @@ export default function TaxiRideTrackingScreen() {
             {formatTaxiCents(ride?.total_cents, String(ride?.currency ?? "USD"))}
           </Text>
 
+          {loadError ? (
+            <Text style={{ color: "#FCA5A5", marginTop: 8 }}>{loadError}</Text>
+          ) : null}
+
+          {awaitingPayment ? (
+            <View
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: "rgba(245,158,11,0.12)",
+                borderWidth: 1,
+                borderColor: "rgba(245,158,11,0.35)",
+              }}
+            >
+              <Text style={{ color: "#FDE68A", fontWeight: "700" }}>
+                Payment pending
+              </Text>
+              <Text style={{ color: "#CBD5E1", marginTop: 4, fontSize: 13 }}>
+                If you already paid, we will confirm automatically. You can also retry
+                now.
+              </Text>
+              <TouchableOpacity
+                onPress={() => void handleRetryPayment()}
+                disabled={confirmingPayment}
+                style={{
+                  marginTop: 10,
+                  backgroundColor: "#F59E0B",
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#1F2937", fontWeight: "800" }}>
+                  {confirmingPayment ? "Confirming…" : "Retry payment confirmation"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <Text style={{ color: "#CBD5E1", marginTop: 12 }}>
             Pickup: {String(ride?.pickup_address ?? "—")}
           </Text>
@@ -173,11 +272,11 @@ export default function TaxiRideTrackingScreen() {
             <Text style={{ color: "#86EFAC", marginTop: 10, fontWeight: "700" }}>
               Driver assigned
             </Text>
-          ) : (
+          ) : status === "paid" || status === "dispatching" ? (
             <Text style={{ color: "#FDE68A", marginTop: 10 }}>
               Looking for a driver…
             </Text>
-          )}
+          ) : null}
 
           <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
             <TouchableOpacity

@@ -48,6 +48,7 @@ export default function TaxiQuoteScreen() {
         dropoffLat: Number(routeInfo?.dropoffLat),
         dropoffLng: Number(routeInfo?.dropoffLng),
         vehicleClass: vehicleClass as TaxiVehicleClass,
+        expectedQuoteTotalCents: Number(quote?.total_cents ?? 0),
       });
 
       if (!created?.ok || !created?.ride?.id) {

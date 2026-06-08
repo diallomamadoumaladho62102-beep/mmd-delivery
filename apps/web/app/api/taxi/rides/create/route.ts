@@ -21,7 +21,23 @@ type Body = {
   country_code?: string;
   clientNotes?: string;
   client_notes?: string;
+  expectedQuoteTotalCents?: number;
+  expected_quote_total_cents?: number;
 };
+
+const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
+const QUOTE_DRIFT_TOLERANCE_RATIO = 0.02;
+
+function isQuotePriceWithinTolerance(expected: number, actual: number) {
+  if (!Number.isFinite(expected) || expected <= 0) return true;
+  if (!Number.isFinite(actual) || actual <= 0) return false;
+  const diff = Math.abs(actual - expected);
+  const maxDiff = Math.max(
+    QUOTE_DRIFT_TOLERANCE_CENTS,
+    Math.round(expected * QUOTE_DRIFT_TOLERANCE_RATIO)
+  );
+  return diff <= maxDiff;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -72,6 +88,30 @@ export async function POST(req: NextRequest) {
     const quoteObj = (quote ?? {}) as Record<string, unknown>;
     if (quoteObj.ok === false) {
       return taxiJson({ ok: false, ...quoteObj }, 400);
+    }
+
+    const expectedQuoteTotalCents = Math.round(
+      Number(
+        body.expectedQuoteTotalCents ?? body.expected_quote_total_cents ?? 0
+      )
+    );
+    const actualTotalCents = Math.round(Number(quoteObj.total_cents ?? 0));
+
+    if (
+      expectedQuoteTotalCents > 0 &&
+      !isQuotePriceWithinTolerance(expectedQuoteTotalCents, actualTotalCents)
+    ) {
+      return taxiJson(
+        {
+          ok: false,
+          error: "quote_price_drift",
+          expected_total_cents: expectedQuoteTotalCents,
+          actual_total_cents: actualTotalCents,
+          message:
+            "The quoted price changed before booking. Please review the updated estimate.",
+        },
+        409
+      );
     }
 
     const pickupAddress =

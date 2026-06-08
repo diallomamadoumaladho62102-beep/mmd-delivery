@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import {
-  assertClientOwnsTaxiRide,
   getProfileRole,
   isStaffRole,
   requireTaxiApiUser,
@@ -27,34 +26,25 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const role = await getProfileRole(auth.supabaseAdmin, auth.user.id);
 
     if (!isStaffRole(role)) {
-      const scope = await assertClientOwnsTaxiRide({
-        supabaseAdmin: auth.supabaseAdmin,
-        rideId,
-        userId: auth.user.id,
-        role,
-      });
-
-      if (scope.ok === false) {
-        return taxiJson({ ok: false, error: scope.error }, scope.status);
-      }
-
-      const { data: driverRide } = await auth.supabaseAdmin
+      const { data: rideAccess, error: accessError } = await auth.supabaseAdmin
         .from("taxi_rides")
-        .select("id")
+        .select("id, client_user_id, driver_id")
         .eq("id", rideId)
-        .eq("driver_id", auth.user.id)
         .maybeSingle();
 
-      if (!driverRide) {
-        const { data: clientRide } = await auth.supabaseAdmin
-          .from("taxi_rides")
-          .select("id, client_user_id")
-          .eq("id", rideId)
-          .maybeSingle();
+      if (accessError) {
+        return taxiJson({ ok: false, error: accessError.message }, 500);
+      }
 
-        if (!clientRide || String(clientRide.client_user_id) !== auth.user.id) {
-          return taxiJson({ ok: false, error: "Forbidden" }, 403);
-        }
+      if (!rideAccess) {
+        return taxiJson({ ok: false, error: "Taxi ride not found" }, 404);
+      }
+
+      const isClient = String(rideAccess.client_user_id) === auth.user.id;
+      const isDriver = String(rideAccess.driver_id ?? "") === auth.user.id;
+
+      if (!isClient && !isDriver) {
+        return taxiJson({ ok: false, error: "Forbidden" }, 403);
       }
     }
 

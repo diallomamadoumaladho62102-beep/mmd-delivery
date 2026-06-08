@@ -69,7 +69,12 @@ export function quoteTaxiRide(input: TaxiQuoteInput) {
   });
 }
 
-export function createTaxiRide(input: TaxiQuoteInput & { clientNotes?: string }) {
+export function createTaxiRide(
+  input: TaxiQuoteInput & {
+    clientNotes?: string;
+    expectedQuoteTotalCents?: number;
+  }
+) {
   return taxiPost("/api/taxi/rides/create", {
     pickupAddress: input.pickupAddress,
     dropoffAddress: input.dropoffAddress,
@@ -81,6 +86,7 @@ export function createTaxiRide(input: TaxiQuoteInput & { clientNotes?: string })
     passengerCount: input.passengerCount ?? 1,
     countryCode: input.countryCode ?? "US",
     clientNotes: input.clientNotes ?? "",
+    expectedQuoteTotalCents: input.expectedQuoteTotalCents,
   });
 }
 
