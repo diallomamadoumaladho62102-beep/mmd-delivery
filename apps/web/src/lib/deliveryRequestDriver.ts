@@ -113,6 +113,8 @@ export function mapDeliveryRpcError(errorCode: string): { status: number; messag
   switch (errorCode) {
     case "not_authenticated":
       return { status: 401, message: "Unauthorized" };
+    case "driver_not_eligible":
+      return { status: 403, message: "Driver is not eligible to accept requests" };
     case "invalid_pickup_code":
     case "invalid_dropoff_code":
       return { status: 400, message: "Invalid code" };

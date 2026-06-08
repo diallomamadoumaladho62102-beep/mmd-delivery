@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 
 export const runtime = "nodejs";
@@ -88,6 +89,18 @@ export async function POST(req: NextRequest) {
 
     if (normalize(profile?.role) !== "restaurant") {
       return json({ error: "Forbidden" }, 403);
+    }
+
+    const restaurantAccess = await assertRestaurantOrderEligible(
+      supabaseAdmin,
+      user.id
+    );
+
+    if (restaurantAccess.ok === false) {
+      return json(
+        { error: restaurantAccess.error },
+        restaurantAccess.httpStatus
+      );
     }
 
     const { data: order, error: readError } = await supabaseAdmin

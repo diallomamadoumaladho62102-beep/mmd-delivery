@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
+import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 
 export const runtime = "nodejs";
@@ -540,6 +541,18 @@ export async function POST(req: NextRequest) {
 
     // RESTAURANT CANCEL / REFUSE
     if (role === "restaurant") {
+      const restaurantAccess = await assertRestaurantOrderEligible(
+        supabaseAdmin,
+        user.id
+      );
+
+      if (restaurantAccess.ok === false) {
+        return json(
+          { error: restaurantAccess.error },
+          restaurantAccess.httpStatus
+        );
+      }
+
       const ownsOrder =
         sameId(order.restaurant_id, user.id) ||
         sameId(order.restaurant_user_id, user.id);
