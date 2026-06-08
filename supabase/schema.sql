@@ -200,3 +200,148 @@ on driver_profiles
 for update
 using (auth.uid() = user_id and coalesce(is_locked, false) = false)
 with check (auth.uid() = user_id and coalesce(is_locked, false) = false);
+
+-- =====================================================
+-- TAXI MODULE (isolated domain — no orders / delivery_requests)
+-- Migration: 20260609120000_taxi_sprint1_infrastructure.sql
+-- =====================================================
+
+create table if not exists taxi_pricing (
+  id uuid primary key default gen_random_uuid(),
+  config_key text not null unique,
+  vehicle_class text not null check (vehicle_class in ('standard', 'xl', 'premium')),
+  country_code text not null default 'US',
+  currency text not null default 'USD',
+  active boolean not null default true,
+  base_fare numeric(12, 2) not null default 0,
+  per_mile numeric(12, 2) not null default 0,
+  per_minute numeric(12, 2) not null default 0,
+  min_fare numeric(12, 2) not null default 0,
+  booking_fee numeric(12, 2) not null default 0,
+  driver_share_pct numeric(6, 2) not null default 75,
+  platform_share_pct numeric(6, 2) not null default 25,
+  class_multiplier numeric(8, 4) not null default 1,
+  max_passengers integer not null default 4,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists taxi_driver_features (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  taxi_enabled boolean not null default false,
+  vehicle_class text not null default 'standard'
+    check (vehicle_class in ('standard', 'xl', 'premium')),
+  vehicle_make text,
+  vehicle_model text,
+  vehicle_year integer,
+  vehicle_plate text,
+  vehicle_color text,
+  passenger_capacity integer not null default 4,
+  xl_eligible boolean not null default false,
+  premium_eligible boolean not null default false,
+  stripe_connect_account_id text,
+  rating_taxi numeric(4, 2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists taxi_rides (
+  id uuid primary key default gen_random_uuid(),
+  client_user_id uuid not null references auth.users (id) on delete restrict,
+  driver_id uuid references auth.users (id) on delete set null,
+  vehicle_class text not null default 'standard',
+  status text not null default 'draft',
+  pickup_address text not null,
+  pickup_lat double precision not null,
+  pickup_lng double precision not null,
+  dropoff_address text not null,
+  dropoff_lat double precision not null,
+  dropoff_lng double precision not null,
+  distance_miles numeric(10, 3),
+  duration_minutes numeric(10, 2),
+  country_code text not null default 'US',
+  currency text not null default 'USD',
+  pricing_snapshot_id uuid references taxi_pricing (id) on delete set null,
+  subtotal_cents integer not null default 0,
+  platform_fee_cents integer not null default 0,
+  driver_payout_cents integer not null default 0,
+  total_cents integer not null default 0,
+  payment_status text not null default 'unpaid',
+  paid_at timestamptz,
+  stripe_session_id text,
+  stripe_payment_intent_id text,
+  refund_status text,
+  stripe_refund_id text,
+  stripe_refunded_at timestamptz,
+  accepted_at timestamptz,
+  driver_arrived_at timestamptz,
+  started_at timestamptz,
+  completed_at timestamptz,
+  cancelled_at timestamptz,
+  cancelled_by text,
+  cancel_reason text,
+  client_notes text,
+  passenger_count integer not null default 1,
+  dispatch_wave integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists taxi_offers (
+  id uuid primary key default gen_random_uuid(),
+  taxi_ride_id uuid not null references taxi_rides (id) on delete cascade,
+  driver_id uuid not null references auth.users (id) on delete cascade,
+  status text not null default 'pending',
+  wave integer not null default 1,
+  distance_miles numeric(10, 3),
+  vehicle_class_match boolean not null default true,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists taxi_events (
+  id uuid primary key default gen_random_uuid(),
+  taxi_ride_id uuid not null references taxi_rides (id) on delete cascade,
+  event_type text not null,
+  old_status text,
+  new_status text,
+  actor_id uuid references auth.users (id) on delete set null,
+  triggered_role text,
+  description text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists taxi_messages (
+  id uuid primary key default gen_random_uuid(),
+  taxi_ride_id uuid not null references taxi_rides (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  sender_role text,
+  target_role text,
+  text text,
+  image_path text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists taxi_commissions (
+  id uuid primary key default gen_random_uuid(),
+  taxi_ride_id uuid not null unique references taxi_rides (id) on delete cascade,
+  currency text not null default 'USD',
+  total_cents integer not null default 0,
+  platform_cents integer not null default 0,
+  driver_cents integer not null default 0,
+  driver_transfer_id text,
+  driver_paid_out boolean not null default false,
+  driver_paid_out_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Key RPCs (full definitions in migration 20260609120000):
+-- taxi_ride_participant_ids, is_taxi_account_active, is_taxi_driver_eligible,
+-- quote_taxi_ride, mark_taxi_ride_paid, refresh_taxi_commissions,
+-- driver_accept/reject_taxi_offer, driver_arrive/start/complete_taxi_ride,
+-- log_taxi_event
+-- Storage bucket: taxi-images (path: {ride_id}/{filename})
