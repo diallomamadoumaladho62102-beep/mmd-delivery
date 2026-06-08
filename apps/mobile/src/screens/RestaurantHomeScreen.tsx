@@ -882,26 +882,14 @@ export function RestaurantHomeScreen({ navigation }: any) {
     setLiveOrder(order);
   }, []);
 
-  const updateFoodOrderStatus = useCallback(
-    async (order: RestaurantMapOrder, nextStatus: "accepted" | "canceled") => {
+  const rejectLiveOrder = useCallback(
+    async (order: RestaurantMapOrder) => {
       if (!activeRestaurantId || !order?.id) return;
 
       try {
         setOrderActionLoading(true);
-
-        const { error } = await supabase
-          .from("orders")
-          .update({
-            status: nextStatus,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", order.id)
-          .eq("kind", "food")
-          .eq("payment_status", "paid")
-          .eq("restaurant_id", activeRestaurantId);
-
-        if (error) throw error;
-
+        const { postRestaurantOrderReject } = await import("../lib/restaurantOrderStatusApi");
+        await postRestaurantOrderReject({ orderId: order.id });
         setLiveOrder(null);
         refreshLiveMap();
       } catch (e: any) {
@@ -914,6 +902,38 @@ export function RestaurantHomeScreen({ navigation }: any) {
       }
     },
     [activeRestaurantId, refreshLiveMap, t]
+  );
+
+  const updateFoodOrderStatus = useCallback(
+    async (order: RestaurantMapOrder, nextStatus: "accepted" | "canceled") => {
+      if (!activeRestaurantId || !order?.id) return;
+
+      if (nextStatus === "canceled") {
+        void rejectLiveOrder(order);
+        return;
+      }
+
+      try {
+        setOrderActionLoading(true);
+
+        const { postRestaurantOrderStatus } = await import("../lib/restaurantOrderStatusApi");
+        await postRestaurantOrderStatus({
+          orderId: order.id,
+          status: "accepted",
+        });
+
+        setLiveOrder(null);
+        refreshLiveMap();
+      } catch (e: any) {
+        Alert.alert(
+          t("common.errorTitle", "Error"),
+          e?.message ?? t("restaurant.orders.updateFailed", "Unable to update order.")
+        );
+      } finally {
+        setOrderActionLoading(false);
+      }
+    },
+    [activeRestaurantId, refreshLiveMap, rejectLiveOrder, t]
   );
 
   const handleAcceptLiveOrder = useCallback(() => {

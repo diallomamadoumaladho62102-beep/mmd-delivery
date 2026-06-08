@@ -235,6 +235,7 @@ export async function POST(req: NextRequest) {
         status,
         driver_id,
         restaurant_id,
+        restaurant_user_id,
         client_id,
         client_user_id,
         created_by,
@@ -391,7 +392,11 @@ export async function POST(req: NextRequest) {
 
     // RESTAURANT CANCEL / REFUSE
     if (role === "restaurant") {
-      if (!sameId(order.restaurant_id, user.id)) {
+      const ownsOrder =
+        sameId(order.restaurant_id, user.id) ||
+        sameId(order.restaurant_user_id, user.id);
+
+      if (!ownsOrder) {
         return json({ error: "Forbidden: not order restaurant" }, 403);
       }
 
@@ -414,6 +419,8 @@ export async function POST(req: NextRequest) {
           ? "restaurant_refused_order"
           : "restaurant_cancelled_before_ready";
 
+      const canceledAt = nowIso();
+
       const { data: updated, error: updateError } = await supabaseAdmin
         .from("orders")
         .update({
@@ -421,12 +428,16 @@ export async function POST(req: NextRequest) {
           driver_id: null,
           cancel_reason: reason,
           cancelled_by: "restaurant",
-          cancelled_at: nowIso(),
+          cancelled_at: canceledAt,
+          canceled_at: canceledAt,
           refund_status: "full_refund_required",
+          updated_at: canceledAt,
         })
         .eq("id", orderId)
-        .eq("restaurant_id", user.id)
+        .eq("kind", "food")
+        .eq("payment_status", "paid")
         .eq("status", order.status)
+        .or(`restaurant_user_id.eq.${user.id},restaurant_id.eq.${user.id}`)
         .select("id,status")
         .maybeSingle();
 
@@ -449,6 +460,35 @@ export async function POST(req: NextRequest) {
         orderId,
         reason,
       });
+
+      const eventType =
+        status === "pending" ? "restaurant_reject" : "restaurant_cancel";
+
+      const { error: eventError } = await supabaseAdmin.from("order_events").insert({
+        order_id: orderId,
+        event_type: eventType,
+        old_status: status,
+        new_status: "canceled",
+        note: reason,
+        actor_id: user.id,
+        created_at: canceledAt,
+        description:
+          status === "pending"
+            ? "Restaurant rejected the order"
+            : "Restaurant cancelled the order",
+        triggered_by: user.id,
+        triggered_role: "restaurant",
+        metadata: {
+          source: "api/orders/cancel",
+          role: "restaurant",
+          refund: stripeRefund,
+          at: canceledAt,
+        },
+      });
+
+      if (eventError) {
+        console.log("order_events insert error:", eventError.message);
+      }
 
       return successResponse({
         by: "restaurant",

@@ -44,3 +44,43 @@ export async function postRestaurantOrderStatus(params: {
     smartDispatch?: { ok?: boolean; status?: number };
   };
 }
+
+export async function postRestaurantOrderReject(params: { orderId: string }) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  const token = sessionData.session?.access_token;
+  if (!token) {
+    throw new Error("Session expirée. Reconnecte-toi puis réessaie.");
+  }
+
+  const base = String(API_BASE_URL).replace(/\/$/, "");
+  const res = await fetch(`${base}/api/orders/cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      orderId: params.orderId,
+      role: "restaurant",
+    }),
+  });
+
+  const out = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(out?.error ?? `Impossible de refuser la commande (${res.status})`);
+  }
+
+  return out as {
+    ok?: boolean;
+    cancelled?: boolean;
+    refund?: string;
+    stripeRefund?: { refunded?: boolean; refundId?: string | null };
+    message?: string;
+  };
+}

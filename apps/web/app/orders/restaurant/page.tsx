@@ -150,9 +150,9 @@ export default function RestaurantOrdersDashboardPage() {
           total
         `
         )
-        .eq("restaurant_id", uid)
         .eq("kind", "food")
         .eq("payment_status", "paid")
+        .or(`restaurant_user_id.eq.${uid},restaurant_id.eq.${uid}`)
         .order("created_at", { ascending: false });
 
       if (ordersError) {
@@ -231,8 +231,21 @@ export default function RestaurantOrdersDashboardPage() {
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
+    function handleOrderChange(payload: any) {
+      try {
+        const oldStatus = payload?.old?.status as OrderStatus | undefined;
+        const newStatus = payload?.new?.status as OrderStatus | undefined;
+
+        if (oldStatus === "pending" && newStatus && newStatus !== "pending") {
+          clearRingTimeout();
+          stopRingtone();
+        }
+      } catch {}
+
+      void load({ silent: true });
+    }
+
     const setup = async () => {
-      // si pas encore prêt, load une fois
       if (!restaurantIdRef.current) await load({ silent: true });
 
       const uid = restaurantIdRef.current;
@@ -248,20 +261,17 @@ export default function RestaurantOrdersDashboardPage() {
             table: "orders",
             filter: `restaurant_id=eq.${uid}`,
           },
-          (payload: any) => {
-            try {
-              const oldStatus = payload?.old?.status as OrderStatus | undefined;
-              const newStatus = payload?.new?.status as OrderStatus | undefined;
-
-              // ✅ si on accepte (pending -> accepted/prepared/...)
-              if (oldStatus === "pending" && newStatus && newStatus !== "pending") {
-                clearRingTimeout();
-                stopRingtone();
-              }
-            } catch {}
-
-            void load({ silent: true });
-          }
+          handleOrderChange
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "orders",
+            filter: `restaurant_user_id=eq.${uid}`,
+          },
+          handleOrderChange
         )
         .subscribe();
     };
@@ -284,7 +294,7 @@ export default function RestaurantOrdersDashboardPage() {
             <span className="font-medium">{me?.full_name || "Ton restaurant"}</span>
           </p>
           <p className="text-xs text-gray-500">
-            Affiche les commandes où tu es défini comme restaurant (orders.restaurant_id = ton user_id).
+            Affiche les commandes où tu es défini comme restaurant (restaurant_id ou restaurant_user_id).
           </p>
         </div>
 

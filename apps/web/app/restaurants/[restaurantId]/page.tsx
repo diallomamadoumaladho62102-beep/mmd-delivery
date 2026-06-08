@@ -14,6 +14,12 @@ type MenuItem = {
   is_available: boolean;
 };
 
+function centsToPrice(value: unknown): number {
+  const cents = Number(value);
+  if (!Number.isFinite(cents)) return 0;
+  return cents / 100;
+}
+
 type RestaurantProfile = {
   restaurant_name: string | null;
   address: string | null;
@@ -63,26 +69,38 @@ export default function RestaurantMenuPage() {
         if (profileError) throw profileError;
         setRestaurant(profile as RestaurantProfile | null);
 
-        // 2) Menu du restaurant
+        // 2) Menu du restaurant (table canonique restaurant_items)
         const { data: menuRows, error: menuError } = await supabase
-          .from("restaurant_menu_items")
+          .from("restaurant_items")
           .select(
             `
             id,
             name,
             description,
             category,
-            price,
+            price_cents,
             is_available
           `
           )
-          .eq("restaurant_id", restaurantId)
-          .order("category", { ascending: true })
+          .eq("restaurant_user_id", restaurantId)
+          .eq("is_available", true)
+          .order("position", { ascending: true, nullsFirst: false })
           .order("name", { ascending: true });
 
         if (menuError) throw menuError;
 
-        setItems((menuRows ?? []) as MenuItem[]);
+        setItems(
+          ((menuRows ?? []) as Array<Omit<MenuItem, "price"> & { price_cents: number }>).map(
+            (row) => ({
+              id: row.id,
+              name: row.name,
+              description: row.description,
+              category: row.category,
+              price: centsToPrice(row.price_cents),
+              is_available: row.is_available,
+            })
+          )
+        );
       } catch (e: any) {
         console.error("Erreur chargement menu restaurant (web):", e);
         setError(

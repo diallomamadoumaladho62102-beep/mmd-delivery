@@ -671,53 +671,9 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           }
         }
 
-        const nowIso = new Date().toISOString();
-
-        const updatePayload: Record<string, any> = {
-          status: nextStatus,
-          updated_at: nowIso,
-        };
-
-        if (nextStatus === "accepted") {
-          updatePayload.restaurant_accepted_at = nowIso;
-        }
-
         if (nextStatus === "canceled") {
-          updatePayload.canceled_at = nowIso;
-        }
-
-        if (nextStatus === "canceled") {
-          const { error } = await supabase
-            .from("orders")
-            .update(updatePayload)
-            .eq("id", orderId)
-            .eq("kind", "food")
-            .eq("payment_status", "paid")
-            .eq("status", (current as any).status)
-            .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`);
-
-          if (error) throw error;
-
-          const { error: evErr } = await supabase.from("order_events").insert({
-            order_id: orderId,
-            event_type: "restaurant_reject",
-            old_status: oldStatus || null,
-            new_status: nextStatus,
-            note: null,
-            actor_id: actorId,
-            created_at: nowIso,
-            description: "Restaurant rejected the order",
-            triggered_by: actorId,
-            triggered_role: "restaurant",
-            metadata: {
-              source: "RestaurantOrdersScreen",
-              at: nowIso,
-            },
-          });
-
-          if (evErr) {
-            console.log("order_events insert error:", evErr);
-          }
+          const { postRestaurantOrderReject } = await import("../lib/restaurantOrderStatusApi");
+          await postRestaurantOrderReject({ orderId });
         } else {
           const { postRestaurantOrderStatus } = await import("../lib/restaurantOrderStatusApi");
           await postRestaurantOrderStatus({
