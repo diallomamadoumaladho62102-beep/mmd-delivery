@@ -19,6 +19,12 @@ import {
   scheduleDeliveryRequestDispatch,
 } from "@/lib/scheduleDeliveryRequestDispatch";
 import { stripeEventNeedsReprocessing } from "@/lib/stripeWebhookReprocess";
+import {
+  getStripeAmountFromCheckoutSession as getTaxiCheckoutAmountCents,
+  handleTaxiStripePayment,
+  isTaxiStripeModule,
+  pickTaxiRideIdFromMetadata,
+} from "@/lib/taxiStripeWebhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1194,6 +1200,59 @@ async function handleCheckoutCompletedLikeEvent(
     metadata: session.metadata,
   });
 
+  if (isTaxiStripeModule(metadata)) {
+    const taxiRideId = pickTaxiRideIdFromMetadata(metadata);
+
+    if (!taxiRideId) {
+      return json({
+        received: true,
+        ignored: "missing taxi_ride_id for module=taxi",
+        type: event.type,
+      });
+    }
+
+    if (!isCheckoutSessionActuallyPaid(session)) {
+      return json({
+        received: true,
+        ok: true,
+        taxi_ride_id: taxiRideId,
+        type: event.type,
+        ignored: "session_not_paid",
+        payment_status: session.payment_status,
+      });
+    }
+
+    const taxiResult = await handleTaxiStripePayment({
+      supabaseAdmin,
+      taxiRideId,
+      sessionId,
+      paymentIntentId,
+      expectedAmountCents: getTaxiCheckoutAmountCents(session),
+      expectedCurrency: sessionCurrency,
+      source: `webhook:${event.type}`,
+    });
+
+    if (!taxiResult.ok) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: taxiResult.error,
+          taxi_ride_id: taxiRideId,
+        },
+        taxiResult.error === "taxi_ride_not_found" ? 404 : 500
+      );
+    }
+
+    return json({
+      received: true,
+      ok: true,
+      taxi_ride_id: taxiRideId,
+      already_paid: taxiResult.already_paid ?? false,
+      type: event.type,
+    });
+  }
+
   if (!orderId && !deliveryRequestId) {
     return json({
       received: true,
@@ -1680,6 +1739,47 @@ async function handlePaymentIntentSucceeded(
     stripe_fee_cents: stripeFeeSnapshot.stripe_fee_cents,
     stripe_net_cents: stripeFeeSnapshot.stripe_net_cents,
   });
+
+  if (isTaxiStripeModule(metadata)) {
+    const taxiRideId = pickTaxiRideIdFromMetadata(metadata);
+
+    if (!taxiRideId) {
+      return json({
+        received: true,
+        ignored: "missing taxi_ride_id for module=taxi",
+        type: event.type,
+      });
+    }
+
+    const taxiResult = await handleTaxiStripePayment({
+      supabaseAdmin,
+      taxiRideId,
+      paymentIntentId,
+      expectedAmountCents: getStripeAmountFromPaymentIntent(pi),
+      expectedCurrency: piCurrency,
+      source: "webhook:payment_intent.succeeded",
+    });
+
+    if (!taxiResult.ok) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: taxiResult.error,
+          taxi_ride_id: taxiRideId,
+        },
+        taxiResult.error === "taxi_ride_not_found" ? 404 : 500
+      );
+    }
+
+    return json({
+      received: true,
+      ok: true,
+      taxi_ride_id: taxiRideId,
+      already_paid: taxiResult.already_paid ?? false,
+      type: event.type,
+    });
+  }
 
   let orderId: string | null = orderIdFromMd;
 
