@@ -154,20 +154,20 @@ export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRoute
   let pickupAddress = input.pickupAddress?.trim() || null;
   let dropoffAddress = input.dropoffAddress?.trim() || null;
 
-  if (pickupAddress && dropoffAddress) {
+  if (
+    pickupLat != null &&
+    pickupLng != null &&
+    dropoffLat != null &&
+    dropoffLng != null
+  ) {
+    // Prefer explicit coordinates (e.g. location_point pin snapshot).
+  } else if (pickupAddress && dropoffAddress) {
     const pickupGeo = await geocodeAddress(pickupAddress);
     const dropoffGeo = await geocodeAddress(dropoffAddress);
     pickupLat = pickupGeo.lat;
     pickupLng = pickupGeo.lng;
     dropoffLat = dropoffGeo.lat;
     dropoffLng = dropoffGeo.lng;
-  } else if (
-    pickupLat != null &&
-    pickupLng != null &&
-    dropoffLat != null &&
-    dropoffLng != null
-  ) {
-    // coords provided
   } else {
     throw new Error(
       "Missing pickup/dropoff coordinates or addresses"
