@@ -17,6 +17,7 @@ import {
   quoteTaxiRide,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
+import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
 
@@ -26,6 +27,7 @@ export default function TaxiMultiStopScreen() {
   const [stop1, setStop1] = useState("");
   const [stop2, setStop2] = useState("");
   const [dropoff, setDropoff] = useState("");
+  const [countryCode, setCountryCode] = useState("US");
   const [loading, setLoading] = useState(false);
 
   async function handleQuote() {
@@ -41,6 +43,7 @@ export default function TaxiMultiStopScreen() {
         dropoffAddress: dropoff.trim(),
         stops,
         vehicleClass: "standard",
+        countryCode,
       });
 
       if (!result?.ok) throw new Error(result?.error ?? "Quote failed");
@@ -50,6 +53,7 @@ export default function TaxiMultiStopScreen() {
         dropoffAddress: dropoff.trim(),
         stops,
         vehicleClass: "standard" as TaxiVehicleClass,
+        countryCode,
         expectedQuoteTotalCents: Number(result.quote?.total_cents ?? 0),
       });
 
@@ -61,6 +65,7 @@ export default function TaxiMultiStopScreen() {
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
         vehicleClass: "standard",
+        countryCode,
         quote: created.quote ?? result.quote,
         route: { ...result.route, stops: result.route?.stops ?? stops },
       });
@@ -80,6 +85,7 @@ export default function TaxiMultiStopScreen() {
         <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
           Multi-stop ride
         </Text>
+        <TaxiCountryPicker value={countryCode} onChange={(code) => setCountryCode(code)} />
         <TextInput value={pickup} onChangeText={setPickup} placeholder="Pickup" placeholderTextColor="#64748B" style={inputStyle} />
         <TextInput value={stop1} onChangeText={setStop1} placeholder="Stop 1 (optional)" placeholderTextColor="#64748B" style={inputStyle} />
         <TextInput value={stop2} onChangeText={setStop2} placeholder="Stop 2 (optional)" placeholderTextColor="#64748B" style={inputStyle} />

@@ -18,6 +18,7 @@ import {
   quoteTaxiRide,
   startTaxiCheckout,
 } from "../../lib/taxiClientApi";
+import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiScheduledBook">;
 
@@ -26,6 +27,7 @@ export default function TaxiScheduledBookScreen() {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [when, setWhen] = useState("");
+  const [countryCode, setCountryCode] = useState("US");
   const [loading, setLoading] = useState(false);
 
   async function handleBook() {
@@ -35,6 +37,7 @@ export default function TaxiScheduledBookScreen() {
       const quoteRes = await quoteTaxiRide({
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
+        countryCode,
       });
       if (!quoteRes?.ok) throw new Error(quoteRes?.error ?? "Quote failed");
 
@@ -42,6 +45,7 @@ export default function TaxiScheduledBookScreen() {
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
         scheduledPickupAt,
+        countryCode,
       });
       if (!created?.ok || !created?.ride?.id) {
         throw new Error(created?.error ?? "Booking failed");
@@ -75,6 +79,7 @@ export default function TaxiScheduledBookScreen() {
         <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
           Schedule a ride
         </Text>
+        <TaxiCountryPicker value={countryCode} onChange={(code) => setCountryCode(code)} />
         <TextInput
           value={pickup}
           onChangeText={setPickup}

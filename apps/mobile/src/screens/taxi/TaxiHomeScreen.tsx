@@ -17,6 +17,7 @@ import {
   quoteTaxiRide,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
+import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 
@@ -31,6 +32,8 @@ export default function TaxiHomeScreen() {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [vehicleClass, setVehicleClass] = useState<TaxiVehicleClass>("standard");
+  const [countryCode, setCountryCode] = useState("US");
+  const [currencyCode, setCurrencyCode] = useState("USD");
   const [loading, setLoading] = useState(false);
 
   async function handleQuote() {
@@ -48,6 +51,7 @@ export default function TaxiHomeScreen() {
         pickupAddress,
         dropoffAddress,
         vehicleClass,
+        countryCode,
       });
 
       if (!result?.ok) {
@@ -58,6 +62,7 @@ export default function TaxiHomeScreen() {
         pickupAddress,
         dropoffAddress,
         vehicleClass,
+        countryCode,
         quote: result.quote,
         route: result.route,
       });
@@ -85,6 +90,21 @@ export default function TaxiHomeScreen() {
         <Text style={{ color: "#94A3B8", fontSize: 15 }}>
           Book a ride — separate from delivery packages.
         </Text>
+
+        <View style={{ gap: 10 }}>
+          <TaxiCountryPicker
+            value={countryCode}
+            onChange={(code, currency) => {
+              setCountryCode(code);
+              setCurrencyCode(currency);
+            }}
+          />
+          {currencyCode ? (
+            <Text style={{ color: "#64748B", fontSize: 12 }}>
+              Estimates in {currencyCode}
+            </Text>
+          ) : null}
+        </View>
 
         <View style={{ gap: 10 }}>
           <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Pickup</Text>

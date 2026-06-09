@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canWriteTaxiPricing } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -22,12 +22,16 @@ type TaxiPricingRow = {
   updated_at: string | null;
 };
 
+const VEHICLE_ORDER = ["standard", "xl", "premium"];
+
 export default function AdminTaxiPricingPage() {
-  const [rows, setRows] = useState<TaxiPricingRow[]>([]);
+  const [allRows, setAllRows] = useState<TaxiPricingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [canEdit, setCanEdit] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [countryFilter, setCountryFilter] = useState("US");
+  const [currencyFilter, setCurrencyFilter] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,18 +45,51 @@ export default function AdminTaxiPricingPage() {
 
     if (!res.ok || !body.ok) {
       setError(body.error ?? "Échec chargement");
-      setRows([]);
+      setAllRows([]);
       setLoading(false);
       return;
     }
 
-    setRows(body.items ?? []);
+    const items = (body.items ?? []) as TaxiPricingRow[];
+    setAllRows(items);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const countryOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of allRows) {
+      if (!map.has(row.country_code)) {
+        map.set(row.country_code, row.currency);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([country_code, currency]) => ({ country_code, currency }))
+      .sort((a, b) => a.country_code.localeCompare(b.country_code));
+  }, [allRows]);
+
+  const currencyOptions = useMemo(() => {
+    const set = new Set(allRows.map((row) => row.currency));
+    return Array.from(set).sort();
+  }, [allRows]);
+
+  const visibleRows = useMemo(() => {
+    return allRows
+      .filter((row) => {
+        if (countryFilter && row.country_code !== countryFilter) return false;
+        if (currencyFilter && row.currency !== currencyFilter) return false;
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          a.country_code.localeCompare(b.country_code) ||
+          VEHICLE_ORDER.indexOf(a.vehicle_class) -
+            VEHICLE_ORDER.indexOf(b.vehicle_class)
+      );
+  }, [allRows, countryFilter, currencyFilter]);
 
   async function saveRow(e: FormEvent<HTMLFormElement>, row: TaxiPricingRow) {
     e.preventDefault();
@@ -95,9 +132,49 @@ export default function AdminTaxiPricingPage() {
           <header>
             <h1 className="text-2xl font-bold text-slate-900">Taxi Pricing</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Tarifs standard, XL et premium — audit admin à chaque modification.
+              Tarifs par pays et par classe — standard, XL et premium.
             </p>
           </header>
+
+          <div className="flex flex-wrap gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+            <label className="text-sm">
+              <span className="mb-1 block text-slate-600">Pays</span>
+              <select
+                value={countryFilter}
+                onChange={(e) => {
+                  setCountryFilter(e.target.value);
+                  setCurrencyFilter("");
+                }}
+                className="rounded-xl border border-slate-300 px-3 py-2"
+              >
+                {countryOptions.length === 0 ? (
+                  <option value="US">US</option>
+                ) : (
+                  countryOptions.map((opt) => (
+                    <option key={opt.country_code} value={opt.country_code}>
+                      {opt.country_code} · {opt.currency}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+
+            <label className="text-sm">
+              <span className="mb-1 block text-slate-600">Devise</span>
+              <select
+                value={currencyFilter}
+                onChange={(e) => setCurrencyFilter(e.target.value)}
+                className="rounded-xl border border-slate-300 px-3 py-2"
+              >
+                <option value="">Toutes (pays sélectionné)</option>
+                {currencyOptions.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           {loading ? (
             <div className="text-sm text-slate-500">Chargement…</div>
@@ -105,18 +182,27 @@ export default function AdminTaxiPricingPage() {
             <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
               {error}
             </div>
+          ) : visibleRows.length === 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              Aucun tarif pour ce filtre.
+            </div>
           ) : (
             <div className="grid gap-6 lg:grid-cols-3">
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <form
                   key={row.id}
                   onSubmit={(e) => void saveRow(e, row)}
                   className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
                   <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold capitalize text-slate-900">
-                      {row.vehicle_class}
-                    </h2>
+                    <div>
+                      <h2 className="text-lg font-semibold capitalize text-slate-900">
+                        {row.vehicle_class}
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        {row.country_code} · {row.currency}
+                      </p>
+                    </div>
                     <label className="flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
@@ -139,7 +225,9 @@ export default function AdminTaxiPricingPage() {
                       ] as const
                     ).map(([field, label]) => (
                       <label key={field} className="block">
-                        <span className="text-slate-600">{label}</span>
+                        <span className="text-slate-600">
+                          {label} ({row.currency})
+                        </span>
                         <input
                           name={field}
                           type="number"
@@ -153,7 +241,7 @@ export default function AdminTaxiPricingPage() {
                   </div>
 
                   <p className="mt-3 text-xs text-slate-500">
-                    {row.currency} · {row.country_code}
+                    {row.config_key}
                     {row.updated_at
                       ? ` · MAJ ${new Date(row.updated_at).toLocaleString()}`
                       : ""}

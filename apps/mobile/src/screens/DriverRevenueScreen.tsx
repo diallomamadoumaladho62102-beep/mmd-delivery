@@ -16,6 +16,7 @@ import {
   loadTaxiDriverEarnings,
   type TaxiEarningsSummary,
 } from "../lib/taxiEarnings";
+import { formatDriverPayout } from "../lib/taxiDriverApi";
 
 type RangeKey = "week" | "today" | "month";
 
@@ -454,24 +455,38 @@ export function DriverRevenueScreen() {
               <Text style={styles.sectionTitle}>
                 {t("driver.revenue.taxi_title", "Taxi earnings")}
               </Text>
-              <View style={styles.metricsGrid}>
-                <Metric
-                  label={t("driver.revenue.taxi_total", "Total taxi")}
-                  value={fmtMoney(taxiEarnings.totalDriverCents / 100)}
-                />
-                <Metric
-                  label={t("driver.revenue.taxi_rides", "Completed rides")}
-                  value={String(taxiEarnings.completedRides)}
-                />
-                <Metric
-                  label={t("driver.revenue.taxi_pending", "Pending payout")}
-                  value={fmtMoney(taxiEarnings.pendingPayoutCents / 100)}
-                />
-                <Metric
-                  label={t("driver.revenue.taxi_paid", "Paid payout")}
-                  value={fmtMoney(taxiEarnings.paidPayoutCents / 100)}
-                />
-              </View>
+              {taxiEarnings.byCurrency.map((bucket) => (
+                <View key={bucket.currency} style={{ marginBottom: 12 }}>
+                  <Text style={styles.taxiCurrencyLabel}>{bucket.currency}</Text>
+                  <View style={styles.metricsGrid}>
+                    <Metric
+                      label={t("driver.revenue.taxi_total", "Total taxi")}
+                      value={formatDriverPayout(
+                        bucket.totalDriverCents,
+                        bucket.currency
+                      )}
+                    />
+                    <Metric
+                      label={t("driver.revenue.taxi_rides", "Completed rides")}
+                      value={String(bucket.completedRides)}
+                    />
+                    <Metric
+                      label={t("driver.revenue.taxi_pending", "Pending payout")}
+                      value={formatDriverPayout(
+                        bucket.pendingPayoutCents,
+                        bucket.currency
+                      )}
+                    />
+                    <Metric
+                      label={t("driver.revenue.taxi_paid", "Paid payout")}
+                      value={formatDriverPayout(
+                        bucket.paidPayoutCents,
+                        bucket.currency
+                      )}
+                    />
+                  </View>
+                </View>
+              ))}
             </View>
           ) : null}
 
@@ -629,6 +644,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(167,139,250,0.35)",
     padding: 16,
+  },
+  taxiCurrencyLabel: {
+    color: PURPLE,
+    fontSize: 12,
+    fontWeight: "900",
+    marginBottom: 8,
+    letterSpacing: 0.6,
   },
   quickCard: { flex: 1, minHeight: 110, borderRadius: 24, padding: 12, backgroundColor: CARD, borderWidth: 1, borderColor: BORDER, justifyContent: "space-between" },
   quickIconBox: { width: 38, height: 38, borderRadius: 14, backgroundColor: "rgba(139,92,246,0.14)", alignItems: "center", justifyContent: "center" },

@@ -54,6 +54,7 @@ export default function TaxiQuoteScreen() {
   >([]);
   const [quoteState, setQuoteState] = useState(route.params.quote);
   const [sharedDiscountCents, setSharedDiscountCents] = useState(0);
+  const countryCode = route.params.countryCode ?? "US";
 
   useEffect(() => {
     void fetchTaxiBusinessAccounts()
@@ -97,6 +98,7 @@ export default function TaxiQuoteScreen() {
       dropoffLat: Number(routeInfo?.dropoffLat),
       dropoffLng: Number(routeInfo?.dropoffLng),
       vehicleClass: vehicleClass as TaxiVehicleClass,
+      countryCode,
       sharedRide,
     })
       .then((result) => {
@@ -111,6 +113,7 @@ export default function TaxiQuoteScreen() {
       });
   }, [
     sharedRide,
+    countryCode,
     pickupAddress,
     dropoffAddress,
     vehicleClass,
@@ -159,6 +162,7 @@ export default function TaxiQuoteScreen() {
         dropoffLat: Number(routeInfo?.dropoffLat),
         dropoffLng: Number(routeInfo?.dropoffLng),
         vehicleClass: vehicleClass as TaxiVehicleClass,
+        countryCode,
         expectedQuoteTotalCents: netTotalCents,
         preferredDriverId: preferredDriverId ?? undefined,
         promoCode: promoCode.trim() || undefined,
@@ -218,6 +222,7 @@ export default function TaxiQuoteScreen() {
         </Text>
 
         <Card label="Vehicle" value={String(vehicleClass).toUpperCase()} />
+        <Card label="Country" value={countryCode} />
         <Card
           label="Distance"
           value={`${Number(routeInfo?.distanceMiles ?? 0).toFixed(1)} mi`}

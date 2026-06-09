@@ -21,10 +21,32 @@ export async function GET(request: NextRequest) {
     await assertStaffPermission("taxi_pricing.read", request);
     const supabase = buildSupabaseAdminClient();
 
-    const { data, error } = await supabase
+    const countryCode = String(
+      request.nextUrl.searchParams.get("country_code") ?? ""
+    )
+      .trim()
+      .toUpperCase();
+    const currency = String(
+      request.nextUrl.searchParams.get("currency") ?? ""
+    )
+      .trim()
+      .toUpperCase();
+
+    let query = supabase
       .from("taxi_pricing")
       .select(PRICING_SELECT)
+      .order("country_code", { ascending: true })
       .order("vehicle_class", { ascending: true });
+
+    if (countryCode) {
+      query = query.eq("country_code", countryCode);
+    }
+
+    if (currency) {
+      query = query.eq("currency", currency);
+    }
+
+    const { data, error } = await query;
 
     if (error) return json({ ok: false, error: error.message }, 500);
 

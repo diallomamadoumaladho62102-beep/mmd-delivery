@@ -1,12 +1,31 @@
 import { supabase } from "./supabase";
 
+export type TaxiEarningsByCurrency = {
+  currency: string;
+  completedRides: number;
+  totalDriverCents: number;
+  pendingPayoutCents: number;
+  paidPayoutCents: number;
+};
+
 export type TaxiEarningsSummary = {
   completedRides: number;
   totalDriverCents: number;
   pendingPayoutCents: number;
   paidPayoutCents: number;
   currency: string;
+  byCurrency: TaxiEarningsByCurrency[];
 };
+
+function emptyBucket(currency: string): TaxiEarningsByCurrency {
+  return {
+    currency,
+    completedRides: 0,
+    totalDriverCents: 0,
+    pendingPayoutCents: 0,
+    paidPayoutCents: 0,
+  };
+}
 
 /** Aggregates completed taxi rides and commission payout state for the signed-in driver. */
 export async function loadTaxiDriverEarnings(
@@ -43,33 +62,41 @@ export async function loadTaxiDriverEarnings(
     commissions = data ?? [];
   }
 
-  let totalDriverCents = 0;
-  let pendingPayoutCents = 0;
-  let paidPayoutCents = 0;
-  let currency = "USD";
-
+  const byCurrencyMap = new Map<string, TaxiEarningsByCurrency>();
   const commissionByRide = new Map(commissions.map((c) => [c.taxi_ride_id, c]));
 
   for (const row of rides ?? []) {
+    const currency = String(row.currency ?? "USD").toUpperCase();
+    const bucket = byCurrencyMap.get(currency) ?? emptyBucket(currency);
+    bucket.completedRides += 1;
+
     const cents = Number(row.driver_payout_cents ?? 0);
-    totalDriverCents += cents;
-    if (row.currency) currency = String(row.currency);
+    bucket.totalDriverCents += cents;
 
     const commission = commissionByRide.get(row.id);
     const driverCents = Number(commission?.driver_cents ?? cents);
 
     if (commission?.driver_paid_out) {
-      paidPayoutCents += driverCents;
+      bucket.paidPayoutCents += driverCents;
     } else {
-      pendingPayoutCents += driverCents;
+      bucket.pendingPayoutCents += driverCents;
     }
+
+    byCurrencyMap.set(currency, bucket);
   }
+
+  const byCurrency = Array.from(byCurrencyMap.values()).sort((a, b) =>
+    a.currency.localeCompare(b.currency)
+  );
+
+  const primary = byCurrency[0] ?? emptyBucket("USD");
 
   return {
     completedRides: rides?.length ?? 0,
-    totalDriverCents,
-    pendingPayoutCents,
-    paidPayoutCents,
-    currency,
+    totalDriverCents: primary.totalDriverCents,
+    pendingPayoutCents: primary.pendingPayoutCents,
+    paidPayoutCents: primary.paidPayoutCents,
+    currency: primary.currency,
+    byCurrency,
   };
 }
