@@ -11,6 +11,7 @@ import {
   resolveRetryDispatchWave,
   retryTaxiRideDispatch,
 } from "@/lib/retryTaxiRideDispatch";
+import { resolveTaxiDispatchRetryDecision } from "@/lib/taxiSharedRideDispatch";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +23,14 @@ export async function GET(request: NextRequest) {
   try {
     await assertStaffPermission("taxi_rides.read", request);
     const supabase = buildSupabaseAdminClient();
-    const orphans = await findTaxiRidesNeedingDispatchRetry(supabase, 50);
+    const orphanScan = await findTaxiRidesNeedingDispatchRetry(supabase, 50);
 
     return json({
       ok: true,
-      count: orphans.length,
-      items: orphans.map((ride) => ({
+      count: orphanScan.rides.length,
+      skipped: orphanScan.skipped.length,
+      skipped_details: orphanScan.skipped,
+      items: orphanScan.rides.map((ride) => ({
         ...ride,
         suggested_wave: resolveRetryDispatchWave(ride),
       })),
@@ -79,19 +82,47 @@ export async function POST(request: NextRequest) {
       return json({ ok: false, error: "Ride already has a driver" }, 409);
     }
 
+    const retryDecision = await resolveTaxiDispatchRetryDecision({
+      supabase,
+      taxiRideId,
+    });
+
+    if (!retryDecision.shouldRetry) {
+      return json(
+        {
+          ok: false,
+          error: retryDecision.skipReason ?? "dispatch_retry_not_eligible",
+          dispatch_ride_id: retryDecision.dispatchRideId,
+        },
+        409
+      );
+    }
+
+    const dispatchRideId = retryDecision.dispatchRideId;
+
+    const { data: dispatchRide, error: dispatchRideError } = await supabase
+      .from("taxi_rides")
+      .select("id, status, dispatch_wave, payment_status, driver_id")
+      .eq("id", dispatchRideId)
+      .maybeSingle();
+
+    if (dispatchRideError || !dispatchRide) {
+      return json({ ok: false, error: "Dispatch target ride not found" }, 404);
+    }
+
     const wave =
       requestedWave >= 1 && requestedWave <= 3
         ? requestedWave
         : resolveRetryDispatchWave({
-            id: taxiRideId,
-            status: ride.status,
-            dispatch_wave: ride.dispatch_wave,
+            id: dispatchRideId,
+            status: dispatchRide.status,
+            dispatch_wave: dispatchRide.dispatch_wave,
             updated_at: null,
           });
 
     const result = await retryTaxiRideDispatch({
       supabase,
-      taxiRideId,
+      taxiRideId: dispatchRideId,
       wave,
       actorId: session.userId,
       source: "admin:retry-dispatch",
@@ -102,8 +133,8 @@ export async function POST(request: NextRequest) {
       adminUserId: session.userId,
       action: "taxi_dispatch_retry",
       targetType: "taxi_ride",
-      targetId: taxiRideId,
-      metadata: { wave, result },
+      targetId: dispatchRideId,
+      metadata: { wave, result, requested_ride_id: taxiRideId },
       request,
     });
 

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
+import { resolveTaxiDispatchRetryDecision } from "@/lib/taxiSharedRideDispatch";
 
 export type TaxiOrphanRide = {
   id: string;
@@ -11,6 +12,11 @@ export type TaxiOrphanRide = {
   preferred_driver_id?: string | null;
 };
 
+export type TaxiDispatchRetryScanResult = {
+  rides: TaxiOrphanRide[];
+  skipped: { id: string; reason: string }[];
+};
+
 function normalize(value: unknown) {
   return String(value ?? "").trim().toLowerCase();
 }
@@ -18,13 +24,13 @@ function normalize(value: unknown) {
 export async function findTaxiRidesNeedingDispatchRetry(
   supabase: SupabaseClient,
   limit = 25
-): Promise<TaxiOrphanRide[]> {
+): Promise<TaxiDispatchRetryScanResult> {
   const nowIso = new Date().toISOString();
 
   const { data: rides, error } = await supabase
     .from("taxi_rides")
     .select(
-      "id, status, dispatch_wave, updated_at, payment_status, driver_id, favorite_dispatch_expires_at, preferred_driver_id"
+      "id, status, dispatch_wave, updated_at, payment_status, driver_id, favorite_dispatch_expires_at, preferred_driver_id, is_shared_ride, shared_ride_id, is_scheduled"
     )
     .is("driver_id", null)
     .eq("payment_status", "paid")
@@ -42,7 +48,7 @@ export async function findTaxiRidesNeedingDispatchRetry(
   });
 
   if (candidates.length === 0) {
-    return [];
+    return { rides: [], skipped: [] };
   }
 
   const rideIds = candidates.map((r) => String(r.id));
@@ -62,17 +68,68 @@ export async function findTaxiRidesNeedingDispatchRetry(
     (activeOffers ?? []).map((o) => String(o.taxi_ride_id))
   );
 
-  return candidates
-    .filter((ride) => !ridesWithActiveOffers.has(String(ride.id)))
-    .slice(0, limit)
-    .map((ride) => ({
-      id: String(ride.id),
-      status: ride.status as string | null,
-      dispatch_wave: Number(ride.dispatch_wave ?? 0),
-      updated_at: ride.updated_at as string | null,
-      favorite_dispatch_expires_at: ride.favorite_dispatch_expires_at as string | null,
-      preferred_driver_id: ride.preferred_driver_id as string | null,
-    }));
+  const withoutOffers = candidates.filter(
+    (ride) => !ridesWithActiveOffers.has(String(ride.id))
+  );
+
+  const eligible: TaxiOrphanRide[] = [];
+  const skipped: { id: string; reason: string }[] = [];
+  const seenDispatchIds = new Set<string>();
+
+  for (const ride of withoutOffers) {
+    const rideId = String(ride.id);
+    const decision = await resolveTaxiDispatchRetryDecision({
+      supabase,
+      taxiRideId: rideId,
+    });
+
+    if (!decision.shouldRetry) {
+      const reason = decision.skipReason ?? "dispatch_retry_not_eligible";
+      skipped.push({ id: rideId, reason });
+
+      await logTaxiEventServer(supabase, {
+        rideId: rideId,
+        eventType: "dispatch_retry_skipped",
+        oldStatus: ride.status as string | null,
+        newStatus: ride.status as string | null,
+        triggeredRole: "system",
+        description: "Taxi dispatch retry skipped for ride",
+        metadata: {
+          source: "cron:retry-taxi-dispatch",
+          skip_reason: reason,
+          dispatch_ride_id: decision.dispatchRideId,
+        },
+      });
+      continue;
+    }
+
+    if (seenDispatchIds.has(decision.dispatchRideId)) {
+      continue;
+    }
+    seenDispatchIds.add(decision.dispatchRideId);
+
+    const sourceRide =
+      decision.dispatchRideId === rideId
+        ? ride
+        : candidates.find((row) => String(row.id) === decision.dispatchRideId) ?? ride;
+
+    eligible.push({
+      id: decision.dispatchRideId,
+      status: sourceRide.status as string | null,
+      dispatch_wave: Number(sourceRide.dispatch_wave ?? 0),
+      updated_at: sourceRide.updated_at as string | null,
+      favorite_dispatch_expires_at: sourceRide.favorite_dispatch_expires_at as
+        | string
+        | null,
+      preferred_driver_id: sourceRide.preferred_driver_id as string | null,
+    });
+
+    if (eligible.length >= limit) {
+      break;
+    }
+  }
+
+  return { rides: eligible, skipped };
 }
 
 export function resolveRetryDispatchWave(ride: TaxiOrphanRide): number {

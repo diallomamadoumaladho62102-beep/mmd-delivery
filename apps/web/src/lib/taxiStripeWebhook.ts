@@ -2,9 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
-import { scheduleTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
-import { resolveInitialTaxiDispatchWave } from "@/lib/taxiPremiumDispatch";
-import { resolveTaxiSharedDispatchTarget } from "@/lib/taxiSharedRideDispatch";
+import { scheduleTaxiRideDispatchIfEligible } from "@/lib/taxiSharedRideDispatch";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -81,17 +79,24 @@ export async function markTaxiRidePaidRobustly(
     return { ok: false, error: error.message };
   }
 
-  const result = (data ?? {}) as { ok?: boolean; idempotent?: boolean; message?: string };
+  const result = (data ?? {}) as {
+    ok?: boolean;
+    already?: boolean;
+    idempotent?: boolean;
+    message?: string;
+  };
 
   if (result.ok === false) {
     return { ok: false, error: String(result.message ?? "mark_taxi_ride_paid_failed") };
   }
 
+  const alreadyPaid = result.already === true || result.idempotent === true;
+
   return {
     ok: true,
     via: "rpc",
     data,
-    already_paid: result.idempotent === true,
+    already_paid: alreadyPaid,
   };
 }
 
@@ -170,42 +175,42 @@ export async function handleTaxiStripePayment(params: {
     return { ok: false, error: markResult.error };
   }
 
-  if (!markResult.already_paid) {
-    await logTaxiEventServer(supabaseAdmin, {
-      rideId: taxiRideId,
-      eventType: "ride_paid_webhook",
-      oldStatus: row.status,
-      newStatus: "paid",
-      triggeredRole: "system",
-      description: "Taxi ride marked paid from Stripe webhook",
-      metadata: {
-        source,
-        session_id: sessionId,
-        payment_intent_id: paymentIntentId,
-        expected_amount_cents: rideAmountCents,
-        actual_amount_cents: stripeAmountCents,
-        expected_currency: rideCurrency,
-      },
+  if (markResult.already_paid) {
+    console.log("[handleTaxiStripePayment] idempotent skip", {
+      taxiRideId,
+      source,
     });
+    return { ok: true, already_paid: true };
   }
+
+  await logTaxiEventServer(supabaseAdmin, {
+    rideId: taxiRideId,
+    eventType: "ride_paid_webhook",
+    oldStatus: row.status,
+    newStatus: "paid",
+    triggeredRole: "system",
+    description: "Taxi ride marked paid from Stripe webhook",
+    metadata: {
+      source,
+      session_id: sessionId,
+      payment_intent_id: paymentIntentId,
+      expected_amount_cents: rideAmountCents,
+      actual_amount_cents: stripeAmountCents,
+      expected_currency: rideCurrency,
+    },
+  });
 
   const dispatchOrigin = getDispatchSiteOrigin();
   if (dispatchOrigin) {
-    const dispatchTarget = await resolveTaxiSharedDispatchTarget({
+    await scheduleTaxiRideDispatchIfEligible({
       supabase: supabaseAdmin,
+      origin: dispatchOrigin,
       taxiRideId,
+      rideForWave: row,
     });
-
-    if (dispatchTarget.shouldDispatch && !row.is_scheduled) {
-      scheduleTaxiRideDispatch({
-        origin: dispatchOrigin,
-        taxiRideId: dispatchTarget.dispatchRideId,
-        wave: resolveInitialTaxiDispatchWave(row),
-      });
-    }
   }
 
-  return { ok: true, already_paid: markResult.already_paid };
+  return { ok: true, already_paid: false };
 }
 
 export function getStripeAmountFromCheckoutSession(session: Stripe.Checkout.Session): number | null {

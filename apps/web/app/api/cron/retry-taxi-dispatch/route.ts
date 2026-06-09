@@ -62,14 +62,14 @@ async function runRetryTaxiDispatch(request: NextRequest) {
     { auth: { persistSession: false } }
   );
 
-  let orphans;
+  let orphanScan: Awaited<ReturnType<typeof findTaxiRidesNeedingDispatchRetry>>;
   let favoriteFallbacks;
   try {
-    const [orphanRows, favoriteRows] = await Promise.all([
+    const [orphanResult, favoriteRows] = await Promise.all([
       findTaxiRidesNeedingDispatchRetry(supabase, 25),
       findTaxiRidesNeedingFavoriteFallback(supabase, 25),
     ]);
-    orphans = orphanRows;
+    orphanScan = orphanResult;
     favoriteFallbacks = favoriteRows;
   } catch (e) {
     return json(
@@ -77,6 +77,9 @@ async function runRetryTaxiDispatch(request: NextRequest) {
       500
     );
   }
+
+  const orphans = orphanScan.rides;
+  const skipped = orphanScan.skipped;
 
   const queue = [...favoriteFallbacks, ...orphans];
   const seen = new Set<string>();
@@ -121,6 +124,8 @@ async function runRetryTaxiDispatch(request: NextRequest) {
   return json({
     ok: true,
     scanned: uniqueQueue.length,
+    skipped: skipped.length,
+    skipped_details: skipped,
     retried: results.length,
     results,
   });

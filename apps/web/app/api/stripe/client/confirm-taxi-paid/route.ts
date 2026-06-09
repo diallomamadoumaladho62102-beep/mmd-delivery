@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
-import { scheduleTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
-import { resolveInitialTaxiDispatchWave } from "@/lib/taxiPremiumDispatch";
+import { scheduleTaxiRideDispatchIfEligible } from "@/lib/taxiSharedRideDispatch";
 import {
   getSupabaseAdminClient,
   getSupabaseUserClient,
@@ -193,30 +192,39 @@ export async function POST(req: NextRequest) {
       return taxiJson({ error: markError.message }, 500);
     }
 
-    const markObj = (markResult ?? {}) as { ok?: boolean; message?: string };
+    const markObj = (markResult ?? {}) as {
+      ok?: boolean;
+      already?: boolean;
+      idempotent?: boolean;
+      message?: string;
+    };
     if (markObj.ok === false) {
       return taxiJson({ error: markObj.message ?? "Failed to mark taxi ride paid" }, 500);
     }
 
-    await logTaxiEventServer(supabaseAdmin, {
-      rideId: taxiRideId,
-      eventType: "ride_paid",
-      oldStatus,
-      newStatus: "paid",
-      actorId: user.id,
-      triggeredRole: "client",
-      description: "Taxi ride confirmed paid via client API",
-      metadata: {
-        stripe_payment_intent_id: amountCheck.payment_intent_id,
-        stripe_session_id: amountCheck.session_id,
-      },
-    });
+    const alreadyMarkedPaid =
+      markObj.already === true || markObj.idempotent === true;
 
-    if (!ride.is_scheduled) {
-      scheduleTaxiRideDispatch({
+    if (!alreadyMarkedPaid) {
+      await logTaxiEventServer(supabaseAdmin, {
+        rideId: taxiRideId,
+        eventType: "ride_paid",
+        oldStatus,
+        newStatus: "paid",
+        actorId: user.id,
+        triggeredRole: "client",
+        description: "Taxi ride confirmed paid via client API",
+        metadata: {
+          stripe_payment_intent_id: amountCheck.payment_intent_id,
+          stripe_session_id: amountCheck.session_id,
+        },
+      });
+
+      await scheduleTaxiRideDispatchIfEligible({
+        supabase: supabaseAdmin,
         origin: req.nextUrl.origin,
         taxiRideId,
-        wave: resolveInitialTaxiDispatchWave(ride),
+        rideForWave: ride,
       });
     }
 
@@ -224,6 +232,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       taxi_ride_id: taxiRideId,
       payment_status: "paid",
+      already: alreadyMarkedPaid,
       mark_result: markResult,
     });
   } catch (e: unknown) {
