@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertCanReviewRestaurants } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -196,6 +197,26 @@ export async function POST(request: NextRequest) {
 
     if (readErr || !before) {
       return badRequest("Restaurant profile not found.");
+    }
+
+    if (status === "approved") {
+      const platformCheck = await assertPlatformFeature(
+        supabase,
+        "US",
+        "restaurant",
+        "active"
+      );
+      if (platformCheck.ok === false) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: platformCheck.error,
+            message: platformCheck.message,
+            country_code: platformCheck.country_code,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const profileUpdate = await updateRestaurantProfileStatus({

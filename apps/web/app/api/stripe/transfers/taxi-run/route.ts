@@ -12,6 +12,7 @@ import {
   assertTaxiLaunchFeature,
   fetchTaxiCountryLaunchConfig,
 } from "@/lib/taxiLaunchControl";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { normalizeTaxiCurrencyForStripe } from "@/lib/taxiCountries";
 
@@ -271,6 +272,24 @@ export async function POST(req: NextRequest) {
           400
         );
       }
+    }
+
+    const platformPayout = await assertPlatformFeature(
+      supabaseAdmin,
+      String(ride.country_code ?? ""),
+      "taxi",
+      "payout"
+    );
+    if (platformPayout.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: platformPayout.error,
+          message: platformPayout.message,
+          country_code: platformPayout.country_code,
+        },
+        400
+      );
     }
 
     const payoutCurrency = assertTaxiPayoutCurrencyAllowed(currency);

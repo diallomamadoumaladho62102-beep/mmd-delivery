@@ -194,4 +194,10 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Activation marchés et features par pays sans redéploiement",
     permission: "taxi_launch.read",
   },
+  {
+    href: "/admin/platform-launch",
+    title: "Platform Launch Control",
+    description: "Activation globale plateforme par pays — taxi, delivery, restaurant",
+    permission: "platform_launch.read",
+  },
 ];

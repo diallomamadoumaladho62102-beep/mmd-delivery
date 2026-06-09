@@ -19,6 +19,7 @@ import {
   assertTaxiLaunchFeature,
   fetchTaxiCountryLaunchConfig,
 } from "@/lib/taxiLaunchControl";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -149,6 +150,16 @@ export async function POST(req: NextRequest) {
     const checkoutLaunch = assertTaxiLaunchFeature(launchConfig, "checkout");
     if (checkoutLaunch.ok === false) {
       return taxiJson({ ok: false, ...checkoutLaunch }, 403);
+    }
+
+    const platformCheckout = await assertPlatformFeature(
+      supabaseAdmin,
+      String(ride.country_code ?? "US"),
+      "taxi",
+      "checkout"
+    );
+    if (platformCheckout.ok === false) {
+      return taxiJson({ ok: false, ...platformCheckout }, 403);
     }
 
     let amountCents = Math.round(Number(ride.total_cents ?? 0));

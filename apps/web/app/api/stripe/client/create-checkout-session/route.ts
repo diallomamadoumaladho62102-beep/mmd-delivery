@@ -5,6 +5,10 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import {
+  assertPlatformFeature,
+  inferPlatformCountryCode,
+} from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -483,6 +487,25 @@ export async function POST(req: NextRequest) {
 
     if (!isOrderOwnedByUser(order, user.id)) {
       return json({ error: "Forbidden" }, 403);
+    }
+
+    const platformCountry = inferPlatformCountryCode({ currency: order.currency });
+    const platformCheckout = await assertPlatformFeature(
+      supabaseAdmin,
+      platformCountry,
+      "restaurant",
+      "checkout"
+    );
+    if (platformCheckout.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: platformCheckout.error,
+          message: platformCheckout.message,
+          country_code: platformCheckout.country_code,
+        },
+        403
+      );
     }
 
     if (isCanceledLikeStatus(orderStatus)) {

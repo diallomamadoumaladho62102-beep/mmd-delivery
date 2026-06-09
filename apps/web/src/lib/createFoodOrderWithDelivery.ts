@@ -7,6 +7,10 @@ import {
   computeDeliveryPricing,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
+import {
+  assertPlatformFeature,
+  inferPlatformCountryCode,
+} from "@/lib/platformLaunchControl";
 
 export type CartItem = {
   name: string;
@@ -232,6 +236,17 @@ export async function createFoodOrderWithDelivery(
 
   const supabase = await supabaseServer();
   const supabaseAdmin = buildSupabaseAdminClient();
+
+  const platformCountry = inferPlatformCountryCode({ currency: safeCurrency });
+  const platformCheck = await assertPlatformFeature(
+    supabaseAdmin,
+    platformCountry,
+    "restaurant",
+    "active"
+  );
+  if (platformCheck.ok === false) {
+    throw new Error(platformCheck.message);
+  }
 
   // 1) Distance + ETA
   const { distanceMiles, etaMinutes } = await getDistanceAndEta(

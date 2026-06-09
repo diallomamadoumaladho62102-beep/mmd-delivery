@@ -226,6 +226,16 @@ export function canManageTaxiLaunch(role: UserRole | null): boolean {
   return hasPermission(role, "taxi_launch.manage");
 }
 
+export function canReadPlatformLaunch(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "platform_launch.read");
+}
+
+export function canManagePlatformLaunch(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "platform_launch.manage");
+}
+
 export function canReadTaxiMarketMetrics(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "taxi_market_metrics.read");

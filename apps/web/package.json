@@ -6,7 +6,8 @@
     "dev:webpack": "cross-env NEXT_DISABLE_TURBOPACK=1 next dev",
     "build": "next build",
     "start": "next start",
-    "test:rbac": "npx tsx src/lib/adminRbac.test.ts && npx tsx src/lib/adminOutbound.test.ts"
+    "test:rbac": "npx tsx src/lib/adminRbac.test.ts && npx tsx src/lib/adminOutbound.test.ts",
+    "test:platform-launch": "node scripts/smoke-platform-launch.mjs"
   },
   "dependencies": {
     "@stripe/stripe-js": "latest",

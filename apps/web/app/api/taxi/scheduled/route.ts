@@ -8,6 +8,7 @@ import {
   assertTaxiLaunchFeature,
   fetchTaxiCountryLaunchConfig,
 } from "@/lib/taxiLaunchControl";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -128,6 +129,16 @@ export async function POST(req: NextRequest) {
     }
 
     const countryCode = countryResult.resolution.countryCode;
+
+    const platformCheck = await assertPlatformFeature(
+      auth.supabaseAdmin,
+      countryCode,
+      "taxi",
+      "active"
+    );
+    if (platformCheck.ok === false) {
+      return taxiJson({ ok: false, ...platformCheck }, 403);
+    }
 
     const launchConfig = await fetchTaxiCountryLaunchConfig(
       auth.supabaseAdmin,

@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,6 +119,17 @@ export async function POST(req: Request) {
     }
 
     assertNonNegativeMoney("subtotal", subtotal);
+
+    const supabaseAdmin = buildSupabaseAdminClient();
+    const platformCheck = await assertPlatformFeature(
+      supabaseAdmin,
+      "US",
+      "delivery",
+      "active"
+    );
+    if (platformCheck.ok === false) {
+      return jsonError(platformCheck.message, 403);
+    }
 
     const { data, error } = await supabase.rpc("create_errand_order", {
       p_pickup_address: pickupAddress,

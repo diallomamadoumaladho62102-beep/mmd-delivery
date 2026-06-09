@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -140,6 +141,25 @@ export async function POST(req: NextRequest) {
         },
         409
       );
+    }
+
+    if (nextStatus === "accepted") {
+      const platformCheck = await assertPlatformFeature(
+        supabaseAdmin,
+        "US",
+        "restaurant",
+        "active"
+      );
+      if (platformCheck.ok === false) {
+        return json(
+          {
+            error: platformCheck.error,
+            message: platformCheck.message,
+            country_code: platformCheck.country_code,
+          },
+          403
+        );
+      }
     }
 
     const nowIso = new Date().toISOString();

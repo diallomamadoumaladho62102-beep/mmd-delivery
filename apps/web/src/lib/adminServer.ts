@@ -314,3 +314,10 @@ export async function assertCanManageTaxiLaunch(request?: NextRequest) {
     request
   );
 }
+
+export async function assertCanManagePlatformLaunch(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "platform_launch.manage"),
+    request
+  );
+}
