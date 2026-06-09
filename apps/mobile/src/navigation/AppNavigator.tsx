@@ -80,6 +80,10 @@ import TaxiHomeScreen from "../screens/taxi/TaxiHomeScreen";
 import TaxiQuoteScreen from "../screens/taxi/TaxiQuoteScreen";
 import TaxiFavoritesScreen from "../screens/taxi/TaxiFavoritesScreen";
 import TaxiLoyaltyScreen from "../screens/taxi/TaxiLoyaltyScreen";
+import TaxiScheduledScreen from "../screens/taxi/TaxiScheduledScreen";
+import TaxiScheduledBookScreen from "../screens/taxi/TaxiScheduledBookScreen";
+import TaxiMultiStopScreen from "../screens/taxi/TaxiMultiStopScreen";
+import TaxiLoyaltyRewardsScreen from "../screens/taxi/TaxiLoyaltyRewardsScreen";
 import TaxiRideTrackingScreen from "../screens/taxi/TaxiRideTrackingScreen";
 import TaxiHistoryScreen from "../screens/taxi/TaxiHistoryScreen";
 import TaxiChatScreen from "../screens/taxi/TaxiChatScreen";
@@ -131,6 +135,10 @@ export type RootStackParamList = {
   TaxiHistory: undefined;
   TaxiFavorites: undefined;
   TaxiLoyalty: undefined;
+  TaxiScheduled: undefined;
+  TaxiScheduledBook: undefined;
+  TaxiMultiStop: undefined;
+  TaxiLoyaltyRewards: undefined;
   TaxiChat: { rideId: string };
 
   DriverTabs: undefined;
@@ -482,6 +490,10 @@ export function AppNavigator({
       r === "TaxiHistory" ||
       r === "TaxiFavorites" ||
       r === "TaxiLoyalty" ||
+      r === "TaxiScheduled" ||
+      r === "TaxiScheduledBook" ||
+      r === "TaxiMultiStop" ||
+      r === "TaxiLoyaltyRewards" ||
       r === "TaxiChat"
     );
   }, []);
@@ -890,6 +902,10 @@ export function AppNavigator({
         <Stack.Screen name="TaxiHistory" component={TaxiHistoryScreen} />
         <Stack.Screen name="TaxiFavorites" component={TaxiFavoritesScreen} />
         <Stack.Screen name="TaxiLoyalty" component={TaxiLoyaltyScreen} />
+        <Stack.Screen name="TaxiScheduled" component={TaxiScheduledScreen} />
+        <Stack.Screen name="TaxiScheduledBook" component={TaxiScheduledBookScreen} />
+        <Stack.Screen name="TaxiMultiStop" component={TaxiMultiStopScreen} />
+        <Stack.Screen name="TaxiLoyaltyRewards" component={TaxiLoyaltyRewardsScreen} />
         <Stack.Screen name="TaxiChat" component={TaxiChatScreen} />
 
         <Stack.Screen name="DriverTabs" component={DriverTabs} />

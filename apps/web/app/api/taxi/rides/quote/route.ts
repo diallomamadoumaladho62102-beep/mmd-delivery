@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { resolveTaxiRoute } from "@/lib/taxiMapbox";
+import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 
 export const runtime = "nodejs";
@@ -18,6 +18,7 @@ type Body = {
   passenger_count?: number;
   countryCode?: string;
   country_code?: string;
+  stops?: { address?: string; lat?: number; lng?: number }[];
 };
 
 export async function POST(req: NextRequest) {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
 
     let route;
     try {
-      route = await resolveTaxiRoute(body);
+      route = await resolveTaxiMultiStopRoute({ ...body, stops: body.stops });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Route resolution failed";
       if (message === "distance_too_far") {
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
         dropoffAddress: route.dropoffAddress,
         distanceMiles: route.distanceMiles,
         durationMinutes: route.durationMinutes,
+        stops: route.stops,
       },
     });
   } catch (e: unknown) {

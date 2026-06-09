@@ -182,6 +182,24 @@ export default function TaxiHomeScreen() {
             Loyalty points
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate("TaxiScheduled")}>
+          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
+            Scheduled rides
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate("TaxiMultiStop")}>
+          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
+            Multi-stop ride
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate("TaxiLoyaltyRewards")}>
+          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
+            Loyalty rewards
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

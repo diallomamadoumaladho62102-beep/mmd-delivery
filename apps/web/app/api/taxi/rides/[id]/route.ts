@@ -62,7 +62,19 @@ export async function GET(req: NextRequest, context: RouteContext) {
       return taxiJson({ ok: false, error: "Taxi ride not found" }, 404);
     }
 
-    return taxiJson({ ok: true, ride });
+    const { data: stops } = await auth.supabaseAdmin
+      .from("taxi_ride_stops")
+      .select("*")
+      .eq("taxi_ride_id", rideId)
+      .order("stop_order", { ascending: true });
+
+    const { data: scheduled } = await auth.supabaseAdmin
+      .from("taxi_scheduled_rides")
+      .select("*")
+      .eq("taxi_ride_id", rideId)
+      .maybeSingle();
+
+    return taxiJson({ ok: true, ride, stops: stops ?? [], scheduled });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
     return taxiJson({ ok: false, error: message }, 500);

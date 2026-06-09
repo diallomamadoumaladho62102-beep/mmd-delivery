@@ -1,0 +1,127 @@
+import React, { useState } from "react";
+import {
+  SafeAreaView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../navigation/AppNavigator";
+import * as WebBrowser from "expo-web-browser";
+import {
+  confirmTaxiPaid,
+  createScheduledTaxiRide,
+  quoteTaxiRide,
+  startTaxiCheckout,
+} from "../../lib/taxiClientApi";
+
+type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiScheduledBook">;
+
+export default function TaxiScheduledBookScreen() {
+  const navigation = useNavigation<Nav>();
+  const [pickup, setPickup] = useState("");
+  const [dropoff, setDropoff] = useState("");
+  const [when, setWhen] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleBook() {
+    setLoading(true);
+    try {
+      const scheduledPickupAt = new Date(when).toISOString();
+      const quoteRes = await quoteTaxiRide({
+        pickupAddress: pickup.trim(),
+        dropoffAddress: dropoff.trim(),
+      });
+      if (!quoteRes?.ok) throw new Error(quoteRes?.error ?? "Quote failed");
+
+      const created = await createScheduledTaxiRide({
+        pickupAddress: pickup.trim(),
+        dropoffAddress: dropoff.trim(),
+        scheduledPickupAt,
+      });
+      if (!created?.ok || !created?.ride?.id) {
+        throw new Error(created?.error ?? "Booking failed");
+      }
+
+      const rideId = String(created.ride.id);
+      const checkout = await startTaxiCheckout(rideId);
+      if (checkout?.url) {
+        await WebBrowser.openBrowserAsync(String(checkout.url));
+        try {
+          await confirmTaxiPaid(rideId);
+        } catch {
+          // webhook may confirm
+        }
+      }
+
+      navigation.replace("TaxiScheduled");
+    } catch (e: unknown) {
+      Alert.alert("Scheduled", e instanceof Error ? e.message : "Booking failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+        </TouchableOpacity>
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
+          Schedule a ride
+        </Text>
+        <TextInput
+          value={pickup}
+          onChangeText={setPickup}
+          placeholder="Pickup address"
+          placeholderTextColor="#64748B"
+          style={inputStyle}
+        />
+        <TextInput
+          value={dropoff}
+          onChangeText={setDropoff}
+          placeholder="Dropoff address"
+          placeholderTextColor="#64748B"
+          style={inputStyle}
+        />
+        <TextInput
+          value={when}
+          onChangeText={setWhen}
+          placeholder="Pickup time (ISO, e.g. 2026-06-15T14:30:00Z)"
+          placeholderTextColor="#64748B"
+          style={inputStyle}
+        />
+        <TouchableOpacity
+          onPress={handleBook}
+          disabled={loading}
+          style={{
+            backgroundColor: "#22C55E",
+            padding: 16,
+            borderRadius: 14,
+            alignItems: "center",
+          }}
+        >
+          {loading ? (
+            <ActivityIndicator color="#052e16" />
+          ) : (
+            <Text style={{ color: "#052e16", fontWeight: "800" }}>Reserve & prepay</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const inputStyle = {
+  backgroundColor: "rgba(15,23,42,0.95)",
+  borderWidth: 1,
+  borderColor: "#334155",
+  borderRadius: 14,
+  padding: 14,
+  color: "#F8FAFC",
+} as const;

@@ -69,6 +69,20 @@ export function completeTaxiRide(rideId: string) {
   return taxiPost("/api/taxi/rides/complete", { taxi_ride_id: rideId });
 }
 
+export function arriveTaxiStop(rideId: string, stopOrder: number) {
+  return taxiPost("/api/taxi/rides/stops/arrive", {
+    taxi_ride_id: rideId,
+    stop_order: stopOrder,
+  });
+}
+
+export function completeTaxiStop(rideId: string, stopOrder: number) {
+  return taxiPost("/api/taxi/rides/stops/complete", {
+    taxi_ride_id: rideId,
+    stop_order: stopOrder,
+  });
+}
+
 export type TaxiDriverFeatures = {
   taxi_enabled: boolean;
   vehicle_class: string;

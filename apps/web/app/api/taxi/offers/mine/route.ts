@@ -29,7 +29,18 @@ export async function GET(req: NextRequest) {
           total_cents,
           vehicle_class,
           payment_status,
-          preferred_driver_id
+          preferred_driver_id,
+          is_scheduled,
+          scheduled_pickup_at,
+          stop_count,
+          taxi_ride_stops (
+            id,
+            stop_order,
+            address,
+            lat,
+            lng,
+            status
+          )
         )
       `
       )

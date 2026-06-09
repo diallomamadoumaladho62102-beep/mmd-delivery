@@ -15,6 +15,11 @@ export async function POST(req: NextRequest) {
       totalCents?: number;
       taxi_ride_id?: string;
       taxiRideId?: string;
+      vehicle_class?: string;
+      vehicleClass?: string;
+      country_code?: string;
+      countryCode?: string;
+      currency?: string;
     };
 
     const code = String(body.code ?? "").trim();
@@ -32,6 +37,9 @@ export async function POST(req: NextRequest) {
       p_user_id: auth.user.id,
       p_total_cents: totalCents > 0 ? totalCents : null,
       p_ride_id: rideId,
+      p_vehicle_class: String(body.vehicle_class ?? body.vehicleClass ?? "") || null,
+      p_country_code: String(body.country_code ?? body.countryCode ?? "") || null,
+      p_currency: String(body.currency ?? "") || null,
     });
 
     if (error) {

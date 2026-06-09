@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents"
+        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -93,8 +93,38 @@ export async function POST(req: NextRequest) {
     }
 
     const status = normalizeStatus(ride.status);
-    if (!["quoted", "pending_payment", "draft"].includes(status)) {
+    if (!["quoted", "pending_payment", "draft", "scheduled"].includes(status)) {
       return taxiJson({ error: "Ride is not payable at this stage" }, 400);
+    }
+
+    if (ride.promo_code) {
+      const { data: promoCheck, error: promoCheckError } = await supabaseAdmin.rpc(
+        "validate_taxi_promotion",
+        {
+          p_code: ride.promo_code,
+          p_user_id: user.id,
+          p_total_cents: Number(ride.gross_total_cents ?? ride.total_cents ?? 0),
+          p_ride_id: taxiRideId,
+          p_vehicle_class: ride.vehicle_class,
+          p_country_code: ride.country_code,
+          p_currency: ride.currency,
+        }
+      );
+
+      if (promoCheckError) {
+        return taxiJson({ error: promoCheckError.message }, 500);
+      }
+
+      const promoObj = (promoCheck ?? {}) as Record<string, unknown>;
+      if (promoObj.ok === false) {
+        await supabaseAdmin.rpc("release_taxi_loyalty_redemption", {
+          p_ride_id: taxiRideId,
+        });
+        return taxiJson(
+          { error: String(promoObj.message ?? "promotion_invalid_at_checkout") },
+          400
+        );
+      }
     }
 
     const amountCents = Math.round(Number(ride.total_cents ?? 0));
@@ -103,6 +133,9 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = String(ride.currency ?? "USD").trim().toLowerCase();
+    const promoDiscountCents = Math.round(Number(ride.discount_cents ?? 0));
+    const loyaltyDiscountCents = Math.round(Number(ride.loyalty_discount_cents ?? 0));
+    const totalDiscountCents = promoDiscountCents + loyaltyDiscountCents;
     const urls = buildCheckoutUrls(taxiRideId, req);
     const idempotencyKey = `taxi_checkout_${taxiRideId}_${user.id}_${amountCents}_${currency}`;
 
@@ -143,7 +176,9 @@ export async function POST(req: NextRequest) {
           amount_cents: String(amountCents),
           amount_dollars: (amountCents / 100).toFixed(2),
           promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
-          discount_cents: String(Number(ride.discount_cents ?? 0)),
+          reward_id: ride.loyalty_reward_id ? String(ride.loyalty_reward_id) : "",
+          discount_cents: String(totalDiscountCents),
+          loyalty_discount_cents: String(loyaltyDiscountCents),
           source_route: "/api/stripe/client/create-taxi-checkout-session",
         },
         payment_intent_data: {
@@ -155,7 +190,9 @@ export async function POST(req: NextRequest) {
             amount_cents: String(amountCents),
             amount_dollars: (amountCents / 100).toFixed(2),
             promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
-            discount_cents: String(Number(ride.discount_cents ?? 0)),
+            reward_id: ride.loyalty_reward_id ? String(ride.loyalty_reward_id) : "",
+            discount_cents: String(totalDiscountCents),
+            loyalty_discount_cents: String(loyaltyDiscountCents),
             source_route: "/api/stripe/client/create-taxi-checkout-session",
           },
         },

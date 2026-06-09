@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,paid_at,preferred_driver_id"
+        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,paid_at,preferred_driver_id,is_scheduled"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -212,11 +212,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    scheduleTaxiRideDispatch({
-      origin: req.nextUrl.origin,
-      taxiRideId,
-      wave: resolveInitialTaxiDispatchWave(ride),
-    });
+    if (!ride.is_scheduled) {
+      scheduleTaxiRideDispatch({
+        origin: req.nextUrl.origin,
+        taxiRideId,
+        wave: resolveInitialTaxiDispatchWave(ride),
+      });
+    }
 
     return taxiJson({
       ok: true,

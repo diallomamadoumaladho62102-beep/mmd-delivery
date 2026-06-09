@@ -10,7 +10,7 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 export const dynamic = "force-dynamic";
 
 const PROMO_SELECT =
-  "id, code, promotion_type, discount_percent, discount_cents, active, starts_at, ends_at, max_redemptions, max_redemptions_per_user, redemption_count, title, notes, created_at, updated_at";
+  "id, code, promotion_type, discount_percent, discount_cents, active, starts_at, ends_at, max_redemptions, max_redemptions_per_user, redemption_count, title, notes, allowed_vehicle_classes, min_fare_cents, max_discount_cents, first_ride_only, loyalty_tier_required, country_code, currency, created_at, updated_at";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -73,6 +73,22 @@ export async function POST(request: NextRequest) {
           : null,
       title: typeof body.title === "string" ? body.title : null,
       notes: typeof body.notes === "string" ? body.notes : null,
+      allowed_vehicle_classes: Array.isArray(body.allowed_vehicle_classes)
+        ? body.allowed_vehicle_classes
+        : null,
+      min_fare_cents:
+        body.min_fare_cents != null ? Math.round(Number(body.min_fare_cents)) : null,
+      max_discount_cents:
+        body.max_discount_cents != null
+          ? Math.round(Number(body.max_discount_cents))
+          : null,
+      first_ride_only: body.first_ride_only === true,
+      loyalty_tier_required:
+        typeof body.loyalty_tier_required === "string"
+          ? body.loyalty_tier_required
+          : null,
+      country_code: typeof body.country_code === "string" ? body.country_code : null,
+      currency: typeof body.currency === "string" ? body.currency : null,
     };
 
     const { data, error } = await supabase
@@ -152,6 +168,35 @@ export async function PATCH(request: NextRequest) {
     }
     if (typeof body.title === "string") update.title = body.title;
     if (typeof body.notes === "string") update.notes = body.notes;
+    if (body.allowed_vehicle_classes !== undefined) {
+      update.allowed_vehicle_classes = Array.isArray(body.allowed_vehicle_classes)
+        ? body.allowed_vehicle_classes
+        : null;
+    }
+    if (body.min_fare_cents !== undefined) {
+      update.min_fare_cents =
+        body.min_fare_cents != null ? Math.round(Number(body.min_fare_cents)) : null;
+    }
+    if (body.max_discount_cents !== undefined) {
+      update.max_discount_cents =
+        body.max_discount_cents != null
+          ? Math.round(Number(body.max_discount_cents))
+          : null;
+    }
+    if (typeof body.first_ride_only === "boolean") {
+      update.first_ride_only = body.first_ride_only;
+    }
+    if (body.loyalty_tier_required !== undefined) {
+      update.loyalty_tier_required = body.loyalty_tier_required
+        ? String(body.loyalty_tier_required)
+        : null;
+    }
+    if (body.country_code !== undefined) {
+      update.country_code = body.country_code ? String(body.country_code) : null;
+    }
+    if (body.currency !== undefined) {
+      update.currency = body.currency ? String(body.currency) : null;
+    }
 
     const { data: updated, error: updateErr } = await supabase
       .from("taxi_promotions")

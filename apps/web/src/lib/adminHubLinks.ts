@@ -134,4 +134,16 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Programme fidélité taxi — consultation et ajustements",
     permission: "taxi_rides.read",
   },
+  {
+    href: "/admin/taxi-scheduled",
+    title: "Taxi Scheduled",
+    description: "Réservations taxi à l'avance — dispatch et annulations",
+    permission: "taxi_rides.read",
+  },
+  {
+    href: "/admin/taxi-loyalty-rewards",
+    title: "Taxi Rewards",
+    description: "Récompenses fidélité taxi — crédits et points",
+    permission: "taxi_rides.read",
+  },
 ];

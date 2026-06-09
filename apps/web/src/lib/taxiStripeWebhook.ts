@@ -15,6 +15,7 @@ type TaxiRidePaymentRow = {
   stripe_payment_intent_id: string | null;
   client_user_id: string | null;
   preferred_driver_id?: string | null;
+  is_scheduled?: boolean | null;
 };
 
 export function isTaxiStripeModule(
@@ -107,7 +108,7 @@ export async function handleTaxiStripePayment(params: {
   const { data: ride, error: rideError } = await supabaseAdmin
     .from("taxi_rides")
     .select(
-      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id,preferred_driver_id"
+      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id,preferred_driver_id,is_scheduled"
     )
     .eq("id", taxiRideId)
     .maybeSingle();
@@ -188,7 +189,7 @@ export async function handleTaxiStripePayment(params: {
   }
 
   const dispatchOrigin = getDispatchSiteOrigin();
-  if (dispatchOrigin) {
+  if (dispatchOrigin && !row.is_scheduled) {
     scheduleTaxiRideDispatch({
       origin: dispatchOrigin,
       taxiRideId,

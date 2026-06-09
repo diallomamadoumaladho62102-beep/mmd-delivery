@@ -6,6 +6,12 @@ import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+type StopBody = {
+  address?: string;
+  lat?: number;
+  lng?: number;
+};
+
 type Body = {
   pickupAddress?: string;
   dropoffAddress?: string;
@@ -21,15 +27,15 @@ type Body = {
   country_code?: string;
   clientNotes?: string;
   client_notes?: string;
-  expectedQuoteTotalCents?: number;
-  expected_quote_total_cents?: number;
+  scheduledPickupAt?: string;
+  scheduled_pickup_at?: string;
   preferredDriverId?: string;
   preferred_driver_id?: string;
   promoCode?: string;
   promo_code?: string;
   rewardId?: string;
   reward_id?: string;
-  stops?: { address?: string; lat?: number; lng?: number }[];
+  stops?: StopBody[];
 };
 
 const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
@@ -52,6 +58,26 @@ export async function POST(req: NextRequest) {
     if (auth.ok === false) return auth.response;
 
     const body = (await req.json().catch(() => ({}))) as Body;
+    const scheduledPickupAt = String(
+      body.scheduledPickupAt ?? body.scheduled_pickup_at ?? ""
+    ).trim();
+
+    if (!scheduledPickupAt) {
+      return taxiJson({ ok: false, error: "Missing scheduled_pickup_at" }, 400);
+    }
+
+    const pickupTime = Date.parse(scheduledPickupAt);
+    if (!Number.isFinite(pickupTime)) {
+      return taxiJson({ ok: false, error: "Invalid scheduled_pickup_at" }, 400);
+    }
+
+    if (pickupTime <= Date.now() + 15 * 60 * 1000) {
+      return taxiJson(
+        { ok: false, error: "scheduled_pickup_too_soon" },
+        400
+      );
+    }
+
     const vehicleClass = String(
       body.vehicleClass ?? body.vehicle_class ?? "standard"
     ).trim();
@@ -71,26 +97,12 @@ export async function POST(req: NextRequest) {
     const promoCode = String(body.promoCode ?? body.promo_code ?? "").trim();
     const rewardId = String(body.rewardId ?? body.reward_id ?? "").trim();
 
-    if (preferredDriverId) {
-      const { data: favorite, error: favoriteError } = await auth.supabaseAdmin
-        .from("taxi_client_favorite_drivers")
-        .select("id")
-        .eq("client_user_id", auth.user.id)
-        .eq("driver_user_id", preferredDriverId)
-        .maybeSingle();
-
-      if (favoriteError) {
-        return taxiJson({ ok: false, error: favoriteError.message }, 500);
-      }
-
-      if (!favorite?.id) {
-        return taxiJson({ ok: false, error: "preferred_driver_not_favorited" }, 400);
-      }
-    }
-
     let route;
     try {
-      route = await resolveTaxiMultiStopRoute({ ...body, stops: body.stops });
+      route = await resolveTaxiMultiStopRoute({
+        ...body,
+        stops: body.stops,
+      });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Route resolution failed";
       if (message === "distance_too_far") {
@@ -117,30 +129,6 @@ export async function POST(req: NextRequest) {
     const quoteObj = (quote ?? {}) as Record<string, unknown>;
     if (quoteObj.ok === false) {
       return taxiJson({ ok: false, ...quoteObj }, 400);
-    }
-
-    const expectedQuoteTotalCents = Math.round(
-      Number(
-        body.expectedQuoteTotalCents ?? body.expected_quote_total_cents ?? 0
-      )
-    );
-    const actualTotalCents = Math.round(Number(quoteObj.total_cents ?? 0));
-
-    if (
-      expectedQuoteTotalCents > 0 &&
-      !isQuotePriceWithinTolerance(expectedQuoteTotalCents, actualTotalCents)
-    ) {
-      return taxiJson(
-        {
-          ok: false,
-          error: "quote_price_drift",
-          expected_total_cents: expectedQuoteTotalCents,
-          actual_total_cents: actualTotalCents,
-          message:
-            "The quoted price changed before booking. Please review the updated estimate.",
-        },
-        409
-      );
     }
 
     const pickupAddress =
@@ -178,6 +166,8 @@ export async function POST(req: NextRequest) {
         client_notes: clientNotes || null,
         payment_status: "unpaid",
         preferred_driver_id: preferredDriverId || null,
+        is_scheduled: true,
+        scheduled_pickup_at: new Date(pickupTime).toISOString(),
         stop_count: route.stops.length,
       })
       .select("*")
@@ -208,29 +198,37 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    let promotionResult: Record<string, unknown> | null = null;
+    const { data: scheduled, error: scheduledError } = await auth.supabaseAdmin
+      .from("taxi_scheduled_rides")
+      .insert({
+        taxi_ride_id: ride.id,
+        client_user_id: auth.user.id,
+        scheduled_pickup_at: new Date(pickupTime).toISOString(),
+      })
+      .select("*")
+      .single();
+
+    if (scheduledError || !scheduled) {
+      return taxiJson(
+        { ok: false, error: scheduledError?.message ?? "Failed to schedule ride" },
+        500
+      );
+    }
+
     if (promoCode) {
       const { data: promoData, error: promoError } = await auth.supabaseAdmin.rpc(
         "apply_taxi_promotion_to_ride",
-        {
-          p_ride_id: String(ride.id),
-          p_code: promoCode,
-        }
+        { p_ride_id: String(ride.id), p_code: promoCode }
       );
-
       if (promoError) {
         return taxiJson({ ok: false, error: promoError.message }, 500);
       }
-
       const promoObj = (promoData ?? {}) as Record<string, unknown>;
       if (promoObj.ok === false) {
         return taxiJson({ ok: false, ...promoObj }, 400);
       }
-
-      promotionResult = promoObj;
     }
 
-    let rewardResult: Record<string, unknown> | null = null;
     if (rewardId) {
       const { data: rewardData, error: rewardError } = await auth.supabaseAdmin.rpc(
         "apply_taxi_loyalty_reward_to_ride",
@@ -240,59 +238,38 @@ export async function POST(req: NextRequest) {
           p_user_id: auth.user.id,
         }
       );
-
       if (rewardError) {
         return taxiJson({ ok: false, error: rewardError.message }, 500);
       }
-
       const rewardObj = (rewardData ?? {}) as Record<string, unknown>;
       if (rewardObj.ok === false) {
         return taxiJson({ ok: false, ...rewardObj }, 400);
       }
-
-      rewardResult = rewardObj;
     }
 
-    if (promoCode || rewardId) {
-      const { data: refreshedRide } = await auth.supabaseAdmin
-        .from("taxi_rides")
-        .select("*")
-        .eq("id", ride.id)
-        .maybeSingle();
-
-      if (refreshedRide) {
-        Object.assign(ride, refreshedRide);
-      }
-    }
+    const { data: refreshedRide } = await auth.supabaseAdmin
+      .from("taxi_rides")
+      .select("*")
+      .eq("id", ride.id)
+      .maybeSingle();
 
     await logTaxiEventServer(auth.supabaseAdmin, {
       rideId: String(ride.id),
-      eventType: "ride_created",
+      eventType: "scheduled_ride_created",
       oldStatus: null,
       newStatus: "quoted",
       actorId: auth.user.id,
       triggeredRole: "client",
-      description: "Client created taxi ride",
-      metadata: { quote: quoteObj },
-    });
-
-    await logTaxiEventServer(auth.supabaseAdmin, {
-      rideId: String(ride.id),
-      eventType: "ride_quoted",
-      oldStatus: null,
-      newStatus: "quoted",
-      actorId: auth.user.id,
-      triggeredRole: "client",
-      description: "Taxi ride quoted",
-      metadata: { quote: quoteObj },
+      description: "Client created scheduled taxi ride",
+      metadata: { scheduled_pickup_at: scheduled.scheduled_pickup_at },
     });
 
     return taxiJson({
       ok: true,
-      ride,
+      ride: refreshedRide ?? ride,
+      scheduled,
       quote: quoteObj,
-      promotion: promotionResult,
-      reward: rewardResult,
+      route,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
@@ -300,6 +277,47 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
-  return taxiJson({ error: "Method not allowed" }, 405);
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireTaxiApiUser(req);
+    if (auth.ok === false) return auth.response;
+
+    const limit = Math.min(
+      Math.max(Number(req.nextUrl.searchParams.get("limit") ?? 50), 1),
+      100
+    );
+
+    const { data, error } = await auth.supabaseAdmin
+      .from("taxi_scheduled_rides")
+      .select(
+        `
+        *,
+        taxi_rides:taxi_ride_id (
+          id,
+          status,
+          payment_status,
+          pickup_address,
+          dropoff_address,
+          total_cents,
+          currency,
+          scheduled_pickup_at,
+          stop_count
+        )
+      `
+      )
+      .eq("client_user_id", auth.user.id)
+      .neq("status", "canceled")
+      .gte("scheduled_pickup_at", new Date().toISOString())
+      .order("scheduled_pickup_at", { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      return taxiJson({ ok: false, error: error.message }, 500);
+    }
+
+    return taxiJson({ ok: true, items: data ?? [] });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Server error";
+    return taxiJson({ ok: false, error: message }, 500);
+  }
 }

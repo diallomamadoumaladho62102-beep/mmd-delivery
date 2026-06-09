@@ -53,6 +53,7 @@ export type TaxiQuoteInput = {
   vehicleClass?: TaxiVehicleClass;
   passengerCount?: number;
   countryCode?: string;
+  stops?: { address?: string; lat?: number; lng?: number }[];
 };
 
 export function quoteTaxiRide(input: TaxiQuoteInput) {
@@ -66,6 +67,7 @@ export function quoteTaxiRide(input: TaxiQuoteInput) {
     vehicleClass: input.vehicleClass ?? "standard",
     passengerCount: input.passengerCount ?? 1,
     countryCode: input.countryCode ?? "US",
+    stops: input.stops,
   });
 }
 
@@ -75,6 +77,8 @@ export function createTaxiRide(
     expectedQuoteTotalCents?: number;
     preferredDriverId?: string;
     promoCode?: string;
+    rewardId?: string;
+    stops?: { address?: string; lat?: number; lng?: number }[];
   }
 ) {
   return taxiPost("/api/taxi/rides/create", {
@@ -91,6 +95,8 @@ export function createTaxiRide(
     expectedQuoteTotalCents: input.expectedQuoteTotalCents,
     preferredDriverId: input.preferredDriverId,
     promoCode: input.promoCode,
+    rewardId: input.rewardId,
+    stops: input.stops,
   });
 }
 
@@ -175,4 +181,49 @@ export function applyTaxiPromotion(input: { code: string; taxiRideId: string }) 
     code: input.code,
     taxi_ride_id: input.taxiRideId,
   });
+}
+
+export function fetchTaxiLoyaltyRewards() {
+  return taxiGet("/api/taxi/loyalty/rewards");
+}
+
+export function applyTaxiLoyaltyReward(input: { rewardId: string; taxiRideId: string }) {
+  return taxiPost("/api/taxi/loyalty/rewards/apply", {
+    reward_id: input.rewardId,
+    taxi_ride_id: input.taxiRideId,
+  });
+}
+
+export function fetchScheduledTaxiRides(limit = 50) {
+  return taxiGet(`/api/taxi/scheduled?limit=${limit}`);
+}
+
+export function createScheduledTaxiRide(
+  input: TaxiQuoteInput & {
+    scheduledPickupAt: string;
+    preferredDriverId?: string;
+    promoCode?: string;
+    rewardId?: string;
+  }
+) {
+  return taxiPost("/api/taxi/scheduled", {
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
+    pickupLat: input.pickupLat,
+    pickupLng: input.pickupLng,
+    dropoffLat: input.dropoffLat,
+    dropoffLng: input.dropoffLng,
+    vehicleClass: input.vehicleClass ?? "standard",
+    passengerCount: input.passengerCount ?? 1,
+    countryCode: input.countryCode ?? "US",
+    stops: input.stops,
+    scheduledPickupAt: input.scheduledPickupAt,
+    preferredDriverId: input.preferredDriverId,
+    promoCode: input.promoCode,
+    rewardId: input.rewardId,
+  });
+}
+
+export function cancelScheduledTaxiRide(scheduledId: string) {
+  return taxiPost("/api/taxi/scheduled/cancel", { scheduled_id: scheduledId });
 }

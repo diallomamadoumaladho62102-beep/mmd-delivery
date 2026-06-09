@@ -15,7 +15,9 @@ import { isDriverOnlineEligible } from "../../lib/accountStatus";
 import {
   acceptTaxiOffer,
   arriveTaxiPickup,
+  arriveTaxiStop,
   completeTaxiRide,
+  completeTaxiStop,
   fetchActiveTaxiRide,
   fetchMyTaxiOffers,
   formatDriverPayout,
@@ -35,12 +37,20 @@ type TaxiOfferRow = {
   distance_miles?: number | null;
   is_favorite_dispatch?: boolean | null;
   wave?: number | null;
-  taxi_rides?: {
+    taxi_rides?: {
     pickup_address?: string | null;
     dropoff_address?: string | null;
     driver_payout_cents?: number | null;
     currency?: string | null;
     vehicle_class?: string | null;
+    is_scheduled?: boolean | null;
+    scheduled_pickup_at?: string | null;
+    stop_count?: number | null;
+    taxi_ride_stops?: {
+      stop_order: number;
+      address?: string | null;
+      status?: string | null;
+    }[] | null;
   } | null;
 };
 
@@ -188,6 +198,43 @@ export function DriverTaxiPanel({ isOnline }: Props) {
             <Text style={styles.meta} numberOfLines={1}>
               → {String(activeRide.dropoff_address ?? "")}
             </Text>
+            {(activeRide.taxi_ride_stops as { stop_order: number; address?: string; status?: string }[] | undefined)
+              ?.sort((a, b) => a.stop_order - b.stop_order)
+              .map((stop) => (
+                <View key={stop.stop_order} style={{ marginTop: 6 }}>
+                  <Text style={styles.meta} numberOfLines={1}>
+                    Stop {stop.stop_order}: {String(stop.address ?? "")} ({stop.status})
+                  </Text>
+                  {status === "in_progress" ? (
+                    <View style={styles.row}>
+                      <TouchableOpacity
+                        style={styles.secondaryBtn}
+                        onPress={() =>
+                          arriveTaxiStop(rideId, stop.stop_order)
+                            .then(refresh)
+                            .catch((e: unknown) =>
+                              Alert.alert("Taxi", e instanceof Error ? e.message : "Failed")
+                            )
+                        }
+                      >
+                        <Text style={styles.secondaryText}>Arrive stop</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.secondaryBtn}
+                        onPress={() =>
+                          completeTaxiStop(rideId, stop.stop_order)
+                            .then(refresh)
+                            .catch((e: unknown) =>
+                              Alert.alert("Taxi", e instanceof Error ? e.message : "Failed")
+                            )
+                        }
+                      >
+                        <Text style={styles.secondaryText}>Complete stop</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                </View>
+              ))}
             <Text style={styles.payout}>
               {formatDriverPayout(
                 activeRide.driver_payout_cents,
@@ -253,6 +300,9 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                 <View key={offer.id} style={styles.offerCard}>
                   {offer.is_favorite_dispatch || offer.wave === 0 ? (
                     <Text style={styles.favoriteBadge}>⭐ Favorite client ride</Text>
+                  ) : null}
+                  {ride?.is_scheduled ? (
+                    <Text style={styles.favoriteBadge}>📅 Scheduled ride</Text>
                   ) : null}
                   <Text style={styles.meta} numberOfLines={1}>
                     {ride?.pickup_address ?? "Pickup"}

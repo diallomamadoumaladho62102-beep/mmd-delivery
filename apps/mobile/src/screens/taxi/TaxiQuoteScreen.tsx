@@ -18,6 +18,7 @@ import {
   confirmTaxiPaid,
   createTaxiRide,
   fetchTaxiFavoriteDrivers,
+  fetchTaxiLoyaltyRewards,
   formatTaxiCents,
   startTaxiCheckout,
   validateTaxiPromotion,
@@ -34,6 +35,11 @@ export default function TaxiQuoteScreen() {
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscountCents, setPromoDiscountCents] = useState(0);
   const [preferredDriverId, setPreferredDriverId] = useState<string | null>(null);
+  const [rewardId, setRewardId] = useState<string | null>(null);
+  const [rewardDiscountCents, setRewardDiscountCents] = useState(0);
+  const [rewards, setRewards] = useState<
+    { id: string; title: string; points_cost: number; discount_cents: number }[]
+  >([]);
   const [favoriteDrivers, setFavoriteDrivers] = useState<
     { driver_user_id: string }[]
   >([]);
@@ -45,9 +51,15 @@ export default function TaxiQuoteScreen() {
           ((res?.favorites as { driver_user_id: string }[]) ?? []).slice(0, 5)
         );
       })
-      .catch(() => {
-        setFavoriteDrivers([]);
-      });
+      .catch(() => setFavoriteDrivers([]));
+
+    void fetchTaxiLoyaltyRewards()
+      .then((res) => {
+        setRewards(
+          ((res?.rewards as { id: string; title: string; points_cost: number; discount_cents: number }[]) ?? []).slice(0, 5)
+        );
+      })
+      .catch(() => setRewards([]));
   }, []);
 
   const { pickupAddress, dropoffAddress, vehicleClass, quote, route: routeInfo } =
@@ -55,7 +67,10 @@ export default function TaxiQuoteScreen() {
 
   const currency = String(quote?.currency ?? "USD");
   const grossTotalCents = Number(quote?.total_cents ?? 0);
-  const netTotalCents = Math.max(0, grossTotalCents - promoDiscountCents);
+  const netTotalCents = Math.max(
+    0,
+    grossTotalCents - promoDiscountCents - rewardDiscountCents
+  );
   const total = formatTaxiCents(netTotalCents, currency);
   const platform = formatTaxiCents(quote?.platform_fee_cents, currency);
   const subtotal = formatTaxiCents(quote?.subtotal_cents, currency);
@@ -92,6 +107,7 @@ export default function TaxiQuoteScreen() {
         expectedQuoteTotalCents: netTotalCents,
         preferredDriverId: preferredDriverId ?? undefined,
         promoCode: promoCode.trim() || undefined,
+        rewardId: rewardId ?? undefined,
       });
 
       if (!created?.ok || !created?.ride?.id) {
@@ -173,6 +189,12 @@ export default function TaxiQuoteScreen() {
               value={`-${formatTaxiCents(promoDiscountCents, currency)}`}
             />
           ) : null}
+          {rewardDiscountCents > 0 ? (
+            <Row
+              label="Reward credit"
+              value={`-${formatTaxiCents(rewardDiscountCents, currency)}`}
+            />
+          ) : null}
           <Row label="Total" value={total} bold />
         </View>
 
@@ -209,6 +231,54 @@ export default function TaxiQuoteScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {rewards.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Loyalty reward</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setRewardId(null);
+                    setRewardDiscountCents(0);
+                  }}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: rewardId ? "#334155" : "#38BDF8",
+                  }}
+                >
+                  <Text style={{ color: "#E2E8F0" }}>None</Text>
+                </TouchableOpacity>
+                {rewards.map((reward) => {
+                  const selected = rewardId === reward.id;
+                  return (
+                    <TouchableOpacity
+                      key={reward.id}
+                      onPress={() => {
+                        setRewardId(reward.id);
+                        setRewardDiscountCents(reward.discount_cents);
+                      }}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: selected ? "#38BDF8" : "#334155",
+                      }}
+                    >
+                      <Text style={{ color: "#E2E8F0" }}>
+                        {reward.title} ({reward.points_cost} pts)
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        ) : null}
 
         {favoriteDrivers.length > 0 ? (
           <View style={{ gap: 8 }}>
