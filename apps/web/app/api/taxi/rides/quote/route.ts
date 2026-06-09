@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { TAXI_SHARED_RIDE_DISCOUNT_PERCENT } from "@/lib/taxiSharedRideDispatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +20,8 @@ type Body = {
   countryCode?: string;
   country_code?: string;
   stops?: { address?: string; lat?: number; lng?: number }[];
+  sharedRide?: boolean;
+  shared_ride?: boolean;
 };
 
 export async function POST(req: NextRequest) {
@@ -69,9 +72,24 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, ...quoteObj }, 400);
     }
 
+    const sharedRide =
+      body.sharedRide === true || body.shared_ride === true;
+    const grossTotalCents = Math.round(Number(quoteObj.total_cents ?? 0));
+    const sharedDiscountCents = sharedRide
+      ? Math.round(grossTotalCents * (TAXI_SHARED_RIDE_DISCOUNT_PERCENT / 100))
+      : 0;
+    const netTotalCents = Math.max(0, grossTotalCents - sharedDiscountCents);
+
     return taxiJson({
       ok: true,
-      quote: quoteObj,
+      quote: {
+        ...quoteObj,
+        shared_ride: sharedRide,
+        shared_discount_percent: sharedRide ? TAXI_SHARED_RIDE_DISCOUNT_PERCENT : 0,
+        shared_discount_cents: sharedDiscountCents,
+        total_cents: sharedRide ? netTotalCents : grossTotalCents,
+        gross_total_cents: grossTotalCents,
+      },
       route: {
         pickupLat: route.pickupLat,
         pickupLng: route.pickupLng,

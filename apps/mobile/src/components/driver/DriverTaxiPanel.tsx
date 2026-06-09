@@ -46,6 +46,15 @@ type TaxiOfferRow = {
     is_scheduled?: boolean | null;
     scheduled_pickup_at?: string | null;
     stop_count?: number | null;
+    is_shared_ride?: boolean | null;
+    premium_driver_only?: boolean | null;
+    business_trip_type?: string | null;
+    shared_passengers?: {
+      segment_order: number;
+      pickup_address?: string | null;
+      dropoff_address?: string | null;
+      status?: string | null;
+    }[] | null;
     taxi_ride_stops?: {
       stop_order: number;
       address?: string | null;
@@ -184,6 +193,9 @@ export function DriverTaxiPanel({ isOnline }: Props) {
         <View style={styles.headerRow}>
           <Text style={styles.title}>🚕 Taxi mode</Text>
           <Text style={styles.badge}>{features?.vehicle_class ?? "standard"}</Text>
+          {features?.premium_eligible ? (
+            <Text style={styles.badge}>⭐ Premium</Text>
+          ) : null}
         </View>
 
         {loading ? <ActivityIndicator color="#F59E0B" style={{ marginVertical: 8 }} /> : null}
@@ -304,6 +316,23 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                   {ride?.is_scheduled ? (
                     <Text style={styles.favoriteBadge}>📅 Scheduled ride</Text>
                   ) : null}
+                  {ride?.is_shared_ride ? (
+                    <Text style={styles.favoriteBadge}>👥 Shared ride</Text>
+                  ) : null}
+                  {ride?.premium_driver_only ? (
+                    <Text style={styles.favoriteBadge}>✨ Premium ride</Text>
+                  ) : null}
+                  {ride?.business_trip_type === "business" ? (
+                    <Text style={styles.favoriteBadge}>🏢 Business ride</Text>
+                  ) : null}
+                  {(ride?.shared_passengers ?? [])
+                    .sort((a, b) => a.segment_order - b.segment_order)
+                    .map((passenger) => (
+                      <Text key={passenger.segment_order} style={styles.meta} numberOfLines={1}>
+                        P{passenger.segment_order}: {passenger.pickup_address} →{" "}
+                        {passenger.dropoff_address}
+                      </Text>
+                    ))}
                   <Text style={styles.meta} numberOfLines={1}>
                     {ride?.pickup_address ?? "Pickup"}
                   </Text>

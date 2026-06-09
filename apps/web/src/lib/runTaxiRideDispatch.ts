@@ -101,7 +101,7 @@ export async function runTaxiRideDispatch(params: {
   const { data: ride, error: rideError } = await supabase
     .from("taxi_rides")
     .select(
-      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at"
+      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at,premium_driver_only,is_shared_ride,shared_ride_id"
     )
     .eq("id", taxiRideId)
     .maybeSingle();
@@ -138,6 +138,8 @@ export async function runTaxiRideDispatch(params: {
       message: "Taxi ride is not dispatchable",
     };
   }
+
+  const premiumDriverOnly = ride.premium_driver_only === true;
 
   const oldStatus = String(ride.status ?? "");
   const nowIso = new Date().toISOString();
@@ -215,6 +217,7 @@ export async function runTaxiRideDispatch(params: {
       {
         p_user_id: preferredDriverId,
         p_vehicle_class: String(ride.vehicle_class ?? "standard"),
+        p_require_premium_driver: premiumDriverOnly,
       }
     );
 
@@ -261,6 +264,7 @@ export async function runTaxiRideDispatch(params: {
       candidates,
       wave: 0,
       isFavoriteDispatch: true,
+      premiumDriverOnly,
     });
 
     const { data: tokens, error: tokensError } = await supabase
@@ -578,6 +582,7 @@ export async function runTaxiRideDispatch(params: {
     vehicleClass: String(ride.vehicle_class ?? "standard"),
     candidates,
     wave,
+    premiumDriverOnly,
   });
 
   const selectedDriverIds = candidates.map((c) => c.driverId);

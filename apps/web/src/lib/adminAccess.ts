@@ -140,3 +140,33 @@ export function canManageTaxiPromotions(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "taxi_promotions.manage");
 }
+
+export function canReadTaxiSharedRides(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_shared_rides.read");
+}
+
+export function canManageTaxiSharedRides(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_shared_rides.manage");
+}
+
+export function canReadTaxiBusiness(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_business.read");
+}
+
+export function canManageTaxiBusiness(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_business.manage");
+}
+
+export function canReadTaxiDriverQuality(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_driver_quality.read");
+}
+
+export function canManageTaxiDriverQuality(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_driver_quality.manage");
+}

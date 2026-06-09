@@ -4,6 +4,7 @@ import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { scheduleTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
 import { resolveInitialTaxiDispatchWave } from "@/lib/taxiPremiumDispatch";
+import { resolveTaxiSharedDispatchTarget } from "@/lib/taxiSharedRideDispatch";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -189,12 +190,19 @@ export async function handleTaxiStripePayment(params: {
   }
 
   const dispatchOrigin = getDispatchSiteOrigin();
-  if (dispatchOrigin && !row.is_scheduled) {
-    scheduleTaxiRideDispatch({
-      origin: dispatchOrigin,
+  if (dispatchOrigin) {
+    const dispatchTarget = await resolveTaxiSharedDispatchTarget({
+      supabase: supabaseAdmin,
       taxiRideId,
-      wave: resolveInitialTaxiDispatchWave(row),
     });
+
+    if (dispatchTarget.shouldDispatch && !row.is_scheduled) {
+      scheduleTaxiRideDispatch({
+        origin: dispatchOrigin,
+        taxiRideId: dispatchTarget.dispatchRideId,
+        wave: resolveInitialTaxiDispatchWave(row),
+      });
+    }
   }
 
   return { ok: true, already_paid: markResult.already_paid };

@@ -30,6 +30,14 @@ type Body = {
   rewardId?: string;
   reward_id?: string;
   stops?: { address?: string; lat?: number; lng?: number }[];
+  sharedRide?: boolean;
+  shared_ride?: boolean;
+  premiumDriverOnly?: boolean;
+  premium_driver_only?: boolean;
+  businessAccountId?: string;
+  business_account_id?: string;
+  businessTripType?: string;
+  business_trip_type?: string;
 };
 
 const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
@@ -70,6 +78,16 @@ export async function POST(req: NextRequest) {
     ).trim();
     const promoCode = String(body.promoCode ?? body.promo_code ?? "").trim();
     const rewardId = String(body.rewardId ?? body.reward_id ?? "").trim();
+    const sharedRide =
+      body.sharedRide === true || body.shared_ride === true;
+    const premiumDriverOnly =
+      body.premiumDriverOnly === true || body.premium_driver_only === true;
+    const businessAccountId = String(
+      body.businessAccountId ?? body.business_account_id ?? ""
+    ).trim();
+    const businessTripType = String(
+      body.businessTripType ?? body.business_trip_type ?? "personal"
+    ).trim();
 
     if (preferredDriverId) {
       const { data: favorite, error: favoriteError } = await auth.supabaseAdmin
@@ -126,6 +144,39 @@ export async function POST(req: NextRequest) {
     );
     const actualTotalCents = Math.round(Number(quoteObj.total_cents ?? 0));
 
+    let businessMemberId: string | null = null;
+    let businessApprovalStatus = "not_required";
+
+    if (businessTripType === "business" && businessAccountId) {
+      const { data: businessCheck, error: businessError } =
+        await auth.supabaseAdmin.rpc("validate_taxi_business_ride", {
+          p_user_id: auth.user.id,
+          p_business_account_id: businessAccountId,
+          p_amount_cents: actualTotalCents,
+        });
+
+      if (businessError) {
+        return taxiJson({ ok: false, error: businessError.message }, 500);
+      }
+
+      const businessObj = (businessCheck ?? {}) as Record<string, unknown>;
+      if (businessObj.ok === false) {
+        return taxiJson({ ok: false, ...businessObj }, 400);
+      }
+
+      const { data: memberRow } = await auth.supabaseAdmin
+        .from("taxi_business_members")
+        .select("id")
+        .eq("business_account_id", businessAccountId)
+        .eq("user_id", auth.user.id)
+        .eq("active", true)
+        .maybeSingle();
+
+      businessMemberId = memberRow?.id ? String(memberRow.id) : null;
+      businessApprovalStatus =
+        businessObj.requires_approval === true ? "pending" : "approved";
+    }
+
     if (
       expectedQuoteTotalCents > 0 &&
       !isQuotePriceWithinTolerance(expectedQuoteTotalCents, actualTotalCents)
@@ -179,6 +230,17 @@ export async function POST(req: NextRequest) {
         payment_status: "unpaid",
         preferred_driver_id: preferredDriverId || null,
         stop_count: route.stops.length,
+        premium_driver_only: premiumDriverOnly,
+        business_account_id:
+          businessTripType === "business" && businessAccountId
+            ? businessAccountId
+            : null,
+        business_member_id: businessMemberId,
+        business_trip_type:
+          businessTripType === "business" && businessAccountId
+            ? "business"
+            : "personal",
+        business_approval_status: businessApprovalStatus,
       })
       .select("*")
       .single();
@@ -253,6 +315,61 @@ export async function POST(req: NextRequest) {
       rewardResult = rewardObj;
     }
 
+    let sharedRideResult: Record<string, unknown> | null = null;
+    if (sharedRide) {
+      const { data: sharedData, error: sharedError } =
+        await auth.supabaseAdmin.rpc("create_or_join_taxi_shared_ride", {
+          p_ride_id: String(ride.id),
+        });
+
+      if (sharedError) {
+        return taxiJson({ ok: false, error: sharedError.message }, 500);
+      }
+
+      sharedRideResult = (sharedData ?? {}) as Record<string, unknown>;
+      if (sharedRideResult.ok === false) {
+        return taxiJson({ ok: false, ...sharedRideResult }, 400);
+      }
+
+      await logTaxiEventServer(auth.supabaseAdmin, {
+        rideId: String(ride.id),
+        eventType: "shared_ride_matched",
+        oldStatus: "quoted",
+        newStatus: "quoted",
+        actorId: auth.user.id,
+        triggeredRole: "client",
+        description: sharedRideResult.joined
+          ? "Client joined shared ride group"
+          : "Client created shared ride group",
+        metadata: sharedRideResult,
+      });
+
+      const { data: refreshedRide } = await auth.supabaseAdmin
+        .from("taxi_rides")
+        .select("*")
+        .eq("id", ride.id)
+        .maybeSingle();
+
+      if (refreshedRide) {
+        Object.assign(ride, refreshedRide);
+      }
+    }
+
+    if (
+      businessTripType === "business" &&
+      businessAccountId &&
+      businessApprovalStatus === "approved"
+    ) {
+      await auth.supabaseAdmin.rpc("record_taxi_business_billing_event", {
+        p_business_account_id: businessAccountId,
+        p_taxi_ride_id: String(ride.id),
+        p_member_user_id: auth.user.id,
+        p_amount_cents: Number(ride.total_cents ?? actualTotalCents),
+        p_event_type: "ride_authorized",
+        p_metadata: { source: "ride_create" },
+      });
+    }
+
     if (promoCode || rewardId) {
       const { data: refreshedRide } = await auth.supabaseAdmin
         .from("taxi_rides")
@@ -293,6 +410,7 @@ export async function POST(req: NextRequest) {
       quote: quoteObj,
       promotion: promotionResult,
       reward: rewardResult,
+      shared_ride: sharedRideResult,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";

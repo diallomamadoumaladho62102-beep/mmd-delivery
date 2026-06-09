@@ -17,9 +17,11 @@ import * as WebBrowser from "expo-web-browser";
 import {
   confirmTaxiPaid,
   createTaxiRide,
+  fetchTaxiBusinessAccounts,
   fetchTaxiFavoriteDrivers,
   fetchTaxiLoyaltyRewards,
   formatTaxiCents,
+  quoteTaxiRide,
   startTaxiCheckout,
   validateTaxiPromotion,
   type TaxiVehicleClass,
@@ -43,8 +45,29 @@ export default function TaxiQuoteScreen() {
   const [favoriteDrivers, setFavoriteDrivers] = useState<
     { driver_user_id: string }[]
   >([]);
+  const [sharedRide, setSharedRide] = useState(false);
+  const [premiumDriverOnly, setPremiumDriverOnly] = useState(false);
+  const [businessRide, setBusinessRide] = useState(false);
+  const [businessAccountId, setBusinessAccountId] = useState<string | null>(null);
+  const [businessAccounts, setBusinessAccounts] = useState<
+    { member_id: string; account?: { id: string; name: string } | null }[]
+  >([]);
+  const [quoteState, setQuoteState] = useState(route.params.quote);
+  const [sharedDiscountCents, setSharedDiscountCents] = useState(0);
 
   useEffect(() => {
+    void fetchTaxiBusinessAccounts()
+      .then((res) => {
+        const accounts =
+          (res?.accounts as { member_id: string; account?: { id: string; name: string } | null }[]) ??
+          [];
+        setBusinessAccounts(accounts);
+        if (accounts.length === 1 && accounts[0]?.account?.id) {
+          setBusinessAccountId(String(accounts[0].account.id));
+        }
+      })
+      .catch(() => setBusinessAccounts([]));
+
     void fetchTaxiFavoriteDrivers()
       .then((res) => {
         setFavoriteDrivers(
@@ -62,18 +85,50 @@ export default function TaxiQuoteScreen() {
       .catch(() => setRewards([]));
   }, []);
 
-  const { pickupAddress, dropoffAddress, vehicleClass, quote, route: routeInfo } =
+  const { pickupAddress, dropoffAddress, vehicleClass, route: routeInfo } =
     route.params;
 
-  const currency = String(quote?.currency ?? "USD");
-  const grossTotalCents = Number(quote?.total_cents ?? 0);
+  useEffect(() => {
+    void quoteTaxiRide({
+      pickupAddress,
+      dropoffAddress,
+      pickupLat: Number(routeInfo?.pickupLat),
+      pickupLng: Number(routeInfo?.pickupLng),
+      dropoffLat: Number(routeInfo?.dropoffLat),
+      dropoffLng: Number(routeInfo?.dropoffLng),
+      vehicleClass: vehicleClass as TaxiVehicleClass,
+      sharedRide,
+    })
+      .then((result) => {
+        if (result?.ok && result.quote) {
+          setQuoteState(result.quote);
+          setSharedDiscountCents(Number(result.quote.shared_discount_cents ?? 0));
+        }
+      })
+      .catch(() => {
+        setQuoteState(route.params.quote);
+        setSharedDiscountCents(0);
+      });
+  }, [
+    sharedRide,
+    pickupAddress,
+    dropoffAddress,
+    vehicleClass,
+    route.params.quote,
+    routeInfo,
+  ]);
+
+  const currency = String(quoteState?.currency ?? "USD");
+  const grossTotalCents = Number(
+    quoteState?.gross_total_cents ?? quoteState?.total_cents ?? 0
+  );
   const netTotalCents = Math.max(
     0,
-    grossTotalCents - promoDiscountCents - rewardDiscountCents
+    grossTotalCents - promoDiscountCents - rewardDiscountCents - sharedDiscountCents
   );
   const total = formatTaxiCents(netTotalCents, currency);
-  const platform = formatTaxiCents(quote?.platform_fee_cents, currency);
-  const subtotal = formatTaxiCents(quote?.subtotal_cents, currency);
+  const platform = formatTaxiCents(quoteState?.platform_fee_cents, currency);
+  const subtotal = formatTaxiCents(quoteState?.subtotal_cents, currency);
 
   async function handleApplyPromo() {
     const code = promoCode.trim();
@@ -108,6 +163,11 @@ export default function TaxiQuoteScreen() {
         preferredDriverId: preferredDriverId ?? undefined,
         promoCode: promoCode.trim() || undefined,
         rewardId: rewardId ?? undefined,
+        sharedRide,
+        premiumDriverOnly,
+        businessAccountId:
+          businessRide && businessAccountId ? businessAccountId : undefined,
+        businessTripType: businessRide && businessAccountId ? "business" : "personal",
       });
 
       if (!created?.ok || !created?.ride?.id) {
@@ -195,7 +255,63 @@ export default function TaxiQuoteScreen() {
               value={`-${formatTaxiCents(rewardDiscountCents, currency)}`}
             />
           ) : null}
+          {sharedDiscountCents > 0 ? (
+            <Row
+              label="Shared ride discount"
+              value={`-${formatTaxiCents(sharedDiscountCents, currency)}`}
+            />
+          ) : null}
           <Row label="Total" value={total} bold />
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <OptionToggle
+            label="Shared ride (-15%)"
+            active={sharedRide}
+            onPress={() => setSharedRide((v) => !v)}
+          />
+          <OptionToggle
+            label="Premium driver only"
+            active={premiumDriverOnly}
+            onPress={() => setPremiumDriverOnly((v) => !v)}
+          />
+          {businessAccounts.length > 0 ? (
+            <>
+              <OptionToggle
+                label="Business ride"
+                active={businessRide}
+                onPress={() => setBusinessRide((v) => !v)}
+              />
+              {businessRide ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    {businessAccounts.map((entry) => {
+                      const id = entry.account?.id;
+                      if (!id) return null;
+                      const selected = businessAccountId === id;
+                      return (
+                        <TouchableOpacity
+                          key={entry.member_id}
+                          onPress={() => setBusinessAccountId(id)}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 10,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: selected ? "#38BDF8" : "#334155",
+                          }}
+                        >
+                          <Text style={{ color: "#E2E8F0" }}>
+                            {entry.account?.name ?? id.slice(0, 8)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              ) : null}
+            </>
+          ) : null}
         </View>
 
         <View style={{ gap: 8 }}>
@@ -388,5 +504,31 @@ function Row({
         {value}
       </Text>
     </View>
+  );
+}
+
+function OptionToggle({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: active ? "#38BDF8" : "#334155",
+        backgroundColor: active ? "rgba(56,189,248,0.12)" : "rgba(15,23,42,0.95)",
+      }}
+    >
+      <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>{label}</Text>
+    </TouchableOpacity>
   );
 }

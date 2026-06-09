@@ -33,6 +33,10 @@ export async function GET(req: NextRequest) {
           is_scheduled,
           scheduled_pickup_at,
           stop_count,
+          premium_driver_only,
+          business_trip_type,
+          is_shared_ride,
+          shared_ride_id,
           taxi_ride_stops (
             id,
             stop_order,
@@ -53,7 +57,26 @@ export async function GET(req: NextRequest) {
       return taxiJson({ ok: false, error: error.message }, 500);
     }
 
-    return taxiJson({ ok: true, offers: data ?? [] });
+    const offers = data ?? [];
+    for (const offer of offers) {
+      const ride = offer.taxi_rides as Record<string, unknown> | null;
+      const sharedRideId = ride?.shared_ride_id;
+      if (!sharedRideId) continue;
+
+      const { data: passengers } = await auth.supabaseAdmin
+        .from("taxi_shared_ride_passengers")
+        .select(
+          "id,segment_order,pickup_address,dropoff_address,share_discount_cents,status,client_user_id"
+        )
+        .eq("shared_ride_id", String(sharedRideId))
+        .order("segment_order", { ascending: true });
+
+      if (ride) {
+        ride.shared_passengers = passengers ?? [];
+      }
+    }
+
+    return taxiJson({ ok: true, offers });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
     return taxiJson({ ok: false, error: message }, 500);

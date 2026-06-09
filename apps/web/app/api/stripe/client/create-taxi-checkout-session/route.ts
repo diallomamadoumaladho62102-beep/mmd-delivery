@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled"
+        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -135,7 +135,9 @@ export async function POST(req: NextRequest) {
     const currency = String(ride.currency ?? "USD").trim().toLowerCase();
     const promoDiscountCents = Math.round(Number(ride.discount_cents ?? 0));
     const loyaltyDiscountCents = Math.round(Number(ride.loyalty_discount_cents ?? 0));
-    const totalDiscountCents = promoDiscountCents + loyaltyDiscountCents;
+    const sharedDiscountCents = Math.round(Number(ride.shared_discount_cents ?? 0));
+    const totalDiscountCents =
+      promoDiscountCents + loyaltyDiscountCents + sharedDiscountCents;
     const urls = buildCheckoutUrls(taxiRideId, req);
     const idempotencyKey = `taxi_checkout_${taxiRideId}_${user.id}_${amountCents}_${currency}`;
 
@@ -179,6 +181,13 @@ export async function POST(req: NextRequest) {
           reward_id: ride.loyalty_reward_id ? String(ride.loyalty_reward_id) : "",
           discount_cents: String(totalDiscountCents),
           loyalty_discount_cents: String(loyaltyDiscountCents),
+          shared_discount_cents: String(sharedDiscountCents),
+          business_account_id: ride.business_account_id
+            ? String(ride.business_account_id)
+            : "",
+          business_trip_type: String(ride.business_trip_type ?? "personal"),
+          is_shared_ride: ride.is_shared_ride ? "true" : "false",
+          premium_driver_only: ride.premium_driver_only ? "true" : "false",
           source_route: "/api/stripe/client/create-taxi-checkout-session",
         },
         payment_intent_data: {
@@ -193,6 +202,13 @@ export async function POST(req: NextRequest) {
             reward_id: ride.loyalty_reward_id ? String(ride.loyalty_reward_id) : "",
             discount_cents: String(totalDiscountCents),
             loyalty_discount_cents: String(loyaltyDiscountCents),
+            shared_discount_cents: String(sharedDiscountCents),
+            business_account_id: ride.business_account_id
+              ? String(ride.business_account_id)
+              : "",
+            business_trip_type: String(ride.business_trip_type ?? "personal"),
+            is_shared_ride: ride.is_shared_ride ? "true" : "false",
+            premium_driver_only: ride.premium_driver_only ? "true" : "false",
             source_route: "/api/stripe/client/create-taxi-checkout-session",
           },
         },

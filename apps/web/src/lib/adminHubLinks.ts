@@ -146,4 +146,22 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Récompenses fidélité taxi — crédits et points",
     permission: "taxi_rides.read",
   },
+  {
+    href: "/admin/taxi-shared-rides",
+    title: "Taxi Shared Rides",
+    description: "Partage de trajet taxi — matching et passagers",
+    permission: "taxi_shared_rides.read",
+  },
+  {
+    href: "/admin/taxi-business-accounts",
+    title: "Taxi Business",
+    description: "Comptes entreprise taxi — membres et dépenses",
+    permission: "taxi_business.read",
+  },
+  {
+    href: "/admin/taxi-driver-quality",
+    title: "Taxi Driver Quality",
+    description: "Scores qualité chauffeurs — premium promote/demote",
+    permission: "taxi_driver_quality.read",
+  },
 ];

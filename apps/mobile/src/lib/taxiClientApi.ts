@@ -54,6 +54,8 @@ export type TaxiQuoteInput = {
   passengerCount?: number;
   countryCode?: string;
   stops?: { address?: string; lat?: number; lng?: number }[];
+  sharedRide?: boolean;
+  premiumDriverOnly?: boolean;
 };
 
 export function quoteTaxiRide(input: TaxiQuoteInput) {
@@ -68,6 +70,7 @@ export function quoteTaxiRide(input: TaxiQuoteInput) {
     passengerCount: input.passengerCount ?? 1,
     countryCode: input.countryCode ?? "US",
     stops: input.stops,
+    sharedRide: input.sharedRide ?? false,
   });
 }
 
@@ -79,6 +82,10 @@ export function createTaxiRide(
     promoCode?: string;
     rewardId?: string;
     stops?: { address?: string; lat?: number; lng?: number }[];
+    sharedRide?: boolean;
+    premiumDriverOnly?: boolean;
+    businessAccountId?: string;
+    businessTripType?: "personal" | "business";
   }
 ) {
   return taxiPost("/api/taxi/rides/create", {
@@ -97,6 +104,10 @@ export function createTaxiRide(
     promoCode: input.promoCode,
     rewardId: input.rewardId,
     stops: input.stops,
+    sharedRide: input.sharedRide ?? false,
+    premiumDriverOnly: input.premiumDriverOnly ?? false,
+    businessAccountId: input.businessAccountId,
+    businessTripType: input.businessTripType ?? "personal",
   });
 }
 
@@ -226,4 +237,12 @@ export function createScheduledTaxiRide(
 
 export function cancelScheduledTaxiRide(scheduledId: string) {
   return taxiPost("/api/taxi/scheduled/cancel", { scheduled_id: scheduledId });
+}
+
+export function fetchTaxiBusinessAccounts() {
+  return taxiGet("/api/taxi/business/accounts");
+}
+
+export function fetchTaxiSharedRideSegment(sharedRideId: string) {
+  return taxiGet(`/api/taxi/shared/${sharedRideId}`);
 }
