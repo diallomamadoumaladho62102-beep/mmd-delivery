@@ -129,6 +129,7 @@ export type RootStackParamList = {
     dropoffAddress: string;
     vehicleClass: string;
     countryCode?: string;
+    countryResolution?: Record<string, unknown>;
     quote: Record<string, unknown>;
     route: Record<string, unknown>;
   };

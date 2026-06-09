@@ -3,6 +3,7 @@ import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
+import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1)
     );
-    const countryCode = normalizeTaxiCountryCode(
+    const manualCountryCode = normalizeTaxiCountryCode(
       body.countryCode ?? body.country_code ?? "US"
     );
     const clientNotes = String(
@@ -111,6 +112,18 @@ export async function POST(req: NextRequest) {
       }
       return taxiJson({ ok: false, error: message }, 400);
     }
+
+    const countryResult = await resolveTaxiCountryWithDetection({
+      manualCountryCode,
+      pickupLat: route.pickupLat,
+      pickupLng: route.pickupLng,
+    });
+
+    if (countryResult.ok === false) {
+      return taxiJson({ ok: false, ...countryResult }, 400);
+    }
+
+    const countryCode = countryResult.resolution.countryCode;
 
     const { data: quote, error: quoteError } = await auth.supabaseAdmin.rpc(
       "quote_taxi_ride",
@@ -159,6 +172,7 @@ export async function POST(req: NextRequest) {
         currency: String(quoteObj.currency ?? "USD"),
         pricing_snapshot_id: quoteObj.pricing_id ?? null,
         subtotal_cents: quoteObj.subtotal_cents ?? 0,
+        tax_cents: quoteObj.tax_cents ?? 0,
         platform_fee_cents: quoteObj.platform_fee_cents ?? 0,
         driver_payout_cents: quoteObj.driver_payout_cents ?? 0,
         total_cents: quoteObj.total_cents ?? 0,

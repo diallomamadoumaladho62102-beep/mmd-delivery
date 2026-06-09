@@ -52,6 +52,12 @@ export type AdminPermission =
   | "taxi_business.manage"
   | "taxi_driver_quality.read"
   | "taxi_driver_quality.manage"
+  | "taxi_exchange_rates.read"
+  | "taxi_exchange_rates.manage"
+  | "taxi_taxes.read"
+  | "taxi_taxes.manage"
+  | "taxi_countries.read"
+  | "taxi_countries.manage"
   | "communication.chats"
   | "communication.calls"
   | "communication.notify"
@@ -98,6 +104,12 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_business.manage",
     "taxi_driver_quality.read",
     "taxi_driver_quality.manage",
+    "taxi_exchange_rates.read",
+    "taxi_exchange_rates.manage",
+    "taxi_taxes.read",
+    "taxi_taxes.manage",
+    "taxi_countries.read",
+    "taxi_countries.manage",
     "communication.chats",
     "communication.calls",
     "communication.notify",
@@ -144,6 +156,12 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_payouts.read",
     "taxi_payouts.manage",
     "taxi_promotions.read",
+    "taxi_exchange_rates.read",
+    "taxi_exchange_rates.manage",
+    "taxi_taxes.read",
+    "taxi_taxes.manage",
+    "taxi_countries.read",
+    "taxi_countries.manage",
     "taxi_business.read",
     "taxi_business.manage",
     "audit.read",

@@ -164,4 +164,22 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Scores qualité chauffeurs — premium promote/demote",
     permission: "taxi_driver_quality.read",
   },
+  {
+    href: "/admin/taxi-countries",
+    title: "Taxi Countries",
+    description: "Pays actifs, devise, langue, fuseau horaire",
+    permission: "taxi_countries.read",
+  },
+  {
+    href: "/admin/taxi-taxes",
+    title: "Taxi Taxes",
+    description: "Taxes par pays — TVA, sales tax placeholders",
+    permission: "taxi_taxes.read",
+  },
+  {
+    href: "/admin/taxi-exchange-rates",
+    title: "Taxi Exchange Rates",
+    description: "Taux de change de référence (display/analytics)",
+    permission: "taxi_exchange_rates.read",
+  },
 ];

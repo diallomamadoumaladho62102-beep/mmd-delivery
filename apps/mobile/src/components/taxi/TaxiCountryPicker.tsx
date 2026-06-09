@@ -10,6 +10,11 @@ import {
   fetchTaxiCountries,
   type TaxiCountryOption,
 } from "../../lib/taxiClientApi";
+import {
+  getTaxiCountryLabel,
+  getTaxiUiString,
+  resolveTaxiLanguageForCountry,
+} from "../../lib/taxiLocalization";
 
 type Props = {
   value: string;
@@ -60,10 +65,12 @@ export default function TaxiCountryPicker({ value, onChange }: Props) {
           alignItems: "center",
         }}
       >
-        <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Country</Text>
+        <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+          {getTaxiUiString("country", value)}
+        </Text>
         {selected ? (
           <Text style={{ color: "#64748B", fontSize: 12 }}>
-            {selected.currency_code}
+            {getTaxiUiString("currency", value)} · {selected.currency_code}
           </Text>
         ) : null}
       </View>
@@ -92,7 +99,10 @@ export default function TaxiCountryPicker({ value, onChange }: Props) {
                   {country.country_code}
                 </Text>
                 <Text style={{ color: "#94A3B8", fontSize: 11, marginTop: 2 }}>
-                  {country.name}
+                  {getTaxiCountryLabel(
+                    country.country_code,
+                    resolveTaxiLanguageForCountry(country.country_code)
+                  )}
                 </Text>
               </TouchableOpacity>
             );

@@ -279,3 +279,24 @@ export async function assertCanManageTaxiPromotions(request?: NextRequest) {
     request
   );
 }
+
+export async function assertCanManageTaxiExchangeRates(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_exchange_rates.manage"),
+    request
+  );
+}
+
+export async function assertCanManageTaxiTaxes(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_taxes.manage"),
+    request
+  );
+}
+
+export async function assertCanManageTaxiCountries(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_countries.manage"),
+    request
+  );
+}

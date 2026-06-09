@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
+import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { TAXI_SHARED_RIDE_DISCOUNT_PERCENT } from "@/lib/taxiSharedRideDispatch";
 
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1)
     );
-    const countryCode = normalizeTaxiCountryCode(
+    const manualCountryCode = normalizeTaxiCountryCode(
       body.countryCode ?? body.country_code ?? "US"
     );
 
@@ -52,6 +53,18 @@ export async function POST(req: NextRequest) {
       }
       return taxiJson({ ok: false, error: message }, 400);
     }
+
+    const countryResult = await resolveTaxiCountryWithDetection({
+      manualCountryCode,
+      pickupLat: route.pickupLat,
+      pickupLng: route.pickupLng,
+    });
+
+    if (countryResult.ok === false) {
+      return taxiJson({ ok: false, ...countryResult }, 400);
+    }
+
+    const countryCode = countryResult.resolution.countryCode;
 
     const { data: quote, error: quoteError } = await auth.supabaseAdmin.rpc(
       "quote_taxi_ride",
@@ -83,6 +96,7 @@ export async function POST(req: NextRequest) {
 
     return taxiJson({
       ok: true,
+      country_resolution: countryResult.resolution,
       quote: {
         ...quoteObj,
         shared_ride: sharedRide,

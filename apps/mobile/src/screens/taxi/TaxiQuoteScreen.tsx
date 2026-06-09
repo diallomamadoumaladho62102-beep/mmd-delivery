@@ -20,12 +20,17 @@ import {
   fetchTaxiBusinessAccounts,
   fetchTaxiFavoriteDrivers,
   fetchTaxiLoyaltyRewards,
-  formatTaxiCents,
   quoteTaxiRide,
   startTaxiCheckout,
   validateTaxiPromotion,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
+import {
+  formatTaxiLocalizedCurrency,
+  getTaxiCountryLabel,
+  getTaxiUiString,
+  resolveTaxiLanguageForCountry,
+} from "../../lib/taxiLocalization";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
@@ -55,6 +60,10 @@ export default function TaxiQuoteScreen() {
   const [quoteState, setQuoteState] = useState(route.params.quote);
   const [sharedDiscountCents, setSharedDiscountCents] = useState(0);
   const countryCode = route.params.countryCode ?? "US";
+  const lang = resolveTaxiLanguageForCountry(countryCode);
+  const countryResolution = route.params.countryResolution as
+    | { source?: string; detectedCountryCode?: string | null }
+    | undefined;
 
   useEffect(() => {
     void fetchTaxiBusinessAccounts()
@@ -122,6 +131,8 @@ export default function TaxiQuoteScreen() {
   ]);
 
   const currency = String(quoteState?.currency ?? "USD");
+  const fmt = (cents: unknown) =>
+    formatTaxiLocalizedCurrency(cents, currency, countryCode);
   const grossTotalCents = Number(
     quoteState?.gross_total_cents ?? quoteState?.total_cents ?? 0
   );
@@ -129,9 +140,10 @@ export default function TaxiQuoteScreen() {
     0,
     grossTotalCents - promoDiscountCents - rewardDiscountCents - sharedDiscountCents
   );
-  const total = formatTaxiCents(netTotalCents, currency);
-  const platform = formatTaxiCents(quoteState?.platform_fee_cents, currency);
-  const subtotal = formatTaxiCents(quoteState?.subtotal_cents, currency);
+  const total = fmt(netTotalCents);
+  const platform = fmt(quoteState?.platform_fee_cents);
+  const subtotal = fmt(quoteState?.subtotal_cents);
+  const taxCents = Number(quoteState?.tax_cents ?? 0);
 
   async function handleApplyPromo() {
     const code = promoCode.trim();
@@ -218,11 +230,22 @@ export default function TaxiQuoteScreen() {
         </TouchableOpacity>
 
         <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
-          Your estimate
+          {getTaxiUiString("estimate", countryCode)}
         </Text>
 
         <Card label="Vehicle" value={String(vehicleClass).toUpperCase()} />
-        <Card label="Country" value={countryCode} />
+        <Card
+          label={getTaxiUiString("country", countryCode)}
+          value={`${countryCode} · ${getTaxiCountryLabel(countryCode, lang)}`}
+        />
+        {countryResolution?.source === "coords" ? (
+          <Text style={{ color: "#64748B", fontSize: 12 }}>
+            {getTaxiUiString("detectedCountry", countryCode)}
+            {countryResolution.detectedCountryCode
+              ? `: ${countryResolution.detectedCountryCode}`
+              : ""}
+          </Text>
+        ) : null}
         <Card
           label="Distance"
           value={`${Number(routeInfo?.distanceMiles ?? 0).toFixed(1)} mi`}
@@ -245,28 +268,33 @@ export default function TaxiQuoteScreen() {
             gap: 8,
           }}
         >
-          <Text style={{ color: "#94A3B8", fontWeight: "700" }}>Price breakdown</Text>
-          <Row label="Subtotal" value={subtotal} />
-          <Row label="Platform fee" value={platform} />
+          <Text style={{ color: "#94A3B8", fontWeight: "700" }}>
+            {lang === "fr" ? "Détail du prix" : "Price breakdown"}
+          </Text>
+          <Row label={getTaxiUiString("subtotal", countryCode)} value={subtotal} />
+          {taxCents > 0 ? (
+            <Row label={getTaxiUiString("tax", countryCode)} value={fmt(taxCents)} />
+          ) : null}
+          <Row label={getTaxiUiString("platformFee", countryCode)} value={platform} />
           {promoDiscountCents > 0 ? (
             <Row
               label="Promo discount"
-              value={`-${formatTaxiCents(promoDiscountCents, currency)}`}
+              value={`-${fmt(promoDiscountCents)}`}
             />
           ) : null}
           {rewardDiscountCents > 0 ? (
             <Row
               label="Reward credit"
-              value={`-${formatTaxiCents(rewardDiscountCents, currency)}`}
+              value={`-${fmt(rewardDiscountCents)}`}
             />
           ) : null}
           {sharedDiscountCents > 0 ? (
             <Row
               label="Shared ride discount"
-              value={`-${formatTaxiCents(sharedDiscountCents, currency)}`}
+              value={`-${fmt(sharedDiscountCents)}`}
             />
           ) : null}
-          <Row label="Total" value={total} bold />
+          <Row label={getTaxiUiString("total", countryCode)} value={total} bold />
         </View>
 
         <View style={{ gap: 10 }}>

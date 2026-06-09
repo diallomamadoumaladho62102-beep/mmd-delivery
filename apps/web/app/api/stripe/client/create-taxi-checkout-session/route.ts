@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only"
+        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -133,6 +133,7 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = String(ride.currency ?? "USD").trim().toLowerCase();
+    const taxCents = Math.round(Number((ride as { tax_cents?: number }).tax_cents ?? 0));
     const promoDiscountCents = Math.round(Number(ride.discount_cents ?? 0));
     const loyaltyDiscountCents = Math.round(Number(ride.loyalty_discount_cents ?? 0));
     const sharedDiscountCents = Math.round(Number(ride.shared_discount_cents ?? 0));
@@ -177,6 +178,8 @@ export async function POST(req: NextRequest) {
           user_id: String(user.id),
           amount_cents: String(amountCents),
           amount_dollars: (amountCents / 100).toFixed(2),
+          tax_cents: String(taxCents),
+          currency: currency.toUpperCase(),
           promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
           reward_id: ride.loyalty_reward_id ? String(ride.loyalty_reward_id) : "",
           discount_cents: String(totalDiscountCents),
@@ -198,6 +201,8 @@ export async function POST(req: NextRequest) {
             user_id: String(user.id),
             amount_cents: String(amountCents),
             amount_dollars: (amountCents / 100).toFixed(2),
+            tax_cents: String(taxCents),
+            currency: currency.toUpperCase(),
             promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
             reward_id: ride.loyalty_reward_id ? String(ride.loyalty_reward_id) : "",
             discount_cents: String(totalDiscountCents),

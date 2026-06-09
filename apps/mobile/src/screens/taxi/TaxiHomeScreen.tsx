@@ -18,6 +18,7 @@ import {
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
 import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
+import { getTaxiUiString } from "../../lib/taxiLocalization";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 
@@ -58,18 +59,26 @@ export default function TaxiHomeScreen() {
         throw new Error(result?.message ?? result?.error ?? "Quote failed");
       }
 
+      const resolvedCountry =
+        (result.country_resolution as { countryCode?: string } | undefined)
+          ?.countryCode ?? countryCode;
+
       navigation.navigate("TaxiQuote", {
         pickupAddress,
         dropoffAddress,
         vehicleClass,
-        countryCode,
+        countryCode: resolvedCountry,
+        countryResolution: result.country_resolution,
         quote: result.quote,
         route: result.route,
       });
     } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Unable to get estimate";
       Alert.alert(
         "Estimate failed",
-        e instanceof Error ? e.message : "Unable to get estimate"
+        message === "country_mismatch" || message.includes("country")
+          ? "Pickup location does not match selected country."
+          : message
       );
     } finally {
       setLoading(false);
@@ -101,7 +110,7 @@ export default function TaxiHomeScreen() {
           />
           {currencyCode ? (
             <Text style={{ color: "#64748B", fontSize: 12 }}>
-              Estimates in {currencyCode}
+              {getTaxiUiString("estimatesIn", countryCode)} {currencyCode}
             </Text>
           ) : null}
         </View>
