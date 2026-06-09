@@ -76,6 +76,7 @@ import RestaurantSetupScreen from "../screens/restaurant/RestaurantSetupScreen";
 import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
 import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
 
+import LocationPickerTestScreen from "../screens/LocationPickerTestScreen";
 import TaxiHomeScreen from "../screens/taxi/TaxiHomeScreen";
 import TaxiQuoteScreen from "../screens/taxi/TaxiQuoteScreen";
 import TaxiFavoritesScreen from "../screens/taxi/TaxiFavoritesScreen";
@@ -106,6 +107,7 @@ export type RootStackParamList = {
   RestaurantAuth: undefined;
 
   ClientProfile: undefined;
+  LocationPickerTest: undefined;
 
   RestaurantGate: undefined;
   RestaurantSetup: undefined;
@@ -486,6 +488,7 @@ export function AppNavigator({
       r === "ClientInbox" ||
       r === "ClientChat" ||
       r === "ClientProfile" ||
+      r === "LocationPickerTest" ||
       r === "TaxiHome" ||
       r === "TaxiQuote" ||
       r === "TaxiRideTracking" ||
@@ -866,6 +869,11 @@ export function AppNavigator({
         <Stack.Screen name="RestaurantAuth" component={RestaurantAuthScreen} />
 
         <Stack.Screen name="ClientProfile" component={ClientProfileScreen} />
+        <Stack.Screen
+          name="LocationPickerTest"
+          component={LocationPickerTestScreen}
+          options={{ title: "Africa Location Test" }}
+        />
 
         <Stack.Screen name="RestaurantGate" component={RestaurantGateScreen} />
         <Stack.Screen

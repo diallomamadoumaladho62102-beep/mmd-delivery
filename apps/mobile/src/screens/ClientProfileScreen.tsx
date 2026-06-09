@@ -682,6 +682,25 @@ export function ClientProfileScreen() {
             </Text>
           )}
         </TouchableOpacity>
+
+        {typeof __DEV__ !== "undefined" && __DEV__ ? (
+          <TouchableOpacity
+            onPress={() => navigation.navigate("LocationPickerTest")}
+            style={{
+              marginTop: 14,
+              borderWidth: 1,
+              borderColor: "#334155",
+              borderRadius: 12,
+              paddingVertical: 12,
+              alignItems: "center",
+              backgroundColor: "#111827",
+            }}
+          >
+            <Text style={{ color: "#94A3B8", fontWeight: "700" }}>
+              Internal: Africa Location Test (GN)
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
