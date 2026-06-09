@@ -20,6 +20,10 @@ import { API_BASE_URL } from "../lib/apiBase";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { startCheckoutForDeliveryRequest } from "../utils/stripe";
 import { fetchMmdLocation } from "../lib/mmdLocationApi";
+import {
+  applyMmdLocationSelection,
+  useMmdLocationPickerResult,
+} from "../lib/useMmdLocationPickerResult";
 import { useTranslation } from "react-i18next";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -333,6 +337,34 @@ export function DeliveryRequestScreen() {
         console.warn("dropoff location preload failed:", e);
       });
   }, [dropoffLocationId]);
+
+  const handleDropoffLocation = useCallback(
+    (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
+      applyMmdLocationSelection(location, {
+        setLocationId: (id) => setDropoffLocationId(id),
+        setAddress: (value) => {
+          setDropoffAddress(value);
+          lastEstimateKeyRef.current = "";
+        },
+        setCoords: setDropoffCoords,
+      });
+    },
+    []
+  );
+
+  useMmdLocationPickerResult(route, navigation, {
+    delivery_dropoff: handleDropoffLocation,
+  });
+
+  function openDropoffLocationPicker() {
+    navigation.navigate("MMDLocationPicker", {
+      countryCode: "GN",
+      title: tr("deliveryRequest.fields.dropoffExactLocation", "Dropoff exact location"),
+      submitLabel: tr("deliveryRequest.fields.useDropoffLocation", "Use dropoff location"),
+      returnTo: "DeliveryRequest",
+      pickerContext: "delivery_dropoff",
+    });
+  }
 
   const validate = useCallback(() => {
     const pickup = normalizeAddress(pickupAddress);
@@ -1094,8 +1126,28 @@ export function DeliveryRequestScreen() {
               }}
               placeholder={tr("deliveryRequest.fields.dropoffPlaceholder", "Entre l’adresse dropoff")}
               placeholderTextColor="#64748B"
-              style={[inputStyle, { marginBottom: 14 }]}
+              style={[inputStyle, { marginBottom: 10 }]}
             />
+            <TouchableOpacity
+              onPress={openDropoffLocationPicker}
+              style={{
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: "center",
+                marginBottom: 14,
+                borderWidth: 1,
+                borderColor: dropoffLocationId ? "#22C55E" : "#334155",
+                backgroundColor: dropoffLocationId
+                  ? "rgba(34,197,94,0.12)"
+                  : "rgba(15,23,42,0.8)",
+              }}
+            >
+              <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+                {dropoffLocationId
+                  ? tr("deliveryRequest.fields.dropoffPinned", "Dropoff pinned on map")
+                  : tr("deliveryRequest.fields.pinDropoff", "Pin exact dropoff on map")}
+              </Text>
+            </TouchableOpacity>
 
             <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
                 {tr("deliveryRequest.fields.pickupContactName", "Nom du contact pickup")}

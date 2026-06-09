@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -31,6 +31,10 @@ import {
   getTaxiUiString,
   resolveTaxiLanguageForCountry,
 } from "../../lib/taxiLocalization";
+import {
+  applyMmdLocationSelection,
+  useMmdLocationPickerResult,
+} from "../../lib/useMmdLocationPickerResult";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
@@ -59,6 +63,15 @@ export default function TaxiQuoteScreen() {
   >([]);
   const [quoteState, setQuoteState] = useState(route.params.quote);
   const [sharedDiscountCents, setSharedDiscountCents] = useState(0);
+  const [pickupAddress, setPickupAddress] = useState(route.params.pickupAddress);
+  const [dropoffAddress, setDropoffAddress] = useState(route.params.dropoffAddress);
+  const [pickupLocationId, setPickupLocationId] = useState(
+    route.params.pickupLocationId ?? ""
+  );
+  const [dropoffLocationId, setDropoffLocationId] = useState(
+    route.params.dropoffLocationId ?? ""
+  );
+  const [routeInfo, setRouteInfo] = useState(route.params.route);
   const countryCode = route.params.countryCode ?? "US";
   const lang = resolveTaxiLanguageForCountry(countryCode);
   const countryResolution = route.params.countryResolution as
@@ -95,20 +108,42 @@ export default function TaxiQuoteScreen() {
       .catch(() => setRewards([]));
   }, []);
 
-  const { pickupAddress, dropoffAddress, vehicleClass, route: routeInfo, pickupLocationId, dropoffLocationId } =
-    route.params;
+  const handlePickupLocation = useCallback(
+    (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
+      applyMmdLocationSelection(location, {
+        setLocationId: setPickupLocationId,
+        setAddress: setPickupAddress,
+      });
+    },
+    []
+  );
+
+  const handleDropoffLocation = useCallback(
+    (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
+      applyMmdLocationSelection(location, {
+        setLocationId: setDropoffLocationId,
+        setAddress: setDropoffAddress,
+      });
+    },
+    []
+  );
+
+  useMmdLocationPickerResult(route, navigation, {
+    taxi_quote_pickup: handlePickupLocation,
+    taxi_quote_dropoff: handleDropoffLocation,
+  });
 
   useEffect(() => {
     void quoteTaxiRide({
       pickupAddress,
       dropoffAddress,
-      pickupLocationId,
-      dropoffLocationId,
+      pickupLocationId: pickupLocationId || undefined,
+      dropoffLocationId: dropoffLocationId || undefined,
       pickupLat: Number(routeInfo?.pickupLat),
       pickupLng: Number(routeInfo?.pickupLng),
       dropoffLat: Number(routeInfo?.dropoffLat),
       dropoffLng: Number(routeInfo?.dropoffLng),
-      vehicleClass: vehicleClass as TaxiVehicleClass,
+      vehicleClass: route.params.vehicleClass as TaxiVehicleClass,
       countryCode,
       sharedRide,
     })
@@ -116,6 +151,9 @@ export default function TaxiQuoteScreen() {
         if (result?.ok && result.quote) {
           setQuoteState(result.quote);
           setSharedDiscountCents(Number(result.quote.shared_discount_cents ?? 0));
+          if (result.route) {
+            setRouteInfo(result.route);
+          }
         }
       })
       .catch(() => {
@@ -129,10 +167,10 @@ export default function TaxiQuoteScreen() {
     dropoffAddress,
     pickupLocationId,
     dropoffLocationId,
-    vehicleClass,
-    route.params.quote,
-    routeInfo,
+    route.params.vehicleClass,
   ]);
+
+  const vehicleClass = route.params.vehicleClass;
 
   const currency = String(quoteState?.currency ?? "USD");
   const fmt = (cents: unknown) =>
@@ -173,8 +211,8 @@ export default function TaxiQuoteScreen() {
       const created = await createTaxiRide({
         pickupAddress,
         dropoffAddress,
-        pickupLocationId,
-        dropoffLocationId,
+        pickupLocationId: pickupLocationId || undefined,
+        dropoffLocationId: dropoffLocationId || undefined,
         pickupLat: Number(routeInfo?.pickupLat),
         pickupLng: Number(routeInfo?.pickupLng),
         dropoffLat: Number(routeInfo?.dropoffLat),
@@ -262,6 +300,55 @@ export default function TaxiQuoteScreen() {
         />
         <Card label="Pickup" value={pickupAddress} />
         <Card label="Dropoff" value={dropoffAddress} />
+
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("MMDLocationPicker", {
+                countryCode,
+                title: "Pickup exact location",
+                submitLabel: "Use pickup location",
+                returnTo: "TaxiQuote",
+                pickerContext: "taxi_quote_pickup",
+              })
+            }
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: pickupLocationId ? "#22C55E" : "#334155",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#E2E8F0", fontWeight: "700", fontSize: 12 }}>
+              {pickupLocationId ? "Pickup pinned" : "Pin pickup"}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate("MMDLocationPicker", {
+                countryCode,
+                title: "Dropoff exact location",
+                submitLabel: "Use dropoff location",
+                returnTo: "TaxiQuote",
+                pickerContext: "taxi_quote_dropoff",
+              })
+            }
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: dropoffLocationId ? "#22C55E" : "#334155",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#E2E8F0", fontWeight: "700", fontSize: 12 }}>
+              {dropoffLocationId ? "Dropoff pinned" : "Pin dropoff"}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View
           style={{

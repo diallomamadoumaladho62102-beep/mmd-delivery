@@ -27,6 +27,8 @@ export type NavigationTrip = {
   etaMinutes: number;
   /** Raw order country_code when present on the loaded row. */
   orderCountryCode?: unknown;
+  pickupLocationId?: string | null;
+  dropoffLocationId?: string | null;
 };
 
 export type NavigationCameraMode = "follow" | "free";

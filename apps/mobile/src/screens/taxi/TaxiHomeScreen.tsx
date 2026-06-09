@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -19,6 +19,10 @@ import {
 } from "../../lib/taxiClientApi";
 import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
 import { getTaxiUiString } from "../../lib/taxiLocalization";
+import {
+  applyMmdLocationSelection,
+  useMmdLocationPickerResult,
+} from "../../lib/useMmdLocationPickerResult";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
@@ -44,6 +48,52 @@ export default function TaxiHomeScreen() {
   const [countryCode, setCountryCode] = useState("US");
   const [currencyCode, setCurrencyCode] = useState("USD");
   const [loading, setLoading] = useState(false);
+
+  const handlePickupLocation = useCallback(
+    (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
+      applyMmdLocationSelection(location, {
+        setLocationId: setPickupLocationId,
+        setAddress: setPickup,
+        setCountryCode: setCountryCode,
+      });
+    },
+    []
+  );
+
+  const handleDropoffLocation = useCallback(
+    (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
+      applyMmdLocationSelection(location, {
+        setLocationId: setDropoffLocationId,
+        setAddress: setDropoff,
+      });
+    },
+    []
+  );
+
+  useMmdLocationPickerResult(route, navigation, {
+    taxi_pickup: handlePickupLocation,
+    taxi_dropoff: handleDropoffLocation,
+  });
+
+  function openPickupPicker() {
+    navigation.navigate("MMDLocationPicker", {
+      countryCode,
+      title: "Pickup exact location",
+      submitLabel: "Use pickup location",
+      returnTo: "TaxiHome",
+      pickerContext: "taxi_pickup",
+    });
+  }
+
+  function openDropoffPicker() {
+    navigation.navigate("MMDLocationPicker", {
+      countryCode,
+      title: "Dropoff exact location",
+      submitLabel: "Use dropoff location",
+      returnTo: "TaxiHome",
+      pickerContext: "taxi_dropoff",
+    });
+  }
 
   async function handleQuote() {
     const pickupAddress = pickup.trim();
@@ -138,6 +188,23 @@ export default function TaxiHomeScreen() {
             placeholderTextColor="#64748B"
             style={inputStyle}
           />
+          <TouchableOpacity
+            onPress={openPickupPicker}
+            style={{
+              borderRadius: 12,
+              paddingVertical: 12,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: pickupLocationId ? "#22C55E" : "#334155",
+              backgroundColor: pickupLocationId
+                ? "rgba(34,197,94,0.12)"
+                : "rgba(15,23,42,0.8)",
+            }}
+          >
+            <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+              {pickupLocationId ? "Pickup pinned on map" : "Pin exact pickup on map"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={{ gap: 10 }}>
@@ -149,6 +216,23 @@ export default function TaxiHomeScreen() {
             placeholderTextColor="#64748B"
             style={inputStyle}
           />
+          <TouchableOpacity
+            onPress={openDropoffPicker}
+            style={{
+              borderRadius: 12,
+              paddingVertical: 12,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: dropoffLocationId ? "#22C55E" : "#334155",
+              backgroundColor: dropoffLocationId
+                ? "rgba(34,197,94,0.12)"
+                : "rgba(15,23,42,0.8)",
+            }}
+          >
+            <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+              {dropoffLocationId ? "Dropoff pinned on map" : "Pin exact dropoff on map"}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={{ gap: 10 }}>

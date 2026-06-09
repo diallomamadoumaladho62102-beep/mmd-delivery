@@ -61,6 +61,7 @@ import { DriverNavigationControls } from "../components/driver/DriverNavigationC
 import { DriverArrivalBanner } from "../components/driver/DriverArrivalBanner";
 import { DriverMapFallbackStates } from "../components/driver/DriverMapFallbackStates";
 import { DriverReportButton } from "../components/driver/DriverReportButton";
+import { DriverTripLocationCard } from "../components/location/DriverTripLocationCard";
 import { useNearbyDriverMapReports } from "../hooks/useNearbyDriverMapReports";
 import { useDriverTripHistory } from "../hooks/useDriverTripHistory";
 import { useDriverMapCountryCode } from "../hooks/useDriverMapCountryCode";
@@ -143,6 +144,12 @@ function buildTripFromRow(params: {
       numberOrNull(row.duration_minutes) ??
       0,
     orderCountryCode: extractCountryCodeField(row),
+    pickupLocationId: row.pickup_location_id
+      ? String(row.pickup_location_id)
+      : null,
+    dropoffLocationId: row.dropoff_location_id
+      ? String(row.dropoff_location_id)
+      : null,
   };
 }
 
@@ -212,6 +219,13 @@ export default function DriverMapScreen() {
     return trip.stage === "dropoff" ? trip.dropoff : trip.pickup;
   }, [trip]);
 
+  const activeLocationId = useMemo(() => {
+    if (!trip) return null;
+    return trip.stage === "dropoff"
+      ? trip.dropoffLocationId ?? null
+      : trip.pickupLocationId ?? null;
+  }, [trip]);
+
   const destinationAddress =
     trip?.stage === "dropoff"
       ? trip.dropoffAddress
@@ -242,6 +256,19 @@ export default function DriverMapScreen() {
     navigationActive,
     enabled: mapboxReady && !!location.point,
   });
+
+  const focusLocationPin = useCallback(
+    (coords: { lat: number; lng: number }) => {
+      camera.setFreeMode();
+      cameraRef.current?.setCamera({
+        centerCoordinate: [coords.lng, coords.lat],
+        zoomLevel: 17,
+        animationDuration: 600,
+        animationMode: "flyTo",
+      });
+    },
+    [camera]
+  );
 
   const arrival = useArrivalGeofence({
     enabled: !!trip && !!location.point,
@@ -312,7 +339,7 @@ export default function DriverMapScreen() {
           ? await supabase
               .from("delivery_requests")
               .select(
-                "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout",
+                "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout,dropoff_location_id",
               )
               .eq("id", routeOrderId)
               .maybeSingle()
@@ -320,7 +347,7 @@ export default function DriverMapScreen() {
             ? await supabase
                 .from("taxi_rides")
                 .select(
-                  "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code",
+                  "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code,pickup_location_id,dropoff_location_id",
                 )
                 .eq("id", routeOrderId)
                 .maybeSingle()
@@ -744,6 +771,16 @@ export default function DriverMapScreen() {
                 </Text>
               )}
             </TouchableOpacity>
+
+            <DriverTripLocationCard
+              locationId={activeLocationId}
+              title={
+                trip.stage === "dropoff"
+                  ? t("driver.map.trip.dropoffDetails", "Client dropoff details")
+                  : t("driver.map.trip.pickupDetails", "Client pickup details")
+              }
+              onViewOnMap={focusLocationPin}
+            />
           </View>
         )}
 

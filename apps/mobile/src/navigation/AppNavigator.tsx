@@ -77,6 +77,8 @@ import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
 import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
 
 import LocationPickerTestScreen from "../screens/LocationPickerTestScreen";
+import MMDLocationPickerScreen from "../screens/MMDLocationPickerScreen";
+import type { MmdLocationPickerResult } from "../lib/mmdLocationDisplay";
 import TaxiHomeScreen from "../screens/taxi/TaxiHomeScreen";
 import TaxiQuoteScreen from "../screens/taxi/TaxiQuoteScreen";
 import TaxiFavoritesScreen from "../screens/taxi/TaxiFavoritesScreen";
@@ -100,7 +102,12 @@ export type RootStackParamList = {
   RoleSelect: undefined;
   ResetPassword: undefined;
 
-  DeliveryRequest: { dropoffLocationId?: string } | undefined;
+  DeliveryRequest:
+    | {
+        dropoffLocationId?: string;
+        locationPickerResult?: MmdLocationPickerResult;
+      }
+    | undefined;
 
   ClientAuth: undefined;
   DriverAuth: { ref?: string; code?: string } | undefined;
@@ -108,6 +115,18 @@ export type RootStackParamList = {
 
   ClientProfile: undefined;
   LocationPickerTest: undefined;
+  MMDLocationPicker: {
+    countryCode?: string;
+    title?: string;
+    submitLabel?: string;
+    returnTo: "TaxiHome" | "TaxiQuote" | "DeliveryRequest";
+    pickerContext:
+      | "taxi_pickup"
+      | "taxi_dropoff"
+      | "taxi_quote_pickup"
+      | "taxi_quote_dropoff"
+      | "delivery_dropoff";
+  };
 
   RestaurantGate: undefined;
   RestaurantSetup: undefined;
@@ -125,10 +144,13 @@ export type RootStackParamList = {
     targetRole?: "restaurant" | "driver" | "admin" | "";
   };
 
-  TaxiHome: {
-    pickupLocationId?: string;
-    dropoffLocationId?: string;
-  } | undefined;
+  TaxiHome:
+    | {
+        pickupLocationId?: string;
+        dropoffLocationId?: string;
+        locationPickerResult?: MmdLocationPickerResult;
+      }
+    | undefined;
   TaxiQuote: {
     pickupAddress: string;
     dropoffAddress: string;
@@ -139,6 +161,7 @@ export type RootStackParamList = {
     countryResolution?: Record<string, unknown>;
     quote: Record<string, unknown>;
     route: Record<string, unknown>;
+    locationPickerResult?: MmdLocationPickerResult;
   };
   TaxiRideTracking: { rideId: string };
   TaxiHistory: undefined;
@@ -494,6 +517,7 @@ export function AppNavigator({
       r === "ClientChat" ||
       r === "ClientProfile" ||
       r === "LocationPickerTest" ||
+      r === "MMDLocationPicker" ||
       r === "TaxiHome" ||
       r === "TaxiQuote" ||
       r === "TaxiRideTracking" ||
@@ -878,6 +902,12 @@ export function AppNavigator({
           name="LocationPickerTest"
           component={LocationPickerTestScreen}
           options={{ title: "Africa Location Test" }}
+        />
+
+        <Stack.Screen
+          name="MMDLocationPicker"
+          component={MMDLocationPickerScreen}
+          options={{ title: "Exact location" }}
         />
 
         <Stack.Screen name="RestaurantGate" component={RestaurantGateScreen} />

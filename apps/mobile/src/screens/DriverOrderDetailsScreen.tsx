@@ -31,6 +31,7 @@ import {
   startDriverLocationTracking,
   stopDriverLocationTracking,
 } from "../lib/driverLocationTracker";
+import { DriverTripLocationCard } from "../components/location/DriverTripLocationCard";
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
 const MAP_STYLE_STREETS =
@@ -75,6 +76,7 @@ type Order = {
   pickup_lng: number | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
+  dropoff_location_id?: string | null;
   source_table?: "orders" | "delivery_requests";
 };
 
@@ -554,6 +556,7 @@ function mapDeliveryRequestToOrder(row: any): Order {
     pickup_lng: toFiniteNumber(row?.pickup_lng ?? row?.pickup_lon ?? row?.pickup_long ?? row?.pickup_longitude),
     dropoff_lat: toFiniteNumber(row?.dropoff_lat),
     dropoff_lng: toFiniteNumber(row?.dropoff_lng ?? row?.dropoff_lon ?? row?.dropoff_long ?? row?.dropoff_longitude),
+    dropoff_location_id: row?.dropoff_location_id ?? null,
     source_table: "delivery_requests",
   };
 }
@@ -889,7 +892,7 @@ export function DriverOrderDetailsScreen() {
             `id,status,payment_status,driver_id,created_at,updated_at,
              created_by,client_user_id,user_id,
              pickup_address,dropoff_address,
-             pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
+             pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,dropoff_location_id,
              distance_miles,eta_minutes,delivery_fee,total,currency,
              driver_delivery_payout,platform_fee,
              pickup_code,dropoff_code,picked_up_at,delivered_at`
@@ -2521,6 +2524,17 @@ export function DriverOrderDetailsScreen() {
               </Text>
             </Text>
           </View>
+
+          {isDeliveryRequest && order.dropoff_location_id ? (
+            <DriverTripLocationCard
+              locationId={order.dropoff_location_id}
+              title={t(
+                "driver.orderDetails.dropoffLocationDetails",
+                "Client dropoff location details"
+              )}
+              onViewOnMap={() => openMmdNavigation()}
+            />
+          ) : null}
 
           {isAssignedDriver && !isFinalStatus(order.status) && (
             <TouchableOpacity
