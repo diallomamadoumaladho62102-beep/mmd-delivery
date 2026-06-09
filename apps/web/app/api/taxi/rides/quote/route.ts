@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { TAXI_SHARED_RIDE_DISCOUNT_PERCENT } from "@/lib/taxiSharedRideDispatch";
 
 export const runtime = "nodejs";
@@ -37,9 +38,9 @@ export async function POST(req: NextRequest) {
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1)
     );
-    const countryCode = String(
+    const countryCode = normalizeTaxiCountryCode(
       body.countryCode ?? body.country_code ?? "US"
-    ).trim();
+    );
 
     let route;
     try {

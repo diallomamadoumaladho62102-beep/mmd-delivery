@@ -7,6 +7,7 @@ import {
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
+import { normalizeTaxiCurrencyForStripe } from "@/lib/taxiCountries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,8 +46,6 @@ type DriverProfileRow = {
   stripe_account_id: string | null;
 };
 
-const ALLOWED_CURRENCIES = new Set(["usd", "eur", "gbp", "cad"]);
-
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
 }
@@ -72,8 +71,7 @@ function lower(v: unknown): string {
 }
 
 function normalizeCurrency(v: unknown): string {
-  const c = lower(v || "usd");
-  return ALLOWED_CURRENCIES.has(c) ? c : "usd";
+  return normalizeTaxiCurrencyForStripe(v, "usd");
 }
 
 function timingSafeEqualStrings(a: string, b: string): boolean {

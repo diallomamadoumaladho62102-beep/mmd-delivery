@@ -243,6 +243,30 @@ export function fetchTaxiBusinessAccounts() {
   return taxiGet("/api/taxi/business/accounts");
 }
 
+export type TaxiCountryOption = {
+  country_code: string;
+  name: string;
+  currency_code: string;
+  currency_name?: string;
+  minor_units?: number;
+  sort_order?: number;
+};
+
+export type TaxiCurrencyOption = {
+  code: string;
+  name: string;
+  minor_units?: number;
+  sort_order?: number;
+};
+
+export function fetchTaxiCountries(): Promise<{
+  ok: boolean;
+  countries: TaxiCountryOption[];
+  currencies: TaxiCurrencyOption[];
+}> {
+  return taxiGet("/api/taxi/countries");
+}
+
 export function fetchTaxiSharedRideSegment(sharedRideId: string) {
   return taxiGet(`/api/taxi/shared/${sharedRideId}`);
 }

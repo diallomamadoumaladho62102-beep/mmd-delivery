@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,9 +86,9 @@ export async function POST(req: NextRequest) {
       1,
       Number(body.passengerCount ?? body.passenger_count ?? 1)
     );
-    const countryCode = String(
+    const countryCode = normalizeTaxiCountryCode(
       body.countryCode ?? body.country_code ?? "US"
-    ).trim();
+    );
     const clientNotes = String(
       body.clientNotes ?? body.client_notes ?? ""
     ).trim();
