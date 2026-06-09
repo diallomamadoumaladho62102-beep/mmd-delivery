@@ -23,6 +23,10 @@ Code paths for payment, commissions, dispatch, and legal URLs are in the repo.
 1. `20260604130000_fix_refresh_order_commissions_return_type.sql`
 2. `20260604140000_order_commissions_rls.sql`
 3. `20260604150000_production_dispatch_hardening.sql`
+4. `20260624120000_platform_countries_launch_control.sql`
+5. `20260625120000_production_p0_p1_closure.sql`
+
+See also `docs/production/EXTERNAL_OPS_MANUAL.md` for Stripe Connect Africa, stores, and legal sign-off.
 
 ## Smoke test (manual, Live)
 

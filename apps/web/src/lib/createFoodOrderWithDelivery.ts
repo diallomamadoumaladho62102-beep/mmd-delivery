@@ -10,6 +10,7 @@ import {
 import {
   assertPlatformFeature,
   inferPlatformCountryCode,
+  pricingConfigKeyForOrder,
 } from "@/lib/platformLaunchControl";
 
 export type CartItem = {
@@ -125,15 +126,27 @@ function validateItems(items: CartItem[]) {
   }
 }
 
-async function getActiveFoodDeliveryPricingConfig(): Promise<DeliveryPricingConfig> {
+async function getActiveFoodDeliveryPricingConfig(params: {
+  countryCode: string;
+  currency: string;
+  lat?: number;
+  lng?: number;
+}): Promise<DeliveryPricingConfig> {
   const supabase = await supabaseServer();
+  const configKey = pricingConfigKeyForOrder({
+    orderType: "food",
+    countryCode: params.countryCode,
+    currency: params.currency,
+    lat: params.lat,
+    lng: params.lng,
+  });
 
   const { data, error } = await supabase
     .from("pricing_config")
     .select(
       "config_key, active, delivery_fee_base, delivery_fee_per_mile, delivery_fee_per_minute, delivery_platform_pct, delivery_driver_pct"
     )
-    .eq("config_key", "food_default")
+    .eq("config_key", configKey)
     .eq("active", true)
     .maybeSingle<PricingConfigRow>();
 
@@ -146,7 +159,7 @@ async function getActiveFoodDeliveryPricingConfig(): Promise<DeliveryPricingConf
   }
 
   if (!data) {
-    throw new Error("Pricing config error: active food_default config not found");
+    throw new Error(`Pricing config error: active ${configKey} config not found`);
   }
 
   const platformSharePct = round2(
@@ -237,7 +250,11 @@ export async function createFoodOrderWithDelivery(
   const supabase = await supabaseServer();
   const supabaseAdmin = buildSupabaseAdminClient();
 
-  const platformCountry = inferPlatformCountryCode({ currency: safeCurrency });
+  const platformCountry = inferPlatformCountryCode({
+    currency: safeCurrency,
+    lat: dropoffLat,
+    lng: dropoffLng,
+  });
   const platformCheck = await assertPlatformFeature(
     supabaseAdmin,
     platformCountry,
@@ -261,7 +278,12 @@ export async function createFoodOrderWithDelivery(
   validateNonNegative("etaMinutes", safeEtaMinutes);
 
   // 2) Load active delivery pricing config from pricing_config
-  const deliveryPricingConfig = await getActiveFoodDeliveryPricingConfig();
+  const deliveryPricingConfig = await getActiveFoodDeliveryPricingConfig({
+    countryCode: platformCountry,
+    currency: safeCurrency,
+    lat: dropoffLat,
+    lng: dropoffLng,
+  });
 
   // 3) Compute raw delivery fee using active admin config
   const deliveryPricing = computeDeliveryPricing(
@@ -289,6 +311,7 @@ export async function createFoodOrderWithDelivery(
       p_delivery_fee: rawDeliveryFee,
       p_currency: safeCurrency,
       p_promo_code: normalizedPromoCode,
+      p_country_code: platformCountry,
     }
   );
 

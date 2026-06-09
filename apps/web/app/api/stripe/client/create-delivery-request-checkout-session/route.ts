@@ -5,10 +5,13 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
 import {
-  assertPlatformFeature,
-  inferPlatformCountryCode,
-} from "@/lib/platformLaunchControl";
+  assertFoodCheckoutCurrencyAllowed,
+  foodStripeUnitAmount,
+  safeFoodCheckoutCurrency,
+} from "@/lib/foodCurrencyGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,6 +34,8 @@ type DeliveryRequestRow = {
   stripe_payment_intent_id: string | null;
   expires_at: string | null;
   title: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
 };
 
 type GenericErrorLike = {
@@ -44,7 +49,6 @@ const REQUEST_ID_MAX_LENGTH = 128;
 const DEFAULT_TTL_MINUTES = 45;
 const STRIPE_MIN_EXPIRES_AT_MINUTES = 31;
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
-const ALLOWED_CURRENCIES = new Set(["usd", "eur", "gbp", "cad"]);
 const ALLOWED_PAYABLE_STATUSES = new Set(["pending", "accepted"]);
 const MAX_TITLE_LENGTH = 120;
 const MAX_DESCRIPTION_LENGTH = 240;
@@ -123,9 +127,7 @@ function normalizeRequestId(value: unknown): string {
 }
 
 function safeLowerCurrency(v: unknown): string {
-  const c = String(v ?? "USD").trim().toLowerCase();
-  if (!c) return "usd";
-  return ALLOWED_CURRENCIES.has(c) ? c : "usd";
+  return safeFoodCheckoutCurrency(v);
 }
 
 function safeTitle(value: unknown): string | null {
@@ -437,7 +439,7 @@ export async function POST(req: NextRequest) {
     const { data, error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
       .select(
-        "id, created_by, client_user_id, total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, title"
+        "id, created_by, client_user_id, total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, title, pickup_lat, pickup_lng"
       )
       .eq("id", requestedId)
       .single();
@@ -482,7 +484,20 @@ export async function POST(req: NextRequest) {
       return json({ error: "Forbidden" }, 403);
     }
 
-    const platformCountry = inferPlatformCountryCode({ currency: request.currency });
+    const currencyGuard = assertFoodCheckoutCurrencyAllowed(request.currency);
+    if (currencyGuard.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: currencyGuard.error,
+          message: currencyGuard.message,
+          currency: currencyGuard.currency,
+        },
+        400
+      );
+    }
+
+    const platformCountry = resolveDeliveryRequestPlatformCountry(request);
     const platformCheckout = await assertPlatformFeature(
       supabaseAdmin,
       platformCountry,
@@ -694,6 +709,7 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = safeLowerCurrency(request.currency ?? "USD");
+    const stripeUnitAmount = foodStripeUnitAmount(currency, amountCents);
     const idempotencyKey = `delivery_checkout_${deliveryRequestId}_${user.id}_${amountCents}_${currency}`;
     const displayTitle = safeTitle(request.title) ?? `MMD Delivery ${deliveryRequestId.slice(0, 8)}`;
     const displayDescription = safeDescription(
@@ -741,7 +757,7 @@ export async function POST(req: NextRequest) {
               quantity: 1,
               price_data: {
                 currency,
-                unit_amount: amountCents,
+                unit_amount: stripeUnitAmount,
                 product_data: {
                   name: displayTitle,
                   description: displayDescription,

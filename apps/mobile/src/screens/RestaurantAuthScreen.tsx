@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
+import LegalSignupLinks from "../components/LegalSignupLinks";
 
 const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
 
@@ -595,6 +596,8 @@ export function RestaurantAuthScreen() {
                 {msg}
               </Text>
             )}
+
+            {mode === "signup" ? <LegalSignupLinks disabled={loading} /> : null}
 
             <TouchableOpacity
               disabled={loading}

@@ -7,8 +7,13 @@ import {
 import { stripe } from "@/lib/stripe";
 import {
   assertPlatformFeature,
-  inferPlatformCountryCode,
 } from "@/lib/platformLaunchControl";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import {
+  assertFoodCheckoutCurrencyAllowed,
+  foodStripeUnitAmount,
+  safeFoodCheckoutCurrency,
+} from "@/lib/foodCurrencyGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,6 +38,10 @@ type OrderRow = {
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   expires_at: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
 };
 
 type GenericErrorLike = {
@@ -46,7 +55,6 @@ const ORDER_ID_MAX_LENGTH = 128;
 const DEFAULT_TTL_MINUTES = 45;
 const STRIPE_MIN_EXPIRES_AT_MINUTES = 31;
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
-const ALLOWED_CURRENCIES = new Set(["usd", "eur", "gbp", "cad"]);
 const ALLOWED_PAYABLE_STATUSES = new Set([
   "pending",
   "accepted",
@@ -127,9 +135,7 @@ function normalizeOrderId(value: unknown): string {
 }
 
 function safeLowerCurrency(v: unknown): string {
-  const c = String(v ?? "USD").trim().toLowerCase();
-  if (!c) return "usd";
-  return ALLOWED_CURRENCIES.has(c) ? c : "usd";
+  return safeFoodCheckoutCurrency(v);
 }
 
 function isPrivateIpv4(hostname: string): boolean {
@@ -451,7 +457,7 @@ export async function POST(req: NextRequest) {
     const { data, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at"
+        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng"
       )
       .eq("id", requestedOrderId)
       .single();
@@ -489,7 +495,20 @@ export async function POST(req: NextRequest) {
       return json({ error: "Forbidden" }, 403);
     }
 
-    const platformCountry = inferPlatformCountryCode({ currency: order.currency });
+    const currencyGuard = assertFoodCheckoutCurrencyAllowed(order.currency);
+    if (currencyGuard.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: currencyGuard.error,
+          message: currencyGuard.message,
+          currency: currencyGuard.currency,
+        },
+        400
+      );
+    }
+
+    const platformCountry = resolveOrderPlatformCountry(order);
     const platformCheckout = await assertPlatformFeature(
       supabaseAdmin,
       platformCountry,
@@ -743,6 +762,7 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = safeLowerCurrency(order.currency ?? "USD");
+    const stripeUnitAmount = foodStripeUnitAmount(currency, amountCents);
     const idempotencyKey = `checkout_${orderId}_${user.id}_${amountCents}`;
 
     if (!isProcessingStatus(paymentStatus)) {
@@ -781,7 +801,7 @@ export async function POST(req: NextRequest) {
               quantity: 1,
               price_data: {
                 currency,
-                unit_amount: amountCents,
+                unit_amount: stripeUnitAmount,
                 product_data: {
                   name: `MMD Order ${orderId.slice(0, 8)}`,
                   description: `Order payment • ${(amountCents / 100).toFixed(

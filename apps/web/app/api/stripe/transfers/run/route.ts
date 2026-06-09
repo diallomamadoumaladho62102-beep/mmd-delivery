@@ -9,6 +9,8 @@ import {
   assertCanRetryPayout,
 } from "@/lib/adminServer";
 import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +45,10 @@ type OrderRow = {
   restaurant_transfer_id: string | null;
   picked_up_at?: string | null;
   delivered_confirmed_at?: string | null;
+  dropoff_lat?: number | null;
+  dropoff_lng?: number | null;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
 };
 
 type CommissionRow = {
@@ -493,7 +499,11 @@ export async function POST(req: NextRequest) {
         driver_transfer_id,
         restaurant_transfer_id,
         picked_up_at,
-        delivered_confirmed_at
+        delivered_confirmed_at,
+        dropoff_lat,
+        dropoff_lng,
+        pickup_lat,
+        pickup_lng
       `
       )
       .eq("id", orderId)
@@ -508,6 +518,25 @@ export async function POST(req: NextRequest) {
       }
 
       return json({ error: "Order not found" }, 404);
+    }
+
+    const payoutCountry = resolveOrderPlatformCountry(order);
+    const platformPayout = await assertPlatformFeature(
+      supabaseAdmin,
+      payoutCountry,
+      target === "restaurant" ? "restaurant" : "delivery",
+      "payout"
+    );
+    if (platformPayout.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: platformPayout.error,
+          message: platformPayout.message,
+          country_code: platformPayout.country_code,
+        },
+        403
+      );
     }
 
     if (isCanceledOrderStatus(order.status)) {

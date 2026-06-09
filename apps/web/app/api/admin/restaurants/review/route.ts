@@ -3,6 +3,7 @@ import { AdminAccessError, assertCanReviewRestaurants } from "@/lib/adminServer"
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveRestaurantPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -200,9 +201,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (status === "approved") {
+      const restaurantCountry = await resolveRestaurantPlatformCountry(
+        supabase,
+        userId
+      );
       const platformCheck = await assertPlatformFeature(
         supabase,
-        "US",
+        restaurantCountry,
         "restaurant",
         "active"
       );

@@ -22,6 +22,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
+import LegalSignupLinks from "../components/LegalSignupLinks";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientAuth">;
 
@@ -1002,6 +1003,8 @@ export function ClientAuthScreen() {
                 </Text>
               </TouchableOpacity>
             ) : null}
+
+            {mode === "signup" ? <LegalSignupLinks disabled={loading} /> : null}
 
             <TouchableOpacity
               onPress={mode === "login" ? handleLogin : handleSignup}

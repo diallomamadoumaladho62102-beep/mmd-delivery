@@ -12,7 +12,16 @@ export const TAXI_CHECKOUT_ALLOWED_CURRENCIES = new Set([
 ]);
 
 /** Production-safe taxi driver payout currencies until Connect is verified per market. */
-export const TAXI_PAYOUT_ALLOWED_CURRENCIES = new Set(["USD", "CAD", "GBP", "EUR"]);
+export const TAXI_PAYOUT_ALLOWED_CURRENCIES = new Set([
+  "USD",
+  "CAD",
+  "GBP",
+  "EUR",
+  "GNF",
+  "XOF",
+  "SLE",
+  "MRU",
+]);
 
 export type TaxiCurrencyGuardResult =
   | { ok: true; currency: string }

@@ -1,8 +1,20 @@
 import React from "react";
-import { SafeAreaView, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import {
+  getLegalPrivacyUrl,
+  getLegalTermsUrl,
+  getSupportUrl,
+  openLegalUrl,
+} from "../lib/legalUrls";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DriverPrivacyScreen">;
 
@@ -24,10 +36,22 @@ export default function DriverPrivacyScreen({ navigation }: Props) {
             "MMD Delivery collects location data for active deliveries, account information for payouts, and photos you upload as delivery proof. Data is stored securely on Supabase and processed according to our terms. Contact support for data requests."
           )}
         </Text>
-        <View style={{ marginTop: 24 }}>
-          <Text style={{ color: "#64748B", fontSize: 12 }}>
-            https://www.mmddelivery.com
-          </Text>
+        <View style={{ marginTop: 24, gap: 12 }}>
+          <TouchableOpacity onPress={() => void openLegalUrl(getLegalPrivacyUrl())}>
+            <Text style={{ color: "#60A5FA", fontSize: 14 }}>
+              {t("legal.openPrivacy", "Open privacy policy")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void openLegalUrl(getLegalTermsUrl())}>
+            <Text style={{ color: "#60A5FA", fontSize: 14 }}>
+              {t("legal.openTerms", "Open terms of service")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => void openLegalUrl(getSupportUrl())}>
+            <Text style={{ color: "#60A5FA", fontSize: 14 }}>
+              {t("legal.openSupport", "Contact support")}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>

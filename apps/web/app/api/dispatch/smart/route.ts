@@ -7,6 +7,8 @@ import {
   buildDispatchInternalHeaders,
   resolveDispatchAccess,
 } from "@/lib/dispatchInternalAuth";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -197,7 +199,7 @@ export async function POST(req: NextRequest) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select(
-        "id,kind,status,driver_id,restaurant_id,payment_status,restaurant_name,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes"
+        "id,kind,status,driver_id,restaurant_id,payment_status,restaurant_name,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,currency,dropoff_lat,dropoff_lng"
       )
       .eq("id", orderId)
       .maybeSingle();
@@ -211,6 +213,25 @@ export async function POST(req: NextRequest) {
     });
     if (scopeResult.ok === false) {
       return json({ error: scopeResult.error }, scopeResult.status);
+    }
+
+    const orderCountry = resolveOrderPlatformCountry(order);
+    const platformCheck = await assertPlatformFeature(
+      supabase,
+      orderCountry,
+      "delivery",
+      "active"
+    );
+    if (platformCheck.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: platformCheck.error,
+          message: platformCheck.message,
+          country_code: platformCheck.country_code,
+        },
+        403
+      );
     }
 
     const orderKind = normalize(order.kind);

@@ -4,6 +4,7 @@ import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { resolveDispatchAccess } from "@/lib/dispatchInternalAuth";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { getProfileRole, isStaffRole, taxiJson } from "@/lib/taxiApi";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const { data: ride, error: rideError } = await supabase
       .from("taxi_rides")
-      .select("id,client_user_id,payment_status,status,driver_id")
+      .select("id,client_user_id,payment_status,status,driver_id,country_code")
       .eq("id", taxiRideId)
       .maybeSingle();
 
@@ -92,6 +93,16 @@ export async function POST(req: NextRequest) {
 
     if (scopeResult.ok === false) {
       return taxiJson({ error: scopeResult.error }, scopeResult.status);
+    }
+
+    const platformCheck = await assertPlatformFeature(
+      supabase,
+      String(ride.country_code ?? "US"),
+      "taxi",
+      "active"
+    );
+    if (platformCheck.ok === false) {
+      return taxiJson({ ok: false, ...platformCheck }, 403);
     }
 
     const result = await runTaxiRideDispatch({

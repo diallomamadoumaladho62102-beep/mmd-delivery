@@ -21,6 +21,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
+import LegalSignupLinks from "../components/LegalSignupLinks";
 
 type TransportMode = "bike" | "moto" | "car";
 type DriverStatus =
@@ -1402,6 +1403,10 @@ export function DriverAuthScreen() {
             </View>
           ) : (
             <>
+              {mode === "signup" ? (
+                <LegalSignupLinks disabled={loading || !canSubmit} />
+              ) : null}
+
               <PrimaryButton
                 label={
                   mode === "signup"

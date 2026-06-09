@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveRestaurantPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
     const { data: order, error: readError } = await supabaseAdmin
       .from("orders")
       .select(
-        "id,kind,status,driver_id,restaurant_id,restaurant_user_id,payment_status,restaurant_accept_expires_at,created_at"
+        "id,kind,status,driver_id,restaurant_id,restaurant_user_id,payment_status,restaurant_accept_expires_at,created_at,currency,dropoff_lat,dropoff_lng,pickup_lat,pickup_lng"
       )
       .eq("id", orderId)
       .eq("kind", "food")
@@ -144,9 +145,13 @@ export async function POST(req: NextRequest) {
     }
 
     if (nextStatus === "accepted") {
+      const restaurantCountry = await resolveRestaurantPlatformCountry(
+        supabaseAdmin,
+        user.id
+      );
       const platformCheck = await assertPlatformFeature(
         supabaseAdmin,
-        "US",
+        restaurantCountry,
         "restaurant",
         "active"
       );

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveClientPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,9 +122,10 @@ export async function POST(req: Request) {
     assertNonNegativeMoney("subtotal", subtotal);
 
     const supabaseAdmin = buildSupabaseAdminClient();
+    const clientCountry = await resolveClientPlatformCountry(supabaseAdmin, user.id);
     const platformCheck = await assertPlatformFeature(
       supabaseAdmin,
-      "US",
+      clientCountry,
       "delivery",
       "active"
     );

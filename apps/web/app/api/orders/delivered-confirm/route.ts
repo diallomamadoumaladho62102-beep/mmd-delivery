@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -571,6 +573,37 @@ export async function POST(req: NextRequest) {
       }
 
       return json({ error: "Invalid proof_photo_url" }, 400);
+    }
+
+    const { data: orderGate, error: orderGateErr } = await supabaseAdmin
+      .from("orders")
+      .select("id,currency,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (orderGateErr) {
+      return json({ error: orderGateErr.message }, 500);
+    }
+    if (!orderGate) {
+      return json({ error: "Order not found" }, 404);
+    }
+
+    const platformCountry = resolveOrderPlatformCountry(orderGate);
+    const platformCheck = await assertPlatformFeature(
+      supabaseAdmin,
+      platformCountry,
+      "delivery",
+      "active"
+    );
+    if (platformCheck.ok === false) {
+      return json(
+        {
+          error: platformCheck.error,
+          message: platformCheck.message,
+          country_code: platformCheck.country_code,
+        },
+        403
+      );
     }
 
     const { data, error } = await supabaseAdmin.rpc("confirm_order_delivery", {

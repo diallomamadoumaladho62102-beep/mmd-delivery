@@ -51,6 +51,13 @@ test("inferPlatformCountryCode maps currency fallback", () => {
   assert.equal(inferPlatformCountryCode({ currency: "usd" }), "US");
 });
 
+test("inferPlatformCountryCode prefers coordinates over XOF currency", () => {
+  assert.equal(
+    inferPlatformCountryCode({ currency: "XOF", lat: 5.36, lng: -4.01 }),
+    "CI"
+  );
+});
+
 test("platform disabled blocks all verticals", () => {
   const result = assertPlatformFeatureFromConfig(
     baseConfig({ platform_enabled: false }),

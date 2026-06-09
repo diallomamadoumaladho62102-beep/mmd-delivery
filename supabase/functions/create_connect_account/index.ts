@@ -22,6 +22,34 @@ function getAuthHeader(req: Request) {
   return req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
 }
 
+function normalizeStripeConnectCountry(value: unknown): string {
+  const raw = String(value ?? "").trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(raw)) return raw;
+  if (raw === "USA" || raw === "UNITED STATES") return "US";
+  if (raw === "CANADA") return "CA";
+  if (raw === "UNITED KINGDOM" || raw === "UK") return "GB";
+  if (raw === "FRANCE") return "FR";
+  if (raw === "BELGIUM") return "BE";
+  if (raw === "GUINEA" || raw === "GUINEE") return "GN";
+  if (raw === "SENEGAL") return "SN";
+  if (raw === "COTE D IVOIRE" || raw === "CÔTE D'IVOIRE" || raw === "IVORY COAST") return "CI";
+  if (raw === "MALI") return "ML";
+  if (raw === "SIERRA LEONE") return "SL";
+  if (raw === "MAURITANIA") return "MR";
+  return "US";
+}
+
+function inferConnectCountryFromProfile(city: unknown, state: unknown): string {
+  const cityText = String(city ?? "").trim().toUpperCase();
+  if (cityText.includes("CONAKRY") || cityText.includes("GUINE")) return "GN";
+  if (cityText.includes("DAKAR") || cityText.includes("SENEGAL")) return "SN";
+  if (cityText.includes("ABIDJAN") || cityText.includes("IVOIRE")) return "CI";
+  if (cityText.includes("BAMAKO") || cityText.includes("MALI")) return "ML";
+  if (cityText.includes("FREETOWN") || cityText.includes("SIERRA")) return "SL";
+  if (cityText.includes("NOUAKCHOTT") || cityText.includes("MAURITAN")) return "MR";
+  return normalizeStripeConnectCountry(state);
+}
+
 serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
@@ -91,7 +119,7 @@ serve(async (req) => {
     // Lire profil
     const { data: prof, error: pErr } = await supabase
       .from(table)
-      .select("stripe_account_id")
+      .select("stripe_account_id, city, state")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -101,16 +129,23 @@ serve(async (req) => {
 
     let accountId: string | null = (prof as any)?.stripe_account_id ?? null;
 
+    const connectCountry = normalizeStripeConnectCountry(
+      body?.country_code ??
+        body?.countryCode ??
+        inferConnectCountryFromProfile((prof as any)?.city, (prof as any)?.state)
+    );
+
     // Créer le compte Stripe si absent
     if (!accountId) {
       const account = await stripe.accounts.create({
         type: "express",
+        country: connectCountry,
         // Recommandé: transfers + card_payments
         capabilities: {
           transfers: { requested: true },
           card_payments: { requested: true },
         },
-        metadata: { user_id: userId, role },
+        metadata: { user_id: userId, role, country: connectCountry },
       });
 
       accountId = account.id;
@@ -138,6 +173,7 @@ serve(async (req) => {
       role,
       user_id: userId,
       account_id: accountId,
+      country: connectCountry,
       onboarding_url: link.url,
       expires_at: link.expires_at ?? null,
     });

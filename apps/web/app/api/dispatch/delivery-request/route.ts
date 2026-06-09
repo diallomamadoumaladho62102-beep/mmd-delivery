@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { resolveDispatchAccess } from "@/lib/dispatchInternalAuth";
 import { runDeliveryRequestDispatch } from "@/lib/runDeliveryRequestDispatch";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     const { data: request, error: requestError } = await supabase
       .from("delivery_requests")
-      .select("id,created_by,client_user_id,payment_status,status,driver_id")
+      .select("id,created_by,client_user_id,payment_status,status,driver_id,currency,pickup_lat,pickup_lng")
       .eq("id", deliveryRequestId)
       .maybeSingle();
 
@@ -96,6 +98,25 @@ export async function POST(req: NextRequest) {
 
     if (scopeResult.ok === false) {
       return json({ error: scopeResult.error }, scopeResult.status);
+    }
+
+    const drCountry = resolveDeliveryRequestPlatformCountry(request);
+    const platformCheck = await assertPlatformFeature(
+      supabase,
+      drCountry,
+      "delivery",
+      "active"
+    );
+    if (platformCheck.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: platformCheck.error,
+          message: platformCheck.message,
+          country_code: platformCheck.country_code,
+        },
+        403
+      );
     }
 
     const result = await runDeliveryRequestDispatch({

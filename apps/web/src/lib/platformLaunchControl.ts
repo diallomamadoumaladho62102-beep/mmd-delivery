@@ -1,4 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  inferPlatformCountryCode,
+  normalizePlatformCountryCode,
+} from "@/lib/platformCountryInference";
+
+export {
+  AFRICA_PLATFORM_COUNTRIES,
+  detectPlatformCountryFromCoordinates,
+  inferPlatformCountryCode,
+  isAfricaPlatformCountry,
+  normalizePlatformCountryCode,
+  normalizeStripeConnectCountry,
+  pricingConfigKeyForOrder,
+} from "@/lib/platformCountryInference";
 
 export type PlatformLaunchStatus = "enabled" | "disabled" | "maintenance";
 
@@ -30,37 +44,6 @@ export type PlatformFeatureResult =
 
 const PLATFORM_SELECT =
   "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
-
-const CURRENCY_COUNTRY_MAP: Record<string, string> = {
-  USD: "US",
-  CAD: "CA",
-  GBP: "GB",
-  EUR: "FR",
-  GNF: "GN",
-  XOF: "SN",
-  SLE: "SL",
-  MRU: "MR",
-};
-
-export function normalizePlatformCountryCode(value: unknown): string {
-  return String(value ?? "")
-    .trim()
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-export function inferPlatformCountryCode(input?: {
-  countryCode?: unknown;
-  currency?: unknown;
-}): string {
-  const explicit = normalizePlatformCountryCode(input?.countryCode);
-  if (explicit.length === 2) return explicit;
-
-  const currency = String(input?.currency ?? "")
-    .trim()
-    .toUpperCase();
-  return CURRENCY_COUNTRY_MAP[currency] ?? "US";
-}
 
 export async function fetchPlatformCountryConfig(
   supabase: SupabaseClient,
