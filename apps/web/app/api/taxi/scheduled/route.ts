@@ -4,6 +4,10 @@ import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
+import {
+  assertTaxiLaunchFeature,
+  fetchTaxiCountryLaunchConfig,
+} from "@/lib/taxiLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,6 +128,19 @@ export async function POST(req: NextRequest) {
     }
 
     const countryCode = countryResult.resolution.countryCode;
+
+    const launchConfig = await fetchTaxiCountryLaunchConfig(
+      auth.supabaseAdmin,
+      countryCode
+    );
+    if (!launchConfig) {
+      return taxiJson({ ok: false, error: "country_launch_config_missing" }, 400);
+    }
+
+    const scheduledCheck = assertTaxiLaunchFeature(launchConfig, "scheduled");
+    if (scheduledCheck.ok === false) {
+      return taxiJson({ ok: false, ...scheduledCheck }, 400);
+    }
 
     const { data: quote, error: quoteError } = await auth.supabaseAdmin.rpc(
       "quote_taxi_ride",

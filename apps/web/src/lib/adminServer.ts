@@ -300,3 +300,17 @@ export async function assertCanManageTaxiCountries(request?: NextRequest) {
     request
   );
 }
+
+export async function assertCanManageTaxiAlerts(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_alerts.manage"),
+    request
+  );
+}
+
+export async function assertCanManageTaxiLaunch(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_launch.manage"),
+    request
+  );
+}

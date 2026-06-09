@@ -200,3 +200,33 @@ export function canManageTaxiCountries(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "taxi_countries.manage");
 }
+
+export function canReadTaxiMonitoring(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_monitoring.read");
+}
+
+export function canReadTaxiAlerts(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_alerts.read");
+}
+
+export function canManageTaxiAlerts(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_alerts.manage");
+}
+
+export function canReadTaxiLaunch(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_launch.read");
+}
+
+export function canManageTaxiLaunch(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_launch.manage");
+}
+
+export function canReadTaxiMarketMetrics(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_market_metrics.read");
+}

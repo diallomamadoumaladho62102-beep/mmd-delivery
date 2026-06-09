@@ -58,6 +58,12 @@ export type AdminPermission =
   | "taxi_taxes.manage"
   | "taxi_countries.read"
   | "taxi_countries.manage"
+  | "taxi_monitoring.read"
+  | "taxi_alerts.read"
+  | "taxi_alerts.manage"
+  | "taxi_launch.read"
+  | "taxi_launch.manage"
+  | "taxi_market_metrics.read"
   | "communication.chats"
   | "communication.calls"
   | "communication.notify"
@@ -110,6 +116,12 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_taxes.manage",
     "taxi_countries.read",
     "taxi_countries.manage",
+    "taxi_monitoring.read",
+    "taxi_alerts.read",
+    "taxi_alerts.manage",
+    "taxi_launch.read",
+    "taxi_launch.manage",
+    "taxi_market_metrics.read",
     "communication.chats",
     "communication.calls",
     "communication.notify",
@@ -140,6 +152,11 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_shared_rides.manage",
     "taxi_business.read",
     "taxi_driver_quality.read",
+    "taxi_monitoring.read",
+    "taxi_alerts.read",
+    "taxi_alerts.manage",
+    "taxi_launch.read",
+    "taxi_market_metrics.read",
     "communication.chats",
     "communication.calls",
     "communication.notify",
@@ -162,6 +179,11 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_taxes.manage",
     "taxi_countries.read",
     "taxi_countries.manage",
+    "taxi_monitoring.read",
+    "taxi_alerts.read",
+    "taxi_launch.read",
+    "taxi_launch.manage",
+    "taxi_market_metrics.read",
     "taxi_business.read",
     "taxi_business.manage",
     "audit.read",

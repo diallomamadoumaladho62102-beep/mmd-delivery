@@ -182,4 +182,16 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Taux de change de référence (display/analytics)",
     permission: "taxi_exchange_rates.read",
   },
+  {
+    href: "/admin/taxi-monitoring",
+    title: "Taxi Monitoring",
+    description: "Santé ops, KPI business, alertes dispatch/payment/payout",
+    permission: "taxi_monitoring.read",
+  },
+  {
+    href: "/admin/taxi-launch",
+    title: "Taxi Launch Control",
+    description: "Activation marchés et features par pays sans redéploiement",
+    permission: "taxi_launch.read",
+  },
 ];

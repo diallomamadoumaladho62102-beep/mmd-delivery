@@ -20,6 +20,10 @@
     {
       "path": "/api/cron/taxi-scheduled-dispatch",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/taxi-monitoring-snapshot",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

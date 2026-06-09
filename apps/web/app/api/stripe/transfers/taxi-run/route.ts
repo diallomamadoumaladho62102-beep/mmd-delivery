@@ -8,6 +8,10 @@ import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { assertTaxiPayoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
+import {
+  assertTaxiLaunchFeature,
+  fetchTaxiCountryLaunchConfig,
+} from "@/lib/taxiLaunchControl";
 import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { normalizeTaxiCurrencyForStripe } from "@/lib/taxiCountries";
 
@@ -25,6 +29,7 @@ type TaxiRideRow = {
   status: string | null;
   payment_status: string | null;
   currency: string | null;
+  country_code: string | null;
   driver_id: string | null;
   stripe_payment_intent_id: string | null;
   total_cents: number | null;
@@ -129,7 +134,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideErr } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id, status, payment_status, currency, driver_id, stripe_payment_intent_id, total_cents"
+        "id, status, payment_status, currency, country_code, driver_id, stripe_payment_intent_id, total_cents"
       )
       .eq("id", rideId)
       .maybeSingle<TaxiRideRow>();
@@ -248,6 +253,26 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = normalizeCurrency(ride.currency || commission.currency);
+
+    const launchConfig = await fetchTaxiCountryLaunchConfig(
+      supabaseAdmin,
+      String(ride.country_code ?? "")
+    );
+    if (launchConfig) {
+      const payoutLaunch = assertTaxiLaunchFeature(launchConfig, "payout");
+      if (payoutLaunch.ok === false) {
+        return json(
+          {
+            ok: false,
+            error: payoutLaunch.error,
+            message: payoutLaunch.message,
+            country_code: launchConfig.country_code,
+          },
+          400
+        );
+      }
+    }
+
     const payoutCurrency = assertTaxiPayoutCurrencyAllowed(currency);
     if (payoutCurrency.ok === false) {
       return json(

@@ -8,6 +8,10 @@ import {
   assertTaxiQuotePriceMatches,
   snapshotFromRideRow,
 } from "@/lib/taxiFinalPrice";
+import {
+  assertTaxiLaunchFeature,
+  fetchTaxiCountryLaunchConfig,
+} from "@/lib/taxiLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -120,6 +124,35 @@ export async function POST(req: NextRequest) {
     }
 
     const countryCode = countryResult.resolution.countryCode;
+
+    const launchConfig = await fetchTaxiCountryLaunchConfig(
+      auth.supabaseAdmin,
+      countryCode
+    );
+    if (!launchConfig) {
+      return taxiJson({ ok: false, error: "country_launch_config_missing" }, 400);
+    }
+
+    if (sharedRide) {
+      const sharedCheck = assertTaxiLaunchFeature(launchConfig, "shared");
+      if (sharedCheck.ok === false) {
+        return taxiJson({ ok: false, ...sharedCheck }, 400);
+      }
+    }
+
+    if (premiumDriverOnly) {
+      const premiumCheck = assertTaxiLaunchFeature(launchConfig, "premium");
+      if (premiumCheck.ok === false) {
+        return taxiJson({ ok: false, ...premiumCheck }, 400);
+      }
+    }
+
+    if (businessTripType === "business" && businessAccountId) {
+      const businessCheck = assertTaxiLaunchFeature(launchConfig, "business");
+      if (businessCheck.ok === false) {
+        return taxiJson({ ok: false, ...businessCheck }, 400);
+      }
+    }
 
     const { data: quote, error: quoteError } = await auth.supabaseAdmin.rpc(
       "quote_taxi_ride",

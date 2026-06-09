@@ -15,6 +15,10 @@ import {
   formatTaxiCheckoutAmount,
   toStripeAmount,
 } from "@/lib/taxiStripeAmounts";
+import {
+  assertTaxiLaunchFeature,
+  fetchTaxiCountryLaunchConfig,
+} from "@/lib/taxiLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -132,6 +136,19 @@ export async function POST(req: NextRequest) {
           400
         );
       }
+    }
+
+    const launchConfig = await fetchTaxiCountryLaunchConfig(
+      supabaseAdmin,
+      String(ride.country_code ?? "US")
+    );
+    if (!launchConfig) {
+      return taxiJson({ ok: false, error: "country_launch_config_missing" }, 400);
+    }
+
+    const checkoutLaunch = assertTaxiLaunchFeature(launchConfig, "checkout");
+    if (checkoutLaunch.ok === false) {
+      return taxiJson({ ok: false, ...checkoutLaunch }, 403);
     }
 
     let amountCents = Math.round(Number(ride.total_cents ?? 0));
