@@ -7,6 +7,8 @@ import {
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
+import { assertTaxiPayoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
+import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { normalizeTaxiCurrencyForStripe } from "@/lib/taxiCountries";
 
 export const runtime = "nodejs";
@@ -246,6 +248,24 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = normalizeCurrency(ride.currency || commission.currency);
+    const payoutCurrency = assertTaxiPayoutCurrencyAllowed(currency);
+    if (payoutCurrency.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: payoutCurrency.error,
+          message: payoutCurrency.message,
+          currency: payoutCurrency.currency,
+        },
+        400
+      );
+    }
+
+    const stripeTransferAmount = toStripeAmount(currency, amount);
+    if (stripeTransferAmount <= 0) {
+      return json({ error: "Driver payout amount invalid for Stripe" }, 409);
+    }
+
     const idempotencyKey = `taxi_driver_payout:${rideId}`;
     const transferGroup = `taxi_ride:${rideId}`;
 
@@ -255,6 +275,7 @@ export async function POST(req: NextRequest) {
         dry_run: true,
         taxi_ride_id: rideId,
         amount,
+        stripe_amount: stripeTransferAmount,
         currency,
         destination,
         source_charge_id: sourceChargeId,
@@ -304,7 +325,7 @@ export async function POST(req: NextRequest) {
     try {
       transfer = await stripe.transfers.create(
         {
-          amount,
+          amount: stripeTransferAmount,
           currency,
           destination,
           transfer_group: transferGroup,
@@ -314,6 +335,7 @@ export async function POST(req: NextRequest) {
             taxi_ride_id: rideId,
             taxi_commission_id: commission.id,
             driver_id: ride.driver_id,
+            amount_cents: String(amount),
           },
         },
         { idempotencyKey }
@@ -363,6 +385,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         transfer_id: transfer.id,
         amount,
+        stripe_amount: stripeTransferAmount,
         currency,
       },
     });
@@ -377,6 +400,7 @@ export async function POST(req: NextRequest) {
         newValues: {
           transfer_id: transfer.id,
           amount,
+          stripe_amount: stripeTransferAmount,
           currency,
           destination,
         },
@@ -393,6 +417,7 @@ export async function POST(req: NextRequest) {
       taxi_ride_id: rideId,
       transfer_id: transfer.id,
       amount,
+      stripe_amount: stripeTransferAmount,
       currency,
       idempotency_key: idempotencyKey,
     });

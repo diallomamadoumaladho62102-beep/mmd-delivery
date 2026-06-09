@@ -4,6 +4,10 @@ import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
+import {
+  assertTaxiQuotePriceMatches,
+  snapshotFromRideRow,
+} from "@/lib/taxiFinalPrice";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,20 +45,6 @@ type Body = {
   businessTripType?: string;
   business_trip_type?: string;
 };
-
-const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
-const QUOTE_DRIFT_TOLERANCE_RATIO = 0.02;
-
-function isQuotePriceWithinTolerance(expected: number, actual: number) {
-  if (!Number.isFinite(expected) || expected <= 0) return true;
-  if (!Number.isFinite(actual) || actual <= 0) return false;
-  const diff = Math.abs(actual - expected);
-  const maxDiff = Math.max(
-    QUOTE_DRIFT_TOLERANCE_CENTS,
-    Math.round(expected * QUOTE_DRIFT_TOLERANCE_RATIO)
-  );
-  return diff <= maxDiff;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -156,7 +146,7 @@ export async function POST(req: NextRequest) {
         body.expectedQuoteTotalCents ?? body.expected_quote_total_cents ?? 0
       )
     );
-    const actualTotalCents = Math.round(Number(quoteObj.total_cents ?? 0));
+    const quoteGrossCents = Math.round(Number(quoteObj.total_cents ?? 0));
 
     let businessMemberId: string | null = null;
     let businessApprovalStatus = "not_required";
@@ -166,7 +156,7 @@ export async function POST(req: NextRequest) {
         await auth.supabaseAdmin.rpc("validate_taxi_business_ride", {
           p_user_id: auth.user.id,
           p_business_account_id: businessAccountId,
-          p_amount_cents: actualTotalCents,
+          p_amount_cents: quoteGrossCents,
         });
 
       if (businessError) {
@@ -189,23 +179,6 @@ export async function POST(req: NextRequest) {
       businessMemberId = memberRow?.id ? String(memberRow.id) : null;
       businessApprovalStatus =
         businessObj.requires_approval === true ? "pending" : "approved";
-    }
-
-    if (
-      expectedQuoteTotalCents > 0 &&
-      !isQuotePriceWithinTolerance(expectedQuoteTotalCents, actualTotalCents)
-    ) {
-      return taxiJson(
-        {
-          ok: false,
-          error: "quote_price_drift",
-          expected_total_cents: expectedQuoteTotalCents,
-          actual_total_cents: actualTotalCents,
-          message:
-            "The quoted price changed before booking. Please review the updated estimate.",
-        },
-        409
-      );
     }
 
     const pickupAddress =
@@ -379,7 +352,7 @@ export async function POST(req: NextRequest) {
         p_business_account_id: businessAccountId,
         p_taxi_ride_id: String(ride.id),
         p_member_user_id: auth.user.id,
-        p_amount_cents: Number(ride.total_cents ?? actualTotalCents),
+        p_amount_cents: Number(ride.total_cents ?? quoteGrossCents),
         p_event_type: "ride_authorized",
         p_metadata: { source: "ride_create" },
       });
@@ -395,6 +368,26 @@ export async function POST(req: NextRequest) {
       if (refreshedRide) {
         Object.assign(ride, refreshedRide);
       }
+    }
+
+    const finalPrice = snapshotFromRideRow(ride);
+    const driftCheck = assertTaxiQuotePriceMatches(
+      expectedQuoteTotalCents,
+      finalPrice
+    );
+    if (driftCheck.ok === false) {
+      return taxiJson(
+        {
+          ok: false,
+          error: driftCheck.error,
+          expected_total_cents: driftCheck.expected_total_cents,
+          actual_total_cents: driftCheck.actual_total_cents,
+          price_snapshot: finalPrice,
+          message:
+            "The quoted price changed before booking. Please review the updated estimate.",
+        },
+        409
+      );
     }
 
     await logTaxiEventServer(auth.supabaseAdmin, {
@@ -423,6 +416,7 @@ export async function POST(req: NextRequest) {
       ok: true,
       ride,
       quote: quoteObj,
+      price_snapshot: finalPrice,
       promotion: promotionResult,
       reward: rewardResult,
       shared_ride: sharedRideResult,

@@ -3,6 +3,10 @@ import {
   isAmountVerificationFailure,
   type AmountVerificationResult,
 } from "@/lib/verifyStripePaidAmount";
+import {
+  fromStripeAmount,
+  normalizeTaxiCurrencyUpper,
+} from "@/lib/taxiStripeAmounts";
 
 type TaxiRideAmountSource = {
   total_cents: number | null;
@@ -10,10 +14,6 @@ type TaxiRideAmountSource = {
   stripe_payment_intent_id?: string | null;
   stripe_session_id?: string | null;
 };
-
-function normalizeCurrency(value: unknown): string {
-  return String(value ?? "usd").trim().toLowerCase() || "usd";
-}
 
 function paymentIntentIdFromUnknown(value: unknown): string | null {
   if (typeof value === "string" && value.trim()) return value.trim();
@@ -24,6 +24,50 @@ function paymentIntentIdFromUnknown(value: unknown): string | null {
   return null;
 }
 
+function compareTaxiPaidAmounts(params: {
+  expectedCents: number;
+  expectedCurrency: string;
+  stripeAmount: number;
+  stripeCurrency: string;
+  paymentIntentId?: string | null;
+  sessionId?: string | null;
+}): AmountVerificationResult {
+  const actualCents = fromStripeAmount(
+    params.expectedCurrency,
+    params.stripeAmount
+  );
+  const actualCurrency = normalizeTaxiCurrencyUpper(params.stripeCurrency);
+
+  if (actualCents !== params.expectedCents) {
+    return {
+      ok: false,
+      error: "amount_mismatch",
+      expected_cents: params.expectedCents,
+      actual_cents: actualCents,
+      expected_currency: params.expectedCurrency,
+      actual_currency: actualCurrency,
+    };
+  }
+
+  if (actualCurrency !== params.expectedCurrency) {
+    return {
+      ok: false,
+      error: "currency_mismatch",
+      expected_currency: params.expectedCurrency,
+      actual_currency: actualCurrency,
+    };
+  }
+
+  return {
+    ok: true,
+    expected_cents: params.expectedCents,
+    actual_cents: actualCents,
+    currency: params.expectedCurrency,
+    payment_intent_id: params.paymentIntentId ?? null,
+    session_id: params.sessionId ?? null,
+  };
+}
+
 export async function verifyStripePaidMatchesTaxiRide(
   ride: TaxiRideAmountSource,
   refs: {
@@ -31,12 +75,12 @@ export async function verifyStripePaidMatchesTaxiRide(
     sessionId?: string | null;
   }
 ): Promise<AmountVerificationResult> {
-  const expectedCents = Number(ride.total_cents ?? 0);
+  const expectedCents = Math.round(Number(ride.total_cents ?? 0));
   if (!Number.isFinite(expectedCents) || expectedCents <= 0) {
     return { ok: false, error: "missing_expected_amount" };
   }
 
-  const expectedCurrency = normalizeCurrency(ride.currency);
+  const expectedCurrency = normalizeTaxiCurrencyUpper(ride.currency);
   const piId =
     String(refs.paymentIntentId ?? ride.stripe_payment_intent_id ?? "").trim() ||
     null;
@@ -49,34 +93,14 @@ export async function verifyStripePaidMatchesTaxiRide(
       if (pi.status !== "succeeded") {
         return { ok: false, error: "stripe_not_paid" };
       }
-      const actualCents = Math.round(Number(pi.amount ?? 0));
-      const actualCurrency = normalizeCurrency(pi.currency);
-      if (actualCents !== expectedCents) {
-        return {
-          ok: false,
-          error: "amount_mismatch",
-          expected_cents: expectedCents,
-          actual_cents: actualCents,
-          expected_currency: expectedCurrency,
-          actual_currency: actualCurrency,
-        };
-      }
-      if (actualCurrency !== expectedCurrency) {
-        return {
-          ok: false,
-          error: "currency_mismatch",
-          expected_currency: expectedCurrency,
-          actual_currency: actualCurrency,
-        };
-      }
-      return {
-        ok: true,
-        expected_cents: expectedCents,
-        actual_cents: actualCents,
-        currency: expectedCurrency,
-        payment_intent_id: pi.id,
-        session_id: sessionId,
-      };
+      return compareTaxiPaidAmounts({
+        expectedCents,
+        expectedCurrency,
+        stripeAmount: Math.round(Number(pi.amount ?? 0)),
+        stripeCurrency: String(pi.currency ?? expectedCurrency),
+        paymentIntentId: pi.id,
+        sessionId,
+      });
     } catch {
       return { ok: false, error: "stripe_lookup_failed" };
     }
@@ -90,35 +114,15 @@ export async function verifyStripePaidMatchesTaxiRide(
       if (String(session.payment_status ?? "").toLowerCase() !== "paid") {
         return { ok: false, error: "stripe_not_paid" };
       }
-      const actualCents = Math.round(Number(session.amount_total ?? 0));
-      const actualCurrency = normalizeCurrency(session.currency);
-      if (actualCents !== expectedCents) {
-        return {
-          ok: false,
-          error: "amount_mismatch",
-          expected_cents: expectedCents,
-          actual_cents: actualCents,
-          expected_currency: expectedCurrency,
-          actual_currency: actualCurrency,
-        };
-      }
-      if (actualCurrency !== expectedCurrency) {
-        return {
-          ok: false,
-          error: "currency_mismatch",
-          expected_currency: expectedCurrency,
-          actual_currency: actualCurrency,
-        };
-      }
-      return {
-        ok: true,
-        expected_cents: expectedCents,
-        actual_cents: actualCents,
-        currency: expectedCurrency,
-        payment_intent_id:
+      return compareTaxiPaidAmounts({
+        expectedCents,
+        expectedCurrency,
+        stripeAmount: Math.round(Number(session.amount_total ?? 0)),
+        stripeCurrency: String(session.currency ?? expectedCurrency),
+        paymentIntentId:
           paymentIntentIdFromUnknown(session.payment_intent) ?? null,
-        session_id: session.id,
-      };
+        sessionId: session.id,
+      });
     } catch {
       return { ok: false, error: "stripe_lookup_failed" };
     }

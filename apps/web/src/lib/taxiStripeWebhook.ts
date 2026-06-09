@@ -3,6 +3,10 @@ import type Stripe from "stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { scheduleTaxiRideDispatchIfEligible } from "@/lib/taxiSharedRideDispatch";
+import {
+  fromStripeAmount,
+  normalizeTaxiCurrencyUpper,
+} from "@/lib/taxiStripeAmounts";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -36,7 +40,7 @@ export function pickTaxiRideIdFromMetadata(
 }
 
 function normalizeCurrency(value: unknown): string {
-  return String(value ?? "usd").trim().toLowerCase() || "usd";
+  return normalizeTaxiCurrencyUpper(value, "USD").toLowerCase();
 }
 
 function toPositiveNumber(value: unknown): number | null {
@@ -145,23 +149,25 @@ export async function handleTaxiStripePayment(params: {
     return { ok: false, error: "payment_intent_mismatch" };
   }
 
-  const rideAmountCents = resolveTaxiRideAmountCents(row);
-  if (!rideAmountCents) {
-    return { ok: false, error: "missing_expected_amount" };
-  }
-
   const stripeAmountCents = toPositiveNumber(params.expectedAmountCents);
   if (!stripeAmountCents) {
     return { ok: false, error: "missing_stripe_amount" };
   }
 
-  if (stripeAmountCents !== rideAmountCents) {
+  const rideAmountCents = resolveTaxiRideAmountCents(row);
+  if (!rideAmountCents) {
+    return { ok: false, error: "missing_expected_amount" };
+  }
+
+  const rideCurrency = normalizeTaxiCurrencyUpper(row.currency);
+  const convertedStripeCents = fromStripeAmount(rideCurrency, stripeAmountCents);
+
+  if (convertedStripeCents !== rideAmountCents) {
     return { ok: false, error: "amount_mismatch" };
   }
 
-  const rideCurrency = normalizeCurrency(row.currency);
   const stripeCurrency = normalizeCurrency(params.expectedCurrency);
-  if (stripeCurrency !== rideCurrency) {
+  if (stripeCurrency !== normalizeCurrency(row.currency)) {
     return { ok: false, error: "currency_mismatch" };
   }
 
@@ -195,7 +201,8 @@ export async function handleTaxiStripePayment(params: {
       session_id: sessionId,
       payment_intent_id: paymentIntentId,
       expected_amount_cents: rideAmountCents,
-      actual_amount_cents: stripeAmountCents,
+      actual_amount_cents: convertedStripeCents,
+      stripe_amount: stripeAmountCents,
       expected_currency: rideCurrency,
     },
   });

@@ -8,6 +8,12 @@ import {
   normalizeStatus,
   taxiJson,
 } from "@/lib/taxiApi";
+import { assertTaxiCheckoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
+import { snapshotFromRideRow } from "@/lib/taxiFinalPrice";
+import {
+  formatTaxiCheckoutAmount,
+  toStripeAmount,
+} from "@/lib/taxiStripeAmounts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -133,6 +139,38 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = String(ride.currency ?? "USD").trim().toLowerCase();
+    const checkoutCurrency = assertTaxiCheckoutCurrencyAllowed(currency);
+    if (checkoutCurrency.ok === false) {
+      return taxiJson(
+        {
+          ok: false,
+          error: checkoutCurrency.error,
+          message: checkoutCurrency.message,
+          currency: checkoutCurrency.currency,
+        },
+        400
+      );
+    }
+
+    const priceSnapshot = snapshotFromRideRow(ride);
+    if (priceSnapshot.total_cents !== amountCents) {
+      return taxiJson(
+        {
+          ok: false,
+          error: "taxi_price_snapshot_mismatch",
+          message: "Ride total does not match computed price snapshot",
+          ride_total_cents: amountCents,
+          snapshot_total_cents: priceSnapshot.total_cents,
+        },
+        409
+      );
+    }
+
+    const stripeUnitAmount = toStripeAmount(currency, amountCents);
+    if (stripeUnitAmount <= 0) {
+      return taxiJson({ error: "Invalid taxi ride amount for Stripe" }, 400);
+    }
+
     const taxCents = Math.round(Number((ride as { tax_cents?: number }).tax_cents ?? 0));
     const promoDiscountCents = Math.round(Number(ride.discount_cents ?? 0));
     const loyaltyDiscountCents = Math.round(Number(ride.loyalty_discount_cents ?? 0));
@@ -140,7 +178,8 @@ export async function POST(req: NextRequest) {
     const totalDiscountCents =
       promoDiscountCents + loyaltyDiscountCents + sharedDiscountCents;
     const urls = buildCheckoutUrls(taxiRideId, req);
-    const idempotencyKey = `taxi_checkout_${taxiRideId}_${user.id}_${amountCents}_${currency}`;
+    const idempotencyKey = `taxi_checkout_${taxiRideId}_${user.id}_${stripeUnitAmount}_${currency}`;
+    const checkoutLabel = formatTaxiCheckoutAmount(currency, amountCents);
 
     await supabaseAdmin
       .from("taxi_rides")
@@ -161,10 +200,10 @@ export async function POST(req: NextRequest) {
             quantity: 1,
             price_data: {
               currency,
-              unit_amount: amountCents,
+              unit_amount: stripeUnitAmount,
               product_data: {
                 name: `MMD Taxi ${taxiRideId.slice(0, 8)}`,
-                description: `Taxi ride payment • ${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}`,
+                description: `Taxi ride payment • ${checkoutLabel}`,
               },
             },
           },
@@ -177,7 +216,8 @@ export async function POST(req: NextRequest) {
           taxiRideId: taxiRideId,
           user_id: String(user.id),
           amount_cents: String(amountCents),
-          amount_dollars: (amountCents / 100).toFixed(2),
+          stripe_amount: String(stripeUnitAmount),
+          amount_dollars: checkoutLabel,
           tax_cents: String(taxCents),
           currency: currency.toUpperCase(),
           promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
@@ -200,7 +240,8 @@ export async function POST(req: NextRequest) {
             taxiRideId: taxiRideId,
             user_id: String(user.id),
             amount_cents: String(amountCents),
-            amount_dollars: (amountCents / 100).toFixed(2),
+            stripe_amount: String(stripeUnitAmount),
+            amount_dollars: checkoutLabel,
             tax_cents: String(taxCents),
             currency: currency.toUpperCase(),
             promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
