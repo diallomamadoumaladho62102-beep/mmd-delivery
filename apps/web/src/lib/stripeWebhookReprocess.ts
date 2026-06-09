@@ -9,8 +9,18 @@ type DeliveryPaymentRow = {
   payment_status: string | null;
 };
 
+type TaxiPaymentRow = {
+  payment_status: string | null;
+};
+
 function isPaidStatus(status: unknown): boolean {
   return String(status ?? "").trim().toLowerCase() === "paid";
+}
+
+function isTaxiStripeModule(
+  metadata: Record<string, unknown> | null | undefined
+): boolean {
+  return String(metadata?.module ?? "").trim().toLowerCase() === "taxi";
 }
 
 function pickOrderIdFromMetadata(
@@ -42,6 +52,19 @@ function pickDeliveryRequestIdFromMetadata(
   return null;
 }
 
+function pickTaxiRideIdFromMetadata(
+  metadata: Record<string, unknown> | null | undefined
+): string | null {
+  if (!isTaxiStripeModule(metadata)) return null;
+
+  const raw =
+    metadata?.taxiRideId ?? metadata?.taxi_ride_id ?? metadata?.ride_id ?? null;
+  if (!raw) return null;
+
+  const normalized = String(raw).trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 async function isOrderUnpaid(
   supabaseAdmin: SupabaseClient,
   orderId: string
@@ -65,6 +88,20 @@ async function isDeliveryRequestUnpaid(
     .select("payment_status")
     .eq("id", deliveryRequestId)
     .maybeSingle<DeliveryPaymentRow>();
+
+  if (error || !data) return false;
+  return !isPaidStatus(data.payment_status);
+}
+
+async function isTaxiRideUnpaid(
+  supabaseAdmin: SupabaseClient,
+  taxiRideId: string
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("taxi_rides")
+    .select("payment_status")
+    .eq("id", taxiRideId)
+    .maybeSingle<TaxiPaymentRow>();
 
   if (error || !data) return false;
   return !isPaidStatus(data.payment_status);
@@ -130,6 +167,46 @@ async function resolveDeliveryRequestIdForPaymentIntent(
   return data?.id ?? null;
 }
 
+async function resolveTaxiRideIdForPaymentIntent(
+  supabaseAdmin: SupabaseClient,
+  paymentIntentId: string,
+  metadata: Record<string, unknown> | null
+): Promise<string | null> {
+  const fromMd = pickTaxiRideIdFromMetadata(metadata);
+  if (fromMd) return fromMd;
+
+  const { data } = await supabaseAdmin
+    .from("taxi_rides")
+    .select("id")
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .limit(1)
+    .maybeSingle<{ id: string }>();
+
+  return data?.id ?? null;
+}
+
+async function resolveTaxiRideIdFromCheckoutSession(
+  supabaseAdmin: SupabaseClient,
+  session: Stripe.Checkout.Session
+): Promise<string | null> {
+  const metadata = (session.metadata ?? null) as Record<string, unknown> | null;
+  const fromMd = pickTaxiRideIdFromMetadata(metadata);
+  if (fromMd) return fromMd;
+
+  if (!isTaxiStripeModule(metadata)) return null;
+
+  const clientRef = String(session.client_reference_id ?? "").trim();
+  if (!clientRef) return null;
+
+  const { data } = await supabaseAdmin
+    .from("taxi_rides")
+    .select("id")
+    .eq("id", clientRef)
+    .maybeSingle<{ id: string }>();
+
+  return data?.id ?? clientRef;
+}
+
 /**
  * Returns true when a duplicate Stripe event should be reprocessed
  * (e.g. first attempt inserted audit row but crashed before mark paid).
@@ -147,11 +224,15 @@ export async function stripeEventNeedsReprocessing(
 
     const orderId =
       pickOrderIdFromMetadata(metadata) ||
-      (session.client_reference_id
+      (!isTaxiStripeModule(metadata) && session.client_reference_id
         ? String(session.client_reference_id).trim()
         : null);
 
     const deliveryRequestId = pickDeliveryRequestIdFromMetadata(metadata);
+    const taxiRideId = await resolveTaxiRideIdFromCheckoutSession(
+      supabaseAdmin,
+      session
+    );
 
     if (orderId) {
       if (await isOrderUnpaid(supabaseAdmin, orderId)) {
@@ -166,6 +247,10 @@ export async function stripeEventNeedsReprocessing(
       if (await isDeliveryRequestUnpaid(supabaseAdmin, deliveryRequestId)) {
         return true;
       }
+    }
+
+    if (taxiRideId && (await isTaxiRideUnpaid(supabaseAdmin, taxiRideId))) {
+      return true;
     }
 
     return false;
@@ -203,6 +288,16 @@ export async function stripeEventNeedsReprocessing(
       deliveryRequestId &&
       (await isDeliveryRequestUnpaid(supabaseAdmin, deliveryRequestId))
     ) {
+      return true;
+    }
+
+    const taxiRideId = await resolveTaxiRideIdForPaymentIntent(
+      supabaseAdmin,
+      paymentIntentId,
+      metadata
+    );
+
+    if (taxiRideId && (await isTaxiRideUnpaid(supabaseAdmin, taxiRideId))) {
       return true;
     }
 

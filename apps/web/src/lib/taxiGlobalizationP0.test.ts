@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  alignTaxiAmountCentsForZeroDecimal,
   fromStripeAmount,
   toStripeAmount,
 } from "./taxiStripeAmounts";
@@ -42,10 +43,11 @@ for (const row of INTERNATIONAL_MATRIX) {
   });
 }
 
-test("GNF/XOF never multiply ×100 to Stripe", () => {
-  assert.equal(toStripeAmount("GNF", 150000), 1500);
-  assert.equal(toStripeAmount("XOF", 250000), 2500);
+test("GNF/XOF floor sub-major cents before Stripe (never overcharge)", () => {
+  assert.equal(alignTaxiAmountCentsForZeroDecimal("GNF", 150050), 150000);
+  assert.equal(toStripeAmount("GNF", 150050), 1500);
   assert.equal(fromStripeAmount("GNF", 1500), 150000);
+  assert.equal(toStripeAmount("XOF", 250099), 2500);
 });
 
 test("USD keeps cent precision on Stripe", () => {

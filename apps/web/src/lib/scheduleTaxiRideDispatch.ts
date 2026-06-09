@@ -1,35 +1,59 @@
-import { buildDispatchInternalHeaders } from "@/lib/dispatchInternalAuth";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildDispatchInternalHeaders, getDispatchInternalSecret } from "@/lib/dispatchInternalAuth";
+import { logTaxiEventServer } from "@/lib/taxiEvents";
 
 export type TaxiDispatchTriggerResult = {
   ok: boolean;
   error?: string;
-  skipped?: boolean;
+  message?: string;
   httpStatus?: number;
   body?: Record<string, unknown>;
 };
+
+async function logDispatchSecretMissing(
+  supabaseAdmin: SupabaseClient | null | undefined,
+  taxiRideId: string,
+  wave: number
+): Promise<void> {
+  console.error(
+    "[scheduleTaxiRideDispatch] DISPATCH BLOCKED: missing DISPATCH_INTERNAL_SECRET/CRON_SECRET",
+    { taxiRideId, wave, error: "dispatch_secret_missing" }
+  );
+
+  if (!supabaseAdmin) return;
+
+  await logTaxiEventServer(supabaseAdmin, {
+    rideId: taxiRideId,
+    eventType: "dispatch_secret_missing",
+    triggeredRole: "system",
+    description:
+      "Taxi dispatch blocked — configure DISPATCH_INTERNAL_SECRET or CRON_SECRET",
+    metadata: { wave, error: "dispatch_secret_missing" },
+  });
+}
 
 export async function triggerTaxiRideDispatch(params: {
   origin: string;
   taxiRideId: string;
   wave?: number;
+  supabaseAdmin?: SupabaseClient | null;
 }): Promise<TaxiDispatchTriggerResult> {
-  const { origin, taxiRideId, wave = 1 } = params;
+  const { origin, taxiRideId, wave = 1, supabaseAdmin } = params;
+
+  if (!getDispatchInternalSecret()) {
+    await logDispatchSecretMissing(supabaseAdmin, taxiRideId, wave);
+    return {
+      ok: false,
+      error: "dispatch_secret_missing",
+      message:
+        "Taxi dispatch blocked — configure DISPATCH_INTERNAL_SECRET or CRON_SECRET",
+    };
+  }
+
   const headers = {
     "Content-Type": "application/json",
     ...buildDispatchInternalHeaders(),
   };
-
-  if (!headers["x-dispatch-internal-secret"]) {
-    console.error(
-      "[scheduleTaxiRideDispatch] DISPATCH BLOCKED: missing DISPATCH_INTERNAL_SECRET/CRON_SECRET",
-      { taxiRideId, wave }
-    );
-    return {
-      ok: false,
-      skipped: true,
-      error: "missing_dispatch_internal_secret",
-    };
-  }
 
   try {
     const res = await fetch(`${origin.replace(/\/$/, "")}/api/dispatch/taxi-ride`, {
@@ -73,12 +97,15 @@ export function scheduleTaxiRideDispatch(params: {
   origin: string;
   taxiRideId: string;
   wave?: number;
+  supabaseAdmin?: SupabaseClient | null;
 }) {
   void triggerTaxiRideDispatch(params).then((result) => {
     if (!result.ok) {
       console.error("[scheduleTaxiRideDispatch] async dispatch failed", {
-        ...params,
-        result,
+        taxiRideId: params.taxiRideId,
+        wave: params.wave ?? 1,
+        error: result.error,
+        message: result.message,
       });
     }
   });

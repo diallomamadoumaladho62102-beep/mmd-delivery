@@ -1,5 +1,5 @@
 import { resolveInitialTaxiDispatchWave } from "@/lib/taxiPremiumDispatch";
-import { scheduleTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
+import { triggerTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
 
 export const TAXI_SHARED_RIDE_DISCOUNT_PERCENT = 15;
 export const TAXI_SHARED_RIDE_MATCH_WINDOW_MINUTES = 15;
@@ -104,11 +104,20 @@ export async function scheduleTaxiRideDispatchIfEligible(params: {
     };
   }
 
-  scheduleTaxiRideDispatch({
+  const dispatchResult = await triggerTaxiRideDispatch({
     origin,
     taxiRideId: dispatchTarget.dispatchRideId,
     wave: resolveInitialTaxiDispatchWave(rideForWave),
+    supabaseAdmin: supabase,
   });
+
+  if (!dispatchResult.ok) {
+    return {
+      dispatched: false,
+      dispatchRideId: dispatchTarget.dispatchRideId,
+      reason: dispatchResult.error ?? "dispatch_failed",
+    };
+  }
 
   return { dispatched: true, dispatchRideId: dispatchTarget.dispatchRideId };
 }

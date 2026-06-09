@@ -11,6 +11,7 @@ import {
 import { assertTaxiCheckoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
 import { snapshotFromRideRow } from "@/lib/taxiFinalPrice";
 import {
+  alignTaxiAmountCentsForZeroDecimal,
   formatTaxiCheckoutAmount,
   toStripeAmount,
 } from "@/lib/taxiStripeAmounts";
@@ -133,12 +134,53 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const amountCents = Math.round(Number(ride.total_cents ?? 0));
+    let amountCents = Math.round(Number(ride.total_cents ?? 0));
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
       return taxiJson({ error: "Invalid taxi ride amount" }, 400);
     }
 
     const currency = String(ride.currency ?? "USD").trim().toLowerCase();
+    const alignedAmountCents = alignTaxiAmountCentsForZeroDecimal(currency, amountCents);
+    if (alignedAmountCents <= 0) {
+      return taxiJson({ error: "Invalid taxi ride amount" }, 400);
+    }
+
+    if (alignedAmountCents !== amountCents) {
+      const previousTotalCents = amountCents;
+      const { error: alignError } = await supabaseAdmin
+        .from("taxi_rides")
+        .update({
+          total_cents: alignedAmountCents,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", taxiRideId);
+
+      if (alignError) {
+        return taxiJson(
+          {
+            ok: false,
+            error: "taxi_zero_decimal_alignment_failed",
+            message: "Could not align ride total for zero-decimal currency",
+          },
+          500
+        );
+      }
+
+      amountCents = alignedAmountCents;
+      ride.total_cents = alignedAmountCents;
+
+      await logTaxiEventServer(supabaseAdmin, {
+        rideId: taxiRideId,
+        eventType: "zero_decimal_amount_aligned",
+        triggeredRole: "system",
+        description: "Ride total floored to whole major units for zero-decimal currency",
+        metadata: {
+          currency: currency.toUpperCase(),
+          previous_total_cents: previousTotalCents,
+          aligned_total_cents: alignedAmountCents,
+        },
+      });
+    }
     const checkoutCurrency = assertTaxiCheckoutCurrencyAllowed(currency);
     if (checkoutCurrency.ok === false) {
       return taxiJson(

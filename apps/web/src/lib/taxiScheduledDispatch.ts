@@ -83,11 +83,20 @@ export async function dispatchDueTaxiScheduledRide(params: {
     .eq("id", taxiRideId)
     .maybeSingle();
 
-  await triggerTaxiRideDispatch({
+  const dispatchResult = await triggerTaxiRideDispatch({
     origin,
     taxiRideId,
     wave: resolveInitialTaxiDispatchWave(ride ?? {}),
+    supabaseAdmin: supabase,
   });
+
+  if (!dispatchResult.ok) {
+    return {
+      ...result,
+      dispatch_error: dispatchResult.error ?? "dispatch_failed",
+      dispatch_message: dispatchResult.message ?? null,
+    };
+  }
 
   return result;
 }

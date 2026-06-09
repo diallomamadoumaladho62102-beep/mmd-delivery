@@ -21,10 +21,25 @@ export function isZeroDecimalTaxiCurrency(currency: unknown): boolean {
   return TAXI_ZERO_DECIMAL_CURRENCIES.has(normalizeTaxiCurrencyUpper(currency));
 }
 
+/** Floor amount_cents to whole major units for GNF/XOF (never overcharge). */
+export function alignTaxiAmountCentsForZeroDecimal(
+  currency: unknown,
+  amountCents: unknown
+): number {
+  const cents = Math.round(Number(amountCents ?? 0));
+  if (!Number.isFinite(cents) || cents <= 0) return 0;
+
+  if (isZeroDecimalTaxiCurrency(currency)) {
+    return Math.floor(cents / 100) * 100;
+  }
+
+  return cents;
+}
+
 /** Convert internal amount_cents (DB) to Stripe smallest-unit amount. */
 export function toStripeAmount(currency: unknown, amountCents: unknown): number {
-  const cents = Math.round(Number(amountCents ?? 0));
-  if (!Number.isFinite(cents) || cents < 0) return 0;
+  const cents = alignTaxiAmountCentsForZeroDecimal(currency, amountCents);
+  if (cents <= 0) return 0;
 
   if (isZeroDecimalTaxiCurrency(currency)) {
     return Math.round(cents / 100);
