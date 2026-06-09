@@ -33,6 +33,8 @@ type TaxiOfferRow = {
   taxi_ride_id: string;
   expires_at: string;
   distance_miles?: number | null;
+  is_favorite_dispatch?: boolean | null;
+  wave?: number | null;
   taxi_rides?: {
     pickup_address?: string | null;
     dropoff_address?: string | null;
@@ -249,6 +251,9 @@ export function DriverTaxiPanel({ isOnline }: Props) {
               const busy = actionId === offer.id;
               return (
                 <View key={offer.id} style={styles.offerCard}>
+                  {offer.is_favorite_dispatch || offer.wave === 0 ? (
+                    <Text style={styles.favoriteBadge}>⭐ Favorite client ride</Text>
+                  ) : null}
                   <Text style={styles.meta} numberOfLines={1}>
                     {ride?.pickup_address ?? "Pickup"}
                   </Text>
@@ -348,6 +353,12 @@ const styles = StyleSheet.create({
   sectionTitle: { color: "#E2E8F0", fontWeight: "800" },
   meta: { color: "#94A3B8", fontSize: 13 },
   payout: { color: "#86EFAC", fontWeight: "800", marginTop: 2 },
+  favoriteBadge: {
+    color: "#FDE68A",
+    fontWeight: "800",
+    marginBottom: 4,
+    fontSize: 12,
+  },
   row: { flexDirection: "row", gap: 8, marginTop: 8 },
   secondaryBtn: {
     flex: 1,

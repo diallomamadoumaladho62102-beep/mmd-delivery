@@ -272,3 +272,10 @@ export async function assertCanManageTaxiPayouts(request?: NextRequest) {
     request
   );
 }
+
+export async function assertCanManageTaxiPromotions(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "taxi_promotions.manage"),
+    request
+  );
+}

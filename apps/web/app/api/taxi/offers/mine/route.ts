@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
           driver_payout_cents,
           total_cents,
           vehicle_class,
-          payment_status
+          payment_status,
+          preferred_driver_id
         )
       `
       )

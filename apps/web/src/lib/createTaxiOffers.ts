@@ -12,8 +12,10 @@ export async function createTaxiOffers(params: {
   vehicleClass: string;
   candidates: DispatchCandidate[];
   wave: number;
+  isFavoriteDispatch?: boolean;
 }): Promise<{ created: number; refreshed: number; skipped: number }> {
-  const { supabase, taxiRideId, vehicleClass, candidates, wave } = params;
+  const { supabase, taxiRideId, vehicleClass, candidates, wave, isFavoriteDispatch } =
+    params;
 
   if (candidates.length === 0) {
     return { created: 0, refreshed: 0, skipped: 0 };
@@ -74,6 +76,7 @@ export async function createTaxiOffers(params: {
       vehicle_class_match: true,
       expires_at: expiresAt,
       updated_at: nowIso,
+      is_favorite_dispatch: isFavoriteDispatch === true,
     };
 
     if (existing?.id) {

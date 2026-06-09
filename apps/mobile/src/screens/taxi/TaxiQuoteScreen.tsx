@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StatusBar,
   ScrollView,
@@ -16,8 +17,10 @@ import * as WebBrowser from "expo-web-browser";
 import {
   confirmTaxiPaid,
   createTaxiRide,
+  fetchTaxiFavoriteDrivers,
   formatTaxiCents,
   startTaxiCheckout,
+  validateTaxiPromotion,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
 
@@ -28,14 +31,52 @@ export default function TaxiQuoteScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<QuoteRoute>();
   const [paying, setPaying] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscountCents, setPromoDiscountCents] = useState(0);
+  const [preferredDriverId, setPreferredDriverId] = useState<string | null>(null);
+  const [favoriteDrivers, setFavoriteDrivers] = useState<
+    { driver_user_id: string }[]
+  >([]);
+
+  useEffect(() => {
+    void fetchTaxiFavoriteDrivers()
+      .then((res) => {
+        setFavoriteDrivers(
+          ((res?.favorites as { driver_user_id: string }[]) ?? []).slice(0, 5)
+        );
+      })
+      .catch(() => {
+        setFavoriteDrivers([]);
+      });
+  }, []);
 
   const { pickupAddress, dropoffAddress, vehicleClass, quote, route: routeInfo } =
     route.params;
 
   const currency = String(quote?.currency ?? "USD");
-  const total = formatTaxiCents(quote?.total_cents, currency);
+  const grossTotalCents = Number(quote?.total_cents ?? 0);
+  const netTotalCents = Math.max(0, grossTotalCents - promoDiscountCents);
+  const total = formatTaxiCents(netTotalCents, currency);
   const platform = formatTaxiCents(quote?.platform_fee_cents, currency);
   const subtotal = formatTaxiCents(quote?.subtotal_cents, currency);
+
+  async function handleApplyPromo() {
+    const code = promoCode.trim();
+    if (!code) return;
+    try {
+      const result = await validateTaxiPromotion({
+        code,
+        totalCents: grossTotalCents,
+      });
+      if (!result?.ok) {
+        throw new Error(String(result?.message ?? result?.error ?? "Invalid code"));
+      }
+      setPromoDiscountCents(Number(result.discount_cents ?? 0));
+    } catch (e: unknown) {
+      setPromoDiscountCents(0);
+      Alert.alert("Promo", e instanceof Error ? e.message : "Invalid promo code");
+    }
+  }
 
   async function handleConfirmAndPay() {
     setPaying(true);
@@ -48,7 +89,9 @@ export default function TaxiQuoteScreen() {
         dropoffLat: Number(routeInfo?.dropoffLat),
         dropoffLng: Number(routeInfo?.dropoffLng),
         vehicleClass: vehicleClass as TaxiVehicleClass,
-        expectedQuoteTotalCents: Number(quote?.total_cents ?? 0),
+        expectedQuoteTotalCents: netTotalCents,
+        preferredDriverId: preferredDriverId ?? undefined,
+        promoCode: promoCode.trim() || undefined,
       });
 
       if (!created?.ok || !created?.ride?.id) {
@@ -124,8 +167,92 @@ export default function TaxiQuoteScreen() {
           <Text style={{ color: "#94A3B8", fontWeight: "700" }}>Price breakdown</Text>
           <Row label="Subtotal" value={subtotal} />
           <Row label="Platform fee" value={platform} />
+          {promoDiscountCents > 0 ? (
+            <Row
+              label="Promo discount"
+              value={`-${formatTaxiCents(promoDiscountCents, currency)}`}
+            />
+          ) : null}
           <Row label="Total" value={total} bold />
         </View>
+
+        <View style={{ gap: 8 }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Promo code</Text>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TextInput
+              value={promoCode}
+              onChangeText={setPromoCode}
+              placeholder="Enter code"
+              placeholderTextColor="#64748B"
+              autoCapitalize="characters"
+              style={{
+                flex: 1,
+                backgroundColor: "rgba(15,23,42,0.95)",
+                borderWidth: 1,
+                borderColor: "#334155",
+                borderRadius: 14,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                color: "#F8FAFC",
+              }}
+            />
+            <TouchableOpacity
+              onPress={handleApplyPromo}
+              style={{
+                backgroundColor: "#334155",
+                paddingHorizontal: 16,
+                borderRadius: 14,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>Apply</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {favoriteDrivers.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+              Preferred driver (optional)
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => setPreferredDriverId(null)}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: preferredDriverId ? "#334155" : "#38BDF8",
+                  }}
+                >
+                  <Text style={{ color: "#E2E8F0" }}>Any</Text>
+                </TouchableOpacity>
+                {favoriteDrivers.map((fav) => {
+                  const selected = preferredDriverId === fav.driver_user_id;
+                  return (
+                    <TouchableOpacity
+                      key={fav.driver_user_id}
+                      onPress={() => setPreferredDriverId(fav.driver_user_id)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: selected ? "#38BDF8" : "#334155",
+                      }}
+                    >
+                      <Text style={{ color: "#E2E8F0" }}>
+                        {fav.driver_user_id.slice(0, 8)}…
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        ) : null}
 
         <TouchableOpacity
           onPress={handleConfirmAndPay}

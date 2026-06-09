@@ -170,6 +170,18 @@ export default function TaxiHomeScreen() {
             View ride history
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate("TaxiFavorites")}>
+          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
+            Favorite drivers
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate("TaxiLoyalty")}>
+          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
+            Loyalty points
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

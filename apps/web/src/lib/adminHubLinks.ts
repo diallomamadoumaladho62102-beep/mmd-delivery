@@ -122,4 +122,16 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Chauffeurs taxi, classes véhicule et éligibilité",
     permission: "taxi_drivers.read",
   },
+  {
+    href: "/admin/taxi-promotions",
+    title: "Taxi Promotions",
+    description: "Codes promo taxi — pourcentage, fixe, first ride",
+    permission: "taxi_promotions.read",
+  },
+  {
+    href: "/admin/taxi-loyalty",
+    title: "Taxi Loyalty",
+    description: "Programme fidélité taxi — consultation et ajustements",
+    permission: "taxi_rides.read",
+  },
 ];

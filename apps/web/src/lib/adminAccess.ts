@@ -130,3 +130,13 @@ export function canManageTaxiPayouts(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "taxi_payouts.manage");
 }
+
+export function canReadTaxiPromotions(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_promotions.read");
+}
+
+export function canManageTaxiPromotions(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "taxi_promotions.manage");
+}

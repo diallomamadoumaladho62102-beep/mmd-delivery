@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import {
   findTaxiRidesNeedingDispatchRetry,
+  findTaxiRidesNeedingFavoriteFallback,
   resolveRetryDispatchWave,
   retryTaxiRideDispatch,
 } from "@/lib/retryTaxiRideDispatch";
@@ -62,8 +63,14 @@ async function runRetryTaxiDispatch(request: NextRequest) {
   );
 
   let orphans;
+  let favoriteFallbacks;
   try {
-    orphans = await findTaxiRidesNeedingDispatchRetry(supabase, 25);
+    const [orphanRows, favoriteRows] = await Promise.all([
+      findTaxiRidesNeedingDispatchRetry(supabase, 25),
+      findTaxiRidesNeedingFavoriteFallback(supabase, 25),
+    ]);
+    orphans = orphanRows;
+    favoriteFallbacks = favoriteRows;
   } catch (e) {
     return json(
       { error: e instanceof Error ? e.message : "orphan_scan_failed" },
@@ -71,9 +78,17 @@ async function runRetryTaxiDispatch(request: NextRequest) {
     );
   }
 
+  const queue = [...favoriteFallbacks, ...orphans];
+  const seen = new Set<string>();
+  const uniqueQueue = queue.filter((ride) => {
+    if (seen.has(ride.id)) return false;
+    seen.add(ride.id);
+    return true;
+  });
+
   const results: Record<string, unknown>[] = [];
 
-  for (const ride of orphans) {
+  for (const ride of uniqueQueue) {
     const wave = resolveRetryDispatchWave(ride);
 
     try {
@@ -105,7 +120,7 @@ async function runRetryTaxiDispatch(request: NextRequest) {
 
   return json({
     ok: true,
-    scanned: orphans.length,
+    scanned: uniqueQueue.length,
     retried: results.length,
     results,
   });

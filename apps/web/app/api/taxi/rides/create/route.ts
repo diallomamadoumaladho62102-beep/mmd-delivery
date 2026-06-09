@@ -23,6 +23,10 @@ type Body = {
   client_notes?: string;
   expectedQuoteTotalCents?: number;
   expected_quote_total_cents?: number;
+  preferredDriverId?: string;
+  preferred_driver_id?: string;
+  promoCode?: string;
+  promo_code?: string;
 };
 
 const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
@@ -58,6 +62,27 @@ export async function POST(req: NextRequest) {
     const clientNotes = String(
       body.clientNotes ?? body.client_notes ?? ""
     ).trim();
+    const preferredDriverId = String(
+      body.preferredDriverId ?? body.preferred_driver_id ?? ""
+    ).trim();
+    const promoCode = String(body.promoCode ?? body.promo_code ?? "").trim();
+
+    if (preferredDriverId) {
+      const { data: favorite, error: favoriteError } = await auth.supabaseAdmin
+        .from("taxi_client_favorite_drivers")
+        .select("id")
+        .eq("client_user_id", auth.user.id)
+        .eq("driver_user_id", preferredDriverId)
+        .maybeSingle();
+
+      if (favoriteError) {
+        return taxiJson({ ok: false, error: favoriteError.message }, 500);
+      }
+
+      if (!favorite?.id) {
+        return taxiJson({ ok: false, error: "preferred_driver_not_favorited" }, 400);
+      }
+    }
 
     let route;
     try {
@@ -147,6 +172,7 @@ export async function POST(req: NextRequest) {
         passenger_count: passengerCount,
         client_notes: clientNotes || null,
         payment_status: "unpaid",
+        preferred_driver_id: preferredDriverId || null,
       })
       .select("*")
       .single();
@@ -156,6 +182,38 @@ export async function POST(req: NextRequest) {
         { ok: false, error: insertError?.message ?? "Failed to create ride" },
         500
       );
+    }
+
+    let promotionResult: Record<string, unknown> | null = null;
+    if (promoCode) {
+      const { data: promoData, error: promoError } = await auth.supabaseAdmin.rpc(
+        "apply_taxi_promotion_to_ride",
+        {
+          p_ride_id: String(ride.id),
+          p_code: promoCode,
+        }
+      );
+
+      if (promoError) {
+        return taxiJson({ ok: false, error: promoError.message }, 500);
+      }
+
+      const promoObj = (promoData ?? {}) as Record<string, unknown>;
+      if (promoObj.ok === false) {
+        return taxiJson({ ok: false, ...promoObj }, 400);
+      }
+
+      promotionResult = promoObj;
+
+      const { data: refreshedRide } = await auth.supabaseAdmin
+        .from("taxi_rides")
+        .select("*")
+        .eq("id", ride.id)
+        .maybeSingle();
+
+      if (refreshedRide) {
+        Object.assign(ride, refreshedRide);
+      }
     }
 
     await logTaxiEventServer(auth.supabaseAdmin, {
@@ -180,7 +238,12 @@ export async function POST(req: NextRequest) {
       metadata: { quote: quoteObj },
     });
 
-    return taxiJson({ ok: true, ride, quote: quoteObj });
+    return taxiJson({
+      ok: true,
+      ride,
+      quote: quoteObj,
+      promotion: promotionResult,
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
     return taxiJson({ ok: false, error: message }, 500);

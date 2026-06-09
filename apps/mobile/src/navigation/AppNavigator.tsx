@@ -78,6 +78,8 @@ import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
 
 import TaxiHomeScreen from "../screens/taxi/TaxiHomeScreen";
 import TaxiQuoteScreen from "../screens/taxi/TaxiQuoteScreen";
+import TaxiFavoritesScreen from "../screens/taxi/TaxiFavoritesScreen";
+import TaxiLoyaltyScreen from "../screens/taxi/TaxiLoyaltyScreen";
 import TaxiRideTrackingScreen from "../screens/taxi/TaxiRideTrackingScreen";
 import TaxiHistoryScreen from "../screens/taxi/TaxiHistoryScreen";
 import TaxiChatScreen from "../screens/taxi/TaxiChatScreen";
@@ -127,6 +129,8 @@ export type RootStackParamList = {
   };
   TaxiRideTracking: { rideId: string };
   TaxiHistory: undefined;
+  TaxiFavorites: undefined;
+  TaxiLoyalty: undefined;
   TaxiChat: { rideId: string };
 
   DriverTabs: undefined;
@@ -476,6 +480,8 @@ export function AppNavigator({
       r === "TaxiQuote" ||
       r === "TaxiRideTracking" ||
       r === "TaxiHistory" ||
+      r === "TaxiFavorites" ||
+      r === "TaxiLoyalty" ||
       r === "TaxiChat"
     );
   }, []);
@@ -882,6 +888,8 @@ export function AppNavigator({
           component={TaxiRideTrackingScreen}
         />
         <Stack.Screen name="TaxiHistory" component={TaxiHistoryScreen} />
+        <Stack.Screen name="TaxiFavorites" component={TaxiFavoritesScreen} />
+        <Stack.Screen name="TaxiLoyalty" component={TaxiLoyaltyScreen} />
         <Stack.Screen name="TaxiChat" component={TaxiChatScreen} />
 
         <Stack.Screen name="DriverTabs" component={DriverTabs} />

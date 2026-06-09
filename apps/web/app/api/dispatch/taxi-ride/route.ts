@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       body.taxiRideId ?? body.taxi_ride_id ?? body.rideId ?? ""
     ).trim();
 
-    const requestedWave = Math.min(Math.max(Number(body.wave ?? 1), 1), 3);
+    const requestedWave = Math.min(Math.max(Number(body.wave ?? 1), 0), 3);
     const locationFreshMinutes = Math.min(
       Number(body.locationFreshMinutes ?? 20),
       120

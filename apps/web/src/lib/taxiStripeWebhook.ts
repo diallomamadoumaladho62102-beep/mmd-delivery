@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { scheduleTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
+import { resolveInitialTaxiDispatchWave } from "@/lib/taxiPremiumDispatch";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -13,6 +14,7 @@ type TaxiRidePaymentRow = {
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   client_user_id: string | null;
+  preferred_driver_id?: string | null;
 };
 
 export function isTaxiStripeModule(
@@ -105,7 +107,7 @@ export async function handleTaxiStripePayment(params: {
   const { data: ride, error: rideError } = await supabaseAdmin
     .from("taxi_rides")
     .select(
-      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id"
+      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id,preferred_driver_id"
     )
     .eq("id", taxiRideId)
     .maybeSingle();
@@ -190,7 +192,7 @@ export async function handleTaxiStripePayment(params: {
     scheduleTaxiRideDispatch({
       origin: dispatchOrigin,
       taxiRideId,
-      wave: 1,
+      wave: resolveInitialTaxiDispatchWave(row),
     });
   }
 

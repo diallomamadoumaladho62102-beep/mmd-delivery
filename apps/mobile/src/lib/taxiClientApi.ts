@@ -73,6 +73,8 @@ export function createTaxiRide(
   input: TaxiQuoteInput & {
     clientNotes?: string;
     expectedQuoteTotalCents?: number;
+    preferredDriverId?: string;
+    promoCode?: string;
   }
 ) {
   return taxiPost("/api/taxi/rides/create", {
@@ -87,6 +89,8 @@ export function createTaxiRide(
     countryCode: input.countryCode ?? "US",
     clientNotes: input.clientNotes ?? "",
     expectedQuoteTotalCents: input.expectedQuoteTotalCents,
+    preferredDriverId: input.preferredDriverId,
+    promoCode: input.promoCode,
   });
 }
 
@@ -125,4 +129,50 @@ export function formatTaxiCents(cents: unknown, currency = "USD") {
   } catch {
     return `$${value.toFixed(2)}`;
   }
+}
+
+export function fetchTaxiFavoriteDrivers() {
+  return taxiGet("/api/taxi/favorites/drivers");
+}
+
+export function addTaxiFavoriteDriver(driverUserId: string) {
+  return taxiPost("/api/taxi/favorites/drivers", { driver_user_id: driverUserId });
+}
+
+export async function removeTaxiFavoriteDriver(driverUserId: string) {
+  const res = await fetch(`${baseUrl()}/api/taxi/favorites/drivers`, {
+    method: "DELETE",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({ driver_user_id: driverUserId }),
+  });
+  const out = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(out?.error ?? `Request failed (${res.status})`);
+  return out;
+}
+
+export function fetchTaxiLoyaltyBalance() {
+  return taxiGet("/api/taxi/loyalty/balance");
+}
+
+export function fetchTaxiLoyaltyHistory(limit = 50) {
+  return taxiGet(`/api/taxi/loyalty/history?limit=${limit}`);
+}
+
+export function validateTaxiPromotion(input: {
+  code: string;
+  totalCents?: number;
+  taxiRideId?: string;
+}) {
+  return taxiPost("/api/taxi/promotions/validate", {
+    code: input.code,
+    total_cents: input.totalCents,
+    taxi_ride_id: input.taxiRideId,
+  });
+}
+
+export function applyTaxiPromotion(input: { code: string; taxiRideId: string }) {
+  return taxiPost("/api/taxi/promotions/apply", {
+    code: input.code,
+    taxi_ride_id: input.taxiRideId,
+  });
 }

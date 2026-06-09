@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id"
+        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -142,6 +142,8 @@ export async function POST(req: NextRequest) {
           user_id: String(user.id),
           amount_cents: String(amountCents),
           amount_dollars: (amountCents / 100).toFixed(2),
+          promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
+          discount_cents: String(Number(ride.discount_cents ?? 0)),
           source_route: "/api/stripe/client/create-taxi-checkout-session",
         },
         payment_intent_data: {
@@ -152,6 +154,8 @@ export async function POST(req: NextRequest) {
             user_id: String(user.id),
             amount_cents: String(amountCents),
             amount_dollars: (amountCents / 100).toFixed(2),
+            promotion_id: ride.promotion_id ? String(ride.promotion_id) : "",
+            discount_cents: String(Number(ride.discount_cents ?? 0)),
             source_route: "/api/stripe/client/create-taxi-checkout-session",
           },
         },
@@ -189,7 +193,7 @@ export async function POST(req: NextRequest) {
       actorId: user.id,
       triggeredRole: "client",
       description: "Taxi checkout session created",
-      metadata: { stripe_session_id: session.id },
+      metadata: { stripe_session_id: session.id, promotion_id: ride.promotion_id },
     });
 
     return taxiJson({
