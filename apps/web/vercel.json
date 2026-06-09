@@ -7,18 +7,6 @@
     {
       "path": "/api/orders/expire-unpaid",
       "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api/cron/retry-taxi-dispatch",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/taxi-scheduled-dispatch",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/taxi-monitoring-snapshot",
-      "schedule": "*/15 * * * *"
     }
   ]
 }
