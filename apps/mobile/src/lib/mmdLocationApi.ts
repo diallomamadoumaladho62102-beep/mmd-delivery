@@ -57,6 +57,37 @@ export type MmdLandmark = {
   confidence_score: number;
 };
 
+export type MmdLocationTripView = {
+  id: string;
+  country_code: string;
+  region_name: string | null;
+  prefecture_name: string | null;
+  city_name: string | null;
+  commune_name: string | null;
+  quartier_name: string | null;
+  formatted_address: string | null;
+  directions_text: string;
+  pin_lat: number;
+  pin_lng: number;
+  geocoded_lat: number | null;
+  geocoded_lng: number | null;
+  accuracy_m: number | null;
+  location_source: string;
+  confidence_score: number;
+  address: string;
+  landmark: {
+    id: string;
+    name: string;
+    landmark_type: string;
+    lat: number;
+    lng: number;
+    commune_name: string | null;
+    quartier_name: string | null;
+  } | null;
+  photo_path: string | null;
+  photo_url: string | null;
+};
+
 export type MmdZone = {
   id: string;
   country_code: string;
@@ -171,6 +202,16 @@ export function searchMmdZones(params: {
   if (params.include_inactive) query.set("include_inactive", "1");
   if (params.limit) query.set("limit", String(params.limit));
   return locationGet(`/api/zones/search?${query.toString()}`);
+}
+
+export async function fetchMmdLocation(locationId: string) {
+  const out = await locationGet(`/api/locations/${locationId}`);
+  return out?.location as MmdLocationTripView;
+}
+
+export async function fetchMmdLocationForTrip(locationId: string) {
+  const out = await locationGet(`/api/locations/${locationId}/for-trip`);
+  return out?.location as MmdLocationTripView;
 }
 
 export async function createMmdLocation(input: CreateMmdLocationInput) {

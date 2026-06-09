@@ -46,6 +46,8 @@ export type TaxiVehicleClass = "standard" | "xl" | "premium";
 export type TaxiQuoteInput = {
   pickupAddress?: string;
   dropoffAddress?: string;
+  pickupLocationId?: string;
+  dropoffLocationId?: string;
   pickupLat?: number;
   pickupLng?: number;
   dropoffLat?: number;
@@ -62,6 +64,8 @@ export function quoteTaxiRide(input: TaxiQuoteInput) {
   return taxiPost("/api/taxi/rides/quote", {
     pickupAddress: input.pickupAddress,
     dropoffAddress: input.dropoffAddress,
+    pickupLocationId: input.pickupLocationId,
+    dropoffLocationId: input.dropoffLocationId,
     pickupLat: input.pickupLat,
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,
@@ -91,6 +95,8 @@ export function createTaxiRide(
   return taxiPost("/api/taxi/rides/create", {
     pickupAddress: input.pickupAddress,
     dropoffAddress: input.dropoffAddress,
+    pickupLocationId: input.pickupLocationId,
+    dropoffLocationId: input.dropoffLocationId,
     pickupLat: input.pickupLat,
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,

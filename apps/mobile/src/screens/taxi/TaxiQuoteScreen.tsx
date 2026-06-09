@@ -95,13 +95,15 @@ export default function TaxiQuoteScreen() {
       .catch(() => setRewards([]));
   }, []);
 
-  const { pickupAddress, dropoffAddress, vehicleClass, route: routeInfo } =
+  const { pickupAddress, dropoffAddress, vehicleClass, route: routeInfo, pickupLocationId, dropoffLocationId } =
     route.params;
 
   useEffect(() => {
     void quoteTaxiRide({
       pickupAddress,
       dropoffAddress,
+      pickupLocationId,
+      dropoffLocationId,
       pickupLat: Number(routeInfo?.pickupLat),
       pickupLng: Number(routeInfo?.pickupLng),
       dropoffLat: Number(routeInfo?.dropoffLat),
@@ -125,6 +127,8 @@ export default function TaxiQuoteScreen() {
     countryCode,
     pickupAddress,
     dropoffAddress,
+    pickupLocationId,
+    dropoffLocationId,
     vehicleClass,
     route.params.quote,
     routeInfo,
@@ -169,6 +173,8 @@ export default function TaxiQuoteScreen() {
       const created = await createTaxiRide({
         pickupAddress,
         dropoffAddress,
+        pickupLocationId,
+        dropoffLocationId,
         pickupLat: Number(routeInfo?.pickupLat),
         pickupLng: Number(routeInfo?.pickupLng),
         dropoffLat: Number(routeInfo?.dropoffLat),

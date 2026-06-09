@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { applyOwnedLocationIdsToTaxiInput } from "@/lib/mmdLocationSnapshot";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
@@ -11,6 +12,10 @@ export const dynamic = "force-dynamic";
 type Body = {
   pickupAddress?: string;
   dropoffAddress?: string;
+  pickupLocationId?: string;
+  dropoffLocationId?: string;
+  pickup_location_id?: string;
+  dropoff_location_id?: string;
   pickupLat?: number;
   pickupLng?: number;
   dropoffLat?: number;
@@ -43,9 +48,34 @@ export async function POST(req: NextRequest) {
       body.countryCode ?? body.country_code ?? "US"
     );
 
+    const locationInput = await applyOwnedLocationIdsToTaxiInput({
+      supabaseAdmin: auth.supabaseAdmin,
+      userId: auth.user.id,
+      pickupLocationId: body.pickupLocationId ?? body.pickup_location_id,
+      dropoffLocationId: body.dropoffLocationId ?? body.dropoff_location_id,
+      pickupAddress: body.pickupAddress,
+      dropoffAddress: body.dropoffAddress,
+      pickupLat: body.pickupLat,
+      pickupLng: body.pickupLng,
+      dropoffLat: body.dropoffLat,
+      dropoffLng: body.dropoffLng,
+    });
+
+    if (locationInput.ok === false) {
+      return taxiJson({ ok: false, error: locationInput.error }, locationInput.status);
+    }
+
     let route;
     try {
-      route = await resolveTaxiMultiStopRoute({ ...body, stops: body.stops });
+      route = await resolveTaxiMultiStopRoute({
+        pickupAddress: locationInput.pickupAddress,
+        dropoffAddress: locationInput.dropoffAddress,
+        pickupLat: locationInput.pickupLat,
+        pickupLng: locationInput.pickupLng,
+        dropoffLat: locationInput.dropoffLat,
+        dropoffLng: locationInput.dropoffLng,
+        stops: body.stops,
+      });
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Route resolution failed";
       if (message === "distance_too_far") {

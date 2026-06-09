@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import {
@@ -21,6 +21,7 @@ import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
 import { getTaxiUiString } from "../../lib/taxiLocalization";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
+type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
 
 const CLASSES: { key: TaxiVehicleClass; label: string; emoji: string }[] = [
   { key: "standard", label: "Standard", emoji: "🚕" },
@@ -30,8 +31,15 @@ const CLASSES: { key: TaxiVehicleClass; label: string; emoji: string }[] = [
 
 export default function TaxiHomeScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<TaxiHomeRoute>();
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
+  const [pickupLocationId, setPickupLocationId] = useState(
+    route.params?.pickupLocationId ?? ""
+  );
+  const [dropoffLocationId, setDropoffLocationId] = useState(
+    route.params?.dropoffLocationId ?? ""
+  );
   const [vehicleClass, setVehicleClass] = useState<TaxiVehicleClass>("standard");
   const [countryCode, setCountryCode] = useState("US");
   const [currencyCode, setCurrencyCode] = useState("USD");
@@ -40,8 +48,10 @@ export default function TaxiHomeScreen() {
   async function handleQuote() {
     const pickupAddress = pickup.trim();
     const dropoffAddress = dropoff.trim();
+    const hasPickupLocation = Boolean(pickupLocationId.trim());
+    const hasDropoffLocation = Boolean(dropoffLocationId.trim());
 
-    if (!pickupAddress || !dropoffAddress) {
+    if ((!pickupAddress && !hasPickupLocation) || (!dropoffAddress && !hasDropoffLocation)) {
       Alert.alert("Missing address", "Enter pickup and dropoff addresses.");
       return;
     }
@@ -49,8 +59,10 @@ export default function TaxiHomeScreen() {
     setLoading(true);
     try {
       const result = await quoteTaxiRide({
-        pickupAddress,
-        dropoffAddress,
+        pickupAddress: pickupAddress || undefined,
+        dropoffAddress: dropoffAddress || undefined,
+        pickupLocationId: pickupLocationId.trim() || undefined,
+        dropoffLocationId: dropoffLocationId.trim() || undefined,
         vehicleClass,
         countryCode,
       });
@@ -64,8 +76,10 @@ export default function TaxiHomeScreen() {
           ?.countryCode ?? countryCode;
 
       navigation.navigate("TaxiQuote", {
-        pickupAddress,
-        dropoffAddress,
+        pickupAddress: pickupAddress || String(result.route?.pickupAddress ?? ""),
+        dropoffAddress: dropoffAddress || String(result.route?.dropoffAddress ?? ""),
+        pickupLocationId: pickupLocationId.trim() || undefined,
+        dropoffLocationId: dropoffLocationId.trim() || undefined,
         vehicleClass,
         countryCode: resolvedCountry,
         countryResolution: result.country_resolution,

@@ -100,7 +100,7 @@ export type RootStackParamList = {
   RoleSelect: undefined;
   ResetPassword: undefined;
 
-  DeliveryRequest: undefined;
+  DeliveryRequest: { dropoffLocationId?: string } | undefined;
 
   ClientAuth: undefined;
   DriverAuth: { ref?: string; code?: string } | undefined;
@@ -125,10 +125,15 @@ export type RootStackParamList = {
     targetRole?: "restaurant" | "driver" | "admin" | "";
   };
 
-  TaxiHome: undefined;
+  TaxiHome: {
+    pickupLocationId?: string;
+    dropoffLocationId?: string;
+  } | undefined;
   TaxiQuote: {
     pickupAddress: string;
     dropoffAddress: string;
+    pickupLocationId?: string;
+    dropoffLocationId?: string;
     vehicleClass: string;
     countryCode?: string;
     countryResolution?: Record<string, unknown>;

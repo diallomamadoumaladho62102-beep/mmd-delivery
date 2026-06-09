@@ -12,16 +12,18 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { startCheckoutForDeliveryRequest } from "../utils/stripe";
+import { fetchMmdLocation } from "../lib/mmdLocationApi";
 import { useTranslation } from "react-i18next";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+type DeliveryRequestRoute = RouteProp<RootStackParamList, "DeliveryRequest">;
 
 type RequestType = "package" | "ride";
 
@@ -193,6 +195,7 @@ function sleep(ms: number) {
 
 export function DeliveryRequestScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<DeliveryRequestRoute>();
   const { t } = useTranslation();
 
   const tr = useCallback(
@@ -215,6 +218,9 @@ export function DeliveryRequestScreen() {
   const [deliveryFee, setDeliveryFee] = useState<number | null>(null);
   const [pickupCoords, setPickupCoords] = useState<LatLng | null>(null);
   const [dropoffCoords, setDropoffCoords] = useState<LatLng | null>(null);
+  const [dropoffLocationId, setDropoffLocationId] = useState<string | null>(
+    route.params?.dropoffLocationId ?? null
+  );
   const [estimateError, setEstimateError] = useState<string | null>(null);
 
   const [pricingConfig, setPricingConfig] = useState<PricingConfigRow | null>(null);
@@ -310,6 +316,24 @@ export function DeliveryRequestScreen() {
     void loadPricingConfig();
   }, [loadPricingConfig]);
 
+  useEffect(() => {
+    const locationId = dropoffLocationId?.trim();
+    if (!locationId) return;
+
+    void fetchMmdLocation(locationId)
+      .then((location) => {
+        if (!location) return;
+        setDropoffAddress((prev) => prev || location.address || location.directions_text);
+        setDropoffCoords({
+          lat: location.pin_lat,
+          lng: location.pin_lng,
+        });
+      })
+      .catch((e) => {
+        console.warn("dropoff location preload failed:", e);
+      });
+  }, [dropoffLocationId]);
+
   const validate = useCallback(() => {
     const pickup = normalizeAddress(pickupAddress);
     const dropoff = normalizeAddress(dropoffAddress);
@@ -319,12 +343,20 @@ export function DeliveryRequestScreen() {
       return false;
     }
 
-    if (!dropoff) {
+    if (!dropoff && !dropoffLocationId) {
       Alert.alert(tr("deliveryRequest.alerts.missingDropoffTitle", "Dropoff manquant"), tr("deliveryRequest.alerts.missingDropoffBody", "Entre l’adresse dropoff."));
       return false;
     }
 
-    if (!looksLikeCompleteAddress(pickup) || !looksLikeCompleteAddress(dropoff)) {
+    if (!looksLikeCompleteAddress(pickup)) {
+      Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Adresse incomplète"), tr("deliveryRequest.alerts.incompleteAddressBody", "Entre des adresses pickup et dropoff complètes."));
+      return false;
+    }
+
+    const dropoffOk = dropoffLocationId
+      ? Boolean(dropoffCoords)
+      : looksLikeCompleteAddress(dropoff);
+    if (!dropoffOk) {
       Alert.alert(tr("deliveryRequest.alerts.incompleteAddressTitle", "Adresse incomplète"), tr("deliveryRequest.alerts.incompleteAddressBody", "Entre des adresses pickup et dropoff complètes."));
       return false;
     }
@@ -335,7 +367,7 @@ export function DeliveryRequestScreen() {
     }
 
     return true;
-  }, [pickupAddress, dropoffAddress, requestType, description, tr]);
+  }, [pickupAddress, dropoffAddress, dropoffLocationId, dropoffCoords, requestType, description, tr]);
 
   const handleEstimate = useCallback(
     async (options?: { silent?: boolean }) => {
@@ -777,6 +809,7 @@ export function DeliveryRequestScreen() {
           pickup_lng: pickupCoords?.lng ?? null,
           dropoff_lat: dropoffCoords?.lat ?? null,
           dropoff_lng: dropoffCoords?.lng ?? null,
+          dropoff_location_id: dropoffLocationId,
 
           distance_miles: distanceMiles,
           eta_minutes: etaMinutes != null ? Math.round(etaMinutes) : null,
