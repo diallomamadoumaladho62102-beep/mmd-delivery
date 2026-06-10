@@ -53,6 +53,20 @@ export type MarketplaceOrderDraft = {
     checkout_enabled?: boolean;
     message?: string | null;
   };
+  delivery_status_shadow?: string | null;
+  delivery_quote_shadow?: {
+    customer_delivery_total_cents?: number;
+    estimated_distance_miles?: number;
+    estimated_minutes?: number;
+  } | null;
+  estimated_distance_miles?: number | null;
+  estimated_minutes?: number | null;
+  driver_earning_shadow_cents?: number | null;
+  platform_margin_shadow_cents?: number | null;
+  dispatch_shadow?: {
+    dispatch_readiness?: string | null;
+    message?: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
   items?: MarketplaceOrderItem[];

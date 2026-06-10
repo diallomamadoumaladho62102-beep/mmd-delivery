@@ -3,6 +3,7 @@ import {
   computeMarketplaceCheckoutShadow,
   type MarketplaceCheckoutShadow,
 } from "@/lib/marketplaceCheckout";
+import { persistMarketplaceDeliveryShadow } from "@/lib/marketplaceDeliveryShadow";
 
 export type MarketplaceDraftItemInput = {
   product_id: string;
@@ -33,6 +34,16 @@ export type MarketplaceOrderRow = {
   region_code: string | null;
   notes: string | null;
   checkout_shadow: MarketplaceCheckoutShadow | Record<string, unknown>;
+  pickup_location_id?: string | null;
+  dropoff_location_id?: string | null;
+  seller_pickup_address?: string | null;
+  delivery_status_shadow?: string | null;
+  delivery_quote_shadow?: Record<string, unknown> | null;
+  estimated_distance_miles?: number | null;
+  estimated_minutes?: number | null;
+  driver_earning_shadow_cents?: number | null;
+  platform_margin_shadow_cents?: number | null;
+  dispatch_shadow?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   items?: MarketplaceOrderItemRow[];
@@ -113,6 +124,9 @@ export async function loadApprovedSellers(supabaseAdmin: SupabaseClient) {
   return data ?? [];
 }
 
+const ORDER_SELECT =
+  "id,seller_id,client_user_id,status,currency,subtotal_cents,delivery_fee_cents,service_fee_cents,total_cents,country_code,region_code,notes,checkout_shadow,pickup_location_id,dropoff_location_id,seller_pickup_address,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,platform_margin_shadow_cents,dispatch_shadow,created_at,updated_at";
+
 export async function getClientDraftOrder(
   supabaseAdmin: SupabaseClient,
   params: {
@@ -124,9 +138,7 @@ export async function getClientDraftOrder(
   if (params.orderId) {
     const res = await supabaseAdmin
       .from("seller_orders")
-      .select(
-        "id,seller_id,client_user_id,status,currency,subtotal_cents,delivery_fee_cents,service_fee_cents,total_cents,country_code,region_code,notes,checkout_shadow,created_at,updated_at"
-      )
+      .select(ORDER_SELECT)
       .eq("id", params.orderId)
       .eq("client_user_id", params.clientUserId)
       .in("status", ["draft", "pending_checkout"])
@@ -139,9 +151,7 @@ export async function getClientDraftOrder(
 
   let draftQuery = supabaseAdmin
     .from("seller_orders")
-    .select(
-      "id,seller_id,client_user_id,status,currency,subtotal_cents,delivery_fee_cents,service_fee_cents,total_cents,country_code,region_code,notes,checkout_shadow,created_at,updated_at"
-    )
+    .select(ORDER_SELECT)
     .eq("client_user_id", params.clientUserId)
     .in("status", ["draft", "pending_checkout"]);
 
@@ -176,6 +186,8 @@ export async function upsertMarketplaceDraftOrder(
     orderId?: string;
     items: MarketplaceDraftItemInput[];
     notes?: string | null;
+    pickupLocationId?: string | null;
+    dropoffLocationId?: string | null;
   }
 ): Promise<MarketplaceOrderRow> {
   const productIds = params.items.map((item) => item.product_id);
@@ -310,7 +322,21 @@ export async function upsertMarketplaceDraftOrder(
   });
 
   if (!order) throw new Error("Failed to load draft order");
-  return order;
+
+  await persistMarketplaceDeliveryShadow(supabaseAdmin, {
+    orderId: order.id,
+    sellerId: params.sellerId,
+    pickupLocationId: params.pickupLocationId ?? null,
+    dropoffLocationId: params.dropoffLocationId ?? null,
+    countryCode: params.countryCode ?? null,
+  });
+
+  return (
+    (await getClientDraftOrder(supabaseAdmin, {
+      clientUserId: params.clientUserId,
+      orderId: order.id,
+    })) ?? order
+  );
 }
 
 export async function runMarketplaceCheckoutShadow(
@@ -361,5 +387,22 @@ export async function runMarketplaceCheckoutShadow(
   });
 
   if (!refreshed) throw new Error("Failed to refresh order");
-  return { order: refreshed, shadow };
+
+  await persistMarketplaceDeliveryShadow(supabaseAdmin, {
+    orderId: refreshed.id,
+    sellerId: refreshed.seller_id,
+    pickupLocationId: refreshed.pickup_location_id ?? null,
+    dropoffLocationId: refreshed.dropoff_location_id ?? null,
+    countryCode: refreshed.country_code ?? null,
+  });
+
+  const withDeliveryShadow = await getClientDraftOrder(supabaseAdmin, {
+    clientUserId: params.clientUserId,
+    orderId: refreshed.id,
+  });
+
+  return {
+    order: withDeliveryShadow ?? refreshed,
+    shadow,
+  };
 }

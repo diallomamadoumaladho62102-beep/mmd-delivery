@@ -114,6 +114,52 @@ export default function MarketplaceCartScreen({ route }: Props) {
               <Line label={t("marketplace.cart.total", "Total")} value={formatMarketplaceMoney(draft.total_cents, draft.currency)} bold />
             </View>
 
+            {draft.delivery_status_shadow &&
+            draft.delivery_status_shadow !== "not_started" ? (
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#4338CA",
+                  borderRadius: 12,
+                  padding: 12,
+                  backgroundColor: "rgba(67,56,202,0.12)",
+                  gap: 4,
+                }}
+              >
+                <Text style={{ color: "#C4B5FD", fontWeight: "700" }}>
+                  {t("marketplace.cart.deliveryShadowTitle", "Estimated delivery (shadow)")}
+                </Text>
+                {draft.estimated_distance_miles != null ? (
+                  <Text style={{ color: "#CBD5E1" }}>
+                    {Number(draft.estimated_distance_miles).toFixed(1)} mi ·{" "}
+                    {Math.round(Number(draft.estimated_minutes ?? 0))} min
+                  </Text>
+                ) : null}
+                {draft.delivery_quote_shadow?.customer_delivery_total_cents != null ? (
+                  <Text style={{ color: "#94A3B8" }}>
+                    {t("marketplace.cart.deliveryShadowFee", "Delivery quote shadow")}:{" "}
+                    {formatMarketplaceMoney(
+                      draft.delivery_quote_shadow.customer_delivery_total_cents,
+                      draft.currency
+                    )}
+                  </Text>
+                ) : null}
+                <Text style={{ color: "#64748B", fontSize: 12 }}>
+                  {t(
+                    "marketplace.cart.deliveryShadowNote",
+                    "Shadow only — checkout and driver dispatch are not live yet."
+                  )}
+                </Text>
+              </View>
+            ) : null}
+
+            <Text style={{ color: "#64748B", fontSize: 12 }}>
+              {t(
+                "marketplace.cart.checkoutStillComingSoon",
+                "Checkout still coming soon — no live marketplace payment."
+              )}
+            </Text>
+
             <TouchableOpacity
               disabled={checkingOut}
               onPress={() => void handleCheckoutShadow()}

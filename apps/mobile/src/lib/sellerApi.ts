@@ -140,7 +140,7 @@ export async function loadSellerOrders(sellerId: string): Promise<SellerOrderRow
   const { data, error } = await supabase
     .from("seller_orders")
     .select(
-      "id,seller_id,client_user_id,status,currency,total_cents,country_code,region_code,notes,created_at"
+      "id,seller_id,client_user_id,status,currency,total_cents,country_code,region_code,notes,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,dispatch_shadow,created_at"
     )
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false });

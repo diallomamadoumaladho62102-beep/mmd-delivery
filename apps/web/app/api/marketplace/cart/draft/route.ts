@@ -14,6 +14,8 @@ type DraftBody = {
   order_id?: string;
   items?: Array<{ product_id?: string; quantity?: number }>;
   notes?: string | null;
+  pickup_location_id?: string | null;
+  dropoff_location_id?: string | null;
 };
 
 export async function POST(req: NextRequest) {
@@ -47,6 +49,8 @@ export async function POST(req: NextRequest) {
       items,
       notes: body.notes ?? null,
       countryCode: auth.scope.country_code ?? null,
+      pickupLocationId: body.pickup_location_id ?? null,
+      dropoffLocationId: body.dropoff_location_id ?? null,
     });
 
     return mmdLocationJson({ ok: true, order });

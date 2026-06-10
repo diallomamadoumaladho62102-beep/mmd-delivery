@@ -83,6 +83,25 @@ export default function SellerOrdersScreen({ navigation }: Props) {
               <Text style={{ color: "#94A3B8", marginTop: 4 }}>
                 {formatMoney(item.total_cents, item.currency)}
               </Text>
+              <Text style={{ color: "#64748B", marginTop: 6, fontSize: 12 }}>
+                {t("seller.orders.deliveryNotLive", "Delivery not live yet")}
+              </Text>
+              {item.delivery_status_shadow &&
+              item.delivery_status_shadow !== "not_started" ? (
+                <>
+                  <Text style={{ color: "#A78BFA", marginTop: 4, fontSize: 12 }}>
+                    {t("seller.orders.deliveryShadowStatus", "Delivery shadow")}:{" "}
+                    {item.delivery_status_shadow}
+                  </Text>
+                  {item.estimated_distance_miles != null ? (
+                    <Text style={{ color: "#CBD5E1", marginTop: 2, fontSize: 12 }}>
+                      {t("seller.orders.estimatedDelivery", "Est. delivery")}:{" "}
+                      {Number(item.estimated_distance_miles).toFixed(1)} mi ·{" "}
+                      {Math.round(Number(item.estimated_minutes ?? 0))} min
+                    </Text>
+                  ) : null}
+                </>
+              ) : null}
               {item.notes ? (
                 <Text style={{ color: "#CBD5E1", marginTop: 4 }}>{item.notes}</Text>
               ) : null}

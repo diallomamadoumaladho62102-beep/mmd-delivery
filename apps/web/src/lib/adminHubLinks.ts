@@ -45,6 +45,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.sellers.read",
   },
   {
+    href: "/admin/marketplace-delivery-shadow",
+    title: "Marketplace Delivery Shadow",
+    description: "Quotes livraison marketplace simulées — sans dispatch live",
+    permission: "users.sellers.read",
+  },
+  {
     href: "/admin/admins",
     title: "Administrateurs",
     description: "Gérer les rôles staff (Super Admin uniquement)",
