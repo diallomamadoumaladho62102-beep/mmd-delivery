@@ -13,6 +13,7 @@ import {
   isAmountVerificationFailure,
   verifyStripePaidMatchesTaxiRide,
 } from "@/lib/verifyStripePaidTaxi";
+import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,paid_at,preferred_driver_id,is_scheduled"
+        "id,client_user_id,status,payment_status,total_cents,currency,country_code,stripe_session_id,stripe_payment_intent_id,paid_at,preferred_driver_id,is_scheduled"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -131,6 +132,16 @@ export async function POST(req: NextRequest) {
 
     if (String(ride.client_user_id) !== user.id) {
       return taxiJson({ error: "Forbidden" }, 403);
+    }
+
+    const platformCheckout = await assertPlatformFeature(
+      supabaseAdmin,
+      String(ride.country_code ?? "US"),
+      "taxi",
+      "checkout"
+    );
+    if (platformCheckout.ok === false) {
+      return taxiJson({ ok: false, ...platformCheckout }, 403);
     }
 
     if (normalizeStatus(ride.payment_status) === "paid") {
