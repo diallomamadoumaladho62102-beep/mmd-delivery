@@ -698,6 +698,8 @@ export async function assertPlatformScopeFeature(
     taxi_enabled: config.taxi_enabled,
     delivery_enabled: config.delivery_enabled,
     restaurant_enabled: config.restaurant_enabled,
+    marketplace_enabled: config.marketplace_enabled,
+    seller_enabled: config.seller_enabled,
     checkout_enabled: config.checkout_enabled,
     payout_enabled: config.payout_enabled,
     maintenance_mode: config.maintenance_mode,

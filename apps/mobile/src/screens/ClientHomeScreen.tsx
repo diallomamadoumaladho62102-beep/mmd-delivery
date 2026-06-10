@@ -18,6 +18,7 @@ import {
   Pressable,
   Platform,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -1728,6 +1729,31 @@ export function ClientHomeScreen() {
                 disabled={!platformFeatures.taxi_available}
                 comingSoonLabel={!platformFeatures.taxi_available ? comingSoonLabel : undefined}
                 onPress={() => navigation.navigate("TaxiHome" as never)}
+              />
+
+              <ActionBanner
+                title={ts("client.home.banner.marketplace.title", "Marketplace")}
+                subtitle={ts(
+                  "client.home.banner.marketplace.subtitle",
+                  "Shop local sellers — coming to MMD"
+                )}
+                emoji="🛍️"
+                tileEmoji="🛍️"
+                backgroundColor="rgba(124,58,237,0.82)"
+                borderColor="rgba(196,181,253,0.32)"
+                disabled={!platformFeatures.marketplace_available}
+                comingSoonLabel={
+                  !platformFeatures.marketplace_available ? comingSoonLabel : undefined
+                }
+                onPress={() => {
+                  Alert.alert(
+                    ts("client.home.banner.marketplace.title", "Marketplace"),
+                    ts(
+                      "client.home.banner.marketplace.placeholder",
+                      "MMD Marketplace is launching in your area. Full shopping experience coming soon."
+                    )
+                  );
+                }}
               />
             </View>
 

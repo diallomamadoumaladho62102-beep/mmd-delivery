@@ -114,4 +114,21 @@ test("buildFeatureAvailability exposes coming soon marketplace", () => {
   assert.deepEqual(features.coming_soon_services, ["marketplace", "seller"]);
 });
 
+test("marketplace_available follows marketplace_enabled when platform ON", () => {
+  const config = baseCountry({ marketplace_enabled: true, seller_enabled: true });
+  const scope = {
+    country_code: "US",
+    region_code: null,
+    state_code: null,
+    mmd_zone_id: null,
+    zone_code: null,
+    scope_level: "country" as const,
+    scope_source: "saved_address" as const,
+  };
+  const features = buildFeatureAvailability(config, scope);
+  assert.equal(features.marketplace_available, true);
+  assert.equal(features.seller_available, true);
+  assert.deepEqual(features.coming_soon_services, []);
+});
+
 console.log("platformScopeResolver tests passed");

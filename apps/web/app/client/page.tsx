@@ -31,6 +31,9 @@ type ClientPlatformFeatures = {
   delivery_available?: boolean;
   restaurant_available?: boolean;
   taxi_available?: boolean;
+  marketplace_available?: boolean;
+  seller_available?: boolean;
+  coming_soon_services?: string[];
 };
 
 export default function ClientHomePage() {
@@ -42,8 +45,11 @@ export default function ClientHomePage() {
     delivery_available: true,
     restaurant_available: true,
     taxi_available: true,
+    marketplace_available: false,
+    seller_available: false,
     maintenance_mode: false,
     message: null,
+    coming_soon_services: ["marketplace", "seller"],
   });
 
   const fetchPlatformFeatures = useCallback(async () => {
@@ -221,6 +227,24 @@ export default function ClientHomePage() {
           ) : (
             <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">
               Restaurant — bientôt disponible dans votre zone
+            </div>
+          )}
+
+          {platformFeatures.marketplace_available ? (
+            <button
+              type="button"
+              onClick={() =>
+                window.alert(
+                  "MMD Marketplace arrive dans votre zone. L’expérience d’achat complète sera disponible prochainement."
+                )
+              }
+              className="inline-flex w-full items-center justify-center rounded-full bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700 transition"
+            >
+              Marketplace MMD (aperçu)
+            </button>
+          ) : (
+            <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">
+              Marketplace — bientôt disponible dans votre zone
             </div>
           )}
         </div>
