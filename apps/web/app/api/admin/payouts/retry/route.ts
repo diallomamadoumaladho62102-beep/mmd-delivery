@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { AdminAccessError, assertCanRetryPayout } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -53,7 +54,6 @@ const JSON_HEADERS = {
 } as const;
 
 const ORDER_ID_MAX_LENGTH = 128;
-const ALLOWED_CURRENCIES = new Set(["usd", "eur", "gbp", "cad"]);
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
@@ -106,11 +106,11 @@ function getRetryCount(metadata: Record<string, unknown> | null): number {
 }
 
 function normalizeCurrency(value: unknown): string {
-  const currency = String(value ?? "").trim().toLowerCase();
-  if (!currency || !ALLOWED_CURRENCIES.has(currency)) {
+  const result = assertFoodCheckoutCurrencyAllowed(value);
+  if (!result.ok) {
     throw new Error("Invalid payout currency.");
   }
-  return currency;
+  return result.currency.toLowerCase();
 }
 
 function normalizeDestinationAccountId(value: unknown): string {

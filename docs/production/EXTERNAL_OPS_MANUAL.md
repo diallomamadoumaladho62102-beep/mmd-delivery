@@ -32,6 +32,23 @@ select country_code, is_active from public.mmd_zones where country_code in ('SN'
 - `MMD_EDGE_PAYOUTS_DISABLED=true` on payout Edge functions
 - Redeploy `create_connect_account` after migration (country-aware Connect)
 
+## Stripe Connect country audit
+
+Run after deploying `create_connect_account` with country support:
+
+```bash
+node scripts/verify-stripe-connect-countries.mjs --report-only
+node scripts/verify-stripe-connect-countries.mjs --suggest-reset
+```
+
+Stripe Express `country` is immutable. Mismatched accounts must be reset in DB and re-onboarded.
+
+## Monitoring
+
+- Health: `GET /api/health`
+- Monitoring snapshot: `GET /api/monitoring` with `Authorization: Bearer $MONITORING_SECRET`
+- Optional alerts: set `MONITORING_WEBHOOK_URL` (Slack-compatible JSON webhook)
+
 ## Stripe Connect — Africa (manual)
 
 Code now passes `country` when creating Express accounts and allows GNF/XOF/SLE/MRU checkout/payout currency guards.

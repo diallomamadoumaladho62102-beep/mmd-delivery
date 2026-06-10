@@ -141,6 +141,17 @@ export async function POST(req: Request) {
       p_description: description,
       p_subtotal: subtotal,
       p_promo_code: promoCode,
+      p_country_code: clientCountry,
+      p_currency:
+        clientCountry === "GN"
+          ? "GNF"
+          : clientCountry === "SN" || clientCountry === "CI" || clientCountry === "ML"
+            ? "XOF"
+            : clientCountry === "SL"
+              ? "SLE"
+              : clientCountry === "MR"
+                ? "MRU"
+                : "USD",
     });
 
     if (error) {
@@ -153,8 +164,15 @@ export async function POST(req: Request) {
       return jsonError(error.message, 400);
     }
 
-    const order = Array.isArray(data) ? data[0] : data;
-    const id = order?.id ?? null;
+    const payload = (data ?? null) as
+      | { ok?: boolean; id?: string; order_id?: string; error?: string }
+      | null;
+
+    if (payload?.ok === false) {
+      return jsonError(payload.error ?? "create_errand_order failed", 400);
+    }
+
+    const id = payload?.id ?? payload?.order_id ?? null;
 
     if (!id) {
       console.error("[api/errands/create] RPC returned no id", {

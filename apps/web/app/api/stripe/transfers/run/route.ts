@@ -11,6 +11,7 @@ import {
 import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -125,7 +126,6 @@ type GenericErrorLike = {
 
 const ORDER_ID_MAX_LENGTH = 128;
 const STRIPE_ID_MAX_LENGTH = 255;
-const ALLOWED_CURRENCIES = new Set(["usd", "eur", "gbp", "cad"]);
 const JSON_HEADERS = {
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
@@ -229,9 +229,8 @@ function dollarsToCentsOrNull(v: unknown): number | null {
 }
 
 function normalizeCurrency(v: unknown): string {
-  const c = lower(v || "usd");
-  if (!c) return "usd";
-  return ALLOWED_CURRENCIES.has(c) ? c : "usd";
+  const result = assertFoodCheckoutCurrencyAllowed(v);
+  return result.ok ? result.currency.toLowerCase() : "usd";
 }
 
 function timingSafeEqualStrings(a: string, b: string): boolean {

@@ -4,6 +4,10 @@ import Stripe from "stripe";
 import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
+import {
+  gateOrderPlatformFeature,
+  orderVerticalForPlatformGate,
+} from "@/lib/platformRouteGuards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -345,7 +349,12 @@ export async function POST(req: NextRequest) {
         stripe_refund_id,
         stripe_refunded_at,
         external_ref_id,
-        external_ref_type
+        external_ref_type,
+        currency,
+        pickup_lat,
+        pickup_lng,
+        dropoff_lat,
+        dropoff_lng
       `
       )
       .eq("id", orderId)
@@ -357,6 +366,16 @@ export async function POST(req: NextRequest) {
 
     if (!order) {
       return json({ error: "Order not found" }, 404);
+    }
+
+    const platformGate = await gateOrderPlatformFeature(
+      supabaseAdmin,
+      order,
+      orderVerticalForPlatformGate(order.kind),
+      "active"
+    );
+    if (platformGate.ok === false) {
+      return json(platformGate.body, platformGate.status);
     }
 
     const status = normalizeStatus(order.status);

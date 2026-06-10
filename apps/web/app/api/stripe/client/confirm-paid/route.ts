@@ -8,6 +8,10 @@ import { stripe } from "@/lib/stripe";
 import { notifyClientOrderCreated } from "@/lib/clientPushNotifications";
 import { resolveOrderAmountCents } from "@/lib/orderAmountCents";
 import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
+import {
+  gateOrderPlatformFeature,
+  orderVerticalForPlatformGate,
+} from "@/lib/platformRouteGuards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +32,11 @@ type OrderRow = {
   total_cents: number | null;
   total: number | null;
   grand_total: number | null;
+  currency: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
 };
 
 type VerifyOrderRow = {
@@ -332,7 +341,7 @@ export async function POST(req: NextRequest) {
     const { data: order, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, kind, total_cents, total, grand_total"
+        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, kind, total_cents, total, grand_total, currency, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng"
       )
       .eq("id", orderId)
       .single<OrderRow>();
@@ -352,6 +361,16 @@ export async function POST(req: NextRequest) {
 
     if (!ownerId || ownerId !== user.id) {
       return json({ error: "Forbidden" }, 403);
+    }
+
+    const platformGate = await gateOrderPlatformFeature(
+      supabaseAdmin,
+      order,
+      orderVerticalForPlatformGate(order.kind),
+      "checkout"
+    );
+    if (platformGate.ok === false) {
+      return json(platformGate.body, platformGate.status);
     }
 
     if (isPaidStatus(order.payment_status)) {

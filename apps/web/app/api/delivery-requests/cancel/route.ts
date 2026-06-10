@@ -6,6 +6,7 @@ import {
   getDeliveryRequestId,
 } from "@/lib/deliveryRequestDriver";
 import { notifyClientDeliveryRequestCancelled } from "@/lib/clientPushNotifications";
+import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -213,7 +214,10 @@ export async function POST(req: NextRequest) {
         stripe_payment_intent_id,
         stripe_refund_id,
         stripe_refunded_at,
-        refund_status
+        refund_status,
+        currency,
+        pickup_lat,
+        pickup_lng
       `
       )
       .eq("id", requestId)
@@ -229,6 +233,15 @@ export async function POST(req: NextRequest) {
 
     if (!isClientDeliveryRequestOwner(requestRow as Record<string, unknown>, user.id)) {
       return json({ error: "Forbidden: not request owner" }, 403);
+    }
+
+    const platformGate = await gateDeliveryRequestPlatformFeature(
+      supabaseAdmin,
+      requestRow,
+      "active"
+    );
+    if (platformGate.ok === false) {
+      return json(platformGate.body, platformGate.status);
     }
 
     const status = normalizeStatus(requestRow.status);

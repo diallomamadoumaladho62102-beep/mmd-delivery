@@ -6,6 +6,7 @@ import {
   syncLinkedOrderAfterDelivery,
   type DeliveryRequestRpcResult,
 } from "@/lib/deliveryRequestDriver";
+import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +87,29 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid token" }, 401);
     }
 
+    const supabaseAdmin = getAdminClient();
+    const { data: requestGate, error: requestGateErr } = await supabaseAdmin
+      .from("delivery_requests")
+      .select("id,currency,pickup_lat,pickup_lng")
+      .eq("id", requestId)
+      .maybeSingle();
+
+    if (requestGateErr) {
+      return json({ error: requestGateErr.message }, 500);
+    }
+    if (!requestGate) {
+      return json({ error: "Delivery request not found" }, 404);
+    }
+
+    const platformGate = await gateDeliveryRequestPlatformFeature(
+      supabaseAdmin,
+      requestGate,
+      "active"
+    );
+    if (platformGate.ok === false) {
+      return json(platformGate.body, platformGate.status);
+    }
+
     const { data, error } = await supabase.rpc("confirm_delivery_request_delivery", {
       p_request_id: requestId,
       p_dropoff_code: dropoffCode,
@@ -103,7 +127,6 @@ export async function POST(req: NextRequest) {
       return json({ error: mapped.message }, mapped.status);
     }
 
-    const supabaseAdmin = getAdminClient();
     const linkedOrderId = await syncLinkedOrderAfterDelivery({
       supabaseAdmin,
       deliveryRequestId: requestId,

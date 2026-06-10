@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "test:rbac": "npx tsx src/lib/adminRbac.test.ts && npx tsx src/lib/adminOutbound.test.ts",
-    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && npx tsx src/lib/platformLaunchControl.test.ts && npx tsx src/lib/platformCountryInference.test.ts"
+    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && npx tsx src/lib/platformLaunchControl.test.ts && npx tsx src/lib/platformCountryInference.test.ts && npx tsx src/lib/platformRouteGuards.test.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "latest",
