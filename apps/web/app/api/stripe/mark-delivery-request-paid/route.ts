@@ -9,6 +9,7 @@ import {
   isAmountVerificationFailure,
   verifyStripePaidMatchesDeliveryRequest,
 } from "@/lib/verifyStripePaidAmount";
+import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,8 @@ type DeliveryRequestRow = {
   total_cents: number | null;
   total: number | null;
   currency: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
 };
 
 type GenericErrorLike = {
@@ -347,7 +350,7 @@ async function getDeliveryRequestById(
   const { data, error } = await supabaseAdmin
     .from("delivery_requests")
     .select(
-      "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, updated_at, total_cents, total, currency"
+      "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, updated_at, total_cents, total, currency, pickup_lat, pickup_lng"
     )
     .eq("id", requestId)
     .single();
@@ -435,6 +438,15 @@ export async function POST(req: NextRequest) {
 
     if (!isOwnedByUser(deliveryRequest, user.id)) {
       return json({ error: "Forbidden" }, 403);
+    }
+
+    const platformGate = await gateDeliveryRequestPlatformFeature(
+      supabaseAdmin,
+      deliveryRequest,
+      "checkout"
+    );
+    if (platformGate.ok === false) {
+      return json(platformGate.body, platformGate.status);
     }
 
     if (isPaidStatus(deliveryRequest.payment_status)) {
