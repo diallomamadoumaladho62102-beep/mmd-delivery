@@ -142,10 +142,10 @@ on conflict (country_code, region_code) do nothing;
 
 create or replace function public.assert_platform_scope_feature(
   p_country_code text,
-  p_region_code text default null,
-  p_mmd_zone_id uuid default null,
   p_vertical text,
-  p_feature text
+  p_feature text,
+  p_region_code text default null,
+  p_mmd_zone_id uuid default null
 )
 returns jsonb
 language plpgsql
@@ -281,7 +281,7 @@ on public.platform_regions for all to authenticated
 using (public.is_staff_user(auth.uid()))
 with check (public.is_staff_user(auth.uid()));
 
-revoke all on function public.assert_platform_scope_feature(text, text, uuid, text, text) from public;
-grant execute on function public.assert_platform_scope_feature(text, text, uuid, text, text) to authenticated, service_role;
+revoke all on function public.assert_platform_scope_feature(text, text, text, text, uuid) from public;
+grant execute on function public.assert_platform_scope_feature(text, text, text, text, uuid) to authenticated, service_role;
 
 commit;
