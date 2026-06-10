@@ -4,8 +4,8 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
-const SELECT =
-  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
+const REGION_SELECT =
+  "id, country_code, region_code, region_name, region_type, mmd_zone_id, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -15,16 +15,22 @@ export async function GET(request: NextRequest) {
   try {
     await assertStaffPermission("platform_launch.read", request);
     const supabase = buildSupabaseAdminClient();
+    const country = String(new URL(request.url).searchParams.get("country") ?? "")
+      .trim()
+      .toUpperCase();
 
-    const { data, error } = await supabase
-      .from("platform_countries")
-      .select(SELECT)
-      .order("continent", { ascending: true, nullsFirst: false })
-      .order("country_name", { ascending: true });
+    let query = supabase
+      .from("platform_regions")
+      .select(REGION_SELECT)
+      .order("country_code", { ascending: true })
+      .order("region_name", { ascending: true });
 
-    if (error) {
-      return json({ ok: false, error: error.message }, 500);
+    if (country) {
+      query = query.eq("country_code", country);
     }
+
+    const { data, error } = await query;
+    if (error) return json({ ok: false, error: error.message }, 500);
 
     return json({ ok: true, items: data ?? [] });
   } catch (e) {
@@ -34,8 +40,4 @@ export async function GET(request: NextRequest) {
       status
     );
   }
-}
-
-export async function POST() {
-  return json({ ok: false, error: "Method not allowed" }, 405);
 }

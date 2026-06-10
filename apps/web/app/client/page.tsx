@@ -25,11 +25,50 @@ type OrderRow = {
   delivery_fee: number | null;
 };
 
+type ClientPlatformFeatures = {
+  maintenance_mode?: boolean;
+  message?: string | null;
+  delivery_available?: boolean;
+  restaurant_available?: boolean;
+  taxi_available?: boolean;
+};
+
 export default function ClientHomePage() {
   const { state: accessState, message: accessMessage } = useAccountAccessGuard();
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [platformFeatures, setPlatformFeatures] = useState<ClientPlatformFeatures>({
+    delivery_available: true,
+    restaurant_available: true,
+    taxi_available: true,
+    maintenance_mode: false,
+    message: null,
+  });
+
+  const fetchPlatformFeatures = useCallback(async () => {
+    if (accessState !== "allowed") return;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch("/api/platform/client-features", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+      const body = (await res.json().catch(() => ({}))) as ClientPlatformFeatures & {
+        ok?: boolean;
+      };
+      if (body.ok !== false) {
+        setPlatformFeatures(body);
+      }
+    } catch {
+      // keep defaults — fail open for existing users until API configured
+    }
+  }, [accessState]);
 
   const fetchOrders = useCallback(async () => {
     if (accessState !== "allowed") return;
@@ -87,8 +126,9 @@ export default function ClientHomePage() {
   useEffect(() => {
     if (accessState === "allowed") {
       void fetchOrders();
+      void fetchPlatformFeatures();
     }
-  }, [fetchOrders, accessState]);
+  }, [fetchOrders, fetchPlatformFeatures, accessState]);
 
   if (accessState === "loading") {
     return (
@@ -149,22 +189,40 @@ export default function ClientHomePage() {
           </p>
         </header>
 
+        {platformFeatures.maintenance_mode ? (
+          <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {platformFeatures.message ??
+              "MMD est en maintenance dans votre zone. Les nouvelles commandes sont temporairement désactivées."}
+          </div>
+        ) : null}
+
         {/* BOUTON 1 : NOUVELLE COMMANDE PICKUP / DROPOFF */}
         <div className="flex flex-col gap-3 mb-6">
-          <Link
-            href="/orders/new"
-            className="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 transition"
-          >
-            + Nouvelle commande pickup / dropoff
-          </Link>
+          {platformFeatures.delivery_available !== false ? (
+            <Link
+              href="/orders/new"
+              className="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 transition"
+            >
+              + Nouvelle commande pickup / dropoff
+            </Link>
+          ) : (
+            <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">
+              Delivery — bientôt disponible dans votre zone
+            </div>
+          )}
 
-          {/* BOUTON 2 : COMMANDER DANS UN RESTAURANT (MENUS) */}
-          <Link
-            href="/orders/new"
-            className="inline-flex w-full items-center justify-center rounded-full bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition"
-          >
-            Commander dans un restaurant (menus)
-          </Link>
+          {platformFeatures.restaurant_available !== false ? (
+            <Link
+              href="/orders/new"
+              className="inline-flex w-full items-center justify-center rounded-full bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-600 transition"
+            >
+              Commander dans un restaurant (menus)
+            </Link>
+          ) : (
+            <div className="inline-flex w-full items-center justify-center rounded-full bg-slate-800 px-4 py-3 text-sm font-semibold text-slate-400">
+              Restaurant — bientôt disponible dans votre zone
+            </div>
+          )}
         </div>
 
         {/* TITRE HISTORIQUE */}

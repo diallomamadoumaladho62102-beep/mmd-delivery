@@ -10,8 +10,8 @@ import type { PlatformLaunchStatus } from "@/lib/platformLaunchControl";
 
 export const dynamic = "force-dynamic";
 
-const SELECT =
-  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
+const REGION_SELECT =
+  "id, country_code, region_code, region_name, region_type, mmd_zone_id, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -21,24 +21,30 @@ function normalizeCountryCode(value: string) {
   return value.trim().toUpperCase();
 }
 
+function normalizeRegionCode(value: string) {
+  return value.trim().toLowerCase();
+}
+
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ country_code: string }> }
+  context: { params: Promise<{ country_code: string; region_code: string }> }
 ) {
   try {
     await assertStaffPermission("platform_launch.read", request);
-    const { country_code } = await context.params;
+    const { country_code, region_code } = await context.params;
     const countryCode = normalizeCountryCode(country_code);
+    const regionCode = normalizeRegionCode(region_code);
 
     const supabase = buildSupabaseAdminClient();
     const { data, error } = await supabase
-      .from("platform_countries")
-      .select(SELECT)
+      .from("platform_regions")
+      .select(REGION_SELECT)
       .eq("country_code", countryCode)
+      .eq("region_code", regionCode)
       .maybeSingle();
 
     if (error) return json({ ok: false, error: error.message }, 500);
-    if (!data) return json({ ok: false, error: "Country not found" }, 404);
+    if (!data) return json({ ok: false, error: "Region not found" }, 404);
 
     return json({ ok: true, item: data });
   } catch (e) {
@@ -52,28 +58,26 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ country_code: string }> }
+  context: { params: Promise<{ country_code: string; region_code: string }> }
 ) {
   try {
     const session = await assertCanManagePlatformLaunch(request);
-    const { country_code } = await context.params;
+    const { country_code, region_code } = await context.params;
     const countryCode = normalizeCountryCode(country_code);
-
-    if (!countryCode) {
-      return json({ ok: false, error: "Missing country_code" }, 400);
-    }
+    const regionCode = normalizeRegionCode(region_code);
 
     const supabase = buildSupabaseAdminClient();
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
     const { data: existing, error: readErr } = await supabase
-      .from("platform_countries")
-      .select(SELECT)
+      .from("platform_regions")
+      .select(REGION_SELECT)
       .eq("country_code", countryCode)
+      .eq("region_code", regionCode)
       .maybeSingle();
 
     if (readErr) return json({ ok: false, error: readErr.message }, 500);
-    if (!existing) return json({ ok: false, error: "Country not found" }, 404);
+    if (!existing) return json({ ok: false, error: "Region not found" }, 404);
 
     const update: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -121,10 +125,11 @@ export async function PATCH(
     }
 
     const { data: updated, error: updateErr } = await supabase
-      .from("platform_countries")
+      .from("platform_regions")
       .update(update)
       .eq("country_code", countryCode)
-      .select(SELECT)
+      .eq("region_code", regionCode)
+      .select(REGION_SELECT)
       .maybeSingle();
 
     if (updateErr) return json({ ok: false, error: updateErr.message }, 500);
@@ -132,9 +137,9 @@ export async function PATCH(
     await writeAdminAuditServer({
       supabaseAdmin: supabase,
       adminUserId: session.userId,
-      action: "platform_launch_updated",
-      targetType: "platform_countries",
-      targetId: countryCode,
+      action: "platform_region_updated",
+      targetType: "platform_regions",
+      targetId: `${countryCode}/${regionCode}`,
       oldValues: existing as Record<string, unknown>,
       newValues: (updated ?? update) as Record<string, unknown>,
       request,

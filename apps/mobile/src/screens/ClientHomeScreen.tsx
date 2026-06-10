@@ -26,6 +26,7 @@ import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 import { setLocaleForRoleAndApply } from "../i18n";
+import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientHome">;
 
@@ -549,6 +550,8 @@ function ActionBanner({
   backgroundColor,
   borderColor,
   onPress,
+  disabled = false,
+  comingSoonLabel,
 }: {
   title: string;
   subtitle: string;
@@ -557,16 +560,19 @@ function ActionBanner({
   backgroundColor: string;
   borderColor: string;
   onPress: () => void;
+  disabled?: boolean;
+  comingSoonLabel?: string;
 }) {
   return (
     <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
+      activeOpacity={disabled ? 1 : 0.9}
+      onPress={disabled ? undefined : onPress}
       style={[
         premiumStyles.quickActionCard,
         {
           backgroundColor,
           borderColor,
+          opacity: disabled ? 0.55 : 1,
         },
       ]}
     >
@@ -580,7 +586,7 @@ function ActionBanner({
           {title}
         </Text>
         <Text numberOfLines={3} ellipsizeMode="tail" style={premiumStyles.quickActionSubtitle}>
-          {subtitle}
+          {comingSoonLabel ?? subtitle}
         </Text>
       </View>
 
@@ -1024,6 +1030,13 @@ export function ClientHomeScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const { features: platformFeatures, refresh: refreshPlatformFeatures } =
+    useClientPlatformFeatures();
+
+  const comingSoonLabel = ts(
+    "client.home.comingSoonInArea",
+    "Coming soon in your area"
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1045,10 +1058,11 @@ export function ClientHomeScreen() {
   useFocusEffect(
     useCallback(() => {
       setMenuOpen(false);
+      void refreshPlatformFeatures();
       return () => {
         setMenuOpen(false);
       };
-    }, [])
+    }, [refreshPlatformFeatures])
   );
 
   const fetchAllForUser = useCallback(async (userId: string) => {
@@ -1654,6 +1668,18 @@ export function ClientHomeScreen() {
               </View>
             ) : null}
 
+            {platformFeatures.maintenance_mode ? (
+              <View style={premiumStyles.errorBox}>
+                <Text style={premiumStyles.errorText}>
+                  {platformFeatures.message ??
+                    ts(
+                      "client.home.maintenanceBanner",
+                      "MMD is under maintenance in your area. New orders are temporarily disabled."
+                    )}
+                </Text>
+              </View>
+            ) : null}
+
             <View style={premiumStyles.quickGrid}>
               <ActionBanner
                 title={ts("client.home.banner.restaurant.title", "Order Food")}
@@ -1665,6 +1691,10 @@ export function ClientHomeScreen() {
                 tileEmoji="🍔"
                 backgroundColor="rgba(5,150,105,0.74)"
                 borderColor="rgba(52,211,153,0.28)"
+                disabled={!platformFeatures.restaurant_available}
+                comingSoonLabel={
+                  !platformFeatures.restaurant_available ? comingSoonLabel : undefined
+                }
                 onPress={() => navigation.navigate("ClientRestaurantList" as never)}
               />
 
@@ -1678,6 +1708,10 @@ export function ClientHomeScreen() {
                 tileEmoji="🚙"
                 backgroundColor="rgba(79,70,229,0.82)"
                 borderColor="rgba(167,139,250,0.32)"
+                disabled={!platformFeatures.delivery_available}
+                comingSoonLabel={
+                  !platformFeatures.delivery_available ? comingSoonLabel : undefined
+                }
                 onPress={() => navigation.navigate("DeliveryRequest" as never)}
               />
 
@@ -1691,6 +1725,8 @@ export function ClientHomeScreen() {
                 tileEmoji="🚕"
                 backgroundColor="rgba(180,83,9,0.82)"
                 borderColor="rgba(251,191,36,0.32)"
+                disabled={!platformFeatures.taxi_available}
+                comingSoonLabel={!platformFeatures.taxi_available ? comingSoonLabel : undefined}
                 onPress={() => navigation.navigate("TaxiHome" as never)}
               />
             </View>

@@ -30,6 +30,8 @@ export type PlatformCountryConfig = {
   taxi_enabled: boolean;
   delivery_enabled: boolean;
   restaurant_enabled: boolean;
+  marketplace_enabled?: boolean;
+  seller_enabled?: boolean;
   checkout_enabled: boolean;
   payout_enabled: boolean;
   maintenance_mode: boolean;

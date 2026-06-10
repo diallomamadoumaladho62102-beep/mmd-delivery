@@ -36,6 +36,7 @@ import {
   driverOnlineBlockMessage,
   isDriverOnlineEligible,
 } from "../lib/accountStatus";
+import { useDriverPlatformFeatures } from "../hooks/useDriverPlatformFeatures";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -606,6 +607,8 @@ export function DriverHomeScreen() {
   const navAny = navigation as unknown as AnyNav;
   const { t } = useTranslation();
   useKeepAwake();
+  const { features: platformFeatures, refresh: refreshDriverPlatformFeatures } =
+    useDriverPlatformFeatures();
 
   useEffect(() => {
     void registerUserPushToken("driver");
@@ -896,9 +899,32 @@ export function DriverHomeScreen() {
         return false;
       }
 
-      return isDriverOnlineEligible(profile?.status ?? null);
+      if (!isDriverOnlineEligible(profile?.status ?? null)) {
+        return false;
+      }
+
+      const scopeFeatures = await refreshDriverPlatformFeatures(
+        driverLocation
+          ? { lat: driverLocation.lat, lng: driverLocation.lng }
+          : undefined
+      );
+
+      if (!scopeFeatures.can_go_online) {
+        await setDriverOnlineStatus(false);
+        Alert.alert(
+          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          scopeFeatures.message ??
+            t(
+              "driver.home.platformUnavailable",
+              "MMD is not available for drivers in your current area."
+            ),
+        );
+        return false;
+      }
+
+      return true;
     },
-    [t],
+    [driverLocation, refreshDriverPlatformFeatures, t],
   );
 
   const getUserIdOrThrow = useCallback(async () => {

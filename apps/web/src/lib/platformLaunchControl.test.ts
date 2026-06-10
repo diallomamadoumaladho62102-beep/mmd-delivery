@@ -29,6 +29,8 @@ function baseConfig(overrides: Partial<PlatformCountryConfig> = {}): PlatformCou
     restaurant_enabled: true,
     checkout_enabled: true,
     payout_enabled: true,
+    marketplace_enabled: false,
+    seller_enabled: false,
     maintenance_mode: false,
     launch_status: "enabled",
     created_at: "2026-01-01T00:00:00Z",

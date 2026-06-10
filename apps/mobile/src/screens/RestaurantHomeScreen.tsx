@@ -20,6 +20,7 @@ import Mapbox from "@rnmapbox/maps";
 import { supabase } from "../lib/supabase";
 import { useIsFocused } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
 
 const FALLBACK_RESTAURANT_ID = "";
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
@@ -634,6 +635,8 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [showDrivers, setShowDrivers] = useState(true);
   const [liveOrder, setLiveOrder] = useState<RestaurantMapOrder | null>(null);
   const [orderActionLoading, setOrderActionLoading] = useState(false);
+  const { features: platformFeatures, refresh: refreshRestaurantPlatformFeatures } =
+    useRestaurantPlatformFeatures();
 
   const pinPulseAnim = useRef(new Animated.Value(0)).current;
   const liveOrderAnim = useRef(new Animated.Value(0)).current;
@@ -784,6 +787,21 @@ export function RestaurantHomeScreen({ navigation }: any) {
     async (nextValue: boolean) => {
       if (!restaurantUserId) return;
 
+      if (nextValue) {
+        const scopeFeatures = await refreshRestaurantPlatformFeatures();
+        if (!scopeFeatures.can_accept_orders) {
+          Alert.alert(
+            t("common.errorTitle", "Error"),
+            scopeFeatures.message ??
+              t(
+                "restaurant.platformUnavailable",
+                "New orders are not available in your restaurant area right now."
+              )
+          );
+          return;
+        }
+      }
+
       try {
         setAvailabilityLoading(true);
 
@@ -823,7 +841,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         setAvailabilityLoading(false);
       }
     },
-    [restaurantUserId, t]
+    [restaurantUserId, refreshRestaurantPlatformFeatures, t]
   );
 
   const handleToggleAvailability = useCallback(() => {
@@ -913,6 +931,19 @@ export function RestaurantHomeScreen({ navigation }: any) {
         return;
       }
 
+      const scopeFeatures = await refreshRestaurantPlatformFeatures();
+      if (!scopeFeatures.can_accept_orders) {
+        Alert.alert(
+          t("common.errorTitle", "Error"),
+          scopeFeatures.message ??
+            t(
+              "restaurant.platformUnavailable",
+              "New orders are not available in your restaurant area right now."
+            )
+        );
+        return;
+      }
+
       try {
         setOrderActionLoading(true);
 
@@ -933,7 +964,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         setOrderActionLoading(false);
       }
     },
-    [activeRestaurantId, refreshLiveMap, rejectLiveOrder, t]
+    [activeRestaurantId, refreshLiveMap, refreshRestaurantPlatformFeatures, rejectLiveOrder, t]
   );
 
   const handleAcceptLiveOrder = useCallback(() => {

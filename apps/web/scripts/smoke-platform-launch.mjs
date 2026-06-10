@@ -26,6 +26,7 @@ function run(label, scriptPath) {
 }
 
 run("platformLaunchControl unit tests", path.join(webRoot, "src/lib/platformLaunchControl.test.ts"));
+run("platformScopeResolver unit tests", path.join(webRoot, "src/lib/platformScopeResolver.test.ts"));
 
 assert.ok(true, "smoke-platform-launch passed");
 console.log("smoke-platform-launch ALL PASS");
