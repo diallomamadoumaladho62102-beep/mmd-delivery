@@ -21,6 +21,8 @@ export type AdminPermission =
   | "users.drivers.manage"
   | "users.restaurants.read"
   | "users.restaurants.manage"
+  | "users.sellers.read"
+  | "users.sellers.manage"
   | "users.admins.manage"
   | "orders.read"
   | "orders.manage"
@@ -81,6 +83,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "users.drivers.manage",
     "users.restaurants.read",
     "users.restaurants.manage",
+    "users.sellers.read",
+    "users.sellers.manage",
     "users.admins.manage",
     "orders.read",
     "orders.manage",
@@ -140,6 +144,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "users.drivers.manage",
     "users.restaurants.read",
     "users.restaurants.manage",
+    "users.sellers.read",
+    "users.sellers.manage",
     "orders.read",
     "orders.manage",
     "delivery_requests.read",
@@ -214,6 +220,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "hub.access",
     "users.drivers.manage",
     "users.restaurants.manage",
+    "users.sellers.read",
+    "users.sellers.manage",
   ]),
 };
 

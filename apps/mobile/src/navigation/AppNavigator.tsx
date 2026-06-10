@@ -75,6 +75,11 @@ import RestaurantGateScreen from "../screens/restaurant/RestaurantGateScreen";
 import RestaurantSetupScreen from "../screens/restaurant/RestaurantSetupScreen";
 import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
 import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
+import SellerGateScreen from "../screens/seller/SellerGateScreen";
+import SellerOnboardingScreen from "../screens/seller/SellerOnboardingScreen";
+import SellerDashboardScreen from "../screens/seller/SellerDashboardScreen";
+import SellerProductsScreen from "../screens/seller/SellerProductsScreen";
+import SellerOrdersScreen from "../screens/seller/SellerOrdersScreen";
 
 import LocationPickerTestScreen from "../screens/LocationPickerTestScreen";
 import MMDLocationPickerScreen from "../screens/MMDLocationPickerScreen";
@@ -131,6 +136,12 @@ export type RootStackParamList = {
   RestaurantGate: undefined;
   RestaurantSetup: undefined;
   RestaurantMenu: undefined;
+
+  SellerGate: undefined;
+  SellerOnboarding: undefined;
+  SellerDashboard: undefined;
+  SellerProducts: undefined;
+  SellerOrders: undefined;
 
   ClientHome: undefined;
   ClientNewOrder: undefined;
@@ -916,6 +927,12 @@ export function AppNavigator({
           component={RestaurantSetupScreen}
         />
         <Stack.Screen name="RestaurantMenu" component={RestaurantMenuScreen} />
+
+        <Stack.Screen name="SellerGate" component={SellerGateScreen} />
+        <Stack.Screen name="SellerOnboarding" component={SellerOnboardingScreen} />
+        <Stack.Screen name="SellerDashboard" component={SellerDashboardScreen} />
+        <Stack.Screen name="SellerProducts" component={SellerProductsScreen} />
+        <Stack.Screen name="SellerOrders" component={SellerOrdersScreen} />
 
         <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
         <Stack.Screen name="ClientNewOrder" component={ClientNewOrderScreen} />

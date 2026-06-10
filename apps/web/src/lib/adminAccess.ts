@@ -56,6 +56,19 @@ export function canReviewRestaurants(role: UserRole | null): boolean {
   return hasPermission(role, "users.restaurants.manage");
 }
 
+export function canViewSellers(role: UserRole | null): boolean {
+  if (!role) return false;
+  return (
+    hasPermission(role, "users.sellers.read") ||
+    hasPermission(role, "users.sellers.manage")
+  );
+}
+
+export function canReviewSellers(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "users.sellers.manage");
+}
+
 export function canAccessAuditLogs(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "audit.read");

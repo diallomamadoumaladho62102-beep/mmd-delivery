@@ -1746,12 +1746,13 @@ export function ClientHomeScreen() {
                   !platformFeatures.marketplace_available ? comingSoonLabel : undefined
                 }
                 onPress={() => {
+                  if (platformFeatures.marketplace_available) {
+                    navigation.navigate("SellerGate" as never);
+                    return;
+                  }
                   Alert.alert(
                     ts("client.home.banner.marketplace.title", "Marketplace"),
-                    ts(
-                      "client.home.banner.marketplace.placeholder",
-                      "MMD Marketplace is launching in your area. Full shopping experience coming soon."
-                    )
+                    comingSoonLabel
                   );
                 }}
               />

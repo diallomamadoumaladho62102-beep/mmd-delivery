@@ -18,6 +18,7 @@ import {
   canReadPricing,
   canReviewDrivers,
   canReviewRestaurants,
+  canReviewSellers,
   canRetryPayout,
   staffHasPermission,
 } from "@/lib/adminAccess";
@@ -184,6 +185,10 @@ export async function assertCanReviewDrivers(request?: NextRequest) {
 
 export async function assertCanReviewRestaurants(request?: NextRequest) {
   return assertPermission(canReviewRestaurants, request);
+}
+
+export async function assertCanReviewSellers(request?: NextRequest) {
+  return assertPermission(canReviewSellers, request);
 }
 
 export async function assertCanAccessAuditLogs(request?: NextRequest) {

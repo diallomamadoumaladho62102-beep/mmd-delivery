@@ -33,6 +33,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.restaurants.read",
   },
   {
+    href: "/admin/sellers",
+    title: "Marketplace Sellers",
+    description: "Approuver, refuser, suspendre les vendeurs marketplace",
+    permission: "users.sellers.read",
+  },
+  {
     href: "/admin/admins",
     title: "Administrateurs",
     description: "Gérer les rôles staff (Super Admin uniquement)",
