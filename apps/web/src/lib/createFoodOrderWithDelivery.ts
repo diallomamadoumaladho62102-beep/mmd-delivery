@@ -7,6 +7,7 @@ import {
   computeDeliveryPricing,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
+import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine";
 import {
   assertPlatformFeature,
   inferPlatformCountryCode,
@@ -440,6 +441,25 @@ export async function createFoodOrderWithDelivery(
   }
 
   const orderId = data.id as string;
+
+  void logDeliveryPricingV2Shadow({
+    sourceType: "food_order",
+    sourceId: orderId,
+    countryCode: platformCountry,
+    v1Pricing: deliveryPricing,
+    distanceMiles: safeDistanceMiles,
+    durationMinutes: safeEtaMinutes,
+    inputs: {
+      path: "createFoodOrderWithDelivery",
+      baseFee: deliveryPricingConfig.baseFare,
+      perMile: deliveryPricingConfig.perMile,
+      perMinute: deliveryPricingConfig.perMinute,
+      currency: safeCurrency,
+      rawDeliveryFee,
+      deliveryFeeAfterDiscount,
+      driverPayoutEstimate,
+    },
+  });
 
   const { error: commissionErr } = await supabaseAdmin.rpc(
     "refresh_order_commissions",

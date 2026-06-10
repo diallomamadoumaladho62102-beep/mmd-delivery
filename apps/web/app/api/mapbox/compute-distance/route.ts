@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeDeliveryPricing } from "@/lib/deliveryPricing";
+import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine";
 import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
 
 // ✅ On accepte MAPBOX_ACCESS_TOKEN ou NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
@@ -195,6 +196,23 @@ export async function POST(req: NextRequest) {
     const deliveryPrice = computeDeliveryPricing({
       distanceMiles,
       durationMinutes: etaMinutes,
+    });
+
+    void logDeliveryPricingV2Shadow({
+      sourceType: "delivery_request",
+      sourceId: null,
+      v1Pricing: deliveryPrice,
+      distanceMiles,
+      durationMinutes: etaMinutes,
+      inputs: {
+        path: "/api/mapbox/compute-distance",
+        pickupLat,
+        pickupLng,
+        dropoffLat,
+        dropoffLng,
+        distanceMeters,
+        durationSeconds,
+      },
     });
 
     // ✅ IMPORTANT : renvoyer aussi les coords pour que le mobile puisse les sauvegarder dans orders
