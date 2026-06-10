@@ -1747,7 +1747,7 @@ export function ClientHomeScreen() {
                 }
                 onPress={() => {
                   if (platformFeatures.marketplace_available) {
-                    navigation.navigate("SellerGate" as never);
+                    navigation.navigate("MarketplaceHome" as never);
                     return;
                   }
                   Alert.alert(

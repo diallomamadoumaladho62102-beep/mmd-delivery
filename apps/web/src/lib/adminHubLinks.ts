@@ -39,6 +39,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.sellers.read",
   },
   {
+    href: "/admin/marketplace-orders",
+    title: "Marketplace Orders",
+    description: "Drafts et pending checkout marketplace (shadow, sans payout)",
+    permission: "users.sellers.read",
+  },
+  {
     href: "/admin/admins",
     title: "Administrateurs",
     description: "Gérer les rôles staff (Super Admin uniquement)",

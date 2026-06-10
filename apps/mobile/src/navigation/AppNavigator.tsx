@@ -80,6 +80,10 @@ import SellerOnboardingScreen from "../screens/seller/SellerOnboardingScreen";
 import SellerDashboardScreen from "../screens/seller/SellerDashboardScreen";
 import SellerProductsScreen from "../screens/seller/SellerProductsScreen";
 import SellerOrdersScreen from "../screens/seller/SellerOrdersScreen";
+import MarketplaceHomeScreen from "../screens/marketplace/MarketplaceHomeScreen";
+import MarketplaceProductListScreen from "../screens/marketplace/MarketplaceProductListScreen";
+import MarketplaceProductDetailsScreen from "../screens/marketplace/MarketplaceProductDetailsScreen";
+import MarketplaceCartScreen from "../screens/marketplace/MarketplaceCartScreen";
 
 import LocationPickerTestScreen from "../screens/LocationPickerTestScreen";
 import MMDLocationPickerScreen from "../screens/MMDLocationPickerScreen";
@@ -142,6 +146,15 @@ export type RootStackParamList = {
   SellerDashboard: undefined;
   SellerProducts: undefined;
   SellerOrders: undefined;
+
+  MarketplaceHome: undefined;
+  MarketplaceProductList: { sellerId: string; sellerName: string };
+  MarketplaceProductDetails: {
+    sellerId: string;
+    sellerName: string;
+    productId: string;
+  };
+  MarketplaceCart: { sellerId: string; sellerName: string; orderId?: string };
 
   ClientHome: undefined;
   ClientNewOrder: undefined;
@@ -933,6 +946,11 @@ export function AppNavigator({
         <Stack.Screen name="SellerDashboard" component={SellerDashboardScreen} />
         <Stack.Screen name="SellerProducts" component={SellerProductsScreen} />
         <Stack.Screen name="SellerOrders" component={SellerOrdersScreen} />
+
+        <Stack.Screen name="MarketplaceHome" component={MarketplaceHomeScreen} />
+        <Stack.Screen name="MarketplaceProductList" component={MarketplaceProductListScreen} />
+        <Stack.Screen name="MarketplaceProductDetails" component={MarketplaceProductDetailsScreen} />
+        <Stack.Screen name="MarketplaceCart" component={MarketplaceCartScreen} />
 
         <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
         <Stack.Screen name="ClientNewOrder" component={ClientNewOrderScreen} />

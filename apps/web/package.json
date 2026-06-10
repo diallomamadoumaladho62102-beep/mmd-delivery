@@ -8,7 +8,8 @@
     "start": "next start",
     "test:rbac": "npx tsx src/lib/adminRbac.test.ts && npx tsx src/lib/adminOutbound.test.ts",
     "test:platform-launch": "node scripts/smoke-platform-launch.mjs && npx tsx src/lib/platformLaunchControl.test.ts && npx tsx src/lib/platformCountryInference.test.ts && npx tsx src/lib/platformRouteGuards.test.ts",
-    "test:delivery-pricing-v2": "npx tsx src/lib/deliveryPricingEngine/deliveryPricingEngine.test.ts"
+    "test:delivery-pricing-v2": "npx tsx src/lib/deliveryPricingEngine/deliveryPricingEngine.test.ts",
+    "test:marketplace-checkout": "npx tsx src/lib/marketplaceCheckout.test.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "latest",
