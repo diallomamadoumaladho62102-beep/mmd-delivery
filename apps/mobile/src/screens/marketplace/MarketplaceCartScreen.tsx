@@ -19,6 +19,10 @@ import {
   type MarketplaceOrderDraft,
 } from "../../lib/marketplaceApi";
 import {
+  setMarketplaceLocationCountryCode,
+  type MarketplaceScopeInput,
+} from "../../lib/marketplaceScope";
+import {
   applyMmdLocationSelection,
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
@@ -31,13 +35,22 @@ type Props = {
 export default function MarketplaceCartScreen({ route }: Props) {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { sellerId, sellerName, orderId } = route.params;
+  const { sellerId, sellerName, sellerCountryCode, orderId } = route.params;
+  const [dropoffLocationCountry, setDropoffLocationCountry] = useState<string | null>(null);
   const [draft, setDraft] = useState<MarketplaceOrderDraft | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
   const [savingLocation, setSavingLocation] = useState(false);
   const [dropoffLocationId, setDropoffLocationId] = useState<string | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState("");
+
+  const marketplaceScope = useMemo<MarketplaceScopeInput>(
+    () => ({
+      sellerCountryCode,
+      locationCountryCode: dropoffLocationCountry,
+    }),
+    [dropoffLocationCountry, sellerCountryCode]
+  );
 
   const draftItems = useMemo(
     () =>
@@ -51,7 +64,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const order = await fetchMarketplaceDraft({ sellerId, orderId });
+      const order = await fetchMarketplaceDraft({ sellerId, orderId }, marketplaceScope);
       setDraft(order);
       if (order?.dropoff_location_id) {
         setDropoffLocationId(order.dropoff_location_id);
@@ -64,7 +77,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [orderId, sellerId, t]);
+  }, [marketplaceScope, orderId, sellerId, t]);
 
   useEffect(() => {
     void load();
@@ -75,6 +88,10 @@ export default function MarketplaceCartScreen({ route }: Props) {
       applyMmdLocationSelection(location, {
         setLocationId: setDropoffLocationId,
         setAddress: setDropoffAddress,
+        setCountryCode: (code) => {
+          setDropoffLocationCountry(code);
+          setMarketplaceLocationCountryCode(code);
+        },
       });
     },
   });
@@ -88,6 +105,8 @@ export default function MarketplaceCartScreen({ route }: Props) {
         orderId: draft.id,
         items: draftItems,
         dropoffLocationId: nextDropoffId ?? dropoffLocationId,
+        sellerCountryCode,
+        locationCountryCode: dropoffLocationCountry,
       });
       setDraft(updated);
       return updated;
@@ -132,7 +151,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
       const refreshed = dropoffLocationId
         ? await persistDraftWithLocations(dropoffLocationId)
         : draft;
-      const body = await runMarketplaceCheckout(refreshed?.id ?? draft.id);
+      const body = await runMarketplaceCheckout(refreshed?.id ?? draft.id, marketplaceScope);
       setDraft(body.order ?? refreshed ?? draft);
       Alert.alert(
         body.checkout_enabled
@@ -213,7 +232,11 @@ export default function MarketplaceCartScreen({ route }: Props) {
               <TouchableOpacity
                 onPress={() =>
                   navigation.navigate("MMDLocationPicker", {
-                    countryCode: draft.country_code ?? "GN",
+                    countryCode:
+                      dropoffLocationCountry ??
+                      sellerCountryCode ??
+                      draft.country_code ??
+                      "GN",
                     title: t("marketplace.cart.pickDropoff", "Choose delivery location"),
                     submitLabel: t("marketplace.cart.useLocation", "Use this location"),
                     returnTo: "MarketplaceCart",

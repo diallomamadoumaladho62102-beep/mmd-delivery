@@ -149,15 +149,21 @@ export type RootStackParamList = {
   SellerOrders: undefined;
 
   MarketplaceHome: undefined;
-  MarketplaceProductList: { sellerId: string; sellerName: string };
+  MarketplaceProductList: {
+    sellerId: string;
+    sellerName: string;
+    sellerCountryCode?: string;
+  };
   MarketplaceProductDetails: {
     sellerId: string;
     sellerName: string;
     productId: string;
+    sellerCountryCode?: string;
   };
   MarketplaceCart: {
     sellerId: string;
     sellerName: string;
+    sellerCountryCode?: string;
     orderId?: string;
     locationPickerResult?: MmdLocationPickerResult;
   };

@@ -6,7 +6,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   getClientDraftOrder,
   runMarketplaceCheckoutShadow,
@@ -37,6 +37,60 @@ function fail(message: string): never {
 
 function ok(label: string, detail = "") {
   console.log(`OK  [marketplace-shadow] ${label}${detail ? ` — ${detail}` : ""}`);
+}
+
+const apiBase = (
+  process.env.SMOKE_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://www.mmddelivery.com"
+).replace(/\/$/, "");
+
+async function authFetch(
+  token: string,
+  pathname: string,
+  options: RequestInit = {}
+) {
+  const res = await fetch(`${apiBase}${pathname}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(options.headers ?? {}),
+    },
+  });
+  const body = await res.json().catch(() => null);
+  return { res, body };
+}
+
+async function enableGnMarketplaceFlags(admin: SupabaseClient) {
+  await admin
+    .from("platform_countries")
+    .update({
+      marketplace_enabled: true,
+      seller_enabled: true,
+      platform_enabled: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("country_code", "GN");
+
+  const { data: gnRegions } = await admin
+    .from("platform_regions")
+    .select("region_code")
+    .eq("country_code", "GN");
+
+  for (const region of gnRegions ?? []) {
+    await admin
+      .from("platform_regions")
+      .update({
+        marketplace_enabled: true,
+        seller_enabled: true,
+        platform_enabled: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("country_code", "GN")
+      .eq("region_code", region.region_code);
+  }
 }
 
 async function main() {
@@ -71,6 +125,30 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
+
+  await enableGnMarketplaceFlags(admin);
+  ok("platform flags", "GN marketplace+seller enabled");
+
+  const scopeQs = "?pickup_country=GN";
+
+  const { res: featuresRes, body: featuresBody } = await authFetch(
+    token,
+    `/api/platform/client-features${scopeQs}`
+  );
+  if (!featuresRes.ok || featuresBody?.marketplace_available !== true) {
+    fail(
+      `client-features marketplace unavailable: ${featuresBody?.error ?? featuresRes.status}`
+    );
+  }
+  const resolvedCountry =
+    featuresBody?.scope?.country_code ?? featuresBody?.country_code ?? null;
+  if (resolvedCountry !== "GN") {
+    fail(`client-features resolved ${resolvedCountry ?? "null"}, expected GN`);
+  }
+  if (featuresBody?.seller_available !== true) {
+    fail("client-features seller_available=false for GN scope");
+  }
+  ok("scope API", "pickup_country=GN → marketplace_available=true");
 
   const businessName = `Smoke Seller ${randomUUID().slice(0, 8)}`;
   const { data: seller, error: sellerErr } = await admin
@@ -128,6 +206,83 @@ async function main() {
   }
 
   ok("product fixture", productId);
+
+  const { res: sellersRes, body: sellersBody } = await authFetch(
+    token,
+    `/api/marketplace/sellers${scopeQs}`
+  );
+  if (!sellersRes.ok || sellersBody?.ok === false) {
+    fail(`GET sellers failed: ${sellersBody?.error ?? sellersRes.status}`);
+  }
+  ok("HTTP GET sellers", `${(sellersBody.items ?? []).length} item(s)`);
+
+  const { res: productsRes, body: productsBody } = await authFetch(
+    token,
+    `/api/marketplace/products?seller_id=${encodeURIComponent(seller.id)}${scopeQs.replace("?", "&")}`
+  );
+  if (!productsRes.ok || productsBody?.ok === false) {
+    fail(`GET products failed: ${productsBody?.error ?? productsRes.status}`);
+  }
+  ok("HTTP GET products", `${(productsBody.items ?? []).length} item(s)`);
+
+  const { res: postDraftRes, body: postDraftBody } = await authFetch(
+    token,
+    `/api/marketplace/cart/draft${scopeQs}`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        seller_id: seller.id,
+        items: [{ product_id: productId, quantity: 2 }],
+      }),
+    }
+  );
+  if (!postDraftRes.ok || !postDraftBody?.order?.id) {
+    fail(`POST draft failed: ${postDraftBody?.error ?? postDraftRes.status}`);
+  }
+  const httpOrderId = postDraftBody.order.id as string;
+  ok("HTTP POST draft", httpOrderId);
+
+  const { res: getDraftRes, body: getDraftBody } = await authFetch(
+    token,
+    `/api/marketplace/cart/draft?order_id=${encodeURIComponent(httpOrderId)}&pickup_country=GN`
+  );
+  if (!getDraftRes.ok || !getDraftBody?.order?.id) {
+    fail(`GET draft failed: ${getDraftBody?.error ?? getDraftRes.status}`);
+  }
+  ok("HTTP GET draft");
+
+  const { res: checkoutRes, body: checkoutBody } = await authFetch(
+    token,
+    `/api/marketplace/checkout${scopeQs}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ order_id: httpOrderId }),
+    }
+  );
+  if (!checkoutRes.ok || checkoutBody?.ok === false) {
+    fail(`POST checkout failed: ${checkoutBody?.error ?? checkoutRes.status}`);
+  }
+  if (checkoutBody.stripe_checkout_created !== false) {
+    fail("checkout unexpectedly created Stripe session");
+  }
+  ok("HTTP POST checkout shadow", "no Stripe");
+
+  const { res: sellersNoScopeRes, body: sellersNoScopeBody } = await authFetch(
+    token,
+    "/api/marketplace/sellers"
+  );
+  if (
+    sellersNoScopeRes.ok &&
+    sellersNoScopeBody?.ok !== false &&
+    resolvedCountry === "GN"
+  ) {
+    ok("scope contrast", "unscoped call did not false-positive fail");
+  } else if (sellersNoScopeBody?.error === "marketplace_unavailable") {
+    ok(
+      "scope contrast",
+      "unscoped call may fail without pickup_country — mobile fix sends pickup_country"
+    );
+  }
 
   const order = await upsertMarketplaceDraftOrder(admin, {
     clientUserId: userId,

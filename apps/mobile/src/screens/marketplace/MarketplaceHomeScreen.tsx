@@ -87,6 +87,7 @@ export default function MarketplaceHomeScreen() {
                 navigation.navigate("MarketplaceProductList", {
                   sellerId: seller.id,
                   sellerName: seller.business_name,
+                  sellerCountryCode: seller.country_code,
                 })
               }
               style={{

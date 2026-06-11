@@ -22,7 +22,8 @@ type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductDetai
 
 export default function MarketplaceProductDetailsScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { sellerId, sellerName, productId } = route.params;
+  const { sellerId, sellerName, productId, sellerCountryCode } = route.params;
+  const scope = { sellerCountryCode };
   const [product, setProduct] = useState<MarketplaceProduct | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -31,12 +32,12 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const products = await fetchMarketplaceProducts(sellerId);
+      const products = await fetchMarketplaceProducts(sellerId, scope);
       setProduct(products.find((row) => row.id === productId) ?? null);
     } finally {
       setLoading(false);
     }
-  }, [productId, sellerId]);
+  }, [productId, sellerCountryCode, sellerId]);
 
   useEffect(() => {
     void load();
@@ -53,6 +54,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
       setSaving(true);
       const order = await saveMarketplaceDraft({
         sellerId,
+        sellerCountryCode,
         items: [{ product_id: product.id, quantity }],
       });
       Alert.alert(
@@ -62,6 +64,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
       navigation.navigate("MarketplaceCart", {
         sellerId,
         sellerName,
+        sellerCountryCode,
         orderId: order.id,
       });
     } catch (e) {

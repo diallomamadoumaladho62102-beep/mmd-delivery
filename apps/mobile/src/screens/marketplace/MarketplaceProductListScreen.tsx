@@ -20,7 +20,8 @@ type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductList"
 
 export default function MarketplaceProductListScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { sellerId, sellerName } = route.params;
+  const { sellerId, sellerName, sellerCountryCode } = route.params;
+  const scope = { sellerCountryCode };
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,14 +31,14 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
     try {
       if (!silent) setLoading(true);
       setError(null);
-      setProducts(await fetchMarketplaceProducts(sellerId));
+      setProducts(await fetchMarketplaceProducts(sellerId, scope));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to load products");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [sellerId]);
+  }, [sellerCountryCode, sellerId]);
 
   useEffect(() => {
     void load();
@@ -58,7 +59,11 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
 
         <TouchableOpacity
           onPress={() =>
-            navigation.navigate("MarketplaceCart", { sellerId, sellerName })
+            navigation.navigate("MarketplaceCart", {
+              sellerId,
+              sellerName,
+              sellerCountryCode,
+            })
           }
           style={{
             alignSelf: "flex-start",
@@ -90,6 +95,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
                 navigation.navigate("MarketplaceProductDetails", {
                   sellerId,
                   sellerName,
+                  sellerCountryCode,
                   productId: product.id,
                 })
               }

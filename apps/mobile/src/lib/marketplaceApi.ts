@@ -1,5 +1,11 @@
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { supabase } from "./supabase";
+import {
+  appendMarketplaceScopeQuery,
+  type MarketplaceScopeInput,
+} from "./marketplaceScope";
+
+export type { MarketplaceScopeInput };
 
 export type MarketplaceSeller = {
   id: string;
@@ -67,6 +73,8 @@ export type MarketplaceOrderDraft = {
   platform_margin_shadow_cents?: number | null;
   dispatch_shadow?: {
     dispatch_readiness?: string | null;
+    live_dispatch_enabled?: boolean;
+    drivers_notified?: boolean;
     message?: string | null;
   } | null;
   created_at: string;
@@ -80,7 +88,25 @@ async function getAccessToken(): Promise<string | null> {
   return data.session?.access_token ?? null;
 }
 
-async function marketplaceFetch(path: string, init?: RequestInit) {
+async function buildMarketplacePath(
+  path: string,
+  query: Record<string, string | undefined>,
+  scope?: MarketplaceScopeInput
+): Promise<string> {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value) searchParams.set(key, value);
+  }
+  await appendMarketplaceScopeQuery(searchParams, scope);
+  const qs = searchParams.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
+async function marketplaceFetch(
+  path: string,
+  init?: RequestInit,
+  scope?: MarketplaceScopeInput
+) {
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");
 
@@ -101,59 +127,96 @@ async function marketplaceFetch(path: string, init?: RequestInit) {
   return body;
 }
 
-export async function fetchMarketplaceSellers(): Promise<MarketplaceSeller[]> {
-  const body = await marketplaceFetch("/api/marketplace/sellers");
+export async function fetchMarketplaceSellers(
+  scope?: MarketplaceScopeInput
+): Promise<MarketplaceSeller[]> {
+  const path = await buildMarketplacePath("/api/marketplace/sellers", {}, scope);
+  const body = await marketplaceFetch(path, undefined, scope);
   return body.items ?? [];
 }
 
 export async function fetchMarketplaceProducts(
-  sellerId: string
+  sellerId: string,
+  scope?: MarketplaceScopeInput
 ): Promise<MarketplaceProduct[]> {
-  const body = await marketplaceFetch(
-    `/api/marketplace/products?seller_id=${encodeURIComponent(sellerId)}`
+  const path = await buildMarketplacePath(
+    "/api/marketplace/products",
+    { seller_id: sellerId },
+    scope
   );
+  const body = await marketplaceFetch(path, undefined, scope);
   return body.items ?? [];
 }
 
-export async function fetchMarketplaceDraft(params: {
-  sellerId?: string;
-  orderId?: string;
-}): Promise<MarketplaceOrderDraft | null> {
-  const qs = new URLSearchParams();
-  if (params.sellerId) qs.set("seller_id", params.sellerId);
-  if (params.orderId) qs.set("order_id", params.orderId);
-  const suffix = qs.toString() ? `?${qs.toString()}` : "";
-  const body = await marketplaceFetch(`/api/marketplace/cart/draft${suffix}`);
+export async function fetchMarketplaceDraft(
+  params: {
+    sellerId?: string;
+    orderId?: string;
+  },
+  scope?: MarketplaceScopeInput
+): Promise<MarketplaceOrderDraft | null> {
+  const path = await buildMarketplacePath(
+    "/api/marketplace/cart/draft",
+    {
+      seller_id: params.sellerId,
+      order_id: params.orderId,
+    },
+    scope
+  );
+  const body = await marketplaceFetch(path, undefined, scope);
   return body.order ?? null;
 }
 
-export async function saveMarketplaceDraft(input: {
-  sellerId: string;
-  orderId?: string;
-  items: Array<{ product_id: string; quantity: number }>;
-  notes?: string;
-  pickupLocationId?: string | null;
-  dropoffLocationId?: string | null;
-}): Promise<MarketplaceOrderDraft> {
-  const body = await marketplaceFetch("/api/marketplace/cart/draft", {
-    method: "POST",
-    body: JSON.stringify({
-      seller_id: input.sellerId,
-      order_id: input.orderId,
-      items: input.items,
-      notes: input.notes ?? null,
-      pickup_location_id: input.pickupLocationId ?? null,
-      dropoff_location_id: input.dropoffLocationId ?? null,
-    }),
-  });
+export async function saveMarketplaceDraft(
+  input: {
+    sellerId: string;
+    orderId?: string;
+    items: Array<{ product_id: string; quantity: number }>;
+    notes?: string;
+    pickupLocationId?: string | null;
+    dropoffLocationId?: string | null;
+    sellerCountryCode?: string | null;
+    locationCountryCode?: string | null;
+    manualCountryCode?: string | null;
+  }
+): Promise<MarketplaceOrderDraft> {
+  const scope: MarketplaceScopeInput = {
+    sellerCountryCode: input.sellerCountryCode,
+    locationCountryCode: input.locationCountryCode,
+    manualCountryCode: input.manualCountryCode,
+  };
+  const path = await buildMarketplacePath("/api/marketplace/cart/draft", {}, scope);
+  const body = await marketplaceFetch(
+    path,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        seller_id: input.sellerId,
+        order_id: input.orderId,
+        items: input.items,
+        notes: input.notes ?? null,
+        pickup_location_id: input.pickupLocationId ?? null,
+        dropoff_location_id: input.dropoffLocationId ?? null,
+      }),
+    },
+    scope
+  );
   return body.order;
 }
 
-export async function runMarketplaceCheckout(orderId: string) {
-  return marketplaceFetch("/api/marketplace/checkout", {
-    method: "POST",
-    body: JSON.stringify({ order_id: orderId }),
-  });
+export async function runMarketplaceCheckout(
+  orderId: string,
+  scope?: MarketplaceScopeInput
+) {
+  const path = await buildMarketplacePath("/api/marketplace/checkout", {}, scope);
+  return marketplaceFetch(
+    path,
+    {
+      method: "POST",
+      body: JSON.stringify({ order_id: orderId }),
+    },
+    scope
+  );
 }
 
 export function formatMarketplaceMoney(cents: number, currency = "USD"): string {
