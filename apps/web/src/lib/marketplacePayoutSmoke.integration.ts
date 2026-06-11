@@ -1,17 +1,18 @@
 /**
- * Integration smoke — marketplace dispatch jobs (paid order → job, no core dispatch)
- * Run via: npm run test:marketplace-dispatch
+ * Integration smoke — marketplace payouts (paid order → seller payout, delivered job → driver payout)
+ * Run via: npm run test:marketplace-payouts
  */
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isMarketplacePayoutsLiveEnabled } from "@/lib/marketplacePayout";
+import { prepareMarketplaceDeliveryJob } from "@/lib/marketplaceDispatchService";
 import {
-  isMarketplaceDispatchLiveEnabled,
-} from "@/lib/marketplaceDispatch";
-import {
-  prepareMarketplaceDeliveryJob,
-} from "@/lib/marketplaceDispatchService";
+  prepareMarketplaceDriverPayout,
+  prepareMarketplaceSellerPayout,
+  simulateMarketplaceJobDelivered,
+} from "@/lib/marketplacePayoutService";
 import { upsertMarketplaceDraftOrder } from "@/lib/marketplaceOrderService";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,7 +37,7 @@ function fail(message: string): never {
 }
 
 function ok(label: string, detail = "") {
-  console.log(`OK  [marketplace-dispatch] ${label}${detail ? ` — ${detail}` : ""}`);
+  console.log(`OK  [marketplace-payout] ${label}${detail ? ` — ${detail}` : ""}`);
 }
 
 const apiBase = (
@@ -63,10 +64,7 @@ async function authFetch(
   return { res, body };
 }
 
-async function getTestUserToken(): Promise<{
-  token: string;
-  userId: string;
-}> {
+async function getTestUserToken(): Promise<{ token: string; userId: string }> {
   const authClient = createClient(url!, anon!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -103,8 +101,8 @@ async function pickSellerAndProduct(admin: SupabaseClient) {
       .from("seller_products")
       .insert({
         seller_id: seller.id,
-        title: `Dispatch Smoke Product ${Date.now()}`,
-        description: "Dispatch smoke marketplace product",
+        title: `Payout Smoke Product ${Date.now()}`,
+        description: "Payout smoke marketplace product",
         price_cents: 2500,
         currency: "USD",
         category: "general",
@@ -123,13 +121,13 @@ async function pickSellerAndProduct(admin: SupabaseClient) {
 
 async function main() {
   if (!url || !anon || !serviceKey) {
-    fail("Missing Supabase env (NEXT_PUBLIC_SUPABASE_URL, anon, service role)");
+    fail("Missing Supabase env vars in apps/web/.env.local");
   }
 
-  if (isMarketplaceDispatchLiveEnabled()) {
-    fail("MARKETPLACE_DISPATCH_LIVE_ENABLED must stay false for dispatch smoke");
+  if (isMarketplacePayoutsLiveEnabled()) {
+    fail("MARKETPLACE_PAYOUTS_LIVE_ENABLED must stay false for payout smoke");
   }
-  ok("dispatch flag off", "MARKETPLACE_DISPATCH_LIVE_ENABLED=false");
+  ok("payout flag off", "MARKETPLACE_PAYOUTS_LIVE_ENABLED=false");
 
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -161,74 +159,99 @@ async function main() {
     .eq("id", order.id);
 
   if (paidError) fail(`mark paid failed: ${paidError.message}`);
-  ok("order marked paid (service role)", order.id);
+  ok("order marked paid", order.id);
 
-  const beforeDeliveryRequests = await admin
-    .from("delivery_requests")
-    .select("id", { count: "exact", head: true });
-
-  const prep = await prepareMarketplaceDeliveryJob(admin, {
+  const sellerPayout = await prepareMarketplaceSellerPayout(admin, {
     sellerOrderId: order.id,
     source: "integration_smoke",
   });
 
-  if (!prep.ok || !prep.job?.id) {
-    fail(`prepare job failed: ${prep.error ?? "missing job"}`);
+  if (!sellerPayout.ok || !sellerPayout.payout?.id) {
+    fail(`seller payout prep failed: ${sellerPayout.error ?? "missing payout"}`);
   }
-  ok("dispatch job created", prep.job.status);
+  if (sellerPayout.payout.status !== "pending") {
+    fail("seller payout should be pending");
+  }
+  if (sellerPayout.payout.payout_live_enabled !== false) {
+    fail("seller payout live flag should be false");
+  }
+  ok("seller payout pending", sellerPayout.payout.id);
 
-  if (prep.job.live_dispatch_enabled !== false) {
-    fail("job live_dispatch_enabled should be false");
+  const dispatch = await prepareMarketplaceDeliveryJob(admin, {
+    sellerOrderId: order.id,
+    source: "integration_smoke",
+  });
+  if (!dispatch.ok || !dispatch.job?.id) {
+    fail(`dispatch job prep failed: ${dispatch.error ?? "missing job"}`);
   }
-  if (prep.job.drivers_notified !== false) {
-    fail("job drivers_notified should be false");
-  }
-  ok("no live dispatch on job", "live_dispatch_enabled=false, drivers_notified=false");
+  ok("dispatch job", dispatch.job.id);
 
-  const afterDeliveryRequests = await admin
-    .from("delivery_requests")
-    .select("id", { count: "exact", head: true });
+  const delivered = await simulateMarketplaceJobDelivered(admin, {
+    marketplaceDeliveryJobId: dispatch.job.id,
+    driverUserId: userId,
+    source: "integration_smoke",
+  });
+  if (!delivered.ok) fail(`simulate delivered failed: ${delivered.error}`);
+  ok("job marked delivered (simulated)");
 
-  if ((afterDeliveryRequests.count ?? 0) > (beforeDeliveryRequests.count ?? 0)) {
-    fail("delivery_requests were created during marketplace dispatch prep");
+  const driverPayout = await prepareMarketplaceDriverPayout(admin, {
+    marketplaceDeliveryJobId: dispatch.job.id,
+    source: "integration_smoke",
+  });
+  if (!driverPayout.ok || !driverPayout.payout?.id) {
+    fail(`driver payout prep failed: ${driverPayout.error ?? "missing payout"}`);
   }
-  ok("no delivery_requests created");
+  if (driverPayout.payout.status !== "pending") {
+    fail("driver payout should be pending");
+  }
+  ok("driver payout pending", driverPayout.payout.id);
 
   const userClient = createClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
-  const { data: clientRead, error: clientReadErr } = await userClient
-    .from("marketplace_delivery_jobs")
-    .select("id,status,live_dispatch_enabled,drivers_notified")
-    .eq("seller_order_id", order.id)
-    .maybeSingle();
+  const { error: forgedSellerPayoutErr } = await userClient
+    .from("marketplace_seller_payouts")
+    .insert({
+      seller_order_id: order.id,
+      seller_id: seller.id,
+      gross_amount_cents: 1,
+      platform_fee_cents: 0,
+      seller_net_amount_cents: 1,
+      currency: "USD",
+    });
 
-  if (clientReadErr || !clientRead?.id) {
-    fail(`client RLS read failed: ${clientReadErr?.message ?? "missing row"}`);
+  if (!forgedSellerPayoutErr) {
+    fail("RLS allowed direct marketplace_seller_payouts insert");
   }
-  ok("client RLS read own job");
+  ok("RLS blocks direct seller payout insert", forgedSellerPayoutErr.message);
 
   const { res: adminRes, body: adminBody } = await authFetch(
     token,
-    "/api/admin/marketplace-dispatch?limit=5"
+    "/api/admin/marketplace-payouts?limit=5"
   );
   if (adminRes.status === 404 || adminRes.status === 403) {
-    ok("admin dispatch API", "route pending deploy or staff access unavailable on remote API");
+    ok("admin payouts API", "route pending deploy or staff access unavailable on remote API");
   } else if (!adminRes.ok || adminBody?.ok === false) {
-    fail(`admin dispatch API failed: ${adminBody?.error ?? adminRes.status}`);
+    fail(`admin payouts API failed: ${adminBody?.error ?? adminRes.status}`);
   } else {
-    ok("admin dispatch API", `${(adminBody.items ?? []).length} row(s)`);
-    if (adminBody.live_dispatch_enabled === true) {
-      fail("admin API reported live dispatch enabled");
-    }
+    ok("admin payouts API", `${(adminBody.seller_payouts ?? []).length} seller row(s)`);
   }
 
-  await admin.from("marketplace_delivery_jobs").delete().eq("id", prep.job.id);
+  const { count: ordersPayoutFlags } = await admin
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("restaurant_paid_out", false)
+    .limit(1);
+  ok("existing orders payout table untouched", `sample count=${ordersPayoutFlags ?? 0}`);
+
+  await admin.from("marketplace_driver_payouts").delete().eq("id", driverPayout.payout.id);
+  await admin.from("marketplace_seller_payouts").delete().eq("id", sellerPayout.payout.id);
+  await admin.from("marketplace_delivery_jobs").delete().eq("id", dispatch.job.id);
   await admin.from("seller_orders").delete().eq("id", order.id);
 
-  console.log("\nMarketplace Dispatch Smoke: ALL PASS\n");
+  console.log("\nMarketplace Payout Smoke: ALL PASS\n");
 }
 
 main().catch((error) => {

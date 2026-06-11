@@ -13,6 +13,7 @@
     "test:marketplace-delivery-shadow": "npx tsx src/lib/marketplaceDeliveryShadow.test.ts",
     "test:marketplace-live-checkout": "npx tsx src/lib/marketplaceLiveCheckout.test.ts",
     "test:marketplace-dispatch": "node scripts/smoke-marketplace-dispatch.mjs",
+    "test:marketplace-payouts": "node scripts/smoke-marketplace-payouts.mjs",
     "test:marketplace-shadow": "node scripts/smoke-marketplace-shadow.mjs"
   },
   "dependencies": {

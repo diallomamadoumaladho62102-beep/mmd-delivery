@@ -57,6 +57,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.sellers.read",
   },
   {
+    href: "/admin/marketplace-payouts",
+    title: "Marketplace Payouts",
+    description: "Ledgers vendeur/chauffeur marketplace — sans transfert live",
+    permission: "users.sellers.read",
+  },
+  {
     href: "/admin/admins",
     title: "Administrateurs",
     description: "Gérer les rôles staff (Super Admin uniquement)",
