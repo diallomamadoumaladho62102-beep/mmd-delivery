@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import * as WebBrowser from "expo-web-browser";
 import {
@@ -35,6 +36,7 @@ import {
   applyMmdLocationSelection,
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
@@ -42,6 +44,7 @@ type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
 export default function TaxiQuoteScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<QuoteRoute>();
+  const { t } = useTranslation();
   const [paying, setPaying] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscountCents, setPromoDiscountCents] = useState(0);
@@ -201,7 +204,10 @@ export default function TaxiQuoteScreen() {
       setPromoDiscountCents(Number(result.discount_cents ?? 0));
     } catch (e: unknown) {
       setPromoDiscountCents(0);
-      Alert.alert("Promo", e instanceof Error ? e.message : "Invalid promo code");
+      Alert.alert(
+        t("taxi.quote.promoCode", "Promo code"),
+        e instanceof Error ? e.message : t("taxi.quote.invalidPromo", "Invalid promo code")
+      );
     }
   }
 
@@ -257,8 +263,8 @@ export default function TaxiQuoteScreen() {
       navigation.replace("TaxiRideTracking", { rideId });
     } catch (e: unknown) {
       Alert.alert(
-        "Payment",
-        e instanceof Error ? e.message : "Unable to start payment"
+        t("taxi.quote.payment", "Payment"),
+        e instanceof Error ? e.message : t("taxi.quote.paymentFailed", "Unable to start payment")
       );
     } finally {
       setPaying(false);
@@ -270,14 +276,14 @@ export default function TaxiQuoteScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
 
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
           {getTaxiUiString("estimate", countryCode)}
         </Text>
 
-        <Card label="Vehicle" value={String(vehicleClass).toUpperCase()} />
+        <Card label={t("taxi.quote.vehicle", "Vehicle")} value={String(vehicleClass).toUpperCase()} />
         <Card
           label={getTaxiUiString("country", countryCode)}
           value={`${countryCode} · ${getTaxiCountryLabel(countryCode, lang)}`}
@@ -291,23 +297,23 @@ export default function TaxiQuoteScreen() {
           </Text>
         ) : null}
         <Card
-          label="Distance"
+          label={t("taxi.quote.distance", "Distance")}
           value={`${Number(routeInfo?.distanceMiles ?? 0).toFixed(1)} mi`}
         />
         <Card
-          label="Duration"
+          label={t("taxi.quote.duration", "Duration")}
           value={`${Math.ceil(Number(routeInfo?.durationMinutes ?? 0))} min`}
         />
-        <Card label="Pickup" value={pickupAddress} />
-        <Card label="Dropoff" value={dropoffAddress} />
+        <Card label={t("taxi.quote.pickup", "Pickup")} value={pickupAddress} />
+        <Card label={t("taxi.quote.dropoff", "Dropoff")} value={dropoffAddress} />
 
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flexDirection: rowDirection(), gap: 8 }}>
           <TouchableOpacity
             onPress={() =>
               navigation.navigate("MMDLocationPicker", {
                 countryCode,
-                title: "Pickup exact location",
-                submitLabel: "Use pickup location",
+                title: t("taxi.home.pickupPickerTitle", "Pickup exact location"),
+                submitLabel: t("taxi.home.usePickup", "Use pickup location"),
                 returnTo: "TaxiQuote",
                 pickerContext: "taxi_quote_pickup",
               })
@@ -322,15 +328,17 @@ export default function TaxiQuoteScreen() {
             }}
           >
             <Text style={{ color: "#E2E8F0", fontWeight: "700", fontSize: 12 }}>
-              {pickupLocationId ? "Pickup pinned" : "Pin pickup"}
+              {pickupLocationId
+                ? t("taxi.quote.pickupPinned", "Pickup pinned")
+                : t("taxi.quote.pinPickup", "Pin pickup")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() =>
               navigation.navigate("MMDLocationPicker", {
                 countryCode,
-                title: "Dropoff exact location",
-                submitLabel: "Use dropoff location",
+                title: t("taxi.home.dropoffPickerTitle", "Dropoff exact location"),
+                submitLabel: t("taxi.home.useDropoff", "Use dropoff location"),
                 returnTo: "TaxiQuote",
                 pickerContext: "taxi_quote_dropoff",
               })
@@ -345,7 +353,9 @@ export default function TaxiQuoteScreen() {
             }}
           >
             <Text style={{ color: "#E2E8F0", fontWeight: "700", fontSize: 12 }}>
-              {dropoffLocationId ? "Dropoff pinned" : "Pin dropoff"}
+              {dropoffLocationId
+                ? t("taxi.quote.dropoffPinned", "Dropoff pinned")
+                : t("taxi.quote.pinDropoff", "Pin dropoff")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -361,8 +371,8 @@ export default function TaxiQuoteScreen() {
             gap: 8,
           }}
         >
-          <Text style={{ color: "#94A3B8", fontWeight: "700" }}>
-            {lang === "fr" ? "Détail du prix" : "Price breakdown"}
+          <Text style={{ color: "#94A3B8", fontWeight: "700", textAlign: textAlignStart() }}>
+            {t("taxi.quote.priceBreakdown", "Price breakdown")}
           </Text>
           <Row label={getTaxiUiString("subtotal", countryCode)} value={subtotal} />
           {taxCents > 0 ? (
@@ -371,19 +381,19 @@ export default function TaxiQuoteScreen() {
           <Row label={getTaxiUiString("platformFee", countryCode)} value={platform} />
           {promoDiscountCents > 0 ? (
             <Row
-              label="Promo discount"
+              label={t("taxi.quote.promoDiscount", "Promo discount")}
               value={`-${fmt(promoDiscountCents)}`}
             />
           ) : null}
           {rewardDiscountCents > 0 ? (
             <Row
-              label="Reward credit"
+              label={t("taxi.quote.rewardCredit", "Reward credit")}
               value={`-${fmt(rewardDiscountCents)}`}
             />
           ) : null}
           {sharedDiscountCents > 0 ? (
             <Row
-              label="Shared ride discount"
+              label={t("taxi.quote.sharedRideDiscount", "Shared ride discount")}
               value={`-${fmt(sharedDiscountCents)}`}
             />
           ) : null}
@@ -392,25 +402,25 @@ export default function TaxiQuoteScreen() {
 
         <View style={{ gap: 10 }}>
           <OptionToggle
-            label="Shared ride (-15%)"
+            label={t("taxi.quote.sharedRide", "Shared ride (-15%)")}
             active={sharedRide}
             onPress={() => setSharedRide((v) => !v)}
           />
           <OptionToggle
-            label="Premium driver only"
+            label={t("taxi.quote.premiumDriver", "Premium driver only")}
             active={premiumDriverOnly}
             onPress={() => setPremiumDriverOnly((v) => !v)}
           />
           {businessAccounts.length > 0 ? (
             <>
               <OptionToggle
-                label="Business ride"
+                label={t("taxi.quote.businessRide", "Business ride")}
                 active={businessRide}
                 onPress={() => setBusinessRide((v) => !v)}
               />
               {businessRide ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: "row", gap: 8 }}>
+                  <View style={{ flexDirection: rowDirection(), gap: 8 }}>
                     {businessAccounts.map((entry) => {
                       const id = entry.account?.id;
                       if (!id) return null;
@@ -441,12 +451,14 @@ export default function TaxiQuoteScreen() {
         </View>
 
         <View style={{ gap: 8 }}>
-          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Promo code</Text>
-          <View style={{ flexDirection: "row", gap: 8 }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
+            {t("taxi.quote.promoCode", "Promo code")}
+          </Text>
+          <View style={{ flexDirection: rowDirection(), gap: 8 }}>
             <TextInput
               value={promoCode}
               onChangeText={setPromoCode}
-              placeholder="Enter code"
+              placeholder={t("taxi.quote.enterCode", "Enter code")}
               placeholderTextColor="#64748B"
               autoCapitalize="characters"
               style={{
@@ -469,16 +481,20 @@ export default function TaxiQuoteScreen() {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>Apply</Text>
+              <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
+                {t("taxi.quote.apply", "Apply")}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {rewards.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Loyalty reward</Text>
+            <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
+              {t("taxi.quote.loyaltyReward", "Loyalty reward")}
+            </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flexDirection: rowDirection(), gap: 8 }}>
                 <TouchableOpacity
                   onPress={() => {
                     setRewardId(null);
@@ -492,7 +508,7 @@ export default function TaxiQuoteScreen() {
                     borderColor: rewardId ? "#334155" : "#38BDF8",
                   }}
                 >
-                  <Text style={{ color: "#E2E8F0" }}>None</Text>
+                  <Text style={{ color: "#E2E8F0" }}>{t("taxi.quote.none", "None")}</Text>
                 </TouchableOpacity>
                 {rewards.map((reward) => {
                   const selected = rewardId === reward.id;
@@ -524,11 +540,11 @@ export default function TaxiQuoteScreen() {
 
         {favoriteDrivers.length > 0 ? (
           <View style={{ gap: 8 }}>
-            <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
-              Preferred driver (optional)
+            <Text style={{ color: "#CBD5E1", fontWeight: "600", textAlign: textAlignStart() }}>
+              {t("taxi.quote.preferredDriver", "Preferred driver (optional)")}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: "row", gap: 8 }}>
+              <View style={{ flexDirection: rowDirection(), gap: 8 }}>
                 <TouchableOpacity
                   onPress={() => setPreferredDriverId(null)}
                   style={{
@@ -539,7 +555,7 @@ export default function TaxiQuoteScreen() {
                     borderColor: preferredDriverId ? "#334155" : "#38BDF8",
                   }}
                 >
-                  <Text style={{ color: "#E2E8F0" }}>Any</Text>
+                  <Text style={{ color: "#E2E8F0" }}>{t("taxi.quote.any", "Any")}</Text>
                 </TouchableOpacity>
                 {favoriteDrivers.map((fav) => {
                   const selected = preferredDriverId === fav.driver_user_id;
@@ -581,7 +597,7 @@ export default function TaxiQuoteScreen() {
             <ActivityIndicator color="#052e16" />
           ) : (
             <Text style={{ color: "#052e16", fontWeight: "800", fontSize: 16 }}>
-              Confirm & pay {total}
+              {t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })}
             </Text>
           )}
         </TouchableOpacity>
@@ -601,7 +617,7 @@ function Card({ label, value }: { label: string; value: string }) {
         borderColor: "#1E293B",
       }}
     >
-      <Text style={{ color: "#64748B", fontSize: 12, fontWeight: "700" }}>
+      <Text style={{ color: "#64748B", fontSize: 12, fontWeight: "700", textAlign: textAlignStart() }}>
         {label}
       </Text>
       <Text style={{ color: "#F8FAFC", marginTop: 4, fontSize: 15 }}>{value}</Text>
@@ -619,7 +635,7 @@ function Row({
   bold?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+    <View style={{ flexDirection: rowDirection(), justifyContent: "space-between" }}>
       <Text style={{ color: "#CBD5E1" }}>{label}</Text>
       <Text
         style={{

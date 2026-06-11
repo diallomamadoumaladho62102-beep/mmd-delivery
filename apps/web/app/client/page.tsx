@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useWebI18n } from "@/components/WebI18nProvider";
 import { useAccountAccessGuard } from "@/hooks/useAccountAccessGuard";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -37,6 +38,7 @@ type ClientPlatformFeatures = {
 };
 
 export default function ClientHomePage() {
+  const { t } = useWebI18n();
   const { state: accessState, message: accessMessage } = useAccountAccessGuard();
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -188,11 +190,9 @@ export default function ClientHomePage() {
         {/* HEADER */}
         <header className="mb-6">
           <h1 className="text-3xl font-extrabold tracking-tight mb-1">
-            Espace client
+            {t("client.title")}
           </h1>
-          <p className="text-sm text-slate-400">
-            Crée une nouvelle commande MMD ou consulte ton historique.
-          </p>
+          <p className="text-sm text-slate-400">{t("public.subhero")}</p>
         </header>
 
         {platformFeatures.maintenance_mode ? (

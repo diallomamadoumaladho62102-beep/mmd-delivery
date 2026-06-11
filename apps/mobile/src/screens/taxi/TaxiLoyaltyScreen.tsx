@@ -11,7 +11,9 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { textAlignStart } from "../../i18n/rtl";
 import {
   fetchTaxiLoyaltyBalance,
   fetchTaxiLoyaltyHistory,
@@ -30,6 +32,7 @@ type LedgerEntry = {
 
 export default function TaxiLoyaltyScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [balance, setBalance] = useState(0);
   const [tier, setTier] = useState("bronze");
   const [lifetime, setLifetime] = useState(0);
@@ -49,11 +52,14 @@ export default function TaxiLoyaltyScreen() {
       setLifetime(Number(account?.lifetime_points ?? 0));
       setEntries((historyRes?.entries as LedgerEntry[]) ?? []);
     } catch (e: unknown) {
-      Alert.alert("Loyalty", e instanceof Error ? e.message : "Load failed");
+      Alert.alert(
+        t("taxi.loyalty.title", "Taxi loyalty"),
+        e instanceof Error ? e.message : t("taxi.loyalty.loadFailed", "Load failed")
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -64,11 +70,11 @@ export default function TaxiLoyaltyScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
 
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
-          Taxi loyalty
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
+          {t("taxi.loyalty.title", "Taxi loyalty")}
         </Text>
 
         {loading ? (
@@ -84,20 +90,25 @@ export default function TaxiLoyaltyScreen() {
                 borderColor: "#334155",
               }}
             >
-              <Text style={{ color: "#94A3B8" }}>Balance</Text>
+              <Text style={{ color: "#94A3B8" }}>{t("taxi.loyalty.balance", "Balance")}</Text>
               <Text style={{ color: "#F8FAFC", fontSize: 32, fontWeight: "800" }}>
                 {balance} pts
               </Text>
               <Text style={{ color: "#CBD5E1", marginTop: 8 }}>
-                Tier: {tier.toUpperCase()} • Lifetime: {lifetime}
+                {t("taxi.loyalty.tier", "Tier: {{tier}} • Lifetime: {{lifetime}}", {
+                  tier: tier.toUpperCase(),
+                  lifetime,
+                })}
               </Text>
             </View>
 
-            <Text style={{ color: "#CBD5E1", fontWeight: "700", marginTop: 8 }}>
-              History
+            <Text style={{ color: "#CBD5E1", fontWeight: "700", marginTop: 8, textAlign: textAlignStart() }}>
+              {t("taxi.loyalty.history", "History")}
             </Text>
             {entries.length === 0 ? (
-              <Text style={{ color: "#64748B" }}>No loyalty activity yet.</Text>
+              <Text style={{ color: "#64748B" }}>
+                {t("taxi.loyalty.noActivity", "No loyalty activity yet.")}
+              </Text>
             ) : (
               entries.map((entry) => (
                 <View

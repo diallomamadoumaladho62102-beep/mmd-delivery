@@ -10,7 +10,9 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { textAlignStart } from "../../i18n/rtl";
 import {
   fetchTaxiLoyaltyBalance,
   fetchTaxiLoyaltyRewards,
@@ -29,6 +31,7 @@ type Reward = {
 
 export default function TaxiLoyaltyRewardsScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -43,11 +46,14 @@ export default function TaxiLoyaltyRewardsScreen() {
       setRewards((rewardsRes?.rewards as Reward[]) ?? []);
       setBalance(Number(balanceRes?.account?.points_balance ?? 0));
     } catch (e: unknown) {
-      Alert.alert("Rewards", e instanceof Error ? e.message : "Load failed");
+      Alert.alert(
+        t("taxi.loyaltyRewards.title", "Loyalty rewards"),
+        e instanceof Error ? e.message : t("taxi.loyaltyRewards.loadFailed", "Load failed")
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -57,12 +63,14 @@ export default function TaxiLoyaltyRewardsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
-          Loyalty rewards
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
+          {t("taxi.loyaltyRewards.title", "Loyalty rewards")}
         </Text>
-        <Text style={{ color: "#CBD5E1" }}>Balance: {balance} pts</Text>
+        <Text style={{ color: "#CBD5E1" }}>
+          {t("taxi.loyaltyRewards.balancePts", "Balance: {{count}} pts", { count: balance })}
+        </Text>
         {loading ? <ActivityIndicator color="#F59E0B" /> : null}
         {rewards.map((reward) => (
           <View
@@ -82,7 +90,10 @@ export default function TaxiLoyaltyRewardsScreen() {
               {reward.points_cost} pts → {formatTaxiCents(reward.discount_cents)}
             </Text>
             <Text style={{ color: "#64748B", marginTop: 6 }}>
-              Apply on the quote screen before checkout.
+              {t(
+                "taxi.loyaltyRewards.applyOnQuote",
+                "Apply on the quote screen before checkout."
+              )}
             </Text>
           </View>
         ))}

@@ -141,17 +141,11 @@ export async function confirmTaxiPaid(taxiRideId: string) {
   });
 }
 
+import i18n from "../i18n";
+import { formatMoneyFromCents } from "../i18n/formatters";
+
 export function formatTaxiCents(cents: unknown, currency = "USD") {
-  const value = Number(cents ?? 0) / 100;
-  if (!Number.isFinite(value)) return "$0.00";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency || "USD",
-    }).format(value);
-  } catch {
-    return `$${value.toFixed(2)}`;
-  }
+  return formatMoneyFromCents(Number(cents ?? 0), currency, i18n.language);
 }
 
 export function fetchTaxiFavoriteDrivers() {

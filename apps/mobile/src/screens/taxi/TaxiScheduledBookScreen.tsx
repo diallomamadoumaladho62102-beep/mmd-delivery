@@ -10,7 +10,9 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { textAlignStart } from "../../i18n/rtl";
 import * as WebBrowser from "expo-web-browser";
 import {
   confirmTaxiPaid,
@@ -24,6 +26,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiScheduledBook">;
 
 export default function TaxiScheduledBookScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [when, setWhen] = useState("");
@@ -64,7 +67,10 @@ export default function TaxiScheduledBookScreen() {
 
       navigation.replace("TaxiScheduled");
     } catch (e: unknown) {
-      Alert.alert("Scheduled", e instanceof Error ? e.message : "Booking failed");
+      Alert.alert(
+        t("taxi.scheduledBook.title", "Schedule a ride"),
+        e instanceof Error ? e.message : t("taxi.scheduledBook.bookingFailed", "Booking failed")
+      );
     } finally {
       setLoading(false);
     }
@@ -74,30 +80,33 @@ export default function TaxiScheduledBookScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
-          Schedule a ride
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
+          {t("taxi.scheduledBook.title", "Schedule a ride")}
         </Text>
         <TaxiCountryPicker value={countryCode} onChange={(code) => setCountryCode(code)} />
         <TextInput
           value={pickup}
           onChangeText={setPickup}
-          placeholder="Pickup address"
+          placeholder={t("taxi.home.pickupPlaceholder", "Pickup address")}
           placeholderTextColor="#64748B"
           style={inputStyle}
         />
         <TextInput
           value={dropoff}
           onChangeText={setDropoff}
-          placeholder="Dropoff address"
+          placeholder={t("taxi.home.dropoffPlaceholder", "Dropoff address")}
           placeholderTextColor="#64748B"
           style={inputStyle}
         />
         <TextInput
           value={when}
           onChangeText={setWhen}
-          placeholder="Pickup time (ISO, e.g. 2026-06-15T14:30:00Z)"
+          placeholder={t(
+            "taxi.scheduledBook.pickupTimePlaceholder",
+            "Pickup time (ISO, e.g. 2026-06-15T14:30:00Z)"
+          )}
           placeholderTextColor="#64748B"
           style={inputStyle}
         />
@@ -114,7 +123,9 @@ export default function TaxiScheduledBookScreen() {
           {loading ? (
             <ActivityIndicator color="#052e16" />
           ) : (
-            <Text style={{ color: "#052e16", fontWeight: "800" }}>Reserve & prepay</Text>
+            <Text style={{ color: "#052e16", fontWeight: "800" }}>
+              {t("taxi.scheduledBook.reserve", "Reserve & prepay")}
+            </Text>
           )}
         </TouchableOpacity>
       </ScrollView>

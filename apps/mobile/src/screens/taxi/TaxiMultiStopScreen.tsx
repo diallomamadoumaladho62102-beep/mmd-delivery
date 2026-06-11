@@ -10,7 +10,9 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { textAlignStart } from "../../i18n/rtl";
 import {
   createTaxiRide,
   formatTaxiCents,
@@ -23,6 +25,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
 
 export default function TaxiMultiStopScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [pickup, setPickup] = useState("");
   const [stop1, setStop1] = useState("");
   const [stop2, setStop2] = useState("");
@@ -70,7 +73,10 @@ export default function TaxiMultiStopScreen() {
         route: { ...result.route, stops: result.route?.stops ?? stops },
       });
     } catch (e: unknown) {
-      Alert.alert("Multi-stop", e instanceof Error ? e.message : "Failed");
+      Alert.alert(
+        t("taxi.multiStop.title", "Multi-stop ride"),
+        e instanceof Error ? e.message : t("taxi.quote.paymentFailed", "Failed")
+      );
     } finally {
       setLoading(false);
     }
@@ -80,16 +86,40 @@ export default function TaxiMultiStopScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
-          Multi-stop ride
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
+          {t("taxi.multiStop.title", "Multi-stop ride")}
         </Text>
         <TaxiCountryPicker value={countryCode} onChange={(code) => setCountryCode(code)} />
-        <TextInput value={pickup} onChangeText={setPickup} placeholder="Pickup" placeholderTextColor="#64748B" style={inputStyle} />
-        <TextInput value={stop1} onChangeText={setStop1} placeholder="Stop 1 (optional)" placeholderTextColor="#64748B" style={inputStyle} />
-        <TextInput value={stop2} onChangeText={setStop2} placeholder="Stop 2 (optional)" placeholderTextColor="#64748B" style={inputStyle} />
-        <TextInput value={dropoff} onChangeText={setDropoff} placeholder="Final destination" placeholderTextColor="#64748B" style={inputStyle} />
+        <TextInput
+          value={pickup}
+          onChangeText={setPickup}
+          placeholder={t("taxi.quote.pickup", "Pickup")}
+          placeholderTextColor="#64748B"
+          style={inputStyle}
+        />
+        <TextInput
+          value={stop1}
+          onChangeText={setStop1}
+          placeholder={t("taxi.multiStop.stop1", "Stop 1 (optional)")}
+          placeholderTextColor="#64748B"
+          style={inputStyle}
+        />
+        <TextInput
+          value={stop2}
+          onChangeText={setStop2}
+          placeholder={t("taxi.multiStop.stop2", "Stop 2 (optional)")}
+          placeholderTextColor="#64748B"
+          style={inputStyle}
+        />
+        <TextInput
+          value={dropoff}
+          onChangeText={setDropoff}
+          placeholder={t("taxi.multiStop.finalDestination", "Final destination")}
+          placeholderTextColor="#64748B"
+          style={inputStyle}
+        />
         <TouchableOpacity
           onPress={handleQuote}
           disabled={loading}
@@ -98,11 +128,13 @@ export default function TaxiMultiStopScreen() {
           {loading ? (
             <ActivityIndicator color="#111827" />
           ) : (
-            <Text style={{ color: "#111827", fontWeight: "800" }}>Get estimate</Text>
+            <Text style={{ color: "#111827", fontWeight: "800" }}>
+              {t("taxi.multiStop.getEstimate", "Get estimate")}
+            </Text>
           )}
         </TouchableOpacity>
         <Text style={{ color: "#64748B", textAlign: "center" }}>
-          Pricing uses total route distance/duration.
+          {t("taxi.multiStop.pricingNote", "Pricing uses total route distance/duration.")}
         </Text>
       </ScrollView>
     </SafeAreaView>

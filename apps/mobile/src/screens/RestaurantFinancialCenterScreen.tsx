@@ -11,9 +11,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import { formatMoney, formatDateTime } from "../i18n/formatters";
+import { rowDirection, textAlignStart, mirrorChevron } from "../i18n/rtl";
 
 type ChartPoint = {
   label: string;
@@ -51,13 +54,6 @@ type FinancialOverview = {
   recentPayouts: PayoutItem[];
 };
 
-function formatMoney(value: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(Number.isFinite(value) ? value : 0);
-}
-
 function KpiCard({
   title,
   value,
@@ -69,9 +65,11 @@ function KpiCard({
 }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardValue}>{value}</Text>
-      {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
+      <Text style={[styles.cardTitle, { textAlign: textAlignStart() }]}>{title}</Text>
+      <Text style={[styles.cardValue, { textAlign: textAlignStart() }]}>{value}</Text>
+      {subtitle ? (
+        <Text style={[styles.cardSubtitle, { textAlign: textAlignStart() }]}>{subtitle}</Text>
+      ) : null}
     </View>
   );
 }
@@ -85,7 +83,7 @@ function SectionCard({
 }) {
   return (
     <View style={styles.sectionCard}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[styles.sectionTitle, { textAlign: textAlignStart() }]}>{title}</Text>
       {children}
     </View>
   );
@@ -99,7 +97,7 @@ function SimpleBarChart({ data }: { data: ChartPoint[] }) {
 
   return (
     <View style={styles.chartContainer}>
-      <View style={styles.chartBarsRow}>
+      <View style={[styles.chartBarsRow, { flexDirection: rowDirection() }]}>
         {data.map((item) => {
           const height = (item.gross / maxGross) * 140;
 
@@ -120,6 +118,7 @@ function SimpleBarChart({ data }: { data: ChartPoint[] }) {
 export default function RestaurantFinancialCenterScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,13 +129,21 @@ export default function RestaurantFinancialCenterScreen() {
     return value ? value.replace(/\/+$/, "") : "";
   }, []);
 
+  const fmtMoney = useCallback(
+    (value: number, currency = "USD") => formatMoney(value, currency, i18n.language),
+    [i18n.language]
+  );
+
   const loadOverview = useCallback(async () => {
     try {
       setError(null);
 
       if (!apiBase) {
         throw new Error(
-          "API_BASE_URL manquant. Vérifie la configuration API production.",
+          t(
+            "restaurant.financial.apiMissing",
+            "API_BASE_URL is missing. Check your production API configuration."
+          )
         );
       }
 
@@ -146,7 +153,12 @@ export default function RestaurantFinancialCenterScreen() {
 
       const accessToken = session?.access_token?.trim();
       if (!accessToken) {
-        throw new Error("Session expirée. Reconnecte-toi pour voir le centre financier.");
+        throw new Error(
+          t(
+            "restaurant.financial.sessionExpired",
+            "Session expired. Sign in again to view the financial center."
+          )
+        );
       }
 
       const response = await fetch(
@@ -162,18 +174,19 @@ export default function RestaurantFinancialCenterScreen() {
 
       if (!response.ok || !json?.ok) {
         throw new Error(
-          json?.error || "Failed to load restaurant financial overview",
+          json?.error ||
+            t("restaurant.financial.loadFailed", "Failed to load restaurant financial overview")
         );
       }
 
       setOverview(json.data as FinancialOverview);
     } catch (err: any) {
-      setError(err?.message || "Something went wrong");
+      setError(err?.message || t("common.somethingWentWrong", "Something went wrong"));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [apiBase]);
+  }, [apiBase, t]);
 
   useEffect(() => {
     void loadOverview();
@@ -189,7 +202,9 @@ export default function RestaurantFinancialCenterScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>Chargement du centre financier...</Text>
+          <Text style={styles.loadingText}>
+            {t("restaurant.financial.loading", "Loading financial center...")}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -200,15 +215,21 @@ export default function RestaurantFinancialCenterScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>← Retour</Text>
+            <Text style={styles.backBtnText}>
+              {mirrorChevron("back")} {t("common.back", "Back")}
+            </Text>
           </TouchableOpacity>
         </View>
         <View style={styles.centered}>
           <Text style={styles.errorText}>
-            {error || "Aucune donnée financière disponible pour le moment."}
+            {error ||
+              t(
+                "restaurant.financial.noData",
+                "No financial data available at the moment."
+              )}
           </Text>
           <TouchableOpacity style={styles.retryBtn} onPress={() => void loadOverview()}>
-            <Text style={styles.retryBtnText}>Réessayer</Text>
+            <Text style={styles.retryBtnText}>{t("common.retry", "Retry")}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -226,71 +247,95 @@ export default function RestaurantFinancialCenterScreen() {
     >
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← Retour</Text>
+          <Text style={styles.backBtnText}>
+            {mirrorChevron("back")} {t("common.back", "Back")}
+          </Text>
         </TouchableOpacity>
       </View>
-      <Text style={styles.headerTitle}>Financial Center</Text>
-      <Text style={styles.headerSubtitle}>
-        Restaurant revenue, payouts, statements, and taxes
+      <Text style={[styles.headerTitle, { textAlign: textAlignStart() }]}>
+        {t("restaurant.financial.title", "Financial Center")}
+      </Text>
+      <Text style={[styles.headerSubtitle, { textAlign: textAlignStart() }]}>
+        {t(
+          "restaurant.financial.subtitle",
+          "Restaurant revenue, payouts, statements, and taxes"
+        )}
       </Text>
 
       {!overview.profileComplete && overview.missingFields.length > 0 ? (
         <View style={styles.alertBox}>
-          <Text style={styles.alertTitle}>Profile incomplete</Text>
-          <Text style={styles.alertText}>
-            Missing fields: {overview.missingFields.join(", ")}
+          <Text style={[styles.alertTitle, { textAlign: textAlignStart() }]}>
+            {t("restaurant.financial.profileIncomplete", "Profile incomplete")}
+          </Text>
+          <Text style={[styles.alertText, { textAlign: textAlignStart() }]}>
+            {t("restaurant.financial.missingFields", "Missing fields: {{fields}}", {
+              fields: overview.missingFields.join(", "),
+            })}
           </Text>
         </View>
       ) : null}
 
-      <View style={styles.grid}>
+      <View style={[styles.grid, { flexDirection: rowDirection() }]}>
         <KpiCard
-          title="Gross Sales"
-          value={formatMoney(overview.grossSales, overview.currency)}
+          title={t("restaurant.financial.grossSales", "Gross Sales")}
+          value={fmtMoney(overview.grossSales, overview.currency)}
         />
 
         <KpiCard
-          title="Commission"
-          value={formatMoney(overview.platformCommission, overview.currency)}
-          subtitle="Platform fees"
+          title={t("restaurant.financial.commission", "Commission")}
+          value={fmtMoney(overview.platformCommission, overview.currency)}
+          subtitle={t("restaurant.financial.platformFees", "Platform fees")}
         />
 
         <KpiCard
-          title="Net Revenue"
-          value={formatMoney(overview.netRevenue, overview.currency)}
+          title={t("restaurant.financial.netRevenue", "Net Revenue")}
+          value={fmtMoney(overview.netRevenue, overview.currency)}
         />
 
-        <KpiCard title="Orders" value={String(overview.totalOrders)} />
+        <KpiCard
+          title={t("restaurant.financial.orders", "Orders")}
+          value={String(overview.totalOrders)}
+        />
       </View>
 
-      <SectionCard title="Earnings Graph">
+      <SectionCard title={t("restaurant.financial.earningsGraph", "Earnings Graph")}>
         <SimpleBarChart data={overview.chart} />
       </SectionCard>
 
-      <SectionCard title="Payouts">
-        <View style={styles.rowBetween}>
-          <Text style={styles.label}>Pending payout</Text>
+      <SectionCard title={t("restaurant.financial.payouts", "Payouts")}>
+        <View style={[styles.rowBetween, { flexDirection: rowDirection() }]}>
+          <Text style={styles.label}>
+            {t("restaurant.financial.pendingPayout", "Pending payout")}
+          </Text>
           <Text style={styles.value}>
-            {formatMoney(overview.pendingPayout, overview.currency)}
+            {fmtMoney(overview.pendingPayout, overview.currency)}
           </Text>
         </View>
 
-        <View style={styles.rowBetween}>
-          <Text style={styles.label}>Last payout</Text>
+        <View style={[styles.rowBetween, { flexDirection: rowDirection() }]}>
+          <Text style={styles.label}>
+            {t("restaurant.financial.lastPayout", "Last payout")}
+          </Text>
           <Text style={styles.value}>
-            {formatMoney(overview.lastPayoutAmount, overview.currency)}
+            {fmtMoney(overview.lastPayoutAmount, overview.currency)}
           </Text>
         </View>
 
-        <View style={styles.rowBetween}>
-          <Text style={styles.label}>Last payout date</Text>
-          <Text style={styles.value}>{overview.lastPayoutDate || "-"}</Text>
+        <View style={[styles.rowBetween, { flexDirection: rowDirection() }]}>
+          <Text style={styles.label}>
+            {t("restaurant.financial.lastPayoutDate", "Last payout date")}
+          </Text>
+          <Text style={styles.value}>
+            {overview.lastPayoutDate
+              ? formatDateTime(overview.lastPayoutDate, i18n.language)
+              : t("common.dash", "-")}
+          </Text>
         </View>
 
         {overview.recentPayouts.map((item) => (
           <View key={item.id} style={styles.listItem}>
             <Text style={styles.listTitle}>
-              {formatMoney(item.amount, overview.currency)}
+              {fmtMoney(item.amount, overview.currency)}
             </Text>
             <Text style={styles.listMeta}>
               {item.status} • {item.date}
@@ -299,9 +344,11 @@ export default function RestaurantFinancialCenterScreen() {
         ))}
       </SectionCard>
 
-      <SectionCard title="Monthly Statements">
+      <SectionCard title={t("restaurant.financial.monthlyStatements", "Monthly Statements")}>
         {overview.recentStatements.length === 0 ? (
-          <Text style={styles.emptyText}>No statements available yet.</Text>
+          <Text style={styles.emptyText}>
+            {t("restaurant.financial.noStatements", "No statements available yet.")}
+          </Text>
         ) : (
           overview.recentStatements.map((item) => (
             <View key={item.id} style={styles.listItem}>
@@ -314,9 +361,12 @@ export default function RestaurantFinancialCenterScreen() {
         )}
       </SectionCard>
 
-      <SectionCard title="Tax Documents">
-        <Text style={styles.taxText}>
-          Your annual tax summary remains available from the Tax Center.
+      <SectionCard title={t("restaurant.financial.taxDocuments", "Tax Documents")}>
+        <Text style={[styles.taxText, { textAlign: textAlignStart() }]}>
+          {t(
+            "restaurant.financial.taxSummaryNote",
+            "Your annual tax summary remains available from the Tax Center."
+          )}
         </Text>
       </SectionCard>
     </ScrollView>
@@ -408,7 +458,6 @@ const styles = StyleSheet.create({
     color: "#9A3412",
   },
   grid: {
-    flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
     marginBottom: 16,
@@ -451,7 +500,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   chartBarsRow: {
-    flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
     height: 180,
@@ -479,7 +527,6 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   rowBetween: {
-    flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 10,
   },

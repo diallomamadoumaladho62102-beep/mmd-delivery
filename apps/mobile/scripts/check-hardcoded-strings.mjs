@@ -9,24 +9,8 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const screensDir = path.join(__dirname, "..", "src", "screens");
 
-const ALLOWLIST = new Set([
-  "TaxiHomeScreen.tsx",
-  "TaxiQuoteScreen.tsx",
-  "TaxiHistoryScreen.tsx",
-  "TaxiFavoritesScreen.tsx",
-  "TaxiLoyaltyScreen.tsx",
-  "TaxiLoyaltyRewardsScreen.tsx",
-  "TaxiScheduledScreen.tsx",
-  "TaxiScheduledBookScreen.tsx",
-  "TaxiMultiStopScreen.tsx",
-  "TaxiChatScreen.tsx",
-  "TaxiRideTrackingScreen.tsx",
-  "DriverTaxiChatScreen.tsx",
-  "ResetPasswordScreen.tsx",
-  "MMDLocationPickerScreen.tsx",
-  "ClientDeliveryRequestDetailsScreen.tsx",
-  "LocationPickerTestScreen.tsx",
-]);
+/** Dev-only test screen — not user-facing production UI. */
+const ALLOWLIST = new Set(["LocationPickerTestScreen.tsx"]);
 
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -36,9 +20,6 @@ function walk(dir, out = []) {
   }
   return out;
 }
-
-const pattern =
-  /(?:Alert\.alert|placeholder=|title:\s*|"[A-Z][^"]{3,}")/g;
 
 let violations = 0;
 
@@ -54,9 +35,9 @@ for (const file of walk(screensDir)) {
   }
 }
 
-if (violations > 25) {
-  console.error(`FAIL: ${violations} screens without useTranslation (threshold 25)`);
+if (violations > 0) {
+  console.error(`FAIL: ${violations} screen(s) without useTranslation`);
   process.exit(1);
 }
 
-console.log(`PASS: hardcoded-string scan (${violations} warnings)`);
+console.log("PASS: hardcoded-string scan (0 warnings)");

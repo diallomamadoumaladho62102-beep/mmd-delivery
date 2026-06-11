@@ -17,6 +17,7 @@ import {
   type MarketplaceProduct,
 } from "../../lib/marketplaceApi";
 import { useTranslation } from "react-i18next";
+import { rowDirection } from "../../i18n/rtl";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductDetails">;
 
@@ -96,7 +97,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
               {formatMarketplaceMoney(product.price_cents, product.currency)}
             </Text>
 
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ flexDirection: rowDirection(), alignItems: "center", gap: 12 }}>
               <Text style={{ color: "#94A3B8" }}>
                 {t("marketplace.details.quantity", "Quantity")}
               </Text>

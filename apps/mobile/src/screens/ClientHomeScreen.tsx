@@ -29,6 +29,12 @@ import { useTranslation } from "react-i18next";
 import { setLocaleForRoleAndApply } from "../i18n";
 import type { AppLanguageCode } from "../i18n/languageOptions";
 import LanguagePicker from "../components/LanguagePicker";
+import i18n from "../i18n";
+import {
+  formatMoney as formatMoneyLocale,
+  formatDateTime as formatDateTimeLocale,
+} from "../i18n/formatters";
+import { rowDirection, textAlignStart } from "../i18n/rtl";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientHome">;
@@ -283,11 +289,7 @@ function getGreeting(ts: (key: string, fallback: string) => string) {
 
 function formatCurrency(amount: number | null | undefined) {
   if (typeof amount !== "number" || Number.isNaN(amount)) return "—";
-
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
+  return formatMoneyLocale(amount, "USD", i18n.language);
 }
 
 function formatDistance(distance: number | null | undefined) {
@@ -297,13 +299,7 @@ function formatDistance(distance: number | null | undefined) {
 
 function formatDateTime(iso: string | null) {
   if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-
-  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
+  return formatDateTimeLocale(iso, i18n.language);
 }
 
 function formatCompactDateTime(iso: string | null) {
@@ -1583,7 +1579,7 @@ export function ClientHomeScreen() {
             <View pointerEvents="none" style={premiumStyles.bgGlowTwo} />
 
             <View style={premiumStyles.header}>
-              <View style={premiumStyles.headerLeft}>
+              <View style={[premiumStyles.headerLeft, { flexDirection: rowDirection() }]}>
                 {avatarUrl ? (
                   <Image source={{ uri: avatarUrl }} style={premiumStyles.avatarImage} />
                 ) : (

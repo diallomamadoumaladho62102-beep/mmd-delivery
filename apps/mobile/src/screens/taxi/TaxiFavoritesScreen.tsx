@@ -12,7 +12,9 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { textAlignStart } from "../../i18n/rtl";
 import {
   addTaxiFavoriteDriver,
   fetchTaxiFavoriteDrivers,
@@ -29,6 +31,7 @@ type FavoriteRow = {
 
 export default function TaxiFavoritesScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [favorites, setFavorites] = useState<FavoriteRow[]>([]);
   const [driverId, setDriverId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,11 +43,14 @@ export default function TaxiFavoritesScreen() {
       const res = await fetchTaxiFavoriteDrivers();
       setFavorites((res?.favorites as FavoriteRow[]) ?? []);
     } catch (e: unknown) {
-      Alert.alert("Favorites", e instanceof Error ? e.message : "Load failed");
+      Alert.alert(
+        t("taxi.favorites.title", "Favorite drivers"),
+        e instanceof Error ? e.message : t("taxi.favorites.loadFailed", "Load failed")
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -59,7 +65,10 @@ export default function TaxiFavoritesScreen() {
       setDriverId("");
       await load();
     } catch (e: unknown) {
-      Alert.alert("Favorites", e instanceof Error ? e.message : "Add failed");
+      Alert.alert(
+        t("taxi.favorites.title", "Favorite drivers"),
+        e instanceof Error ? e.message : t("taxi.favorites.addFailed", "Add failed")
+      );
     } finally {
       setSaving(false);
     }
@@ -71,7 +80,10 @@ export default function TaxiFavoritesScreen() {
       await removeTaxiFavoriteDriver(id);
       await load();
     } catch (e: unknown) {
-      Alert.alert("Favorites", e instanceof Error ? e.message : "Remove failed");
+      Alert.alert(
+        t("taxi.favorites.title", "Favorite drivers"),
+        e instanceof Error ? e.message : t("taxi.favorites.removeFailed", "Remove failed")
+      );
     } finally {
       setSaving(false);
     }
@@ -82,17 +94,17 @@ export default function TaxiFavoritesScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
 
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
-          Favorite drivers
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
+          {t("taxi.favorites.title", "Favorite drivers")}
         </Text>
 
         <TextInput
           value={driverId}
           onChangeText={setDriverId}
-          placeholder="Driver user ID"
+          placeholder={t("taxi.favorites.driverId", "Driver user ID")}
           placeholderTextColor="#64748B"
           style={{
             backgroundColor: "rgba(15,23,42,0.95)",
@@ -115,7 +127,9 @@ export default function TaxiFavoritesScreen() {
           }}
         >
           <Text style={{ color: "#111827", fontWeight: "800" }}>
-            {saving ? "Saving…" : "Add favorite"}
+            {saving
+              ? t("taxi.favorites.saving", "Saving…")
+              : t("taxi.favorites.add", "Add favorite")}
           </Text>
         </TouchableOpacity>
 
@@ -136,7 +150,9 @@ export default function TaxiFavoritesScreen() {
               {row.driver_user_id}
             </Text>
             <TouchableOpacity onPress={() => handleRemove(row.driver_user_id)}>
-              <Text style={{ color: "#FCA5A5", marginTop: 8 }}>Remove</Text>
+              <Text style={{ color: "#FCA5A5", marginTop: 8 }}>
+                {t("taxi.favorites.remove", "Remove")}
+              </Text>
             </TouchableOpacity>
           </View>
         ))}

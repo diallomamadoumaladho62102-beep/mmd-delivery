@@ -11,8 +11,11 @@ import {
   Image,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
+import { formatMoney, formatDateTime as formatLocalizedDateTime } from "../i18n/formatters";
+import { rowDirection, textAlignStart, mirrorChevron } from "../i18n/rtl";
 
 const API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
@@ -137,28 +140,9 @@ function toSafeNumber(value: unknown): number | null {
     : null;
 }
 
-function formatCurrency(amount: number | null | undefined) {
-  if (typeof amount !== "number" || Number.isNaN(amount)) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-}
-
-function formatDistance(distance: number | null | undefined) {
-  if (typeof distance !== "number" || Number.isNaN(distance)) return "—";
+function formatDistance(distance: number | null | undefined, dash: string) {
+  if (typeof distance !== "number" || Number.isNaN(distance)) return dash;
   return `${distance.toFixed(1)} mi`;
-}
-
-function formatDateTime(iso: string | null) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-
-  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`;
 }
 
 function normalizeKind(value: unknown): string {
@@ -194,23 +178,6 @@ function paymentColor(status: string | null) {
   return "#CBD5E1";
 }
 
-function prettyStatus(status: string | null) {
-  if (status === "pending") return "Pending";
-  if (status === "accepted") return "Driver assigned";
-  if (status === "prepared") return "Preparing pickup";
-  if (status === "ready") return "Ready for pickup";
-  if (status === "dispatched") return "On the way";
-  if (status === "delivered") return "Delivered";
-  if (status === "canceled") return "Canceled";
-  return status ?? "pending";
-}
-
-function prettyPaymentStatus(status: string | null) {
-  if (status === "paid") return "Paid";
-  if (status === "processing") return "Processing";
-  if (status === "unpaid") return "Unpaid";
-  return status ?? "unpaid";
-}
 
 function InfoCard({
   label,
@@ -260,11 +227,13 @@ function CodeCard({
   code,
   subtitle,
   accent,
+  notAvailableLabel = "Not available yet",
 }: {
   title: string;
   code: string | null;
   subtitle: string;
   accent: string;
+  notAvailableLabel?: string;
 }) {
   return (
     <View
@@ -308,7 +277,7 @@ function CodeCard({
             letterSpacing: code ? 2 : 0,
           }}
         >
-          {code ?? "Not available yet"}
+          {code ?? notAvailableLabel}
         </Text>
       </View>
 
@@ -389,7 +358,50 @@ function mapOrderToScreenData(
 export function ClientDeliveryRequestDetailsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t, i18n } = useTranslation();
   const requestId = route?.params?.requestId as string | undefined;
+
+  const dash = t("common.dash", "—");
+
+  const formatCurrency = useCallback(
+    (amount: number | null | undefined) => {
+      if (typeof amount !== "number" || Number.isNaN(amount)) return dash;
+      return formatMoney(amount, "USD", i18n.language);
+    },
+    [dash, i18n.language]
+  );
+
+  const formatDateTime = useCallback(
+    (iso: string | null) => {
+      if (!iso) return dash;
+      return formatLocalizedDateTime(iso, i18n.language);
+    },
+    [dash, i18n.language]
+  );
+
+  const prettyStatus = useCallback(
+    (status: string | null) => {
+      if (status === "pending") return t("client.deliveryRequest.status.pending", "Pending");
+      if (status === "accepted") return t("client.deliveryRequest.status.accepted", "Driver assigned");
+      if (status === "prepared") return t("client.deliveryRequest.status.prepared", "Preparing pickup");
+      if (status === "ready") return t("client.deliveryRequest.status.ready", "Ready for pickup");
+      if (status === "dispatched") return t("client.deliveryRequest.status.dispatched", "On the way");
+      if (status === "delivered") return t("client.deliveryRequest.status.delivered", "Delivered");
+      if (status === "canceled") return t("client.deliveryRequest.status.canceled", "Canceled");
+      return status ?? t("client.deliveryRequest.status.pending", "Pending");
+    },
+    [t]
+  );
+
+  const prettyPaymentStatus = useCallback(
+    (status: string | null) => {
+      if (status === "paid") return t("client.deliveryRequest.payment.paid", "Paid");
+      if (status === "processing") return t("client.deliveryRequest.payment.processing", "Processing");
+      if (status === "unpaid") return t("client.deliveryRequest.payment.unpaid", "Unpaid");
+      return status ?? t("client.deliveryRequest.payment.unpaid", "Unpaid");
+    },
+    [t]
+  );
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -403,7 +415,7 @@ export function ClientDeliveryRequestDetailsScreen() {
       let alive = true;
 
       if (!requestId) {
-        setError("Missing requestId.");
+        setError(t("client.deliveryRequest.missingRequestId", "Missing requestId."));
         setLoading(false);
         return () => {
           alive = false;
@@ -516,7 +528,7 @@ export function ClientDeliveryRequestDetailsScreen() {
 
         if (!requestData) {
           setData(null);
-          setError("Delivery request not found.");
+          setError(t("client.deliveryRequest.notFound", "Delivery request not found."));
           return;
         }
 
@@ -616,7 +628,7 @@ export function ClientDeliveryRequestDetailsScreen() {
       } catch (e: any) {
         if (!alive) return;
         console.log("load delivery request details error:", e);
-        setError(e?.message ?? "Unable to load delivery request.");
+        setError(e?.message ?? t("client.deliveryRequest.loadError", "Unable to load delivery request."));
       } finally {
         if (alive) {
           setLoading(false);
@@ -628,7 +640,7 @@ export function ClientDeliveryRequestDetailsScreen() {
         alive = false;
       };
     },
-    [requestId]
+    [requestId, t]
   );
 
   useEffect(() => {
@@ -689,19 +701,19 @@ export function ClientDeliveryRequestDetailsScreen() {
   }, [data?.orderId, data?.requestId]);
 
   const title = useMemo(() => {
-    if (!primaryReference) return "Delivery Request";
-    return `🚗 Trip #${primaryReference}`;
-  }, [primaryReference]);
+    if (!primaryReference) return t("client.deliveryRequest.title", "Delivery Request");
+    return t("client.deliveryRequest.tripTitle", "🚗 Trip #{{ref}}", { ref: primaryReference });
+  }, [primaryReference, t]);
 
   const driverState = useMemo(() => {
-    if (!data?.driver_id) return "Waiting for a driver";
-    if (data.status === "accepted") return "Driver assigned";
-    if (data.status === "prepared") return "Preparing pickup";
-    if (data.status === "ready") return "Ready for pickup";
-    if (data.status === "dispatched") return "Driver on the way";
-    if (data.status === "delivered") return "Completed";
-    return "Driver assigned";
-  }, [data?.driver_id, data?.status]);
+    if (!data?.driver_id) return t("client.deliveryRequest.waitingDriver", "Waiting for a driver");
+    if (data.status === "accepted") return t("client.deliveryRequest.status.accepted", "Driver assigned");
+    if (data.status === "prepared") return t("client.deliveryRequest.status.prepared", "Preparing pickup");
+    if (data.status === "ready") return t("client.deliveryRequest.status.ready", "Ready for pickup");
+    if (data.status === "dispatched") return t("client.deliveryRequest.driverOnWay", "Driver on the way");
+    if (data.status === "delivered") return t("client.deliveryRequest.completed", "Completed");
+    return t("client.deliveryRequest.status.accepted", "Driver assigned");
+  }, [data?.driver_id, data?.status, t]);
 
   const codesAvailable = !!(data?.pickup_code || data?.dropoff_code);
 
@@ -713,7 +725,8 @@ export function ClientDeliveryRequestDetailsScreen() {
   const driverAvatarUri = normalizeAvatarUrl(driverProfile?.avatar_url);
   const driverInitials = getInitials(driverProfile?.full_name, "D");
   const driverDisplayName =
-    String(driverProfile?.full_name ?? "").trim() || "Assigned driver";
+    String(driverProfile?.full_name ?? "").trim() ||
+    t("client.deliveryRequest.assignedDriver", "Assigned driver");
 
   async function handleCancelDeliveryRequest() {
     if (!data) return;
@@ -722,28 +735,48 @@ export function ClientDeliveryRequestDetailsScreen() {
     if (!targetId) return;
 
     const status = normalizeStatus(data.status);
+    const cancelTitle = t("client.deliveryRequest.cancelTrip", "Cancel trip");
+
     if (!(status === "pending" || status === "accepted")) {
-      Alert.alert("Cancel trip", "This delivery can no longer be cancelled from this screen.");
+      Alert.alert(
+        cancelTitle,
+        t(
+          "client.deliveryRequest.cancelNotAllowed",
+          "This delivery can no longer be cancelled from this screen."
+        )
+      );
       return;
     }
 
     if (!API_URL) {
-      Alert.alert("Cancel trip", "EXPO_PUBLIC_API_URL is missing. Set it to your web API URL.");
+      Alert.alert(
+        cancelTitle,
+        t(
+          "client.deliveryRequest.apiUrlMissing",
+          "EXPO_PUBLIC_API_URL is missing. Set it to your web API URL."
+        )
+      );
       return;
     }
 
     const message =
       status === "pending"
-        ? "Because the trip is still pending, this cancellation should be eligible for a full refund review."
-        : "A driver or system may already be assigned. Cancelling now may not be refundable.";
+        ? t(
+            "client.deliveryRequest.cancelPendingMessage",
+            "Because the trip is still pending, this cancellation should be eligible for a full refund review."
+          )
+        : t(
+            "client.deliveryRequest.cancelAssignedMessage",
+            "A driver or system may already be assigned. Cancelling now may not be refundable."
+          );
 
-    Alert.alert("Cancel trip", message, [
+    Alert.alert(cancelTitle, message, [
       {
-        text: "Keep trip",
+        text: t("client.deliveryRequest.keepTrip", "Keep trip"),
         style: "cancel",
       },
       {
-        text: "Cancel trip",
+        text: cancelTitle,
         style: "destructive",
         onPress: async () => {
           try {
@@ -754,7 +787,7 @@ export function ClientDeliveryRequestDetailsScreen() {
 
             const accessToken = sessionData.session?.access_token;
             if (!accessToken) {
-              throw new Error("You must be logged in.");
+              throw new Error(t("client.deliveryRequest.loginRequired", "You must be logged in."));
             }
 
             let out: CancelOrderResponse;
@@ -787,13 +820,22 @@ export function ClientDeliveryRequestDetailsScreen() {
             await loadDetails({ silent: true });
 
             Alert.alert(
-              "Trip cancelled",
+              t("client.deliveryRequest.tripCancelled", "Trip cancelled"),
               out.refund === "FULL"
-                ? "Cancellation completed. Refund status: full refund required."
-                : "Cancellation completed. Refund status: no refund."
+                ? t(
+                    "client.deliveryRequest.refundFull",
+                    "Cancellation completed. Refund status: full refund required."
+                  )
+                : t(
+                    "client.deliveryRequest.refundNone",
+                    "Cancellation completed. Refund status: no refund."
+                  )
             );
           } catch (e: any) {
-            Alert.alert("Cancel trip", e?.message ?? "Unable to cancel this trip.");
+            Alert.alert(
+              cancelTitle,
+              e?.message ?? t("client.deliveryRequest.cancelFailed", "Unable to cancel this trip.")
+            );
           } finally {
             setCanceling(false);
           }
@@ -825,7 +867,7 @@ export function ClientDeliveryRequestDetailsScreen() {
               marginBottom: 10,
             }}
           >
-            ← Back
+            {mirrorChevron("back")} {t("common.back", "Back")}
           </Text>
         </TouchableOpacity>
 
@@ -846,7 +888,10 @@ export function ClientDeliveryRequestDetailsScreen() {
             fontSize: 13,
           }}
         >
-          Delivery request details, codes and tracking status
+          {t(
+            "client.deliveryRequest.subtitle",
+            "Delivery request details, codes and tracking status"
+          )}
         </Text>
       </View>
 
@@ -860,7 +905,7 @@ export function ClientDeliveryRequestDetailsScreen() {
         >
           <ActivityIndicator color="white" />
           <Text style={{ color: "#94A3B8", marginTop: 12 }}>
-            Loading request...
+            {t("client.deliveryRequest.loading", "Loading request...")}
           </Text>
         </View>
       ) : error ? (
@@ -881,7 +926,7 @@ export function ClientDeliveryRequestDetailsScreen() {
               marginBottom: 8,
             }}
           >
-            Unable to load this request
+            {t("client.deliveryRequest.loadFailedTitle", "Unable to load this request")}
           </Text>
           <Text
             style={{
@@ -903,7 +948,7 @@ export function ClientDeliveryRequestDetailsScreen() {
           }}
         >
           <Text style={{ color: "white", fontSize: 16, fontWeight: "800" }}>
-            No request found
+            {t("client.deliveryRequest.noRequest", "No request found")}
           </Text>
         </View>
       ) : (
@@ -931,7 +976,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                 marginBottom: 6,
               }}
             >
-              Current status
+              {t("client.deliveryRequest.currentStatus", "Current status")}
             </Text>
             <Text
               style={{
@@ -951,7 +996,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                 marginBottom: 6,
               }}
             >
-              Payment status
+              {t("client.deliveryRequest.paymentStatus", "Payment status")}
             </Text>
             <Text
               style={{
@@ -971,7 +1016,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                 marginBottom: 6,
               }}
             >
-              Driver status
+              {t("client.deliveryRequest.driverStatus", "Driver status")}
             </Text>
             <Text
               style={{
@@ -987,7 +1032,7 @@ export function ClientDeliveryRequestDetailsScreen() {
             {data.driver_id ? (
               <View
                 style={{
-                  flexDirection: "row",
+                  flexDirection: rowDirection(),
                   alignItems: "center",
                   gap: 12,
                   marginBottom: 14,
@@ -1038,7 +1083,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                       marginBottom: 4,
                     }}
                   >
-                    Your driver
+                    {t("client.deliveryRequest.yourDriver", "Your driver")}
                   </Text>
                   <Text
                     style={{
@@ -1070,7 +1115,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                   marginBottom: 6,
                 }}
               >
-                Trip reference
+                {t("client.deliveryRequest.tripReference", "Trip reference")}
               </Text>
               <Text
                 style={{
@@ -1091,7 +1136,7 @@ export function ClientDeliveryRequestDetailsScreen() {
                   marginBottom: 6,
                 }}
               >
-                Request reference
+                {t("client.deliveryRequest.requestReference", "Request reference")}
               </Text>
               <Text
                 style={{
@@ -1124,86 +1169,114 @@ export function ClientDeliveryRequestDetailsScreen() {
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text style={{ color: "white", fontWeight: "900", fontSize: 15 }}>
-                    ❌ Cancel trip
+                    ❌ {t("client.deliveryRequest.cancelTrip", "Cancel trip")}
                   </Text>
                 )}
               </TouchableOpacity>
               <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 9, lineHeight: 17 }}>
                 {normalizeStatus(data.status) === "pending"
-                  ? "You can cancel while this trip is still pending."
-                  : "Cancelling after assignment may not be refundable."}
+                  ? t(
+                      "client.deliveryRequest.cancelPendingHint",
+                      "You can cancel while this trip is still pending."
+                    )
+                  : t(
+                      "client.deliveryRequest.cancelAssignedHint",
+                      "Cancelling after assignment may not be refundable."
+                    )}
               </Text>
             </View>
           )}
 
           <CodeCard
-            title="Pickup code"
+            title={t("client.deliveryRequest.pickupCode", "Pickup code")}
             code={data.pickup_code}
             subtitle={
               codesAvailable
-                ? "Give this code to the person handing the package to the driver. The driver will need this code + a pickup photo to confirm collection."
-                : "The pickup code will appear here as soon as the linked delivery order is available."
+                ? t(
+                    "client.deliveryRequest.pickupCodeHint",
+                    "Give this code to the person handing the package to the driver. The driver will need this code + a pickup photo to confirm collection."
+                  )
+                : t(
+                    "client.deliveryRequest.pickupCodePending",
+                    "The pickup code will appear here as soon as the linked delivery order is available."
+                  )
             }
             accent="rgba(96,165,250,0.45)"
+            notAvailableLabel={t("client.deliveryRequest.notAvailableYet", "Not available yet")}
           />
 
           <CodeCard
-            title="Dropoff code"
+            title={t("client.deliveryRequest.dropoffCode", "Dropoff code")}
             code={data.dropoff_code}
             subtitle={
               codesAvailable
-                ? "Share this code with the recipient. The driver will need this code + a delivery photo to confirm dropoff."
-                : "The dropoff code will appear here as soon as the linked delivery order is available."
+                ? t(
+                    "client.deliveryRequest.dropoffCodeHint",
+                    "Share this code with the recipient. The driver will need this code + a delivery photo to confirm dropoff."
+                  )
+                : t(
+                    "client.deliveryRequest.dropoffCodePending",
+                    "The dropoff code will appear here as soon as the linked delivery order is available."
+                  )
             }
             accent="rgba(52,211,153,0.45)"
+            notAvailableLabel={t("client.deliveryRequest.notAvailableYet", "Not available yet")}
           />
 
-          <InfoCard label="Pickup address" value={data.pickup_address ?? "—"} />
-          <InfoCard label="Dropoff address" value={data.dropoff_address ?? "—"} />
+          <InfoCard label={t("client.deliveryRequest.pickupAddress", "Pickup address")} value={data.pickup_address ?? dash} />
+          <InfoCard label={t("client.deliveryRequest.dropoffAddress", "Dropoff address")} value={data.dropoff_address ?? dash} />
 
-          <View style={{ flexDirection: "row", gap: 10, marginBottom: 2 }}>
+          <View style={{ flexDirection: rowDirection(), gap: 10, marginBottom: 2 }}>
             <View style={{ flex: 1 }}>
               <InfoCard
-                label="Distance"
-                value={formatDistance(data.distance_miles)}
+                label={t("client.deliveryRequest.distance", "Distance")}
+                value={formatDistance(data.distance_miles, dash)}
               />
             </View>
             <View style={{ flex: 1 }}>
               <InfoCard
-                label="Delivery fee"
+                label={t("client.deliveryRequest.deliveryFee", "Delivery fee")}
                 value={formatCurrency(data.delivery_fee)}
               />
             </View>
           </View>
 
-          <InfoCard label="Total" value={formatCurrency(data.total)} />
-          <InfoCard label="Created at" value={formatDateTime(data.created_at)} />
-          <InfoCard label="Updated at" value={formatDateTime(data.updated_at)} />
-          <InfoCard label="Paid at" value={formatDateTime(data.paid_at)} />
-          <InfoCard label="Picked up at" value={formatDateTime(data.picked_up_at)} />
+          <InfoCard label={t("client.deliveryRequest.total", "Total")} value={formatCurrency(data.total)} />
+          <InfoCard label={t("client.deliveryRequest.createdAt", "Created at")} value={formatDateTime(data.created_at)} />
+          <InfoCard label={t("client.deliveryRequest.updatedAt", "Updated at")} value={formatDateTime(data.updated_at)} />
+          <InfoCard label={t("client.deliveryRequest.paidAt", "Paid at")} value={formatDateTime(data.paid_at)} />
+          <InfoCard label={t("client.deliveryRequest.pickedUpAt", "Picked up at")} value={formatDateTime(data.picked_up_at)} />
           <InfoCard
-            label="Delivered confirmed at"
+            label={t("client.deliveryRequest.deliveredAt", "Delivered confirmed at")}
             value={formatDateTime(data.delivered_confirmed_at)}
           />
 
           <InfoCard
-            label="Pickup proof photo"
-            value={data.pickup_photo_url ? "Saved" : "Not uploaded yet"}
+            label={t("client.deliveryRequest.pickupPhoto", "Pickup proof photo")}
+            value={
+              data.pickup_photo_url
+                ? t("client.deliveryRequest.saved", "Saved")
+                : t("client.deliveryRequest.notUploaded", "Not uploaded yet")
+            }
             valueColor={data.pickup_photo_url ? "#86EFAC" : "#CBD5E1"}
           />
           <InfoCard
-            label="Dropoff proof photo"
-            value={data.dropoff_photo_url ? "Saved" : "Not uploaded yet"}
+            label={t("client.deliveryRequest.dropoffPhoto", "Dropoff proof photo")}
+            value={
+              data.dropoff_photo_url
+                ? t("client.deliveryRequest.saved", "Saved")
+                : t("client.deliveryRequest.notUploaded", "Not uploaded yet")
+            }
             valueColor={data.dropoff_photo_url ? "#86EFAC" : "#CBD5E1"}
           />
 
           <InfoCard
-            label="Stripe session ID"
-            value={data.stripe_session_id ?? "—"}
+            label={t("client.deliveryRequest.stripeSession", "Stripe session ID")}
+            value={data.stripe_session_id ?? dash}
           />
           <InfoCard
-            label="Stripe payment intent ID"
-            value={data.stripe_payment_intent_id ?? "—"}
+            label={t("client.deliveryRequest.stripePaymentIntent", "Stripe payment intent ID")}
+            value={data.stripe_payment_intent_id ?? dash}
           />
         </ScrollView>
       )}

@@ -10,13 +10,16 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { fetchMyTaxiRides, formatTaxiCents } from "../../lib/taxiClientApi";
+import { textAlignStart } from "../../i18n/rtl";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHistory">;
 
 export default function TaxiHistoryScreen() {
   const navigation = useNavigation<Nav>();
+  const { t } = useTranslation();
   const [rides, setRides] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,10 +45,12 @@ export default function TaxiHistoryScreen() {
       <StatusBar barStyle="light-content" />
       <View style={{ padding: 16, flex: 1 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", marginBottom: 12 }}>← Back</Text>
+          <Text style={{ color: "#93C5FD", marginBottom: 12 }}>
+            {t("taxi.common.back", "← Back")}
+          </Text>
         </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 24, fontWeight: "800" }}>
-          Taxi history
+        <Text style={{ color: "#fff", fontSize: 24, fontWeight: "800", textAlign: textAlignStart() }}>
+          {t("taxi.history.title", "Taxi history")}
         </Text>
 
         {loading ? (
@@ -56,8 +61,8 @@ export default function TaxiHistoryScreen() {
             keyExtractor={(item) => String(item.id)}
             contentContainerStyle={{ paddingTop: 16, gap: 10 }}
             ListEmptyComponent={
-              <Text style={{ color: "#94A3B8", marginTop: 20 }}>
-                No taxi rides yet.
+              <Text style={{ color: "#94A3B8", marginTop: 20, textAlign: textAlignStart() }}>
+                {t("taxi.history.empty", "No taxi rides yet.")}
               </Text>
             }
             renderItem={({ item }) => {
@@ -91,7 +96,7 @@ export default function TaxiHistoryScreen() {
                   </Text>
                   {active ? (
                     <Text style={{ color: "#86EFAC", marginTop: 4, fontSize: 12 }}>
-                      Tap to track
+                      {t("taxi.history.tapToTrack", "Tap to track")}
                     </Text>
                   ) : null}
                 </TouchableOpacity>

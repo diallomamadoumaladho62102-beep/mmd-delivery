@@ -12,8 +12,10 @@ import {
 } from "react-native";
 import * as Linking from "expo-linking";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
+import { rowDirection, textAlignStart } from "../i18n/rtl";
 
 function getUrlParams(url: string) {
   const params: Record<string, string> = {};
@@ -35,6 +37,7 @@ function getUrlParams(url: string) {
 
 export default function ResetPasswordScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -61,16 +64,22 @@ export default function ResetPasswordScreen() {
 
         if (error) {
           console.log("setSession recovery error:", error.message);
-          Alert.alert("Erreur", "Lien invalide ou expiré. Renvoie un nouveau lien.");
+          Alert.alert(
+            t("common.error", "Error"),
+            t("auth.resetPassword.invalidLink", "Invalid or expired link. Request a new one.")
+          );
         }
       }
     } catch (e) {
       console.log("prepareRecoverySession error:", e);
-      Alert.alert("Erreur", "Impossible de préparer la réinitialisation.");
+      Alert.alert(
+        t("common.error", "Error"),
+        t("auth.resetPassword.prepareFailed", "Unable to prepare password reset.")
+      );
     } finally {
       setCheckingSession(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let alive = true;
@@ -102,12 +111,18 @@ export default function ResetPasswordScreen() {
     const cleanedConfirmPassword = confirmPassword.trim();
 
     if (cleanedPassword.length < 6) {
-      Alert.alert("Erreur", "Mot de passe trop court. Minimum 6 caractères.");
+      Alert.alert(
+        t("common.error", "Error"),
+        t("auth.resetPassword.tooShort", "Password too short. Minimum 6 characters.")
+      );
       return;
     }
 
     if (cleanedPassword !== cleanedConfirmPassword) {
-      Alert.alert("Erreur", "Les mots de passe ne correspondent pas.");
+      Alert.alert(
+        t("common.error", "Error"),
+        t("auth.resetPassword.mismatch", "Passwords do not match.")
+      );
       return;
     }
 
@@ -119,27 +134,31 @@ export default function ResetPasswordScreen() {
       });
 
       if (error) {
-        Alert.alert("Erreur", error.message);
+        Alert.alert(t("common.error", "Error"), error.message);
         return;
       }
 
-      Alert.alert("Succès", "Ton mot de passe a été modifié.", [
-        {
-          text: "OK",
-          onPress: async () => {
-            await clearSelectedRole();
-            await supabase.auth.signOut();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "RoleSelect" }],
-            });
+      Alert.alert(
+        t("common.success", "Success"),
+        t("auth.resetPassword.updated", "Your password has been updated."),
+        [
+          {
+            text: t("common.ok", "OK"),
+            onPress: async () => {
+              await clearSelectedRole();
+              await supabase.auth.signOut();
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "RoleSelect" }],
+              });
+            },
           },
-        },
-      ]);
+        ]
+      );
     } finally {
       setLoading(false);
     }
-  }, [password, confirmPassword, loading, navigation]);
+  }, [password, confirmPassword, loading, navigation, t]);
 
   if (checkingSession) {
     return (
@@ -152,8 +171,15 @@ export default function ResetPasswordScreen() {
         }}
       >
         <ActivityIndicator color="white" />
-        <Text style={{ color: "#9CA3AF", marginTop: 12, fontWeight: "700" }}>
-          Préparation du lien...
+        <Text
+          style={{
+            color: "#9CA3AF",
+            marginTop: 12,
+            fontWeight: "700",
+            textAlign: textAlignStart(),
+          }}
+        >
+          {t("auth.resetPassword.preparingLink", "Preparing link...")}
         </Text>
       </SafeAreaView>
     );
@@ -166,8 +192,15 @@ export default function ResetPasswordScreen() {
         style={{ flex: 1 }}
       >
         <View style={{ padding: 16, marginTop: 40 }}>
-          <Text style={{ color: "white", fontSize: 28, fontWeight: "900" }}>
-            Nouveau mot de passe
+          <Text
+            style={{
+              color: "white",
+              fontSize: 28,
+              fontWeight: "900",
+              textAlign: textAlignStart(),
+            }}
+          >
+            {t("auth.resetPassword.newTitle", "New password")}
           </Text>
 
           <Text
@@ -177,14 +210,18 @@ export default function ResetPasswordScreen() {
               fontSize: 15,
               lineHeight: 22,
               fontWeight: "700",
+              textAlign: textAlignStart(),
             }}
           >
-            Entre ton nouveau mot de passe pour récupérer ton compte MMD Delivery.
+            {t(
+              "auth.resetPassword.newSubtitle",
+              "Enter your new password to recover your MMD Delivery account."
+            )}
           </Text>
 
           <View style={{ marginTop: 24 }}>
-            <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-              Mot de passe
+            <Text style={{ color: "#9CA3AF", fontWeight: "900", textAlign: textAlignStart() }}>
+              {t("auth.resetPassword.password", "Password")}
             </Text>
             <View
               style={{
@@ -193,7 +230,7 @@ export default function ResetPasswordScreen() {
                 backgroundColor: "#0B1220",
                 borderWidth: 1,
                 borderColor: "#111827",
-                flexDirection: "row",
+                flexDirection: rowDirection(),
                 alignItems: "center",
               }}
             >
@@ -201,7 +238,7 @@ export default function ResetPasswordScreen() {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Nouveau mot de passe"
+                placeholder={t("auth.resetPassword.newPasswordPlaceholder", "New password")}
                 placeholderTextColor="#475569"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -209,6 +246,7 @@ export default function ResetPasswordScreen() {
                   flex: 1,
                   padding: 14,
                   color: "white",
+                  textAlign: textAlignStart(),
                 }}
               />
 
@@ -221,15 +259,17 @@ export default function ResetPasswordScreen() {
                 }}
               >
                 <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-                  {showPassword ? "Cacher" : "Voir"}
+                  {showPassword
+                    ? t("auth.resetPassword.hide", "Hide")
+                    : t("auth.resetPassword.show", "Show")}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View style={{ marginTop: 16 }}>
-            <Text style={{ color: "#9CA3AF", fontWeight: "900" }}>
-              Confirmer le mot de passe
+            <Text style={{ color: "#9CA3AF", fontWeight: "900", textAlign: textAlignStart() }}>
+              {t("auth.resetPassword.confirmPassword", "Confirm password")}
             </Text>
             <View
               style={{
@@ -238,7 +278,7 @@ export default function ResetPasswordScreen() {
                 backgroundColor: "#0B1220",
                 borderWidth: 1,
                 borderColor: "#111827",
-                flexDirection: "row",
+                flexDirection: rowDirection(),
                 alignItems: "center",
               }}
             >
@@ -246,7 +286,7 @@ export default function ResetPasswordScreen() {
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder="Confirme le mot de passe"
+                placeholder={t("auth.resetPassword.confirmPlaceholder", "Confirm password")}
                 placeholderTextColor="#475569"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -254,6 +294,7 @@ export default function ResetPasswordScreen() {
                   flex: 1,
                   padding: 14,
                   color: "white",
+                  textAlign: textAlignStart(),
                 }}
               />
 
@@ -266,7 +307,9 @@ export default function ResetPasswordScreen() {
                 }}
               >
                 <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-                  {showConfirmPassword ? "Cacher" : "Voir"}
+                  {showConfirmPassword
+                    ? t("auth.resetPassword.hide", "Hide")
+                    : t("auth.resetPassword.show", "Show")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -288,7 +331,7 @@ export default function ResetPasswordScreen() {
               <ActivityIndicator color="white" />
             ) : (
               <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-                Mettre à jour
+                {t("auth.resetPassword.update", "Update password")}
               </Text>
             )}
           </TouchableOpacity>
@@ -303,7 +346,7 @@ export default function ResetPasswordScreen() {
             style={{ marginTop: 18, alignItems: "center" }}
           >
             <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-              Retour
+              {t("common.back", "Back")}
             </Text>
           </TouchableOpacity>
         </View>

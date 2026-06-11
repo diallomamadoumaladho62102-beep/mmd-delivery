@@ -12,7 +12,9 @@ import {
 import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import {
   cancelTaxiRide,
   confirmTaxiPaid,
@@ -37,6 +39,7 @@ const PAID_PAYMENT = new Set(["paid", "refunded"]);
 export default function TaxiRideTrackingScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<TrackingRoute>();
+  const { t } = useTranslation();
   const rideId = route.params.rideId;
 
   const [ride, setRide] = useState<Record<string, unknown> | null>(null);
@@ -93,13 +96,16 @@ export default function TaxiRideTrackingScreen() {
       nextRide = await maybeConfirmPayment(nextRide);
       setRide(nextRide);
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Unable to load ride";
+      const message =
+        e instanceof Error
+          ? e.message
+          : t("taxi.ride.loadFailed", "Unable to load ride");
       setLoadError(message);
       console.log("[TaxiRideTracking]", e);
     } finally {
       setLoading(false);
     }
-  }, [rideId, maybeConfirmPayment]);
+  }, [rideId, maybeConfirmPayment, t]);
 
   useEffect(() => {
     void load();
@@ -123,27 +129,33 @@ export default function TaxiRideTrackingScreen() {
   }
 
   async function handleCancel() {
-    Alert.alert("Cancel ride", "Cancel this taxi ride?", [
-      { text: "No", style: "cancel" },
-      {
-        text: "Yes, cancel",
-        style: "destructive",
-        onPress: async () => {
-          setCancelling(true);
-          try {
-            await cancelTaxiRide(rideId);
-            await load();
-          } catch (e: unknown) {
-            Alert.alert(
-              "Cancel failed",
-              e instanceof Error ? e.message : "Unable to cancel"
-            );
-          } finally {
-            setCancelling(false);
-          }
+    Alert.alert(
+      t("taxi.ride.cancelTitle", "Cancel ride"),
+      t("taxi.ride.cancelConfirm", "Cancel this taxi ride?"),
+      [
+        { text: t("taxi.ride.cancelNo", "No"), style: "cancel" },
+        {
+          text: t("taxi.ride.cancelYes", "Yes, cancel"),
+          style: "destructive",
+          onPress: async () => {
+            setCancelling(true);
+            try {
+              await cancelTaxiRide(rideId);
+              await load();
+            } catch (e: unknown) {
+              Alert.alert(
+                t("taxi.ride.cancelTitle", "Cancel ride"),
+                e instanceof Error
+                  ? e.message
+                  : t("taxi.ride.cancelFailed", "Unable to cancel")
+              );
+            } finally {
+              setCancelling(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   }
 
   if (loading && !ride) {
@@ -201,7 +213,9 @@ export default function TaxiRideTrackingScreen() {
           </Mapbox.MapView>
         ) : (
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "#94A3B8" }}>Map unavailable</Text>
+            <Text style={{ color: "#94A3B8" }}>
+              {t("taxi.ride.mapUnavailable", "Map unavailable")}
+            </Text>
           </View>
         )}
 
@@ -214,8 +228,8 @@ export default function TaxiRideTrackingScreen() {
             padding: 18,
           }}
         >
-          <Text style={{ color: "#F8FAFC", fontSize: 22, fontWeight: "800" }}>
-            {formatStatus(status)}
+          <Text style={{ color: "#F8FAFC", fontSize: 22, fontWeight: "800", textAlign: textAlignStart() }}>
+            {formatStatus(status, t("taxi.ride.defaultTitle", "Ride"))}
           </Text>
           <Text style={{ color: "#94A3B8", marginTop: 4 }}>
             {formatTaxiCents(ride?.total_cents, String(ride?.currency ?? "USD"))}
@@ -237,11 +251,13 @@ export default function TaxiRideTrackingScreen() {
               }}
             >
               <Text style={{ color: "#FDE68A", fontWeight: "700" }}>
-                Payment pending
+                {t("taxi.ride.paymentPending", "Payment pending")}
               </Text>
-              <Text style={{ color: "#CBD5E1", marginTop: 4, fontSize: 13 }}>
-                If you already paid, we will confirm automatically. You can also retry
-                now.
+              <Text style={{ color: "#CBD5E1", marginTop: 4, fontSize: 13, textAlign: textAlignStart() }}>
+                {t(
+                  "taxi.ride.paymentPendingBody",
+                  "If you already paid, we will confirm automatically. You can also retry now."
+                )}
               </Text>
               <TouchableOpacity
                 onPress={() => void handleRetryPayment()}
@@ -255,35 +271,41 @@ export default function TaxiRideTrackingScreen() {
                 }}
               >
                 <Text style={{ color: "#1F2937", fontWeight: "800" }}>
-                  {confirmingPayment ? "Confirming…" : "Retry payment confirmation"}
+                  {confirmingPayment
+                    ? t("taxi.ride.confirming", "Confirming…")
+                    : t("taxi.ride.retryPayment", "Retry payment confirmation")}
                 </Text>
               </TouchableOpacity>
             </View>
           ) : null}
 
-          <Text style={{ color: "#CBD5E1", marginTop: 12 }}>
-            Pickup: {String(ride?.pickup_address ?? "—")}
+          <Text style={{ color: "#CBD5E1", marginTop: 12, textAlign: textAlignStart() }}>
+            {t("taxi.ride.pickupLabel", "Pickup: {{address}}", {
+              address: String(ride?.pickup_address ?? "—"),
+            })}
           </Text>
-          <Text style={{ color: "#CBD5E1", marginTop: 6 }}>
-            Dropoff: {String(ride?.dropoff_address ?? "—")}
+          <Text style={{ color: "#CBD5E1", marginTop: 6, textAlign: textAlignStart() }}>
+            {t("taxi.ride.dropoffLabel", "Dropoff: {{address}}", {
+              address: String(ride?.dropoff_address ?? "—"),
+            })}
           </Text>
 
           {ride?.driver_id ? (
             <Text style={{ color: "#86EFAC", marginTop: 10, fontWeight: "700" }}>
-              Driver assigned
+              {t("taxi.ride.driverAssigned", "Driver assigned")}
             </Text>
           ) : status === "paid" || status === "dispatching" ? (
             <Text style={{ color: "#FDE68A", marginTop: 10 }}>
-              Looking for a driver…
+              {t("taxi.ride.lookingForDriver", "Looking for a driver…")}
             </Text>
           ) : null}
 
-          <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+          <View style={{ flexDirection: rowDirection(), gap: 10, marginTop: 16 }}>
             <TouchableOpacity
               onPress={() => navigation.navigate("TaxiChat", { rideId })}
               style={actionBtn("#2563EB")}
             >
-              <Text style={actionText}>Chat</Text>
+              <Text style={actionText}>{t("taxi.ride.chat", "Chat")}</Text>
             </TouchableOpacity>
 
             {canCancel ? (
@@ -293,7 +315,7 @@ export default function TaxiRideTrackingScreen() {
                 style={actionBtn("#7F1D1D")}
               >
                 <Text style={actionText}>
-                  {cancelling ? "…" : "Cancel"}
+                  {cancelling ? "…" : t("taxi.ride.cancel", "Cancel")}
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -304,8 +326,8 @@ export default function TaxiRideTrackingScreen() {
   );
 }
 
-function formatStatus(status: string) {
-  if (!status) return "Ride";
+function formatStatus(status: string, defaultTitle: string) {
+  if (!status) return defaultTitle;
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

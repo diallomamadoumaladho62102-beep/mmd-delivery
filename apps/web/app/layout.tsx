@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import "./globals.css";
-import { normalizeWebLocale, webT } from "../src/i18n/locales";
+import { normalizeWebLocale, webDir, webT } from "../src/i18n/locales";
+import { WebI18nProvider } from "../src/components/WebI18nProvider";
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
@@ -25,9 +26,9 @@ export default async function RootLayout({
   );
 
   return (
-    <html lang={locale}>
+    <html lang={locale} dir={webDir(locale)}>
       <body className="bg-gray-50 min-h-screen">
-        {children}
+        <WebI18nProvider locale={locale}>{children}</WebI18nProvider>
       </body>
     </html>
   );

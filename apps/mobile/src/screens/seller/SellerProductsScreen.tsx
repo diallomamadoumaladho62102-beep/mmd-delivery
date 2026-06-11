@@ -20,6 +20,7 @@ import {
 } from "../../lib/sellerApi";
 import { formatMoney, type SellerProductRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
+import { rowDirection } from "../../i18n/rtl";
 
 type Props = { navigation: any };
 
@@ -144,7 +145,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }}>
-      <View style={{ padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+      <View style={{ padding: 16, flexDirection: rowDirection(), justifyContent: "space-between", alignItems: "center" }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={{ color: "#A78BFA" }}>{t("common.back", "Back")}</Text>
         </TouchableOpacity>
@@ -185,7 +186,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
               <Text style={{ color: "#CBD5E1" }} numberOfLines={2}>
                 {item.description}
               </Text>
-              <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+              <View style={{ flexDirection: rowDirection(), gap: 10, marginTop: 10 }}>
                 <TouchableOpacity onPress={() => openEdit(item)}>
                   <Text style={{ color: "#A78BFA" }}>{t("common.edit", "Edit")}</Text>
                 </TouchableOpacity>
@@ -235,7 +236,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
                 }}
               />
             ))}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flexDirection: rowDirection(), alignItems: "center", justifyContent: "space-between" }}>
               <Text style={{ color: "#CBD5E1" }}>{t("seller.products.active", "Active")}</Text>
               <Switch value={draft.active} onValueChange={(active) => setDraft((d) => ({ ...d, active }))} />
             </View>

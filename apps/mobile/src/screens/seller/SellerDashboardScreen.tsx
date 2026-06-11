@@ -15,6 +15,7 @@ import {
 } from "../../lib/sellerApi";
 import { sellerStatusLabel, type SellerRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
+import { rowDirection } from "../../i18n/rtl";
 
 type Props = { navigation: any };
 
@@ -117,7 +118,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
               ) : null}
             </View>
 
-            <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flexDirection: rowDirection(), gap: 12 }}>
               <StatCard label={t("seller.stats.products", "Products")} value={productCount} />
               <StatCard label={t("seller.stats.orders", "Orders")} value={orderCount} />
             </View>

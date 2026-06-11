@@ -16,8 +16,11 @@ import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { supabase } from "../../lib/supabase";
+import { formatDateTime } from "../../i18n/formatters";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiChat">;
 type ChatRoute = RouteProp<RootStackParamList, "TaxiChat">;
@@ -38,6 +41,7 @@ const TAXI_IMAGES_BUCKET = "taxi-images";
 export default function TaxiChatScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<ChatRoute>();
+  const { t, i18n } = useTranslation();
   const rideId = route.params.rideId;
   const scrollRef = useRef<ScrollView | null>(null);
 
@@ -118,7 +122,10 @@ export default function TaxiChatScreen() {
       setText("");
       await load();
     } catch (e: unknown) {
-      Alert.alert("Send failed", e instanceof Error ? e.message : "Error");
+      Alert.alert(
+        t("taxi.chat.sendFailed", "Send failed"),
+        e instanceof Error ? e.message : t("taxi.chat.send", "Error")
+      );
     } finally {
       setSending(false);
     }
@@ -163,7 +170,10 @@ export default function TaxiChatScreen() {
       if (error) throw error;
       await load();
     } catch (e: unknown) {
-      Alert.alert("Image failed", e instanceof Error ? e.message : "Error");
+      Alert.alert(
+        t("taxi.chat.imageFailed", "Image failed"),
+        e instanceof Error ? e.message : t("taxi.chat.send", "Error")
+      );
     } finally {
       setSending(false);
     }
@@ -172,12 +182,12 @@ export default function TaxiChatScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
       <StatusBar barStyle="light-content" />
-      <View style={{ padding: 12, flexDirection: "row", alignItems: "center" }}>
+      <View style={{ padding: 12, flexDirection: rowDirection(), alignItems: "center" }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
-        <Text style={{ color: "#fff", fontWeight: "800", marginLeft: 12 }}>
-          Taxi chat
+        <Text style={{ color: "#fff", fontWeight: "800", marginLeft: 12, textAlign: textAlignStart() }}>
+          {t("taxi.chat.title", "Taxi chat")}
         </Text>
       </View>
 
@@ -215,7 +225,10 @@ export default function TaxiChatScreen() {
                   />
                 ) : null}
                 <Text style={{ color: "#94A3B8", fontSize: 10, marginTop: 4 }}>
-                  {new Date(msg.created_at).toLocaleTimeString()}
+                  {formatDateTime(msg.created_at, i18n.language, {
+                    timeStyle: "short",
+                    dateStyle: undefined,
+                  })}
                 </Text>
               </View>
             );
@@ -225,7 +238,7 @@ export default function TaxiChatScreen() {
 
       <View
         style={{
-          flexDirection: "row",
+          flexDirection: rowDirection(),
           gap: 8,
           padding: 12,
           borderTopWidth: 1,
@@ -238,7 +251,7 @@ export default function TaxiChatScreen() {
         <TextInput
           value={text}
           onChangeText={setText}
-          placeholder="Message driver…"
+          placeholder={t("taxi.chat.driverPlaceholder", "Message driver…")}
           placeholderTextColor="#64748B"
           style={{
             flex: 1,
@@ -251,7 +264,7 @@ export default function TaxiChatScreen() {
         />
         <TouchableOpacity onPress={sendTextMessage} disabled={sending || !text.trim()}>
           <Text style={{ color: "#F59E0B", fontWeight: "800", fontSize: 16 }}>
-            Send
+            {t("taxi.common.send", "Send")}
           </Text>
         </TouchableOpacity>
       </View>

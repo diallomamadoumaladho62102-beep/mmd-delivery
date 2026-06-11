@@ -30,6 +30,7 @@ import {
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
 import { useTranslation } from "react-i18next";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
 type Props = {
   route: RouteProp<RootStackParamList, "MarketplaceCart">;
@@ -432,7 +433,7 @@ function Line({
   bold?: boolean;
 }) {
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+    <View style={{ flexDirection: rowDirection(), justifyContent: "space-between" }}>
       <Text style={{ color: bold ? "#F8FAFC" : "#94A3B8", fontWeight: bold ? "700" : "400" }}>
         {label}
       </Text>

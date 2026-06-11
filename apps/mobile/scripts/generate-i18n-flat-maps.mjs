@@ -274,6 +274,46 @@ function makeFr() {
       .replace("Chat", "Chat")
       .replace("Cancel", "Annuler")
       .replace("Cancel ride", "Annuler la course")
+      .replace("Send", "Envoyer")
+      .replace("Promo code", "Code promo")
+      .replace("Enter code", "Saisir le code")
+      .replace("Invalid promo code", "Code promo invalide")
+      .replace("Promo discount", "Réduction promo")
+      .replace("Reward credit", "Crédit récompense")
+      .replace("Shared ride discount", "Réduction course partagée")
+      .replace("Loyalty reward", "Récompense fidélité")
+      .replace("None", "Aucun")
+      .replace("Any", "N'importe")
+      .replace("Preferred driver (optional)", "Chauffeur préféré (optionnel)")
+      .replace("Payment", "Paiement")
+      .replace("Unable to start payment", "Impossible de démarrer le paiement")
+      .replace("Tap to track", "Appuyer pour suivre")
+      .replace("Driver user ID", "ID chauffeur")
+      .replace("Remove", "Supprimer")
+      .replace("Add failed", "Échec ajout")
+      .replace("Remove failed", "Échec suppression")
+      .replace("No loyalty activity yet.", "Aucune activité fidélité.")
+      .replace("Booking failed", "Échec réservation")
+      .replace("Stop 1 (optional)", "Arrêt 1 (optionnel)")
+      .replace("Stop 2 (optional)", "Arrêt 2 (optionnel)")
+      .replace("Final destination", "Destination finale")
+      .replace("Pricing uses total route distance/duration.", "Tarif basé sur distance/durée totale.")
+      .replace("Send failed", "Échec envoi")
+      .replace("Image failed", "Échec image")
+      .replace("Error", "Erreur")
+      .replace("If you already paid, we will confirm automatically. You can also retry now.", "Si vous avez payé, confirmation automatique.")
+      .replace("Confirming…", "Confirmation…")
+      .replace("Cancel this taxi ride?", "Annuler cette course ?")
+      .replace("Yes, cancel", "Oui, annuler")
+      .replace("No", "Non")
+      .replace("Unable to cancel", "Impossible d'annuler")
+      .replace("Unable to load ride", "Impossible de charger la course")
+      .replace("Map unavailable", "Carte indisponible")
+      .replace("Looking for a driver…", "Recherche d'un chauffeur…")
+      .replace("Ride", "Course")
+      .replace("Pin dropoff", "Épingler destination")
+      .replace("Dropoff pinned", "Destination épinglée")
+      .replace("Apply on the quote screen before checkout.", "Appliquer sur l'écran de devis avant checkout.")
   );
   suffixMap(map, "client.home", (v) =>
     v
@@ -315,27 +355,293 @@ function makeFr() {
   suffixMap(map, "auth.resetPassword", (v) =>
     v
       .replace("Reset password", "Réinitialiser le mot de passe")
+      .replace("New password", "Nouveau mot de passe")
+      .replace("Confirm password", "Confirmer le mot de passe")
       .replace("Email", "E-mail")
       .replace("Send reset link", "Envoyer le lien")
+      .replace("Update password", "Mettre à jour le mot de passe")
       .replace("Check your email for a reset link.", "Consultez votre e-mail pour le lien.")
       .replace("Unable to send reset link.", "Impossible d'envoyer le lien.")
+      .replace("Invalid or expired link. Request a new one.", "Lien invalide ou expiré.")
+      .replace("Unable to prepare reset.", "Impossible de préparer la réinitialisation.")
+      .replace("Passwords do not match.", "Les mots de passe ne correspondent pas.")
+      .replace("Password updated. You can log in now.", "Mot de passe mis à jour.")
+      .replace("Unable to update password.", "Impossible de mettre à jour le mot de passe.")
+      .replace("Checking session…", "Vérification de la session…")
+      .replace("Error", "Erreur")
+  );
+  suffixMap(map, "client.deliveryRequest", (v) =>
+    v
+      .replace("Delivery Request", "Demande de livraison")
+      .replace("Waiting for a driver", "En attente d'un chauffeur")
+      .replace("Driver on the way", "Chauffeur en route")
+      .replace("Driver assigned", "Chauffeur assigné")
+      .replace("Preparing pickup", "Préparation du pickup")
+      .replace("Ready for pickup", "Prêt pour pickup")
+      .replace("On the way", "En route")
+      .replace("Delivered", "Livré")
+      .replace("Canceled", "Annulé")
+      .replace("Pending", "En attente")
+      .replace("Paid", "Payé")
+      .replace("Processing", "Traitement")
+      .replace("Unpaid", "Non payé")
+      .replace("Cancel trip", "Annuler la course")
+      .replace("Keep trip", "Garder la course")
+      .replace("Trip cancelled", "Course annulée")
+      .replace("Unable to cancel this trip.", "Impossible d'annuler cette course.")
+      .replace("You must be logged in.", "Vous devez être connecté.")
+      .replace("Loading request...", "Chargement...")
+      .replace("Unable to load this request", "Impossible de charger cette demande")
+      .replace("No request found", "Aucune demande trouvée")
+      .replace("Missing requestId.", "requestId manquant.")
+      .replace("Delivery request not found.", "Demande introuvable.")
+      .replace("Current status", "Statut actuel")
+      .replace("Payment status", "Statut paiement")
+      .replace("Driver status", "Statut chauffeur")
+      .replace("Your driver", "Votre chauffeur")
+      .replace("Assigned driver", "Chauffeur assigné")
+      .replace("Trip reference", "Référence course")
+      .replace("Request reference", "Référence demande")
+      .replace("Completed", "Terminé")
+      .replace("Total", "Total")
+      .replace("Delivery fee", "Frais de livraison")
+      .replace("Unable to load delivery request", "Impossible de charger la demande de livraison")
+  );
+  suffixMap(map, "driver.w9", (v) =>
+    v
+      .replace("W-9", "W-9")
+      .replace("Status", "Statut")
+      .replace("Signed", "Signé")
+      .replace("Missing", "Manquant")
+      .replace("Signed date", "Date de signature")
+      .replace("Submit W-9", "Soumettre W-9")
+      .replace("Download W-9 PDF", "Télécharger PDF W-9")
+      .replace("Checklist", "Liste de contrôle")
+      .replace("Legal name", "Nom légal")
+      .replace("Failed to load", "Échec chargement")
+      .replace("Saved.", "Enregistré.")
+  );
+  suffixMap(map, "restaurant.financial", (v) =>
+    v
+      .replace("Financial Center", "Centre financier")
+      .replace("Loading financial center...", "Chargement centre financier...")
+      .replace("Gross Sales", "Ventes brutes")
+      .replace("Commission", "Commission")
+      .replace("Net Revenue", "Revenu net")
+      .replace("Orders", "Commandes")
+      .replace("Payouts", "Paiements")
+      .replace("Pending payout", "Paiement en attente")
+      .replace("Last payout", "Dernier paiement")
+      .replace("Monthly Statements", "Relevés mensuels")
+      .replace("Tax Documents", "Documents fiscaux")
   );
   return map;
 }
 
-function cloneMap(source) {
-  const out = {};
+function makeLangMap(langHeader, trees, baseMap) {
+  const map = { ...(baseMap ?? {}) };
   for (const [key, value] of Object.entries(enFlat)) {
-    out[key] = source[key] ?? value;
+    if (map[key] == null) map[key] = value;
   }
-  return out;
+  Object.assign(map, langHeader);
+  for (const [prefix, pairs] of trees) {
+    applyLangTree(map, prefix, pairs);
+  }
+  return map;
 }
+
+function makeEs() {
+  return makeLangMap(ES, [
+    ["marketplace", ES_MARKETPLACE],
+    ["seller", ES_SELLER],
+    ["taxi", ES_TAXI],
+    ["client", ES_CLIENT],
+    ["location", ES_LOCATION],
+    ["auth", ES_AUTH],
+    ["driver", ES_DRIVER],
+    ["restaurant", ES_RESTAURANT],
+  ], makeFr());
+}
+
+function makeAr() {
+  return makeLangMap(AR, [
+    ["marketplace", AR_MARKETPLACE],
+    ["seller", AR_SELLER],
+    ["taxi", AR_TAXI],
+    ["client", AR_CLIENT],
+    ["location", AR_LOCATION],
+    ["auth", AR_AUTH],
+    ["driver", AR_DRIVER],
+    ["restaurant", AR_RESTAURANT],
+  ], makeFr());
+}
+
+function makeZh() {
+  return makeLangMap(ZH, [
+    ["marketplace", ZH_MARKETPLACE],
+    ["seller", ZH_SELLER],
+    ["taxi", ZH_TAXI],
+    ["client", ZH_CLIENT],
+    ["location", ZH_LOCATION],
+    ["auth", ZH_AUTH],
+    ["driver", ZH_DRIVER],
+    ["restaurant", ZH_RESTAURANT],
+  ], makeFr());
+}
+
+function makeFf() {
+  return makeLangMap(FF, [
+    ["marketplace", FF_MARKETPLACE],
+    ["seller", FF_SELLER],
+    ["taxi", FF_TAXI],
+    ["client", FF_CLIENT],
+    ["location", FF_LOCATION],
+    ["auth", FF_AUTH],
+    ["driver", FF_DRIVER],
+    ["restaurant", FF_RESTAURANT],
+  ], makeFr());
+}
+
+function applyLangTree(map, prefix, pairs) {
+  for (const key of Object.keys(enFlat)) {
+    if (!key.startsWith(`${prefix}.`)) continue;
+    const enVal = enFlat[key];
+    const current = map[key] ?? enVal;
+    if (pairs[enVal]) {
+      map[key] = pairs[enVal];
+      continue;
+    }
+    if (pairs["*"]) {
+      let out = current;
+      for (const [from, to] of pairs["*"]) out = out.replace(from, to);
+      if (out !== current) map[key] = out;
+    }
+  }
+}
+
+const ES_MARKETPLACE = {
+  Marketplace: "Marketplace",
+  "Shop approved local sellers on MMD.": "Compra a vendedores locales aprobados en MMD.",
+  "*": [["Subtotal", "Subtotal"], ["Total", "Total"], ["Checkout", "Pago"], ["Delivery", "Entrega"]],
+};
+const ES_SELLER = { "Seller Dashboard": "Panel del vendedor", Products: "Productos", Orders: "Pedidos" };
+const ES_TAXI = {
+  "MMD Taxi": "MMD Taxi",
+  Pickup: "Recogida",
+  Dropoff: "Destino",
+  "Get estimate": "Obtener estimación",
+  "← Back": "← Atrás",
+  "*": [
+    ["Cancel", "Cancelar"],
+    ["Chat", "Chat"],
+    ["Balance", "Saldo"],
+    ["Payment", "Pago"],
+    ["Remove", "Eliminar"],
+    ["History", "Historial"],
+    ["Prise en charge", "Recogida"],
+    ["Destination", "Destino"],
+    ["Confirmer", "Confirmar"],
+    ["Course", "Viaje"],
+    ["Paiement", "Pago"],
+  ],
+};
+const ES_CLIENT = {
+  "Good morning": "Buenos días",
+  "Good afternoon": "Buenas tardes",
+  "Good evening": "Buenas noches",
+  "Delivery Request": "Solicitud de entrega",
+  "Driver assigned": "Conductor asignado",
+  Pending: "Pendiente",
+  Delivered: "Entregado",
+};
+const ES_LOCATION = { Back: "Atrás", "Use this location": "Usar esta ubicación" };
+const ES_AUTH = { "Reset password": "Restablecer contraseña", Email: "Correo" };
+const ES_DRIVER = { "W-9": "W-9", Status: "Estado", Signed: "Firmado" };
+const ES_RESTAURANT = { "Financial Center": "Centro financiero", Orders: "Pedidos" };
+
+const AR_MARKETPLACE = {
+  Marketplace: "السوق",
+  "Shop approved local sellers on MMD.": "تسوق من البائعين المحليين المعتمدين على MMD.",
+  "*": [["Subtotal", "المجموع الفرعي"], ["Total", "الإجمالي"], ["Checkout", "الدفع"]],
+};
+const AR_SELLER = { "Seller Dashboard": "لوحة البائع", Products: "المنتجات", Orders: "الطلبات" };
+const AR_TAXI = {
+  "MMD Taxi": "MMD تاكسي",
+  Pickup: "الاستلام",
+  Dropoff: "التوصيل",
+  "Get estimate": "احصل على تقدير",
+  "← Back": "← رجوع",
+  "*": [
+    ["Cancel", "إلغاء"],
+    ["Chat", "محادثة"],
+    ["Prise en charge", "الاستلام"],
+    ["Destination", "التوصيل"],
+    ["Course", "رحلة"],
+    ["Paiement", "الدفع"],
+  ],
+};
+const AR_CLIENT = {
+  "Good morning": "صباح الخير",
+  "Delivery Request": "طلب توصيل",
+  "Driver assigned": "تم تعيين السائق",
+  Pending: "قيد الانتظار",
+};
+const AR_LOCATION = { Back: "رجوع", "Use this location": "استخدم هذا الموقع" };
+const AR_AUTH = { "Reset password": "إعادة تعيين كلمة المرور", Email: "البريد" };
+const AR_DRIVER = { "W-9": "W-9", Status: "الحالة", Signed: "موقّع" };
+const AR_RESTAURANT = { "Financial Center": "المركز المالي", Orders: "الطلبات" };
+
+const ZH_MARKETPLACE = {
+  Marketplace: "商城",
+  "Shop approved local sellers on MMD.": "在 MMD 购买本地认证卖家商品。",
+  "*": [["Subtotal", "小计"], ["Total", "总计"], ["Checkout", "结账"]],
+};
+const ZH_SELLER = { "Seller Dashboard": "卖家面板", Products: "商品", Orders: "订单" };
+const ZH_TAXI = {
+  "MMD Taxi": "MMD 出租车",
+  Pickup: "上车点",
+  Dropoff: "目的地",
+  "Get estimate": "获取估价",
+  "← Back": "← 返回",
+  "*": [["Cancel", "取消"], ["Chat", "聊天"]],
+};
+const ZH_CLIENT = {
+  "Good morning": "早上好",
+  "Delivery Request": "配送请求",
+  "Driver assigned": "已分配司机",
+  Pending: "待处理",
+};
+const ZH_LOCATION = { Back: "返回", "Use this location": "使用此位置" };
+const ZH_AUTH = { "Reset password": "重置密码", Email: "邮箱" };
+const ZH_DRIVER = { "W-9": "W-9", Status: "状态", Signed: "已签署" };
+const ZH_RESTAURANT = { "Financial Center": "财务中心", Orders: "订单" };
+
+const FF_MARKETPLACE = {
+  Marketplace: "Suudu lataande",
+  "Shop approved local sellers on MMD.": "Soɗa e jaɓɓe ɗe MMD.",
+};
+const FF_SELLER = { "Seller Dashboard": "Dashboard jaɓɓo", Products: "Produits", Orders: "Commandes" };
+const FF_TAXI = {
+  Pickup: "Fuɗɗorde",
+  Dropoff: "Jaɓorde",
+  "Get estimate": "Heɓ estimate",
+  "← Back": "← Ruttude",
+};
+const FF_CLIENT = {
+  "Good morning": "Jam waati",
+  "Delivery Request": "Demande livraison",
+  Language: "Demdol",
+};
+const FF_LOCATION = { Back: "Ruttude", "Use this location": "Huutoro nokku ngal" };
+const FF_AUTH = { "Reset password": "Reset password", Email: "Email" };
+const FF_DRIVER = { "W-9": "W-9", Status: "Status", Signed: "Signed" };
+const FF_RESTAURANT = { "Financial Center": "Centre financier", Orders: "Commandes" };
 
 fs.mkdirSync(mapsDir, { recursive: true });
 const frMap = makeFr();
 fs.writeFileSync(path.join(mapsDir, "fr.flat.json"), JSON.stringify(frMap, null, 2));
-fs.writeFileSync(path.join(mapsDir, "es.flat.json"), JSON.stringify(cloneMap({ ...ES, ...frMap }), null, 2));
-fs.writeFileSync(path.join(mapsDir, "ar.flat.json"), JSON.stringify(cloneMap({ ...AR, ...frMap }), null, 2));
-fs.writeFileSync(path.join(mapsDir, "zh.flat.json"), JSON.stringify(cloneMap({ ...ZH, ...frMap }), null, 2));
-fs.writeFileSync(path.join(mapsDir, "ff.flat.json"), JSON.stringify(cloneMap({ ...FF, ...frMap }), null, 2));
+fs.writeFileSync(path.join(mapsDir, "es.flat.json"), JSON.stringify(makeEs(), null, 2));
+fs.writeFileSync(path.join(mapsDir, "ar.flat.json"), JSON.stringify(makeAr(), null, 2));
+fs.writeFileSync(path.join(mapsDir, "zh.flat.json"), JSON.stringify(makeZh(), null, 2));
+fs.writeFileSync(path.join(mapsDir, "ff.flat.json"), JSON.stringify(makeFf(), null, 2));
 console.log("generated flat maps in", mapsDir);

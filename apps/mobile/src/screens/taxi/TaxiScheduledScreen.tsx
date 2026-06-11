@@ -10,7 +10,10 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { formatDateTime } from "../../i18n/formatters";
+import { textAlignStart } from "../../i18n/rtl";
 import {
   cancelScheduledTaxiRide,
   fetchScheduledTaxiRides,
@@ -21,6 +24,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiScheduled">;
 
 export default function TaxiScheduledScreen() {
   const navigation = useNavigation<Nav>();
+  const { t, i18n } = useTranslation();
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,11 +34,14 @@ export default function TaxiScheduledScreen() {
       const res = await fetchScheduledTaxiRides();
       setItems((res?.items as Record<string, unknown>[]) ?? []);
     } catch (e: unknown) {
-      Alert.alert("Scheduled", e instanceof Error ? e.message : "Load failed");
+      Alert.alert(
+        t("taxi.scheduled.title", "Scheduled rides"),
+        e instanceof Error ? e.message : t("taxi.scheduled.loadFailed", "Load failed")
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -44,10 +51,10 @@ export default function TaxiScheduledScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>← Back</Text>
+          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
         </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800" }}>
-          Scheduled rides
+        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
+          {t("taxi.scheduled.title", "Scheduled rides")}
         </Text>
         <TouchableOpacity
           onPress={() => navigation.navigate("TaxiScheduledBook")}
@@ -58,7 +65,9 @@ export default function TaxiScheduledScreen() {
             alignItems: "center",
           }}
         >
-          <Text style={{ fontWeight: "800", color: "#111827" }}>Book scheduled ride</Text>
+          <Text style={{ fontWeight: "800", color: "#111827" }}>
+            {t("taxi.scheduled.book", "Book scheduled ride")}
+          </Text>
         </TouchableOpacity>
         {loading ? <ActivityIndicator color="#F59E0B" /> : null}
         {items.map((item) => {
@@ -75,7 +84,7 @@ export default function TaxiScheduledScreen() {
               }}
             >
               <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
-                {new Date(String(item.scheduled_pickup_at ?? "")).toLocaleString()}
+                {formatDateTime(String(item.scheduled_pickup_at ?? ""), i18n.language)}
               </Text>
               <Text style={{ color: "#94A3B8", marginTop: 4 }}>
                 {String(ride?.pickup_address ?? "")} → {String(ride?.dropoff_address ?? "")}
@@ -88,12 +97,19 @@ export default function TaxiScheduledScreen() {
                   cancelScheduledTaxiRide(id)
                     .then(load)
                     .catch((e: unknown) =>
-                      Alert.alert("Cancel", e instanceof Error ? e.message : "Failed")
+                      Alert.alert(
+                        t("taxi.scheduled.cancel", "Cancel reservation"),
+                        e instanceof Error
+                          ? e.message
+                          : t("taxi.scheduled.cancelFailed", "Failed")
+                      )
                     )
                 }
                 style={{ marginTop: 8 }}
               >
-                <Text style={{ color: "#FCA5A5" }}>Cancel reservation</Text>
+                <Text style={{ color: "#FCA5A5" }}>
+                  {t("taxi.scheduled.cancel", "Cancel reservation")}
+                </Text>
               </TouchableOpacity>
             </View>
           );

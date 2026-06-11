@@ -1,16 +1,16 @@
 {
   "language": {
-    "pickerTitle": "Langue",
-    "pickerSubtitle": "Choisissez la langue de l'application",
-    "searchPlaceholder": "Rechercher une langue…",
-    "supportedNote": "6 langues : English, Français, Español, العربية, 中文, Pulaar / Fulfulde",
-    "changed": "Langue mise à jour",
-    "changeFailed": "Impossible de changer la langue."
+    "pickerTitle": "Idioma",
+    "pickerSubtitle": "Elige el idioma de la aplicación",
+    "searchPlaceholder": "Buscar idioma…",
+    "supportedNote": "6 idiomas: English, Français, Español, العربية, 中文, Pulaar / Fulfulde",
+    "changed": "Idioma actualizado",
+    "changeFailed": "No se pudo cambiar el idioma."
   },
   "marketplace": {
     "home": {
       "title": "Marketplace",
-      "subtitle": "Achetez auprès de vendeurs locaux approuvés sur MMD.",
+      "subtitle": "Compra a vendedores locales aprobados en MMD.",
       "sellCta": "Vendre sur MMD →",
       "empty": "Aucun vendeur approuvé pour le moment.",
       "loadError": "Impossible de charger le marketplace"
@@ -40,9 +40,9 @@
       "locationRequiredBody": "Choisissez une adresse de livraison pour améliorer les estimations shadow.",
       "locationSavedTitle": "Adresse enregistrée",
       "locationSavedBody": "La livraison shadow utilisera votre destination lorsque le serveur l'autorise.",
-      "checkoutReadyTitle": "Checkout préparé",
+      "checkoutReadyTitle": "Pago préparé",
       "comingSoonTitle": "Bientôt disponible",
-      "checkoutShadowBody": "Checkout marketplace bientôt. Totaux shadow calculés uniquement.",
+      "checkoutShadowBody": "Pago marketplace bientôt. Totaux shadow calculés uniquement.",
       "dropoffTitle": "Destination de livraison",
       "dropoffMissing": "Aucune destination — distance de secours possible.",
       "pickDropoff": "Choisir l'adresse de livraison",
@@ -57,10 +57,10 @@
       "deliveryShadowTitle": "Livraison estimée (shadow)",
       "deliveryShadowFee": "Devis livraison shadow",
       "shadowNote": "Shadow uniquement — checkout et dispatch non actifs.",
-      "checkoutSoonNote": "Checkout bientôt — paiement marketplace non actif.",
+      "checkoutSoonNote": "Pago bientôt — paiement marketplace non actif.",
       "processing": "Traitement…",
       "checkout": "Préparer le checkout",
-      "comingSoonCta": "Checkout marketplace bientôt",
+      "comingSoonCta": "Pago marketplace bientôt",
       "payLive": "Payer la commande marketplace",
       "missingCheckoutUrl": "URL checkout manquante"
     }
@@ -72,11 +72,11 @@
       "loading": "Chargement espace vendeur…"
     },
     "dashboard": {
-      "title": "Tableau de bord vendeur"
+      "title": "Panel del vendedor"
     },
     "stats": {
-      "products": "Produits",
-      "orders": "Commandes"
+      "products": "Productos",
+      "orders": "Pedidos"
     },
     "actions": {
       "products": "Gérer les produits",
@@ -104,7 +104,7 @@
       "estimatedDelivery": "Livraison est."
     },
     "products": {
-      "title": "Produits",
+      "title": "Productos",
       "empty": "Aucun produit.",
       "notApproved": "Votre compte vendeur doit être approuvé.",
       "invalid": "Données produit invalides",
@@ -131,105 +131,158 @@
       "estimatesIn": "Estimation en"
     },
     "common": {
-      "back": "← Retour",
-      "loading": "Chargement…"
+      "back": "← Atrás",
+      "loading": "Chargement…",
+      "send": "Envoyer",
+      "no": "Non",
+      "yes": "Yes"
     },
     "home": {
-      "title": "MMD Taxesi",
+      "title": "MMD Taxi",
       "subtitle": "Réserver une course — séparé des livraisons colis.",
-      "pickup": "Prise en charge",
-      "dropoff": "Destination",
-      "pickupPlaceholder": "Prise en charge address",
-      "dropoffPlaceholder": "Destination address",
+      "pickup": "Recogida",
+      "dropoff": "Destino",
+      "pickupPlaceholder": "Recogida address",
+      "dropoffPlaceholder": "Destino address",
       "pinPickup": "Épingler le pickup sur la carte",
       "pinDropoff": "Épingler la destination sur la carte",
-      "pickupPinned": "Prise en charge pinned on map",
-      "dropoffPinned": "Destination pinned on map",
-      "pickupPickerTitle": "Prise en charge exact location",
-      "dropoffPickerTitle": "Destination exact location",
+      "pickupPinned": "Recogida pinned on map",
+      "dropoffPinned": "Destino pinned on map",
+      "pickupPickerTitle": "Recogida exact location",
+      "dropoffPickerTitle": "Destino exact location",
       "usePickup": "Utiliser le pickup",
       "useDropoff": "Utiliser la destination",
       "vehicle": "Véhicule",
       "standard": "Standard",
       "xl": "XL",
       "premium": "Premium",
-      "getEstimate": "Obtenir une estimation",
+      "getEstimate": "Obtener estimación",
       "history": "Historique des courses",
       "favorites": "Chauffeurs favoris",
       "loyalty": "Points fidélité",
-      "scheduled": "Courses programmées",
-      "multiStop": "Course multi-arrêts",
+      "scheduled": "Viajes programmées",
+      "multiStop": "Viaje multi-arrêts",
       "loyaltyRewards": "Récompenses fidélité",
       "missingAddress": "Adresse manquante",
       "missingAddressBody": "Saisissez les adresses pickup et destination.",
       "estimateFailed": "Estimation échouée",
-      "countryMismatch": "Prise en charge location does not match selected country.",
+      "countryMismatch": "Recogida location does not match selected country.",
       "quoteFailed": "Impossible d'obtenir une estimation"
     },
     "quote": {
       "vehicle": "Véhicule",
       "distance": "Distance",
       "duration": "Durée",
-      "pickup": "Prise en charge",
-      "dropoff": "Destination",
+      "pickup": "Recogida",
+      "dropoff": "Destino",
       "pinPickup": "Épingler pickup",
-      "pickupPinned": "Prise en charge pinned",
+      "pinDropoff": "Épingler destination",
+      "pickupPinned": "Recogida pinned",
+      "dropoffPinned": "Destino pinned",
       "priceBreakdown": "Détail du prix",
-      "confirmPay": "Confirmer et payer",
-      "sharedRide": "Course partagée (-15%)",
+      "confirmPay": "Confirmar et payer",
+      "confirmPayTotal": "Confirmar et payer {{total}}",
+      "sharedRide": "Viaje partagée (-15%)",
       "premiumDriver": "Chauffeur premium uniquement",
-      "businessRide": "Course business",
-      "apply": "Appliquer"
+      "businessRide": "Viaje business",
+      "apply": "Appliquer",
+      "promoCode": "Code promo",
+      "enterCode": "Saisir le code",
+      "invalidPromo": "Code promo invalide",
+      "promoDiscount": "Réduction promo",
+      "rewardCredit": "Crédit récompense",
+      "sharedRideDiscount": "Réduction course partagée",
+      "loyaltyReward": "Récompense fidélité",
+      "none": "Aucun",
+      "any": "N'importe",
+      "preferredDriver": "Chauffeur préféré (optionnel)",
+      "payment": "Pago",
+      "paymentFailed": "Impossible de démarrer le paiement"
     },
     "history": {
       "title": "Taxesi history",
-      "empty": "Aucune course taxi."
+      "empty": "Aucune course taxi.",
+      "tapToTrack": "Appuyer pour suivre"
     },
     "favorites": {
       "title": "Chauffeurs favoris",
       "add": "Ajouter favori",
-      "saving": "Enregistrement…"
+      "saving": "Enregistrement…",
+      "driverId": "ID chauffeur",
+      "remove": "Supprimer",
+      "loadFailed": "Load failed",
+      "addFailed": "Échec ajout",
+      "removeFailed": "Supprimer failed"
     },
     "loyalty": {
       "title": "Taxesi loyalty",
       "balance": "Solde",
-      "history": "Historique"
+      "history": "Historique",
+      "tier": "Tier: {{tier}} • Lifetime: {{lifetime}}",
+      "noActivity": "Aucune activité fidélité.",
+      "loadFailed": "Load failed"
     },
     "loyaltyRewards": {
       "title": "Récompenses fidélité",
-      "balancePts": "Solde: {{count}} pts"
+      "balancePts": "Solde: {{count}} pts",
+      "applyOnQuote": "Appliquer on the quote screen before checkout.",
+      "loadFailed": "Load failed"
     },
     "scheduled": {
-      "title": "Courses programmées",
+      "title": "Viajes programmées",
       "book": "Réserver une course programmée",
-      "cancel": "Annuler la réservation"
+      "cancel": "Annuler la réservation",
+      "loadFailed": "Load failed",
+      "cancelFailed": "Failed"
     },
     "scheduledBook": {
       "title": "Programmer une course",
-      "reserve": "Réserver et prépayer"
+      "reserve": "Réserver et prépayer",
+      "pickupTimePlaceholder": "Recogida time (ISO, e.g. 2026-06-15T14:30:00Z)",
+      "bookingFailed": "Échec réservation"
     },
     "multiStop": {
-      "title": "Course multi-arrêts",
-      "getEstimate": "Obtenir une estimation"
+      "title": "Viaje multi-arrêts",
+      "getEstimate": "Obtener estimación",
+      "stop1": "Arrêt 1 (optionnel)",
+      "stop2": "Arrêt 2 (optionnel)",
+      "finalDestination": "Destino finale",
+      "pricingNote": "Tarif basé sur distance/durée totale."
     },
     "chat": {
       "title": "Taxesi chat",
       "driverPlaceholder": "Message chauffeur…",
-      "clientPlaceholder": "Message client…"
+      "clientPlaceholder": "Message client…",
+      "send": "Erreur",
+      "sendFailed": "Envoyer failed",
+      "imageFailed": "Échec image"
     },
     "ride": {
-      "paymentPending": "Paiement en attente",
+      "paymentPending": "Pago en attente",
+      "paymentPendingBody": "Si vous avez payé, confirmation automatique.",
       "retryPayment": "Réessayer confirmation paiement",
+      "confirming": "Confirmation…",
       "chat": "Chat",
       "cancel": "Annuler",
-      "cancelTitle": "Annuler ride"
+      "cancelTitle": "Annuler ride",
+      "cancelConfirm": "Annuler this taxi ride?",
+      "cancelYes": "Oui, annuler",
+      "cancelNo": "Non",
+      "cancelFailed": "Impossible d'annuler",
+      "loadFailed": "Impossible de charger la course",
+      "mapUnavailable": "Carte indisponible",
+      "pickupLabel": "Recogida: {{address}}",
+      "dropoffLabel": "Destino: {{address}}",
+      "driverAssigned": "Driver assigned",
+      "lookingForDriver": "Recherche d'un chauffeur…",
+      "defaultTitle": "Viaje"
     }
   },
   "client": {
     "home": {
-      "greeting_morning": "Bonjour",
-      "greeting_afternoon": "Bon après-midi",
-      "greeting_evening": "Bonsoir",
+      "greeting_morning": "Buenos días",
+      "greeting_afternoon": "Buenas tardes",
+      "greeting_evening": "Buenas noches",
       "kind": {
         "delivery_request": "Demande de livraison",
         "restaurant_order": "Commande restaurant"
@@ -262,21 +315,125 @@
     "deliveryRequest": {
       "total": "Total",
       "deliveryFee": "Frais de livraison",
-      "loadError": "Impossible de charger la demande de livraison"
+      "loadError": "Impossible de charger la demande de livraison",
+      "title": "Solicitud de entrega",
+      "tripTitle": "🚗 Trip #{{ref}}",
+      "loading": "Chargement...",
+      "loadFailedTitle": "Impossible de charger cette demande",
+      "noRequest": "Aucune demande trouvée",
+      "missingRequestId": "requestId manquant.",
+      "notFound": "Demande introuvable.",
+      "waitingDriver": "En attente d'un chauffeur",
+      "driverOnWay": "Chauffeur en route",
+      "completed": "Terminé",
+      "assignedDriver": "Chauffeur assigné",
+      "yourDriver": "Votre chauffeur",
+      "currentStatus": "Statut actuel",
+      "paymentStatus": "Statut paiement",
+      "driverStatus": "Statut chauffeur",
+      "tripReference": "Référence course",
+      "requestReference": "Référence demande",
+      "cancelTrip": "Annuler la course",
+      "keepTrip": "Garder la course",
+      "tripCancelled": "Course annulée",
+      "cancelFailed": "Impossible d'annuler cette course.",
+      "loginRequired": "Vous devez être connecté.",
+      "status": {
+        "pending": "Pendiente",
+        "accepted": "Conductor asignado",
+        "prepared": "Préparation du pickup",
+        "ready": "Prêt pour pickup",
+        "dispatched": "En route",
+        "delivered": "Entregado",
+        "canceled": "Annulé"
+      },
+      "payment": {
+        "paid": "Payé",
+        "processing": "Traitement",
+        "unpaid": "Non payé"
+      }
     }
   },
   "location": {
     "mapUnavailable": "Carte indisponible. Configurez EXPO_PUBLIC_MAPBOX_TOKEN.",
     "pickerDefaultTitle": "Choisir un emplacement",
-    "useLocation": "Utiliser cet emplacement"
+    "exactLocation": "Exact location",
+    "useLocation": "Usar esta ubicación",
+    "back": "Atrás"
   },
   "auth": {
     "resetPassword": {
-      "title": "Réinitialiser le mot de passe",
-      "email": "E-mail",
+      "title": "Restablecer contraseña",
+      "newTitle": "Nouveau mot de passe",
+      "confirmTitle": "Confirmer le mot de passe",
+      "email": "Correo",
       "sendLink": "Envoyer le lien",
+      "updatePassword": "Mettre à jour le mot de passe",
       "success": "Consultez votre e-mail pour le lien.",
-      "error": "Impossible d'envoyer le lien."
+      "error": "Impossible d'envoyer le lien.",
+      "invalidLink": "Lien invalide ou expiré.",
+      "prepareFailed": "Impossible de préparer la réinitialisation.",
+      "mismatch": "Les mots de passe ne correspondent pas.",
+      "updated": "Mot de passe mis à jour.",
+      "updateFailed": "Impossible de mettre à jour le mot de passe.",
+      "checkingSession": "Vérification de la session…",
+      "errorTitle": "Erreur"
+    }
+  },
+  "driver": {
+    "w9": {
+      "title": "W-9",
+      "status": "Estado",
+      "statusLabel": "W-9 status",
+      "signed": "Firmado",
+      "missing": "Manquant",
+      "signedDate": "Signé date",
+      "tinMasked": "TIN (masked)",
+      "completeForm": "Complete the form below to sign your W-9.",
+      "refreshing": "Refreshing…",
+      "downloadPdf": "Télécharger PDF W-9",
+      "checklist": "Liste de contrôle",
+      "checklistHint": "Required fields must be complete.",
+      "legalName": "Nom légal",
+      "entityType": "Entity type",
+      "address1": "Address line 1",
+      "city": "City",
+      "state": "State",
+      "zip": "ZIP",
+      "tinTypeLabel": "TIN ({{type}})",
+      "tinOptionalHint": "Optional (blank keeps current)",
+      "tinRequiredHint": "Required (9 digits)",
+      "signedName": "Signé name",
+      "submit": "Soumettre W-9",
+      "updateResign": "Update / Re-sign",
+      "loadFailed": "Échec chargement",
+      "noPdf": "No PDF available yet.",
+      "openPdfFailed": "Unable to open PDF",
+      "saved": "Enregistré.",
+      "submitFailed": "Submit failed",
+      "tinKeepCurrent": "Leave blank to keep current TIN"
+    }
+  },
+  "restaurant": {
+    "financial": {
+      "title": "Centro financiero",
+      "loading": "Chargement centre financier...",
+      "loadFailed": "Failed to load restaurant financial overview",
+      "profileIncomplete": "Profile incomplete",
+      "missingFields": "Missing fields: {{fields}}",
+      "grossSales": "Ventes brutes",
+      "commission": "Commission",
+      "platformFees": "Platform fees",
+      "netRevenue": "Revenu net",
+      "orders": "Pedidos",
+      "earningsGraph": "Earnings Graph",
+      "payouts": "Paiements",
+      "pendingPayout": "Paiement en attente",
+      "lastPayout": "Dernier paiement",
+      "lastPayoutDate": "Dernier paiement date",
+      "monthlyStatements": "Relevés mensuels",
+      "noStatements": "No statements available yet.",
+      "taxDocuments": "Documents fiscaux"
     }
   }
 }

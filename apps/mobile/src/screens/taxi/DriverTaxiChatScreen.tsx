@@ -16,8 +16,10 @@ import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { supabase } from "../../lib/supabase";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverTaxiChat">;
 type ChatRoute = RouteProp<RootStackParamList, "DriverTaxiChat">;
@@ -36,6 +38,7 @@ const TAXI_IMAGES_BUCKET = "taxi-images";
 export default function DriverTaxiChatScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<ChatRoute>();
+  const { t } = useTranslation();
   const rideId = route.params.rideId;
   const scrollRef = useRef<ScrollView | null>(null);
 
@@ -109,7 +112,10 @@ export default function DriverTaxiChatScreen() {
       setText("");
       await load();
     } catch (e: unknown) {
-      Alert.alert("Send failed", e instanceof Error ? e.message : "Error");
+      Alert.alert(
+        t("taxi.chat.sendFailed", "Send failed"),
+        e instanceof Error ? e.message : t("taxi.chat.send", "Error")
+      );
     } finally {
       setSending(false);
     }
@@ -119,7 +125,9 @@ export default function DriverTaxiChatScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
       <StatusBar barStyle="light-content" />
       <TouchableOpacity style={{ padding: 12 }} onPress={() => navigation.goBack()}>
-        <Text style={{ color: "#93C5FD" }}>← Back</Text>
+        <Text style={{ color: "#93C5FD", textAlign: textAlignStart() }}>
+          {t("taxi.common.back", "← Back")}
+        </Text>
       </TouchableOpacity>
       {loading ? (
         <ActivityIndicator color="#F59E0B" />
@@ -159,11 +167,11 @@ export default function DriverTaxiChatScreen() {
           })}
         </ScrollView>
       )}
-      <View style={{ flexDirection: "row", gap: 8, padding: 12 }}>
+      <View style={{ flexDirection: rowDirection(), gap: 8, padding: 12 }}>
         <TextInput
           value={text}
           onChangeText={setText}
-          placeholder="Message client…"
+          placeholder={t("taxi.chat.clientPlaceholder", "Message client…")}
           placeholderTextColor="#64748B"
           style={{
             flex: 1,
@@ -174,7 +182,9 @@ export default function DriverTaxiChatScreen() {
           }}
         />
         <TouchableOpacity onPress={sendMessage} disabled={sending}>
-          <Text style={{ color: "#F59E0B", fontWeight: "800" }}>Send</Text>
+          <Text style={{ color: "#F59E0B", fontWeight: "800" }}>
+            {t("taxi.common.send", "Send")}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
