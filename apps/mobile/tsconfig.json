@@ -10,6 +10,7 @@
   "include": ["src", "App.tsx", "index.js"],
   "exclude": [
     "node_modules",
+    "**/*.test.ts",
     "**/*.OLD.tsx",
     "**/*.backup.tsx",
     "**/__backup_chatfix_*",

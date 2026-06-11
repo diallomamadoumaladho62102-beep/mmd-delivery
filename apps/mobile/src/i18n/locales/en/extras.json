@@ -1,0 +1,282 @@
+{
+  "language": {
+    "pickerTitle": "Language",
+    "pickerSubtitle": "Choose your app language",
+    "searchPlaceholder": "Search language…",
+    "supportedNote": "6 languages: English, Français, Español, العربية, 中文, Pulaar / Fulfulde",
+    "changed": "Language updated",
+    "changeFailed": "Unable to change language."
+  },
+  "marketplace": {
+    "home": {
+      "title": "Marketplace",
+      "subtitle": "Shop approved local sellers on MMD.",
+      "sellCta": "Sell on MMD →",
+      "empty": "No approved sellers yet.",
+      "loadError": "Unable to load marketplace"
+    },
+    "products": {
+      "subtitle": "Browse active products",
+      "openCart": "Open cart / draft",
+      "empty": "No active products.",
+      "loadError": "Unable to load products"
+    },
+    "details": {
+      "addedTitle": "Added to draft",
+      "addedBody": "Your marketplace draft was updated.",
+      "errorTitle": "Unable to update draft",
+      "notFound": "Product not found.",
+      "quantity": "Quantity",
+      "lineTotal": "Line total",
+      "saving": "Saving draft…",
+      "addToDraft": "Add to draft cart"
+    },
+    "cart": {
+      "title": "Marketplace draft",
+      "empty": "Your draft cart is empty.",
+      "errorTitle": "Cart error",
+      "unknownError": "Unknown error",
+      "locationRequiredTitle": "Dropoff required",
+      "locationRequiredBody": "Choose a delivery location to improve shadow delivery estimates.",
+      "locationSavedTitle": "Location saved",
+      "locationSavedBody": "Delivery shadow will use your selected dropoff when enabled on the server.",
+      "checkoutReadyTitle": "Checkout prepared",
+      "comingSoonTitle": "Coming soon",
+      "checkoutShadowBody": "Marketplace checkout coming soon. Shadow totals were calculated only.",
+      "dropoffTitle": "Delivery dropoff",
+      "dropoffMissing": "No dropoff selected — shadow may use fallback distance.",
+      "pickDropoff": "Choose delivery location",
+      "useLocation": "Use this location",
+      "chooseDropoff": "Choose dropoff on map",
+      "savingLocation": "Saving location…",
+      "applyDropoff": "Apply dropoff to draft",
+      "subtotal": "Subtotal",
+      "delivery": "Delivery (est.)",
+      "service": "Service fee",
+      "total": "Total",
+      "deliveryShadowTitle": "Estimated delivery (shadow)",
+      "deliveryShadowFee": "Delivery quote shadow",
+      "shadowNote": "Shadow only — checkout and driver dispatch are not live yet.",
+      "checkoutSoonNote": "Checkout still coming soon — no live marketplace payment.",
+      "processing": "Processing…",
+      "checkout": "Prepare checkout",
+      "comingSoonCta": "Marketplace checkout coming soon",
+      "payLive": "Pay Marketplace Order",
+      "missingCheckoutUrl": "Missing checkout URL"
+    }
+  },
+  "seller": {
+    "gate": {
+      "error": "Unable to open seller area right now.",
+      "unavailable": "Seller services are not available in your area yet.",
+      "loading": "Loading seller area…"
+    },
+    "dashboard": {
+      "title": "Seller Dashboard"
+    },
+    "stats": {
+      "products": "Products",
+      "orders": "Orders"
+    },
+    "actions": {
+      "products": "Manage products",
+      "orders": "View orders"
+    },
+    "onboarding": {
+      "title": "Become a Seller",
+      "required": "Please fill in all required fields.",
+      "submittedTitle": "Application submitted",
+      "submit": "Submit for review"
+    },
+    "fields": {
+      "businessName": "Business name",
+      "country": "Country code",
+      "city": "City",
+      "address": "Address",
+      "phone": "Phone"
+    },
+    "orders": {
+      "title": "Marketplace Orders",
+      "readOnly": "Read-only preview — checkout not live yet.",
+      "empty": "No marketplace orders yet.",
+      "deliveryNotLive": "Delivery not live yet",
+      "deliveryShadowStatus": "Delivery shadow",
+      "estimatedDelivery": "Est. delivery"
+    },
+    "products": {
+      "title": "Products",
+      "empty": "No products yet.",
+      "notApproved": "Your seller account must be approved first.",
+      "invalid": "Invalid product data",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "editTitle": "Edit product",
+      "createTitle": "New product",
+      "active": "Active",
+      "loadFailed": "Load failed",
+      "saveFailed": "Save failed",
+      "updateFailed": "Update failed"
+    }
+  },
+  "taxi": {
+    "ui": {
+      "country": "Country",
+      "currency": "Currency",
+      "estimate": "Your estimate",
+      "subtotal": "Subtotal",
+      "tax": "Tax",
+      "platformFee": "Platform fee",
+      "total": "Total",
+      "detectedCountry": "Detected from pickup",
+      "estimatesIn": "Estimates in"
+    },
+    "common": {
+      "back": "← Back",
+      "loading": "Loading…"
+    },
+    "home": {
+      "title": "MMD Taxi",
+      "subtitle": "Book a ride — separate from delivery packages.",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "pickupPlaceholder": "Pickup address",
+      "dropoffPlaceholder": "Dropoff address",
+      "pinPickup": "Pin exact pickup on map",
+      "pinDropoff": "Pin exact dropoff on map",
+      "pickupPinned": "Pickup pinned on map",
+      "dropoffPinned": "Dropoff pinned on map",
+      "pickupPickerTitle": "Pickup exact location",
+      "dropoffPickerTitle": "Dropoff exact location",
+      "usePickup": "Use pickup location",
+      "useDropoff": "Use dropoff location",
+      "vehicle": "Vehicle",
+      "standard": "Standard",
+      "xl": "XL",
+      "premium": "Premium",
+      "getEstimate": "Get estimate",
+      "history": "View ride history",
+      "favorites": "Favorite drivers",
+      "loyalty": "Loyalty points",
+      "scheduled": "Scheduled rides",
+      "multiStop": "Multi-stop ride",
+      "loyaltyRewards": "Loyalty rewards",
+      "missingAddress": "Missing address",
+      "missingAddressBody": "Enter pickup and dropoff addresses.",
+      "estimateFailed": "Estimate failed",
+      "countryMismatch": "Pickup location does not match selected country.",
+      "quoteFailed": "Unable to get estimate"
+    },
+    "quote": {
+      "vehicle": "Vehicle",
+      "distance": "Distance",
+      "duration": "Duration",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "pinPickup": "Pin pickup",
+      "pickupPinned": "Pickup pinned",
+      "priceBreakdown": "Price breakdown",
+      "confirmPay": "Confirm & pay",
+      "sharedRide": "Shared ride (-15%)",
+      "premiumDriver": "Premium driver only",
+      "businessRide": "Business ride",
+      "apply": "Apply"
+    },
+    "history": {
+      "title": "Taxi history",
+      "empty": "No taxi rides yet."
+    },
+    "favorites": {
+      "title": "Favorite drivers",
+      "add": "Add favorite",
+      "saving": "Saving…"
+    },
+    "loyalty": {
+      "title": "Taxi loyalty",
+      "balance": "Balance",
+      "history": "History"
+    },
+    "loyaltyRewards": {
+      "title": "Loyalty rewards",
+      "balancePts": "Balance: {{count}} pts"
+    },
+    "scheduled": {
+      "title": "Scheduled rides",
+      "book": "Book scheduled ride",
+      "cancel": "Cancel reservation"
+    },
+    "scheduledBook": {
+      "title": "Schedule a ride",
+      "reserve": "Reserve & prepay"
+    },
+    "multiStop": {
+      "title": "Multi-stop ride",
+      "getEstimate": "Get estimate"
+    },
+    "chat": {
+      "title": "Taxi chat",
+      "driverPlaceholder": "Message driver…",
+      "clientPlaceholder": "Message client…"
+    },
+    "ride": {
+      "paymentPending": "Payment pending",
+      "retryPayment": "Retry payment confirmation",
+      "chat": "Chat",
+      "cancel": "Cancel",
+      "cancelTitle": "Cancel ride"
+    }
+  },
+  "client": {
+    "home": {
+      "greeting_morning": "Good morning",
+      "greeting_afternoon": "Good afternoon",
+      "greeting_evening": "Good evening",
+      "kind": {
+        "delivery_request": "Delivery request",
+        "restaurant_order": "Restaurant order"
+      },
+      "labels": {
+        "pickup": "Pickup",
+        "dropoff": "Dropoff"
+      },
+      "language": "Language",
+      "errors": {
+        "lang_change_failed": "Unable to change language right now."
+      },
+      "banner": {
+        "marketplace": {
+          "title": "Marketplace",
+          "subtitle": "Shop local sellers"
+        },
+        "taxi": {
+          "title": "MMD Taxi",
+          "subtitle": "Ride with MMD Taxi — separate from delivery"
+        },
+        "maintenance": "MMD is under maintenance in your area. New orders are temporarily disabled.",
+        "comingSoon": "Coming soon in your area"
+      }
+    },
+    "profile": {
+      "loading": "Loading profile…",
+      "avatarUploadError": "Unable to upload photo. Check storage permissions."
+    },
+    "deliveryRequest": {
+      "total": "Total",
+      "deliveryFee": "Delivery fee",
+      "loadError": "Unable to load delivery request"
+    }
+  },
+  "location": {
+    "mapUnavailable": "Map unavailable. Configure EXPO_PUBLIC_MAPBOX_TOKEN to use the location picker.",
+    "pickerDefaultTitle": "Choose location",
+    "useLocation": "Use this location"
+  },
+  "auth": {
+    "resetPassword": {
+      "title": "Reset password",
+      "email": "Email",
+      "sendLink": "Send reset link",
+      "success": "Check your email for a reset link.",
+      "error": "Unable to send reset link."
+    }
+  }
+}

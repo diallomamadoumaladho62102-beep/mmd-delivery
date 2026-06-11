@@ -1,0 +1,335 @@
+{
+  "language": {
+    "pickerTitle": "Langue",
+    "pickerSubtitle": "Choisissez la langue de l'application",
+    "searchPlaceholder": "Rechercher une langue…",
+    "supportedNote": "6 langues : English, Français, Español, العربية, 中文, Pulaar / Fulfulde",
+    "changed": "Langue mise à jour",
+    "changeFailed": "Impossible de changer la langue."
+  },
+  "marketplace": {
+    "home": {
+      "title": "Marketplace",
+      "subtitle": "Achetez auprès de vendeurs locaux approuvés sur MMD.",
+      "sellCta": "Vendre sur MMD →",
+      "empty": "Aucun vendeur approuvé pour le moment.",
+      "loadError": "Impossible de charger le marketplace"
+    },
+    "products": {
+      "subtitle": "Parcourir les produits actifs",
+      "openCart": "Ouvrir le panier / brouillon",
+      "empty": "Aucun produit actif.",
+      "loadError": "Impossible de charger les produits"
+    },
+    "details": {
+      "addedTitle": "Ajouté au brouillon",
+      "addedBody": "Votre brouillon marketplace a été mis à jour.",
+      "errorTitle": "Impossible de mettre à jour le brouillon",
+      "notFound": "Produit introuvable.",
+      "quantity": "Quantité",
+      "lineTotal": "Total ligne",
+      "saving": "Enregistrement du brouillon…",
+      "addToDraft": "Ajouter au panier brouillon"
+    },
+    "cart": {
+      "title": "Brouillon marketplace",
+      "empty": "Votre panier brouillon est vide.",
+      "errorTitle": "Erreur panier",
+      "unknownError": "Erreur inconnue",
+      "locationRequiredTitle": "Destination requise",
+      "locationRequiredBody": "Choisissez une adresse de livraison pour améliorer les estimations shadow.",
+      "locationSavedTitle": "Adresse enregistrée",
+      "locationSavedBody": "La livraison shadow utilisera votre destination lorsque le serveur l'autorise.",
+      "checkoutReadyTitle": "Checkout préparé",
+      "comingSoonTitle": "Bientôt disponible",
+      "checkoutShadowBody": "Checkout marketplace bientôt. Totaux shadow calculés uniquement.",
+      "dropoffTitle": "Destination de livraison",
+      "dropoffMissing": "Aucune destination — distance de secours possible.",
+      "pickDropoff": "Choisir l'adresse de livraison",
+      "useLocation": "Utiliser cette adresse",
+      "chooseDropoff": "Choisir la destination sur la carte",
+      "savingLocation": "Enregistrement…",
+      "applyDropoff": "Appliquer la destination au brouillon",
+      "subtotal": "Sous-total",
+      "delivery": "Livraison (est.)",
+      "service": "Frais de service",
+      "total": "Total",
+      "deliveryShadowTitle": "Livraison estimée (shadow)",
+      "deliveryShadowFee": "Devis livraison shadow",
+      "shadowNote": "Shadow uniquement — checkout et dispatch non actifs.",
+      "checkoutSoonNote": "Checkout bientôt — paiement marketplace non actif.",
+      "processing": "Traitement…",
+      "checkout": "Préparer le checkout",
+      "comingSoonCta": "Checkout marketplace bientôt",
+      "payLive": "Payer la commande marketplace",
+      "missingCheckoutUrl": "URL checkout manquante"
+    }
+  },
+  "seller": {
+    "gate": {
+      "error": "Impossible d'ouvrir l'espace vendeur.",
+      "unavailable": "Services vendeur indisponibles dans votre zone.",
+      "loading": "Chargement espace vendeur…"
+    },
+    "dashboard": {
+      "title": "Tableau de bord vendeur"
+    },
+    "stats": {
+      "products": "Produits",
+      "orders": "Commandes"
+    },
+    "actions": {
+      "products": "Gérer les produits",
+      "orders": "Voir les commandes"
+    },
+    "onboarding": {
+      "title": "Devenir vendeur",
+      "required": "Veuillez remplir tous les champs requis.",
+      "submittedTitle": "Candidature envoyée",
+      "submit": "Envoyer pour validation"
+    },
+    "fields": {
+      "businessName": "Nom de l'entreprise",
+      "country": "Code pays",
+      "city": "Ville",
+      "address": "Adresse",
+      "phone": "Téléphone"
+    },
+    "orders": {
+      "title": "Marketplace Commandes",
+      "readOnly": "Aperçu lecture seule — checkout non actif.",
+      "empty": "Aucune commande marketplace.",
+      "deliveryNotLive": "Livraison non active",
+      "deliveryShadowStatus": "Livraison shadow",
+      "estimatedDelivery": "Livraison est."
+    },
+    "products": {
+      "title": "Produits",
+      "empty": "Aucun produit.",
+      "notApproved": "Votre compte vendeur doit être approuvé.",
+      "invalid": "Données produit invalides",
+      "activate": "Actifr",
+      "deactivate": "Désactiver",
+      "editTitle": "Modifier le produit",
+      "createTitle": "Nouveau produit",
+      "active": "Actif",
+      "loadFailed": "Échec chargement",
+      "saveFailed": "Échec enregistrement",
+      "updateFailed": "Échec mise à jour"
+    }
+  },
+  "taxi": {
+    "ui": {
+      "country": "Pays",
+      "currency": "Devise",
+      "estimate": "Votre estimation",
+      "subtotal": "Sous-total",
+      "tax": "Taxes",
+      "platformFee": "Frais plateforme",
+      "total": "Total",
+      "detectedCountry": "Détecté depuis le pickup",
+      "estimatesIn": "Estimation en"
+    },
+    "common": {
+      "back": "← Retour",
+      "loading": "Chargement…"
+    },
+    "home": {
+      "title": "MMD Taxesi",
+      "subtitle": "Réserver une course — séparé des livraisons colis.",
+      "pickup": "Prise en charge",
+      "dropoff": "Destination",
+      "pickupPlaceholder": "Prise en charge address",
+      "dropoffPlaceholder": "Destination address",
+      "pinPickup": "Épingler le pickup sur la carte",
+      "pinDropoff": "Épingler la destination sur la carte",
+      "pickupPinned": "Prise en charge pinned on map",
+      "dropoffPinned": "Destination pinned on map",
+      "pickupPickerTitle": "Prise en charge exact location",
+      "dropoffPickerTitle": "Destination exact location",
+      "usePickup": "Utiliser le pickup",
+      "useDropoff": "Utiliser la destination",
+      "vehicle": "Véhicule",
+      "standard": "Standard",
+      "xl": "XL",
+      "premium": "Premium",
+      "getEstimate": "Obtenir une estimation",
+      "history": "Historique des courses",
+      "favorites": "Chauffeurs favoris",
+      "loyalty": "Points fidélité",
+      "scheduled": "Courses programmées",
+      "multiStop": "Course multi-arrêts",
+      "loyaltyRewards": "Récompenses fidélité",
+      "missingAddress": "Adresse manquante",
+      "missingAddressBody": "Saisissez les adresses pickup et destination.",
+      "estimateFailed": "Estimation échouée",
+      "countryMismatch": "Prise en charge location does not match selected country.",
+      "quoteFailed": "Impossible d'obtenir une estimation"
+    },
+    "quote": {
+      "vehicle": "Véhicule",
+      "distance": "Distance",
+      "duration": "Durée",
+      "pickup": "Prise en charge",
+      "dropoff": "Destination",
+      "pinPickup": "Épingler pickup",
+      "pickupPinned": "Prise en charge pinned",
+      "priceBreakdown": "Détail du prix",
+      "confirmPay": "Confirmer et payer",
+      "sharedRide": "Course partagée (-15%)",
+      "premiumDriver": "Chauffeur premium uniquement",
+      "businessRide": "Course business",
+      "apply": "Appliquer"
+    },
+    "history": {
+      "title": "Taxesi history",
+      "empty": "Aucune course taxi."
+    },
+    "favorites": {
+      "title": "Chauffeurs favoris",
+      "add": "Ajouter favori",
+      "saving": "Enregistrement…"
+    },
+    "loyalty": {
+      "title": "Taxesi loyalty",
+      "balance": "Solde",
+      "history": "Historique"
+    },
+    "loyaltyRewards": {
+      "title": "Récompenses fidélité",
+      "balancePts": "Solde: {{count}} pts"
+    },
+    "scheduled": {
+      "title": "Courses programmées",
+      "book": "Réserver une course programmée",
+      "cancel": "Annuler la réservation"
+    },
+    "scheduledBook": {
+      "title": "Programmer une course",
+      "reserve": "Réserver et prépayer"
+    },
+    "multiStop": {
+      "title": "Course multi-arrêts",
+      "getEstimate": "Obtenir une estimation"
+    },
+    "chat": {
+      "title": "Taxesi chat",
+      "driverPlaceholder": "Message chauffeur…",
+      "clientPlaceholder": "Message client…"
+    },
+    "ride": {
+      "paymentPending": "Paiement en attente",
+      "retryPayment": "Réessayer confirmation paiement",
+      "chat": "Chat",
+      "cancel": "Annuler",
+      "cancelTitle": "Annuler ride"
+    }
+  },
+  "client": {
+    "home": {
+      "greeting_morning": "Bonjour",
+      "greeting_afternoon": "Bon après-midi",
+      "greeting_evening": "Bonsoir",
+      "kind": {
+        "delivery_request": "Demande de livraison",
+        "restaurant_order": "Commande restaurant"
+      },
+      "labels": {
+        "pickup": "Pickup",
+        "dropoff": "Dropoff"
+      },
+      "language": "Langue",
+      "errors": {
+        "lang_change_failed": "Impossible de changer la langue."
+      },
+      "banner": {
+        "marketplace": {
+          "title": "Marketplace",
+          "subtitle": "Acheter chez des vendeurs locaux"
+        },
+        "taxi": {
+          "title": "MMD Taxi",
+          "subtitle": "Course MMD Taxi — séparé de la livraison"
+        },
+        "maintenance": "MMD est en maintenance dans votre zone. Nouvelles commandes désactivées.",
+        "comingSoon": "Bientôt disponible dans votre zone"
+      }
+    },
+    "profile": {
+      "loading": "Chargement du profil…",
+      "avatarUploadError": "Impossible d'envoyer la photo. Vérifiez les permissions."
+    },
+    "deliveryRequest": {
+      "total": "Total",
+      "deliveryFee": "Frais de livraison",
+      "loadError": "Impossible de charger la demande de livraison"
+    },
+    "auth": {
+      "accountCreatedLoginNow": "Compte créé ! Connecte-toi maintenant.",
+      "accountCreatedTitle": "Compte créé",
+      "addPhoto": "Ajouter une photo",
+      "address": "Adresse",
+      "address1Placeholder": "Adresse (ligne 1)",
+      "address2Placeholder": "Complément (ligne 2)",
+      "addressTitle": "Adresse",
+      "cannotLogin": "Impossible de se connecter.",
+      "cannotPickPhoto": "Impossible de choisir une photo.",
+      "cannotSignup": "Impossible de créer le compte.",
+      "changePhoto": "Changer la photo",
+      "cityPlaceholder": "Ville",
+      "countryPlaceholder": "Pays",
+      "email": "Email",
+      "emailPlaceholder": "ex: nom@email.com",
+      "errorTitle": "Erreur",
+      "fullAddressRequired": "Adresse complète requise",
+      "fullName": "Nom complet",
+      "fullNamePlaceholder": "Prénom Nom",
+      "fullNameRequired": "Nom requis",
+      "haveAccount": "Tu as déjà un compte ?",
+      "loginBtn": "Se connecter",
+      "loginFailed": "Connexion échouée",
+      "mainAddressLabel": "Adresse principale",
+      "missingEmailPassword": "Email et mot de passe requis",
+      "missingTitle": "Champs manquants",
+      "noAccount": "Pas encore de compte ?",
+      "password": "Mot de passe",
+      "passwordMin6": "Minimum 6 caractères",
+      "passwordPlaceholder": "Mot de passe",
+      "passwordTitle": "Mot de passe",
+      "permissionBody": "Autorise l’accès aux photos pour choisir une photo de profil.",
+      "permissionTitle": "Permission requise",
+      "phone": "Téléphone",
+      "phonePlaceholder": "ex: +1 555 123 4567",
+      "phoneRequired": "Téléphone requis",
+      "photoTitle": "Photo de profil",
+      "photoUploadSkipped": "Photo ignorée (tu peux l’ajouter plus tard).",
+      "postalPlaceholder": "Code postal",
+      "profilePhoto": "Photo de profil",
+      "profileTitle": "Profil",
+      "sessionNotCreated": "Session non créée.",
+      "signupBtn": "Créer un compte",
+      "signupFailed": "Inscription échouée",
+      "statePlaceholder": "État",
+      "subtitleLogin": "Connecte-toi pour continuer.",
+      "subtitleSignup": "Crée ton compte pour commencer.",
+      "tipStateCountry": "Astuce: ajoute État + Pays pour éviter les erreurs.",
+      "titleLogin": "Connexion",
+      "titleSignup": "Inscription",
+      "verifyEmailThenLogin": "Vérifie ton email puis connecte-toi."
+    }
+  },
+  "location": {
+    "mapUnavailable": "Carte indisponible. Configurez EXPO_PUBLIC_MAPBOX_TOKEN.",
+    "pickerDefaultTitle": "Choisir un emplacement",
+    "useLocation": "Utiliser cet emplacement"
+  },
+  "auth": {
+    "resetPassword": {
+      "title": "Réinitialiser le mot de passe",
+      "email": "E-mail",
+      "sendLink": "Envoyer le lien",
+      "success": "Consultez votre e-mail pour le lien.",
+      "error": "Impossible d'envoyer le lien."
+    }
+  }
+}

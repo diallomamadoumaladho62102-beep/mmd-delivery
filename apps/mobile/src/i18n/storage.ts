@@ -7,7 +7,8 @@ export type Locale = string;
 /**
  * 🔤 Langue globale (UNE SEULE pour toute l’app)
  */
-const GLOBAL_LOCALE_KEY = "mmd_locale_global";
+export const GLOBAL_LOCALE_KEY = "mmd_locale_global";
+export const LOCALE_USER_SET_KEY = "mmd_locale_user_set";
 
 /**
  * 🔤 Langue par rôle (gardé pour compatibilité / ancien code)

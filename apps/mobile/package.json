@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "i18n:generate": "node scripts/generate-i18n-extras.mjs && node scripts/generate-i18n-flat-maps.mjs && node scripts/apply-i18n-flat-maps.mjs",
+    "test:i18n-coverage": "node scripts/test-i18n-coverage.mjs && node scripts/i18n-coverage.test.mjs",
+    "test:i18n-hardcoded": "node scripts/check-hardcoded-strings.mjs"
   },
   "dependencies": {
     "@mapbox/point-geometry": "^1.1.0",

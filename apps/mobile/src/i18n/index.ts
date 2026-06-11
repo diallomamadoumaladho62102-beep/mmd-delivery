@@ -11,6 +11,24 @@ import {
   isRtlLocale,
   Role,
 } from "./storage";
+import { markLocaleUserSelected, resolveStartupLocale } from "./deviceLocale";
+
+export {
+  markLocaleUserSelected,
+  resolveStartupLocale,
+  detectDeviceLocale,
+  ensureAppLocale,
+} from "./deviceLocale";
+export { SUPPORTED_LANGUAGES, SUPPORTED_LANGUAGE_CODES } from "./languageOptions";
+export type { AppLanguageCode, LanguageOption } from "./languageOptions";
+export {
+  formatMoney,
+  formatMoneyFromCents,
+  formatDateTime,
+  intlLocaleTag,
+  localeForDate,
+} from "./formatters";
+export { rowDirection, textAlignStart, textAlignEnd, mirrorChevron } from "./rtl";
 
 let booted = false;
 
@@ -230,7 +248,8 @@ async function applyRTLIfNeeded(locale: string) {
 export async function setLocaleForRoleAndApply(role: Role, locale: string) {
   const next = ensureAllowedLocale(locale);
 
-  // ✅ global is the source of truth
+  // ✅ global is the source of truth + explicit user choice
+  await markLocaleUserSelected(next);
   await setGlobalLocale(next);
 
   // ✅ keep role value too (compat / future)
@@ -246,9 +265,7 @@ export async function setLocaleForRoleAndApply(role: Role, locale: string) {
  * ✅ Sync locale: read GLOBAL first, then role as fallback
  */
 export async function syncLocaleForRole(role: Role) {
-  const global = await getGlobalLocale();
-  const locale = global || (await getRoleLocale(role)) || DEFAULT_LOCALE;
-  const next = ensureAllowedLocale(locale);
+  const next = ensureAllowedLocale(await resolveStartupLocale());
 
   if (!i18n.isInitialized) {
     await initI18n(next);

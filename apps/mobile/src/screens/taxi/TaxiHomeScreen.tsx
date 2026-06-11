@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import {
   quoteTaxiRide,
@@ -23,19 +24,25 @@ import {
   applyMmdLocationSelection,
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
+import { rowDirection } from "../../i18n/rtl";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
 
-const CLASSES: { key: TaxiVehicleClass; label: string; emoji: string }[] = [
-  { key: "standard", label: "Standard", emoji: "🚕" },
-  { key: "xl", label: "XL", emoji: "🚐" },
-  { key: "premium", label: "Premium", emoji: "✨" },
-];
-
 export default function TaxiHomeScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<TaxiHomeRoute>();
+  const { t } = useTranslation();
+
+  const CLASSES = useMemo(
+    () =>
+      [
+        { key: "standard" as const, label: t("taxi.home.standard", "Standard"), emoji: "🚕" },
+        { key: "xl" as const, label: t("taxi.home.xl", "XL"), emoji: "🚐" },
+        { key: "premium" as const, label: t("taxi.home.premium", "Premium"), emoji: "✨" },
+      ] as const,
+    [t]
+  );
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [pickupLocationId, setPickupLocationId] = useState(
@@ -78,8 +85,8 @@ export default function TaxiHomeScreen() {
   function openPickupPicker() {
     navigation.navigate("MMDLocationPicker", {
       countryCode,
-      title: "Pickup exact location",
-      submitLabel: "Use pickup location",
+      title: t("taxi.home.pickupPickerTitle", "Pickup exact location"),
+      submitLabel: t("taxi.home.usePickup", "Use pickup location"),
       returnTo: "TaxiHome",
       pickerContext: "taxi_pickup",
     });
@@ -88,8 +95,8 @@ export default function TaxiHomeScreen() {
   function openDropoffPicker() {
     navigation.navigate("MMDLocationPicker", {
       countryCode,
-      title: "Dropoff exact location",
-      submitLabel: "Use dropoff location",
+      title: t("taxi.home.dropoffPickerTitle", "Dropoff exact location"),
+      submitLabel: t("taxi.home.useDropoff", "Use dropoff location"),
       returnTo: "TaxiHome",
       pickerContext: "taxi_dropoff",
     });
@@ -102,7 +109,10 @@ export default function TaxiHomeScreen() {
     const hasDropoffLocation = Boolean(dropoffLocationId.trim());
 
     if ((!pickupAddress && !hasPickupLocation) || (!dropoffAddress && !hasDropoffLocation)) {
-      Alert.alert("Missing address", "Enter pickup and dropoff addresses.");
+      Alert.alert(
+        t("taxi.home.missingAddress", "Missing address"),
+        t("taxi.home.missingAddressBody", "Enter pickup and dropoff addresses.")
+      );
       return;
     }
 
@@ -137,11 +147,11 @@ export default function TaxiHomeScreen() {
         route: result.route,
       });
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Unable to get estimate";
+      const message = e instanceof Error ? e.message : t("taxi.home.quoteFailed", "Unable to get estimate");
       Alert.alert(
-        "Estimate failed",
+        t("taxi.home.estimateFailed", "Estimate failed"),
         message === "country_mismatch" || message.includes("country")
-          ? "Pickup location does not match selected country."
+          ? t("taxi.home.countryMismatch", "Pickup location does not match selected country.")
           : message
       );
     } finally {
@@ -154,14 +164,16 @@ export default function TaxiHomeScreen() {
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", fontSize: 16 }}>← Back</Text>
+          <Text style={{ color: "#93C5FD", fontSize: 16 }}>
+            {t("taxi.common.back", "← Back")}
+          </Text>
         </TouchableOpacity>
 
         <Text style={{ color: "#fff", fontSize: 28, fontWeight: "800" }}>
-          MMD Taxi
+          {t("taxi.home.title", "MMD Taxi")}
         </Text>
         <Text style={{ color: "#94A3B8", fontSize: 15 }}>
-          Book a ride — separate from delivery packages.
+          {t("taxi.home.subtitle", "Book a ride — separate from delivery packages.")}
         </Text>
 
         <View style={{ gap: 10 }}>
@@ -180,11 +192,13 @@ export default function TaxiHomeScreen() {
         </View>
 
         <View style={{ gap: 10 }}>
-          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Pickup</Text>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+            {t("taxi.home.pickup", "Pickup")}
+          </Text>
           <TextInput
             value={pickup}
             onChangeText={setPickup}
-            placeholder="Pickup address"
+            placeholder={t("taxi.home.pickupPlaceholder", "Pickup address")}
             placeholderTextColor="#64748B"
             style={inputStyle}
           />
@@ -202,17 +216,21 @@ export default function TaxiHomeScreen() {
             }}
           >
             <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
-              {pickupLocationId ? "Pickup pinned on map" : "Pin exact pickup on map"}
+              {pickupLocationId
+                ? t("taxi.home.pickupPinned", "Pickup pinned on map")
+                : t("taxi.home.pinPickup", "Pin exact pickup on map")}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={{ gap: 10 }}>
-          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Dropoff</Text>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+            {t("taxi.home.dropoff", "Dropoff")}
+          </Text>
           <TextInput
             value={dropoff}
             onChangeText={setDropoff}
-            placeholder="Dropoff address"
+            placeholder={t("taxi.home.dropoffPlaceholder", "Dropoff address")}
             placeholderTextColor="#64748B"
             style={inputStyle}
           />
@@ -230,14 +248,18 @@ export default function TaxiHomeScreen() {
             }}
           >
             <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
-              {dropoffLocationId ? "Dropoff pinned on map" : "Pin exact dropoff on map"}
+              {dropoffLocationId
+                ? t("taxi.home.dropoffPinned", "Dropoff pinned on map")
+                : t("taxi.home.pinDropoff", "Pin exact dropoff on map")}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={{ gap: 10 }}>
-          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>Vehicle</Text>
-          <View style={{ flexDirection: "row", gap: 10 }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+            {t("taxi.home.vehicle", "Vehicle")}
+          </Text>
+          <View style={{ flexDirection: rowDirection(), gap: 10 }}>
             {CLASSES.map((item) => {
               const selected = vehicleClass === item.key;
               return (
@@ -287,44 +309,44 @@ export default function TaxiHomeScreen() {
             <ActivityIndicator color="#111827" />
           ) : (
             <Text style={{ color: "#111827", fontWeight: "800", fontSize: 16 }}>
-              Get estimate
+              {t("taxi.home.getEstimate", "Get estimate")}
             </Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("TaxiHistory")}>
           <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            View ride history
+            {t("taxi.home.history", "View ride history")}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("TaxiFavorites")}>
           <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            Favorite drivers
+            {t("taxi.home.favorites", "Favorite drivers")}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("TaxiLoyalty")}>
           <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            Loyalty points
+            {t("taxi.home.loyalty", "Loyalty points")}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("TaxiScheduled")}>
           <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            Scheduled rides
+            {t("taxi.home.scheduled", "Scheduled rides")}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("TaxiMultiStop")}>
           <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            Multi-stop ride
+            {t("taxi.home.multiStop", "Multi-stop ride")}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("TaxiLoyaltyRewards")}>
           <Text style={{ color: "#93C5FD", textAlign: "center" }}>
-            Loyalty rewards
+            {t("taxi.home.loyaltyRewards", "Loyalty rewards")}
           </Text>
         </TouchableOpacity>
       </ScrollView>

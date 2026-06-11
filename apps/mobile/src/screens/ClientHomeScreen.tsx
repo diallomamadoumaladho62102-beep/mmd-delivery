@@ -27,6 +27,8 @@ import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 import { setLocaleForRoleAndApply } from "../i18n";
+import type { AppLanguageCode } from "../i18n/languageOptions";
+import LanguagePicker from "../components/LanguagePicker";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientHome">;
@@ -1388,7 +1390,7 @@ export function ClientHomeScreen() {
   const currentLang = (i18n.language || "en").split("-")[0];
 
   const changeLang = useCallback(
-    async (lang: "en" | "fr" | "es") => {
+    async (lang: AppLanguageCode) => {
       try {
         await setLocaleForRoleAndApply("client", lang);
       } catch {
@@ -1611,25 +1613,12 @@ export function ClientHomeScreen() {
                 }}
                 style={premiumStyles.headerRight}
               >
-                <View style={premiumStyles.langRow}>
-                  {(["en", "fr", "es"] as const).map((lang) => {
-                    const active = currentLang === lang;
-                    return (
-                      <TouchableOpacity
-                        key={lang}
-                        activeOpacity={0.9}
-                        onPress={() => {
-                          void changeLang(lang);
-                        }}
-                        style={[premiumStyles.langButton, active && premiumStyles.langButtonActive]}
-                      >
-                        <Text style={[premiumStyles.langText, active && premiumStyles.langTextActive]}>
-                          {lang}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                <LanguagePicker
+                  compact
+                  currentCode={currentLang}
+                  onSelect={changeLang}
+                  style={premiumStyles.langRow}
+                />
 
                 <TouchableOpacity
                   activeOpacity={0.9}
