@@ -48,6 +48,8 @@ export type MarketplaceOrderDraft = {
   total_cents: number;
   country_code: string | null;
   region_code: string | null;
+  pickup_location_id?: string | null;
+  dropoff_location_id?: string | null;
   notes: string | null;
   checkout_shadow?: {
     checkout_enabled?: boolean;
@@ -130,6 +132,8 @@ export async function saveMarketplaceDraft(input: {
   orderId?: string;
   items: Array<{ product_id: string; quantity: number }>;
   notes?: string;
+  pickupLocationId?: string | null;
+  dropoffLocationId?: string | null;
 }): Promise<MarketplaceOrderDraft> {
   const body = await marketplaceFetch("/api/marketplace/cart/draft", {
     method: "POST",
@@ -138,6 +142,8 @@ export async function saveMarketplaceDraft(input: {
       order_id: input.orderId,
       items: input.items,
       notes: input.notes ?? null,
+      pickup_location_id: input.pickupLocationId ?? null,
+      dropoff_location_id: input.dropoffLocationId ?? null,
     }),
   });
   return body.order;

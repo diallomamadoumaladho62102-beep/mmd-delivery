@@ -48,6 +48,8 @@ export async function GET(request: NextRequest) {
         platform_margin_shadow_cents: row.platform_margin_shadow_cents,
         delivery_status_shadow: row.delivery_status_shadow,
         dispatch_readiness: dispatch.dispatch_readiness ?? null,
+        live_dispatch_enabled: dispatch.live_dispatch_enabled === true,
+        drivers_notified: dispatch.drivers_notified === true,
         dispatch_shadow: row.dispatch_shadow,
         delivery_quote_shadow: row.delivery_quote_shadow,
         created_at: row.created_at,

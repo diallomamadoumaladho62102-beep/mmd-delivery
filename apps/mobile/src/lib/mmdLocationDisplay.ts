@@ -5,7 +5,8 @@ export type MmdLocationPickerContext =
   | "taxi_dropoff"
   | "taxi_quote_pickup"
   | "taxi_quote_dropoff"
-  | "delivery_dropoff";
+  | "delivery_dropoff"
+  | "marketplace_dropoff";
 
 export type MmdLocationPickerResult = {
   context: MmdLocationPickerContext;

@@ -177,6 +177,26 @@ async function attachOrderItems(
   return { ...order, items: (data as MarketplaceOrderItemRow[]) ?? [] };
 }
 
+async function assertClientOwnsLocationPoint(
+  supabaseAdmin: SupabaseClient,
+  locationId: string,
+  clientUserId: string,
+  label: string
+): Promise<string> {
+  const { data, error } = await supabaseAdmin
+    .from("location_points")
+    .select("id,owner_user_id")
+    .eq("id", locationId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data || String(data.owner_user_id) !== clientUserId) {
+    throw new Error(`Invalid ${label}`);
+  }
+
+  return String(data.id);
+}
+
 export async function upsertMarketplaceDraftOrder(
   supabaseAdmin: SupabaseClient,
   params: {
@@ -193,6 +213,24 @@ export async function upsertMarketplaceDraftOrder(
   const productIds = params.items.map((item) => item.product_id);
   if (productIds.length === 0) {
     throw new Error("Cart is empty");
+  }
+
+  if (params.pickupLocationId) {
+    await assertClientOwnsLocationPoint(
+      supabaseAdmin,
+      params.pickupLocationId,
+      params.clientUserId,
+      "pickup_location_id"
+    );
+  }
+
+  if (params.dropoffLocationId) {
+    await assertClientOwnsLocationPoint(
+      supabaseAdmin,
+      params.dropoffLocationId,
+      params.clientUserId,
+      "dropoff_location_id"
+    );
   }
 
   const { data: products, error: productsError } = await supabaseAdmin
@@ -271,6 +309,8 @@ export async function upsertMarketplaceDraftOrder(
     service_fee_cents: shadow.service_fee_cents,
     total_cents: shadow.total_cents,
     country_code: params.countryCode ?? null,
+    pickup_location_id: params.pickupLocationId ?? null,
+    dropoff_location_id: params.dropoffLocationId ?? null,
     notes: params.notes?.trim() || null,
     checkout_shadow: shadow,
     updated_at: new Date().toISOString(),

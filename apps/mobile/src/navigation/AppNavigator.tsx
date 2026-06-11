@@ -128,13 +128,14 @@ export type RootStackParamList = {
     countryCode?: string;
     title?: string;
     submitLabel?: string;
-    returnTo: "TaxiHome" | "TaxiQuote" | "DeliveryRequest";
+    returnTo: "TaxiHome" | "TaxiQuote" | "DeliveryRequest" | "MarketplaceCart";
     pickerContext:
       | "taxi_pickup"
       | "taxi_dropoff"
       | "taxi_quote_pickup"
       | "taxi_quote_dropoff"
-      | "delivery_dropoff";
+      | "delivery_dropoff"
+      | "marketplace_dropoff";
   };
 
   RestaurantGate: undefined;
@@ -154,7 +155,12 @@ export type RootStackParamList = {
     sellerName: string;
     productId: string;
   };
-  MarketplaceCart: { sellerId: string; sellerName: string; orderId?: string };
+  MarketplaceCart: {
+    sellerId: string;
+    sellerName: string;
+    orderId?: string;
+    locationPickerResult?: MmdLocationPickerResult;
+  };
 
   ClientHome: undefined;
   ClientNewOrder: undefined;
