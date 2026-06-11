@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 const PROJECT_ID = "127751ea-33ce-4f67-98ce-a9b29a46b838";
 const ANDROID_PACKAGE = "com.maladho2025.mmddelivery";
 const IOS_BUNDLE_ID = "com.maladho2025.mmddelivery";
@@ -59,6 +57,14 @@ export default ({ config }) => {
     env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN
   );
   const EAS_BUILD_PROFILE = cleanEnv(env.EAS_BUILD_PROFILE);
+
+  console.log(
+    "[MMD STRIPE CHECK]",
+    EXPO_PUBLIC_STRIPE_PK.substring(0, 12),
+    "profile=" + (EAS_BUILD_PROFILE || "(unset)"),
+    "eas=" + Boolean(env.EAS_BUILD_ID)
+  );
+
   const EXPO_PUBLIC_LEGAL_PRIVACY_URL =
     cleanEnv(env.EXPO_PUBLIC_LEGAL_PRIVACY_URL) ||
     "https://www.mmddelivery.com/legal/privacy";
