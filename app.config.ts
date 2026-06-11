@@ -1,21 +1,15 @@
 import "dotenv/config";
-import type { ConfigContext, ExpoConfig } from "expo/config";
 
 const PROJECT_ID = "127751ea-33ce-4f67-98ce-a9b29a46b838";
 const ANDROID_PACKAGE = "com.maladho2025.mmddelivery";
 const IOS_BUNDLE_ID = "com.maladho2025.mmddelivery";
 const STRIPE_MERCHANT_ID = "merchant.com.maladho2025.mmddelivery";
 
-function cleanEnv(value: string | undefined): string {
-  return (value ?? "").trim();
+function cleanEnv(value) {
+  return String(value ?? "").trim();
 }
 
-function assertStripePublishableKeyForEasBuild(params: {
-  easBuildProfile: string;
-  stripePublishableKey: string;
-}) {
-  const { easBuildProfile, stripePublishableKey } = params;
-
+function assertStripePublishableKeyForEasBuild(easBuildProfile, stripePublishableKey) {
   if (easBuildProfile !== "production") {
     if (
       stripePublishableKey &&
@@ -48,7 +42,7 @@ function assertStripePublishableKeyForEasBuild(params: {
   }
 }
 
-export default ({ config }: ConfigContext): ExpoConfig => {
+export default ({ config }) => {
   const env = process.env;
   const APP_ENV =
     env.APP_ENV === "production" ? "production" : "development";
@@ -75,10 +69,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     cleanEnv(env.EXPO_PUBLIC_SUPPORT_URL) ||
     "https://www.mmddelivery.com/legal/support";
 
-  assertStripePublishableKeyForEasBuild({
-    easBuildProfile: EAS_BUILD_PROFILE,
-    stripePublishableKey: EXPO_PUBLIC_STRIPE_PK,
-  });
+  assertStripePublishableKeyForEasBuild(
+    EAS_BUILD_PROFILE,
+    EXPO_PUBLIC_STRIPE_PK
+  );
 
   const API_URL =
     APP_ENV === "production"
@@ -143,7 +137,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...existingIos,
       bundleIdentifier: IOS_BUNDLE_ID,
-      buildNumber: "1.0.0",
       supportsTablet: true,
       associatedDomains: [
         "applinks:www.mmddelivery.com",
@@ -171,7 +164,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...existingAndroid,
       package: ANDROID_PACKAGE,
-      versionCode: 1,
       permissions: [
         "INTERNET",
         "POST_NOTIFICATIONS",
