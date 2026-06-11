@@ -10,11 +10,15 @@ type MarketplaceOrderRow = {
   seller_id: string;
   client_user_id: string | null;
   status: string;
+  payment_status?: string | null;
   currency: string;
   subtotal_cents: number;
   delivery_fee_cents: number;
   service_fee_cents: number;
   total_cents: number;
+  stripe_checkout_session_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+  paid_at?: string | null;
   created_at: string;
   sellers?: { business_name?: string | null } | null;
   seller_order_items?: Array<{
@@ -55,7 +59,7 @@ export default function AdminMarketplaceOrdersPage() {
       <div style={{ padding: 24, color: "#E2E8F0" }}>
         <h1 style={{ fontSize: 28, marginBottom: 8 }}>Marketplace Orders (Draft / Checkout)</h1>
         <p style={{ color: "#94A3B8", marginBottom: 20 }}>
-          Shadow checkout drafts only — no marketplace payouts or live Stripe checkout.
+          Draft, shadow checkout, and live payment preparation — payouts and marketplace dispatch remain off until go-live.
         </p>
 
         {!canView ? (
@@ -63,7 +67,8 @@ export default function AdminMarketplaceOrdersPage() {
         ) : (
           <>
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              {["all", "draft", "pending_checkout"].map((value) => (
+              {["all", "draft", "pending_checkout", "pending_payment", "paid", "payment_failed"].map(
+                (value) => (
                 <button
                   key={value}
                   type="button"
@@ -78,7 +83,8 @@ export default function AdminMarketplaceOrdersPage() {
                 >
                   {value}
                 </button>
-              ))}
+              )
+              )}
             </div>
 
             {loading ? (
@@ -101,7 +107,8 @@ export default function AdminMarketplaceOrdersPage() {
                       <div>
                         <strong>{row.sellers?.business_name ?? "Seller"}</strong>
                         <div style={{ color: "#94A3B8", fontSize: 13 }}>
-                          {row.status} · {row.id}
+                          {row.status}
+                          {row.payment_status ? ` · pay ${row.payment_status}` : ""} · {row.id}
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
@@ -113,6 +120,14 @@ export default function AdminMarketplaceOrdersPage() {
                         </div>
                       </div>
                     </div>
+                    {(row.stripe_checkout_session_id || row.paid_at) && (
+                      <div style={{ marginTop: 8, color: "#64748B", fontSize: 12 }}>
+                        {row.stripe_checkout_session_id
+                          ? `stripe session ${row.stripe_checkout_session_id}`
+                          : null}
+                        {row.paid_at ? ` · paid_at ${row.paid_at}` : null}
+                      </div>
+                    )}
                     {(row.seller_order_items ?? []).length > 0 && (
                       <ul style={{ marginTop: 12, paddingLeft: 18, color: "#CBD5E1" }}>
                         {(row.seller_order_items ?? []).map((item) => (

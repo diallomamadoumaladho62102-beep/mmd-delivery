@@ -17,9 +17,16 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("seller_orders")
       .select(
-        "id,seller_id,client_user_id,status,currency,subtotal_cents,delivery_fee_cents,service_fee_cents,total_cents,country_code,region_code,notes,checkout_shadow,created_at,updated_at,sellers(business_name),seller_order_items(id,product_id,title,price_cents,quantity,currency)"
+        "id,seller_id,client_user_id,status,payment_status,currency,subtotal_cents,delivery_fee_cents,service_fee_cents,total_cents,country_code,region_code,notes,checkout_shadow,stripe_checkout_session_id,stripe_payment_intent_id,paid_at,created_at,updated_at,sellers(business_name),seller_order_items(id,product_id,title,price_cents,quantity,currency)"
       )
-      .in("status", ["draft", "pending_checkout"])
+      .in("status", [
+        "draft",
+        "pending_checkout",
+        "pending_payment",
+        "paid",
+        "payment_failed",
+        "cancelled",
+      ])
       .order("created_at", { ascending: false })
       .limit(200);
 

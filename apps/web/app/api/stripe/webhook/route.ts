@@ -25,6 +25,14 @@ import {
   isTaxiStripeModule,
   pickTaxiRideIdFromMetadata,
 } from "@/lib/taxiStripeWebhook";
+import {
+  getMarketplaceStripeAmountFromCheckoutSession,
+  getMarketplaceStripeAmountFromPaymentIntent,
+  handleMarketplaceStripePayment,
+  isMarketplaceCheckoutSessionPaid,
+  isMarketplaceStripeModule,
+  pickSellerOrderIdFromMetadata,
+} from "@/lib/marketplaceStripeWebhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1253,6 +1261,60 @@ async function handleCheckoutCompletedLikeEvent(
     });
   }
 
+  if (isMarketplaceStripeModule(metadata)) {
+    const sellerOrderId = pickSellerOrderIdFromMetadata(metadata);
+
+    if (!sellerOrderId) {
+      return json({
+        received: true,
+        ignored: "missing seller_order_id for module=marketplace",
+        type: event.type,
+      });
+    }
+
+    if (!isMarketplaceCheckoutSessionPaid(session)) {
+      return json({
+        received: true,
+        ok: true,
+        seller_order_id: sellerOrderId,
+        type: event.type,
+        ignored: "session_not_paid",
+        payment_status: session.payment_status,
+      });
+    }
+
+    const marketplaceResult = await handleMarketplaceStripePayment({
+      supabaseAdmin,
+      sellerOrderId,
+      sessionId,
+      paymentIntentId,
+      expectedAmountCents: getMarketplaceStripeAmountFromCheckoutSession(session),
+      expectedCurrency: sessionCurrency,
+      source: `webhook:${event.type}`,
+    });
+
+    if (!marketplaceResult.ok) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: marketplaceResult.error,
+          seller_order_id: sellerOrderId,
+        },
+        marketplaceResult.error === "seller_order_not_found" ? 404 : 500
+      );
+    }
+
+    return json({
+      received: true,
+      ok: true,
+      seller_order_id: sellerOrderId,
+      already_paid: marketplaceResult.already_paid ?? false,
+      ignored: marketplaceResult.ignored,
+      type: event.type,
+    });
+  }
+
   if (!orderId && !deliveryRequestId) {
     return json({
       received: true,
@@ -1777,6 +1839,48 @@ async function handlePaymentIntentSucceeded(
       ok: true,
       taxi_ride_id: taxiRideId,
       already_paid: taxiResult.already_paid ?? false,
+      type: event.type,
+    });
+  }
+
+  if (isMarketplaceStripeModule(metadata)) {
+    const sellerOrderId = pickSellerOrderIdFromMetadata(metadata);
+
+    if (!sellerOrderId) {
+      return json({
+        received: true,
+        ignored: "missing seller_order_id for module=marketplace",
+        type: event.type,
+      });
+    }
+
+    const marketplaceResult = await handleMarketplaceStripePayment({
+      supabaseAdmin,
+      sellerOrderId,
+      paymentIntentId,
+      expectedAmountCents: getMarketplaceStripeAmountFromPaymentIntent(pi),
+      expectedCurrency: piCurrency,
+      source: "webhook:payment_intent.succeeded",
+    });
+
+    if (!marketplaceResult.ok) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: marketplaceResult.error,
+          seller_order_id: sellerOrderId,
+        },
+        marketplaceResult.error === "seller_order_not_found" ? 404 : 500
+      );
+    }
+
+    return json({
+      received: true,
+      ok: true,
+      seller_order_id: sellerOrderId,
+      already_paid: marketplaceResult.already_paid ?? false,
+      ignored: marketplaceResult.ignored,
       type: event.type,
     });
   }

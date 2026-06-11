@@ -11,6 +11,7 @@
     "test:delivery-pricing-v2": "npx tsx src/lib/deliveryPricingEngine/deliveryPricingEngine.test.ts",
     "test:marketplace-checkout": "npx tsx src/lib/marketplaceCheckout.test.ts",
     "test:marketplace-delivery-shadow": "npx tsx src/lib/marketplaceDeliveryShadow.test.ts",
+    "test:marketplace-live-checkout": "npx tsx src/lib/marketplaceLiveCheckout.test.ts",
     "test:marketplace-shadow": "node scripts/smoke-marketplace-shadow.mjs"
   },
   "dependencies": {

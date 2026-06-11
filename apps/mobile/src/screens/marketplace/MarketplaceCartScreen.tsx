@@ -7,14 +7,17 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import {
   fetchMarketplaceDraft,
+  fetchMarketplaceLiveCheckoutCapabilities,
   formatMarketplaceMoney,
   runMarketplaceCheckout,
+  runMarketplaceLiveCheckout,
   saveMarketplaceDraft,
   type MarketplaceOrderDraft,
 } from "../../lib/marketplaceApi";
@@ -43,6 +46,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
   const [savingLocation, setSavingLocation] = useState(false);
   const [dropoffLocationId, setDropoffLocationId] = useState<string | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState("");
+  const [liveCheckoutEnabled, setLiveCheckoutEnabled] = useState(false);
 
   const marketplaceScope = useMemo<MarketplaceScopeInput>(
     () => ({
@@ -82,6 +86,12 @@ export default function MarketplaceCartScreen({ route }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void fetchMarketplaceLiveCheckoutCapabilities().then((caps) => {
+      setLiveCheckoutEnabled(caps.live_checkout_enabled);
+    });
+  }, []);
 
   useMmdLocationPickerResult(route, navigation, {
     marketplace_dropoff: (location) => {
@@ -153,6 +163,9 @@ export default function MarketplaceCartScreen({ route }: Props) {
         : draft;
       const body = await runMarketplaceCheckout(refreshed?.id ?? draft.id, marketplaceScope);
       setDraft(body.order ?? refreshed ?? draft);
+      if (body.live_checkout_enabled === true) {
+        setLiveCheckoutEnabled(true);
+      }
       Alert.alert(
         body.checkout_enabled
           ? t("marketplace.cart.checkoutReadyTitle", "Checkout prepared")
@@ -163,6 +176,32 @@ export default function MarketplaceCartScreen({ route }: Props) {
             "Marketplace checkout coming soon. Shadow totals were calculated only."
           )
       );
+    } catch (e) {
+      Alert.alert(
+        t("marketplace.cart.errorTitle", "Cart error"),
+        e instanceof Error ? e.message : "Unknown error"
+      );
+    } finally {
+      setCheckingOut(false);
+    }
+  }
+
+  async function handleLiveCheckout() {
+    if (!draft?.id) return;
+    try {
+      setCheckingOut(true);
+      const refreshed = dropoffLocationId
+        ? await persistDraftWithLocations(dropoffLocationId)
+        : draft;
+      const body = await runMarketplaceLiveCheckout(
+        refreshed?.id ?? draft.id,
+        marketplaceScope
+      );
+      if (body.order) setDraft(body.order);
+      if (!body.checkout_url) {
+        throw new Error("Missing checkout URL");
+      }
+      await Linking.openURL(body.checkout_url);
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
@@ -358,6 +397,24 @@ export default function MarketplaceCartScreen({ route }: Props) {
                     : t("marketplace.cart.comingSoonCta", "Marketplace checkout coming soon")}
               </Text>
             </TouchableOpacity>
+
+            {liveCheckoutEnabled ? (
+              <TouchableOpacity
+                disabled={checkingOut}
+                onPress={() => void handleLiveCheckout()}
+                style={{
+                  backgroundColor: "#7C3AED",
+                  padding: 14,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  opacity: checkingOut ? 0.7 : 1,
+                }}
+              >
+                <Text style={{ color: "#FFF", fontWeight: "700" }}>
+                  {t("marketplace.cart.payLive", "Pay Marketplace Order")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </>
         )}
       </ScrollView>

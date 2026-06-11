@@ -44,6 +44,10 @@ export type MarketplaceOrderRow = {
   driver_earning_shadow_cents?: number | null;
   platform_margin_shadow_cents?: number | null;
   dispatch_shadow?: Record<string, unknown> | null;
+  stripe_checkout_session_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+  paid_at?: string | null;
+  payment_status?: string | null;
   created_at: string;
   updated_at: string;
   items?: MarketplaceOrderItemRow[];
@@ -125,7 +129,7 @@ export async function loadApprovedSellers(supabaseAdmin: SupabaseClient) {
 }
 
 const ORDER_SELECT =
-  "id,seller_id,client_user_id,status,currency,subtotal_cents,delivery_fee_cents,service_fee_cents,total_cents,country_code,region_code,notes,checkout_shadow,pickup_location_id,dropoff_location_id,seller_pickup_address,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,platform_margin_shadow_cents,dispatch_shadow,created_at,updated_at";
+  "id,seller_id,client_user_id,status,currency,subtotal_cents,delivery_fee_cents,service_fee_cents,total_cents,country_code,region_code,notes,checkout_shadow,pickup_location_id,dropoff_location_id,seller_pickup_address,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,platform_margin_shadow_cents,dispatch_shadow,stripe_checkout_session_id,stripe_payment_intent_id,paid_at,payment_status,created_at,updated_at";
 
 export async function getClientDraftOrder(
   supabaseAdmin: SupabaseClient,

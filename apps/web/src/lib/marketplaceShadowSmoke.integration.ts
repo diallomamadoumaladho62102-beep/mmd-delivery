@@ -267,6 +267,37 @@ async function main() {
   }
   ok("HTTP POST checkout shadow", "no Stripe");
 
+  const { res: liveGetRes, body: liveGetBody } = await authFetch(
+    token,
+    "/api/marketplace/checkout/live"
+  );
+  if (liveGetRes.status === 404) {
+    ok("live checkout GET", "route pending deploy on remote API");
+  } else if (!liveGetRes.ok || liveGetBody?.live_checkout_enabled !== false) {
+    fail("live checkout GET should report disabled by default");
+  } else {
+    ok("live checkout flag off", "MARKETPLACE_CHECKOUT_LIVE_ENABLED=false");
+  }
+
+  const { res: livePostRes, body: livePostBody } = await authFetch(
+    token,
+    `/api/marketplace/checkout/live${scopeQs}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ order_id: httpOrderId }),
+    }
+  );
+  if (livePostRes.status === 404) {
+    ok("live checkout POST blocked", "route pending deploy on remote API");
+  } else if (
+    livePostRes.status !== 403 ||
+    livePostBody?.error !== "marketplace_live_checkout_disabled"
+  ) {
+    fail(`live checkout POST should be blocked: ${livePostBody?.error ?? livePostRes.status}`);
+  } else {
+    ok("live checkout POST blocked", "no Stripe session created");
+  }
+
   const { res: sellersNoScopeRes, body: sellersNoScopeBody } = await authFetch(
     token,
     "/api/marketplace/sellers"

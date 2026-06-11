@@ -1,0 +1,267 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
+import {
+  computeMarketplaceCheckoutShadow,
+  type MarketplaceCheckoutShadow,
+} from "@/lib/marketplaceCheckout";
+import {
+  getClientDraftOrder,
+  type MarketplaceOrderRow,
+} from "@/lib/marketplaceOrderService";
+import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout";
+
+type ApprovedSellerRow = {
+  id: string;
+  status: string;
+  business_name: string;
+};
+
+function normalizeCurrency(value: unknown): string {
+  const code = String(value ?? "USD")
+    .trim()
+    .toUpperCase();
+  return /^[A-Z]{3}$/.test(code) ? code : "USD";
+}
+
+function buildPublicBaseUrl(): string {
+  const candidate =
+    process.env.NEXT_PUBLIC_WEB_BASE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://www.mmddelivery.com";
+  return candidate.replace(/\/+$/, "");
+}
+
+function buildMarketplaceCheckoutUrls(sellerOrderId: string) {
+  const base = buildPublicBaseUrl();
+  const successBase =
+    process.env.STRIPE_CHECKOUT_SUCCESS_URL || `${base}/stripe/success`;
+  const cancelBase =
+    process.env.STRIPE_CHECKOUT_CANCEL_URL || `${base}/stripe/cancel`;
+
+  return {
+    successUrl: `${successBase.replace(/\/$/, "")}?seller_order_id=${encodeURIComponent(sellerOrderId)}`,
+    cancelUrl: `${cancelBase.replace(/\/$/, "")}?seller_order_id=${encodeURIComponent(sellerOrderId)}`,
+  };
+}
+
+function paymentIntentIdFromUnknown(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (value && typeof value === "object" && "id" in value) {
+    const maybeId = (value as { id?: unknown }).id;
+    if (typeof maybeId === "string" && maybeId.trim()) return maybeId.trim();
+  }
+  return null;
+}
+
+async function assertApprovedSeller(
+  supabaseAdmin: SupabaseClient,
+  sellerId: string
+): Promise<ApprovedSellerRow> {
+  const { data, error } = await supabaseAdmin
+    .from("sellers")
+    .select("id,status,business_name")
+    .eq("id", sellerId)
+    .eq("status", "approved")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Seller not approved");
+  return data as ApprovedSellerRow;
+}
+
+async function assertActiveOrderProducts(
+  supabaseAdmin: SupabaseClient,
+  order: MarketplaceOrderRow
+): Promise<MarketplaceCheckoutShadow> {
+  const items = order.items ?? [];
+  if (items.length === 0) throw new Error("Cart is empty");
+
+  const productIds = [
+    ...new Set(items.map((item) => String(item.product_id ?? "")).filter(Boolean)),
+  ];
+
+  const { data: products, error } = await supabaseAdmin
+    .from("seller_products")
+    .select("id,price_cents,active")
+    .eq("seller_id", order.seller_id)
+    .in("id", productIds)
+    .eq("active", true);
+
+  if (error) throw new Error(error.message);
+
+  const activeIds = new Set((products ?? []).map((row) => row.id));
+  for (const item of items) {
+    if (!item.product_id || !activeIds.has(item.product_id)) {
+      throw new Error(`Inactive or invalid product: ${item.title}`);
+    }
+  }
+
+  return computeMarketplaceCheckoutShadow(
+    items.map((item) => ({
+      price_cents: item.price_cents,
+      quantity: item.quantity,
+    })),
+    {
+      deliveryFeeCents: order.delivery_fee_cents,
+      serviceFeeCents: order.service_fee_cents,
+    }
+  );
+}
+
+export async function prepareMarketplaceLiveCheckoutOrder(
+  supabaseAdmin: SupabaseClient,
+  params: {
+    clientUserId: string;
+    orderId: string;
+    platformCheckoutEnabled: boolean;
+  }
+): Promise<{ order: MarketplaceOrderRow; totals: MarketplaceCheckoutShadow; seller: ApprovedSellerRow }> {
+  if (!isMarketplaceCheckoutLiveEnabled()) {
+    throw new Error("marketplace_live_checkout_disabled");
+  }
+
+  if (!params.platformCheckoutEnabled) {
+    throw new Error("platform_checkout_disabled");
+  }
+
+  const order = await getClientDraftOrder(supabaseAdmin, {
+    clientUserId: params.clientUserId,
+    orderId: params.orderId,
+  });
+
+  if (!order) throw new Error("Draft order not found");
+  if (order.client_user_id !== params.clientUserId) throw new Error("Order access denied");
+  if (!["draft", "pending_checkout"].includes(order.status)) {
+    throw new Error("Order is not eligible for live checkout");
+  }
+  if (order.payment_status === "paid" || order.status === "paid") {
+    throw new Error("Order already paid");
+  }
+
+  const seller = await assertApprovedSeller(supabaseAdmin, order.seller_id);
+  const totals = await assertActiveOrderProducts(supabaseAdmin, order);
+
+  if (totals.total_cents <= 0) throw new Error("Invalid order total");
+
+  return { order, totals, seller };
+}
+
+export async function createMarketplaceLiveCheckoutSession(
+  supabaseAdmin: SupabaseClient,
+  params: {
+    clientUserId: string;
+    orderId: string;
+    platformCheckoutEnabled: boolean;
+  }
+): Promise<{
+  order: MarketplaceOrderRow;
+  checkoutUrl: string;
+  stripeCheckoutSessionId: string;
+  stripePaymentIntentId: string | null;
+  totals: MarketplaceCheckoutShadow;
+}> {
+  const { order, totals, seller } = await prepareMarketplaceLiveCheckoutOrder(
+    supabaseAdmin,
+    params
+  );
+
+  const currency = normalizeCurrency(order.currency).toLowerCase();
+  const { successUrl, cancelUrl } = buildMarketplaceCheckoutUrls(order.id);
+
+  const existingSessionId = String(order.stripe_checkout_session_id ?? "").trim();
+  if (existingSessionId) {
+    try {
+      const existing = await stripe.checkout.sessions.retrieve(existingSessionId);
+      if (
+        existing.status === "open" &&
+        existing.url &&
+        existing.payment_status !== "paid"
+      ) {
+        return {
+          order,
+          checkoutUrl: existing.url,
+          stripeCheckoutSessionId: existing.id,
+          stripePaymentIntentId: paymentIntentIdFromUnknown(existing.payment_intent),
+          totals,
+        };
+      }
+    } catch {
+      // create a fresh session below
+    }
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    client_reference_id: order.id,
+    customer_email: undefined,
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency,
+          unit_amount: totals.total_cents,
+          product_data: {
+            name: `MMD Marketplace — ${seller.business_name}`,
+            description: `Seller order ${order.id.slice(0, 8)}`,
+          },
+        },
+      },
+    ],
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: {
+      module: "marketplace",
+      seller_order_id: order.id,
+      seller_id: order.seller_id,
+      client_user_id: params.clientUserId,
+    },
+    payment_intent_data: {
+      metadata: {
+        module: "marketplace",
+        seller_order_id: order.id,
+        seller_id: order.seller_id,
+        client_user_id: params.clientUserId,
+      },
+    },
+  });
+
+  if (!session.url) throw new Error("Stripe session missing checkout URL");
+
+  const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
+
+  const { error: updateError } = await supabaseAdmin
+    .from("seller_orders")
+    .update({
+      status: "pending_payment",
+      payment_status: "pending",
+      subtotal_cents: totals.subtotal_cents,
+      delivery_fee_cents: totals.delivery_fee_cents,
+      service_fee_cents: totals.service_fee_cents,
+      total_cents: totals.total_cents,
+      checkout_shadow: totals,
+      stripe_checkout_session_id: session.id,
+      stripe_payment_intent_id: paymentIntentId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", order.id)
+    .eq("client_user_id", params.clientUserId)
+    .in("status", ["draft", "pending_checkout", "pending_payment"]);
+
+  if (updateError) throw new Error(updateError.message);
+
+  const refreshed = await getClientDraftOrder(supabaseAdmin, {
+    clientUserId: params.clientUserId,
+    orderId: order.id,
+  });
+
+  if (!refreshed) throw new Error("Failed to refresh marketplace order");
+
+  return {
+    order: refreshed,
+    checkoutUrl: session.url,
+    stripeCheckoutSessionId: session.id,
+    stripePaymentIntentId: paymentIntentId,
+    totals,
+  };
+}

@@ -4,6 +4,7 @@ import {
   isMarketplaceCheckoutEnabled,
   MARKETPLACE_CHECKOUT_COMING_SOON,
 } from "@/lib/marketplaceCheckout";
+import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout";
 import { requireMarketplaceClientAuth } from "@/lib/marketplaceApiAuth";
 import { runMarketplaceCheckoutShadow } from "@/lib/marketplaceOrderService";
 
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
     return mmdLocationJson({
       ok: true,
       checkout_enabled: checkoutEnabled,
+      live_checkout_enabled: isMarketplaceCheckoutLiveEnabled(),
       stripe_checkout_created: false,
       message: checkoutEnabled ? null : MARKETPLACE_CHECKOUT_COMING_SOON,
       shadow: result.shadow,

@@ -77,6 +77,10 @@ export type MarketplaceOrderDraft = {
     drivers_notified?: boolean;
     message?: string | null;
   } | null;
+  payment_status?: string | null;
+  stripe_checkout_session_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+  paid_at?: string | null;
   created_at: string;
   updated_at: string;
   items?: MarketplaceOrderItem[];
@@ -202,6 +206,41 @@ export async function saveMarketplaceDraft(
     scope
   );
   return body.order;
+}
+
+export async function fetchMarketplaceLiveCheckoutCapabilities(): Promise<{
+  live_checkout_enabled: boolean;
+  message?: string | null;
+}> {
+  try {
+    const path = await buildMarketplacePath("/api/marketplace/checkout/live", {});
+    const body = await marketplaceFetch(path);
+    return {
+      live_checkout_enabled: body.live_checkout_enabled === true,
+      message: body.message ?? null,
+    };
+  } catch {
+    return { live_checkout_enabled: false, message: null };
+  }
+}
+
+export async function runMarketplaceLiveCheckout(
+  orderId: string,
+  scope?: MarketplaceScopeInput
+): Promise<{
+  checkout_url: string;
+  stripe_checkout_session_id?: string;
+  order?: MarketplaceOrderDraft;
+}> {
+  const path = await buildMarketplacePath("/api/marketplace/checkout/live", {}, scope);
+  return marketplaceFetch(
+    path,
+    {
+      method: "POST",
+      body: JSON.stringify({ order_id: orderId }),
+    },
+    scope
+  );
 }
 
 export async function runMarketplaceCheckout(
