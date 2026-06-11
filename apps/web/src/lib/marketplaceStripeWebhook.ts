@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout";
+import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 
 type SellerOrderPaymentRow = {
   id: string;
@@ -127,6 +128,16 @@ export async function handleMarketplaceStripePayment(params: {
     sessionId,
     paymentIntentId,
     source,
+  });
+
+  void prepareMarketplaceDeliveryJobAfterPayment(supabaseAdmin, {
+    sellerOrderId,
+    source: `stripe_webhook:${source}`,
+  }).catch((dispatchError) => {
+    console.warn(
+      "[marketplace-stripe-webhook] dispatch job prep failed:",
+      dispatchError instanceof Error ? dispatchError.message : dispatchError
+    );
   });
 
   return { ok: true };

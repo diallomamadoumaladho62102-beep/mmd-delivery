@@ -51,6 +51,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.sellers.read",
   },
   {
+    href: "/admin/marketplace-dispatch",
+    title: "Marketplace Dispatch",
+    description: "Jobs dispatch marketplace après paiement — OFF par défaut",
+    permission: "users.sellers.read",
+  },
+  {
     href: "/admin/admins",
     title: "Administrateurs",
     description: "Gérer les rôles staff (Super Admin uniquement)",
