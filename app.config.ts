@@ -146,9 +146,7 @@ export default ({ config }: { config: AppConfigInput }) => {
       url: `https://u.expo.dev/${PROJECT_ID}`,
       fallbackToCacheTimeout: 0,
     },
-    runtimeVersion: {
-      policy: "appVersion",
-    },
+    runtimeVersion: "1.0.0",
 
     splash: {
       image: "./apps/mobile/assets/brand/mmd-logo.png",
