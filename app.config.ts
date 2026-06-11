@@ -1,14 +1,5 @@
 import "dotenv/config";
-
-type AppConfigInput = {
-  extra?: Record<string, unknown>;
-  ios?: Record<string, unknown>;
-  android?: Record<string, unknown>;
-  plugins?: unknown[];
-  [key: string]: unknown;
-};
-
-type AppEnv = "development" | "production";
+import type { ConfigContext, ExpoConfig } from "expo/config";
 
 const PROJECT_ID = "127751ea-33ce-4f67-98ce-a9b29a46b838";
 const ANDROID_PACKAGE = "com.maladho2025.mmddelivery";
@@ -57,13 +48,9 @@ function assertStripePublishableKeyForEasBuild(params: {
   }
 }
 
-export default ({ config }: { config: AppConfigInput }) => {
-  const env =
-    (globalThis as typeof globalThis & {
-      process?: { env?: Record<string, string | undefined> };
-    }).process?.env ?? {};
-
-  const APP_ENV: AppEnv =
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const env = process.env;
+  const APP_ENV =
     env.APP_ENV === "production" ? "production" : "development";
 
   const EXPO_PUBLIC_API_URL_LOCAL = cleanEnv(env.EXPO_PUBLIC_API_URL_LOCAL);
@@ -101,8 +88,7 @@ export default ({ config }: { config: AppConfigInput }) => {
   const existingIos = config.ios ?? {};
   const existingAndroid = config.android ?? {};
   const existingExtra = config.extra ?? {};
-  const existingInfoPlist =
-    (existingIos.infoPlist as Record<string, unknown> | undefined) ?? {};
+  const existingInfoPlist = existingIos.infoPlist ?? {};
 
   return {
     ...config,
