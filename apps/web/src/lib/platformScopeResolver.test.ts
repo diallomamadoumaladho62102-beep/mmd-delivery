@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   applyCountryFloor,
   buildFeatureAvailability,
+  buildScopeLabel,
   countryConfigToToggleConfig,
   normalizeUsStateCode,
   regionRowToToggleConfig,
@@ -111,7 +112,29 @@ test("buildFeatureAvailability exposes coming soon marketplace", () => {
   };
   const features = buildFeatureAvailability(config, scope);
   assert.equal(features.taxi_available, true);
+  assert.equal(features.scope_label, "US");
   assert.deepEqual(features.coming_soon_services, ["marketplace", "seller"]);
+});
+
+test("buildScopeLabel formats US state scope", () => {
+  assert.equal(
+    buildScopeLabel({
+      country_code: "US",
+      state_code: "NY",
+      region_code: "ny",
+      zone_code: null,
+    }),
+    "US / NY"
+  );
+  assert.equal(
+    buildScopeLabel({
+      country_code: "GN",
+      state_code: null,
+      region_code: "gn_conakry",
+      zone_code: "gn_conakry",
+    }),
+    "GN / Conakry"
+  );
 });
 
 test("marketplace_available follows marketplace_enabled when platform ON", () => {

@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  detectPlatformCountryFromCoordinates,
+  detectUsStateFromCoordinates,
   inferPlatformCountryCode,
   normalizePlatformCountryCode,
 } from "@/lib/platformCountryInference";
@@ -291,10 +293,64 @@ export function buildScopeMessage(
 }
 
 function scopeLabel(scope: PlatformScopeKey): string {
-  if (scope.state_code) return `${scope.country_code}/${scope.state_code}`;
-  if (scope.zone_code) return `${scope.country_code}/${scope.zone_code}`;
-  if (scope.region_code) return `${scope.country_code}/${scope.region_code}`;
+  return buildScopeLabel(scope);
+}
+
+const GN_ZONE_LABELS: Record<string, string> = {
+  gn_conakry: "Conakry",
+  gn_labe: "Labé",
+  gn_kankan: "Kankan",
+  gn_kindia: "Kindia",
+  gn_mamou: "Mamou",
+  gn_boke: "Boké",
+  gn_faranah: "Faranah",
+  gn_nzerekore: "N'Zérékoré",
+  gn_labe_mali_prefecture: "Mali",
+  gn_labe_mali_dougountouny: "Dougountouny",
+};
+
+export function buildScopeLabel(
+  scope: Pick<PlatformScopeKey, "country_code" | "state_code" | "region_code" | "zone_code">
+): string {
+  if (scope.country_code === "US" && scope.state_code) {
+    return `US / ${scope.state_code}`;
+  }
+
+  if (scope.country_code === "GN" && scope.zone_code) {
+    const zoneName = GN_ZONE_LABELS[scope.zone_code] ?? scope.zone_code;
+    return `GN / ${zoneName}`;
+  }
+
+  if (scope.region_code) {
+    return `${scope.country_code} / ${scope.region_code.toUpperCase()}`;
+  }
+
   return scope.country_code;
+}
+
+export function buildScopeSourceLabel(source: PlatformScopeSource): string {
+  switch (source) {
+    case "order_pickup":
+      return "order address";
+    case "gps":
+      return "GPS";
+    case "manual":
+      return "manual";
+    case "saved_address":
+      return "saved address";
+    case "profile":
+      return "profile";
+    case "country_fallback":
+      return "fallback";
+    case "mission":
+      return "mission";
+    case "restaurant_address":
+      return "restaurant address";
+    case "seller_address":
+      return "seller address";
+    default:
+      return source;
+  }
 }
 
 export function buildFeatureAvailability(
@@ -315,6 +371,7 @@ export function buildFeatureAvailability(
     zone_code: scope.zone_code,
     scope_level: scope.scope_level,
     scope_source: scope.scope_source,
+    scope_label: buildScopeLabel(scope),
     platform_enabled: config.platform_enabled,
     maintenance_mode: maintenance,
     taxi_available: platformOn && config.taxi_enabled,
@@ -370,6 +427,43 @@ export async function resolveClientPlatformScope(
     });
   }
 
+  const pickupLat = Number(input.pickupLat);
+  const pickupLng = Number(input.pickupLng);
+  if (Number.isFinite(pickupLat) && Number.isFinite(pickupLng)) {
+    return resolveScopeFromCoordinates(supabase, pickupLat, pickupLng, "order_pickup");
+  }
+
+  const lat = Number(input.lat);
+  const lng = Number(input.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return resolveScopeFromCoordinates(supabase, lat, lng, "gps");
+  }
+
+  const manualCountry = normalizePlatformCountryCode(
+    input.manualCountry ?? input.manualRegionCode
+  );
+  const manualState = normalizeUsStateCode(input.manualState);
+  if (manualCountry.length === 2) {
+    const gnZone =
+      manualCountry === "GN"
+        ? await resolveGuineaZoneFromAddress(supabase, {
+            region_name: null,
+            prefecture_name: null,
+            city_name: null,
+          })
+        : null;
+
+    return buildScopeKey({
+      country: manualCountry,
+      state: manualState,
+      regionCode: gnZone?.zone_code ?? null,
+      mmdZoneId: gnZone?.id ?? null,
+      zoneCode: gnZone?.zone_code ?? null,
+      scopeLevel: gnZone ? "zone" : manualState ? "region" : "country",
+      source: "manual",
+    });
+  }
+
   const { data: address } = await supabase
     .from("client_addresses")
     .select("country, state")
@@ -401,40 +495,68 @@ export async function resolveClientPlatformScope(
     });
   }
 
-  const lat = Number(input.lat);
-  const lng = Number(input.lng);
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    const country = inferPlatformCountryCode({ lat, lng });
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("country_code")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const profileCountry = normalizePlatformCountryCode(
+    (profile as { country_code?: string } | null)?.country_code
+  );
+
+  if (profileCountry.length === 2) {
     const gnZone =
-      country === "GN" ? await resolveGuineaZoneFromCoordinates(supabase, lat, lng) : null;
+      profileCountry === "GN"
+        ? await resolveGuineaZoneFromAddress(supabase, {
+            region_name: null,
+            prefecture_name: null,
+            city_name: null,
+          })
+        : null;
 
     return buildScopeKey({
-      country,
-      state: normalizeUsStateCode(input.manualState),
+      country: profileCountry,
       regionCode: gnZone?.zone_code ?? null,
       mmdZoneId: gnZone?.id ?? null,
       zoneCode: gnZone?.zone_code ?? null,
       scopeLevel: gnZone ? "zone" : "country",
-      source: "gps",
-    });
-  }
-
-  const manualCountry = normalizePlatformCountryCode(
-    input.manualCountry ?? input.manualRegionCode
-  );
-  const manualState = normalizeUsStateCode(input.manualState);
-  if (manualCountry.length === 2) {
-    return buildScopeKey({
-      country: manualCountry,
-      state: manualState,
-      source: "manual",
+      source: "profile",
     });
   }
 
   return buildScopeKey({
-    country: inferPlatformCountryCode({}),
-    state: manualState,
+    country: "US",
     source: "country_fallback",
+  });
+}
+
+async function resolveScopeFromCoordinates(
+  supabase: SupabaseClient,
+  lat: number,
+  lng: number,
+  source: PlatformScopeSource
+): Promise<PlatformScopeKey> {
+  const country =
+    detectPlatformCountryFromCoordinates(lat, lng) ??
+    inferPlatformCountryCode({ lat, lng });
+
+  let state: string | null = null;
+  if (country === "US") {
+    state = detectUsStateFromCoordinates(lat, lng);
+  }
+
+  const gnZone =
+    country === "GN" ? await resolveGuineaZoneFromCoordinates(supabase, lat, lng) : null;
+
+  return buildScopeKey({
+    country,
+    state,
+    regionCode: gnZone?.zone_code ?? null,
+    mmdZoneId: gnZone?.id ?? null,
+    zoneCode: gnZone?.zone_code ?? null,
+    scopeLevel: gnZone ? "zone" : state ? "region" : "country",
+    source,
   });
 }
 

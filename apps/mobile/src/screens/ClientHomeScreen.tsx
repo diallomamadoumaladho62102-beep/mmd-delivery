@@ -1029,8 +1029,42 @@ export function ClientHomeScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
   const [menuOpen, setMenuOpen] = useState(false);
-  const { features: platformFeatures, refresh: refreshPlatformFeatures } =
+  const { features: platformFeatures, refresh: refreshPlatformFeatures, refreshWithCurrentLocation } =
     useClientPlatformFeatures();
+
+  const scopeLabel =
+    platformFeatures.scope_label ??
+    platformFeatures.scope?.scope_label ??
+    (platformFeatures.state_code
+      ? `${platformFeatures.country_code ?? "US"} / ${platformFeatures.state_code}`
+      : platformFeatures.country_code ?? null);
+
+  const scopeSource = platformFeatures.scope_source ?? platformFeatures.scope?.scope_source ?? null;
+
+  const scopeSourceLabel = useMemo(() => {
+    switch (scopeSource) {
+      case "gps":
+        return ts("client.home.scope.source.gps", "GPS");
+      case "order_pickup":
+        return ts("client.home.scope.source.order", "Order address");
+      case "saved_address":
+        return ts("client.home.scope.source.savedAddress", "Saved address");
+      case "profile":
+        return ts("client.home.scope.source.profile", "Profile");
+      case "manual":
+        return ts("client.home.scope.source.manual", "Manual selection");
+      case "country_fallback":
+        return ts("client.home.scope.source.fallback", "Default");
+      default:
+        return scopeSource ?? ts("client.home.scope.source.unknown", "Unknown");
+    }
+  }, [scopeSource, ts]);
+
+  const showUseCurrentLocation =
+    scopeSource === "saved_address" ||
+    scopeSource === "profile" ||
+    scopeSource === "country_fallback" ||
+    scopeSource === "manual";
 
   const comingSoonLabel = ts(
     "client.home.comingSoonInArea",
@@ -1657,6 +1691,33 @@ export function ClientHomeScreen() {
               </View>
             ) : null}
 
+            {scopeLabel ? (
+              <View style={premiumStyles.scopeBanner}>
+                <Text style={premiumStyles.scopeBannerTitle}>
+                  {ts("client.home.scope.marketLabel", "Current market")}: {scopeLabel}
+                </Text>
+                <Text style={premiumStyles.scopeBannerMeta}>
+                  {ts("client.home.scope.sourceLabel", "Source")}: {scopeSourceLabel}
+                </Text>
+                {showUseCurrentLocation ? (
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    onPress={() => {
+                      void refreshWithCurrentLocation();
+                    }}
+                    style={premiumStyles.scopeBannerButton}
+                  >
+                    <Text style={premiumStyles.scopeBannerButtonText}>
+                      {ts(
+                        "client.home.scope.useCurrentLocation",
+                        "Use my current location"
+                      )}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
+
             {platformFeatures.maintenance_mode ? (
               <View style={premiumStyles.errorBox}>
                 <Text style={premiumStyles.errorText}>
@@ -2080,6 +2141,40 @@ const premiumStyles = StyleSheet.create({
   errorText: {
     color: "#FCA5A5",
     fontWeight: "800",
+  },
+  scopeBanner: {
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.28)",
+    backgroundColor: "rgba(15,23,42,0.72)",
+    padding: 14,
+    marginBottom: 16,
+  },
+  scopeBannerTitle: {
+    color: "#F8FAFC",
+    fontWeight: "900",
+    fontSize: 15,
+  },
+  scopeBannerMeta: {
+    color: "#94A3B8",
+    fontWeight: "700",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  scopeBannerButton: {
+    marginTop: 10,
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: "rgba(37,99,235,0.28)",
+    borderWidth: 1,
+    borderColor: "rgba(96,165,250,0.32)",
+  },
+  scopeBannerButtonText: {
+    color: "#BFDBFE",
+    fontWeight: "900",
+    fontSize: 12,
   },
   quickGrid: {
     flexDirection: "row",

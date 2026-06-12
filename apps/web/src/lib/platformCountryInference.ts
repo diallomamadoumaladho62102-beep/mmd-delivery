@@ -83,6 +83,52 @@ export function detectPlatformCountryFromCoordinates(
     return "ML";
   }
 
+  if (
+    latitude >= 24.5 &&
+    latitude <= 49.5 &&
+    longitude >= -125 &&
+    longitude <= -66.5
+  ) {
+    return "US";
+  }
+
+  return null;
+}
+
+type UsStateBBox = {
+  code: string;
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+};
+
+/** Approximate US state bounding boxes for client GPS scope (NY, NJ, PA, FL, CA, TX). */
+const US_STATE_BBOXES: UsStateBBox[] = [
+  { code: "NY", minLat: 40.49, maxLat: 45.02, minLng: -79.76, maxLng: -71.85 },
+  { code: "NJ", minLat: 38.93, maxLat: 41.36, minLng: -75.56, maxLng: -73.89 },
+  { code: "PA", minLat: 39.72, maxLat: 42.27, minLng: -80.52, maxLng: -74.69 },
+  { code: "FL", minLat: 24.52, maxLat: 31.0, minLng: -87.63, maxLng: -80.03 },
+  { code: "CA", minLat: 32.53, maxLat: 42.01, minLng: -124.41, maxLng: -114.13 },
+  { code: "TX", minLat: 25.84, maxLat: 36.5, minLng: -106.65, maxLng: -93.51 },
+];
+
+export function detectUsStateFromCoordinates(lat?: unknown, lng?: unknown): string | null {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+  for (const box of US_STATE_BBOXES) {
+    if (
+      latitude >= box.minLat &&
+      latitude <= box.maxLat &&
+      longitude >= box.minLng &&
+      longitude <= box.maxLng
+    ) {
+      return box.code;
+    }
+  }
+
   return null;
 }
 

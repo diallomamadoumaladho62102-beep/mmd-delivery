@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   detectPlatformCountryFromCoordinates,
+  detectUsStateFromCoordinates,
   inferPlatformCountryCode,
   normalizeStripeConnectCountry,
   pricingConfigKeyForOrder,
@@ -29,6 +30,18 @@ test("inferPlatformCountryCode prefers coordinates over XOF currency", () => {
 
 test("detectPlatformCountryFromCoordinates resolves Guinea", () => {
   assert.equal(detectPlatformCountryFromCoordinates(9.55, -13.67), "GN");
+});
+
+test("detectPlatformCountryFromCoordinates resolves United States", () => {
+  assert.equal(detectPlatformCountryFromCoordinates(40.7128, -74.006), "US");
+});
+
+test("detectUsStateFromCoordinates resolves New York", () => {
+  assert.equal(detectUsStateFromCoordinates(40.7128, -74.006), "NY");
+});
+
+test("inferPlatformCountryCode uses NYC coordinates", () => {
+  assert.equal(inferPlatformCountryCode({ lat: 40.7128, lng: -74.006 }), "US");
 });
 
 test("pricingConfigKeyForOrder uses africa keys from coordinates", () => {

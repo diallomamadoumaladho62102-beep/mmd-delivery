@@ -47,6 +47,7 @@ export type PlatformFeatureAvailability = {
   zone_code: string | null;
   scope_level: PlatformScopeLevel;
   scope_source: PlatformScopeSource;
+  scope_label: string;
   platform_enabled: boolean;
   maintenance_mode: boolean;
   taxi_available: boolean;

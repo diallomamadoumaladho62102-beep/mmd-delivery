@@ -79,7 +79,7 @@ async function readPlatformFeaturesCountry(input?: {
 
 /**
  * Resolve marketplace country for API scope (pickup_country).
- * Priority: manual → location → seller → profile → platform features → GPS platform features.
+ * Priority: manual → location → seller → GPS platform scope → platform scope → saved address.
  */
 export async function resolveMarketplaceCountryCode(
   input: MarketplaceScopeInput = {}
@@ -97,17 +97,17 @@ export async function resolveMarketplaceCountryCode(
   const seller = normalizeMarketplaceCountryCode(input.sellerCountryCode);
   if (seller) return seller;
 
-  const profile = await readUserProfileCountry();
-  if (profile) return profile;
-
-  const platform = await readPlatformFeaturesCountry();
-  if (platform) return platform;
-
   const gps = await readGpsCoords();
   if (gps) {
     const fromGps = await readPlatformFeaturesCountry(gps);
     if (fromGps) return fromGps;
   }
+
+  const platform = await readPlatformFeaturesCountry();
+  if (platform) return platform;
+
+  const profile = await readUserProfileCountry();
+  if (profile) return profile;
 
   return null;
 }
