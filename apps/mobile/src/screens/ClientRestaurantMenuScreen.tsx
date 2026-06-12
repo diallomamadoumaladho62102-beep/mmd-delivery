@@ -939,7 +939,6 @@ export function ClientRestaurantMenuScreen() {
       const safeTax = roundMoney(safeSubtotal * 0.0888);
       const safeDeliveryFee = roundMoney(deliveryFee ?? 0);
       const safeGrandTotal = roundMoney(safeSubtotal + safeTax + safeDeliveryFee);
-      const totalCents = Math.round(safeGrandTotal * 100);
 
       const { data, error } = await supabase
         .from("orders")
@@ -968,13 +967,6 @@ export function ClientRestaurantMenuScreen() {
           total: safeGrandTotal,
           delivery_fee: safeDeliveryFee,
           currency,
-          items_subtotal: safeSubtotal,
-          tax_amount: safeTax,
-          discounts: 0,
-          subtotal_cents: Math.round(safeSubtotal * 100),
-          delivery_fee_cents: Math.round(safeDeliveryFee * 100),
-          taxes_cents: Math.round(safeTax * 100),
-          total_cents: totalCents,
           pickup_address: normalizeAddress(pickup),
           dropoff_address: normalizeAddress(dropoff),
           distance_miles: distanceMiles,

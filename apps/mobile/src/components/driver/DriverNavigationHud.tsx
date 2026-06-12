@@ -1,7 +1,10 @@
 import React from "react";
 import { View, Text, ActivityIndicator } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { NavigationInstruction } from "../../lib/navigationInstructions";
+import { formatNavigationDistance } from "../../lib/navigationInstructions";
 import type { NavigationStage } from "../../lib/driverNavigation/types";
+import type { GpsQualityStatus } from "../../lib/driverNavigation/types";
 
 type Props = {
   visible: boolean;
@@ -11,13 +14,16 @@ type Props = {
   remainingMeters: number;
   routeLoading: boolean;
   networkWeak: boolean;
-  gpsStatus: "initializing" | "active" | "degraded" | "lost";
+  gpsStatus: GpsQualityStatus;
 };
 
-function formatRemainingDistance(meters: number): string {
-  if (!Number.isFinite(meters)) return "—";
-  if (meters < 160) return `${Math.max(30, Math.round(meters / 10) * 10)} m`;
-  return `${(meters / 1609.344).toFixed(1)} mi`;
+function maneuverGlyph(instruction: NavigationInstruction | null): string {
+  const type = instruction?.maneuverType ?? "";
+  if (type.includes("left")) return "↰";
+  if (type.includes("right")) return "↱";
+  if (type.includes("uturn") || type.includes("u-turn")) return "↩";
+  if (type.includes("roundabout")) return "⟳";
+  return "↑";
 }
 
 export function DriverNavigationHud({
@@ -30,68 +36,95 @@ export function DriverNavigationHud({
   networkWeak,
   gpsStatus,
 }: Props) {
+  const { t, i18n } = useTranslation();
+
   if (!visible || !instruction) return null;
+
+  const maneuverDistance = formatNavigationDistance(
+    instruction.maneuverDistanceMeters,
+    i18n.language,
+  );
+
+  const gpsWarning =
+    gpsStatus === "lost"
+      ? t("driver.navigation.gpsLost", "GPS signal lost")
+      : gpsStatus === "degraded"
+        ? t("driver.navigation.gpsWeak", "GPS accuracy reduced")
+        : networkWeak
+          ? t("driver.navigation.networkWeak", "Weak network — ETA estimated")
+          : null;
 
   return (
     <View
       pointerEvents="none"
       style={{
         position: "absolute",
-        top: 96,
-        left: 14,
-        right: 14,
-        borderRadius: 24,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        backgroundColor: "rgba(2,6,23,0.96)",
+        top: 88,
+        left: 12,
+        right: 12,
+        borderRadius: 26,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        backgroundColor: "rgba(2,6,23,0.97)",
         borderWidth: 1,
-        borderColor: "rgba(96,165,250,0.42)",
+        borderColor: "rgba(96,165,250,0.45)",
       }}
     >
+      <Text
+        style={{
+          color: stage === "pickup" ? "#93C5FD" : "#FDBA74",
+          fontSize: 11,
+          fontWeight: "900",
+          letterSpacing: 0.6,
+        }}
+      >
+        {stage === "pickup"
+          ? t("driver.navigation.toPickup", "TO PICKUP")
+          : t("driver.navigation.toDropoff", "TO DROPOFF")}
+      </Text>
+
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
+          marginTop: 10,
         }}
       >
-        <View style={{ flex: 1, paddingRight: 10 }}>
-          <Text
-            style={{
-              color: stage === "pickup" ? "#93C5FD" : "#FDBA74",
-              fontSize: 11,
-              fontWeight: "900",
-              letterSpacing: 0.5,
-            }}
-          >
-            {stage === "pickup" ? "VERS LE PICKUP" : "VERS LE DROPOFF"}
+        <View
+          style={{
+            width: 58,
+            height: 58,
+            borderRadius: 18,
+            backgroundColor: "rgba(37,99,235,0.28)",
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 14,
+          }}
+        >
+          <Text style={{ color: "#FFFFFF", fontSize: 30, fontWeight: "900" }}>
+            {maneuverGlyph(instruction)}
+          </Text>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: "#FFFFFF", fontSize: 28, fontWeight: "900" }}>
+            {maneuverDistance}
           </Text>
           <Text
             style={{
               color: "#FFFFFF",
               fontSize: 18,
-              fontWeight: "900",
-              marginTop: 3,
+              fontWeight: "800",
+              marginTop: 4,
             }}
             numberOfLines={2}
           >
             {instruction.title}
           </Text>
-          <Text style={{ color: "#CBD5E1", fontSize: 12, marginTop: 4 }}>
-            {instruction.subtitle}
-          </Text>
-          {(networkWeak || gpsStatus === "degraded" || gpsStatus === "lost") && (
-            <Text style={{ color: "#FCA5A5", fontSize: 11, marginTop: 6, fontWeight: "800" }}>
-              {gpsStatus === "lost"
-                ? "Signal GPS faible ou perdu"
-                : networkWeak
-                  ? "Réseau faible — ETA estimée"
-                  : "Précision GPS réduite"}
-            </Text>
-          )}
         </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text style={{ color: "#FFFFFF", fontSize: 18, fontWeight: "900" }}>
+
+        <View style={{ alignItems: "flex-end", minWidth: 72 }}>
+          <Text style={{ color: "#FFFFFF", fontSize: 20, fontWeight: "900" }}>
             {remainingMinutes > 0 ? `${remainingMinutes} min` : "—"}
           </Text>
           <Text
@@ -99,16 +132,29 @@ export function DriverNavigationHud({
               color: "#93C5FD",
               fontSize: 12,
               fontWeight: "800",
-              marginTop: 3,
+              marginTop: 4,
             }}
           >
-            {formatRemainingDistance(remainingMeters)}
+            {formatNavigationDistance(remainingMeters, i18n.language)}
           </Text>
           {routeLoading && (
             <ActivityIndicator size="small" color="#93C5FD" style={{ marginTop: 8 }} />
           )}
         </View>
       </View>
+
+      {gpsWarning ? (
+        <Text
+          style={{
+            color: "#FCA5A5",
+            fontSize: 11,
+            marginTop: 10,
+            fontWeight: "800",
+          }}
+        >
+          {gpsWarning}
+        </Text>
+      ) : null}
     </View>
   );
 }

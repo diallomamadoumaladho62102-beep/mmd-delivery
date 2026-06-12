@@ -19,10 +19,26 @@ export type NavigationRoute = {
   etaMinutes: number;
   geometry: GeoJSON.Feature<GeoJSON.LineString>;
   steps: NavigationRouteStep[];
+  routeIndex?: number;
 };
 
 const DIRECTIONS_BASE =
   "https://api.mapbox.com/directions/v5/mapbox/driving";
+
+/** Map app locale to Mapbox Directions language code. */
+export function mapboxDirectionsLanguage(appLocale: string): string {
+  const base = String(appLocale || "en").trim().toLowerCase().split("-")[0];
+  if (base.startsWith("fr") || base === "ff") return "fr";
+  if (base.startsWith("es")) return "es";
+  if (base.startsWith("ar")) return "ar";
+  if (base.startsWith("zh")) return "zh";
+  return "en";
+}
+
+export type FetchNavigationRouteOptions = {
+  language?: string;
+  alternatives?: boolean;
+};
 
 function validateCoords(point: RoutePoint): boolean {
   return (
@@ -60,34 +76,68 @@ export function isMapboxDirectionsAvailable(): boolean {
   return isMapboxConfigured();
 }
 
-export async function fetchNavigationRoute(
+function parseRoute(raw: {
+  geometry?: { coordinates?: number[][] };
+  distance?: number;
+  duration?: number;
+  legs?: Array<{ steps?: unknown[] }>;
+}, routeIndex = 0): NavigationRoute | null {
+  const coordinates = raw?.geometry?.coordinates;
+  if (!coordinates?.length) return null;
+
+  const geometry: GeoJSON.Feature<GeoJSON.LineString> = {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "LineString",
+      coordinates,
+    },
+  };
+
+  const durationSeconds = Math.round(raw.duration || 0);
+  const distanceMetersValue = Math.round(raw.distance || 0);
+  const rawSteps = raw.legs?.flatMap((leg) => leg.steps ?? []) ?? [];
+
+  return {
+    geometry,
+    durationSeconds,
+    distanceMeters: distanceMetersValue,
+    etaMinutes: Math.max(1, Math.round(durationSeconds / 60)),
+    steps: parseSteps(rawSteps),
+    routeIndex,
+  };
+}
+
+export async function fetchNavigationRoutes(
   origin: RoutePoint,
   destination: RoutePoint,
   waypoints: RoutePoint[] = [],
   signal?: AbortSignal,
-): Promise<NavigationRoute | null> {
+  options: FetchNavigationRouteOptions = {},
+): Promise<NavigationRoute[]> {
   try {
-    if (!isMapboxConfigured()) return null;
-    if (!validateCoords(origin)) return null;
-    if (!validateCoords(destination)) return null;
+    if (!isMapboxConfigured()) return [];
+    if (!validateCoords(origin)) return [];
+    if (!validateCoords(destination)) return [];
 
     const coords = buildCoords([origin, ...waypoints, destination]);
     const token = getMapboxToken();
+    const language = mapboxDirectionsLanguage(options.language ?? "en");
+    const alternatives = options.alternatives === true;
 
     const url =
       `${DIRECTIONS_BASE}/${coords}` +
-      `?alternatives=false` +
+      `?alternatives=${alternatives ? "true" : "false"}` +
       `&continue_straight=true` +
       `&geometries=geojson` +
       `&overview=full` +
       `&steps=true` +
+      `&banner_instructions=true` +
+      `&language=${encodeURIComponent(language)}` +
       `&access_token=${token}`;
 
     const response = await fetch(url, { signal });
-
-    if (!response.ok) {
-      return null;
-    }
+    if (!response.ok) return [];
 
     const json = (await response.json()) as {
       routes?: Array<{
@@ -98,39 +148,32 @@ export async function fetchNavigationRoute(
       }>;
     };
 
-    const route = json?.routes?.[0];
-    const coordinates = route?.geometry?.coordinates;
-
-    if (!route || !coordinates?.length) {
-      return null;
-    }
-
-    const geometry: GeoJSON.Feature<GeoJSON.LineString> = {
-      type: "Feature",
-      properties: {},
-      geometry: {
-        type: "LineString",
-        coordinates,
-      },
-    };
-
-    const durationSeconds = Math.round(route.duration || 0);
-    const distanceMetersValue = Math.round(route.distance || 0);
-    const rawSteps = route.legs?.flatMap((leg) => leg.steps ?? []) ?? [];
-
-    return {
-      geometry,
-      durationSeconds,
-      distanceMeters: distanceMetersValue,
-      etaMinutes: Math.max(1, Math.round(durationSeconds / 60)),
-      steps: parseSteps(rawSteps),
-    };
+    return (json?.routes ?? [])
+      .map((route, index) => parseRoute(route, index))
+      .filter((route): route is NavigationRoute => route != null);
   } catch (error) {
     if ((error as { name?: string })?.name === "AbortError") {
-      return null;
+      return [];
     }
-    return null;
+    return [];
   }
+}
+
+export async function fetchNavigationRoute(
+  origin: RoutePoint,
+  destination: RoutePoint,
+  waypoints: RoutePoint[] = [],
+  signal?: AbortSignal,
+  options: FetchNavigationRouteOptions = {},
+): Promise<NavigationRoute | null> {
+  const routes = await fetchNavigationRoutes(
+    origin,
+    destination,
+    waypoints,
+    signal,
+    options,
+  );
+  return routes[0] ?? null;
 }
 
 export async function fitCameraToRoute(

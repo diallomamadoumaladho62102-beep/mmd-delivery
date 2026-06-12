@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  fetchNavigationRoute,
+  fetchNavigationRoutes,
   shouldReroute,
   type NavigationRoute,
 } from "../lib/navigationService";
@@ -19,6 +19,7 @@ type UseDriverNavigationRouteParams = {
   driverPoint: CoordinatePoint | null;
   destination: CoordinatePoint | null;
   stage: NavigationStage;
+  language?: string;
   onNetworkFailure?: () => void;
   onNetworkSuccess?: () => void;
   onReroute?: () => void;
@@ -26,6 +27,9 @@ type UseDriverNavigationRouteParams = {
 
 export type DriverNavigationRouteState = {
   route: NavigationRoute | null;
+  routes: NavigationRoute[];
+  selectedRouteIndex: number;
+  selectRouteIndex: (index: number) => void;
   status: RouteEngineStatus;
   remainingMeters: number;
   remainingMinutes: number;
@@ -40,12 +44,14 @@ export function useDriverNavigationRoute(
     driverPoint,
     destination,
     stage,
+    language = "en",
     onNetworkFailure,
     onNetworkSuccess,
     onReroute,
   } = params;
 
-  const [route, setRoute] = useState<NavigationRoute | null>(null);
+  const [routes, setRoutes] = useState<NavigationRoute[]>([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [status, setStatus] = useState<RouteEngineStatus>("idle");
   const [remainingMeters, setRemainingMeters] = useState(0);
   const [remainingMinutes, setRemainingMinutes] = useState(0);
@@ -56,13 +62,42 @@ export function useDriverNavigationRoute(
   const [refreshNonce, setRefreshNonce] = useState(0);
   const routeRef = useRef<NavigationRoute | null>(null);
 
-  const loadRoute = useCallback(
+  const applyRoute = useCallback((nextRoutes: NavigationRoute[], index: number) => {
+    const safeIndex = Math.min(Math.max(index, 0), Math.max(nextRoutes.length - 1, 0));
+    const nextRoute = nextRoutes[safeIndex] ?? null;
+    routeRef.current = nextRoute;
+    setRoutes(nextRoutes);
+    setSelectedRouteIndex(safeIndex);
+    setRouteMetrics(nextRoute, driverPoint);
+  }, [driverPoint]);
+
+  function setRouteMetrics(
+    nextRoute: NavigationRoute | null,
+    point: CoordinatePoint | null,
+  ) {
+    if (!nextRoute) {
+      setRemainingMeters(0);
+      setRemainingMinutes(0);
+      return;
+    }
+
+    const progress = point ? getRouteProgress(point, nextRoute.geometry) : null;
+    const remaining = progress?.remainingMeters ?? nextRoute.distanceMeters;
+    setRemainingMeters(remaining);
+    setRemainingMinutes(
+      estimateRemainingMinutes(
+        remaining,
+        nextRoute.durationSeconds,
+        nextRoute.distanceMeters,
+      ),
+    );
+  }
+
+  const loadRoutes = useCallback(
     async (origin: CoordinatePoint, reason: "initial" | "reroute" | "manual") => {
       if (!destination) {
-        setRoute(null);
+        applyRoute([], 0);
         setStatus("idle");
-        setRemainingMeters(0);
-        setRemainingMinutes(0);
         return;
       }
 
@@ -75,40 +110,29 @@ export function useDriverNavigationRoute(
       }
 
       try {
-        const nextRoute = await fetchNavigationRoute(
+        const nextRoutes = await fetchNavigationRoutes(
           origin,
           destination,
           [],
           controller.signal,
+          { language, alternatives: true },
         );
 
         if (controller.signal.aborted) return;
 
-        if (!nextRoute) {
+        if (!nextRoutes.length) {
           setStatus(routeRef.current ? "stale" : "error");
           onNetworkFailure?.();
           return;
         }
 
-        routeRef.current = nextRoute;
-        setRoute(nextRoute);
+        applyRoute(nextRoutes, reason === "reroute" ? 0 : selectedRouteIndex);
         setStatus("ready");
         lastRerouteAtRef.current = Date.now();
         onNetworkSuccess?.();
         if (reason === "reroute") {
           onReroute?.();
         }
-
-        const progress = getRouteProgress(origin, nextRoute.geometry);
-        const remaining = progress?.remainingMeters ?? nextRoute.distanceMeters;
-        setRemainingMeters(remaining);
-        setRemainingMinutes(
-          estimateRemainingMinutes(
-            remaining,
-            nextRoute.durationSeconds,
-            nextRoute.distanceMeters,
-          ),
-        );
       } catch {
         if (!controller.signal.aborted) {
           setStatus(routeRef.current ? "stale" : "error");
@@ -120,28 +144,41 @@ export function useDriverNavigationRoute(
         }
       }
     },
-    [destination, onNetworkFailure, onNetworkSuccess, onReroute],
+    [
+      applyRoute,
+      destination,
+      language,
+      onNetworkFailure,
+      onNetworkSuccess,
+      onReroute,
+      selectedRouteIndex,
+    ],
   );
 
   const refreshRoute = useCallback(() => {
     setRefreshNonce((value) => value + 1);
   }, []);
 
+  const selectRouteIndex = useCallback(
+    (index: number) => {
+      applyRoute(routes, index);
+    },
+    [applyRoute, routes],
+  );
+
   useEffect(() => {
-    routeRef.current = route;
-  }, [route]);
+    routeRef.current = routes[selectedRouteIndex] ?? null;
+  }, [routes, selectedRouteIndex]);
 
   useEffect(() => {
     if (!enabled || !driverPoint || !destination) {
       abortRef.current?.abort();
-      setRoute(null);
+      applyRoute([], 0);
       setStatus("idle");
-      setRemainingMeters(0);
-      setRemainingMinutes(0);
       return;
     }
 
-    void loadRoute(driverPoint, "initial");
+    void loadRoutes(driverPoint, "initial");
   }, [
     enabled,
     destination?.latitude,
@@ -149,32 +186,25 @@ export function useDriverNavigationRoute(
     stage,
     refreshNonce,
     driverPoint,
-    loadRoute,
+    loadRoutes,
+    applyRoute,
   ]);
 
   useEffect(() => {
+    const route = routes[selectedRouteIndex];
     if (!enabled || !driverPoint || !route?.geometry) return;
 
-    const progress = getRouteProgress(driverPoint, route.geometry);
-    const remaining = progress?.remainingMeters ?? route.distanceMeters;
-    setRemainingMeters(remaining);
-    setRemainingMinutes(
-      estimateRemainingMinutes(
-        remaining,
-        route.durationSeconds,
-        route.distanceMeters,
-      ),
-    );
+    setRouteMetrics(route, driverPoint);
   }, [
     driverPoint?.latitude,
     driverPoint?.longitude,
     enabled,
-    route?.distanceMeters,
-    route?.durationSeconds,
-    route?.geometry,
+    routes,
+    selectedRouteIndex,
   ]);
 
   useEffect(() => {
+    const route = routes[selectedRouteIndex];
     if (!enabled || !driverPoint || !destination || !route?.geometry) return;
     if (rerouteInFlightRef.current) return;
 
@@ -190,14 +220,15 @@ export function useDriverNavigationRoute(
     if (now - lastRerouteAtRef.current < REROUTE_COOLDOWN_MS) return;
 
     rerouteInFlightRef.current = true;
-    void loadRoute(driverPoint, "reroute");
+    void loadRoutes(driverPoint, "reroute");
   }, [
     destination,
     driverPoint?.latitude,
     driverPoint?.longitude,
     enabled,
-    loadRoute,
-    route?.geometry,
+    loadRoutes,
+    routes,
+    selectedRouteIndex,
   ]);
 
   useEffect(() => {
@@ -207,7 +238,10 @@ export function useDriverNavigationRoute(
   }, []);
 
   return {
-    route,
+    route: routes[selectedRouteIndex] ?? null,
+    routes,
+    selectedRouteIndex,
+    selectRouteIndex,
     status,
     remainingMeters,
     remainingMinutes,

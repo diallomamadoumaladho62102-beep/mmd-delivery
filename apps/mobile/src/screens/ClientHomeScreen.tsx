@@ -1087,7 +1087,9 @@ export function ClientHomeScreen() {
             client_user_id
           `
         )
-        .eq("client_user_id", userId)
+        .or(
+          `client_user_id.eq.${userId},client_id.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`
+        )
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
@@ -1144,7 +1146,6 @@ export function ClientHomeScreen() {
 
     if (ordersRes.error) {
       console.log("❌ orders error:", ordersRes.error);
-      throw ordersRes.error;
     }
 
     if (requestsClientRes.error) {
@@ -1162,7 +1163,9 @@ export function ClientHomeScreen() {
     }
 
     const normalizedOrders = normalizeOrderRows(
-      (ordersRes.data as OrderRowDb[] | null) ?? []
+      ordersRes.error
+        ? []
+        : ((ordersRes.data as OrderRowDb[] | null) ?? [])
     );
 
     const normalizedRequests = normalizeDeliveryRequestRows([

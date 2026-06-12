@@ -4,15 +4,30 @@ import type { NavigationStage } from "./driverNavigation/types";
 export type NavigationInstruction = {
   title: string;
   subtitle: string;
+  maneuverDistanceMeters: number;
   distanceMeters: number;
   voiceText: string;
+  maneuverType?: string;
 };
 
-export function formatNavigationDistance(meters: number): string {
+export function formatNavigationDistance(
+  meters: number,
+  locale = "en",
+): string {
   if (!Number.isFinite(meters)) return "—";
 
+  const useMetric = !locale.startsWith("en");
+
+  if (useMetric) {
+    if (meters < 1000) {
+      return `${Math.max(30, Math.round(meters / 10) * 10)} m`;
+    }
+    return `${(meters / 1000).toFixed(1)} km`;
+  }
+
   if (meters < 160) {
-    return `${Math.max(30, Math.round(meters / 10) * 10)} m`;
+    const feet = Math.max(50, Math.round(meters * 3.28084 / 50) * 50);
+    return `${feet} ft`;
   }
 
   const miles = meters / 1609.344;
@@ -40,25 +55,42 @@ export function buildNavigationInstruction(params: {
   remainingMeters: number;
   stage: NavigationStage;
   steps?: NavigationRouteStep[];
+  locale?: string;
 }): NavigationInstruction {
-  const { remainingMeters, stage, steps = [] } = params;
-  const place = stage === "pickup" ? "pickup location" : "dropoff location";
-  const distanceText = formatNavigationDistance(remainingMeters);
+  const { remainingMeters, stage, steps = [], locale = "en" } = params;
   const currentStep = pickCurrentStep(steps, remainingMeters);
+  const maneuverDistanceMeters = currentStep?.distanceMeters ?? remainingMeters;
+  const maneuverDistanceText = formatNavigationDistance(
+    maneuverDistanceMeters,
+    locale,
+  );
+  const totalRemainingText = formatNavigationDistance(remainingMeters, locale);
 
   if (currentStep?.instruction) {
     return {
       title: currentStep.instruction,
-      subtitle: `${distanceText} remaining`,
+      subtitle: totalRemainingText,
+      maneuverDistanceMeters,
       distanceMeters: remainingMeters,
-      voiceText: `${currentStep.instruction}. ${distanceText} remaining.`,
+      voiceText: `${maneuverDistanceText}. ${currentStep.instruction}.`,
+      maneuverType: currentStep.instruction.split(" ")[0]?.toLowerCase(),
     };
   }
 
+  const fallbackTitle =
+    stage === "pickup"
+      ? locale.startsWith("fr")
+        ? "Dirigez-vous vers le pickup"
+        : "Head to pickup location"
+      : locale.startsWith("fr")
+        ? "Dirigez-vous vers le dropoff"
+        : "Head to dropoff location";
+
   return {
-    title: stage === "pickup" ? "Head to pickup location" : "Head to dropoff location",
-    subtitle: `${distanceText} remaining`,
+    title: fallbackTitle,
+    subtitle: totalRemainingText,
+    maneuverDistanceMeters,
     distanceMeters: remainingMeters,
-    voiceText: `Continue to the ${place}. ${distanceText} remaining.`,
+    voiceText: `${fallbackTitle}. ${totalRemainingText} remaining.`,
   };
 }

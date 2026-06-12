@@ -58,13 +58,6 @@ export default ({ config }) => {
   );
   const EAS_BUILD_PROFILE = cleanEnv(env.EAS_BUILD_PROFILE);
 
-  console.log(
-    "[MMD STRIPE CHECK]",
-    EXPO_PUBLIC_STRIPE_PK.substring(0, 12),
-    "profile=" + (EAS_BUILD_PROFILE || "(unset)"),
-    "eas=" + Boolean(env.EAS_BUILD_ID)
-  );
-
   const EXPO_PUBLIC_LEGAL_PRIVACY_URL =
     cleanEnv(env.EXPO_PUBLIC_LEGAL_PRIVACY_URL) ||
     "https://www.mmddelivery.com/legal/privacy";

@@ -851,11 +851,6 @@ export function DeliveryRequestScreen() {
           tax,
           total: safeTotal,
 
-          subtotal_cents: cents(subtotal),
-          delivery_fee_cents: cents(safeFee),
-          tax_cents: cents(tax),
-          total_cents: cents(safeTotal),
-
           currency,
         })
         .select("id")

@@ -4,14 +4,16 @@ import { calculateHeading } from "../lib/navigationService";
 import type { CoordinatePoint } from "../lib/coordinates";
 import type { GpsQualityStatus } from "../lib/driverNavigation/types";
 
-const GPS_LOST_TIMEOUT_MS = 15_000;
-const GPS_DEGRADED_ACCURACY_METERS = 80;
+const GPS_LOST_TIMEOUT_MS = 28_000;
+const GPS_DEGRADED_ACCURACY_METERS = 100;
+const GPS_STALE_ACCURACY_METERS = 160;
 const MIN_HEADING_DISTANCE_METERS = 4;
 
 export type DriverMapLocationState = {
   point: CoordinatePoint | null;
   heading: number;
   accuracyMeters: number | null;
+  speedMps: number | null;
   gpsStatus: GpsQualityStatus;
   permissionStatus: Location.PermissionStatus | "undetermined";
   lastUpdatedAt: number | null;
@@ -23,6 +25,7 @@ export function useDriverMapLocation(enabled = true): DriverMapLocationState {
   const [point, setPoint] = useState<CoordinatePoint | null>(null);
   const [heading, setHeading] = useState(0);
   const [accuracyMeters, setAccuracyMeters] = useState<number | null>(null);
+  const [speedMps, setSpeedMps] = useState<number | null>(null);
   const [gpsStatus, setGpsStatus] = useState<GpsQualityStatus>("initializing");
   const [permissionStatus, setPermissionStatus] =
     useState<Location.PermissionStatus | "undetermined">("undetermined");
@@ -47,14 +50,20 @@ export function useDriverMapLocation(enabled = true): DriverMapLocationState {
     const accuracy = Number.isFinite(pos.coords.accuracy)
       ? Number(pos.coords.accuracy)
       : null;
+    const speed = Number.isFinite(pos.coords.speed)
+      ? Math.max(0, Number(pos.coords.speed))
+      : null;
 
     setPoint(nextPoint);
     setAccuracyMeters(accuracy);
+    setSpeedMps(speed);
     setLastUpdatedAt(now);
     setIsReady(true);
     setErrorMessage(null);
 
-    if (accuracy != null && accuracy > GPS_DEGRADED_ACCURACY_METERS) {
+    if (accuracy != null && accuracy > GPS_STALE_ACCURACY_METERS) {
+      setGpsStatus("degraded");
+    } else if (accuracy != null && accuracy > GPS_DEGRADED_ACCURACY_METERS) {
       setGpsStatus("degraded");
     } else {
       setGpsStatus("active");
@@ -158,6 +167,7 @@ export function useDriverMapLocation(enabled = true): DriverMapLocationState {
     point,
     heading,
     accuracyMeters,
+    speedMps,
     gpsStatus,
     permissionStatus,
     lastUpdatedAt,

@@ -210,7 +210,11 @@ export type RootStackParamList = {
   TaxiChat: { rideId: string };
 
   DriverTabs: undefined;
-  DriverOrderDetails: { orderId: string };
+  DriverOrderDetails: {
+    orderId: string;
+    sourceTable?: "orders" | "delivery_requests" | "taxi_rides";
+    source_table?: "orders" | "delivery_requests" | "taxi_rides";
+  };
   DriverMap: {
     orderId: string;
     sourceTable?: "orders" | "delivery_requests" | "taxi_rides";

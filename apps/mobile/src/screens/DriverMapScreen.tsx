@@ -58,6 +58,8 @@ import { useArrivalGeofence } from "../hooks/useArrivalGeofence";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { DriverNavigationHud } from "../components/driver/DriverNavigationHud";
 import { DriverNavigationControls } from "../components/driver/DriverNavigationControls";
+import { DriverNavigationBottomBar } from "../components/driver/DriverNavigationBottomBar";
+import { DriverNavigationRouteAlternatives } from "../components/driver/DriverNavigationRouteAlternatives";
 import { DriverArrivalBanner } from "../components/driver/DriverArrivalBanner";
 import { DriverMapFallbackStates } from "../components/driver/DriverMapFallbackStates";
 import { DriverReportButton } from "../components/driver/DriverReportButton";
@@ -243,6 +245,7 @@ export default function DriverMapScreen() {
     driverPoint: location.point,
     destination: activeDestination,
     stage: trip?.stage ?? "pickup",
+    language: i18n.language,
     onNetworkFailure: network.reportFailure,
     onNetworkSuccess: network.reportSuccess,
     onReroute: handleReroute,
@@ -285,8 +288,9 @@ export default function DriverMapScreen() {
       remainingMeters: routeState.remainingMeters,
       stage: trip.stage,
       steps: routeState.route.steps,
+      locale: i18n.language,
     });
-  }, [routeState.remainingMeters, routeState.route, trip]);
+  }, [i18n.language, routeState.remainingMeters, routeState.route, trip]);
 
   useEffect(() => {
     void getDriverOnlineStatus().then(setIsOnline).catch(() => {});
@@ -465,7 +469,10 @@ export default function DriverMapScreen() {
 
   const openOrderDetails = useCallback(() => {
     if (!trip) return;
-    navigation.navigate("DriverOrderDetails", { orderId: trip.orderId });
+    navigation.navigate("DriverOrderDetails", {
+      orderId: trip.orderId,
+      sourceTable: trip.sourceTable,
+    });
   }, [navigation, trip]);
 
   const toggleVoice = useCallback(() => {
@@ -570,7 +577,12 @@ export default function DriverMapScreen() {
             }}
           />
 
-          <Mapbox.UserLocation visible androidRenderMode="compass" />
+          <Mapbox.UserLocation
+            visible
+            animated
+            androidRenderMode="gps"
+            showsUserHeadingIndicator
+          />
 
           {routeState.route?.geometry && (
             <Mapbox.ShapeSource
@@ -711,8 +723,14 @@ export default function DriverMapScreen() {
           gpsStatus={location.gpsStatus}
         />
 
+        <DriverNavigationRouteAlternatives
+          routes={routeState.routes}
+          selectedIndex={routeState.selectedRouteIndex}
+          onSelect={routeState.selectRouteIndex}
+        />
+
         <DriverNavigationControls
-          topOffset={instruction ? 238 : 112}
+          topOffset={instruction ? 300 : 112}
           voiceEnabled={voiceEnabled}
           onToggleVoice={toggleVoice}
           onRecenter={camera.recenter}
@@ -729,49 +747,15 @@ export default function DriverMapScreen() {
           onOpenOrderDetails={openOrderDetails}
         />
 
-        {trip && (
+        {trip && activeLocationId ? (
           <View
             style={{
               position: "absolute",
               left: 14,
               right: 14,
-              bottom: 22,
-              borderRadius: 24,
-              padding: 14,
-              backgroundColor: "rgba(2,6,23,0.96)",
-              borderWidth: 1,
-              borderColor: "rgba(96,165,250,0.32)",
+              bottom: 132,
             }}
           >
-            <TouchableOpacity onPress={openOrderDetails} activeOpacity={0.88}>
-              <Text style={{ color: "#93C5FD", fontSize: 11, fontWeight: "900" }}>
-                {trip.stage === "pickup"
-                  ? t("driver.map.trip.nextPickup", "PROCHAINE ÉTAPE: PICKUP")
-                  : t("driver.map.trip.nextDropoff", "PROCHAINE ÉTAPE: DROPOFF")}
-              </Text>
-              <Text
-                style={{ color: "#FFFFFF", fontSize: 17, fontWeight: "900", marginTop: 5 }}
-                numberOfLines={1}
-              >
-                {destinationAddress}
-              </Text>
-              <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 5 }}>
-                {t(
-                  "driver.map.trip.detailsHint",
-                  "Toucher pour ouvrir les détails de la course",
-                )}
-              </Text>
-              {tripHistory.totalTrips > 0 && (
-                <Text style={{ color: "#64748B", fontSize: 11, marginTop: 8 }}>
-                  {t(
-                    "driver.map.trip.historyCount",
-                    "{{count}} trajet(s) enregistré(s) localement",
-                    { count: tripHistory.totalTrips },
-                  )}
-                </Text>
-              )}
-            </TouchableOpacity>
-
             <DriverTripLocationCard
               locationId={activeLocationId}
               title={
@@ -782,7 +766,18 @@ export default function DriverMapScreen() {
               onViewOnMap={focusLocationPin}
             />
           </View>
-        )}
+        ) : null}
+
+        {trip ? (
+          <DriverNavigationBottomBar
+            etaMinutes={routeState.remainingMinutes}
+            remainingMeters={routeState.remainingMeters}
+            destinationLabel={destinationAddress}
+            gpsStatus={location.gpsStatus}
+            speedMps={location.speedMps}
+            onOpenDetails={openOrderDetails}
+          />
+        ) : null}
 
         <DriverReportButton
           driverId={driverId}
@@ -793,7 +788,7 @@ export default function DriverMapScreen() {
           moduleType={DEFAULT_DRIVER_MAP_REPORT_CONTEXT.moduleType}
           countryCode={reportCountry.countryCode}
           nearbyCount={nearbyReports.count}
-          bottomOffset={showArrivalBanner ? 210 : 118}
+          bottomOffset={showArrivalBanner ? 250 : 158}
           onSubmitted={() => void nearbyReports.refresh()}
         />
       </View>

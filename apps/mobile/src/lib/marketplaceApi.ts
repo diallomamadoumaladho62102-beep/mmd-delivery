@@ -126,7 +126,15 @@ async function marketplaceFetch(
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.ok === false) {
-    throw new Error(body.error || body.message || `Request failed (${res.status})`);
+    const code = String(body.error ?? "").trim();
+    const message = String(body.message ?? "").trim();
+    if (code === "marketplace_unavailable") {
+      throw new Error(
+        message ||
+          "Marketplace coming soon in your area."
+      );
+    }
+    throw new Error(message || code || `Request failed (${res.status})`);
   }
   return body;
 }

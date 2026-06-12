@@ -405,8 +405,6 @@ export async function createFoodOrderWithDelivery(
       tax: safeTax,
       discounts,
       total,
-      grand_total: grandTotal,
-      total_cents: totalCents,
       currency: safeCurrency,
 
       promo_code_applied: pricingRow.promo_code_applied ?? null,

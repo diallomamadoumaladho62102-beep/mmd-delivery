@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { API_BASE_URL } from "./apiBase";
 
 type Role = "client" | "driver" | "restaurant" | "admin";
-type SourceTable = "orders" | "delivery_requests";
+type SourceTable = "orders" | "delivery_requests" | "taxi_rides";
 
 type StartMaskedCallParams = {
   orderId: string;
@@ -28,7 +28,9 @@ function getErrorMessage(error: unknown) {
 }
 
 function normalizeSourceTable(value: unknown): SourceTable {
-  return value === "delivery_requests" ? "delivery_requests" : "orders";
+  if (value === "delivery_requests") return "delivery_requests";
+  if (value === "taxi_rides") return "taxi_rides";
+  return "orders";
 }
 
 export async function startMaskedCall({

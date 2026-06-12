@@ -885,10 +885,9 @@ export function ClientNewOrderScreen() {
 
       const baseOrderTotal = toSafeMoney(baseOrderTotalFromParams);
       const grandTotal = roundMoney(baseOrderTotal + safeDeliveryFee);
-      const totalCents = Math.round(grandTotal * 100);
 
       const orderPayload = {
-        type: "errand",
+        kind: "errand",
         status: "pending",
         restaurant_id: r.restaurant_id,
         restaurant_user_id: r.restaurant_user_id,
@@ -911,8 +910,6 @@ export function ClientNewOrderScreen() {
         subtotal: safeSubtotal,
         tax: safeTax,
         total: grandTotal,
-        grand_total: grandTotal,
-        total_cents: totalCents,
         currency: "USD",
 
         pickup_lat: r.restaurant_lat,

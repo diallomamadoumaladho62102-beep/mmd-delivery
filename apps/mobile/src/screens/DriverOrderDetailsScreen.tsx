@@ -77,7 +77,7 @@ type Order = {
   dropoff_lat: number | null;
   dropoff_lng: number | null;
   dropoff_location_id?: string | null;
-  source_table?: "orders" | "delivery_requests";
+  source_table?: "orders" | "delivery_requests" | "taxi_rides";
 };
 
 type VerifyKind = "pickup" | "dropoff";
@@ -527,12 +527,48 @@ function getConfiguredDriverPayout(row: any) {
   return null;
 }
 
-function normalizeSourceTable(value: unknown): "orders" | "delivery_requests" {
-  return value === "delivery_requests" ? "delivery_requests" : "orders";
+function normalizeSourceTable(
+  value: unknown,
+): "orders" | "delivery_requests" | "taxi_rides" {
+  if (value === "delivery_requests") return "delivery_requests";
+  if (value === "taxi_rides") return "taxi_rides";
+  return "orders";
 }
 
 function getOrderSourceTable(order: Pick<Order, "source_table"> | null | undefined) {
   return normalizeSourceTable(order?.source_table);
+}
+
+function mapTaxiRideToOrder(row: any): Order {
+  const payoutCents = Number(row?.driver_payout_cents ?? 0);
+  const payout =
+    Number.isFinite(payoutCents) && payoutCents > 0 ? payoutCents / 100 : null;
+
+  return {
+    id: String(row?.id ?? ""),
+    kind: "taxi",
+    status: String(row?.status ?? "pending") as OrderStatus,
+    created_at: row?.created_at ?? null,
+    restaurant_name: "MMD Taxi",
+    pickup_address: row?.pickup_address ?? null,
+    dropoff_address: row?.dropoff_address ?? null,
+    distance_miles: toFiniteNumber(row?.distance_miles),
+    eta_minutes:
+      toFiniteNumber(row?.duration_minutes) ??
+      toFiniteNumber(row?.eta_minutes),
+    driver_delivery_payout: payout,
+    driver_id: row?.driver_user_id ?? row?.driver_id ?? null,
+    client_id: row?.client_user_id ?? null,
+    client_user_id: row?.client_user_id ?? null,
+    restaurant_id: null,
+    restaurant_user_id: null,
+    pickup_lat: toFiniteNumber(row?.pickup_lat),
+    pickup_lng: toFiniteNumber(row?.pickup_lng ?? row?.pickup_lon),
+    dropoff_lat: toFiniteNumber(row?.dropoff_lat),
+    dropoff_lng: toFiniteNumber(row?.dropoff_lng ?? row?.dropoff_lon),
+    dropoff_location_id: row?.dropoff_location_id ?? null,
+    source_table: "taxi_rides",
+  };
 }
 
 function mapDeliveryRequestToOrder(row: any): Order {
@@ -902,6 +938,20 @@ export function DriverOrderDetailsScreen() {
 
         if (error) throw error;
         if (data) nextOrder = mapDeliveryRequestToOrder(data);
+      } else if (sourceTable === "taxi_rides") {
+        const { data, error } = await supabase
+          .from("taxi_rides")
+          .select(
+            `id,status,payment_status,driver_user_id,client_user_id,created_at,updated_at,
+             pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
+             pickup_location_id,dropoff_location_id,distance_miles,duration_minutes,
+             driver_payout_cents,total_cents,currency`
+          )
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (data) nextOrder = mapTaxiRideToOrder(data);
       } else {
         const { data, error } = await supabase
           .from("orders")

@@ -158,13 +158,16 @@ export function DriverInboxScreen() {
       const fromISO = from.toISOString();
 
       const baseSelect = "id, created_at, status, driver_id, restaurant_name, kind";
+      const INBOX_ORDER_LIMIT = 50;
+      const INBOX_MESSAGE_LIMIT = 120;
 
       const { data: inProgress, error: e1 } = await supabase
         .from("orders")
         .select(baseSelect)
         .eq("driver_id", uid)
         .neq("status", "delivered")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(INBOX_ORDER_LIMIT);
 
       if (e1) throw e1;
 
@@ -174,7 +177,8 @@ export function DriverInboxScreen() {
         .eq("driver_id", uid)
         .eq("status", "delivered")
         .gte("created_at", fromISO)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(INBOX_ORDER_LIMIT);
 
       if (e2) throw e2;
 
@@ -190,7 +194,7 @@ export function DriverInboxScreen() {
 
       safeSet(() => setOrders(merged));
 
-      const ids = merged.map((o) => o.id);
+      const ids = merged.slice(0, INBOX_ORDER_LIMIT).map((o) => o.id);
       if (ids.length === 0) {
         safeSet(() => {
           setLastMsgByOrder({});
@@ -203,7 +207,8 @@ export function DriverInboxScreen() {
         .from("order_messages")
         .select("order_id, user_id, text, created_at")
         .in("order_id", ids)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(INBOX_MESSAGE_LIMIT);
 
       if (e3) {
         console.log("⚠️ order_messages preview error:", e3);

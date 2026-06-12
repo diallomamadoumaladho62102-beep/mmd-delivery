@@ -35,7 +35,17 @@ export default function MarketplaceHomeScreen() {
       const items = await fetchMarketplaceSellers();
       setSellers(items);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load marketplace");
+      const message = e instanceof Error ? e.message : "Unable to load marketplace";
+      if (message === "marketplace_unavailable") {
+        setError(
+          t(
+            "marketplace.errors.unavailable",
+            "Marketplace coming soon in your area."
+          )
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
