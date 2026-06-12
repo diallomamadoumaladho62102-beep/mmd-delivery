@@ -21,16 +21,15 @@ import { supabase } from "../lib/supabase";
 import { useIsFocused } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
+import {
+  ensureMapboxTokenApplied,
+  getMapStyleDark,
+  getMapStyleStreets,
+} from "../lib/mapboxConfig";
 
 const FALLBACK_RESTAURANT_ID = "";
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
 const DEFAULT_RESTAURANT_COORDINATE: [number, number] = [-73.949997, 40.650002];
-
-const MAP_STYLE_STREETS =
-  (Mapbox as any).StyleURL?.Street ?? "mapbox://styles/mapbox/streets-v12";
-const MAP_STYLE_DARK =
-  (Mapbox as any).StyleURL?.Dark ?? "mapbox://styles/mapbox/dark-v11";
 
 const MAX_VISIBLE_MAP_ORDERS = 12;
 const MAX_NEARBY_DRIVERS = 8;
@@ -40,12 +39,6 @@ const FLOATING_SIDE_BOTTOM_OFFSET = BOTTOM_NAV_SAFE_OFFSET + 98;
 const SIDE_BUTTON_SIZE = 66;
 const SIDE_BUTTON_MIN_HEIGHT = 68;
 const BOTTOM_BUTTON_MIN_HEIGHT = 72;
-
-if (MAPBOX_TOKEN) {
-  Mapbox.setAccessToken(MAPBOX_TOKEN);
-} else if (IS_DEV) {
-  console.log("[RestaurantHomeScreen] EXPO_PUBLIC_MAPBOX_TOKEN manquant");
-}
 
 type DashboardStats = {
   ordersToday: number;
@@ -617,6 +610,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const isFocused = useIsFocused();
   const cameraRef = useRef<Mapbox.Camera | null>(null);
 
+  useEffect(() => {
+    ensureMapboxTokenApplied();
+  }, []);
+
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState("Restaurant");
@@ -628,7 +625,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [restaurantCoordinate, setRestaurantCoordinate] =
     useState<[number, number]>(DEFAULT_RESTAURANT_COORDINATE);
   const [profileNeedsSetup, setProfileNeedsSetup] = useState(false);
-  const [mapStyleURL, setMapStyleURL] = useState(MAP_STYLE_STREETS);
+  const [mapStyleURL, setMapStyleURL] = useState(getMapStyleStreets());
   const [zoomLevel, setZoomLevel] = useState(12);
   const [showHeatmap, setShowHeatmap] = useState(true);
   const [showRoutes, setShowRoutes] = useState(true);
@@ -1438,7 +1435,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
       <View style={restaurantStyles.root}>
         <Mapbox.MapView
           style={restaurantStyles.map}
-          styleURL={mapStyleURL || MAP_STYLE_STREETS}
+          styleURL={mapStyleURL || getMapStyleStreets()}
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
@@ -1869,10 +1866,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
           <MapActionButton
             icon="▰"
             label="Layers"
-            active={mapStyleURL === MAP_STYLE_DARK}
+            active={mapStyleURL === getMapStyleDark()}
             onPress={() =>
-              setMapStyleURL((value: string) =>
-                value === MAP_STYLE_STREETS ? MAP_STYLE_DARK : MAP_STYLE_STREETS
+              setMapStyleURL((value) =>
+                value === getMapStyleStreets() ? getMapStyleDark() : getMapStyleStreets()
               )
             }
           />

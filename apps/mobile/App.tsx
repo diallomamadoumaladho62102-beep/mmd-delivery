@@ -4,7 +4,6 @@ import Constants from "expo-constants";
 import * as Application from "expo-application";
 import * as Device from "expo-device";
 import { ActivityIndicator, Image, Text, View } from "react-native";
-import Mapbox from "@rnmapbox/maps";
 
 // i18n boot
 import "./src/i18n";
@@ -15,14 +14,6 @@ import { getSelectedRole } from "./src/lib/authRole";
 import { API_BASE_URL } from "./lib/apiBase";
 import { setupNotifications, getExpoPushToken } from "./src/lib/notifications";
 import { syncLocaleForRole } from "./src/i18n";
-
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
-
-if (MAPBOX_TOKEN) {
-  Mapbox.setAccessToken(MAPBOX_TOKEN);
-} else if (__DEV__) {
-  console.log("[App] EXPO_PUBLIC_MAPBOX_TOKEN manquant");
-}
 
 type Role = "client" | "driver" | "restaurant";
 
@@ -164,7 +155,10 @@ export default function App(): React.JSX.Element {
     console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
     console.log("SUPABASE_URL =", process.env.EXPO_PUBLIC_SUPABASE_URL);
     console.log("SUPABASE_KEY_OK =", !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
-    console.log("MAPBOX_TOKEN_OK =", !!MAPBOX_TOKEN);
+    console.log(
+      "MAPBOX_TOKEN_OK =",
+      !!String(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "").trim()
+    );
   }
 
   useEffect(() => {

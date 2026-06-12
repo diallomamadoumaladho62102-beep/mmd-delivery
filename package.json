@@ -20,22 +20,22 @@
     "@supabase/supabase-js": "^2.80.0",
     "base64-arraybuffer": "^1.0.2",
     "dotenv": "^17.2.3",
-    "expo": "~54.0.34",
+    "expo": "~54.0.35",
     "expo-application": "~7.0.8",
     "expo-av": "~16.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-device": "~8.0.10",
     "expo-document-picker": "~14.0.8",
-    "expo-file-system": "~19.0.22",
+    "expo-file-system": "~19.0.23",
     "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.11",
-    "expo-keep-awake": "~14.0.3",
+    "expo-keep-awake": "~15.0.8",
     "expo-linking": "~8.0.12",
     "expo-location": "~19.0.8",
     "expo-notifications": "~0.32.17",
     "expo-speech": "~14.0.8",
     "expo-task-manager": "~14.0.9",
-    "expo-web-browser": "^15.0.11",
+    "expo-web-browser": "~15.0.11",
     "i18next": "^25.10.10",
     "react": "19.1.0",
     "react-i18next": "^16.6.6",
@@ -48,5 +48,10 @@
     "@types/react": "19.1.17",
     "babel-preset-expo": "~54.0.10",
     "typescript": "5"
+  },
+  "pnpm": {
+    "overrides": {
+      "expo-keep-awake": "~15.0.8"
+    }
   }
 }

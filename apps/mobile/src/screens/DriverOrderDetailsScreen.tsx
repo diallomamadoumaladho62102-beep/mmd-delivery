@@ -32,14 +32,10 @@ import {
   stopDriverLocationTracking,
 } from "../lib/driverLocationTracker";
 import { DriverTripLocationCard } from "../components/location/DriverTripLocationCard";
-
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
-const MAP_STYLE_STREETS =
-  (Mapbox as any).StyleURL?.Street ?? "mapbox://styles/mapbox/streets-v12";
-
-if (MAPBOX_TOKEN) {
-  Mapbox.setAccessToken(MAPBOX_TOKEN);
-}
+import {
+  ensureMapboxTokenApplied,
+  getMapStyleStreets,
+} from "../lib/mapboxConfig";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -701,6 +697,10 @@ export function DriverOrderDetailsScreen() {
   const sourceTable = normalizeSourceTable(routeParams?.sourceTable ?? routeParams?.source_table);
 
   const { t } = useTranslation();
+
+  useEffect(() => {
+    ensureMapboxTokenApplied();
+  }, []);
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
@@ -2368,7 +2368,7 @@ export function DriverOrderDetailsScreen() {
       <StatusBar barStyle="light-content" />
 
       <View style={{ height: 265, width: "100%" }}>
-        <Mapbox.MapView style={{ flex: 1 }} styleURL={MAP_STYLE_STREETS}
+        <Mapbox.MapView style={{ flex: 1 }} styleURL={getMapStyleStreets()}
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled

@@ -26,15 +26,11 @@ import { payOrderWithPaymentSheet } from "../utils/stripe";
 import { confirmOrderPaid } from "../../lib/payments";
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { useTranslation } from "react-i18next";
+import {
+  ensureMapboxTokenApplied,
+  getMapStyleStreets,
+} from "../lib/mapboxConfig";
 import Mapbox from "@rnmapbox/maps";
-
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
-const MAP_STYLE_STREETS =
-  (Mapbox as any).StyleURL?.Street ?? "mapbox://styles/mapbox/streets-v12";
-
-if (MAPBOX_TOKEN) {
-  Mapbox.setAccessToken(MAPBOX_TOKEN);
-}
 
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
@@ -365,6 +361,10 @@ export function ClientOrderDetailsScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
   const { orderId } = route.params;
+
+  useEffect(() => {
+    ensureMapboxTokenApplied();
+  }, []);
 
   const ts = useCallback(
     (key: string, fallback: string, options?: Record<string, any>) =>
@@ -1548,7 +1548,7 @@ export function ClientOrderDetailsScreen() {
               >
                 <Mapbox.MapView
                   style={{ flex: 1 }}
-                  styleURL={MAP_STYLE_STREETS}
+                  styleURL={getMapStyleStreets()}
                   logoEnabled={false}
                   attributionEnabled={false}
                   compassEnabled

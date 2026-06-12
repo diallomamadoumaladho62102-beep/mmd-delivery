@@ -37,6 +37,7 @@ import {
   isDriverOnlineEligible,
 } from "../lib/accountStatus";
 import { useDriverPlatformFeatures } from "../hooks/useDriverPlatformFeatures";
+import { ensureMapboxTokenApplied } from "../lib/mapboxConfig";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -44,8 +45,6 @@ import { Audio } from "expo-av";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { DriverTaxiPanel } from "../components/driver/DriverTaxiPanel";
-
-Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "");
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type AnyNav = NativeStackNavigationProp<any>;
@@ -611,6 +610,7 @@ export function DriverHomeScreen() {
     useDriverPlatformFeatures();
 
   useEffect(() => {
+    ensureMapboxTokenApplied();
     void registerUserPushToken("driver");
   }, []);
 

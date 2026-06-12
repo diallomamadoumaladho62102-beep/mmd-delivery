@@ -1,9 +1,29 @@
-import Mapbox from "@rnmapbox/maps";
+import type MapboxGL from "@rnmapbox/maps";
 
 const MAPBOX_TOKEN =
   process.env.EXPO_PUBLIC_MAPBOX_TOKEN || process.env.MAPBOX_TOKEN || "";
 
+let mapboxModule: typeof MapboxGL | null = null;
 let tokenApplied = false;
+
+function loadMapboxModule(): typeof MapboxGL | null {
+  if (mapboxModule) return mapboxModule;
+  try {
+    // Lazy require: avoid initializing Mapbox native bindings at app bootstrap.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    mapboxModule = require("@rnmapbox/maps").default as typeof MapboxGL;
+    return mapboxModule;
+  } catch (error) {
+    if (__DEV__) {
+      console.log("[mapboxConfig] Failed to load @rnmapbox/maps:", error);
+    }
+    return null;
+  }
+}
+
+export function getMapboxModule(): typeof MapboxGL | null {
+  return loadMapboxModule();
+}
 
 export function getMapboxToken(): string {
   return MAPBOX_TOKEN;
@@ -16,6 +36,9 @@ export function isMapboxConfigured(): boolean {
 export function ensureMapboxTokenApplied(): boolean {
   if (!isMapboxConfigured()) return false;
 
+  const Mapbox = loadMapboxModule();
+  if (!Mapbox) return false;
+
   if (!tokenApplied) {
     Mapbox.setAccessToken(MAPBOX_TOKEN);
     tokenApplied = true;
@@ -24,10 +47,24 @@ export function ensureMapboxTokenApplied(): boolean {
   return true;
 }
 
-export const MAP_STYLE_STREETS =
-  (Mapbox as { StyleURL?: { Street?: string } }).StyleURL?.Street ??
-  "mapbox://styles/mapbox/streets-v12";
+export function getMapStyleStreets(): string {
+  const Mapbox = loadMapboxModule();
+  return (
+    (Mapbox as { StyleURL?: { Street?: string } } | null)?.StyleURL?.Street ??
+    "mapbox://styles/mapbox/streets-v12"
+  );
+}
 
-export const MAP_STYLE_DARK =
-  (Mapbox as { StyleURL?: { Dark?: string } }).StyleURL?.Dark ??
-  "mapbox://styles/mapbox/dark-v11";
+export function getMapStyleDark(): string {
+  const Mapbox = loadMapboxModule();
+  return (
+    (Mapbox as { StyleURL?: { Dark?: string } } | null)?.StyleURL?.Dark ??
+    "mapbox://styles/mapbox/dark-v11"
+  );
+}
+
+/** @deprecated Use getMapStyleStreets() for lazy Mapbox access */
+export const MAP_STYLE_STREETS = "mapbox://styles/mapbox/streets-v12";
+
+/** @deprecated Use getMapStyleDark() for lazy Mapbox access */
+export const MAP_STYLE_DARK = "mapbox://styles/mapbox/dark-v11";
