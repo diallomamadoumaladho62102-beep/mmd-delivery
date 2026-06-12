@@ -18,6 +18,9 @@ pnpm-debug.log*
 apps/mobile/.expo/
 apps/mobile/android/
 
+# Local UI validation captures (never commit)
+docs/screenshots/
+
 *.ipa
 build*/
 
