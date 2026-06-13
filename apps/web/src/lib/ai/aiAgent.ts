@@ -2,6 +2,10 @@ import OpenAI from "openai";
 import crypto from "node:crypto";
 import type { NextRequest } from "next/server";
 import {
+  estimateOpenAiCostUsd,
+  mergeOpenAiUsage,
+} from "@/lib/ai/aiOpenAiPricing";
+import {
   getAiMaxToolIterations,
   getOpenAiApiKey,
   getOpenAiModel,
@@ -103,6 +107,7 @@ export async function runMmdAiChat(params: {
   const toolsUsed: string[] = [];
   const collectedActions: AiAction[] = [];
   let escalatedToHuman = Boolean(escalationKeyword);
+  const usageParts = [];
 
   for (let i = 0; i < getAiMaxToolIterations(); i += 1) {
     const completion = await openai.chat.completions.create({
@@ -113,6 +118,16 @@ export async function runMmdAiChat(params: {
       temperature: 0.4,
       max_tokens: 800,
     });
+
+    if (completion.usage) {
+      usageParts.push(
+        estimateOpenAiCostUsd({
+          promptTokens: completion.usage.prompt_tokens ?? 0,
+          completionTokens: completion.usage.completion_tokens ?? 0,
+          model: completion.model ?? getOpenAiModel(),
+        })
+      );
+    }
 
     const choice = completion.choices[0];
     if (!choice) {
@@ -139,6 +154,8 @@ export async function runMmdAiChat(params: {
         });
       }
 
+      const usage = mergeOpenAiUsage(usageParts);
+
       return {
         ok: true,
         conversationId,
@@ -152,6 +169,13 @@ export async function runMmdAiChat(params: {
           escalatedToHuman,
           escalationReason: escalationKeyword ?? undefined,
           disclaimer: AI_DISCLAIMER,
+          usage: {
+            promptTokens: usage.promptTokens,
+            completionTokens: usage.completionTokens,
+            totalTokens: usage.totalTokens,
+            estimatedCostUsd: usage.estimatedCostUsd,
+            model: usage.model,
+          },
         },
       };
     }
@@ -188,6 +212,8 @@ export async function runMmdAiChat(params: {
     }
   }
 
+  const usage = mergeOpenAiUsage(usageParts);
+
   return {
     ok: true,
     conversationId,
@@ -207,6 +233,13 @@ export async function runMmdAiChat(params: {
       escalatedToHuman,
       escalationReason: escalationKeyword ?? undefined,
       disclaimer: AI_DISCLAIMER,
+      usage: {
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        estimatedCostUsd: usage.estimatedCostUsd,
+        model: usage.model,
+      },
     },
   };
 }

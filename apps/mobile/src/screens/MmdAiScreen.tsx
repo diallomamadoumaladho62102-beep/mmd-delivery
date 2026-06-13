@@ -210,16 +210,34 @@ export default function MmdAiScreen() {
         const apiErr = err instanceof MmdAiApiError ? err : null;
         const code = apiErr?.code;
         const fallback =
-          code === "AI_DISABLED"
+          code === "AI_DISABLED" || code === "AI_NOT_AVAILABLE_IN_REGION"
             ? tsFallback(
                 ts,
-                "mmd.ai.disabled",
-                "MMD AI is not available in your area yet. You can still use the shortcuts below."
+                code === "AI_NOT_AVAILABLE_IN_REGION"
+                  ? "mmd.ai.regionUnavailable"
+                  : "mmd.ai.disabled",
+                "MMD AI is not available in your area yet."
               )
-            : apiErr?.message ??
-              tsFallback(ts, "mmd.ai.error.generic", "MMD AI is temporarily unavailable.");
+            : code === "AI_TEMPORARILY_DISABLED"
+              ? tsFallback(
+                  ts,
+                  "mmd.ai.temporarilyDisabled",
+                  "MMD AI is temporarily unavailable."
+                )
+              : code === "AI_RATE_LIMIT"
+                ? tsFallback(
+                    ts,
+                    "mmd.ai.rateLimit",
+                    "Too many requests. Please try again in a few minutes."
+                  )
+                : apiErr?.message ??
+                  tsFallback(ts, "mmd.ai.error.generic", "MMD AI is temporarily unavailable.");
 
-        if (code === "AI_DISABLED") {
+        if (
+          code === "AI_DISABLED" ||
+          code === "AI_NOT_AVAILABLE_IN_REGION" ||
+          code === "AI_TEMPORARILY_DISABLED"
+        ) {
           setServiceUnavailable(fallback);
         } else {
           const assistantMessage = createLocalMessage("assistant", fallback);

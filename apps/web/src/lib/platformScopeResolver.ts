@@ -36,10 +36,10 @@ export type {
 } from "@/lib/platformScopeTypes";
 
 const COUNTRY_SELECT =
-  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
+  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, ai_enabled, ai_enabled_updated_at, ai_enabled_updated_by, created_at, updated_at";
 
 const REGION_SELECT =
-  "id, country_code, region_code, region_name, region_type, mmd_zone_id, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status";
+  "id, country_code, region_code, region_name, region_type, mmd_zone_id, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, ai_enabled, ai_enabled_updated_at, ai_enabled_updated_by";
 
 const US_STATE_NAME_TO_CODE: Record<string, string> = {
   ALABAMA: "AL",
@@ -127,6 +127,7 @@ export function countryConfigToToggleConfig(
     payout_enabled: config.payout_enabled,
     maintenance_mode: config.maintenance_mode,
     launch_status: config.launch_status,
+    ai_enabled: Boolean((config as { ai_enabled?: boolean }).ai_enabled),
   };
 }
 
@@ -145,6 +146,7 @@ export function regionRowToToggleConfig(row: PlatformRegionRow): PlatformToggleC
     payout_enabled: row.payout_enabled,
     maintenance_mode: row.maintenance_mode,
     launch_status: row.launch_status,
+    ai_enabled: Boolean(row.ai_enabled),
   };
 }
 
@@ -221,6 +223,7 @@ export function applyCountryFloor(
       seller_enabled: false,
       checkout_enabled: false,
       payout_enabled: false,
+      ai_enabled: false,
     };
   }
 
@@ -387,7 +390,7 @@ export function buildFeatureAvailability(
     can_go_online: platformOn,
     can_accept_orders:
       platformOn && config.restaurant_enabled && config.checkout_enabled,
-    ai_assistant_available: isAiAssistantEnabled() && platformOn,
+    ai_assistant_available: isAiAssistantEnabled() && platformOn && config.ai_enabled,
     refresh_after_ms: 300_000,
   };
 }

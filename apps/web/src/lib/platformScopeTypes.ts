@@ -37,6 +37,7 @@ export type PlatformToggleConfig = {
   payout_enabled: boolean;
   maintenance_mode: boolean;
   launch_status: PlatformLaunchStatus;
+  ai_enabled: boolean;
 };
 
 export type PlatformFeatureAvailability = {
@@ -82,4 +83,7 @@ export type PlatformRegionRow = {
   payout_enabled: boolean;
   maintenance_mode: boolean;
   launch_status: PlatformLaunchStatus;
+  ai_enabled: boolean;
+  ai_enabled_updated_at?: string | null;
+  ai_enabled_updated_by?: string | null;
 };

@@ -39,6 +39,14 @@ export type AiQuickReplyAction = {
 
 export type AiAction = AiNavigateAction | AiQuickReplyAction;
 
+export type AiChatUsageMeta = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+  model: string;
+};
+
 export type AiChatResponse = {
   ok: true;
   conversationId: string;
@@ -56,6 +64,7 @@ export type AiChatResponse = {
     escalatedToHuman: boolean;
     escalationReason?: string;
     disclaimer: string;
+    usage?: AiChatUsageMeta;
   };
 };
 
@@ -66,6 +75,8 @@ export type AiErrorResponse = {
     | "UNAUTHORIZED"
     | "FORBIDDEN_ROLE"
     | "AI_DISABLED"
+    | "AI_NOT_AVAILABLE_IN_REGION"
+    | "AI_TEMPORARILY_DISABLED"
     | "AI_RATE_LIMIT"
     | "AI_UNAVAILABLE"
     | "INVALID_REQUEST"

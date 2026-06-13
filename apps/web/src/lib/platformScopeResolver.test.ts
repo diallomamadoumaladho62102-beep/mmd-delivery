@@ -66,6 +66,7 @@ test("country floor disables region when country OFF", () => {
     payout_enabled: true,
     maintenance_mode: false,
     launch_status: "enabled",
+    ai_enabled: false,
   });
 
   const effective = applyCountryFloor(country, region, true);
@@ -92,6 +93,7 @@ test("region override replaces country toggles when allowed", () => {
     payout_enabled: true,
     maintenance_mode: false,
     launch_status: "enabled",
+    ai_enabled: false,
   });
 
   const effective = applyCountryFloor(country, region, true);

@@ -7,7 +7,6 @@ import {
   getSupabaseUserClient,
   taxiJson,
 } from "@/lib/taxiApi";
-import { isAiAssistantEnabled } from "@/lib/ai/aiConfig";
 import { aiJson } from "@/lib/ai/aiJson";
 import type { AiRole } from "@/lib/ai/aiTypes";
 
@@ -49,20 +48,6 @@ export async function requireAiApiUser(
   req: NextRequest,
   options?: { clientOnly?: boolean }
 ): Promise<AiApiAuthSuccess | AiApiAuthFailure> {
-  if (!isAiAssistantEnabled()) {
-    return {
-      ok: false,
-      response: aiJson(
-        {
-          ok: false,
-          error: "MMD AI is not available yet.",
-          code: "AI_DISABLED",
-        },
-        403
-      ),
-    };
-  }
-
   const token = getBearerToken(req);
   if (!token) {
     return {

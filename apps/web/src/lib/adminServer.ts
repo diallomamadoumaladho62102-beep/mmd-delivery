@@ -326,3 +326,10 @@ export async function assertCanManagePlatformLaunch(request?: NextRequest) {
     request
   );
 }
+
+export async function assertCanManageMmdAi(request?: NextRequest) {
+  return assertPermission(
+    (role) => staffHasPermission(role, "mmd_ai.manage"),
+    request
+  );
+}

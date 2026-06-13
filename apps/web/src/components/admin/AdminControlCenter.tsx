@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
 import AdminCommissionsTable from "@/components/AdminCommissionsTable";
+import AdminMmdAiSummary from "@/components/admin/AdminMmdAiSummary";
 import AdminRefundBackfillPanel from "@/components/AdminRefundBackfillPanel";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 import { ADMIN_HUB_LINKS } from "@/lib/adminHubLinks";
@@ -68,6 +69,28 @@ export default function AdminControlCenter() {
     return ADMIN_HUB_LINKS.filter((link) => hasPermission(role, link.permission));
   }, [role]);
 
+  const launchClusterHrefs = useMemo(
+    () =>
+      new Set([
+        "/admin/taxi-monitoring",
+        "/admin/taxi-launch",
+        "/admin/platform-launch",
+        "/admin/mmd-ai",
+        "/admin/mmd-ai/launch",
+      ]),
+    []
+  );
+
+  const launchClusterLinks = useMemo(
+    () => visibleLinks.filter((link) => launchClusterHrefs.has(link.href)),
+    [launchClusterHrefs, visibleLinks]
+  );
+
+  const primaryLinks = useMemo(
+    () => visibleLinks.filter((link) => !launchClusterHrefs.has(link.href)),
+    [launchClusterHrefs, visibleLinks]
+  );
+
   return (
     <AdminGate requiredPermission="hub.access">
       <main className="min-h-screen bg-slate-50">
@@ -117,7 +140,7 @@ export default function AdminControlCenter() {
           ) : null}
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleLinks.map((link) => (
+            {primaryLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -128,6 +151,33 @@ export default function AdminControlCenter() {
               </Link>
             ))}
           </section>
+
+          {launchClusterLinks.length ? (
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Launch, monitoring & MMD AI
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Regional rollout, taxi ops monitoring, platform launch, and MMD AI controls.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {launchClusterLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:bg-slate-50"
+                  >
+                    <div className="font-medium text-slate-900">{link.title}</div>
+                    <div className="mt-1 text-sm text-slate-500">{link.description}</div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {role ? <AdminMmdAiSummary role={role} /> : null}
 
           {role && hasPermission(role, "payouts.read") ? (
             <AdminRefundBackfillPanel />

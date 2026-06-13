@@ -230,4 +230,16 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     description: "Activation globale plateforme par pays — taxi, delivery, restaurant",
     permission: "platform_launch.read",
   },
+  {
+    href: "/admin/mmd-ai",
+    title: "MMD AI",
+    description: "AI usage, costs, safety and monitoring",
+    permission: "mmd_ai.read",
+  },
+  {
+    href: "/admin/mmd-ai/launch",
+    title: "MMD AI Launch Control",
+    description: "Enable or disable AI by country, state, region or city",
+    permission: "mmd_ai.read",
+  },
 ];

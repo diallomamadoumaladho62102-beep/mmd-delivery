@@ -35,3 +35,39 @@ export function getAiMaxHistoryTurns(): number {
 export function getAiMaxToolIterations(): number {
   return 4;
 }
+
+export function isAiEmergencyStopEnv(): boolean {
+  const raw = String(process.env.AI_EMERGENCY_STOP ?? "false")
+    .trim()
+    .toLowerCase();
+  return raw === "true" || raw === "1" || raw === "yes";
+}
+
+export function getAiDailyCostCapUsdEnv(): number | null {
+  const raw = Number(process.env.AI_DAILY_COST_CAP_USD ?? "");
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return raw;
+}
+
+export function getAiInternalBetaUserIds(): Set<string> {
+  const raw = String(process.env.AI_INTERNAL_BETA_USER_IDS ?? "").trim();
+  if (!raw) return new Set();
+  return new Set(
+    raw
+      .split(/[,;\s]+/)
+      .map((part) => part.trim())
+      .filter(Boolean)
+  );
+}
+
+export function isAiInternalBetaUser(userId: string): boolean {
+  return getAiInternalBetaUserIds().has(userId);
+}
+
+export function shouldUseSupabaseAiRateLimit(): boolean {
+  if (process.env.NODE_ENV === "test") return false;
+  const raw = String(process.env.AI_RATE_LIMIT_USE_SUPABASE ?? "true")
+    .trim()
+    .toLowerCase();
+  return raw !== "false" && raw !== "0";
+}

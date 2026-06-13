@@ -67,6 +67,8 @@ export type AdminPermission =
   | "taxi_launch.manage"
   | "platform_launch.read"
   | "platform_launch.manage"
+  | "mmd_ai.read"
+  | "mmd_ai.manage"
   | "taxi_market_metrics.read"
   | "communication.chats"
   | "communication.calls"
@@ -129,6 +131,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_launch.manage",
     "platform_launch.read",
     "platform_launch.manage",
+    "mmd_ai.read",
+    "mmd_ai.manage",
     "taxi_market_metrics.read",
     "communication.chats",
     "communication.calls",
@@ -167,6 +171,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_alerts.manage",
     "taxi_launch.read",
     "platform_launch.read",
+    "mmd_ai.read",
     "taxi_market_metrics.read",
     "communication.chats",
     "communication.calls",
@@ -196,6 +201,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_launch.manage",
     "platform_launch.read",
     "platform_launch.manage",
+    "mmd_ai.read",
     "taxi_market_metrics.read",
     "taxi_business.read",
     "taxi_business.manage",
