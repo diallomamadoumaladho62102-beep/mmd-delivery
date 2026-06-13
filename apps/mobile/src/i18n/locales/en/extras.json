@@ -167,7 +167,11 @@
       "missingAddressBody": "Enter pickup and dropoff addresses.",
       "estimateFailed": "Estimate failed",
       "countryMismatch": "Pickup location does not match selected country.",
-      "quoteFailed": "Unable to get estimate"
+      "quoteFailed": "Unable to get estimate",
+      "unavailableTitle": "Taxi unavailable",
+      "unavailable": "Taxi is not available in your area yet",
+      "yourArea": "Your area",
+      "currencyLabel": "Currency"
     },
     "quote": {
       "vehicle": "Vehicle",

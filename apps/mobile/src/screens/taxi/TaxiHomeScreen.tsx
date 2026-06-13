@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -19,6 +19,12 @@ import {
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
 import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
+import TaxiMarketScopeCard from "../../components/taxi/TaxiMarketScopeCard";
+import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
+import {
+  isTaxiDevCountryPickerEnabled,
+  resolveTaxiMarketFromFeatures,
+} from "../../lib/taxiMarketScope";
 import { getTaxiUiString } from "../../lib/taxiLocalization";
 import {
   applyMmdLocationSelection,
@@ -33,6 +39,24 @@ export default function TaxiHomeScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<TaxiHomeRoute>();
   const { t } = useTranslation();
+  const ts = useCallback(
+    (key: string, fallback: string) => String(t(key, { defaultValue: fallback })),
+    [t]
+  );
+  const { features, loading: scopeLoading, refreshWithCurrentLocation } =
+    useClientPlatformFeatures();
+  const market = useMemo(() => resolveTaxiMarketFromFeatures(features), [features]);
+  const showDevCountryPicker = isTaxiDevCountryPickerEnabled();
+
+  useEffect(() => {
+    void refreshWithCurrentLocation();
+  }, [refreshWithCurrentLocation]);
+
+  useEffect(() => {
+    if (showDevCountryPicker) return;
+    setCountryCode(market.countryCode);
+    setCurrencyCode(market.currencyCode);
+  }, [market.countryCode, market.currencyCode, showDevCountryPicker]);
 
   const CLASSES = useMemo(
     () =>
@@ -170,21 +194,54 @@ export default function TaxiHomeScreen() {
         </TouchableOpacity>
 
         <Text style={{ color: "#fff", fontSize: 28, fontWeight: "800" }}>
-          {t("taxi.home.title", "MMD Taxi")}
+          {ts("taxi.home.title", "MMD Taxi")}
         </Text>
         <Text style={{ color: "#94A3B8", fontSize: 15 }}>
-          {t("taxi.home.subtitle", "Book a ride — separate from delivery packages.")}
+          {ts("taxi.home.subtitle", "Book a ride — separate from delivery packages.")}
         </Text>
 
-        <View style={{ gap: 10 }}>
-          <TaxiCountryPicker
-            value={countryCode}
-            onChange={(code, currency) => {
-              setCountryCode(code);
-              setCurrencyCode(currency);
+        {scopeLoading ? (
+          <ActivityIndicator color="#93C5FD" />
+        ) : !market.taxiAvailable ? (
+          <View
+            style={{
+              padding: 16,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: "#854D0E",
+              backgroundColor: "rgba(120,53,15,0.35)",
+              gap: 8,
             }}
-          />
-          {currencyCode ? (
+          >
+            <Text style={{ color: "#FDE68A", fontWeight: "800", fontSize: 16 }}>
+              {ts("taxi.home.unavailableTitle", "Taxi unavailable")}
+            </Text>
+            <Text style={{ color: "#FEF3C7", fontSize: 14, lineHeight: 20 }}>
+              {ts(
+                "taxi.home.unavailable",
+                "Taxi is not available in your area yet"
+              )}
+            </Text>
+          </View>
+        ) : (
+          <>
+        <View style={{ gap: 10 }}>
+          {showDevCountryPicker ? (
+            <TaxiCountryPicker
+              value={countryCode}
+              onChange={(code, currency) => {
+                setCountryCode(code);
+                setCurrencyCode(currency);
+              }}
+            />
+          ) : (
+            <TaxiMarketScopeCard
+              market={market}
+              areaLabel={ts("taxi.home.yourArea", "Your area")}
+              currencyLabel={ts("taxi.home.currencyLabel", "Currency")}
+            />
+          )}
+          {showDevCountryPicker && currencyCode ? (
             <Text style={{ color: "#64748B", fontSize: 12 }}>
               {getTaxiUiString("estimatesIn", countryCode)} {currencyCode}
             </Text>
@@ -349,6 +406,8 @@ export default function TaxiHomeScreen() {
             {t("taxi.home.loyaltyRewards", "Loyalty rewards")}
           </Text>
         </TouchableOpacity>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
