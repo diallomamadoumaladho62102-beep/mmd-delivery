@@ -8,23 +8,32 @@ export type ResolvedStaffSession = {
 };
 
 async function readAccessToken(): Promise<string | null> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) {
-    throw new Error(error.message);
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.warn("[adminBrowserAuth] getSession failed", error.message);
+      return null;
+    }
+    return data.session?.access_token ?? null;
+  } catch (err) {
+    console.warn("[adminBrowserAuth] getSession exception", err);
+    return null;
   }
-  return data.session?.access_token ?? null;
 }
 
 export async function waitForBrowserSession(timeoutMs = 5000): Promise<string | null> {
   let token = await readAccessToken();
   if (token) return token;
 
-  const refreshed = await supabase.auth.refreshSession();
-  if (refreshed.error) {
-    throw new Error(refreshed.error.message);
+  try {
+    const refreshed = await supabase.auth.refreshSession();
+    if (!refreshed.error) {
+      token = refreshed.data.session?.access_token ?? null;
+      if (token) return token;
+    }
+  } catch (err) {
+    console.warn("[adminBrowserAuth] refreshSession failed", err);
   }
-  token = refreshed.data.session?.access_token ?? null;
-  if (token) return token;
 
   return new Promise((resolve) => {
     let settled = false;
@@ -38,7 +47,9 @@ export async function waitForBrowserSession(timeoutMs = 5000): Promise<string | 
     };
 
     const timer = window.setTimeout(() => {
-      void readAccessToken().then(finish);
+      void readAccessToken()
+        .then(finish)
+        .catch(() => finish(null));
     }, timeoutMs);
 
     const {
@@ -75,23 +86,38 @@ export async function adminFetch(
 }
 
 export async function resolveBrowserStaffSession(): Promise<ResolvedStaffSession | null> {
-  const token = await waitForBrowserSession();
-  if (!token) return null;
+  try {
+    const token = await waitForBrowserSession();
+    if (!token) return null;
 
-  const res = await fetch("/api/admin/me", {
-    cache: "no-store",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok || !body.ok) return null;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 12_000);
 
-  const role = normalizeUserRole(body.role);
-  if (!role || !canAccessAdminDashboard(role)) return null;
+    let res: Response;
+    try {
+      res = await fetch("/api/admin/me", {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } finally {
+      window.clearTimeout(timeout);
+    }
 
-  return {
-    userId: String(body.userId),
-    role,
-  };
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.ok) return null;
+
+    const role = normalizeUserRole(body.role);
+    if (!role || !canAccessAdminDashboard(role)) return null;
+
+    return {
+      userId: String(body.userId),
+      role,
+    };
+  } catch (err) {
+    console.warn("[adminBrowserAuth] resolveBrowserStaffSession failed", err);
+    return null;
+  }
 }

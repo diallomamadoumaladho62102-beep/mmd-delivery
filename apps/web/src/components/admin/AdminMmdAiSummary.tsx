@@ -38,14 +38,33 @@ export default function AdminMmdAiSummary({ role }: { role: UserRole }) {
 
     let alive = true;
     void (async () => {
-      const res = await adminFetch("/api/admin/mmd-ai/control");
-      const body = await res.json().catch(() => ({}));
-      if (!alive) return;
-      if (!res.ok || !body.ok) {
-        setError(body.error ?? "MMD AI metrics unavailable");
-        return;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 10_000);
+
+      try {
+        const res = await adminFetch("/api/admin/mmd-ai/control", {
+          signal: controller.signal,
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!alive) return;
+        if (!res.ok || !body.ok) {
+          setError(body.error ?? "MMD AI metrics unavailable");
+          setControl(null);
+          return;
+        }
+        setError(null);
+        setControl(body.control as ControlSnapshot);
+      } catch (err) {
+        if (!alive) return;
+        setControl(null);
+        setError(
+          err instanceof Error && err.name === "AbortError"
+            ? "MMD AI metrics timed out"
+            : "MMD AI metrics unavailable"
+        );
+      } finally {
+        window.clearTimeout(timeout);
       }
-      setControl(body.control as ControlSnapshot);
     })();
 
     return () => {
@@ -84,7 +103,7 @@ export default function AdminMmdAiSummary({ role }: { role: UserRole }) {
 
       {error ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {error}
+          {error}. Le Control Center reste utilisable.
         </div>
       ) : control ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">

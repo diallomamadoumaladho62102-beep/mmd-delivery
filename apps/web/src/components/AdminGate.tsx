@@ -19,45 +19,62 @@ type Props = {
   requiredPermission?: AdminPermission;
 };
 
-type GateState = "loading" | "allowed" | "no-session" | "forbidden";
+type GateState = "loading" | "allowed" | "no-session" | "forbidden" | "error";
 
 export default function AdminGate({ children, requiredPermission }: Props) {
   const [state, setState] = useState<GateState>("loading");
   const [role, setRole] = useState<UserRole>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
 
     const evaluate = async () => {
-      const token = await waitForBrowserSession();
-      if (!alive) return;
+      try {
+        const token = await waitForBrowserSession();
+        if (!alive) return;
 
-      if (!token) {
-        setState("no-session");
+        if (!token) {
+          setErrorMessage(null);
+          setState("no-session");
+          setRole(null);
+          return;
+        }
+
+        const session = await resolveBrowserStaffSession();
+        if (!alive) return;
+
+        if (!session) {
+          setErrorMessage(null);
+          setState("forbidden");
+          setRole(null);
+          return;
+        }
+
+        if (
+          requiredPermission &&
+          !hasPermission(session.role, requiredPermission)
+        ) {
+          setErrorMessage(null);
+          setState("forbidden");
+          setRole(null);
+          return;
+        }
+
+        setErrorMessage(null);
+        setRole(session.role);
+        setState("allowed");
+      } catch (err) {
+        if (!alive) return;
+        console.error("[AdminGate] evaluate failed", err);
         setRole(null);
-        return;
+        setErrorMessage(
+          err instanceof Error
+            ? err.message
+            : "Impossible de charger l'espace admin."
+        );
+        setState("error");
       }
-
-      const session = await resolveBrowserStaffSession();
-      if (!alive) return;
-
-      if (!session) {
-        setState("forbidden");
-        setRole(null);
-        return;
-      }
-
-      if (
-        requiredPermission &&
-        !hasPermission(session.role, requiredPermission)
-      ) {
-        setState("forbidden");
-        setRole(null);
-        return;
-      }
-
-      setRole(session.role);
-      setState("allowed");
     };
 
     void evaluate();
@@ -77,6 +94,48 @@ export default function AdminGate({ children, requiredPermission }: Props) {
   if (state === "loading") {
     return (
       <div className="p-6 text-sm text-slate-500">Chargement espace admin…</div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div className="mx-auto max-w-xl p-6">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+          <div className="text-lg font-semibold text-slate-900">
+            Espace admin indisponible
+          </div>
+          <p className="mt-2 text-sm text-slate-600">
+            {errorMessage ??
+              "La session admin n'a pas pu être vérifiée. Réessaie ou reconnecte-toi."}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setState("loading");
+                setErrorMessage(null);
+                void resolveBrowserStaffSession().then((session) => {
+                  if (session) {
+                    setRole(session.role);
+                    setState("allowed");
+                    return;
+                  }
+                  setState("no-session");
+                });
+              }}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+            >
+              Réessayer
+            </button>
+            <Link
+              href="/auth"
+              className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Se connecter
+            </Link>
+          </div>
+        </div>
+      </div>
     );
   }
 
