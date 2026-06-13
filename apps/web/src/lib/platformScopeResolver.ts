@@ -27,6 +27,7 @@ import type {
   PlatformScopeSource,
   PlatformToggleConfig,
 } from "@/lib/platformScopeTypes";
+import { isAiAssistantEnabled } from "@/lib/ai/aiConfig";
 
 export type {
   PlatformFeatureAvailability,
@@ -386,6 +387,7 @@ export function buildFeatureAvailability(
     can_go_online: platformOn,
     can_accept_orders:
       platformOn && config.restaurant_enabled && config.checkout_enabled,
+    ai_assistant_available: isAiAssistantEnabled() && platformOn,
     refresh_after_ms: 300_000,
   };
 }

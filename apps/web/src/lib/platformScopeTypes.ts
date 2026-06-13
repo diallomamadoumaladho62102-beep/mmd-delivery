@@ -61,6 +61,7 @@ export type PlatformFeatureAvailability = {
   coming_soon_services: string[];
   can_go_online?: boolean;
   can_accept_orders?: boolean;
+  ai_assistant_available?: boolean;
   refresh_after_ms: number;
 };
 
