@@ -998,6 +998,9 @@ export function ClientHomeScreen() {
         onNavigateProfile={() => navigation.navigate("ClientProfile" as never)}
         onNavigateOrders={handleOpenFeaturedOrder}
         onNavigateRewards={() => navigation.navigate("TaxiLoyalty" as never)}
+        onNavigateAi={() =>
+          navigation.navigate("MmdAi", { source: "home_tab" })
+        }
         onOpenOrder={(item) => handleOpenOrderItem(item as ClientItem)}
         onOpenChat={handleOpenChat}
         formatCurrency={formatCurrency}

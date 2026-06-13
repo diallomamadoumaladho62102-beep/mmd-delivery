@@ -15,7 +15,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppLanguageCode } from "../../../i18n/languageOptions";
 import type { PlatformFeaturesResponse } from "../../../lib/platformFeaturesApi";
-import { ClientHomeAiSheet } from "./ClientHomeAiSheet";
 import { ClientHomeLanguageSheet } from "./ClientHomeLanguageSheet";
 import { V4, V4_RADIUS, V4_SHADOW, v4Styles } from "./clientHomeTheme";
 
@@ -77,6 +76,7 @@ export type ClientHomeV4ViewProps = {
   onNavigateProfile: () => void;
   onNavigateOrders: () => void;
   onNavigateRewards: () => void;
+  onNavigateAi: () => void;
   onOpenOrder: (item: ClientHomeItem) => void;
   onOpenChat: (orderId: string) => void;
   formatCurrency: (amount: number | null | undefined) => string;
@@ -211,6 +211,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
     onNavigateProfile,
     onNavigateOrders,
     onNavigateRewards,
+    onNavigateAi,
     onOpenOrder,
     onOpenChat,
     formatCurrency,
@@ -220,7 +221,6 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
   } = props;
 
   const [searchFocused, setSearchFocused] = useState(false);
-  const [aiSheetVisible, setAiSheetVisible] = useState(false);
   const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
   const insets = useSafeAreaInsets();
 
@@ -276,8 +276,8 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
   }, [onNavigateDelivery, onNavigateFood, onNavigateInbox, onNavigateMarketplace, onNavigateTaxi, ts]);
 
   const openAiAssistant = useCallback(() => {
-    setAiSheetVisible(true);
-  }, []);
+    onNavigateAi();
+  }, [onNavigateAi]);
 
   const recentItems = items.slice(0, 4);
   const locationLine = displayLocation || formatScopeLocation(scopeLabel) || ts("client.home.v4.yourArea", "Your area");
@@ -747,16 +747,6 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
           testID="client-home-tab-account"
         />
       </View>
-
-      <ClientHomeAiSheet
-        visible={aiSheetVisible}
-        ts={ts}
-        onClose={() => setAiSheetVisible(false)}
-        onOrderFood={onNavigateFood}
-        onBookTaxi={onNavigateTaxi}
-        onSendPackage={onNavigateDelivery}
-        onContactSupport={onNavigateInbox}
-      />
 
       <ClientHomeLanguageSheet
         visible={languageSheetVisible}

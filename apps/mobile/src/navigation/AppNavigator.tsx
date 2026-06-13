@@ -27,6 +27,7 @@ import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 import DeliveryRequestScreen from "../screens/DeliveryRequestScreen";
 
 import { ClientHomeScreen } from "../screens/ClientHomeScreen";
+import MmdAiScreen from "../screens/MmdAiScreen";
 import { ClientNewOrderScreen } from "../screens/ClientNewOrderScreen";
 import { ClientRestaurantListScreen } from "../screens/ClientRestaurantListScreen";
 import { ClientRestaurantMenuScreen } from "../screens/ClientRestaurantMenuScreen";
@@ -179,6 +180,14 @@ export type RootStackParamList = {
     orderId: string;
     targetRole?: "restaurant" | "driver" | "admin" | "";
   };
+
+  MmdAi:
+    | {
+        initialPrompt?: string;
+        orderId?: string;
+        source?: "home_tab" | "search" | "order";
+      }
+    | undefined;
 
   TaxiHome:
     | {
@@ -555,6 +564,7 @@ export function AppNavigator({
       r === "ClientDeliveryRequestDetails" ||
       r === "ClientInbox" ||
       r === "ClientChat" ||
+      r === "MmdAi" ||
       r === "ClientProfile" ||
       r === "LocationPickerTest" ||
       r === "MMDLocationPicker" ||
@@ -987,6 +997,7 @@ export function AppNavigator({
           component={ClientDeliveryRequestDetailsScreen}
         />
         <Stack.Screen name="ClientInbox" component={ClientInboxScreen} />
+        <Stack.Screen name="MmdAi" component={MmdAiScreen} />
         <Stack.Screen name="ClientChat" component={ClientChatScreen} />
 
         <Stack.Screen name="TaxiHome" component={TaxiHomeScreen} />
