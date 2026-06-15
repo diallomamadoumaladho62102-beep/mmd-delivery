@@ -22,9 +22,9 @@ import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
 import TaxiMarketScopeCard from "../../components/taxi/TaxiMarketScopeCard";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import {
-  isTaxiDevCountryPickerEnabled,
-  resolveTaxiMarketFromFeatures,
-} from "../../lib/taxiMarketScope";
+  isDevCountryPickerEnabled,
+  resolveMarketScopeFromFeatures,
+} from "../../lib/marketScope";
 import { getTaxiUiString } from "../../lib/taxiLocalization";
 import {
   applyMmdLocationSelection,
@@ -45,8 +45,8 @@ export default function TaxiHomeScreen() {
   );
   const { features, loading: scopeLoading, refreshWithCurrentLocation } =
     useClientPlatformFeatures();
-  const market = useMemo(() => resolveTaxiMarketFromFeatures(features), [features]);
-  const showDevCountryPicker = isTaxiDevCountryPickerEnabled();
+  const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
+  const showDevCountryPicker = isDevCountryPickerEnabled();
 
   useEffect(() => {
     void refreshWithCurrentLocation();
@@ -76,8 +76,8 @@ export default function TaxiHomeScreen() {
     route.params?.dropoffLocationId ?? ""
   );
   const [vehicleClass, setVehicleClass] = useState<TaxiVehicleClass>("standard");
-  const [countryCode, setCountryCode] = useState("US");
-  const [currencyCode, setCurrencyCode] = useState("USD");
+  const [countryCode, setCountryCode] = useState(market.countryCode);
+  const [currencyCode, setCurrencyCode] = useState(market.currencyCode);
   const [loading, setLoading] = useState(false);
 
   const handlePickupLocation = useCallback(
@@ -85,10 +85,12 @@ export default function TaxiHomeScreen() {
       applyMmdLocationSelection(location, {
         setLocationId: setPickupLocationId,
         setAddress: setPickup,
-        setCountryCode: setCountryCode,
+        ...(showDevCountryPicker
+          ? { setCountryCode: setCountryCode }
+          : {}),
       });
     },
-    []
+    [showDevCountryPicker]
   );
 
   const handleDropoffLocation = useCallback(
@@ -140,6 +142,23 @@ export default function TaxiHomeScreen() {
       return;
     }
 
+    if (!market.scopeResolved && !showDevCountryPicker) {
+      Alert.alert(
+        t("taxi.home.unavailableTitle", "Taxi unavailable"),
+        t("taxi.home.unavailable", "Taxi is not available in your area yet")
+      );
+      return;
+    }
+
+    const activeCountryCode = showDevCountryPicker ? countryCode : market.countryCode;
+    if (!activeCountryCode) {
+      Alert.alert(
+        t("taxi.home.unavailableTitle", "Taxi unavailable"),
+        t("taxi.home.unavailable", "Taxi is not available in your area yet")
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await quoteTaxiRide({
@@ -148,7 +167,7 @@ export default function TaxiHomeScreen() {
         pickupLocationId: pickupLocationId.trim() || undefined,
         dropoffLocationId: dropoffLocationId.trim() || undefined,
         vehicleClass,
-        countryCode,
+        countryCode: activeCountryCode,
       });
 
       if (!result?.ok) {
@@ -157,7 +176,7 @@ export default function TaxiHomeScreen() {
 
       const resolvedCountry =
         (result.country_resolution as { countryCode?: string } | undefined)
-          ?.countryCode ?? countryCode;
+          ?.countryCode ?? activeCountryCode;
 
       navigation.navigate("TaxiQuote", {
         pickupAddress: pickupAddress || String(result.route?.pickupAddress ?? ""),

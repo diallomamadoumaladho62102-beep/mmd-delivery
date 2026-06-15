@@ -127,22 +127,25 @@ export async function fetchRestaurantPlatformFeatures(): Promise<PlatformFeature
   return (await res.json().catch(() => ({ ok: false, error: "invalid_json" }))) as PlatformFeaturesResponse;
 }
 
+/** Safe empty state while scope is loading or unresolved — never enables services optimistically. */
 export function defaultPlatformFeatures(): PlatformFeaturesResponse {
   return {
-    ok: true,
-    platform_enabled: true,
+    ok: false,
+    error: "scope_unresolved",
+    platform_enabled: false,
     maintenance_mode: false,
-    taxi_available: true,
-    delivery_available: true,
-    restaurant_available: true,
+    taxi_available: false,
+    delivery_available: false,
+    restaurant_available: false,
     marketplace_available: false,
     seller_available: false,
-    checkout_enabled: true,
-    payout_enabled: true,
-    can_go_online: true,
-    can_accept_orders: true,
+    checkout_enabled: false,
+    payout_enabled: false,
+    can_go_online: false,
+    can_accept_orders: false,
+    ai_assistant_available: false,
     coming_soon_services: ["marketplace", "seller"],
     message: null,
-    refresh_after_ms: 300_000,
+    refresh_after_ms: 60_000,
   };
 }

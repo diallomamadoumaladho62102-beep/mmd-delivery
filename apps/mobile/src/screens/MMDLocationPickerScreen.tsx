@@ -18,12 +18,26 @@ export default function MMDLocationPickerScreen() {
   const route = useRoute<PickerRoute>();
   const { t } = useTranslation();
   const {
-    countryCode = "GN",
+    countryCode: routeCountryCode,
     title,
     submitLabel,
     returnTo,
     pickerContext,
   } = route.params;
+
+  const resolvedCountryCode = String(routeCountryCode ?? "").trim().toUpperCase();
+  if (!resolvedCountryCode) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A", padding: 20 }}>
+        <Text style={{ color: "#FCA5A5" }}>
+          {t("location.missingMarketScope", "Market scope is required for this picker.")}
+        </Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 12 }}>
+          <Text style={{ color: "#94A3B8" }}>{t("common.back", "Back")}</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   const resolvedTitle = title ?? t("location.exactLocation", "Exact location");
   const resolvedSubmitLabel = submitLabel ?? t("location.useLocation", "Use this location");
@@ -69,7 +83,7 @@ export default function MMDLocationPickerScreen() {
       </View>
 
       <MMDLocationPicker
-        countryCode={countryCode}
+        countryCode={resolvedCountryCode}
         title={resolvedTitle}
         submitLabel={resolvedSubmitLabel}
         onSave={handleSave}

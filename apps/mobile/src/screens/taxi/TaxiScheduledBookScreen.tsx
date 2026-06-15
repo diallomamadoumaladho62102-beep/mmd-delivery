@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   Text,
@@ -20,23 +20,35 @@ import {
   quoteTaxiRide,
   startTaxiCheckout,
 } from "../../lib/taxiClientApi";
-import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
+import MarketScopeCard from "../../components/market/MarketScopeCard";
+import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiScheduledBook">;
 
 export default function TaxiScheduledBookScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
+  const { features, loading: scopeLoading } = useClientPlatformFeatures();
+  const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [when, setWhen] = useState("");
-  const [countryCode, setCountryCode] = useState("US");
   const [loading, setLoading] = useState(false);
 
   async function handleBook() {
+    if (!market.scopeResolved || !market.countryCode) {
+      Alert.alert(
+        t("taxi.scheduledBook.title", "Schedule a ride"),
+        t("taxi.home.unavailable", "Taxi is not available in your area yet")
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const scheduledPickupAt = new Date(when).toISOString();
+      const countryCode = market.countryCode;
       const quoteRes = await quoteTaxiRide({
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
@@ -85,7 +97,12 @@ export default function TaxiScheduledBookScreen() {
         <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
           {t("taxi.scheduledBook.title", "Schedule a ride")}
         </Text>
-        <TaxiCountryPicker value={countryCode} onChange={(code) => setCountryCode(code)} />
+        <MarketScopeCard
+          market={market}
+          areaLabel={t("taxi.home.yourArea", "Your area")}
+          currencyLabel={t("taxi.home.currencyLabel", "Currency")}
+          loading={scopeLoading}
+        />
         <TextInput
           value={pickup}
           onChangeText={setPickup}

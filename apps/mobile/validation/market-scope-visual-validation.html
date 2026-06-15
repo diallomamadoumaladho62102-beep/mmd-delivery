@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MMD Market Scope Visual Validation</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, Segoe UI, sans-serif; background: #020617; color: #f8fafc; }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 20px; display: grid; gap: 24px; }
+    h1 { font-size: 22px; margin: 0; }
+    .note { color: #94a3b8; font-size: 13px; line-height: 1.5; }
+    .block { border: 1px solid #334155; border-radius: 18px; padding: 16px; background: #0f172a; display: grid; gap: 14px; }
+    .block-title { font-size: 18px; font-weight: 900; }
+    .scope-meta { color: #64748b; font-size: 12px; }
+    .section-label { color: #93c5fd; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px; }
+    .card { border: 1px solid #334155; border-radius: 14px; padding: 14px; background: rgba(15,23,42,.95); display: grid; gap: 6px; }
+    .card.light { background: #fff; border-color: #e2e8f0; }
+    .card.light .k { color: #64748b; }
+    .card.light .v { color: #0f172a; }
+    .card.light .s { color: #475569; }
+    .k { color: #64748b; font-size: 12px; font-weight: 600; }
+    .v { color: #f8fafc; font-size: 17px; font-weight: 800; }
+    .s { color: #94a3b8; font-size: 13px; }
+    .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: rgba(15,23,42,.88); border: 1px solid rgba(148,163,184,.35); font-size: 11px; font-weight: 800; color: #e2e8f0; }
+    .home-v4 { border-radius: 16px; padding: 14px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); }
+    .pass { color: #86efac; font-size: 11px; }
+    .shot { scroll-margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div>
+      <h1>Market Scope Visual Validation</h1>
+      <p class="note">Production scope payloads (GPS-resolved shape). Same labels/currency as mobile MarketScopeCard, MarketScopePill, TaxiMarketScopeCard, Home V4 area card. No CountryPicker.</p>
+    </div>
+
+    <div class="block" id="us-block">
+      <div class="block-title">US / NY</div>
+      <div class="scope-meta">United States / New York · USD</div>
+      <div class="pass">CountryPicker: hidden · Scope isolation: PASS · No GN/GNF</div>
+
+      <div class="shot" id="client-home-v4-us">
+        <div class="section-label">Client · Home V4</div>
+        <div class="home-v4">
+          <div class="v">📍 New York, United States</div>
+          <div class="s">Services available in your area</div>
+        </div>
+      </div>
+
+      <div class="shot" id="driver-home-us">
+        <div class="section-label">Driver · Home</div>
+        <span class="pill">United States / New York · USD</span>
+      </div>
+
+      <div class="shot" id="restaurant-home-us">
+        <div class="section-label">Restaurant · Home</div>
+        <span class="pill">United States / New York · USD</span>
+      </div>
+
+      <div class="shot" id="taxi-home-us">
+        <div class="section-label">Taxi · Home</div>
+        <div class="card">
+          <div class="k">Your area</div>
+          <div class="v">United States / New York</div>
+          <div class="s">Currency · USD</div>
+        </div>
+      </div>
+
+      <div class="shot" id="taxi-scheduled-us">
+        <div class="section-label">Taxi · Scheduled</div>
+        <div class="card">
+          <div class="k">Your area</div>
+          <div class="v">United States / New York</div>
+          <div class="s">Currency · USD</div>
+        </div>
+      </div>
+
+      <div class="shot" id="taxi-multistop-us">
+        <div class="section-label">Taxi · Multi-stop</div>
+        <div class="card">
+          <div class="k">Your area</div>
+          <div class="v">United States / New York</div>
+          <div class="s">Currency · USD</div>
+        </div>
+      </div>
+
+      <div class="shot" id="mmd-ai-us">
+        <div class="section-label">MMD AI</div>
+        <div class="card light">
+          <div class="k">Your market</div>
+          <div class="v">United States / New York</div>
+          <div class="s">Currency · USD</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="block" id="gn-block">
+      <div class="block-title">Guinea</div>
+      <div class="scope-meta">Guinea · GNF</div>
+      <div class="pass">CountryPicker: hidden · Scope isolation: PASS · No US/USD/NY</div>
+
+      <div class="shot" id="client-home-v4-gn">
+        <div class="section-label">Client · Home V4</div>
+        <div class="home-v4">
+          <div class="v">📍 Guinea</div>
+          <div class="s">Services available in your area</div>
+        </div>
+      </div>
+
+      <div class="shot" id="driver-home-gn">
+        <div class="section-label">Driver · Home</div>
+        <span class="pill">Guinea · GNF</span>
+      </div>
+
+      <div class="shot" id="restaurant-home-gn">
+        <div class="section-label">Restaurant · Home</div>
+        <span class="pill">Guinea · GNF</span>
+      </div>
+
+      <div class="shot" id="taxi-home-gn">
+        <div class="section-label">Taxi · Home</div>
+        <div class="card">
+          <div class="k">Your area</div>
+          <div class="v">Guinea</div>
+          <div class="s">Currency · GNF</div>
+        </div>
+      </div>
+
+      <div class="shot" id="mmd-ai-gn">
+        <div class="section-label">MMD AI</div>
+        <div class="card light">
+          <div class="k">Your market</div>
+          <div class="v">Guinea</div>
+          <div class="s">Currency · GNF</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

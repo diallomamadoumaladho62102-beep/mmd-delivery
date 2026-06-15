@@ -16,12 +16,17 @@ import {
   resolveTaxiLanguageForCountry,
 } from "../../lib/taxiLocalization";
 
+import { isDevCountryPickerEnabled } from "../../lib/marketScope";
+
 type Props = {
   value: string;
   onChange: (countryCode: string, currencyCode: string) => void;
 };
 
 export default function TaxiCountryPicker({ value, onChange }: Props) {
+  if (!isDevCountryPickerEnabled()) {
+    return null;
+  }
   const [countries, setCountries] = useState<TaxiCountryOption[]>([]);
   const [loading, setLoading] = useState(true);
 

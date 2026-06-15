@@ -12,6 +12,10 @@ export type AiChatContext = {
   screen?: string;
   orderId?: string;
   source?: string;
+  countryCode?: string;
+  stateCode?: string;
+  regionCode?: string;
+  currencyCode?: string;
 };
 
 export type AiChatRequest = {

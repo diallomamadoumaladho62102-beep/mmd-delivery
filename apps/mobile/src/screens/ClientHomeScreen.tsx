@@ -17,6 +17,7 @@ import { setLocaleForRoleAndApply } from "../i18n";
 import type { AppLanguageCode } from "../i18n/languageOptions";
 import i18n from "../i18n";
 import { formatMoney as formatMoneyLocale } from "../i18n/formatters";
+import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { ClientHomeV4View } from "../components/client/home/ClientHomeV4View";
 import { v4Styles } from "../components/client/home/clientHomeTheme";
@@ -407,12 +408,16 @@ export function ClientHomeScreen() {
   const { features: platformFeatures, refresh: refreshPlatformFeatures, refreshWithCurrentLocation } =
     useClientPlatformFeatures();
 
-  const scopeLabel =
-    platformFeatures.scope_label ??
-    platformFeatures.scope?.scope_label ??
-    (platformFeatures.state_code
-      ? `${platformFeatures.country_code ?? "US"} / ${platformFeatures.state_code}`
-      : platformFeatures.country_code ?? null);
+  const market = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
+
+  const scopeLabel = market.scopeResolved
+    ? market.displayLabel
+    : platformFeatures.scope_label ??
+      platformFeatures.scope?.scope_label ??
+      null;
 
   const scopeSource = platformFeatures.scope_source ?? platformFeatures.scope?.scope_source ?? null;
 

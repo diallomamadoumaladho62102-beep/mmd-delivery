@@ -25,6 +25,8 @@ import {
   useMmdLocationPickerResult,
 } from "../lib/useMmdLocationPickerResult";
 import { useTranslation } from "react-i18next";
+import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type DeliveryRequestRoute = RouteProp<RootStackParamList, "DeliveryRequest">;
@@ -207,6 +209,12 @@ export function DeliveryRequestScreen() {
     [t]
   );
 
+  const { features: platformFeatures } = useClientPlatformFeatures();
+  const market = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
+
   const [requestType, setRequestType] = useState<RequestType>("package");
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
@@ -357,8 +365,19 @@ export function DeliveryRequestScreen() {
   });
 
   function openDropoffLocationPicker() {
+    if (!market.countryCode) {
+      Alert.alert(
+        tr("deliveryRequest.alerts.scopeTitle", "Market unavailable"),
+        tr(
+          "deliveryRequest.alerts.scopeBody",
+          "Enable location to pick a delivery address in your market."
+        )
+      );
+      return;
+    }
+
     navigation.navigate("MMDLocationPicker", {
-      countryCode: "GN",
+      countryCode: market.countryCode,
       title: tr("deliveryRequest.fields.dropoffExactLocation", "Dropoff exact location"),
       submitLabel: tr("deliveryRequest.fields.useDropoffLocation", "Use dropoff location"),
       returnTo: "DeliveryRequest",

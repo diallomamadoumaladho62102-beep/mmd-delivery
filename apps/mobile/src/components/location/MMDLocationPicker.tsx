@@ -32,6 +32,18 @@ const DEFAULT_GN_CENTER = {
   longitude: -13.5784,
 };
 
+const DEFAULT_CENTER_BY_COUNTRY: Record<string, { latitude: number; longitude: number }> = {
+  GN: DEFAULT_GN_CENTER,
+  US: { latitude: 40.7128, longitude: -74.006 },
+  SN: { latitude: 14.7167, longitude: -17.4677 },
+  CI: { latitude: 5.3600, longitude: -4.0083 },
+  ML: { latitude: 12.6392, longitude: -8.0029 },
+};
+
+function defaultCenterForCountry(countryCode: string) {
+  return DEFAULT_CENTER_BY_COUNTRY[countryCode] ?? DEFAULT_GN_CENTER;
+}
+
 export type MMDLocationPickerValue = {
   location: MmdLocationPoint;
 };
@@ -74,13 +86,26 @@ function FieldInput(props: React.ComponentProps<typeof TextInput>) {
 }
 
 export default function MMDLocationPicker({
-  countryCode = "GN",
+  countryCode,
   title = "Exact location",
   submitLabel = "Save location",
   onSave,
   onCancel,
 }: Props) {
   const mapReady = ensureMapboxTokenApplied();
+
+  if (!countryCode?.trim()) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", padding: 20 }}>
+        <Text style={{ color: "#FCA5A5", textAlign: "center" }}>
+          Market scope is required before choosing a location.
+        </Text>
+      </View>
+    );
+  }
+
+  const scopedCountryCode = countryCode.trim().toUpperCase();
+  const initialCenter = defaultCenterForCountry(scopedCountryCode);
 
   const [regionName, setRegionName] = useState("Conakry");
   const [prefectureName, setPrefectureName] = useState("Conakry");
@@ -93,8 +118,8 @@ export default function MMDLocationPicker({
   const [landmarks, setLandmarks] = useState<MmdLandmark[]>([]);
   const [zones, setZones] = useState<MmdZone[]>([]);
   const [selectedLandmark, setSelectedLandmark] = useState<MmdLandmark | null>(null);
-  const [pinLat, setPinLat] = useState(DEFAULT_GN_CENTER.latitude);
-  const [pinLng, setPinLng] = useState(DEFAULT_GN_CENTER.longitude);
+  const [pinLat, setPinLat] = useState(initialCenter.latitude);
+  const [pinLng, setPinLng] = useState(initialCenter.longitude);
   const [gpsLat, setGpsLat] = useState<number | null>(null);
   const [gpsLng, setGpsLng] = useState<number | null>(null);
   const [accuracyM, setAccuracyM] = useState<number | null>(null);
@@ -116,7 +141,7 @@ export default function MMDLocationPicker({
   const loadZones = useCallback(async () => {
     try {
       const res = await searchMmdZones({
-        country_code: countryCode,
+        country_code: scopedCountryCode,
         limit: 50,
       });
       setZones((res?.zones ?? []) as MmdZone[]);
@@ -138,7 +163,7 @@ export default function MMDLocationPicker({
     const timer = setTimeout(() => {
       setLoadingLandmarks(true);
       void searchMmdLandmarks({
-        country_code: countryCode,
+        country_code: scopedCountryCode,
         q: landmarkQuery.trim() || undefined,
         commune_name: communeName.trim() || undefined,
         quartier_name: quartierName.trim() || undefined,
@@ -150,7 +175,7 @@ export default function MMDLocationPicker({
     }, 350);
 
     return () => clearTimeout(timer);
-  }, [landmarkQuery, communeName, quartierName, countryCode]);
+  }, [landmarkQuery, communeName, quartierName, scopedCountryCode]);
 
   async function handleUseGps() {
     setLoadingGps(true);
@@ -254,7 +279,7 @@ export default function MMDLocationPicker({
 
       const location = await saveMmdLocationWithOptionalPhoto({
         input: {
-          country_code: countryCode,
+          country_code: scopedCountryCode,
           region_name: regionName.trim() || undefined,
           prefecture_name: prefectureName.trim() || undefined,
           city_name: cityName.trim() || undefined,
@@ -367,7 +392,7 @@ export default function MMDLocationPicker({
 
       {zones.length > 0 ? (
         <View style={{ gap: 8 }}>
-          <FieldLabel>{`Zone (${countryCode})`}</FieldLabel>
+          <FieldLabel>{`Zone (${scopedCountryCode})`}</FieldLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={{ flexDirection: "row", gap: 8 }}>
               {zones.slice(0, 16).map((zone) => (

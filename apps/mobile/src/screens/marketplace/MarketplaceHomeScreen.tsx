@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -17,12 +17,17 @@ import {
   type MarketplaceSeller,
 } from "../../lib/marketplaceApi";
 import { useTranslation } from "react-i18next";
+import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
+import MarketScopeCard from "../../components/market/MarketScopeCard";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MarketplaceHome">;
 
 export default function MarketplaceHomeScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
+  const { features, loading: scopeLoading } = useClientPlatformFeatures();
+  const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
   const [sellers, setSellers] = useState<MarketplaceSeller[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,7 +38,13 @@ export default function MarketplaceHomeScreen() {
       if (!silent) setLoading(true);
       setError(null);
       const items = await fetchMarketplaceSellers();
-      setSellers(items);
+      const scoped = market.countryCode
+        ? items.filter(
+            (seller) =>
+              String(seller.country_code ?? "").trim().toUpperCase() === market.countryCode
+          )
+        : [];
+      setSellers(scoped);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Unable to load marketplace";
       if (message === "marketplace_unavailable") {
@@ -50,7 +61,7 @@ export default function MarketplaceHomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [market.countryCode]);
 
   useEffect(() => {
     void load();
@@ -71,6 +82,13 @@ export default function MarketplaceHomeScreen() {
         <Text style={{ color: "#94A3B8", marginBottom: 8 }}>
           {t("marketplace.home.subtitle", "Shop approved local sellers on MMD.")}
         </Text>
+
+        <MarketScopeCard
+          market={market}
+          areaLabel={t("marketplace.home.market", "Your market")}
+          currencyLabel={t("marketplace.home.currency", "Currency")}
+          loading={scopeLoading}
+        />
 
         <TouchableOpacity
           onPress={() => navigation.navigate("SellerGate" as never)}

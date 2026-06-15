@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -37,6 +37,8 @@ import {
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
+import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
@@ -75,8 +77,13 @@ export default function TaxiQuoteScreen() {
     route.params.dropoffLocationId ?? ""
   );
   const [routeInfo, setRouteInfo] = useState(route.params.route);
-  const countryCode = route.params.countryCode ?? "US";
-  const lang = resolveTaxiLanguageForCountry(countryCode);
+  const { features: platformFeatures } = useClientPlatformFeatures();
+  const market = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
+  const countryCode = route.params.countryCode ?? market.countryCode ?? "";
+  const lang = resolveTaxiLanguageForCountry(countryCode || "US");
   const countryResolution = route.params.countryResolution as
     | { source?: string; detectedCountryCode?: string | null }
     | undefined;

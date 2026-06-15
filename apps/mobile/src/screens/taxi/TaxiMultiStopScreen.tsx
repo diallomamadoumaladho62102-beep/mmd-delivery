@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   SafeAreaView,
   Text,
@@ -15,27 +15,38 @@ import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { textAlignStart } from "../../i18n/rtl";
 import {
   createTaxiRide,
-  formatTaxiCents,
   quoteTaxiRide,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
-import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
+import MarketScopeCard from "../../components/market/MarketScopeCard";
+import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
 
 export default function TaxiMultiStopScreen() {
   const navigation = useNavigation<Nav>();
   const { t } = useTranslation();
+  const { features, loading: scopeLoading } = useClientPlatformFeatures();
+  const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
   const [pickup, setPickup] = useState("");
   const [stop1, setStop1] = useState("");
   const [stop2, setStop2] = useState("");
   const [dropoff, setDropoff] = useState("");
-  const [countryCode, setCountryCode] = useState("US");
   const [loading, setLoading] = useState(false);
 
   async function handleQuote() {
+    if (!market.scopeResolved || !market.countryCode) {
+      Alert.alert(
+        t("taxi.multiStop.title", "Multi-stop ride"),
+        t("taxi.home.unavailable", "Taxi is not available in your area yet")
+      );
+      return;
+    }
+
     setLoading(true);
     try {
+      const countryCode = market.countryCode;
       const stops = [stop1, stop2]
         .map((value) => value.trim())
         .filter(Boolean)
@@ -91,7 +102,12 @@ export default function TaxiMultiStopScreen() {
         <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
           {t("taxi.multiStop.title", "Multi-stop ride")}
         </Text>
-        <TaxiCountryPicker value={countryCode} onChange={(code) => setCountryCode(code)} />
+        <MarketScopeCard
+          market={market}
+          areaLabel={t("taxi.home.yourArea", "Your area")}
+          currencyLabel={t("taxi.home.currencyLabel", "Currency")}
+          loading={scopeLoading}
+        />
         <TextInput
           value={pickup}
           onChangeText={setPickup}
@@ -122,7 +138,7 @@ export default function TaxiMultiStopScreen() {
         />
         <TouchableOpacity
           onPress={handleQuote}
-          disabled={loading}
+          disabled={loading || !market.scopeResolved}
           style={{ backgroundColor: "#F59E0B", padding: 16, borderRadius: 14, alignItems: "center" }}
         >
           {loading ? (

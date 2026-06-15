@@ -22,6 +22,9 @@ import {
   MmdAiApiError,
   postAiChat,
 } from "../lib/mmdAiApi";
+import MarketScopeCard from "../components/market/MarketScopeCard";
+import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import {
   clearAiLocalHistory,
   createLocalMessage,
@@ -58,6 +61,11 @@ export default function MmdAiScreen() {
     [t]
   );
   const scrollRef = useRef<ScrollView | null>(null);
+  const { features: platformFeatures, loading: scopeLoading } = useClientPlatformFeatures();
+  const market = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
 
   const [messages, setMessages] = useState<LocalAiMessage[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -192,6 +200,10 @@ export default function MmdAiScreen() {
             screen: "MmdAi",
             orderId: route.params?.orderId,
             source: route.params?.source ?? "home_tab",
+            countryCode: market.countryCode || undefined,
+            stateCode: market.stateCode ?? undefined,
+            regionCode: market.regionCode ?? undefined,
+            currencyCode: market.currencyCode || undefined,
           },
           history: nextMessages.slice(-20).map((m) => ({
             role: m.role,
@@ -252,7 +264,7 @@ export default function MmdAiScreen() {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
       }
     },
-    [conversationId, i18n.language, input, messages, persist, route.params, sending, ts]
+    [conversationId, i18n.language, input, market, messages, persist, route.params, sending, ts]
   );
 
   const handleAiAction = useCallback(
@@ -306,11 +318,19 @@ export default function MmdAiScreen() {
         </Pressable>
       </View>
 
+      {market.scopeResolved ? (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <MarketScopeCard
+            market={market}
+            areaLabel={tsFallback(ts, "mmd.ai.market", "Your market")}
+            currencyLabel={tsFallback(ts, "mmd.ai.currency", "Currency")}
+            loading={scopeLoading}
+            variant="light"
+          />
+        </View>
+      ) : null}
+
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.quickRow, { flexDirection: rowDirection() }]}
-      >
         {quickActions.map((action) => (
           <Pressable
             key={action.label}

@@ -21,6 +21,8 @@ import { supabase } from "../lib/supabase";
 import { useIsFocused } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
+import MarketScopePill from "../components/market/MarketScopePill";
+import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import {
   ensureMapboxTokenApplied,
   getMapStyleDark,
@@ -634,6 +636,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [orderActionLoading, setOrderActionLoading] = useState(false);
   const { features: platformFeatures, refresh: refreshRestaurantPlatformFeatures } =
     useRestaurantPlatformFeatures();
+  const restaurantMarket = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
 
   const pinPulseAnim = useRef(new Animated.Value(0)).current;
   const liveOrderAnim = useRef(new Animated.Value(0)).current;
@@ -1915,6 +1921,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        <View style={{ position: "absolute", left: 18, right: 18, top: 58, zIndex: 16, alignItems: "center" }}>
+          <MarketScopePill market={restaurantMarket} />
         </View>
 
         <View style={{ position: "absolute", left: 18, right: 18, top: 18, zIndex: 16 }}>

@@ -37,6 +37,8 @@ import {
   isDriverOnlineEligible,
 } from "../lib/accountStatus";
 import { useDriverPlatformFeatures } from "../hooks/useDriverPlatformFeatures";
+import MarketScopePill from "../components/market/MarketScopePill";
+import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { ensureMapboxTokenApplied } from "../lib/mapboxConfig";
 
 import Mapbox from "@rnmapbox/maps";
@@ -608,6 +610,10 @@ export function DriverHomeScreen() {
   useKeepAwake();
   const { features: platformFeatures, refresh: refreshDriverPlatformFeatures } =
     useDriverPlatformFeatures();
+  const driverMarket = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
 
   useEffect(() => {
     ensureMapboxTokenApplied();
@@ -2233,6 +2239,9 @@ export function DriverHomeScreen() {
 
         <Animated.View pointerEvents="box-none" style={[styles.topBar, { opacity: topHudAnim, transform: [{ translateY: topHudTranslateY }] }]}>
           <IconButton icon="menu" onPress={openDriverMenu} />
+          <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 8 }}>
+            <MarketScopePill market={driverMarket} />
+          </View>
           <TouchableOpacity onPress={toggleOnline} activeOpacity={0.9} style={styles.onlinePill}>
             <View style={[styles.onlineDot, { backgroundColor: onlineColorBg, shadowColor: onlineColorBg }]} />
             <Text style={styles.onlineText}>{onlineLabel}</Text>

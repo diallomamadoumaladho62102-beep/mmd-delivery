@@ -30,6 +30,8 @@ import {
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
 import { useTranslation } from "react-i18next";
+import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
 type Props = {
@@ -40,6 +42,11 @@ export default function MarketplaceCartScreen({ route }: Props) {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { sellerId, sellerName, sellerCountryCode, orderId } = route.params;
+  const { features: platformFeatures } = useClientPlatformFeatures();
+  const market = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
   const [dropoffLocationCountry, setDropoffLocationCountry] = useState<string | null>(null);
   const [draft, setDraft] = useState<MarketplaceOrderDraft | null>(null);
   const [loading, setLoading] = useState(true);
@@ -273,10 +280,11 @@ export default function MarketplaceCartScreen({ route }: Props) {
                 onPress={() =>
                   navigation.navigate("MMDLocationPicker", {
                     countryCode:
-                      dropoffLocationCountry ??
-                      sellerCountryCode ??
-                      draft.country_code ??
-                      "GN",
+                      market.countryCode ||
+                      dropoffLocationCountry ||
+                      sellerCountryCode ||
+                      draft.country_code ||
+                      undefined,
                     title: t("marketplace.cart.pickDropoff", "Choose delivery location"),
                     submitLabel: t("marketplace.cart.useLocation", "Use this location"),
                     returnTo: "MarketplaceCart",
