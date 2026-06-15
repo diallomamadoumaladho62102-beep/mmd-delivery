@@ -22,7 +22,7 @@ export async function GET() {
 
     const { count, error } = await supabase
       .from("stripe_webhook_events")
-      .select("stripe_event_id", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .gte("created_at", since);
 
     checks.recent_webhook_events_24h = error
