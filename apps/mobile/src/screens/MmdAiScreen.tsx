@@ -331,6 +331,10 @@ export default function MmdAiScreen() {
       ) : null}
 
       <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.quickRow}
+      >
         {quickActions.map((action) => (
           <Pressable
             key={action.label}

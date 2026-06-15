@@ -676,11 +676,13 @@ export function ClientHomeScreen() {
 
         console.log("client home fetch error:", e);
         setRecentActivityUnavailable(true);
-        setError(
-          e instanceof Error
-            ? e.message
-            : ts("client.home.errors.loadFailed", "Unable to load your recent activity.")
-        );
+        setError({
+          key: "client.home.errors.loadFailed",
+          fallback:
+            e instanceof Error
+              ? e.message
+              : ts("client.home.errors.loadFailed", "Unable to load your recent activity."),
+        });
       } finally {
         fetchInFlightRef.current = false;
 
@@ -943,6 +945,12 @@ export function ClientHomeScreen() {
         ? formatCurrency(totalSpent, "USD")
         : null;
 
+  const formatCurrencyForView = useCallback(
+    (amount: number | null | undefined) =>
+      formatCurrency(amount, market.currencyCode || "USD"),
+    [market.currencyCode]
+  );
+
   const handleNavigateMarketplace = useCallback(() => {
     if (platformFeatures.marketplace_available) {
       navigation.navigate("MarketplaceHome" as never);
@@ -1020,7 +1028,7 @@ export function ClientHomeScreen() {
         }
         onOpenOrder={(item) => handleOpenOrderItem(item as ClientItem)}
         onOpenChat={handleOpenChat}
-        formatCurrency={formatCurrency}
+        formatCurrency={formatCurrencyForView}
         formatCompactDateTime={formatCompactDateTime}
         recentTitle={(item) => recentOrderTitle(item as ClientItem)}
         statusLabel={(item) => premiumStatusText(item as ClientItem, ts)}
