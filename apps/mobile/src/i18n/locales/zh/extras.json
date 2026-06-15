@@ -433,7 +433,10 @@
       "rating": "评分",
       "reviewsCount": "（{{count}} 条评价）",
       "changeVsYesterday": "较昨日 {{value}}",
+      "yesterday": "昨日",
+      "revenueTrend": "业绩趋势",
       "liveOperations": "实时运营中心",
+      "liveOperationsHero": "实时骑手到达、新订单与提醒。",
       "liveOperationsEmpty": "当前没有实时运营项。",
       "driverArrived": "骑手已到达",
       "driverApproaching": "骑手接近中",
@@ -485,6 +488,7 @@
       "ai": {
         "title": "MMD AI Growth Manager",
         "beta": "测试版",
+        "heroBadge": "AI",
         "notEnoughData": "数据不足，暂无 AI 建议。",
         "estimatedGain": "预计收益：{{amount}}",
         "viewInventory": "查看库存",

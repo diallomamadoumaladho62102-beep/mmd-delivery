@@ -490,7 +490,10 @@
       "rating": "Note",
       "reviewsCount": "({{count}} avis)",
       "changeVsYesterday": "{{value}} vs haŋki",
+      "yesterday": "Haŋki",
+      "revenueTrend": "Trend performance",
       "liveOperations": "Centre live operations",
+      "liveOperationsHero": "Driver arrivals, new orders e alerts e real-time.",
       "liveOperationsEmpty": "Alaa live operations jooni.",
       "driverArrived": "Driver arii",
       "driverApproaching": "Driver naatii",
@@ -542,6 +545,7 @@
       "ai": {
         "title": "MMD AI Growth Manager",
         "beta": "Beta",
+        "heroBadge": "AI",
         "notEnoughData": "Data alaa enough for AI recommendations.",
         "estimatedGain": "Gain estimé: {{amount}}",
         "viewInventory": "Yiy inventaire",

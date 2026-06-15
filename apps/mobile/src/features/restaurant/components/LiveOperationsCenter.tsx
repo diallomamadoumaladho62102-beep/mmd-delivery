@@ -21,6 +21,9 @@ import {
 import { formatMoney } from "../../../i18n/formatters";
 import { textAlignStart } from "../../../i18n/rtl";
 import { DriverArrivalCard } from "./DriverArrivalCard";
+import { GlassCard } from "./GlassCard";
+import { SectionHeroHeader } from "./SectionHeroHeader";
+import { CC } from "./commandCenterTheme";
 
 type Props = {
   data: RestaurantCommandCenterData["liveOperations"];
@@ -51,7 +54,9 @@ function NewOrderCard({
 
   return (
     <View style={[styles.card, { borderColor: "rgba(167,139,250,0.45)" }]}>
-      <Text style={styles.badge}>{t("restaurant.commandCenter.newOrder")}</Text>
+      <View style={styles.newChip}>
+        <Text style={styles.newChipText}>{t("restaurant.commandCenter.newOrder")}</Text>
+      </View>
       <Text style={styles.orderLabel}>{order.orderLabel}</Text>
       <Text style={[styles.meta, { textAlign: textAlignStart() }]}>
         {t("restaurant.commandCenter.newOrderMeta", {
@@ -94,7 +99,9 @@ function AttentionCard({
       style={[styles.card, { borderColor: "rgba(239,68,68,0.45)" }]}
       onPress={onPress}
     >
-      <Text style={styles.badge}>{t("restaurant.commandCenter.attentionRequired")}</Text>
+      <View style={styles.alertChip}>
+        <Text style={styles.alertChipText}>{t("restaurant.commandCenter.attentionRequired")}</Text>
+      </View>
       <Text style={styles.orderLabel}>{card.orderLabel}</Text>
       <Text style={[styles.meta, { textAlign: textAlignStart() }]}>
         {t(card.reasonKey, card.reasonParams)}
@@ -183,18 +190,12 @@ function LiveOperationsCenterComponent({
     ...data.attentionRequired.map((card) => ({ kind: "attention" as const, card })),
   ];
 
-  if (cards.length === 0) {
-    return (
-      <View style={styles.emptyWrap}>
-        <Text style={styles.sectionTitle}>{t("restaurant.commandCenter.liveOperations")}</Text>
-        <Text style={styles.emptyText}>{t("restaurant.commandCenter.liveOperationsEmpty")}</Text>
-      </View>
-    );
-  }
+  const liveCount = cards.length;
 
-  return (
-    <View>
-      <Text style={styles.sectionTitle}>{t("restaurant.commandCenter.liveOperations")}</Text>
+  const content =
+    cards.length === 0 ? (
+      <Text style={styles.emptyText}>{t("restaurant.commandCenter.liveOperationsEmpty")}</Text>
+    ) : (
       <FlatList
         horizontal
         data={cards}
@@ -204,6 +205,7 @@ function LiveOperationsCenterComponent({
           return `attention-${item.card.orderId}-${index}`;
         }}
         showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
           if (item.kind === "driver") {
             return (
@@ -245,39 +247,73 @@ function LiveOperationsCenterComponent({
           );
         }}
       />
-    </View>
+    );
+
+  return (
+    <GlassCard variant="hero" accentBar={CC.purpleLight} style={styles.heroCard}>
+      <SectionHeroHeader
+        title={t("restaurant.commandCenter.liveOperations")}
+        subtitle={t("restaurant.commandCenter.liveOperationsHero")}
+        badge={liveCount > 0 ? String(liveCount) : undefined}
+        badgeColor={CC.red}
+      />
+      {content}
+    </GlassCard>
   );
 }
 
 export const LiveOperationsCenter = memo(LiveOperationsCenterComponent);
 
 const styles = StyleSheet.create({
-  sectionTitle: {
-    color: "#F8FAFC",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 12,
+  heroCard: {
+    paddingBottom: 12,
   },
-  emptyWrap: {
-    marginBottom: 8,
+  listContent: {
+    paddingRight: 8,
   },
   emptyText: {
-    color: "rgba(148,163,184,0.95)",
+    color: CC.textMuted,
     fontSize: 13,
+    paddingVertical: 8,
   },
   card: {
-    width: 260,
-    marginRight: 12,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
+    width: 280,
+    marginRight: 14,
+    padding: 16,
+    borderRadius: 22,
+    backgroundColor: CC.glass,
+    borderWidth: 1.5,
+    ...CC.shadow,
   },
-  badge: {
-    color: "#F8FAFC",
-    fontSize: 12,
-    fontWeight: "800",
-    marginBottom: 6,
+  newChip: {
+    alignSelf: "flex-start",
+    backgroundColor: CC.purpleGlow,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: CC.glassBorder,
+    marginBottom: 8,
+  },
+  newChipText: {
+    color: CC.purpleLight,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  alertChip: {
+    alignSelf: "flex-start",
+    backgroundColor: CC.redDim,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "rgba(239,68,68,0.35)",
+    marginBottom: 8,
+  },
+  alertChipText: {
+    color: CC.red,
+    fontSize: 11,
+    fontWeight: "900",
   },
   orderLabel: {
     color: "#DDD6FE",

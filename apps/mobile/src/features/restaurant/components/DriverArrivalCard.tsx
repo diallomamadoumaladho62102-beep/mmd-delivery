@@ -1,7 +1,16 @@
-import React, { memo } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { memo, useEffect, useRef } from "react";
+import {
+  Animated,
+  Easing,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import type { CommandCenterDriverCard } from "../../../lib/restaurantCommandCenterApi";
+import { CC } from "./commandCenterTheme";
 import { rowDirection, textAlignStart } from "../../../i18n/rtl";
 
 type Props = {
@@ -20,13 +29,36 @@ function DriverArrivalCardComponent({
   actionLoading,
 }: Props) {
   const { t } = useTranslation();
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (variant !== "arrived") return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1200,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, variant]);
 
   const borderColor =
     variant === "arrived"
-      ? "rgba(34,197,94,0.45)"
+      ? CC.green
       : variant === "approaching"
-        ? "rgba(251,146,60,0.45)"
-        : "rgba(96,165,250,0.45)";
+        ? CC.orange
+        : CC.blue;
 
   const badgeKey =
     variant === "arrived"
@@ -44,10 +76,39 @@ function DriverArrivalCardComponent({
         ? t("restaurant.commandCenter.etaMinutes", { minutes: card.etaMinutes })
         : t("restaurant.commandCenter.enRoute");
 
+  const scale = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.02],
+  });
+
+  const CardWrap = variant === "arrived" ? Animated.View : View;
+  const wrapProps =
+    variant === "arrived"
+      ? { style: [styles.card, { borderColor, transform: [{ scale }] }] }
+      : { style: [styles.card, { borderColor }] };
+
   return (
-    <View style={[styles.card, { borderColor }]}>
+    <CardWrap {...wrapProps}>
+      {variant === "arrived" ? (
+        <Animated.View
+          style={[
+            styles.pulseRing,
+            {
+              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.45] }),
+              transform: [
+                {
+                  scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }),
+                },
+              ],
+            },
+          ]}
+        />
+      ) : null}
+
       <View style={[styles.headerRow, { flexDirection: rowDirection() }]}>
-        <Text style={styles.badge}>{t(badgeKey)}</Text>
+        <View style={[styles.statusChip, { backgroundColor: `${borderColor}22`, borderColor: `${borderColor}66` }]}>
+          <Text style={[styles.statusChipText, { color: borderColor }]}>{t(badgeKey)}</Text>
+        </View>
         <Text style={styles.orderLabel}>{card.orderLabel}</Text>
       </View>
 
@@ -78,7 +139,7 @@ function DriverArrivalCardComponent({
       </View>
 
       {variant === "arrived" && onHandOver ? (
-        <TouchableOpacity
+        <Pressable
           style={[styles.primaryBtn, actionLoading && styles.btnDisabled]}
           onPress={onHandOver}
           disabled={actionLoading}
@@ -86,13 +147,13 @@ function DriverArrivalCardComponent({
           <Text style={styles.primaryBtnText}>
             {t("restaurant.commandCenter.handOverOrder")}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       ) : onViewMap ? (
-        <TouchableOpacity style={styles.secondaryBtn} onPress={onViewMap}>
+        <Pressable style={styles.secondaryBtn} onPress={onViewMap}>
           <Text style={styles.secondaryBtnText}>{t("restaurant.commandCenter.viewOnMap")}</Text>
-        </TouchableOpacity>
+        </Pressable>
       ) : null}
-    </View>
+    </CardWrap>
   );
 }
 
@@ -100,93 +161,109 @@ export const DriverArrivalCard = memo(DriverArrivalCardComponent);
 
 const styles = StyleSheet.create({
   card: {
-    width: 260,
-    marginRight: 12,
-    padding: 14,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
+    width: 280,
+    marginRight: 14,
+    padding: 16,
+    borderRadius: 22,
+    backgroundColor: CC.glass,
+    borderWidth: 1.5,
+    overflow: "hidden",
+    ...CC.shadow,
+  },
+  pulseRing: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: CC.green,
   },
   headerRow: {
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
+    gap: 8,
   },
-  badge: {
-    color: "#F8FAFC",
-    fontSize: 12,
-    fontWeight: "800",
+  statusChip: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
     flex: 1,
   },
+  statusChipText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
   orderLabel: {
-    color: "rgba(167,139,250,0.95)",
+    color: CC.purpleLight,
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   bodyRow: {
     alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
+    gap: 12,
+    marginBottom: 14,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   avatarFallback: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(124,58,237,0.35)",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: CC.purpleGlow,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitial: {
-    color: "#FFF",
+    color: CC.textPrimary,
     fontWeight: "900",
-    fontSize: 16,
+    fontSize: 18,
   },
   meta: {
     flex: 1,
   },
   driverName: {
-    color: "#F8FAFC",
-    fontSize: 15,
-    fontWeight: "800",
+    color: CC.textPrimary,
+    fontSize: 16,
+    fontWeight: "900",
   },
   rating: {
-    color: "#FBBF24",
+    color: CC.gold,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     marginTop: 2,
   },
   subtitle: {
-    color: "rgba(148,163,184,0.95)",
+    color: CC.textMuted,
     fontSize: 12,
     marginTop: 4,
   },
   primaryBtn: {
     backgroundColor: "rgba(34,197,94,0.92)",
-    borderRadius: 12,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingVertical: 12,
     alignItems: "center",
   },
   secondaryBtn: {
-    backgroundColor: "rgba(124,58,237,0.25)",
-    borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: CC.purpleGlow,
+    borderRadius: 14,
+    paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.35)",
+    borderColor: CC.glassBorder,
   },
   primaryBtnText: {
-    color: "#FFF",
-    fontWeight: "800",
+    color: CC.textPrimary,
+    fontWeight: "900",
     fontSize: 13,
   },
   secondaryBtnText: {
-    color: "#DDD6FE",
-    fontWeight: "800",
+    color: CC.purpleLight,
+    fontWeight: "900",
     fontSize: 13,
   },
   btnDisabled: {

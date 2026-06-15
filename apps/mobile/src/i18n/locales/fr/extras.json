@@ -437,7 +437,10 @@
       "rating": "Note",
       "reviewsCount": "({{count}} avis)",
       "changeVsYesterday": "{{value}} vs hier",
+      "yesterday": "Hier",
+      "revenueTrend": "Tendance de performance",
       "liveOperations": "Centre opérations live",
+      "liveOperationsHero": "Arrivées livreurs, nouvelles commandes et alertes en temps réel.",
       "liveOperationsEmpty": "Aucune opération live pour le moment.",
       "driverArrived": "Chauffeur arrivé",
       "driverApproaching": "Chauffeur en approche",
@@ -489,6 +492,7 @@
       "ai": {
         "title": "MMD AI Growth Manager",
         "beta": "Bêta",
+        "heroBadge": "IA",
         "notEnoughData": "Pas assez de données pour des recommandations IA.",
         "estimatedGain": "Gain estimé : {{amount}}",
         "viewInventory": "Voir l'inventaire",

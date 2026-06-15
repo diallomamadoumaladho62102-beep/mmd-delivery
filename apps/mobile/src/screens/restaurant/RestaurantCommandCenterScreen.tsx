@@ -1,12 +1,11 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,21 +19,15 @@ import { RestaurantLiveMap } from "../../features/restaurant/components/Restaura
 import { RestaurantAiGrowthManager } from "../../features/restaurant/components/RestaurantAiGrowthManager";
 import { TopProductsCard } from "../../features/restaurant/components/TopProductsCard";
 import { FinancialSummaryCard } from "../../features/restaurant/components/FinancialSummaryCard";
+import { RevenueHeroCard } from "../../features/restaurant/components/RevenueHeroCard";
+import { RevenueTrendChart } from "../../features/restaurant/components/RevenueTrendChart";
+import { OrderInsightsCard } from "../../features/restaurant/components/OrderInsightsCard";
+import { CommandCenterSkeleton } from "../../features/restaurant/components/CommandCenterSkeleton";
+import { CC } from "../../features/restaurant/components/commandCenterTheme";
 import { formatDate, formatMoney } from "../../i18n/formatters";
 import { mirrorChevron, rowDirection, textAlignStart } from "../../i18n/rtl";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RestaurantCommandCenter">;
-
-function formatChangeLabel(
-  t: (key: string, params?: Record<string, unknown>) => string,
-  pct: number | null | undefined
-): string | null {
-  if (pct == null || !Number.isFinite(pct)) return null;
-  const sign = pct >= 0 ? "+" : "";
-  return t("restaurant.commandCenter.changeVsYesterday", {
-    value: `${sign}${pct}%`,
-  });
-}
 
 export default function RestaurantCommandCenterScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
@@ -65,6 +58,36 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
     [t]
   );
 
+  const trendItems = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        key: "revenue",
+        label: t("restaurant.commandCenter.revenueToday"),
+        yesterday: data.kpis.revenueYesterday,
+        today: data.kpis.revenueToday,
+        format: fmtMoney,
+        color: CC.purpleLight,
+      },
+      {
+        key: "orders",
+        label: t("restaurant.commandCenter.ordersToday"),
+        yesterday: data.kpis.ordersYesterday,
+        today: data.kpis.ordersToday,
+        format: (value: number) => String(Math.round(value)),
+        color: CC.blue,
+      },
+      {
+        key: "customers",
+        label: t("restaurant.commandCenter.customersToday"),
+        yesterday: data.kpis.customersYesterday,
+        today: data.kpis.customersToday,
+        format: (value: number) => String(Math.round(value)),
+        color: CC.green,
+      },
+    ];
+  }, [data, fmtMoney, t]);
+
   const onHandOver = useCallback(
     (orderId: string) => {
       navigation.navigate("RestaurantOrderDetails", { orderId });
@@ -87,10 +110,7 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.safe}>
         <StatusBar barStyle="light-content" />
-        <View style={styles.center}>
-          <ActivityIndicator color="#A78BFA" size="large" />
-          <Text style={styles.loadingText}>{t("restaurant.commandCenter.loading")}</Text>
-        </View>
+        <CommandCenterSkeleton />
       </SafeAreaView>
     );
   }
@@ -101,9 +121,9 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
         <StatusBar barStyle="light-content" />
         <View style={styles.center}>
           <Text style={styles.errorText}>{t("restaurant.commandCenter.loadFailed")}</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => void refresh()}>
+          <Pressable style={styles.retryBtn} onPress={() => void refresh()}>
             <Text style={styles.retryText}>{t("restaurant.commandCenter.retry")}</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -119,13 +139,13 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor="#A78BFA" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={CC.purpleLight} />
         }
       >
         <View style={[styles.headerRow, { flexDirection: rowDirection() }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Text style={styles.backText}>{mirrorChevron("back")}</Text>
-          </TouchableOpacity>
+          </Pressable>
           <View style={styles.headerMeta}>
             <Text style={[styles.headerTitle, { textAlign: textAlignStart() }]}>
               {t("restaurant.commandCenter.title")}
@@ -140,6 +160,7 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
               data.restaurant.isOpen ? styles.statusOpen : styles.statusClosed,
             ]}
           >
+            <View style={[styles.statusDot, data.restaurant.isOpen ? styles.dotOpen : styles.dotClosed]} />
             <Text style={styles.statusText}>
               {data.restaurant.isOpen
                 ? t("restaurant.commandCenter.open")
@@ -152,30 +173,42 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           {t("restaurant.commandCenter.greeting")}
         </Text>
 
+        <RevenueHeroCard
+          revenueToday={fmtMoney(data.kpis.revenueToday)}
+          revenueYesterday={data.kpis.revenueYesterday}
+          revenueTodayRaw={data.kpis.revenueToday}
+          changePct={data.kpis.revenueChangePct}
+          changeLabel={
+            data.kpis.revenueChangePct != null
+              ? t("restaurant.commandCenter.changeVsYesterday", {
+                  value: `${data.kpis.revenueChangePct >= 0 ? "+" : ""}${data.kpis.revenueChangePct}%`,
+                })
+              : null
+          }
+          restaurantName={data.restaurant.name}
+        />
+
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.kpiScroll}>
           <View style={[styles.kpiRow, { flexDirection: rowDirection() }]}>
             <RestaurantKpiCard
-              title={t("restaurant.commandCenter.revenueToday")}
-              value={fmtMoney(data.kpis.revenueToday)}
-              changeLabel={formatChangeLabel(t, data.kpis.revenueChangePct)}
-              accent="purple"
-            />
-            <RestaurantKpiCard
               title={t("restaurant.commandCenter.ordersToday")}
               value={String(data.kpis.ordersToday)}
-              changeLabel={formatChangeLabel(t, data.kpis.ordersChangePct)}
+              changePct={data.kpis.ordersChangePct}
+              sparklineValues={[data.kpis.ordersYesterday, data.kpis.ordersToday]}
               accent="blue"
             />
             <RestaurantKpiCard
               title={t("restaurant.commandCenter.customersToday")}
               value={String(data.kpis.customersToday)}
-              changeLabel={formatChangeLabel(t, data.kpis.customersChangePct)}
+              changePct={data.kpis.customersChangePct}
+              sparklineValues={[data.kpis.customersYesterday, data.kpis.customersToday]}
               accent="green"
             />
             <RestaurantKpiCard
               title={t("restaurant.commandCenter.averageBasket")}
               value={fmtMoney(data.kpis.averageBasket)}
-              changeLabel={formatChangeLabel(t, data.kpis.averageBasketChangePct)}
+              changePct={data.kpis.averageBasketChangePct}
+              sparklineValues={[data.kpis.averageBasketYesterday, data.kpis.averageBasket]}
               accent="orange"
             />
             <RestaurantKpiCard
@@ -196,58 +229,21 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           onRefresh={() => void refresh()}
         />
 
-        <Text style={[styles.sectionTitle, { textAlign: textAlignStart() }]}>
-          {t("restaurant.commandCenter.liveMap")}
-        </Text>
         <RestaurantLiveMap
           restaurant={data.restaurant}
           mapData={data.map}
           focusOrderId={mapFocusOrderId}
         />
 
-        <View style={styles.splitRow}>
-          <View style={styles.splitCol}>
-            <Text style={[styles.sectionTitle, { textAlign: textAlignStart() }]}>
-              {t("restaurant.commandCenter.ordersOverview")}
-            </Text>
-            {data.orderStatusBreakdown.length === 0 ? (
-              <Text style={styles.muted}>{t("restaurant.commandCenter.liveOperationsEmpty")}</Text>
-            ) : (
-              data.orderStatusBreakdown.map((slice) => (
-                <View key={slice.status} style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>{statusLabel(slice.status)}</Text>
-                  <Text style={styles.breakdownValue}>
-                    {slice.count} ({slice.pct}%)
-                  </Text>
-                </View>
-              ))
-            )}
-          </View>
+        <OrderInsightsCard
+          orderStatusBreakdown={data.orderStatusBreakdown}
+          ordersToday={data.kpis.ordersToday}
+          prepTime={data.prepTime}
+          statusLabel={statusLabel}
+        />
 
-          <View style={styles.splitCol}>
-            <Text style={[styles.sectionTitle, { textAlign: textAlignStart() }]}>
-              {t("restaurant.commandCenter.prepTime")}
-            </Text>
-            <Text style={styles.prepValue}>
-              {data.prepTime.averageMinutes != null
-                ? t("restaurant.commandCenter.minutesUnit", {
-                    value: data.prepTime.averageMinutes,
-                  })
-                : t("common.na")}
-            </Text>
-            <Text style={styles.muted}>
-              {t("restaurant.commandCenter.prepTimeTarget", {
-                minutes: data.prepTime.targetMinutes,
-              })}
-            </Text>
-            {data.prepTime.percentileBetterThan != null ? (
-              <Text style={styles.prepGood}>
-                {t("restaurant.commandCenter.prepTimeGood", {
-                  percent: data.prepTime.percentileBetterThan,
-                })}
-              </Text>
-            ) : null}
-          </View>
+        <View style={styles.trendCard}>
+          <RevenueTrendChart items={trendItems} />
         </View>
 
         <RestaurantAiGrowthManager
@@ -257,11 +253,7 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           onViewInventory={() => navigation.navigate("RestaurantMenu")}
         />
 
-        <TopProductsCard
-          products={data.topProducts}
-          language={i18n.language}
-          loading={loading}
-        />
+        <TopProductsCard products={data.topProducts} language={i18n.language} loading={loading} />
 
         <FinancialSummaryCard
           financial={data.financial}
@@ -269,12 +261,12 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           onViewFullReport={() => navigation.navigate("RestaurantFinancialCenter")}
         />
 
-        <TouchableOpacity
+        <Pressable
           style={styles.allOrdersBtn}
           onPress={() => navigation.navigate("RestaurantOrders")}
         >
           <Text style={styles.allOrdersText}>{t("restaurant.commandCenter.viewAllOrders")}</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -283,11 +275,11 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: CC.bg,
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
     gap: 18,
   },
   center: {
@@ -296,39 +288,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
-  loadingText: {
-    color: "rgba(148,163,184,0.95)",
-    marginTop: 12,
-  },
   errorText: {
-    color: "#FCA5A5",
+    color: CC.red,
     textAlign: "center",
     marginBottom: 12,
+    fontWeight: "700",
   },
   retryBtn: {
-    backgroundColor: "rgba(124,58,237,0.35)",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: CC.purpleGlow,
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: CC.glassBorder,
   },
   retryText: {
-    color: "#DDD6FE",
-    fontWeight: "800",
+    color: CC.purpleLight,
+    fontWeight: "900",
   },
   headerRow: {
     alignItems: "center",
     gap: 10,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: CC.glass,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: CC.glassBorder,
   },
   backText: {
-    color: "#F8FAFC",
+    color: CC.textPrimary,
     fontSize: 18,
     fontWeight: "900",
   },
@@ -336,104 +329,85 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    color: "#F8FAFC",
-    fontSize: 22,
+    color: CC.textPrimary,
+    fontSize: 24,
     fontWeight: "900",
+    letterSpacing: -0.4,
   },
   headerDate: {
-    color: "rgba(148,163,184,0.95)",
+    color: CC.textMuted,
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 3,
+    fontWeight: "600",
   },
   statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
   },
   statusOpen: {
-    backgroundColor: "rgba(34,197,94,0.2)",
+    backgroundColor: CC.greenDim,
+    borderColor: "rgba(34,197,94,0.35)",
   },
   statusClosed: {
-    backgroundColor: "rgba(239,68,68,0.18)",
+    backgroundColor: CC.redDim,
+    borderColor: "rgba(239,68,68,0.35)",
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dotOpen: {
+    backgroundColor: CC.green,
+  },
+  dotClosed: {
+    backgroundColor: CC.red,
   },
   statusText: {
-    color: "#F8FAFC",
+    color: CC.textPrimary,
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   greeting: {
-    color: "rgba(226,232,240,0.88)",
+    color: CC.textSecondary,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
+    fontWeight: "600",
   },
   kpiScroll: {
     marginHorizontal: -16,
     paddingHorizontal: 16,
   },
   kpiRow: {
-    gap: 10,
+    gap: 12,
     paddingRight: 16,
   },
-  sectionTitle: {
-    color: "#F8FAFC",
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  splitRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  splitCol: {
-    flex: 1,
-    borderRadius: 18,
-    padding: 12,
-    backgroundColor: "rgba(255,255,255,0.04)",
+  trendCard: {
+    borderRadius: 20,
+    padding: 16,
+    backgroundColor: CC.glass,
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.15)",
-  },
-  breakdownRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  breakdownLabel: {
-    color: "rgba(148,163,184,0.95)",
-    fontSize: 12,
-    textTransform: "capitalize",
-  },
-  breakdownValue: {
-    color: "#E2E8F0",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  prepValue: {
-    color: "#A78BFA",
-    fontSize: 28,
-    fontWeight: "900",
-  },
-  prepGood: {
-    color: "#4ADE80",
-    fontSize: 11,
-    marginTop: 8,
-    fontWeight: "700",
-  },
-  muted: {
-    color: "rgba(148,163,184,0.95)",
-    fontSize: 12,
+    borderColor: CC.glassBorder,
+    ...CC.shadow,
   },
   allOrdersBtn: {
     marginTop: 4,
-    backgroundColor: "rgba(124,58,237,0.35)",
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: CC.purpleGlow,
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.35)",
+    borderColor: CC.glassBorder,
+    ...CC.shadow,
   },
   allOrdersText: {
-    color: "#DDD6FE",
+    color: CC.purpleLight,
     fontWeight: "900",
-    fontSize: 14,
+    fontSize: 15,
   },
 });

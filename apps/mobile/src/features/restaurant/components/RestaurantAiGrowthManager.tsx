@@ -1,9 +1,12 @@
 import React, { memo } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { RestaurantAiGrowthData } from "../../../lib/restaurantCommandCenterApi";
 import { formatMoney } from "../../../i18n/formatters";
 import { textAlignStart } from "../../../i18n/rtl";
+import { GlassCard } from "./GlassCard";
+import { SectionHeroHeader } from "./SectionHeroHeader";
+import { CC } from "./commandCenterTheme";
 
 type Props = {
   data: RestaurantAiGrowthData | null;
@@ -21,18 +24,22 @@ function RestaurantAiGrowthManagerComponent({
   const { t } = useTranslation();
 
   return (
-    <View style={styles.card}>
-      <Text style={[styles.title, { textAlign: textAlignStart() }]}>
-        {t("restaurant.commandCenter.ai.title")}
-      </Text>
-      <Text style={[styles.subtitle, { textAlign: textAlignStart() }]}>
-        {t("restaurant.commandCenter.ai.beta")}
-      </Text>
+    <GlassCard variant="gold" accentBar={CC.gold}>
+      <SectionHeroHeader
+        title={t("restaurant.commandCenter.ai.title")}
+        subtitle={t("restaurant.commandCenter.ai.beta")}
+        badge={t("restaurant.commandCenter.ai.heroBadge")}
+        badgeColor={CC.gold}
+      />
 
       {loading ? (
         <Text style={styles.empty}>{t("restaurant.commandCenter.loading")}</Text>
       ) : !data || !data.hasEnoughData ? (
-        <Text style={styles.empty}>{t("restaurant.commandCenter.ai.notEnoughData")}</Text>
+        <View style={styles.emptyBox}>
+          <Text style={[styles.empty, { textAlign: textAlignStart() }]}>
+            {t("restaurant.commandCenter.ai.notEnoughData")}
+          </Text>
+        </View>
       ) : (
         data.recommendations.map((item) => (
           <View key={item.id} style={styles.recoCard}>
@@ -58,80 +65,70 @@ function RestaurantAiGrowthManagerComponent({
               </Text>
             ) : null}
             {item.actionKey && item.actionRoute === "inventory" && onViewInventory ? (
-              <TouchableOpacity style={styles.actionBtn} onPress={onViewInventory}>
+              <Pressable style={styles.actionBtn} onPress={onViewInventory}>
                 <Text style={styles.actionText}>{t(item.actionKey)}</Text>
-              </TouchableOpacity>
+              </Pressable>
             ) : null}
           </View>
         ))
       )}
-    </View>
+    </GlassCard>
   );
 }
 
 export const RestaurantAiGrowthManager = memo(RestaurantAiGrowthManagerComponent);
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 20,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.05)",
+  emptyBox: {
+    padding: 14,
+    borderRadius: 14,
+    backgroundColor: CC.bgElevated,
     borderWidth: 1,
-    borderColor: "rgba(245,158,11,0.25)",
-  },
-  title: {
-    color: "#FBBF24",
-    fontSize: 17,
-    fontWeight: "900",
-  },
-  subtitle: {
-    color: "rgba(148,163,184,0.95)",
-    fontSize: 12,
-    marginTop: 4,
-    marginBottom: 12,
+    borderColor: "rgba(255,255,255,0.05)",
   },
   empty: {
-    color: "rgba(148,163,184,0.95)",
+    color: CC.textMuted,
     fontSize: 13,
+    lineHeight: 20,
   },
   recoCard: {
-    marginTop: 10,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: "rgba(2,6,23,0.55)",
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: CC.bgElevated,
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.15)",
+    borderColor: CC.glassBorder,
   },
   recoTitle: {
-    color: "#F8FAFC",
-    fontWeight: "800",
+    color: CC.gold,
+    fontWeight: "900",
     fontSize: 14,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   recoBody: {
-    color: "rgba(226,232,240,0.82)",
-    fontSize: 12,
-    lineHeight: 18,
+    color: CC.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
   },
   gain: {
-    color: "#4ADE80",
-    fontWeight: "800",
+    color: CC.green,
+    fontWeight: "900",
     fontSize: 12,
-    marginTop: 8,
+    marginTop: 10,
   },
   actionBtn: {
-    marginTop: 10,
+    marginTop: 12,
     alignSelf: "flex-start",
-    backgroundColor: "rgba(124,58,237,0.35)",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: CC.purpleGlow,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.35)",
+    borderColor: CC.glassBorder,
   },
   actionText: {
-    color: "#DDD6FE",
-    fontWeight: "800",
+    color: CC.purpleLight,
+    fontWeight: "900",
     fontSize: 12,
   },
 });

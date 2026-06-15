@@ -433,7 +433,10 @@
       "rating": "التقييم",
       "reviewsCount": "({{count}} مراجعات)",
       "changeVsYesterday": "{{value}} مقارنة بالأمس",
+      "yesterday": "أمس",
+      "revenueTrend": "اتجاه الأداء",
       "liveOperations": "مركز العمليات المباشرة",
+      "liveOperationsHero": "وصول السائقين والطلبات الجديدة والتنبيهات في الوقت الفعلي.",
       "liveOperationsEmpty": "لا توجد عمليات مباشرة حالياً.",
       "driverArrived": "وصل السائق",
       "driverApproaching": "السائق يقترب",
@@ -485,6 +488,7 @@
       "ai": {
         "title": "MMD AI Growth Manager",
         "beta": "تجريبي",
+        "heroBadge": "ذكاء",
         "notEnoughData": "بيانات غير كافية لتوصيات الذكاء الاصطناعي.",
         "estimatedGain": "الربح المقدر: {{amount}}",
         "viewInventory": "عرض المخزون",
