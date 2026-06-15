@@ -50,7 +50,7 @@ const MAX_ITEM_NAME_LENGTH = 80;
 const MAX_CATEGORY_NAME_LENGTH = 60;
 const MAX_DESCRIPTION_LENGTH = 500;
 const MAX_PRICE_CENTS = 200000; // $2,000 safety limit for one menu item.
-const SUPPORTED_CURRENCIES = ["USD"] as const;
+const SUPPORTED_CURRENCIES = ["USD", "CAD", "EUR", "GBP", "GNF", "XOF", "SLE", "MRU"] as const;
 
 function cleanText(value: string, maxLength: number) {
   return String(value || "").trim().slice(0, maxLength);
@@ -58,7 +58,13 @@ function cleanText(value: string, maxLength: number) {
 
 function normalizeCurrency(value: string) {
   const currency = String(value || "USD").trim().toUpperCase();
-  return (SUPPORTED_CURRENCIES as readonly string[]).includes(currency) ? currency : "USD";
+  return (SUPPORTED_CURRENCIES as readonly string[]).includes(currency) ? currency : marketCurrencyFallback(currency);
+}
+
+function marketCurrencyFallback(currency: string) {
+  const normalized = String(currency ?? "").trim().toUpperCase();
+  if ((SUPPORTED_CURRENCIES as readonly string[]).includes(normalized)) return normalized;
+  return "USD";
 }
 
 function isValidCategoryId(categoryId: string | null | undefined, categories: Category[]) {

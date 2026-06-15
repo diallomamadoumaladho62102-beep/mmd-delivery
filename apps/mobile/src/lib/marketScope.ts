@@ -3,7 +3,7 @@ import { getTaxiCountryLabel } from "./taxiLocalization";
 
 const CURRENCY_BY_COUNTRY: Record<string, string> = {
   US: "USD",
-  CA: "USD",
+  CA: "CAD",
   GN: "GNF",
   SN: "XOF",
   CI: "XOF",

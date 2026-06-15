@@ -332,7 +332,7 @@ export async function computeFoodOrderPricing(
     lng: dropoffLng,
   });
 
-  const currency = currencyForPlatformCountry(platformCountry);
+  const currency = currencyForPlatformCountry(platformCountry, { strict: true });
   const currencyCheck = assertFoodCheckoutCurrencyAllowed(currency);
   if (currencyCheck.ok === false) {
     throw new Error(currencyCheck.message);

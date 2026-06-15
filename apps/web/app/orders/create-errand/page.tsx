@@ -60,44 +60,26 @@ export default function CreateErrandPage() {
     setPending(true);
 
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
-          type: "errand",
+      const response = await fetch("/api/errands/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          pickupAddress: "Pickup address required",
+          dropoffAddress: "Dropoff address required",
           subtotal: safeSubtotal,
-          currency: safeCurrency,
-          status: "pending",
-        })
-        .select("id")
-        .maybeSingle();
+        }),
+      });
 
-      if (error) throw new Error(error.message);
-
-      const orderId = data?.id as string | undefined;
-      if (!orderId) throw new Error("Order ID manquant après insertion.");
-
-      // ✅ pas de .catch() ici: on lit error et on ignore proprement
-      {
-        const { error: mErr } = await supabase.from("order_members").insert({
-          order_id: orderId,
-          user_id: user.id,
-          role: "admin",
-        });
-        if (mErr) {
-          console.warn("[create-errand] order_members insert failed:", mErr.message);
-        }
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(payload.error ?? "create_errand_order failed"));
       }
 
-      {
-        const { error: rErr } = await supabase.rpc("refresh_order_commissions", {
-          p_order_id: orderId,
-        });
-        if (rErr) {
-          console.warn("[create-errand] refresh_order_commissions failed:", rErr.message);
-        }
-      }
+      const orderId = String(payload.id ?? "").trim();
+      if (!orderId) throw new Error("Order ID manquant après création.");
 
-      router.push(`/orders/${orderId}/chat`);
+      router.push(`/orders/${orderId}?pay=1`);
     } catch (e: any) {
       setErr(e?.message || String(e));
     } finally {

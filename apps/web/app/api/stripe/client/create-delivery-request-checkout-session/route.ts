@@ -12,6 +12,7 @@ import {
   foodStripeUnitAmount,
   safeFoodCheckoutCurrency,
 } from "@/lib/foodCurrencyGuard";
+import { validateDeliveryRequestBeforeCheckout } from "@/lib/deliveryRequestService";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -513,6 +514,29 @@ export async function POST(req: NextRequest) {
           country_code: platformCheckout.country_code,
         },
         403
+      );
+    }
+
+    const pricingCheck = await validateDeliveryRequestBeforeCheckout(
+      supabaseAdmin,
+      deliveryRequestId
+    );
+    if (pricingCheck.ok === false) {
+      console.error(
+        "[create-delivery-request-checkout-session] pricing integrity failed",
+        {
+          delivery_request_id: deliveryRequestId,
+          user_id: user.id,
+          error: pricingCheck.error,
+        }
+      );
+      return json(
+        {
+          ok: false,
+          error: "delivery_request_pricing_integrity_failed",
+          message: pricingCheck.error,
+        },
+        409
       );
     }
 

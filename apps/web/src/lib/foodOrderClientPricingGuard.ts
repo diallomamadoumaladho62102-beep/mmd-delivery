@@ -1,30 +1,16 @@
+import {
+  currencyForPlatformCountry,
+  roundPlatformMoney,
+  PLATFORM_CURRENCY_BY_COUNTRY,
+} from "./platformCurrency";
+
 export const FOOD_LEGACY_TAX_RATE = 0.0888;
 
-const CURRENCY_BY_COUNTRY: Record<string, string> = {
-  US: "USD",
-  CA: "CAD",
-  GB: "GBP",
-  FR: "EUR",
-  BE: "EUR",
-  GN: "GNF",
-  SN: "XOF",
-  CI: "XOF",
-  ML: "XOF",
-  SL: "SLE",
-  MR: "MRU",
+export {
+  currencyForPlatformCountry,
+  roundPlatformMoney as roundFoodMoney,
+  PLATFORM_CURRENCY_BY_COUNTRY,
 };
-
-export function roundFoodMoney(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-export function currencyForPlatformCountry(countryCode: unknown): string {
-  const code = String(countryCode ?? "")
-    .trim()
-    .toUpperCase();
-  if (!code) return "USD";
-  return CURRENCY_BY_COUNTRY[code] ?? "USD";
-}
 
 export const FORBIDDEN_CLIENT_FOOD_PRICING_FIELDS = [
   "subtotal",

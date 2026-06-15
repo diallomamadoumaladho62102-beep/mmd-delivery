@@ -886,6 +886,13 @@ export function ClientNewOrderScreen() {
       const baseOrderTotal = toSafeMoney(baseOrderTotalFromParams);
       const grandTotal = roundMoney(baseOrderTotal + safeDeliveryFee);
 
+      throw new Error(
+        t(
+          "client.newOrder.errors.legacyDisabled",
+          "Direct order creation is disabled. Use the restaurant menu to order food securely."
+        )
+      );
+
       const orderPayload = {
         kind: "errand",
         status: "pending",

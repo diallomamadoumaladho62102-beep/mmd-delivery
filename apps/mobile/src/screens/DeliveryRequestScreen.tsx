@@ -27,6 +27,12 @@ import {
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
+import {
+  createDeliveryRequest,
+  quoteDeliveryRequest,
+  syncPaidDeliveryRequestOrder,
+  type DeliveryRequestPricingPayload,
+} from "../lib/deliveryRequestApi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type DeliveryRequestRoute = RouteProp<RootStackParamList, "DeliveryRequest">;
@@ -242,13 +248,18 @@ export function DeliveryRequestScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [paying, setPaying] = useState(false);
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
+  const [serverPricing, setServerPricing] = useState<DeliveryRequestPricingPayload | null>(null);
 
   const autoEstimateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeEstimateRequestIdRef = useRef<number>(0);
   const lastEstimateKeyRef = useRef<string>("");
 
-  const subtotal = 0;
-  const tax = 0;
+  const subtotal = serverPricing?.subtotal ?? 0;
+  const tax = serverPricing?.tax ?? 0;
+  const displayDeliveryFee = serverPricing?.delivery_fee ?? deliveryFee;
+  const displayGrandTotal =
+    serverPricing?.total ??
+    roundMoney(subtotal + tax + toSafeMoney(displayDeliveryFee ?? 0));
   const currency =
     pricingConfig?.currency ||
     (market.scopeResolved ? market.currencyCode : "USD");
@@ -261,10 +272,7 @@ export function DeliveryRequestScreen() {
       "MMD delivery is not available in your current area."
     );
 
-  const total = useMemo(() => {
-    const fee = toSafeMoney(deliveryFee ?? 0);
-    return roundMoney(subtotal + tax + fee);
-  }, [deliveryFee]);
+  const total = useMemo(() => displayGrandTotal, [displayGrandTotal]);
 
   const estimateReady = useMemo(() => {
     return (
@@ -703,108 +711,14 @@ export function DeliveryRequestScreen() {
   }, []);
 
   const createOrderFromPaidDeliveryRequest = useCallback(
-    async (deliveryId: string, userId: string) => {
-      const { data: existingOrder, error: existingOrderError } = await supabase
-        .from("orders")
-        .select("id")
-        .eq("external_ref_id", deliveryId)
-        .eq("external_ref_type", "delivery_request")
-        .maybeSingle();
-
-      if (existingOrderError) {
-        throw existingOrderError;
-      }
-
-      if (existingOrder?.id) {
-        return String(existingOrder.id);
-      }
-
-      const { data: deliveryData, error: deliveryReadError } = await supabase
-        .from("delivery_requests")
-        .select(
-          [
-            "id",
-            "created_by",
-            "client_user_id",
-            "payment_status",
-            "paid_at",
-            "pickup_address",
-            "dropoff_address",
-            "pickup_lat",
-            "pickup_lng",
-            "dropoff_lat",
-            "dropoff_lng",
-            "distance_miles",
-            "delivery_fee",
-            "total",
-          ].join(", ")
-        )
-        .eq("id", deliveryId)
-        .single();
-
-      if (deliveryReadError) {
-        throw deliveryReadError;
-      }
-
-      const delivery = (deliveryData ?? null) as unknown as DeliveryRequestRow | null;
-
-      if (!delivery?.id) {
-        throw new Error(tr("deliveryRequest.errors.notFoundAfterPayment", "Demande de livraison introuvable après le paiement."));
-      }
-
-      if (delivery.payment_status !== "paid") {
-        throw new Error(tr("deliveryRequest.errors.paymentNotConfirmed", "Le paiement n’a pas encore été confirmé."));
-      }
-
-      const nowIso = new Date().toISOString();
-
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          kind: "pickup_dropoff",
-          status: "pending",
-          payment_status: "paid",
-          paid_at: delivery.paid_at ?? nowIso,
-          driver_id: null,
-
-          created_by: delivery.created_by ?? userId,
-
-          // ✅ Production identity fields
-          // client_id is the canonical client owner for orders.
-          // user_id and client_user_id are kept for backward compatibility with older code.
-          client_id: delivery.client_user_id ?? delivery.created_by ?? userId,
-          user_id: delivery.client_user_id ?? delivery.created_by ?? userId,
-          client_user_id: delivery.client_user_id ?? delivery.created_by ?? userId,
-
-          pickup_address: delivery.pickup_address,
-          dropoff_address: delivery.dropoff_address,
-
-          pickup_lat: delivery.pickup_lat,
-          pickup_lng: delivery.pickup_lng,
-          dropoff_lat: delivery.dropoff_lat,
-          dropoff_lng: delivery.dropoff_lng,
-
-          distance_miles: delivery.distance_miles,
-          delivery_fee: delivery.delivery_fee,
-          total: delivery.total,
-
-          external_ref_id: delivery.id,
-          external_ref_type: "delivery_request",
-
-          created_at: nowIso,
-          updated_at: nowIso,
-        })
-        .select("id")
-        .single();
-
-      if (orderError) {
-        console.error("❌ order insert error:", orderError);
-        throw new Error(orderError.message || tr("deliveryRequest.errors.createOrderFailed", "Impossible de créer la commande."));
-      }
-
-      return String(orderData?.id ?? "");
+    async (deliveryId: string, _userId: string) => {
+      return syncPaidDeliveryRequestOrder(deliveryId, {
+        countryCode: market.countryCode,
+        lat: dropoffCoords?.lat,
+        lng: dropoffCoords?.lng,
+      });
     },
-    [tr]
+    [market.countryCode, dropoffCoords]
   );
 
   const handleCreateRequest = useCallback(async () => {
@@ -848,65 +762,49 @@ export function DeliveryRequestScreen() {
 
       const safeDescription = cleanText(description);
 
-      const safeFee = toSafeMoney(deliveryFee);
-      const safeTotal = roundMoney(subtotal + tax + safeFee);
+      if (!pickupCoords || !dropoffCoords) {
+        throw new Error(
+          tr(
+            "deliveryRequest.errors.missingCoords",
+            "Merci de refaire l’estimation pour récupérer les coordonnées GPS."
+          )
+        );
+      }
 
-      const { data: deliveryData, error: deliveryError } = await supabase
-        .from("delivery_requests")
-        .insert({
-          created_by: user.id,
-          client_user_id: user.id,
-          status: "pending",
-          payment_status: "unpaid",
-
-          kind: "delivery",
+      const { deliveryRequestId, pricing } = await createDeliveryRequest(
+        {
           request_type: requestType,
-
           title: safeTitle,
-          errand_description: safeDescription || null,
-
+          description: safeDescription || null,
           pickup_address: safePickup,
           dropoff_address: safeDropoff,
-
           pickup_contact_name: safePickupContactName || null,
           pickup_phone: safePickupPhone || null,
           dropoff_contact_name: safeDropoffContactName || null,
           dropoff_phone: safeDropoffPhone || null,
-
-          pickup_lat: pickupCoords?.lat ?? null,
-          pickup_lng: pickupCoords?.lng ?? null,
-          dropoff_lat: dropoffCoords?.lat ?? null,
-          dropoff_lng: dropoffCoords?.lng ?? null,
+          pickup_lat: pickupCoords.lat,
+          pickup_lng: pickupCoords.lng,
+          dropoff_lat: dropoffCoords.lat,
+          dropoff_lng: dropoffCoords.lng,
           dropoff_location_id: dropoffLocationId,
+        },
+        {
+          countryCode: market.countryCode,
+          lat: dropoffCoords.lat,
+          lng: dropoffCoords.lng,
+        }
+      );
 
-          distance_miles: distanceMiles,
-          eta_minutes: etaMinutes != null ? Math.round(etaMinutes) : null,
-
-          subtotal,
-          delivery_fee: safeFee,
-          tax,
-          total: safeTotal,
-
-          currency,
-        })
-        .select("id")
-        .single();
-
-      if (deliveryError) throw deliveryError;
-
-      const deliveryId = String(deliveryData?.id ?? "").trim();
-      if (!deliveryId) {
-        throw new Error(tr("deliveryRequest.errors.createdWithoutId", "La demande de livraison a été créée sans ID valide."));
-      }
-
-      setLastCreatedId(deliveryId);
+      setServerPricing(pricing);
+      setDeliveryFee(roundMoney(pricing.delivery_fee));
+      setLastCreatedId(deliveryRequestId);
 
       Alert.alert(
         tr("deliveryRequest.alerts.createdTitle", "Demande créée ✅"),
         tr("deliveryRequest.alerts.createdBody", "Demande de livraison créée. Appuie sur Payer maintenant pour finaliser le paiement.")
       );
 
-      console.log("delivery_requests created:", deliveryId);
+      console.log("delivery_requests created:", deliveryRequestId);
     } catch (e: unknown) {
       console.error("❌ create request error:", e);
       Alert.alert(tr("common.error", "Erreur"), e instanceof Error ? e.message : tr("deliveryRequest.errors.createFailed", "Impossible de créer la demande."));
