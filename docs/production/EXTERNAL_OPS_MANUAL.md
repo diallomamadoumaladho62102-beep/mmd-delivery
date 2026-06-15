@@ -18,13 +18,11 @@ select country_code, is_active from public.mmd_zones where country_code in ('SN'
 
 ## Vercel
 
-- Deploy latest `main` so `vercel.json` crons are active:
-  - `/api/cron/retry-order-dispatch` (every 2 min)
-  - `/api/cron/retry-taxi-dispatch` (every 2 min)
-  - `/api/cron/taxi-scheduled-dispatch` (every 5 min)
-  - `/api/cron/taxi-monitoring-snapshot` (hourly)
+- **Hobby plan:** Vercel only allows daily cron schedules. High-frequency dispatch crons (`retry-order-dispatch`, `retry-taxi-dispatch`, `taxi-scheduled-dispatch`) must use an **external cron** (e.g. cron-job.org) hitting those URLs with `CRON_SECRET`, or upgrade to **Vercel Pro**.
+- Active Vercel crons (daily): `process-payouts`, `expire-unpaid`, `taxi-monitoring-snapshot`
 - Confirm env: `CRON_SECRET`, `DISPATCH_INTERNAL_SECRET`, `MMD_PAYOUT_MODE=hybrid`
 - Health check: `GET https://www.mmddelivery.com/api/health`
+- Stripe webhook health: `GET https://www.mmddelivery.com/api/health/stripe-webhook`
 
 ## Supabase Edge
 

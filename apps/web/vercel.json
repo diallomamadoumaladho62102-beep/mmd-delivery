@@ -15,18 +15,6 @@
     {
       "path": "/api/cron/taxi-monitoring-snapshot",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/retry-order-dispatch",
-      "schedule": "*/2 * * * *"
-    },
-    {
-      "path": "/api/cron/retry-taxi-dispatch",
-      "schedule": "*/2 * * * *"
-    },
-    {
-      "path": "/api/cron/taxi-scheduled-dispatch",
-      "schedule": "*/5 * * * *"
     }
   ]
 }
