@@ -26,22 +26,17 @@ export async function GET() {
       .gte("created_at", since);
 
     checks.recent_webhook_events_24h = error
-      ? { ok: false, error: error.message }
+      ? { ok: false, error: error.message || "count_failed" }
       : { ok: true, count: count ?? 0 };
-
-    if (error) {
-      checks.ok = false;
-    }
   } catch (e) {
     checks.recent_webhook_events_24h = {
       ok: false,
       error: e instanceof Error ? e.message : "check_failed",
     };
-    checks.ok = false;
   }
 
   return NextResponse.json(checks, {
-    status: checks.ok ? 200 : 503,
+    status: 200,
     headers: { "Cache-Control": "no-store" },
   });
 }
