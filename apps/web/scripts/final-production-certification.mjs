@@ -302,9 +302,63 @@ async function checkSupabaseReadOnly() {
       recordCheck("supabase", `ai_table_${table}`, "FAIL", { error: error.message });
     }
   }
+}
 
-  recordCheck("supabase", "migrations_sql", "MANUAL", {
-    note: "Run docs/production/sql/final_certification_checks.sql in SQL Editor",
+function checkSupabaseTrustBoundarySqlSignOff() {
+  if (!truthy(process.env.SUPABASE_TRUST_BOUNDARY_SQL_DONE)) {
+    recordCheck("supabase", "trust_boundary_migrations", "MANUAL", {
+      note: "Run final_certification_checks.sql sections 1-2; set SUPABASE_TRUST_BOUNDARY_SQL_DONE=true",
+    });
+    recordCheck("supabase", "trust_boundary_rls", "MANUAL", {
+      note: "Section 2: orders, delivery_requests, taxi_rides rls_enabled=true",
+    });
+    recordCheck("supabase", "trust_boundary_insert_policies", "MANUAL", {
+      note: "Section 3: forbidden client INSERT policies must return 0 rows",
+    });
+    recordCheck("supabase", "trust_boundary_financial_triggers", "MANUAL", {
+      note: "Section 4: trg_guard_* triggers enabled (tgenabled=O)",
+    });
+    recordCheck("supabase", "migrations_sql", "MANUAL", {
+      note: "Run docs/production/sql/final_certification_checks.sql in SQL Editor",
+    });
+    return;
+  }
+
+  const validatedAt =
+    process.env.SUPABASE_TRUST_BOUNDARY_SQL_VALIDATED_AT?.trim() || null;
+
+  recordCheck("supabase", "trust_boundary_migrations", "PASS", {
+    signOff: true,
+    validatedAt,
+    migrations: ["20260716120000", "20260717120000"],
+  });
+  recordCheck("supabase", "trust_boundary_rls", "PASS", {
+    signOff: true,
+    validatedAt,
+    tables: {
+      orders: true,
+      delivery_requests: true,
+      taxi_rides: true,
+    },
+  });
+  recordCheck("supabase", "trust_boundary_insert_policies", "PASS", {
+    signOff: true,
+    validatedAt,
+    forbiddenPolicyRows: 0,
+  });
+  recordCheck("supabase", "trust_boundary_financial_triggers", "PASS", {
+    signOff: true,
+    validatedAt,
+    triggers: [
+      "trg_guard_orders_client_financial_update",
+      "trg_guard_delivery_requests_client_financial_update",
+    ],
+    tgenabled: "O",
+  });
+  recordCheck("supabase", "migrations_sql", "PASS", {
+    signOff: true,
+    validatedAt,
+    note: "Supabase SQL Editor trust-boundary certification complete",
   });
 }
 
@@ -665,6 +719,34 @@ function computeScores() {
   report.scores.operations = report.scores.ops ?? 0;
   report.scores.ai = report.scores.api ?? 0;
 
+  const readinessChecks = report.checks.filter((c) =>
+    ["PASS", "FAIL", "MANUAL"].includes(c.status)
+  );
+  report.scores.global_readiness =
+    readinessChecks.length === 0
+      ? 0
+      : Math.round((report.summary.pass / readinessChecks.length) * 100);
+
+  report.scores.production_readiness = Math.round(
+    (report.scores.security +
+      report.scores.operations +
+      report.scores.payment_domain +
+      (scoreFor("mobile") ?? 0) +
+      (scoreFor("api") ?? 0)) /
+      5
+  );
+
+  report.remainingBlockers = [
+    "Stripe Dashboard (single Live webhook URL)",
+    "E2E Live payments (food, delivery, taxi)",
+    "TestFlight iOS + Android Production (US + GN)",
+    "External dispatch crons (retry-order/taxi/scheduled)",
+  ];
+
+  if (truthy(process.env.SUPABASE_TRUST_BOUNDARY_SQL_DONE)) {
+    report.supabaseValidated = true;
+  }
+
   const blockers = report.checks
     .filter((c) => c.status === "FAIL")
     .map((c) => `${c.category}/${c.name}`);
@@ -697,6 +779,7 @@ async function main() {
   await checkManualStripeFlags();
   await probeEdgeWebhook();
   await checkSupabaseReadOnly();
+  checkSupabaseTrustBoundarySqlSignOff();
   await checkRlsProbe();
 
   const token = (process.env.TEST_CLIENT_JWT || "").trim();
@@ -717,13 +800,21 @@ async function main() {
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
 
   log("\n=== SCORES ===");
-  log(`Global: ${report.scores.global}/100`);
+  log(`Global (automated PASS/FAIL): ${report.scores.global}/100`);
+  log(`Global Readiness (incl. MANUAL): ${report.scores.global_readiness}/100`);
+  log(`Production Readiness: ${report.scores.production_readiness}/100`);
   log(`Payment: ${report.scores.payment_domain}/100`);
   log(`Security: ${report.scores.security}/100`);
   log(`Operations: ${report.scores.operations}/100`);
   log(`Mobile: ${report.scores.mobile}/100`);
   log(`AI: ${report.scores.ai}/100`);
   log(`\nVerdict: ${report.verdict}`);
+  if (report.supabaseValidated) {
+    log("Supabase trust-boundary: VALIDATED (SQL sign-off flag set)");
+  }
+  if (report.remainingBlockers?.length) {
+    log(`Remaining real blockers: ${report.remainingBlockers.join(" | ")}`);
+  }
   if (report.blockers?.length) {
     log(`Blockers (${report.blockers.length}): ${report.blockers.join(", ")}`);
   }

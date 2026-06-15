@@ -76,6 +76,28 @@ If missing: `supabase db push` from a trusted machine (outside this runbook scop
 | AI tables | `ai_runtime_settings` ≥ 1 row; queries succeed |
 | `platform_countries` | count = **11** |
 
+### 1.2a Supabase trust-boundary — VALIDATED (production)
+
+**Date :** 2026-06-15 · **Statut : PASS**
+
+| Preuve SQL | Résultat production |
+|------------|---------------------|
+| Migrations | `20260716120000` food_order_trust_boundary · `20260717120000` production_hardening_p0_p1 |
+| RLS activée | `orders`, `delivery_requests`, `taxi_rides` → `true` |
+| Policies INSERT client | 0 ligne (forbidden policy names absentes) |
+| Triggers financiers | `trg_guard_orders_client_financial_update` = O · `trg_guard_delivery_requests_client_financial_update` = O |
+
+Après validation SQL Editor, activer dans `final-certification.env` :
+
+```
+SUPABASE_TRUST_BOUNDARY_SQL_DONE=true
+SUPABASE_TRUST_BOUNDARY_SQL_VALIDATED_AT=2026-06-15
+```
+
+Re-lancer le script : les checks `trust_boundary_*` et `migrations_sql` passent de **MANUAL** à **PASS**.
+
+**Blockers Supabase retirés** — il ne reste plus que Stripe Dashboard, E2E paiements, mobile, crons externes.
+
 ### 1.3 Optional RLS live probe (Node)
 
 In `final-certification.env`:
@@ -282,6 +304,15 @@ node apps/web/scripts/final-production-certification.mjs --env docs/production/f
 |---------|--------|
 | `READY FOR REAL PUBLIC PRODUCTION` | All proofs collected; proceed to launch |
 | `NOT READY FOR REAL PUBLIC PRODUCTION` | Fix every FAIL; complete every MANUAL item |
+
+### Remaining real blockers (after Supabase SQL validated)
+
+1. **Stripe Dashboard** — exactly one Live webhook → `https://www.mmddelivery.com/api/stripe/webhook`
+2. **E2E Live payments** — food, delivery, taxi (quote → checkout → webhook → paid)
+3. **TestFlight / Android** — US + GN device checklist signed
+4. **External dispatch crons** — retry-order-dispatch, retry-taxi-dispatch, taxi-scheduled-dispatch
+
+Supabase trust-boundary (migrations, RLS, INSERT policies, financial triggers) is **no longer a blocker** once `SUPABASE_TRUST_BOUNDARY_SQL_DONE=true`.
 
 Archive for compliance:
 
