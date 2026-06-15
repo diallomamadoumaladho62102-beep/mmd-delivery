@@ -75,6 +75,7 @@ import { RestaurantSecurityScreen } from "../screens/RestaurantSecurityScreen";
 import RestaurantGateScreen from "../screens/restaurant/RestaurantGateScreen";
 import RestaurantSetupScreen from "../screens/restaurant/RestaurantSetupScreen";
 import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
+import RestaurantCommandCenterScreen from "../screens/restaurant/RestaurantCommandCenterScreen";
 import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
 import SellerGateScreen from "../screens/seller/SellerGateScreen";
 import SellerOnboardingScreen from "../screens/seller/SellerOnboardingScreen";
@@ -256,6 +257,7 @@ export type RootStackParamList = {
   DriverBenefits: undefined;
 
   RestaurantHome: undefined;
+  RestaurantCommandCenter: undefined;
   RestaurantOrders: undefined;
   RestaurantOrderDetails: { orderId: string };
   RestaurantEarnings: undefined;
@@ -613,6 +615,7 @@ export function AppNavigator({
       if (!r) return false;
       return (
         r === "RestaurantHome" ||
+        r === "RestaurantCommandCenter" ||
         r === "RestaurantOrders" ||
         r === "RestaurantOrderDetails" ||
         r === "RestaurantEarnings" ||
@@ -1075,6 +1078,10 @@ export function AppNavigator({
         <Stack.Screen name="DriverBenefits" component={DriverBenefitsScreen} />
 
         <Stack.Screen name="RestaurantHome" component={RestaurantHomeScreen} />
+        <Stack.Screen
+          name="RestaurantCommandCenter"
+          component={RestaurantCommandCenterScreen}
+        />
         <Stack.Screen
           name="RestaurantOrders"
           component={RestaurantOrdersScreen}

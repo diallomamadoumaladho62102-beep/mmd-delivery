@@ -1760,6 +1760,11 @@ export function RestaurantHomeScreen({ navigation }: any) {
             }
           />
           <MapActionButton
+            icon="👑"
+            label={t("restaurant.commandCenter.dashboard", "Dashboard")}
+            onPress={() => navigation.navigate("RestaurantCommandCenter")}
+          />
+          <MapActionButton
             icon="📊"
             label="Stats"
             badge={stats.ordersToday > 0 ? stats.ordersToday : undefined}
