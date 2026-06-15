@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { countStripeWebhookEvents24h } from "@/lib/stripeWebhookEventsHealth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,16 +19,17 @@ export async function GET() {
 
   try {
     const supabase = buildSupabaseAdminClient();
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const recent = await countStripeWebhookEvents24h(supabase);
 
-    const { count, error } = await supabase
-      .from("stripe_webhook_events")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", since);
-
-    checks.recent_webhook_events_24h = error
-      ? { ok: false, error: error.message || "count_failed" }
-      : { ok: true, count: count ?? 0 };
+    checks.recent_webhook_events_24h = recent.ok
+      ? {
+          ok: true,
+          count: recent.count,
+          column: recent.column,
+          ...(recent.fallback ? { fallback: recent.fallback } : {}),
+          ...(recent.warning ? { warning: recent.warning } : {}),
+        }
+      : { ok: false, error: recent.error || "count_failed" };
   } catch (e) {
     checks.recent_webhook_events_24h = {
       ok: false,
