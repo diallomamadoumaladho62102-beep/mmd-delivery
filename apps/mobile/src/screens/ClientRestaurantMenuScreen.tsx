@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { API_BASE_URL } from "../lib/apiBase";
 import { startCheckoutForOrder } from "../../lib/payments";
+import { createFoodOrder, quoteFoodOrder, type FoodOrderPricingPayload } from "../lib/foodOrderApi";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
@@ -260,6 +261,7 @@ export function ClientRestaurantMenuScreen() {
   const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [creating, setCreating] = useState(false);
+  const [serverPricing, setServerPricing] = useState<FoodOrderPricingPayload | null>(null);
 
   const { features: platformFeatures } = useClientPlatformFeatures();
   const market = useMemo(
@@ -473,6 +475,54 @@ export function ClientRestaurantMenuScreen() {
     () => roundMoney(totalBeforeDelivery + (deliveryFee ?? 0)),
     [totalBeforeDelivery, deliveryFee]
   );
+
+  const displaySubtotal = serverPricing?.subtotal ?? subtotal;
+  const displayTax = serverPricing?.tax ?? tax;
+  const displayTaxRatePct = serverPricing?.tax_rate_pct ?? 8.88;
+  const displayDeliveryFee = serverPricing?.delivery_fee ?? deliveryFee;
+  const displayGrandTotal =
+    serverPricing?.total ??
+    roundMoney((serverPricing?.subtotal ?? subtotal) + (serverPricing?.tax ?? tax) + (displayDeliveryFee ?? 0));
+
+  async function refreshServerQuote(
+    pickupValue: string,
+    dropoffValue: string,
+    coords: { pickup: { lat: number; lng: number }; dropoff: { lat: number; lng: number } }
+  ) {
+    if (!restaurantId || cart.length === 0) {
+      setServerPricing(null);
+      return;
+    }
+
+    try {
+      const quote = await quoteFoodOrder(
+        {
+          restaurant_id: restaurantId,
+          restaurant_name: restaurantProfile?.restaurant_name || restaurantName,
+          pickup_address: pickupValue,
+          dropoff_address: dropoffValue,
+          pickup_lat: coords.pickup.lat,
+          pickup_lng: coords.pickup.lng,
+          dropoff_lat: coords.dropoff.lat,
+          dropoff_lng: coords.dropoff.lng,
+          items: cart.map((item) => ({
+            item_id: item.id,
+            quantity: item.quantity,
+          })),
+        },
+        {
+          countryCode: market.countryCode,
+          lat: coords.dropoff.lat,
+          lng: coords.dropoff.lng,
+        }
+      );
+      setServerPricing(quote);
+      setDeliveryFee(roundMoney(quote.delivery_fee));
+    } catch (err) {
+      console.warn("[ClientRestaurantMenu] server quote failed:", err);
+      setServerPricing(null);
+    }
+  }
 
   async function handleEstimateDelivery(options?: { silent?: boolean }) {
     const silent = options?.silent === true;
@@ -718,6 +768,17 @@ export function ClientRestaurantMenuScreen() {
       setDropoffCoords(dropoffOk ? { lat: dLat!, lng: dLng! } : null);
       setEstimateError(null);
 
+      if (pickupOk && dropoffOk && cart.length > 0) {
+        void refreshServerQuote(
+          pickupValue,
+          dropoffValue,
+          {
+            pickup: { lat: pLat!, lng: pLng! },
+            dropoff: { lat: dLat!, lng: dLng! },
+          }
+        );
+      }
+
       const WARN_MILES = 40;
       if (dMiles > WARN_MILES && !silent) {
         Alert.alert(
@@ -891,7 +952,6 @@ export function ClientRestaurantMenuScreen() {
         return;
       }
 
-      const userId = sessionData.session.user.id;
       const activeRestaurantProfile = restaurantProfile;
 
       if (!activeRestaurantProfile) {
@@ -903,114 +963,32 @@ export function ClientRestaurantMenuScreen() {
         );
       }
 
-      const cartIds = cart.map((item) => item.id);
+      const pickupValue = normalizeAddress(pickup);
+      const dropoffValue = normalizeAddress(dropoff);
 
-      const { data: freshItemsData, error: freshItemsError } = await supabase
-        .from("restaurant_items")
-        .select("id, name, price_cents, category, image_url, is_available, restaurant_user_id")
-        .eq("restaurant_user_id", restaurantId)
-        .in("id", cartIds);
-
-      if (freshItemsError) throw freshItemsError;
-
-      const freshItems = ((freshItemsData || []) as any[])
-        .map(normalizeRestaurantItem)
-        .filter(Boolean) as RestaurantItem[];
-
-      const freshById = new Map(freshItems.map((item) => [item.id, item]));
-
-      for (const cartItem of cart) {
-        const fresh = freshById.get(cartItem.id);
-
-        if (!fresh || fresh.is_available === false) {
-          throw new Error(
-            tr(
-              "clientRestaurantMenu.errors.cartItemUnavailable",
-              "Un plat du panier n’est plus disponible. Retire-le puis réessaie."
-            )
-          );
-        }
-      }
-
-      const safeCart = cart.map((cartItem) => {
-        const fresh = freshById.get(cartItem.id)!;
-        return {
-          ...cartItem,
-          name: fresh.name,
-          category: fresh.category ?? null,
-          unit_price: getItemPrice(fresh),
-          image_url: fresh.image_url ?? null,
-        };
-      });
-
-      const etaMinutesInt = Math.round(etaMinutes ?? 0);
-
-      const pickupCode = Math.random().toString(36).slice(2, 8).toUpperCase();
-      const dropoffCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-      const safeSubtotal = roundMoney(
-        safeCart.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
-      );
-      const safeTax = roundMoney(safeSubtotal * 0.0888);
-      const safeDeliveryFee = roundMoney(deliveryFee ?? 0);
-      const safeGrandTotal = roundMoney(safeSubtotal + safeTax + safeDeliveryFee);
-
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
-          kind: "food",
-          order_type: "food",
-          pickup_kind: "restaurant",
-          status: "pending",
-          payment_status: "unpaid",
+      const { orderId, pricing } = await createFoodOrder(
+        {
           restaurant_id: restaurantId,
-          restaurant_user_id: restaurantId,
-          client_id: userId,
-          user_id: userId,
-          client_user_id: userId,
           restaurant_name: activeRestaurantProfile.restaurant_name || restaurantName,
-          created_by: userId,
-          items_json: safeCart.map((c) => ({
-            name: c.name,
-            category: c.category,
-            quantity: c.quantity,
-            unit_price: c.unit_price,
-            line_total: roundMoney(c.unit_price * c.quantity),
-          })),
-          subtotal: safeSubtotal,
-          tax: safeTax,
-          total: safeGrandTotal,
-          delivery_fee: safeDeliveryFee,
-          currency,
-          pickup_address: normalizeAddress(pickup),
-          dropoff_address: normalizeAddress(dropoff),
-          distance_miles: distanceMiles,
-          eta_minutes: etaMinutesInt,
+          pickup_address: pickupValue,
+          dropoff_address: dropoffValue,
           pickup_lat: pickupCoords.lat,
           pickup_lng: pickupCoords.lng,
           dropoff_lat: dropoffCoords.lat,
           dropoff_lng: dropoffCoords.lng,
-          pickup_code: pickupCode,
-          dropoff_code: dropoffCode,
-        })
-        .select("id")
-        .single();
+          items: cart.map((item) => ({
+            item_id: item.id,
+            quantity: item.quantity,
+          })),
+        },
+        {
+          countryCode: market.countryCode,
+          lat: dropoffCoords.lat,
+          lng: dropoffCoords.lng,
+        }
+      );
 
-      if (error) {
-        console.error("Erreur insert orders (restaurant mobile):", error);
-        throw error;
-      }
-
-      const orderId = data?.id as string;
-
-      try {
-        await supabase.from("order_members").insert([
-          { order_id: orderId, user_id: userId, role: "client" },
-          { order_id: orderId, user_id: restaurantId, role: "restaurant" },
-        ]);
-      } catch (e) {
-        console.log("Erreur insert order_members (non bloquant):", e);
-      }
+      setServerPricing(pricing);
 
       await startCheckoutForOrder(orderId, sessionData.session.access_token);
 
@@ -1330,7 +1308,7 @@ export function ClientRestaurantMenuScreen() {
                 <Text style={{ color: "#9CA3AF", fontSize: 12, marginTop: 4 }}>
                   {tr("clientRestaurantMenu.summary.fee", "Frais de livraison")} :{" "}
                   <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-                    {deliveryFee != null ? `${deliveryFee.toFixed(2)} USD` : "—"}
+                    {displayDeliveryFee != null ? `${money(displayDeliveryFee)} ${currency}` : "—"}
                   </Text>
                 </Text>
 
@@ -1488,16 +1466,16 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.subtotal", "Sous-total")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
-                    {money(subtotal)} {currency}
+                    {money(displaySubtotal)} {currency}
                   </Text>
                 </View>
 
                 <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                   <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-                    {tr("clientRestaurantMenu.totals.taxLabel", "Taxes (~8.88%)")}
+                    {tr("clientRestaurantMenu.totals.taxLabel", "Taxes")} ({displayTaxRatePct.toFixed(2)}%)
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
-                    {money(tax)} {currency}
+                    {money(displayTax)} {currency}
                   </Text>
                 </View>
 
@@ -1506,7 +1484,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.totalNoDelivery", "Total (hors livraison)")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
-                    {money(totalBeforeDelivery)} {currency}
+                    {money(roundMoney(displaySubtotal + displayTax))} {currency}
                   </Text>
                 </View>
 
@@ -1515,7 +1493,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.summary.fee", "Frais de livraison")}
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
-                    {deliveryFee != null ? `${money(deliveryFee)} ${currency}` : "—"}
+                    {displayDeliveryFee != null ? `${money(displayDeliveryFee)} ${currency}` : "—"}
                   </Text>
                 </View>
 
@@ -1524,7 +1502,7 @@ export function ClientRestaurantMenuScreen() {
                     {tr("clientRestaurantMenu.totals.finalTotal", "Total final")}
                   </Text>
                   <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>
-                    {money(finalGrandTotal)} {currency}
+                    {money(displayGrandTotal)} {currency}
                   </Text>
                 </View>
               </View>

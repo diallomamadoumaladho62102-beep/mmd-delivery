@@ -478,35 +478,13 @@ export default function NewOrderPage() {
         dropoffLat: coords.dropoffLat,
         dropoffLng: coords.dropoffLng,
         items: cart.map((c) => ({
-          name: c.name,
-          category: c.category,
+          id: c.id,
           quantity: c.quantity,
-          unit_price: c.unit_price,
         })),
-        subtotal,
-        tax,
-        currency,
         promoCode: normalizePromoCode(promoCode),
       });
 
       const orderId = result.orderId;
-
-      const { error: membersError } = await supabase.from("order_members").upsert(
-        [
-          { order_id: orderId, user_id: profile.id, role: "client" },
-          { order_id: orderId, user_id: selectedRestaurantId, role: "restaurant" },
-        ],
-        {
-          onConflict: "order_id,user_id",
-          ignoreDuplicates: false,
-        }
-      );
-
-      if (membersError) {
-        throw new Error(
-          `Commande créée, mais ajout order_members échoué: ${membersError.message}`
-        );
-      }
 
       router.push(`/orders/${orderId}?pay=1`);
     } catch (e: unknown) {

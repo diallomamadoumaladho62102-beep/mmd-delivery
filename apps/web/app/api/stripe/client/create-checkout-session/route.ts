@@ -14,6 +14,7 @@ import {
   foodStripeUnitAmount,
   safeFoodCheckoutCurrency,
 } from "@/lib/foodCurrencyGuard";
+import { validateFoodOrderBeforeCheckout } from "@/lib/foodOrderService";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,8 @@ type OrderRow = {
   pickup_lng: number | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
+  kind: string | null;
+  order_type: string | null;
 };
 
 type GenericErrorLike = {
@@ -457,7 +460,7 @@ export async function POST(req: NextRequest) {
     const { data, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng"
+        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, kind, order_type"
       )
       .eq("id", requestedOrderId)
       .single();
@@ -525,6 +528,26 @@ export async function POST(req: NextRequest) {
         },
         403
       );
+    }
+
+    const payableKind = String(order.order_type ?? order.kind ?? "").trim().toLowerCase();
+    if (payableKind === "food") {
+      const pricingCheck = await validateFoodOrderBeforeCheckout(supabaseAdmin, orderId);
+      if (pricingCheck.ok === false) {
+        console.error("[create-checkout-session] food pricing integrity failed", {
+          order_id: orderId,
+          user_id: user.id,
+          error: pricingCheck.error,
+        });
+        return json(
+          {
+            ok: false,
+            error: "food_order_pricing_integrity_failed",
+            message: pricingCheck.error,
+          },
+          409
+        );
+      }
     }
 
     if (isCanceledLikeStatus(orderStatus)) {
