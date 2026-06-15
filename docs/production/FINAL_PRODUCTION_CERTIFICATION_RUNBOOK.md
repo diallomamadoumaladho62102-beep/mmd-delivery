@@ -11,6 +11,8 @@ All steps are **read-only** unless explicitly marked.
 | `docs/production/final-certification.env.example` | Env template (copy, never commit secrets) |
 | `apps/web/scripts/final-production-certification.mjs` | Automated API/ops checks + JSON report |
 | `docs/production/MOBILE_DEVICE_CERTIFICATION_CHECKLIST.md` | Device sign-off |
+| `docs/production/RESTAURANT_COMMAND_CENTER_DEVICE_CERTIFICATION.md` | Restaurant Command Center device + GO/NO-GO |
+| `apps/web/scripts/restaurant-command-center-production-validation.mjs` | Restaurant Command Center API validation |
 
 ---
 
