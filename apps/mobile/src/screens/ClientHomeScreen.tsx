@@ -190,9 +190,12 @@ function getGreeting(ts: (key: string, fallback: string) => string) {
   return ts("client.home.greeting_evening", "Good evening");
 }
 
-function formatCurrency(amount: number | null | undefined) {
+function formatCurrency(
+  amount: number | null | undefined,
+  currencyCode: string
+) {
   if (typeof amount !== "number" || Number.isNaN(amount)) return "—";
-  return formatMoneyLocale(amount, "USD", i18n.language);
+  return formatMoneyLocale(amount, currencyCode, i18n.language);
 }
 
 function formatCompactDateTime(iso: string | null) {
@@ -673,7 +676,11 @@ export function ClientHomeScreen() {
 
         console.log("client home fetch error:", e);
         setRecentActivityUnavailable(true);
-        setError(null);
+        setError(
+          e instanceof Error
+            ? e.message
+            : ts("client.home.errors.loadFailed", "Unable to load your recent activity.")
+        );
       } finally {
         fetchInFlightRef.current = false;
 
@@ -929,7 +936,12 @@ export function ClientHomeScreen() {
     [navigation]
   );
 
-  const spendingAmount = totalSpent > 0 ? formatCurrency(totalSpent) : null;
+  const spendingAmount =
+    totalSpent > 0 && market.scopeResolved
+      ? formatCurrency(totalSpent, market.currencyCode)
+      : totalSpent > 0
+        ? formatCurrency(totalSpent, "USD")
+        : null;
 
   const handleNavigateMarketplace = useCallback(() => {
     if (platformFeatures.marketplace_available) {

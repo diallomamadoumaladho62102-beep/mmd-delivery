@@ -57,6 +57,34 @@ function buildQuery(params: Record<string, string | number | undefined | null>):
   return qs ? `?${qs}` : "";
 }
 
+async function parsePlatformFeaturesResponse(
+  res: Response
+): Promise<PlatformFeaturesResponse> {
+  const body = (await res
+    .json()
+    .catch(() => ({ ok: false, error: "invalid_json" }))) as PlatformFeaturesResponse;
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      error:
+        typeof body?.error === "string" && body.error.trim()
+          ? body.error
+          : `http_${res.status}`,
+    };
+  }
+
+  if (body?.ok !== true) {
+    return {
+      ok: false,
+      error: typeof body?.error === "string" ? body.error : "scope_unresolved",
+      ...body,
+    };
+  }
+
+  return body;
+}
+
 export async function fetchClientPlatformFeatures(input?: {
   lat?: number;
   lng?: number;
@@ -84,7 +112,7 @@ export async function fetchClientPlatformFeatures(input?: {
     },
   });
 
-  return (await res.json().catch(() => ({ ok: false, error: "invalid_json" }))) as PlatformFeaturesResponse;
+  return parsePlatformFeaturesResponse(res);
 }
 
 export async function fetchDriverPlatformFeatures(input?: {
@@ -110,7 +138,7 @@ export async function fetchDriverPlatformFeatures(input?: {
     },
   });
 
-  return (await res.json().catch(() => ({ ok: false, error: "invalid_json" }))) as PlatformFeaturesResponse;
+  return parsePlatformFeaturesResponse(res);
 }
 
 export async function fetchRestaurantPlatformFeatures(): Promise<PlatformFeaturesResponse> {
@@ -124,7 +152,7 @@ export async function fetchRestaurantPlatformFeatures(): Promise<PlatformFeature
     },
   });
 
-  return (await res.json().catch(() => ({ ok: false, error: "invalid_json" }))) as PlatformFeaturesResponse;
+  return parsePlatformFeaturesResponse(res);
 }
 
 /** Safe empty state while scope is loading or unresolved — never enables services optimistically. */

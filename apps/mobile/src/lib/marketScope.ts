@@ -107,3 +107,27 @@ export function requireScopedCountryCode(market: UnifiedMarketScope): string {
   if (market.countryCode) return market.countryCode;
   throw new Error("market_scope_unresolved");
 }
+
+/** Infer ISO country from coordinates for restaurant/market filtering. */
+export function inferCountryFromCoordinates(
+  lat: number,
+  lng: number
+): string | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat >= 7 && lat <= 13 && lng >= -16 && lng <= -7) return "GN";
+  if (lat >= 24 && lat <= 50 && lng >= -125 && lng <= -66) return "US";
+  return null;
+}
+
+export function coordinatesMatchMarketCountry(
+  lat: number,
+  lng: number,
+  marketCountryCode: string
+): boolean {
+  const market = String(marketCountryCode ?? "")
+    .trim()
+    .toUpperCase();
+  if (!market) return false;
+  const inferred = inferCountryFromCoordinates(lat, lng);
+  return inferred === market;
+}

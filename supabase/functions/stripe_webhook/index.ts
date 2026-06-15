@@ -243,6 +243,23 @@ serve(async (req) => {
     return json({ received: true, ok: true, disabled: true, handler: "vercel" }, 200);
   }
 
+  if (Deno.env.get("MMD_STRIPE_WEBHOOK_EDGE_ENABLED") !== "true") {
+    log("warn", "stripe_webhook.edge_rejected", {
+      request_id,
+      canonical: "https://www.mmddelivery.com/api/stripe/webhook",
+      required_edge_env: "MMD_STRIPE_WEBHOOK_EDGE_ENABLED=true",
+    });
+    return json(
+      {
+        ok: false,
+        error: "edge_webhook_disabled",
+        canonical_handler: "vercel",
+        canonical_url: "https://www.mmddelivery.com/api/stripe/webhook",
+      },
+      410
+    );
+  }
+
   const sig = req.headers.get("stripe-signature") ?? "";
   if (!sig || !STRIPE_WEBHOOK_SECRET) return new Response("Missing signature", { status: 400 });
   if (!stripe) return new Response("Missing STRIPE_SECRET_KEY", { status: 500 });

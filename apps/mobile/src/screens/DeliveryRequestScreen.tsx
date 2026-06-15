@@ -249,7 +249,17 @@ export function DeliveryRequestScreen() {
 
   const subtotal = 0;
   const tax = 0;
-  const currency = pricingConfig?.currency || "USD";
+  const currency =
+    pricingConfig?.currency ||
+    (market.scopeResolved ? market.currencyCode : "USD");
+
+  const deliveryBlocked = market.scopeResolved && !market.deliveryAvailable;
+  const deliveryBlockedMessage =
+    platformFeatures.message ??
+    tr(
+      "deliveryRequest.errors.unavailableInArea",
+      "MMD delivery is not available in your current area."
+    );
 
   const total = useMemo(() => {
     const fee = toSafeMoney(deliveryFee ?? 0);
@@ -799,6 +809,13 @@ export function DeliveryRequestScreen() {
 
   const handleCreateRequest = useCallback(async () => {
     if (submitting) return;
+    if (deliveryBlocked) {
+      Alert.alert(
+        tr("common.error.title", "Erreur"),
+        deliveryBlockedMessage
+      );
+      return;
+    }
     if (!validate()) return;
 
     if (!estimateReady) {
@@ -898,6 +915,9 @@ export function DeliveryRequestScreen() {
     }
   }, [
     submitting,
+    deliveryBlocked,
+    deliveryBlockedMessage,
+    tr,
     validate,
     estimateReady,
     handleEstimate,
@@ -916,7 +936,6 @@ export function DeliveryRequestScreen() {
     pickupCoords,
     dropoffCoords,
     currency,
-    tr,
   ]);
 
   const handlePay = useCallback(async () => {
@@ -1017,6 +1036,26 @@ export function DeliveryRequestScreen() {
               )}
             </Text>
           </View>
+
+          {deliveryBlocked ? (
+            <View
+              style={{
+                marginBottom: 20,
+                padding: 16,
+                borderRadius: 16,
+                backgroundColor: "rgba(239,68,68,0.12)",
+                borderWidth: 1,
+                borderColor: "rgba(239,68,68,0.35)",
+              }}
+            >
+              <Text style={{ color: "#FCA5A5", fontWeight: "700", marginBottom: 6 }}>
+                {tr("deliveryRequest.unavailable.title", "Delivery unavailable")}
+              </Text>
+              <Text style={{ color: "#FECACA", lineHeight: 20 }}>
+                {deliveryBlockedMessage}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={{ marginBottom: 20 }}>
             <Text

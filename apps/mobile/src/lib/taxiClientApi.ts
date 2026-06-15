@@ -20,6 +20,16 @@ function baseUrl() {
   return String(API_BASE_URL).replace(/\/$/, "");
 }
 
+function requireCountryCode(countryCode: string | undefined): string {
+  const code = String(countryCode ?? "")
+    .trim()
+    .toUpperCase();
+  if (!code) {
+    throw new Error("market_scope_unresolved");
+  }
+  return code;
+}
+
 async function taxiGet(path: string) {
   const res = await fetch(`${baseUrl()}${path}`, {
     method: "GET",
@@ -72,7 +82,7 @@ export function quoteTaxiRide(input: TaxiQuoteInput) {
     dropoffLng: input.dropoffLng,
     vehicleClass: input.vehicleClass ?? "standard",
     passengerCount: input.passengerCount ?? 1,
-    countryCode: input.countryCode ?? "US",
+    countryCode: requireCountryCode(input.countryCode),
     stops: input.stops,
     sharedRide: input.sharedRide ?? false,
   });
@@ -103,7 +113,7 @@ export function createTaxiRide(
     dropoffLng: input.dropoffLng,
     vehicleClass: input.vehicleClass ?? "standard",
     passengerCount: input.passengerCount ?? 1,
-    countryCode: input.countryCode ?? "US",
+    countryCode: requireCountryCode(input.countryCode),
     clientNotes: input.clientNotes ?? "",
     expectedQuoteTotalCents: input.expectedQuoteTotalCents,
     preferredDriverId: input.preferredDriverId,
@@ -226,7 +236,7 @@ export function createScheduledTaxiRide(
     dropoffLng: input.dropoffLng,
     vehicleClass: input.vehicleClass ?? "standard",
     passengerCount: input.passengerCount ?? 1,
-    countryCode: input.countryCode ?? "US",
+    countryCode: requireCountryCode(input.countryCode),
     stops: input.stops,
     scheduledPickupAt: input.scheduledPickupAt,
     preferredDriverId: input.preferredDriverId,

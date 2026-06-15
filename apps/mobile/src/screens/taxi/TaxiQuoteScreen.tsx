@@ -83,7 +83,9 @@ export default function TaxiQuoteScreen() {
     [platformFeatures]
   );
   const countryCode = route.params.countryCode ?? market.countryCode ?? "";
-  const lang = resolveTaxiLanguageForCountry(countryCode || "US");
+  const lang = countryCode
+    ? resolveTaxiLanguageForCountry(countryCode)
+    : resolveTaxiLanguageForCountry("US");
   const countryResolution = route.params.countryResolution as
     | { source?: string; detectedCountryCode?: string | null }
     | undefined;

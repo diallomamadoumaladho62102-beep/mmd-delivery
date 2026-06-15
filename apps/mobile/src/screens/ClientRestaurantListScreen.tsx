@@ -15,6 +15,11 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
+import {
+  coordinatesMatchMarketCountry,
+  resolveMarketScopeFromFeatures,
+} from "../lib/marketScope";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientRestaurantList">;
 
@@ -57,6 +62,11 @@ export function ClientRestaurantListScreen() {
   const [selectedCuisine, setSelectedCuisine] = useState(ALL_CUISINES);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { features: platformFeatures } = useClientPlatformFeatures();
+  const market = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
 
   const cuisines = useMemo(() => {
     const unique = Array.from(
@@ -106,12 +116,24 @@ export function ClientRestaurantListScreen() {
             const address = String(r?.address || "").trim();
             const cuisineType = String(r?.cuisine_type || "").trim();
 
+            const coordsOk = isValidCoordinate(r?.location_lat, r?.location_lng);
+            const inMarket =
+              market.scopeResolved &&
+              Boolean(market.countryCode) &&
+              coordsOk &&
+              coordinatesMatchMarketCountry(
+                Number(r.location_lat),
+                Number(r.location_lng),
+                market.countryCode
+              );
+
             return (
               !!r?.user_id &&
               !!name &&
               !!address &&
               !!cuisineType &&
-              isValidCoordinate(r?.location_lat, r?.location_lng)
+              coordsOk &&
+              inMarket
             );
           })
           .map((r: any) => ({
@@ -124,14 +146,15 @@ export function ClientRestaurantListScreen() {
             locationLng: Number(r.location_lng),
           }));
 
-        setRestaurants(list);      } catch (err) {
+        setRestaurants(list);
+      } catch (err) {
         console.error("Erreur fetch restaurants (mobile):", err);
         setRestaurants([]);
       } finally {
         if (showSpinner) setLoading(false);
       }
     },
-    []
+    [market.countryCode, market.scopeResolved]
   );
 
   useEffect(() => {

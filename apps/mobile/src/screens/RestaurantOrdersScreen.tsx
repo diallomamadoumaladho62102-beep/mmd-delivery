@@ -809,7 +809,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
     const id = setInterval(() => {
       void fetchOrders({ silent: true });
-    }, 5000);
+    }, 15000);
 
     return () => clearInterval(id);
   }, [restaurantUserId, fetchOrders]);
@@ -840,7 +840,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         if (hasValid) startRepeatRinging();
         else stopRepeatRinging();
       }
-    }, 1000);
+    }, 5000);
 
     return () => clearInterval(id);
   }, [computeHasPendingValid, startRepeatRinging, stopRepeatRinging]);

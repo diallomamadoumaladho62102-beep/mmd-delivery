@@ -19,6 +19,8 @@ import { startCheckoutForOrder } from "../../lib/payments";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
+import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientRestaurantMenu">;
 type Route = RouteProp<RootStackParamList, "ClientRestaurantMenu">;
@@ -259,7 +261,20 @@ export function ClientRestaurantMenuScreen() {
 
   const [creating, setCreating] = useState(false);
 
-  const currency = "USD";
+  const { features: platformFeatures } = useClientPlatformFeatures();
+  const market = useMemo(
+    () => resolveMarketScopeFromFeatures(platformFeatures),
+    [platformFeatures]
+  );
+  const currency = market.scopeResolved
+    ? market.currencyCode
+    : platformFeatures.scope?.country_code
+      ? resolveMarketScopeFromFeatures({
+          ...platformFeatures,
+          ok: true,
+          country_code: platformFeatures.scope.country_code,
+        }).currencyCode
+      : "USD";
 
   const autoEstimateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastEstimateKeyRef = useRef<string>("");

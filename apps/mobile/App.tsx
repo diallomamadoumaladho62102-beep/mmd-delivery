@@ -304,7 +304,7 @@ export default function App(): React.JSX.Element {
           }
         } catch {}
       })();
-    }, 1500);
+    }, 5000);
 
     return () => {
       isMounted = false;

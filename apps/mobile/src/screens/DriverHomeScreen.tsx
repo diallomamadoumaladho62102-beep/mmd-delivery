@@ -1034,7 +1034,7 @@ export function DriverHomeScreen() {
       };
 
       await pushLocationOnce();
-      gpsDbIntervalRef.current = setInterval(() => void pushLocationOnce(), 5000);
+      gpsDbIntervalRef.current = setInterval(() => void pushLocationOnce(), 10000);
     },
     [applyDriverCoordinates, ensureGpsPermission, t],
   );
@@ -2101,6 +2101,11 @@ export function DriverHomeScreen() {
       }
 
       if (next) {
+        const canGoOnline = await ensureDriverCanGoOnline(userId);
+        if (!canGoOnline) {
+          return;
+        }
+
         const ok = await ensureGpsPermission();
         if (!ok) {
           if (!locationPermissionDeniedAlertShownRef.current) {

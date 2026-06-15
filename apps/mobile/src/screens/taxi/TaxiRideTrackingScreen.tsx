@@ -109,7 +109,7 @@ export default function TaxiRideTrackingScreen() {
 
   useEffect(() => {
     void load();
-    const timer = setInterval(() => void load(), 8000);
+    const timer = setInterval(() => void load(), 12000);
     return () => clearInterval(timer);
   }, [load]);
 

@@ -215,7 +215,7 @@ export function ClientAuthScreen() {
   const [city, setCity] = useState("");
   const [stateRegion, setStateRegion] = useState("");
   const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("US");
+  const [country, setCountry] = useState("");
 
   const [avatar, setAvatar] = useState<{ uri: string; mime?: string } | null>(
     null
@@ -368,8 +368,9 @@ export function ClientAuthScreen() {
     userId: string;
     email: string;
     avatarUrl: string | null;
+    signupCountry: string;
   }) {
-    const { userId, email, avatarUrl } = params;
+    const { userId, email, avatarUrl, signupCountry } = params;
 
     try {
       const { error: profileError } = await supabase.from("profiles").upsert(
@@ -403,7 +404,7 @@ export function ClientAuthScreen() {
           city: trimOrEmpty(city),
           state: trimOrEmpty(stateRegion),
           postal_code: trimOrEmpty(postalCode),
-          country: trimOrEmpty(country || "US"),
+          country: signupCountry,
           avatar_url: avatarUrl,
         },
       });
@@ -415,7 +416,7 @@ export function ClientAuthScreen() {
       trimOrEmpty(addressLine1),
       trimOrEmpty(addressLine2),
       `${trimOrEmpty(city)} ${trimOrEmpty(stateRegion)} ${trimOrEmpty(postalCode)}`.trim(),
-      trimOrEmpty(country || "US"),
+      trimOrEmpty(signupCountry),
     ]
       .filter(Boolean)
       .join(", ");
@@ -430,7 +431,7 @@ export function ClientAuthScreen() {
         city: trimOrEmpty(city),
         state: trimOrEmpty(stateRegion),
         postal_code: trimOrEmpty(postalCode),
-        country: trimOrEmpty(country || "US"),
+        country: signupCountry,
       };
 
       const { error } = await supabase
@@ -461,7 +462,7 @@ export function ClientAuthScreen() {
           city: trimOrEmpty(city),
           state: trimOrEmpty(stateRegion),
           postal_code: trimOrEmpty(postalCode),
-          country: trimOrEmpty(country || "US"),
+          country: signupCountry,
           is_default: true,
         });
 
@@ -519,6 +520,15 @@ export function ClientAuthScreen() {
       return;
     }
 
+    const signupCountry = trimOrEmpty(country).toUpperCase();
+    if (!/^[A-Z]{2}$/.test(signupCountry)) {
+      Alert.alert(
+        t("client.auth.addressTitle"),
+        t("client.auth.countryRequired", "Select your country to continue.")
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -534,7 +544,7 @@ export function ClientAuthScreen() {
             city: trimOrEmpty(city),
             state: trimOrEmpty(stateRegion),
             postal_code: trimOrEmpty(postalCode),
-            country: trimOrEmpty(country || "US"),
+            country: signupCountry,
             referral_code: normalizeReferralCode(referralCode),
           },
         },
@@ -574,7 +584,7 @@ export function ClientAuthScreen() {
         }
       }
 
-      await saveClientProfile({ userId, email: e, avatarUrl });
+      await saveClientProfile({ userId, email: e, avatarUrl, signupCountry });
       await applyReferralIfAny();
 
       if (!data.session) {
