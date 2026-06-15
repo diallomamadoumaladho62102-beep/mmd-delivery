@@ -94,19 +94,15 @@ SELECT COUNT(*) AS stripe_webhook_events_total
 FROM public.stripe_webhook_events;
 -- EXPECTED: query succeeds (no permission error)
 
--- 24h count: production uses received_at (legacy); newer migrations use created_at.
+-- 24h count: production uses received_at.
 SELECT COUNT(*) AS stripe_webhook_events_24h_received_at
 FROM public.stripe_webhook_events
 WHERE received_at >= NOW() - INTERVAL '24 hours';
 -- EXPECTED: succeeds on current production schema
 
--- Alternate if received_at is absent:
--- SELECT COUNT(*) FROM public.stripe_webhook_events
--- WHERE created_at >= NOW() - INTERVAL '24 hours';
-
-SELECT stripe_event_id, event_type, created_at
+SELECT stripe_event_id, event_type, received_at
 FROM public.stripe_webhook_events
-ORDER BY created_at DESC
+ORDER BY received_at DESC
 LIMIT 5;
 -- EXPECTED: recent rows after Live traffic; each stripe_event_id unique
 
