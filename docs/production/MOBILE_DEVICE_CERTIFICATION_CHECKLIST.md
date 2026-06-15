@@ -3,6 +3,10 @@
 Sign-off for **TestFlight (iOS)** and **Android Production** before public launch.  
 Attach screenshots or screen recordings to `docs/production/reports/mobile/` (do not commit secrets).
 
+**Restaurant Command Center (P0 before V1.1 design):** use  
+[`RESTAURANT_COMMAND_CENTER_DEVICE_CERTIFICATION.md`](./RESTAURANT_COMMAND_CENTER_DEVICE_CERTIFICATION.md)  
+with real restaurant login on TestFlight/Android production build.
+
 ## How to mark PASS / FAIL
 
 | Result | Meaning |
