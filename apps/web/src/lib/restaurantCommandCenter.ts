@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveRestaurantCurrency } from "@/lib/resolveRestaurantCurrency";
 import {
   computeRestaurantTotalsFromOrders,
   getRestaurantCommissionRate,
@@ -240,7 +241,7 @@ export async function getRestaurantCommandCenter(params: {
     supabase
       .from("restaurant_profiles")
       .select(
-        "restaurant_name,is_accepting_orders,location_lat,location_lng,currency"
+        "restaurant_name,is_accepting_orders,location_lat,location_lng,lat,lng"
       )
       .eq("user_id", restaurantUserId)
       .maybeSingle(),
@@ -313,13 +314,10 @@ export async function getRestaurantCommandCenter(params: {
   }
 
   const profile = (profileRes.data ?? {}) as GenericRow;
-  const restaurantLat = asNumber(profile.location_lat) || null;
-  const restaurantLng = asNumber(profile.location_lng) || null;
-  const currency =
-    String(profile.currency ?? "").trim().toUpperCase() ||
-    String(
-      (todayOrdersRes.data ?? []).find((r: GenericRow) => r.currency)?.currency ?? "USD"
-    ).toUpperCase();
+  const restaurantLat =
+    asNumber(profile.location_lat) || asNumber(profile.lat) || null;
+  const restaurantLng =
+    asNumber(profile.location_lng) || asNumber(profile.lng) || null;
 
   const todayRows = ((todayOrdersRes.data ?? []) as GenericRow[]).filter((row) =>
     isRestaurantOrder(row, restaurantUserId)
@@ -336,6 +334,17 @@ export async function getRestaurantCommandCenter(params: {
   const activeRows = ((activeOrdersRes.data ?? []) as GenericRow[]).filter((row) =>
     isRestaurantOrder(row, restaurantUserId)
   );
+
+  const currency = resolveRestaurantCurrency({
+    profile,
+    orderRows: [
+      ...todayRows,
+      ...yesterdayRows,
+      ...monthRows,
+      ...prevMonthRows,
+      ...activeRows,
+    ],
+  });
 
   const deliveredToday = todayRows.filter((row) => {
     const status = String(row.status ?? "").toLowerCase();
