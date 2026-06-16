@@ -12,9 +12,10 @@ pnpm-debug.log*
 .DS_Store
 .vercel
 
-# Production certification (local secrets + generated reports)
+# Production certification (local secrets + generated reports + local tooling)
 docs/production/final-certification.env
 docs/production/reports/
+docs/production/tools/
 
 *.tsbuildinfo
 
