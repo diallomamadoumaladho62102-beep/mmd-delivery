@@ -167,7 +167,11 @@
       "missingAddressBody": "Saisissez les adresses pickup et destination.",
       "estimateFailed": "Estimation échouée",
       "countryMismatch": "Recogida location does not match selected country.",
-      "quoteFailed": "Impossible d'obtenir une estimation"
+      "quoteFailed": "Impossible d'obtenir une estimation",
+      "unavailableTitle": "Taxi no disponible",
+      "unavailable": "El taxi aún no está disponible en tu zona",
+      "yourArea": "Tu zona",
+      "currencyLabel": "Moneda"
     },
     "quote": {
       "vehicle": "Véhicule",

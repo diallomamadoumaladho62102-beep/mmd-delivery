@@ -167,7 +167,11 @@
       "missingAddressBody": "Saisissez les adresses pickup et destination.",
       "estimateFailed": "Estimation échouée",
       "countryMismatch": "Prise en charge location does not match selected country.",
-      "quoteFailed": "Impossible d'obtenir une estimation"
+      "quoteFailed": "Impossible d'obtenir une estimation",
+      "unavailableTitle": "出租车不可用",
+      "unavailable": "您所在区域暂不提供出租车服务",
+      "yourArea": "您的区域",
+      "currencyLabel": "货币"
     },
     "quote": {
       "vehicle": "Véhicule",

@@ -167,7 +167,11 @@
       "missingAddressBody": "Saisissez les adresses pickup et destination.",
       "estimateFailed": "Estimation échouée",
       "countryMismatch": "الاستلام location does not match selected country.",
-      "quoteFailed": "Impossible d'obtenir une estimation"
+      "quoteFailed": "Impossible d'obtenir une estimation",
+      "unavailableTitle": "التاكسي غير متاح",
+      "unavailable": "التاكسي غير متاح في منطقتك بعد",
+      "yourArea": "منطقتك",
+      "currencyLabel": "العملة"
     },
     "quote": {
       "vehicle": "Véhicule",
