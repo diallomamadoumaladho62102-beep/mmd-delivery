@@ -580,7 +580,16 @@ export function AppNavigator({
       r === "TaxiScheduledBook" ||
       r === "TaxiMultiStop" ||
       r === "TaxiLoyaltyRewards" ||
-      r === "TaxiChat"
+      r === "TaxiChat" ||
+      r === "MarketplaceHome" ||
+      r === "MarketplaceProductList" ||
+      r === "MarketplaceProductDetails" ||
+      r === "MarketplaceCart" ||
+      r === "SellerGate" ||
+      r === "SellerOnboarding" ||
+      r === "SellerDashboard" ||
+      r === "SellerProducts" ||
+      r === "SellerOrders"
     );
   }, []);
 
