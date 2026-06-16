@@ -56,16 +56,16 @@ function CommandCenterSkeletonComponent() {
 
       <ShimmerBlock width="85%" height={14} />
 
-      <ShimmerBlock width="100%" height={132} style={styles.hero} />
+      <ShimmerBlock width="100%" height={320} style={styles.hero} />
 
       <View style={styles.kpiRow}>
-        <ShimmerBlock width={158} height={108} style={styles.card} />
-        <ShimmerBlock width={158} height={108} style={styles.card} />
-        <ShimmerBlock width={158} height={108} style={styles.card} />
+        <ShimmerBlock width={172} height={120} style={styles.card} />
+        <ShimmerBlock width={172} height={120} style={styles.card} />
+        <ShimmerBlock width={172} height={120} style={styles.card} />
       </View>
 
       <ShimmerBlock width="100%" height={220} style={styles.hero} />
-      <ShimmerBlock width="100%" height={280} style={styles.card} />
+      <ShimmerBlock width="100%" height={360} style={styles.card} />
       <ShimmerBlock width="100%" height={200} style={styles.card} />
       <ShimmerBlock width="100%" height={160} style={styles.card} />
     </View>

@@ -169,13 +169,14 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           </View>
         </View>
 
-        <Text style={[styles.greeting, { textAlign: textAlignStart() }]}>
+        <Text style={[styles.greeting, { textAlign: textAlignStart() }]} numberOfLines={2}>
           {t("restaurant.commandCenter.greeting")}
         </Text>
 
         <RevenueHeroCard
           revenueToday={fmtMoney(data.kpis.revenueToday)}
           revenueYesterday={data.kpis.revenueYesterday}
+          revenueYesterdayFormatted={fmtMoney(data.kpis.revenueYesterday)}
           revenueTodayRaw={data.kpis.revenueToday}
           changePct={data.kpis.revenueChangePct}
           changeLabel={
@@ -186,6 +187,15 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
               : null
           }
           restaurantName={data.restaurant.name}
+          ordersToday={data.kpis.ordersToday}
+          activeDrivers={data.map.drivers.length}
+          liveAlerts={
+            data.liveOperations.driverArrived.length +
+            data.liveOperations.driverApproaching.length +
+            data.liveOperations.driverEnRoute.length +
+            data.liveOperations.newOrders.length +
+            data.liveOperations.attentionRequired.length
+          }
         />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.kpiScroll}>
@@ -233,6 +243,7 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           restaurant={data.restaurant}
           mapData={data.map}
           focusOrderId={mapFocusOrderId}
+          height={360}
         />
 
         <OrderInsightsCard
@@ -280,7 +291,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 48,
-    gap: 18,
+    gap: 12,
   },
   center: {
     flex: 1,
@@ -375,9 +386,10 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: CC.textSecondary,
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 20,
     fontWeight: "600",
+    marginBottom: -4,
   },
   kpiScroll: {
     marginHorizontal: -16,

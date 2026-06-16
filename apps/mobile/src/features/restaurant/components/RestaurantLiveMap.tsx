@@ -8,10 +8,10 @@ import {
   getMapStyleDark,
   isMapboxConfigured,
 } from "../../../lib/mapboxConfig";
-import { textAlignStart } from "../../../i18n/rtl";
+import { rowDirection, textAlignStart } from "../../../i18n/rtl";
 import { GlassCard } from "./GlassCard";
 import { SectionHeroHeader } from "./SectionHeroHeader";
-import { CC } from "./commandCenterTheme";
+import { CC, LIVE_OPS_STATUS } from "./commandCenterTheme";
 
 type Props = {
   restaurant: RestaurantCommandCenterData["restaurant"];
@@ -24,7 +24,7 @@ function RestaurantLiveMapComponent({
   restaurant,
   mapData,
   focusOrderId,
-  height = 280,
+  height = 360,
 }: Props) {
   const { t } = useTranslation();
   const cameraRef = useRef<Mapbox.Camera | null>(null);
@@ -44,13 +44,21 @@ function RestaurantLiveMapComponent({
     (driver) => Number.isFinite(driver.lat) && Number.isFinite(driver.lng)
   );
 
+  const statusCounts = useMemo(() => {
+    const counts = { arrived: 0, approaching: 0, en_route: 0 };
+    for (const driver of driverPoints) {
+      counts[driver.status] += 1;
+    }
+    return counts;
+  }, [driverPoints]);
+
   useEffect(() => {
     if (!cameraRef.current || !restaurantCoordinate) return;
 
     if (focusDriver) {
       cameraRef.current.setCamera({
         centerCoordinate: [focusDriver.lng, focusDriver.lat],
-        zoomLevel: 14,
+        zoomLevel: 14.5,
         animationDuration: 700,
       });
       return;
@@ -58,69 +66,102 @@ function RestaurantLiveMapComponent({
 
     cameraRef.current.setCamera({
       centerCoordinate: restaurantCoordinate,
-      zoomLevel: 12.5,
+      zoomLevel: 13,
       animationDuration: 700,
     });
   }, [focusDriver, restaurantCoordinate]);
 
+  const mapHeight = height - 72;
+
   return (
-    <GlassCard variant="default" style={styles.shell}>
+    <GlassCard variant="map" accentBar={CC.blue} style={styles.shell}>
       <SectionHeroHeader
         title={t("restaurant.commandCenter.liveMap")}
+        subtitle={restaurant.name}
         badge={driverPoints.length > 0 ? String(driverPoints.length) : undefined}
         badgeColor={CC.blue}
       />
 
       {!isMapboxConfigured() || !mapReady || !restaurantCoordinate ? (
-        <View style={[styles.fallback, { height: height - 56 }]}>
+        <View style={[styles.fallback, { height: mapHeight }]}>
           <Text style={[styles.fallbackTitle, { textAlign: textAlignStart() }]}>
             {t("restaurant.commandCenter.mapUnavailable")}
           </Text>
         </View>
       ) : (
-        <View style={[styles.wrap, { height: height - 56 }]}>
-          <Mapbox.MapView style={styles.map} styleURL={getMapStyleDark()} scaleBarEnabled={false}>
-            <Mapbox.Camera ref={cameraRef} centerCoordinate={restaurantCoordinate} zoomLevel={12.5} />
+        <View style={[styles.frame, { height: mapHeight }]}>
+          <View style={styles.frameGlow} pointerEvents="none" />
+          <View style={styles.wrap}>
+            <Mapbox.MapView style={styles.map} styleURL={getMapStyleDark()} scaleBarEnabled={false}>
+              <Mapbox.Camera ref={cameraRef} centerCoordinate={restaurantCoordinate} zoomLevel={13} />
 
-            <Mapbox.PointAnnotation id="restaurant-pin" coordinate={restaurantCoordinate}>
-              <View style={styles.restaurantPin}>
-                <Text style={styles.restaurantPinText}>👑</Text>
-              </View>
-            </Mapbox.PointAnnotation>
+              <Mapbox.PointAnnotation id="restaurant-pin" coordinate={restaurantCoordinate}>
+                <View style={styles.restaurantPinWrap}>
+                  <View style={styles.restaurantPin}>
+                    <Text style={styles.restaurantPinText}>👑</Text>
+                  </View>
+                  <View style={styles.restaurantLabel}>
+                    <Text style={styles.restaurantLabelText} numberOfLines={1}>
+                      {restaurant.name}
+                    </Text>
+                  </View>
+                </View>
+              </Mapbox.PointAnnotation>
 
-            {driverPoints.map((driver) => (
-              <Mapbox.PointAnnotation
-                key={`driver-${driver.driverId}-${driver.orderId}`}
-                id={`driver-${driver.driverId}`}
-                coordinate={[driver.lng, driver.lat]}
-              >
-                <View
-                  style={[
-                    styles.driverPin,
-                    driver.status === "arrived"
-                      ? styles.driverArrived
-                      : driver.status === "approaching"
-                        ? styles.driverApproaching
-                        : styles.driverEnRoute,
-                  ]}
+              {driverPoints.map((driver) => {
+                const status = LIVE_OPS_STATUS[driver.status];
+                return (
+                  <Mapbox.PointAnnotation
+                    key={`driver-${driver.driverId}-${driver.orderId}`}
+                    id={`driver-${driver.driverId}`}
+                    coordinate={[driver.lng, driver.lat]}
+                  >
+                    <View style={styles.driverPinWrap}>
+                      <View
+                        style={[
+                          styles.driverPin,
+                          {
+                            backgroundColor: status.color,
+                            borderColor: status.border,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.driverPinText}>🛵</Text>
+                      </View>
+                      {driver.etaMinutes != null ? (
+                        <View style={[styles.etaChip, { borderColor: status.border }]}>
+                          <Text style={[styles.etaChipText, { color: status.color }]}>
+                            {t("restaurant.commandCenter.etaMinutes", { minutes: driver.etaMinutes })}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Mapbox.PointAnnotation>
+                );
+              })}
+
+              {mapData.customers.map((customer) => (
+                <Mapbox.PointAnnotation
+                  key={`customer-${customer.orderId}`}
+                  id={`customer-${customer.orderId}`}
+                  coordinate={[customer.lng, customer.lat]}
                 >
-                  <Text style={styles.driverPinText}>🛵</Text>
-                </View>
-              </Mapbox.PointAnnotation>
-            ))}
+                  <View style={styles.customerPin}>
+                    <Text style={styles.customerPinText}>📍</Text>
+                  </View>
+                </Mapbox.PointAnnotation>
+              ))}
+            </Mapbox.MapView>
+          </View>
 
-            {mapData.customers.map((customer) => (
-              <Mapbox.PointAnnotation
-                key={`customer-${customer.orderId}`}
-                id={`customer-${customer.orderId}`}
-                coordinate={[customer.lng, customer.lat]}
-              >
-                <View style={styles.customerPin}>
-                  <Text style={styles.customerPinText}>📍</Text>
-                </View>
-              </Mapbox.PointAnnotation>
+          <View style={[styles.legendOverlay, { flexDirection: rowDirection() }]}>
+            {(["arrived", "approaching", "en_route"] as const).map((key) => (
+              <View key={key} style={styles.legendPill}>
+                <Text style={styles.legendDot}>{LIVE_OPS_STATUS[key].dot}</Text>
+                <Text style={styles.legendCount}>{statusCounts[key]}</Text>
+              </View>
             ))}
-          </Mapbox.MapView>
+          </View>
 
           {driverPoints.length === 0 ? (
             <View style={styles.overlay}>
@@ -137,10 +178,25 @@ export const RestaurantLiveMap = memo(RestaurantLiveMapComponent);
 
 const styles = StyleSheet.create({
   shell: {
-    paddingBottom: 12,
+    paddingBottom: 14,
+  },
+  frame: {
+    position: "relative",
+    borderRadius: 20,
+  },
+  frameGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: CC.mapFrameGlow,
+    shadowColor: CC.blue,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
   },
   wrap: {
-    borderRadius: 18,
+    flex: 1,
+    borderRadius: 20,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: CC.glassBorder,
@@ -149,10 +205,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fallback: {
-    borderRadius: 18,
+    borderRadius: 20,
     backgroundColor: CC.bgElevated,
-    borderWidth: 1,
-    borderColor: CC.glassBorder,
+    borderWidth: 1.5,
+    borderColor: CC.mapFrameGlow,
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
@@ -162,66 +218,118 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
+  restaurantPinWrap: {
+    alignItems: "center",
+  },
   restaurantPin: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(245,158,11,0.95)",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(245,158,11,0.96)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: "#FFF",
-    ...CC.shadow,
+    ...CC.heroShadow,
   },
   restaurantPinText: {
-    fontSize: 16,
+    fontSize: 20,
+  },
+  restaurantLabel: {
+    marginTop: 4,
+    maxWidth: 120,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: "rgba(2,6,23,0.88)",
+    borderWidth: 1,
+    borderColor: CC.glassBorderGold,
+  },
+  restaurantLabelText: {
+    color: CC.gold,
+    fontSize: 10,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  driverPinWrap: {
+    alignItems: "center",
   },
   driverPin: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2.5,
+    ...CC.shadow,
+  },
+  driverPinText: {
+    fontSize: 16,
+  },
+  etaChip: {
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: "rgba(2,6,23,0.9)",
+    borderWidth: 1,
+  },
+  etaChipText: {
+    fontSize: 9,
+    fontWeight: "900",
+  },
+  customerPin: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(124,58,237,0.9)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#FFF",
   },
-  driverArrived: {
-    backgroundColor: "rgba(34,197,94,0.95)",
-  },
-  driverApproaching: {
-    backgroundColor: "rgba(251,146,60,0.95)",
-  },
-  driverEnRoute: {
-    backgroundColor: "rgba(96,165,250,0.95)",
-  },
-  driverPinText: {
-    fontSize: 14,
-  },
-  customerPin: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "rgba(124,58,237,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   customerPinText: {
-    fontSize: 12,
+    fontSize: 13,
+  },
+  legendOverlay: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    gap: 6,
+  },
+  legendPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(2,6,23,0.85)",
+    borderWidth: 1,
+    borderColor: CC.glassBorder,
+  },
+  legendDot: {
+    fontSize: 10,
+  },
+  legendCount: {
+    color: CC.textPrimary,
+    fontSize: 11,
+    fontWeight: "900",
   },
   overlay: {
     position: "absolute",
     left: 12,
     bottom: 12,
-    backgroundColor: "rgba(2,6,23,0.82)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: "rgba(2,6,23,0.88)",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: CC.glassBorder,
   },
   overlayText: {
     color: CC.textPrimary,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
   },
 });

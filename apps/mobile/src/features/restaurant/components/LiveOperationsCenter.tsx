@@ -19,11 +19,11 @@ import {
   postRestaurantOrderStatus,
 } from "../../../lib/restaurantOrderStatusApi";
 import { formatMoney } from "../../../i18n/formatters";
-import { textAlignStart } from "../../../i18n/rtl";
+import { rowDirection, textAlignStart } from "../../../i18n/rtl";
 import { DriverArrivalCard } from "./DriverArrivalCard";
 import { GlassCard } from "./GlassCard";
 import { SectionHeroHeader } from "./SectionHeroHeader";
-import { CC } from "./commandCenterTheme";
+import { CC, LIVE_OPS_STATUS, liveOpsCardStyle } from "./commandCenterTheme";
 
 type Props = {
   data: RestaurantCommandCenterData["liveOperations"];
@@ -34,6 +34,34 @@ type Props = {
   onViewOrder: (orderId: string) => void;
   onRefresh: () => void;
 };
+
+const LEGEND_ITEMS = [
+  { key: "arrived", labelKey: "restaurant.commandCenter.driverArrived" },
+  { key: "approaching", labelKey: "restaurant.commandCenter.driverApproaching" },
+  { key: "en_route", labelKey: "restaurant.commandCenter.driverEnRoute" },
+  { key: "new_order", labelKey: "restaurant.commandCenter.newOrder" },
+  { key: "attention", labelKey: "restaurant.commandCenter.attentionRequired" },
+] as const;
+
+function StatusLegend() {
+  const { t } = useTranslation();
+
+  return (
+    <View style={[styles.legendRow, { flexDirection: rowDirection() }]}>
+      {LEGEND_ITEMS.map((item) => {
+        const status = LIVE_OPS_STATUS[item.key];
+        return (
+          <View key={item.key} style={styles.legendItem}>
+            <Text style={styles.legendDot}>{status.dot}</Text>
+            <Text style={styles.legendText} numberOfLines={1}>
+              {t(item.labelKey)}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
 
 function NewOrderCard({
   order,
@@ -51,11 +79,17 @@ function NewOrderCard({
   loading: boolean;
 }) {
   const { t } = useTranslation();
+  const status = LIVE_OPS_STATUS.new_order;
 
   return (
-    <View style={[styles.card, { borderColor: "rgba(167,139,250,0.45)" }]}>
-      <View style={styles.newChip}>
-        <Text style={styles.newChipText}>{t("restaurant.commandCenter.newOrder")}</Text>
+    <View style={liveOpsCardStyle("new_order")}>
+      <View style={[styles.statusHeader, { flexDirection: rowDirection() }]}>
+        <Text style={styles.statusDot}>{status.dot}</Text>
+        <View style={[styles.statusChip, { backgroundColor: status.tint, borderColor: status.border }]}>
+          <Text style={[styles.statusChipText, { color: status.color }]}>
+            {t("restaurant.commandCenter.newOrder")}
+          </Text>
+        </View>
       </View>
       <Text style={styles.orderLabel}>{order.orderLabel}</Text>
       <Text style={[styles.meta, { textAlign: textAlignStart() }]}>
@@ -93,14 +127,17 @@ function AttentionCard({
   onPress: () => void;
 }) {
   const { t } = useTranslation();
+  const status = LIVE_OPS_STATUS.attention;
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { borderColor: "rgba(239,68,68,0.45)" }]}
-      onPress={onPress}
-    >
-      <View style={styles.alertChip}>
-        <Text style={styles.alertChipText}>{t("restaurant.commandCenter.attentionRequired")}</Text>
+    <TouchableOpacity style={liveOpsCardStyle("attention")} onPress={onPress} activeOpacity={0.88}>
+      <View style={[styles.statusHeader, { flexDirection: rowDirection() }]}>
+        <Text style={styles.statusDot}>{status.dot}</Text>
+        <View style={[styles.statusChip, { backgroundColor: status.tint, borderColor: status.border }]}>
+          <Text style={[styles.statusChipText, { color: status.color }]}>
+            {t("restaurant.commandCenter.attentionRequired")}
+          </Text>
+        </View>
       </View>
       <Text style={styles.orderLabel}>{card.orderLabel}</Text>
       <Text style={[styles.meta, { textAlign: textAlignStart() }]}>
@@ -194,7 +231,9 @@ function LiveOperationsCenterComponent({
 
   const content =
     cards.length === 0 ? (
-      <Text style={styles.emptyText}>{t("restaurant.commandCenter.liveOperationsEmpty")}</Text>
+      <View style={styles.emptyWrap}>
+        <Text style={styles.emptyText}>{t("restaurant.commandCenter.liveOperationsEmpty")}</Text>
+      </View>
     ) : (
       <FlatList
         horizontal
@@ -257,6 +296,7 @@ function LiveOperationsCenterComponent({
         badge={liveCount > 0 ? String(liveCount) : undefined}
         badgeColor={CC.red}
       />
+      <StatusLegend />
       {content}
     </GlassCard>
   );
@@ -266,100 +306,117 @@ export const LiveOperationsCenter = memo(LiveOperationsCenterComponent);
 
 const styles = StyleSheet.create({
   heroCard: {
+    paddingBottom: 14,
+    borderColor: CC.purpleGlow,
+    borderWidth: 1.5,
+  },
+  legendRow: {
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 14,
     paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  legendDot: {
+    fontSize: 10,
+  },
+  legendText: {
+    color: CC.textMuted,
+    fontSize: 9,
+    fontWeight: "800",
+    maxWidth: 88,
   },
   listContent: {
     paddingRight: 8,
+    paddingTop: 4,
+  },
+  emptyWrap: {
+    paddingVertical: 16,
+    alignItems: "center",
   },
   emptyText: {
     color: CC.textMuted,
     fontSize: 13,
-    paddingVertical: 8,
+    fontWeight: "600",
   },
-  card: {
-    width: 280,
-    marginRight: 14,
-    padding: 16,
-    borderRadius: 22,
-    backgroundColor: CC.glass,
-    borderWidth: 1.5,
-    ...CC.shadow,
+  statusHeader: {
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
   },
-  newChip: {
+  statusDot: {
+    fontSize: 14,
+  },
+  statusChip: {
     alignSelf: "flex-start",
-    backgroundColor: CC.purpleGlow,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: CC.glassBorder,
-    marginBottom: 8,
   },
-  newChipText: {
-    color: CC.purpleLight,
+  statusChipText: {
     fontSize: 11,
     fontWeight: "900",
-  },
-  alertChip: {
-    alignSelf: "flex-start",
-    backgroundColor: CC.redDim,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.35)",
-    marginBottom: 8,
-  },
-  alertChipText: {
-    color: CC.red,
-    fontSize: 11,
-    fontWeight: "900",
+    letterSpacing: 0.2,
   },
   orderLabel: {
-    color: "#DDD6FE",
-    fontSize: 14,
+    color: CC.textPrimary,
+    fontSize: 18,
     fontWeight: "900",
-    marginBottom: 6,
+    marginBottom: 8,
+    letterSpacing: -0.2,
   },
   meta: {
-    color: "rgba(148,163,184,0.95)",
+    color: CC.textMuted,
     fontSize: 12,
-    marginBottom: 10,
+    marginBottom: 14,
+    lineHeight: 18,
   },
   actionsRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 10,
   },
   acceptBtn: {
     flex: 1,
-    backgroundColor: "rgba(124,58,237,0.85)",
-    borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: CC.purple,
+    borderRadius: 14,
+    paddingVertical: 12,
     alignItems: "center",
+    ...CC.shadow,
   },
   rejectBtn: {
     flex: 1,
-    backgroundColor: "rgba(239,68,68,0.15)",
-    borderRadius: 12,
-    paddingVertical: 10,
+    backgroundColor: CC.redDim,
+    borderRadius: 14,
+    paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.35)",
+    borderColor: "rgba(239,68,68,0.45)",
   },
   acceptText: {
     color: "#FFF",
-    fontWeight: "800",
-    fontSize: 13,
+    fontWeight: "900",
+    fontSize: 14,
   },
   rejectText: {
     color: "#FCA5A5",
-    fontWeight: "800",
-    fontSize: 13,
+    fontWeight: "900",
+    fontSize: 14,
   },
   link: {
-    color: "#A78BFA",
-    fontWeight: "800",
-    fontSize: 12,
+    color: CC.purpleLight,
+    fontWeight: "900",
+    fontSize: 13,
   },
   btnDisabled: {
     opacity: 0.6,
