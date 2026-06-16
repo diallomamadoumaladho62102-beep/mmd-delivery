@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { countStripeWebhookEvents24h } from "@/lib/stripeWebhookEventsHealth";
 
 export type ProductionMonitoringCheck = {
   name: string;
@@ -100,18 +101,13 @@ export async function runProductionMonitoringChecks(
     count: platformCount ?? 0,
   });
 
-  const sinceIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count: webhookCount, error: webhookError } = await supabase
-    .from("stripe_webhook_events")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", sinceIso);
-
+  const webhook24h = await countStripeWebhookEvents24h(supabase);
   checks.push({
     name: "stripe_webhook_events_24h",
-    ok: !webhookError,
-    severity: webhookError ? "critical" : "info",
-    detail: webhookError?.message,
-    count: webhookCount ?? 0,
+    ok: webhook24h.ok,
+    severity: webhook24h.ok ? "info" : "critical",
+    detail: webhook24h.error ?? webhook24h.warning,
+    count: webhook24h.count,
   });
 
   for (const table of [

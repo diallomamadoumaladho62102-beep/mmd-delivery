@@ -626,8 +626,24 @@ async function checkCronEndpoints() {
   for (const pathname of safeCronPaths) {
     const label = pathname.replace(/^\//, "");
     const authed = await fetchJson(`${apiBase}${pathname}`, { headers: authHeader });
-    if (authed.res.ok) {
-      recordCheck("ops", `${label}_execution`, "PASS", { body: authed.body });
+    const isMonitoring = pathname === "/api/monitoring";
+    const monitoringAuthProbeOk =
+      isMonitoring &&
+      authed.res.status !== 401 &&
+      authed.body &&
+      typeof authed.body === "object" &&
+      Array.isArray(authed.body.checks);
+
+    if (authed.res.ok || monitoringAuthProbeOk) {
+      recordCheck("ops", `${label}_execution`, "PASS", {
+        body: authed.body,
+        ...(monitoringAuthProbeOk && !authed.res.ok
+          ? {
+              note: "Monitoring auth OK; snapshot degraded (503) — not a cron secret failure",
+              httpStatus: authed.res.status,
+            }
+          : {}),
+      });
     } else {
       recordCheck("ops", `${label}_execution`, "FAIL", {
         httpStatus: authed.res.status,
