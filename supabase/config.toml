@@ -32,9 +32,15 @@ entrypoint = "./functions/stripe_driver_onboarding/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/stripe_driver_onboarding/*.html" ]
 
+[functions.send_driver_push]
+enabled = true
+verify_jwt = false
+import_map = "./functions/send_driver_push/deno.json"
+entrypoint = "./functions/send_driver_push/index.ts"
+
 [functions.send_restaurant_push]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/send_restaurant_push/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx

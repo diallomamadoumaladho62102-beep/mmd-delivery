@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  buildParticipantRpc,
+  getResourceLabel,
+  getUserIdByRole,
+  parseCreateMaskedCallBody,
+  type OrderLikeRow,
+  type SourceTable,
+} from "@/lib/maskedCallCreate";
 
 export const runtime = "nodejs";
-
-type Role = "client" | "driver" | "restaurant" | "admin";
-
-type OrderRow = {
-  id: string;
-  client_id: string | null;
-  driver_id: string | null;
-  restaurant_id: string | null;
-};
 
 type ProfilePhoneRow = {
   id: string;
@@ -24,8 +23,6 @@ const supabaseAdmin = createClient(
 );
 
 const MMD_TWILIO_NUMBER = "+19294924563";
-
-const allowedRoles: Role[] = ["client", "driver", "restaurant", "admin"];
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -42,17 +39,6 @@ function getBearerToken(req: NextRequest): string | null {
   return token || null;
 }
 
-function isAllowedRole(value: unknown): value is Role {
-  return typeof value === "string" && allowedRoles.includes(value as Role);
-}
-
-function getOrderUserIdByRole(order: OrderRow, role: Role): string | null {
-  if (role === "client") return order.client_id;
-  if (role === "driver") return order.driver_id;
-  if (role === "restaurant") return order.restaurant_id;
-  return null;
-}
-
 function normalizePhone(phone: string | null | undefined): string | null {
   const value = String(phone ?? "").trim();
   return value.length > 0 ? value : null;
@@ -66,7 +52,7 @@ async function getProfilePhone(userId: string): Promise<string | null> {
     .maybeSingle();
 
   if (error) {
-    console.error("getProfilePhone error", error);
+    console.error("[twilio/calls/create] getProfilePhone error", error);
     return null;
   }
 
@@ -83,7 +69,7 @@ async function getAdminProfile(): Promise<ProfilePhoneRow | null> {
     .maybeSingle();
 
   if (error) {
-    console.error("getAdminProfile error", error);
+    console.error("[twilio/calls/create] getAdminProfile error", error);
     return null;
   }
 
@@ -94,6 +80,67 @@ async function getAdminProfile(): Promise<ProfilePhoneRow | null> {
   }
 
   return profile;
+}
+
+function selectColumns(sourceTable: SourceTable): string {
+  if (sourceTable === "delivery_requests") {
+    return "id, client_user_id, created_by, user_id, driver_id";
+  }
+  if (sourceTable === "taxi_rides") {
+    return "id, client_user_id, driver_id";
+  }
+  return "id, client_id, client_user_id, created_by, driver_id, restaurant_id";
+}
+
+async function loadResourceRow(
+  sourceTable: SourceTable,
+  resourceId: string,
+): Promise<OrderLikeRow | null> {
+  const table =
+    sourceTable === "delivery_requests"
+      ? "delivery_requests"
+      : sourceTable === "taxi_rides"
+      ? "taxi_rides"
+      : "orders";
+
+  const { data, error } = await supabaseAdmin
+    .from(table)
+    .select(selectColumns(sourceTable))
+    .eq("id", resourceId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[twilio/calls/create] resource lookup error", {
+      sourceTable,
+      resourceId,
+      message: error.message,
+    });
+    return null;
+  }
+
+  return (data as unknown as OrderLikeRow | null) ?? null;
+}
+
+async function isParticipant(
+  sourceTable: SourceTable,
+  resourceId: string,
+  userId: string,
+): Promise<boolean> {
+  const { fn, args } = buildParticipantRpc(sourceTable, resourceId);
+  const { data, error } = await supabaseAdmin.rpc(fn, args);
+
+  if (error) {
+    console.error("[twilio/calls/create] participant rpc failed", {
+      fn,
+      resourceId,
+      message: error.message,
+    });
+    return false;
+  }
+
+  return (data ?? []).some(
+    (row: { user_id?: string | null }) => String(row.user_id ?? "") === userId,
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -114,45 +161,30 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => null);
-    const orderId = String(body?.orderId ?? "").trim();
-    const callerRole = body?.callerRole;
-    const targetRole = body?.targetRole;
+    const parsed = parseCreateMaskedCallBody(body);
 
-    if (!orderId || !callerRole || !targetRole) {
-      return jsonError("Missing required fields", 400);
+    if ("error" in parsed) {
+      return jsonError(parsed.error, parsed.status);
     }
 
-    if (!isAllowedRole(callerRole) || !isAllowedRole(targetRole)) {
-      return jsonError("Invalid role", 400);
+    const { resourceId, callerRole, targetRole, sourceTable } = parsed;
+    const resourceLabel = getResourceLabel(sourceTable);
+
+    const resource = await loadResourceRow(sourceTable, resourceId);
+
+    if (!resource) {
+      return jsonError(`${resourceLabel} not found`, 404);
     }
 
-    if (callerRole === targetRole) {
-      return jsonError("Caller and target roles cannot be the same", 400);
-    }
-
-    const { data: orderData, error: orderError } = await supabaseAdmin
-      .from("orders")
-      .select("id, client_id, driver_id, restaurant_id")
-      .eq("id", orderId)
-      .maybeSingle();
-
-    if (orderError || !orderData) {
-      return jsonError("Order not found", 404);
-    }
-
-    const order = orderData as OrderRow;
-
-    const callerUserId =
-      callerRole === "admin"
-        ? user.id
-        : getOrderUserIdByRole(order, callerRole);
+    const callerUserId: string | null =
+      callerRole === "admin" ? user.id : getUserIdByRole(resource, callerRole, sourceTable);
 
     if (!callerUserId) {
-      return jsonError("Caller user not found for this order", 404);
+      return jsonError(`Caller user not found for this ${resourceLabel.toLowerCase()}`, 404);
     }
 
     if (callerRole !== "admin" && callerUserId !== user.id) {
-      return jsonError("You are not allowed to call from this order", 403);
+      return jsonError(`You are not allowed to call from this ${resourceLabel.toLowerCase()}`, 403);
     }
 
     if (callerRole === "admin") {
@@ -165,6 +197,16 @@ export async function POST(req: NextRequest) {
 
       if (!adminProfile) {
         return jsonError("Admin access required", 403);
+      }
+    } else {
+      const callerIsParticipant = await isParticipant(
+        sourceTable,
+        resourceId,
+        user.id,
+      );
+
+      if (!callerIsParticipant) {
+        return jsonError(`You are not allowed to call from this ${resourceLabel.toLowerCase()}`, 403);
       }
     }
 
@@ -181,10 +223,26 @@ export async function POST(req: NextRequest) {
       targetUserId = adminProfile.id;
       targetPhone = normalizePhone(adminProfile.phone);
     } else {
-      targetUserId = getOrderUserIdByRole(order, targetRole);
+      targetUserId = getUserIdByRole(resource, targetRole, sourceTable);
 
       if (!targetUserId) {
-        return jsonError("Target user not found for this order", 404);
+        return jsonError(
+          `Target user not found for this ${resourceLabel.toLowerCase()}`,
+          404,
+        );
+      }
+
+      const targetIsParticipant = await isParticipant(
+        sourceTable,
+        resourceId,
+        targetUserId,
+      );
+
+      if (!targetIsParticipant) {
+        return jsonError(
+          `Target user not found for this ${resourceLabel.toLowerCase()}`,
+          404,
+        );
       }
 
       targetPhone = await getProfilePhone(targetUserId);
@@ -205,7 +263,7 @@ export async function POST(req: NextRequest) {
     const { data: session, error: insertError } = await supabaseAdmin
       .from("call_sessions")
       .insert({
-        order_id: orderId,
+        order_id: resourceId,
         caller_user_id: user.id,
         caller_role: callerRole,
         target_user_id: targetUserId,
@@ -220,7 +278,11 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("call session insert error", insertError);
+      console.error("[twilio/calls/create] call session insert error", {
+        sourceTable,
+        resourceId,
+        message: insertError.message,
+      });
       return jsonError(insertError.message, 500);
     }
 
@@ -228,13 +290,17 @@ export async function POST(req: NextRequest) {
       success: true,
       session,
       proxyNumber: MMD_TWILIO_NUMBER,
+      sourceTable,
     });
-  } catch (error: any) {
-    console.error("twilio create call session error", error);
+  } catch (error: unknown) {
+    console.error("[twilio/calls/create] unhandled", error);
 
     return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error ? error.message : "Internal server error",
+      },
+      { status: 500 },
     );
   }
 }
