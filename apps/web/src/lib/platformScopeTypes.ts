@@ -35,6 +35,9 @@ export type PlatformToggleConfig = {
   seller_enabled: boolean;
   checkout_enabled: boolean;
   payout_enabled: boolean;
+  marketplace_checkout_live_enabled: boolean;
+  marketplace_dispatch_live_enabled: boolean;
+  marketplace_payouts_live_enabled: boolean;
   maintenance_mode: boolean;
   launch_status: PlatformLaunchStatus;
   ai_enabled: boolean;
@@ -58,6 +61,9 @@ export type PlatformFeatureAvailability = {
   seller_available: boolean;
   checkout_enabled: boolean;
   payout_enabled: boolean;
+  marketplace_checkout_live_enabled: boolean;
+  marketplace_dispatch_live_enabled: boolean;
+  marketplace_payouts_live_enabled: boolean;
   message: string | null;
   coming_soon_services: string[];
   can_go_online?: boolean;
@@ -81,6 +87,9 @@ export type PlatformRegionRow = {
   seller_enabled: boolean;
   checkout_enabled: boolean;
   payout_enabled: boolean;
+  marketplace_checkout_live_enabled: boolean;
+  marketplace_dispatch_live_enabled: boolean;
+  marketplace_payouts_live_enabled: boolean;
   maintenance_mode: boolean;
   launch_status: PlatformLaunchStatus;
   ai_enabled: boolean;

@@ -28,6 +28,11 @@ import type {
   PlatformToggleConfig,
 } from "@/lib/platformScopeTypes";
 import { isAiAssistantEnabled } from "@/lib/ai/aiConfig";
+import {
+  isMarketplaceCheckoutLiveEnabledForConfig,
+  isMarketplaceDispatchLiveEnabledForConfig,
+  isMarketplacePayoutsLiveEnabledForConfig,
+} from "@/lib/marketplaceLaunchControl";
 
 export type {
   PlatformFeatureAvailability,
@@ -36,10 +41,10 @@ export type {
 } from "@/lib/platformScopeTypes";
 
 const COUNTRY_SELECT =
-  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, ai_enabled, ai_enabled_updated_at, ai_enabled_updated_by, created_at, updated_at";
+  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, marketplace_checkout_live_enabled, marketplace_dispatch_live_enabled, marketplace_payouts_live_enabled, maintenance_mode, launch_status, ai_enabled, ai_enabled_updated_at, ai_enabled_updated_by, created_at, updated_at";
 
 const REGION_SELECT =
-  "id, country_code, region_code, region_name, region_type, mmd_zone_id, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, ai_enabled, ai_enabled_updated_at, ai_enabled_updated_by";
+  "id, country_code, region_code, region_name, region_type, mmd_zone_id, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, marketplace_checkout_live_enabled, marketplace_dispatch_live_enabled, marketplace_payouts_live_enabled, maintenance_mode, launch_status, ai_enabled, ai_enabled_updated_at, ai_enabled_updated_by";
 
 const US_STATE_NAME_TO_CODE: Record<string, string> = {
   ALABAMA: "AL",
@@ -125,6 +130,9 @@ export function countryConfigToToggleConfig(
     seller_enabled: Boolean(config.seller_enabled),
     checkout_enabled: config.checkout_enabled,
     payout_enabled: config.payout_enabled,
+    marketplace_checkout_live_enabled: Boolean(config.marketplace_checkout_live_enabled),
+    marketplace_dispatch_live_enabled: Boolean(config.marketplace_dispatch_live_enabled),
+    marketplace_payouts_live_enabled: Boolean(config.marketplace_payouts_live_enabled),
     maintenance_mode: config.maintenance_mode,
     launch_status: config.launch_status,
     ai_enabled: Boolean((config as { ai_enabled?: boolean }).ai_enabled),
@@ -144,6 +152,9 @@ export function regionRowToToggleConfig(row: PlatformRegionRow): PlatformToggleC
     seller_enabled: row.seller_enabled,
     checkout_enabled: row.checkout_enabled,
     payout_enabled: row.payout_enabled,
+    marketplace_checkout_live_enabled: Boolean(row.marketplace_checkout_live_enabled),
+    marketplace_dispatch_live_enabled: Boolean(row.marketplace_dispatch_live_enabled),
+    marketplace_payouts_live_enabled: Boolean(row.marketplace_payouts_live_enabled),
     maintenance_mode: row.maintenance_mode,
     launch_status: row.launch_status,
     ai_enabled: Boolean(row.ai_enabled),
@@ -223,6 +234,9 @@ export function applyCountryFloor(
       seller_enabled: false,
       checkout_enabled: false,
       payout_enabled: false,
+      marketplace_checkout_live_enabled: false,
+      marketplace_dispatch_live_enabled: false,
+      marketplace_payouts_live_enabled: false,
       ai_enabled: false,
     };
   }
@@ -385,6 +399,9 @@ export function buildFeatureAvailability(
     seller_available: platformOn && config.seller_enabled,
     checkout_enabled: platformOn && config.checkout_enabled,
     payout_enabled: platformOn && config.payout_enabled,
+    marketplace_checkout_live_enabled: isMarketplaceCheckoutLiveEnabledForConfig(config),
+    marketplace_dispatch_live_enabled: isMarketplaceDispatchLiveEnabledForConfig(config),
+    marketplace_payouts_live_enabled: isMarketplacePayoutsLiveEnabledForConfig(config),
     message,
     coming_soon_services: buildComingSoonServices(config),
     can_go_online: platformOn,
@@ -402,6 +419,30 @@ export async function resolvePlatformScopeFeatures(
   const config = await fetchPlatformScopeConfig(supabase, scope);
   if (!config) return null;
   return buildFeatureAvailability(config, scope);
+}
+
+export async function resolveMarketplaceLiveFlagsForScope(
+  supabase: SupabaseClient,
+  scope: Pick<PlatformScopeKey, "country_code" | "region_code" | "mmd_zone_id">
+): Promise<{
+  marketplace_checkout_live_enabled: boolean;
+  marketplace_dispatch_live_enabled: boolean;
+  marketplace_payouts_live_enabled: boolean;
+}> {
+  const config = await fetchPlatformScopeConfig(supabase, scope);
+  if (!config) {
+    return {
+      marketplace_checkout_live_enabled: false,
+      marketplace_dispatch_live_enabled: false,
+      marketplace_payouts_live_enabled: false,
+    };
+  }
+
+  return {
+    marketplace_checkout_live_enabled: isMarketplaceCheckoutLiveEnabledForConfig(config),
+    marketplace_dispatch_live_enabled: isMarketplaceDispatchLiveEnabledForConfig(config),
+    marketplace_payouts_live_enabled: isMarketplacePayoutsLiveEnabledForConfig(config),
+  };
 }
 
 export type ResolveClientScopeInput = {
@@ -829,6 +870,9 @@ export async function assertPlatformScopeFeature(
     seller_enabled: config.seller_enabled,
     checkout_enabled: config.checkout_enabled,
     payout_enabled: config.payout_enabled,
+    marketplace_checkout_live_enabled: config.marketplace_checkout_live_enabled,
+    marketplace_dispatch_live_enabled: config.marketplace_dispatch_live_enabled,
+    marketplace_payouts_live_enabled: config.marketplace_payouts_live_enabled,
     maintenance_mode: config.maintenance_mode,
     launch_status: config.launch_status,
     created_at: "",

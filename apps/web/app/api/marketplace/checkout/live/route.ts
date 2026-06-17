@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { mmdLocationJson } from "@/lib/mmdLocationCore";
 import {
-  isMarketplaceCheckoutLiveEnabled,
+  isMarketplaceCheckoutLiveEnvEnabled,
   MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
 } from "@/lib/marketplaceLiveCheckout";
 import { createMarketplaceLiveCheckoutSession } from "@/lib/marketplaceLiveCheckoutService";
@@ -15,20 +15,24 @@ type LiveCheckoutBody = {
 };
 
 export async function POST(req: NextRequest) {
-  if (!isMarketplaceCheckoutLiveEnabled()) {
+  const auth = await requireMarketplaceClientAuth(req);
+  if (auth.ok === false) return auth.response;
+
+  const checkoutLiveEnabled = auth.scope.marketplace_checkout_live_enabled;
+
+  if (!checkoutLiveEnabled) {
     return mmdLocationJson(
       {
         ok: false,
         error: "marketplace_live_checkout_disabled",
         live_checkout_enabled: false,
-        message: MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
+        message: isMarketplaceCheckoutLiveEnvEnabled()
+          ? "Marketplace live checkout is disabled in your region"
+          : MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
       },
       403
     );
   }
-
-  const auth = await requireMarketplaceClientAuth(req);
-  if (auth.ok === false) return auth.response;
 
   if (!auth.scope.checkout_enabled) {
     return mmdLocationJson(
@@ -59,6 +63,7 @@ export async function POST(req: NextRequest) {
       clientUserId: auth.user.id,
       orderId,
       platformCheckoutEnabled: auth.scope.checkout_enabled,
+      marketplaceCheckoutLiveEnabled: checkoutLiveEnabled,
     });
 
     return mmdLocationJson({
@@ -82,11 +87,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const envEnabled = isMarketplaceCheckoutLiveEnvEnabled();
   return mmdLocationJson({
     ok: true,
-    live_checkout_enabled: isMarketplaceCheckoutLiveEnabled(),
-    message: isMarketplaceCheckoutLiveEnabled()
-      ? null
-      : MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
+    live_checkout_env_enabled: envEnabled,
+    live_checkout_enabled: envEnabled,
+    message: envEnabled ? null : MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
   });
 }

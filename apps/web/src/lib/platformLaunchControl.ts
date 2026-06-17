@@ -34,6 +34,9 @@ export type PlatformCountryConfig = {
   seller_enabled: boolean;
   checkout_enabled: boolean;
   payout_enabled: boolean;
+  marketplace_checkout_live_enabled: boolean;
+  marketplace_dispatch_live_enabled: boolean;
+  marketplace_payouts_live_enabled: boolean;
   maintenance_mode: boolean;
   launch_status: PlatformLaunchStatus;
   created_at: string;
@@ -45,7 +48,7 @@ export type PlatformFeatureResult =
   | { ok: false; error: string; message: string; country_code?: string };
 
 const PLATFORM_SELECT =
-  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
+  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, marketplace_checkout_live_enabled, marketplace_dispatch_live_enabled, marketplace_payouts_live_enabled, maintenance_mode, launch_status, created_at, updated_at";
 
 export async function fetchPlatformCountryConfig(
   supabase: SupabaseClient,

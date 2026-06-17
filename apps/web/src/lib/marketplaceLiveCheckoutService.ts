@@ -9,7 +9,7 @@ import {
   getClientDraftOrder,
   type MarketplaceOrderRow,
 } from "@/lib/marketplaceOrderService";
-import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout";
+import { isMarketplaceCheckoutLiveEnvEnabled } from "@/lib/marketplaceLiveCheckout";
 
 type ApprovedSellerRow = {
   id: string;
@@ -115,9 +115,14 @@ export async function prepareMarketplaceLiveCheckoutOrder(
     clientUserId: string;
     orderId: string;
     platformCheckoutEnabled: boolean;
+    marketplaceCheckoutLiveEnabled: boolean;
   }
 ): Promise<{ order: MarketplaceOrderRow; totals: MarketplaceCheckoutShadow; seller: ApprovedSellerRow }> {
-  if (!isMarketplaceCheckoutLiveEnabled()) {
+  if (!params.marketplaceCheckoutLiveEnabled) {
+    throw new Error("marketplace_live_checkout_disabled");
+  }
+
+  if (!isMarketplaceCheckoutLiveEnvEnabled()) {
     throw new Error("marketplace_live_checkout_disabled");
   }
 
@@ -153,6 +158,7 @@ export async function createMarketplaceLiveCheckoutSession(
     clientUserId: string;
     orderId: string;
     platformCheckoutEnabled: boolean;
+    marketplaceCheckoutLiveEnabled: boolean;
   }
 ): Promise<{
   order: MarketplaceOrderRow;

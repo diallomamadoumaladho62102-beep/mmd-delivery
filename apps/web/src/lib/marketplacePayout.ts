@@ -1,3 +1,8 @@
+export {
+  isMarketplacePayoutsLiveEnvEnabled,
+  isMarketplacePayoutsLiveEnabledForConfig,
+} from "@/lib/marketplaceLaunchControl";
+
 export function isMarketplacePayoutsLiveEnabled(): boolean {
   return process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED === "true";
 }

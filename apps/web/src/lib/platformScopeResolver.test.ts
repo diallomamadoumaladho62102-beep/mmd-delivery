@@ -38,6 +38,9 @@ function baseCountry(overrides: Partial<PlatformCountryConfig & { marketplace_en
     updated_at: "",
     marketplace_enabled: false,
     seller_enabled: false,
+    marketplace_checkout_live_enabled: false,
+    marketplace_dispatch_live_enabled: false,
+    marketplace_payouts_live_enabled: false,
     ...overrides,
   });
 }
@@ -64,6 +67,9 @@ test("country floor disables region when country OFF", () => {
     seller_enabled: false,
     checkout_enabled: true,
     payout_enabled: true,
+    marketplace_checkout_live_enabled: false,
+    marketplace_dispatch_live_enabled: false,
+    marketplace_payouts_live_enabled: false,
     maintenance_mode: false,
     launch_status: "enabled",
     ai_enabled: false,
@@ -91,6 +97,9 @@ test("region override replaces country toggles when allowed", () => {
     seller_enabled: false,
     checkout_enabled: true,
     payout_enabled: true,
+    marketplace_checkout_live_enabled: false,
+    marketplace_dispatch_live_enabled: false,
+    marketplace_payouts_live_enabled: false,
     maintenance_mode: false,
     launch_status: "enabled",
     ai_enabled: false,
@@ -154,6 +163,29 @@ test("marketplace_available follows marketplace_enabled when platform ON", () =>
   assert.equal(features.marketplace_available, true);
   assert.equal(features.seller_available, true);
   assert.deepEqual(features.coming_soon_services, []);
+});
+
+test("marketplace live flags stay OFF without env certification", () => {
+  const config = baseCountry({
+    marketplace_enabled: true,
+    seller_enabled: true,
+    marketplace_checkout_live_enabled: true,
+    marketplace_dispatch_live_enabled: true,
+    marketplace_payouts_live_enabled: true,
+  });
+  const scope = {
+    country_code: "US",
+    region_code: null,
+    state_code: null,
+    mmd_zone_id: null,
+    zone_code: null,
+    scope_level: "country" as const,
+    scope_source: "saved_address" as const,
+  };
+  const features = buildFeatureAvailability(config, scope);
+  assert.equal(features.marketplace_checkout_live_enabled, false);
+  assert.equal(features.marketplace_dispatch_live_enabled, false);
+  assert.equal(features.marketplace_payouts_live_enabled, false);
 });
 
 console.log("platformScopeResolver tests passed");

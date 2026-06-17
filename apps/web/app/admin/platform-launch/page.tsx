@@ -19,6 +19,9 @@ type PlatformRow = {
   seller_enabled: boolean;
   checkout_enabled: boolean;
   payout_enabled: boolean;
+  marketplace_checkout_live_enabled: boolean;
+  marketplace_dispatch_live_enabled: boolean;
+  marketplace_payouts_live_enabled: boolean;
   maintenance_mode: boolean;
   launch_status: "enabled" | "disabled" | "maintenance";
 };
@@ -38,6 +41,9 @@ type RegionRow = {
   seller_enabled: boolean;
   checkout_enabled: boolean;
   payout_enabled: boolean;
+  marketplace_checkout_live_enabled: boolean;
+  marketplace_dispatch_live_enabled: boolean;
+  marketplace_payouts_live_enabled: boolean;
   maintenance_mode: boolean;
   launch_status: "enabled" | "disabled" | "maintenance";
 };
@@ -53,6 +59,11 @@ type ToggleKey =
   | "payout_enabled"
   | "maintenance_mode";
 
+type LiveToggleKey =
+  | "marketplace_checkout_live_enabled"
+  | "marketplace_dispatch_live_enabled"
+  | "marketplace_payouts_live_enabled";
+
 const TOGGLE_LABELS: Record<ToggleKey, string> = {
   platform_enabled: "Plateforme",
   taxi_enabled: "Taxi",
@@ -63,6 +74,12 @@ const TOGGLE_LABELS: Record<ToggleKey, string> = {
   checkout_enabled: "Paiement",
   payout_enabled: "Payout",
   maintenance_mode: "Maintenance",
+};
+
+const LIVE_TOGGLE_LABELS: Record<LiveToggleKey, string> = {
+  marketplace_checkout_live_enabled: "Checkout live (certifié)",
+  marketplace_dispatch_live_enabled: "Dispatch live (certifié)",
+  marketplace_payouts_live_enabled: "Payouts live (certifié)",
 };
 
 function statusBadge(row: PlatformRow) {
@@ -148,6 +165,9 @@ export default function AdminPlatformLaunchPage() {
       for (const key of Object.keys(TOGGLE_LABELS) as ToggleKey[]) {
         payload[key] = form.get(key) === "on";
       }
+      for (const key of Object.keys(LIVE_TOGGLE_LABELS) as LiveToggleKey[]) {
+        payload[key] = form.get(key) === "on";
+      }
 
       if (payload.maintenance_mode) {
         payload.launch_status = "maintenance";
@@ -180,6 +200,9 @@ export default function AdminPlatformLaunchPage() {
       const payload: Record<string, boolean | string> = {};
       for (const toggleKey of Object.keys(TOGGLE_LABELS) as ToggleKey[]) {
         payload[toggleKey] = form.get(toggleKey) === "on";
+      }
+      for (const liveKey of Object.keys(LIVE_TOGGLE_LABELS) as LiveToggleKey[]) {
+        payload[liveKey] = form.get(liveKey) === "on";
       }
 
       if (payload.maintenance_mode) {
@@ -215,7 +238,8 @@ export default function AdminPlatformLaunchPage() {
               <h1 className="text-2xl font-bold text-slate-900">Platform Launch Control</h1>
               <p className="mt-1 text-sm text-slate-600">
                 Activation globale par pays et overrides région/state/zone GN — plateforme,
-                services, marketplace/seller flags. Fallback pays si aucune row région active.
+                services, marketplace/seller flags. Les flags live Marketplace restent OFF par
+                défaut et exigent aussi la certification env serveur.
               </p>
             </div>
             <div className="flex gap-2">
@@ -301,6 +325,28 @@ export default function AdminPlatformLaunchPage() {
                     ))}
                   </div>
 
+                  <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-900">
+                      Marketplace live (certification requise)
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                      {(Object.keys(LIVE_TOGGLE_LABELS) as LiveToggleKey[]).map((key) => (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 rounded-lg border border-amber-100 bg-white px-2 py-2"
+                        >
+                          <input
+                            type="checkbox"
+                            name={key}
+                            defaultChecked={Boolean(row[key])}
+                            disabled={!canEdit}
+                          />
+                          {LIVE_TOGGLE_LABELS[key]}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   {canEdit ? (
                     <button
                       type="submit"
@@ -371,6 +417,28 @@ export default function AdminPlatformLaunchPage() {
                         {TOGGLE_LABELS[key]}
                       </label>
                     ))}
+                  </div>
+
+                  <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-900">
+                      Marketplace live (certification requise)
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                      {(Object.keys(LIVE_TOGGLE_LABELS) as LiveToggleKey[]).map((key) => (
+                        <label
+                          key={key}
+                          className="flex items-center gap-2 rounded-lg border border-amber-100 bg-white px-2 py-2"
+                        >
+                          <input
+                            type="checkbox"
+                            name={key}
+                            defaultChecked={Boolean(row[key])}
+                            disabled={!canEdit}
+                          />
+                          {LIVE_TOGGLE_LABELS[key]}
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   {canEdit ? (

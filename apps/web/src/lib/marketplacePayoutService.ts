@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  isMarketplacePayoutsLiveEnabled,
+  isMarketplacePayoutsLiveEnvEnabled,
   type MarketplacePayoutStatus,
 } from "@/lib/marketplacePayout";
+import { resolveMarketplaceLiveFlagsForScope } from "@/lib/platformScopeResolver";
 
 export type MarketplaceSellerPayoutRow = {
   id: string;
@@ -44,6 +45,7 @@ type SellerOrderPayoutSource = {
   subtotal_cents: number | null;
   service_fee_cents: number | null;
   total_cents: number | null;
+  sellers?: { country_code?: string | null } | { country_code?: string | null }[] | null;
 };
 
 type DeliveryJobPayoutSource = {
@@ -116,13 +118,38 @@ async function loadSellerOrderForPayout(
   const { data, error } = await supabaseAdmin
     .from("seller_orders")
     .select(
-      "id,seller_id,status,payment_status,currency,subtotal_cents,service_fee_cents,total_cents"
+      "id,seller_id,status,payment_status,currency,subtotal_cents,service_fee_cents,total_cents,sellers(country_code)"
     )
     .eq("id", sellerOrderId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
   return data as SellerOrderPayoutSource | null;
+}
+
+function sellerCountryCode(
+  order: Pick<SellerOrderPayoutSource, "sellers">
+): string | null {
+  const raw = Array.isArray(order.sellers)
+    ? order.sellers[0]?.country_code
+    : order.sellers?.country_code;
+  const code = String(raw ?? "").trim().toUpperCase();
+  return code.length === 2 ? code : null;
+}
+
+async function resolvePayoutLiveForSellerOrder(
+  supabaseAdmin: SupabaseClient,
+  order: SellerOrderPayoutSource
+): Promise<boolean> {
+  const countryCode = sellerCountryCode(order);
+  if (!countryCode) return false;
+
+  const flags = await resolveMarketplaceLiveFlagsForScope(supabaseAdmin, {
+    country_code: countryCode,
+    region_code: null,
+    mmd_zone_id: null,
+  });
+  return flags.marketplace_payouts_live_enabled;
 }
 
 async function loadDeliveryJobForPayout(
@@ -179,7 +206,7 @@ export async function prepareMarketplaceSellerPayout(
     return { ok: true, skipped: "zero_gross_amount" };
   }
 
-  const liveEnabled = isMarketplacePayoutsLiveEnabled();
+  const liveEnabled = await resolvePayoutLiveForSellerOrder(supabaseAdmin, order);
   const now = new Date().toISOString();
 
   const { data: inserted, error: insertError } = await supabaseAdmin
@@ -282,13 +309,17 @@ export async function prepareMarketplaceDriverPayout(
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("seller_orders")
-    .select("currency")
+    .select("currency,sellers(country_code)")
     .eq("id", job.seller_order_id)
     .maybeSingle();
 
   if (orderError) return { ok: false, error: orderError.message };
+  if (!order) return { ok: false, error: "seller_order_not_found" };
 
-  const liveEnabled = isMarketplacePayoutsLiveEnabled();
+  const liveEnabled = await resolvePayoutLiveForSellerOrder(
+    supabaseAdmin,
+    order as SellerOrderPayoutSource
+  );
   const now = new Date().toISOString();
 
   const { data: inserted, error: insertError } = await supabaseAdmin
@@ -418,7 +449,7 @@ export async function markMarketplacePayoutApproved(
     .from(table)
     .update({
       status: "approved",
-      payout_live_enabled: isMarketplacePayoutsLiveEnabled(),
+      payout_live_enabled: Boolean(row.payout_live_enabled),
       updated_at: now,
     })
     .eq("id", params.payoutId)
@@ -481,7 +512,7 @@ export async function simulateMarketplacePayouts(
   const simulation: Record<string, unknown> = {
     simulated_at: new Date().toISOString(),
     stripe_transfer_called: false,
-    payout_live_enabled: isMarketplacePayoutsLiveEnabled(),
+    payout_live_enabled: isMarketplacePayoutsLiveEnvEnabled(),
     message: "Marketplace payout simulation only — no Stripe transfers.",
   };
 
@@ -503,7 +534,7 @@ export async function simulateMarketplacePayouts(
     simulation.driver_payout = data ?? null;
   }
 
-  if (!isMarketplacePayoutsLiveEnabled()) {
+  if (!isMarketplacePayoutsLiveEnvEnabled()) {
     return {
       ok: true,
       simulation,
@@ -533,7 +564,7 @@ export async function executeMarketplacePayouts(
   void supabaseAdmin;
   void params;
 
-  if (!isMarketplacePayoutsLiveEnabled()) {
+  if (!isMarketplacePayoutsLiveEnvEnabled()) {
     return { ok: true, ignored: "marketplace_payouts_live_disabled", executed: 0 };
   }
 

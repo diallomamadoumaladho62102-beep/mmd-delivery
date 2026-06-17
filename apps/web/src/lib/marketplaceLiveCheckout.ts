@@ -1,3 +1,8 @@
+export {
+  isMarketplaceCheckoutLiveEnvEnabled,
+  isMarketplaceCheckoutLiveEnabledForConfig,
+} from "@/lib/marketplaceLaunchControl";
+
 export function isMarketplaceCheckoutLiveEnabled(): boolean {
   return process.env.MARKETPLACE_CHECKOUT_LIVE_ENABLED === "true";
 }

@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  isMarketplaceDispatchLiveEnabled,
+  isMarketplaceDispatchLiveEnvEnabled,
   type MarketplaceDeliveryJobStatus,
 } from "@/lib/marketplaceDispatch";
+import { resolveMarketplaceLiveFlagsForScope } from "@/lib/platformScopeResolver";
 import { buildMarketplaceDeliveryShadowForOrder } from "@/lib/marketplaceDeliveryShadow";
 
 export type MarketplaceDeliveryJobRow = {
@@ -92,6 +93,30 @@ function isSellerOrderPaid(order: SellerOrderDispatchSource): boolean {
   return order.payment_status === "paid" || order.status === "paid";
 }
 
+function sellerCountryCode(order: SellerOrderDispatchSource): string | null {
+  const raw = Array.isArray(order.sellers)
+    ? order.sellers[0]?.country_code
+    : order.sellers?.country_code;
+  const code = String(raw ?? "").trim().toUpperCase();
+  return code.length === 2 ? code : null;
+}
+
+async function resolveDispatchLiveForOrder(
+  supabaseAdmin: SupabaseClient,
+  order: SellerOrderDispatchSource,
+  pickupCountryCode?: string | null
+): Promise<boolean> {
+  const countryCode = sellerCountryCode(order) ?? pickupCountryCode ?? null;
+  if (!countryCode) return false;
+
+  const flags = await resolveMarketplaceLiveFlagsForScope(supabaseAdmin, {
+    country_code: countryCode,
+    region_code: null,
+    mmd_zone_id: null,
+  });
+  return flags.marketplace_dispatch_live_enabled;
+}
+
 function resolveInitialJobStatus(): MarketplaceDeliveryJobStatus {
   // Paid marketplace orders enter the driver pool as ready; live_dispatch_enabled stays env-gated.
   return "dispatch_ready";
@@ -166,7 +191,17 @@ export async function prepareMarketplaceDeliveryJob(
     platformMarginCents = shadow.platform_margin_shadow_cents;
   }
 
-  const liveEnabled = isMarketplaceDispatchLiveEnabled();
+  const countryCode =
+    sellerCountryCode(order) ??
+    pickupPoint?.country_code ??
+    dropoffPoint?.country_code ??
+    null;
+
+  const liveEnabled = await resolveDispatchLiveForOrder(
+    supabaseAdmin,
+    order,
+    countryCode
+  );
   const now = new Date().toISOString();
 
   const { data: inserted, error: insertError } = await supabaseAdmin
@@ -235,7 +270,20 @@ export async function markMarketplaceJobReady(
   supabaseAdmin: SupabaseClient,
   params: { jobId: string }
 ): Promise<{ ok: boolean; job?: MarketplaceDeliveryJobRow; ignored?: string; error?: string }> {
-  if (!isMarketplaceDispatchLiveEnabled()) {
+  const { data: jobRow, error: loadError } = await supabaseAdmin
+    .from("marketplace_delivery_jobs")
+    .select("id,seller_order_id,sellers(country_code)")
+    .eq("id", params.jobId)
+    .maybeSingle();
+
+  if (loadError) return { ok: false, error: loadError.message };
+  if (!jobRow) return { ok: false, error: "job_not_found" };
+
+  const order = await loadSellerOrderForDispatch(supabaseAdmin, String(jobRow.seller_order_id));
+  if (!order) return { ok: false, error: "seller_order_not_found" };
+
+  const dispatchLive = await resolveDispatchLiveForOrder(supabaseAdmin, order);
+  if (!dispatchLive) {
     return { ok: true, ignored: "marketplace_dispatch_live_disabled" };
   }
 
@@ -277,6 +325,11 @@ export async function simulateMarketplaceDispatch(
   if (loadError) return { ok: false, error: loadError.message };
   if (!job) return { ok: false, error: "job_not_found" };
 
+  const order = await loadSellerOrderForDispatch(supabaseAdmin, String(job.seller_order_id));
+  const dispatchLive = order
+    ? await resolveDispatchLiveForOrder(supabaseAdmin, order)
+    : isMarketplaceDispatchLiveEnvEnabled();
+
   const simulation = {
     simulated_at: new Date().toISOString(),
     live_dispatch_enabled: false,
@@ -289,7 +342,7 @@ export async function simulateMarketplaceDispatch(
     platform_margin_cents: job.platform_margin_cents,
   };
 
-  if (isMarketplaceDispatchLiveEnabled()) {
+  if (dispatchLive) {
     return {
       ok: true,
       job: job as MarketplaceDeliveryJobRow,
@@ -314,7 +367,23 @@ export async function assignMarketplaceDriver(
   supabaseAdmin: SupabaseClient,
   params: { jobId: string; driverUserId: string }
 ): Promise<{ ok: boolean; job?: MarketplaceDeliveryJobRow; ignored?: string; error?: string }> {
-  if (!isMarketplaceDispatchLiveEnabled()) {
+  const { data: jobRow, error: loadError } = await supabaseAdmin
+    .from("marketplace_delivery_jobs")
+    .select("id,seller_order_id")
+    .eq("id", params.jobId)
+    .maybeSingle();
+
+  if (loadError) return { ok: false, error: loadError.message };
+  if (!jobRow) return { ok: false, error: "job_not_found" };
+
+  const order = await loadSellerOrderForDispatch(
+    supabaseAdmin,
+    String(jobRow.seller_order_id)
+  );
+  if (!order) return { ok: false, error: "seller_order_not_found" };
+
+  const dispatchLive = await resolveDispatchLiveForOrder(supabaseAdmin, order);
+  if (!dispatchLive) {
     return { ok: true, ignored: "marketplace_dispatch_live_disabled" };
   }
 
@@ -360,9 +429,14 @@ export async function getMarketplaceDispatchStatus(
 
   if (error) return { ok: false, error: error.message };
 
+  const order = await loadSellerOrderForDispatch(supabaseAdmin, params.sellerOrderId);
+  const liveDispatchEnabled = order
+    ? await resolveDispatchLiveForOrder(supabaseAdmin, order)
+    : false;
+
   return {
     ok: true,
     job: (data as MarketplaceDeliveryJobRow | null) ?? null,
-    live_dispatch_enabled: isMarketplaceDispatchLiveEnabled(),
+    live_dispatch_enabled: liveDispatchEnabled,
   };
 }

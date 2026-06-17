@@ -6,12 +6,12 @@ import {
 } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import type { PlatformLaunchStatus } from "@/lib/platformLaunchControl";
+import { buildPlatformLaunchPatchUpdate } from "@/lib/adminPlatformLaunchPatch";
 
 export const dynamic = "force-dynamic";
 
 const SELECT =
-  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, maintenance_mode, launch_status, created_at, updated_at";
+  "id, country_code, country_name, continent, region, platform_enabled, taxi_enabled, delivery_enabled, restaurant_enabled, marketplace_enabled, seller_enabled, checkout_enabled, payout_enabled, marketplace_checkout_live_enabled, marketplace_dispatch_live_enabled, marketplace_payouts_live_enabled, maintenance_mode, launch_status, created_at, updated_at";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -75,50 +75,14 @@ export async function PATCH(
     if (readErr) return json({ ok: false, error: readErr.message }, 500);
     if (!existing) return json({ ok: false, error: "Country not found" }, 404);
 
-    const update: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    for (const key of [
-      "platform_enabled",
-      "taxi_enabled",
-      "delivery_enabled",
-      "restaurant_enabled",
-      "marketplace_enabled",
-      "seller_enabled",
-      "checkout_enabled",
-      "payout_enabled",
-      "maintenance_mode",
-    ] as const) {
-      if (typeof body[key] === "boolean") update[key] = body[key];
+    const patchResult = buildPlatformLaunchPatchUpdate(
+      existing as Record<string, unknown>,
+      body
+    );
+    if (patchResult.ok === false) {
+      return json({ ok: false, error: patchResult.error }, 400);
     }
-
-    const launchStatus = String(body.launch_status ?? body.launchStatus ?? "").trim();
-    if (
-      launchStatus === "enabled" ||
-      launchStatus === "disabled" ||
-      launchStatus === "maintenance"
-    ) {
-      update.launch_status = launchStatus as PlatformLaunchStatus;
-    }
-
-    if (typeof body.maintenance_mode === "boolean") {
-      update.maintenance_mode = body.maintenance_mode;
-      if (body.maintenance_mode === true) {
-        update.launch_status = "maintenance";
-      } else if (existing.launch_status === "maintenance" && body.launch_status == null) {
-        update.launch_status = existing.platform_enabled ? "enabled" : "disabled";
-      }
-    }
-
-    if (body.platform_enabled === false) {
-      update.launch_status = "disabled";
-    } else if (body.platform_enabled === true && existing.launch_status === "disabled") {
-      update.launch_status = "enabled";
-      if (typeof body.maintenance_mode !== "boolean" || body.maintenance_mode === false) {
-        update.maintenance_mode = false;
-      }
-    }
+    const update = patchResult.update;
 
     const { data: updated, error: updateErr } = await supabase
       .from("platform_countries")

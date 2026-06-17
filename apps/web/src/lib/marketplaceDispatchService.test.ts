@@ -153,7 +153,7 @@ async function main() {
 
     assert.equal(result.ok, true);
     assert.ok(result.job);
-    assert.equal(result.job?.status, "dispatch_pending");
+    assert.equal(result.job?.status, "dispatch_ready");
     assert.equal(result.job?.live_dispatch_enabled, false);
     assert.equal(result.job?.drivers_notified, false);
     assert.equal(state.jobs.length, 1);
@@ -185,7 +185,11 @@ async function main() {
 
   await test("flag OFF means assignMarketplaceDriver is ignored", async () => {
     delete process.env.MARKETPLACE_DISPATCH_LIVE_ENABLED;
-    const { admin } = createMockAdmin();
+    const { admin, state } = createMockAdmin();
+    state.jobs.push({
+      id: "job-1",
+      seller_order_id: "order-paid-1",
+    });
 
     const assigned = await assignMarketplaceDriver(admin, {
       jobId: "job-1",
@@ -217,7 +221,11 @@ async function main() {
 
   await test("markMarketplaceJobReady ignored when flag off", async () => {
     delete process.env.MARKETPLACE_DISPATCH_LIVE_ENABLED;
-    const { admin } = createMockAdmin();
+    const { admin, state } = createMockAdmin();
+    state.jobs.push({
+      id: "job-1",
+      seller_order_id: "order-paid-1",
+    });
 
     const ready = await markMarketplaceJobReady(admin, { jobId: "job-1" });
     assert.equal(ready.ok, true);
