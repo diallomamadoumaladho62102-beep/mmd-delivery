@@ -10,7 +10,7 @@ export type MarketplaceDeliveryMission = {
   estimatedMinutes?: number | null;
 };
 
-/** Driver app must not surface marketplace missions until live dispatch is enabled. */
+/** Driver visibility for marketplace pool jobs is server/API gated; live payout stays env-gated. */
 export function isMarketplaceDispatchLiveEnabledForDriver(): boolean {
   return process.env.EXPO_PUBLIC_MARKETPLACE_DISPATCH_LIVE_ENABLED === "true";
 }
@@ -18,6 +18,5 @@ export function isMarketplaceDispatchLiveEnabledForDriver(): boolean {
 export function shouldShowMarketplaceDeliveryMission(
   mission: Pick<MarketplaceDeliveryMission, "missionType">
 ): boolean {
-  if (mission.missionType !== "marketplace_delivery") return true;
-  return isMarketplaceDispatchLiveEnabledForDriver();
+  return mission.missionType === "marketplace_delivery";
 }

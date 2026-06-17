@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 
 type RoleSelectNav = NativeStackNavigationProp<RootStackParamList, "RoleSelect">;
 
-type PublicRole = "client" | "driver" | "restaurant";
+type PublicRole = "client" | "driver" | "restaurant" | "seller";
 type ProfileRole = PublicRole | "admin" | null;
 type DriverStatus = "pending" | "approved" | "rejected" | "incomplete" | "suspended" | null;
 
@@ -38,6 +38,11 @@ export function RoleSelectScreen() {
   const { t } = useTranslation();
 
   async function routeLoggedInUser(selectedRole: PublicRole, userId: string) {
+    if (selectedRole === "seller") {
+      navigation.navigate("SellerGate");
+      return;
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
@@ -181,7 +186,12 @@ export function RoleSelectScreen() {
           return;
         }
 
-        navigation.navigate("RestaurantAuth");
+        if (role === "restaurant") {
+          navigation.navigate("RestaurantAuth");
+          return;
+        }
+
+        navigation.navigate("ClientAuth");
         return;
       }
 
@@ -351,6 +361,7 @@ export function RoleSelectScreen() {
               paddingVertical: 15,
               borderRadius: 14,
               alignItems: "center",
+              marginBottom: 14,
               shadowColor: "#000",
               shadowOpacity: 0.2,
               shadowRadius: 6,
@@ -364,6 +375,28 @@ export function RoleSelectScreen() {
           >
             <Text style={{ color: "white", fontSize: 16, fontWeight: "700" }}>
               {t("roleSelect.roles.restaurant", "Restaurant")}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#7C3AED",
+              paddingVertical: 15,
+              borderRadius: 14,
+              alignItems: "center",
+              shadowColor: "#000",
+              shadowOpacity: 0.2,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 3,
+            }}
+            onPress={() => {
+              void handlePress("seller");
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: "white", fontSize: 16, fontWeight: "700" }}>
+              {t("roleSelect.roles.seller", "Marketplace Seller")}
             </Text>
           </TouchableOpacity>
         </View>

@@ -93,7 +93,8 @@ function isSellerOrderPaid(order: SellerOrderDispatchSource): boolean {
 }
 
 function resolveInitialJobStatus(): MarketplaceDeliveryJobStatus {
-  return isMarketplaceDispatchLiveEnabled() ? "dispatch_ready" : "dispatch_pending";
+  // Paid marketplace orders enter the driver pool as ready; live_dispatch_enabled stays env-gated.
+  return "dispatch_ready";
 }
 
 export async function prepareMarketplaceDeliveryJob(

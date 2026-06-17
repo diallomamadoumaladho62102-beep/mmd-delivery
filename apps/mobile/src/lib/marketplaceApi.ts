@@ -15,6 +15,8 @@ export type MarketplaceSeller = {
   address: string;
   region_code: string | null;
   status: string;
+  is_accepting_orders: boolean;
+  active_product_count?: number;
   created_at: string;
 };
 

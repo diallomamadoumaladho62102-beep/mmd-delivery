@@ -13,13 +13,19 @@
       "subtitle": "تسوق من البائعين المحليين المعتمدين على MMD.",
       "sellCta": "Vendre sur MMD →",
       "empty": "Aucun vendeur approuvé pour le moment.",
-      "loadError": "Impossible de charger le marketplace"
+      "loadError": "Impossible de charger le marketplace",
+      "emptyOpen": "لا توجد متاجر معتمدة في منطقتك.",
+      "openCount": "{{open}} مفتوحة · {{total}} متاجر",
+      "shopOpen": "مفتوح",
+      "shopClosed": "مغلق",
+      "productCount": "{{count}} منتجات متاحة"
     },
     "products": {
       "subtitle": "Parcourir les produits actifs",
       "openCart": "Ouvrir le panier / brouillon",
       "empty": "Aucun produit actif.",
-      "loadError": "Impossible de charger les produits"
+      "loadError": "Impossible de charger les produits",
+      "shopClosed": "هذا المتجر مغلق حاليًا."
     },
     "details": {
       "addedTitle": "Ajouté au brouillon",
@@ -63,6 +69,9 @@
       "comingSoonCta": "الدفع marketplace bientôt",
       "payLive": "Payer la commande marketplace",
       "missingCheckoutUrl": "URL checkout manquante"
+    },
+    "errors": {
+      "unavailable": "السوق غير متاح في منطقتك."
     }
   },
   "seller": {
@@ -72,7 +81,16 @@
       "loading": "Chargement espace vendeur…"
     },
     "dashboard": {
-      "title": "لوحة البائع"
+      "title": "لوحة البائع",
+      "approved": "حساب البائع معتمد. يمكنك إدارة المنتجات.",
+      "pending": "طلب البائع قيد مراجعة الإدارة.",
+      "rejected": "تم رفض طلب البائع. تواصل مع الدعم.",
+      "suspended": "حساب البائع موقوف.",
+      "platformOff": "خدمات البائع معطلة في منطقتك.",
+      "shopOpenTitle": "المتجر مفتوح للعملاء",
+      "shopOpenOn": "يمكن للعملاء تصفح منتجاتك النشطة.",
+      "shopOpenOff": "متجرك مغلق للطلبات الجديدة.",
+      "toggleFailed": "تعذر تحديث حالة المتجر."
     },
     "stats": {
       "products": "المنتجات",
@@ -86,7 +104,9 @@
       "title": "Devenir vendeur",
       "required": "Veuillez remplir tous les champs requis.",
       "submittedTitle": "Candidature envoyée",
-      "submit": "Envoyer pour validation"
+      "submit": "Envoyer pour validation",
+      "submittedBody": "ملف البائع قيد مراجعة الإدارة.",
+      "scopeRequired": "يجب تحديد السوق قبل التقديم."
     },
     "fields": {
       "businessName": "Nom de l'entreprise",
@@ -416,6 +436,24 @@
       "saved": "Enregistré.",
       "submitFailed": "Submit failed",
       "tinKeepCurrent": "Leave blank to keep current TIN"
+    },
+    "marketplace": {
+      "status": {
+        "pending": "قيد الانتظار",
+        "ready": "جاهز للاستلام",
+        "assigned": "مُسند",
+        "pickedUp": "تم الاستلام",
+        "delivered": "تم التسليم",
+        "cancelled": "ملغى"
+      },
+      "confirmPickup": "تأكيد استلام Marketplace",
+      "confirmDelivered": "تأكيد تسليم Marketplace",
+      "updateFailed": "تعذر تحديث توصيل Marketplace."
+    },
+    "home": {
+      "kind": {
+        "marketplace": "توصيل Marketplace"
+      }
     }
   },
   "restaurant": {
@@ -535,6 +573,16 @@
       "monthlyStatements": "Relevés mensuels",
       "noStatements": "No statements available yet.",
       "taxDocuments": "Documents fiscaux"
+    }
+  },
+  "roleSelect": {
+    "title": "Choose your mode",
+    "subtitle": "اختر دورًا للوصول إلى الواجهة المناسبة.",
+    "roles": {
+      "client": "عميل",
+      "driver": "سائق",
+      "restaurant": "مطعم",
+      "seller": "بائع Marketplace"
     }
   }
 }

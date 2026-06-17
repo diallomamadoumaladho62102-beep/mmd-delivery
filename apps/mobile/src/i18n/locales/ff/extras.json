@@ -13,13 +13,19 @@
       "subtitle": "Soɗa e jaɓɓe ɗe MMD.",
       "sellCta": "Vendre sur MMD →",
       "empty": "Aucun vendeur approuvé pour le moment.",
-      "loadError": "Impossible de charger le marketplace"
+      "loadError": "Impossible de charger le marketplace",
+      "emptyOpen": "Alaa duka jeɗɗii e nder maɓɓe maa.",
+      "openCount": "{{open}} udditii · {{total}} duka",
+      "shopOpen": "Udditii",
+      "shopClosed": "Udditaama",
+      "productCount": "{{count}} produit ɗi ngal woodi"
     },
     "products": {
       "subtitle": "Parcourir les produits actifs",
       "openCart": "Ouvrir le panier / brouillon",
       "empty": "Aucun produit actif.",
-      "loadError": "Impossible de charger les produits"
+      "loadError": "Impossible de charger les produits",
+      "shopClosed": "Duka ngal udditaama."
     },
     "details": {
       "addedTitle": "Ajouté au brouillon",
@@ -63,6 +69,9 @@
       "comingSoonCta": "Checkout marketplace bientôt",
       "payLive": "Payer la commande marketplace",
       "missingCheckoutUrl": "URL checkout manquante"
+    },
+    "errors": {
+      "unavailable": "Marketplace alaa e nder maɓɓe maa."
     }
   },
   "seller": {
@@ -72,7 +81,16 @@
       "loading": "Chargement espace vendeur…"
     },
     "dashboard": {
-      "title": "Dashboard jaɓɓo"
+      "title": "Dashboard jaɓɓo",
+      "approved": "Account seller jaɓii. A waawi huutoraade produit.",
+      "pending": "Application seller ngartii e admin.",
+      "rejected": "Application seller hollii. Contact support.",
+      "suspended": "Account seller daaƴaa.",
+      "platformOff": "Service seller daaƴaa e region maa.",
+      "shopOpenTitle": "Duka udditii e client",
+      "shopOpenOn": "Client ɗe waawi yiyde produit maa.",
+      "shopOpenOff": "Duka maa udditaama e order ɗe kesii.",
+      "toggleFailed": "Alaa update status duka."
     },
     "stats": {
       "products": "Produits",
@@ -86,7 +104,9 @@
       "title": "Devenir vendeur",
       "required": "Veuillez remplir tous les champs requis.",
       "submittedTitle": "Candidature envoyée",
-      "submit": "Envoyer pour validation"
+      "submit": "Envoyer pour validation",
+      "submittedBody": "Profile seller ngartii e admin.",
+      "scopeRequired": "Market foti resolvaade adii apply."
     },
     "fields": {
       "businessName": "Nom de l'entreprise",
@@ -469,6 +489,24 @@
       "saved": "Enregistré.",
       "submitFailed": "Submit failed",
       "tinKeepCurrent": "Leave blank to keep current TIN"
+    },
+    "marketplace": {
+      "status": {
+        "pending": "Pending",
+        "ready": "Ready for pickup",
+        "assigned": "Assigned",
+        "pickedUp": "Picked up",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "confirmPickup": "Confirm marketplace pickup",
+      "confirmDelivered": "Confirm marketplace delivered",
+      "updateFailed": "Unable to update marketplace delivery."
+    },
+    "home": {
+      "kind": {
+        "marketplace": "Marketplace delivery"
+      }
     }
   },
   "restaurant": {
@@ -588,6 +626,16 @@
       "monthlyStatements": "Relevés mensuels",
       "noStatements": "No statements available yet.",
       "taxDocuments": "Documents fiscaux"
+    }
+  },
+  "roleSelect": {
+    "title": "Choose your mode",
+    "subtitle": "Suɓo renndo ngam yiytude interface maɗɗo.",
+    "roles": {
+      "client": "Client",
+      "driver": "Driver",
+      "restaurant": "Restaurant",
+      "seller": "Seller Marketplace"
     }
   }
 }

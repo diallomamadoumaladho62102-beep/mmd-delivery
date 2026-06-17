@@ -7,6 +7,9 @@ export async function requireSellerPlatformEnabled(): Promise<boolean> {
   return Boolean(features.ok !== false && features.seller_available);
 }
 
+const SELLER_SELECT =
+  "id,user_id,business_name,country_code,city,address,phone,region_code,mmd_zone_id,status,is_accepting_orders,review_notes,created_at,updated_at";
+
 export async function loadOwnSeller(): Promise<SellerRow | null> {
   const { data: session } = await supabase.auth.getSession();
   const userId = session.session?.user?.id;
@@ -14,9 +17,7 @@ export async function loadOwnSeller(): Promise<SellerRow | null> {
 
   const { data, error } = await supabase
     .from("sellers")
-    .select(
-      "id,user_id,business_name,country_code,city,address,phone,region_code,mmd_zone_id,status,review_notes,created_at,updated_at"
-    )
+    .select(SELLER_SELECT)
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -49,9 +50,7 @@ export async function upsertSellerOnboarding(input: {
   const { data, error } = await supabase
     .from("sellers")
     .upsert(payload, { onConflict: "user_id" })
-    .select(
-      "id,user_id,business_name,country_code,city,address,phone,region_code,mmd_zone_id,status,review_notes,created_at,updated_at"
-    )
+    .select(SELLER_SELECT)
     .single();
 
   if (error) throw error;
@@ -171,4 +170,22 @@ export async function loadSellerDashboardCounts(sellerId: string): Promise<{
     productCount: productsRes.count ?? 0,
     orderCount: ordersRes.count ?? 0,
   };
+}
+
+export async function setSellerAcceptingOrders(
+  sellerId: string,
+  isAccepting: boolean
+): Promise<SellerRow> {
+  const { data, error } = await supabase
+    .from("sellers")
+    .update({
+      is_accepting_orders: isAccepting,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", sellerId)
+    .select(SELLER_SELECT)
+    .single();
+
+  if (error) throw error;
+  return data as SellerRow;
 }

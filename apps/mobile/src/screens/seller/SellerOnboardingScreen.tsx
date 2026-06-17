@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { upsertSellerOnboarding } from "../../lib/sellerApi";
+import { upsertSellerOnboarding, requireSellerPlatformEnabled } from "../../lib/sellerApi";
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
@@ -28,6 +28,15 @@ export default function SellerOnboardingScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
+    const sellerEnabled = await requireSellerPlatformEnabled();
+    if (!sellerEnabled) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        t("seller.gate.unavailable", "Seller services are not available in your area yet.")
+      );
+      return;
+    }
+
     if (!market.scopeResolved || !market.countryCode) {
       Alert.alert(
         t("common.errorTitle", "Error"),

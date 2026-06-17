@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { API_BASE_URL } from "./apiBase";
 
 type Role = "client" | "driver" | "restaurant" | "admin";
-type SourceTable = "orders" | "delivery_requests" | "taxi_rides";
+type SourceTable = "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
 
 type StartMaskedCallParams = {
   orderId: string;

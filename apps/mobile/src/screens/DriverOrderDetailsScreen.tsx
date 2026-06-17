@@ -36,6 +36,11 @@ import {
   ensureMapboxTokenApplied,
   getMapStyleStreets,
 } from "../lib/mapboxConfig";
+import {
+  acceptDriverMarketplaceJob,
+  fetchDriverMarketplaceJob,
+  updateDriverMarketplaceJobStatus,
+} from "../lib/driverMarketplaceApi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -73,7 +78,7 @@ type Order = {
   dropoff_lat: number | null;
   dropoff_lng: number | null;
   dropoff_location_id?: string | null;
-  source_table?: "orders" | "delivery_requests" | "taxi_rides";
+  source_table?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
 };
 
 type VerifyKind = "pickup" | "dropoff";
@@ -525,9 +530,10 @@ function getConfiguredDriverPayout(row: any) {
 
 function normalizeSourceTable(
   value: unknown,
-): "orders" | "delivery_requests" | "taxi_rides" {
+): "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs" {
   if (value === "delivery_requests") return "delivery_requests";
   if (value === "taxi_rides") return "taxi_rides";
+  if (value === "marketplace_delivery_jobs") return "marketplace_delivery_jobs";
   return "orders";
 }
 
@@ -590,6 +596,44 @@ function mapDeliveryRequestToOrder(row: any): Order {
     dropoff_lng: toFiniteNumber(row?.dropoff_lng ?? row?.dropoff_lon ?? row?.dropoff_long ?? row?.dropoff_longitude),
     dropoff_location_id: row?.dropoff_location_id ?? null,
     source_table: "delivery_requests",
+  };
+}
+
+function mapMarketplaceJobToOrder(row: {
+  id: string;
+  status: string;
+  created_at: string;
+  pickup_address: string | null;
+  dropoff_address: string | null;
+  estimated_distance_miles: number | null;
+  estimated_minutes: number | null;
+  driver_earning_cents: number;
+  assigned_driver_id: string | null;
+  seller_business_name: string | null;
+}): Order {
+  return {
+    id: String(row.id),
+    kind: "marketplace",
+    status: String(row.status) as OrderStatus,
+    created_at: row.created_at ?? null,
+    restaurant_name: row.seller_business_name ?? null,
+    pickup_address: row.pickup_address ?? null,
+    dropoff_address: row.dropoff_address ?? null,
+    distance_miles: toFiniteNumber(row.estimated_distance_miles),
+    eta_minutes: toFiniteNumber(row.estimated_minutes),
+    driver_delivery_payout:
+      Number(row.driver_earning_cents) > 0 ? Number(row.driver_earning_cents) / 100 : null,
+    driver_id: row.assigned_driver_id ?? null,
+    client_id: null,
+    client_user_id: null,
+    restaurant_id: null,
+    restaurant_user_id: null,
+    pickup_lat: null,
+    pickup_lng: null,
+    dropoff_lat: null,
+    dropoff_lng: null,
+    dropoff_location_id: null,
+    source_table: "marketplace_delivery_jobs",
   };
 }
 
@@ -679,6 +723,12 @@ function isAllowedDriverVisibleOrder(order: Order, driverId: string) {
   const kind = normalizeKind(order.kind);
   const status = String(order.status || "").trim().toLowerCase();
 
+  if (order.source_table === "marketplace_delivery_jobs" || kind === "marketplace") {
+    const jobStatus = String(order.status || "").trim().toLowerCase();
+    if (order.driver_id) return order.driver_id === driverId;
+    return jobStatus === "dispatch_ready";
+  }
+
   if (order.source_table === "delivery_requests" || kind === "delivery") {
     return status === "pending" || status === "paid_pending" || status === "processing_pending";
   }
@@ -725,6 +775,8 @@ export function DriverOrderDetailsScreen() {
   const normalizedKind = useMemo(() => normalizeKind(order?.kind), [order?.kind]);
   const isPickupDropoff = normalizedKind === "pickup_dropoff";
   const isDeliveryRequest = order?.source_table === "delivery_requests" || normalizedKind === "delivery";
+  const isMarketplaceJob =
+    order?.source_table === "marketplace_delivery_jobs" || normalizedKind === "marketplace";
 
   const pickupCoord = useMemo(() => {
     if (!isValidCoordinate(order?.pickup_lat, order?.pickup_lng)) return null;
@@ -771,6 +823,25 @@ export function DriverOrderDetailsScreen() {
 
   function formatStatusLabel(currentOrder: Order) {
     const kind = normalizeKind(currentOrder.kind);
+
+    if (kind === "marketplace") {
+      switch (String(currentOrder.status).toLowerCase()) {
+        case "dispatch_pending":
+          return t("driver.marketplace.status.pending", "Pending");
+        case "dispatch_ready":
+          return t("driver.marketplace.status.ready", "Ready for pickup");
+        case "dispatch_assigned":
+          return t("driver.marketplace.status.assigned", "Assigned");
+        case "picked_up":
+          return t("driver.marketplace.status.pickedUp", "Picked up");
+        case "delivered":
+          return t("driver.marketplace.status.delivered", "Delivered");
+        case "cancelled":
+          return t("driver.marketplace.status.cancelled", "Cancelled");
+        default:
+          return currentOrder.status;
+      }
+    }
 
     if (kind === "pickup_dropoff") {
       switch (currentOrder.status) {
@@ -952,6 +1023,9 @@ export function DriverOrderDetailsScreen() {
 
         if (error) throw error;
         if (data) nextOrder = mapTaxiRideToOrder(data);
+      } else if (sourceTable === "marketplace_delivery_jobs") {
+        const job = await fetchDriverMarketplaceJob(orderId);
+        nextOrder = mapMarketplaceJobToOrder(job);
       } else {
         const { data, error } = await supabase
           .from("orders")
@@ -1359,9 +1433,10 @@ export function DriverOrderDetailsScreen() {
     !proofPhotoPreparing &&
     !order.driver_id &&
     (
+      (isMarketplaceJob && String(order.status).toLowerCase() === "dispatch_ready") ||
       (isDeliveryRequest && ["pending", "paid_pending", "processing_pending"].includes(order.status)) ||
       (isPickupDropoff && order.status === "pending") ||
-      (!isDeliveryRequest && !isPickupDropoff && order.status === "ready")
+      (!isDeliveryRequest && !isPickupDropoff && !isMarketplaceJob && order.status === "ready")
     );
 
   const canCancelAsDriver =
@@ -1375,6 +1450,18 @@ export function DriverOrderDetailsScreen() {
       (isDeliveryRequest && order.status === "dispatched") ||
       (!isDeliveryRequest && (order.status === "accepted" || order.status === "ready"))
     );
+
+  const canMarketplacePickup =
+    !!order &&
+    isMarketplaceJob &&
+    isAssignedDriver &&
+    String(order.status).toLowerCase() === "dispatch_assigned";
+
+  const canMarketplaceDeliver =
+    !!order &&
+    isMarketplaceJob &&
+    isAssignedDriver &&
+    String(order.status).toLowerCase() === "picked_up";
 
   function openCodeModal(kind: VerifyKind) {
     if (kind === "pickup" && !canPickup) return;
@@ -1642,6 +1729,24 @@ export function DriverOrderDetailsScreen() {
     return result;
   }
 
+  async function handleMarketplaceStatus(nextStatus: "picked_up" | "delivered") {
+    if (!order || !isMarketplaceJob) return;
+    try {
+      setAccepting(true);
+      await updateDriverMarketplaceJobStatus(order.id, nextStatus);
+      await fetchOrder();
+    } catch (e: unknown) {
+      Alert.alert(
+        t("common.error", "Erreur"),
+        e instanceof Error
+          ? e.message
+          : t("driver.marketplace.updateFailed", "Unable to update marketplace delivery.")
+      );
+    } finally {
+      setAccepting(false);
+    }
+  }
+
   async function handleAccept() {
     if (!order || !myUserId || accepting) return;
 
@@ -1662,6 +1767,8 @@ export function DriverOrderDetailsScreen() {
       if (getOrderSourceTable(order) === "delivery_requests") {
         const { acceptDeliveryRequest } = await import("../lib/deliveryRequestDriverApi");
         await acceptDeliveryRequest(order.id);
+      } else if (getOrderSourceTable(order) === "marketplace_delivery_jobs") {
+        await acceptDriverMarketplaceJob(order.id);
       } else {
         const { data: accepted, error: accErr } = await supabase.rpc("driver_accept_ready_order", {
           p_order_id: order.id,
@@ -3175,6 +3282,43 @@ export function DriverOrderDetailsScreen() {
               "En acceptant, tu seras assigné à cette course."
             )}
           </Text>
+        </View>
+      )}
+
+      {(canMarketplacePickup || canMarketplaceDeliver) && (
+        <View
+          style={{
+            position: "absolute",
+            left: 16,
+            right: 16,
+            bottom: 16,
+            borderRadius: 18,
+            padding: 12,
+            backgroundColor: "rgba(2,6,23,0.985)",
+            borderWidth: 1,
+            borderColor: "rgba(124,58,237,0.35)",
+          }}
+        >
+          <TouchableOpacity
+            onPress={() =>
+              void handleMarketplaceStatus(canMarketplacePickup ? "picked_up" : "delivered")
+            }
+            disabled={accepting}
+            activeOpacity={0.9}
+            style={{
+              borderRadius: 999,
+              paddingVertical: 12,
+              alignItems: "center",
+              backgroundColor: "#7C3AED",
+              opacity: accepting ? 0.7 : 1,
+            }}
+          >
+            <Text style={{ color: "white", fontSize: 14, fontWeight: "900" }}>
+              {canMarketplacePickup
+                ? t("driver.marketplace.confirmPickup", "Confirm marketplace pickup")
+                : t("driver.marketplace.confirmDelivered", "Confirm marketplace delivered")}
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
 

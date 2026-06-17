@@ -119,13 +119,37 @@ async function assertApprovedSeller(
 export async function loadApprovedSellers(supabaseAdmin: SupabaseClient) {
   const { data, error } = await supabaseAdmin
     .from("sellers")
-    .select("id,business_name,country_code,city,address,region_code,status,created_at")
+    .select(
+      "id,business_name,country_code,city,address,region_code,status,is_accepting_orders,created_at"
+    )
     .eq("status", "approved")
     .order("business_name", { ascending: true })
     .limit(200);
 
   if (error) throw new Error(error.message);
-  return data ?? [];
+
+  const sellers = data ?? [];
+  if (sellers.length === 0) return [];
+
+  const sellerIds = sellers.map((row) => row.id);
+  const { data: productRows, error: productError } = await supabaseAdmin
+    .from("seller_products")
+    .select("seller_id")
+    .in("seller_id", sellerIds)
+    .eq("active", true);
+
+  if (productError) throw new Error(productError.message);
+
+  const counts = new Map<string, number>();
+  for (const row of productRows ?? []) {
+    const id = String(row.seller_id);
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+
+  return sellers.map((seller) => ({
+    ...seller,
+    active_product_count: counts.get(String(seller.id)) ?? 0,
+  }));
 }
 
 const ORDER_SELECT =

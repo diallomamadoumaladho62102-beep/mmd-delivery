@@ -7,16 +7,35 @@
     "changed": "Language updated",
     "changeFailed": "Unable to change language."
   },
+  "roleSelect": {
+    "title": "Choose your mode",
+    "subtitle": "Choose a role to access the corresponding interface.",
+    "roles": {
+      "client": "Client",
+      "driver": "Driver",
+      "restaurant": "Restaurant",
+      "seller": "Marketplace Seller"
+    }
+  },
   "marketplace": {
+    "errors": {
+      "unavailable": "Marketplace is not available in your area yet."
+    },
     "home": {
       "title": "Marketplace",
       "subtitle": "Shop approved local sellers on MMD.",
       "sellCta": "Sell on MMD →",
       "empty": "No approved sellers yet.",
-      "loadError": "Unable to load marketplace"
+      "emptyOpen": "No approved shops in your area yet.",
+      "loadError": "Unable to load marketplace",
+      "openCount": "{{open}} open · {{total}} shops",
+      "shopOpen": "Open",
+      "shopClosed": "Closed",
+      "productCount": "{{count}} products available"
     },
     "products": {
       "subtitle": "Browse active products",
+      "shopClosed": "This shop is currently closed.",
       "openCart": "Open cart / draft",
       "empty": "No active products.",
       "loadError": "Unable to load products"
@@ -72,7 +91,16 @@
       "loading": "Loading seller area…"
     },
     "dashboard": {
-      "title": "Seller Dashboard"
+      "title": "Seller Dashboard",
+      "approved": "Your seller account is approved. You can manage products.",
+      "pending": "Your seller application is pending admin review.",
+      "rejected": "Your seller application was rejected. Contact support for details.",
+      "suspended": "Your seller account is suspended. New marketplace activity is blocked.",
+      "platformOff": "Seller services are disabled in your region.",
+      "shopOpenTitle": "Shop open to clients",
+      "shopOpenOn": "Clients can browse your active products.",
+      "shopOpenOff": "Your shop is closed to new client orders.",
+      "toggleFailed": "Unable to update shop status."
     },
     "stats": {
       "products": "Products",
@@ -86,7 +114,9 @@
       "title": "Become a Seller",
       "required": "Please fill in all required fields.",
       "submittedTitle": "Application submitted",
-      "submit": "Submit for review"
+      "submittedBody": "Your seller profile is pending admin review.",
+      "submit": "Submit for review",
+      "scopeRequired": "Your market must be resolved before applying."
     },
     "fields": {
       "businessName": "Business name",
@@ -385,6 +415,24 @@
     }
   },
   "driver": {
+    "marketplace": {
+      "status": {
+        "pending": "Pending",
+        "ready": "Ready for pickup",
+        "assigned": "Assigned",
+        "pickedUp": "Picked up",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "confirmPickup": "Confirm marketplace pickup",
+      "confirmDelivered": "Confirm marketplace delivered",
+      "updateFailed": "Unable to update marketplace delivery."
+    },
+    "home": {
+      "kind": {
+        "marketplace": "Marketplace delivery"
+      }
+    },
     "w9": {
       "title": "W-9",
       "status": "Status",

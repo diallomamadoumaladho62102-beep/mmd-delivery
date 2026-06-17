@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 
-type Role = "client" | "driver" | "restaurant";
+type Role = "client" | "driver" | "restaurant" | "seller";
 
 export default function SignupLanding() {
   const router = useRouter();
@@ -28,7 +28,17 @@ export default function SignupLanding() {
         return;
       }
 
-      router.push("/signup/restaurant");
+      if (role === "restaurant") {
+        router.push("/signup/restaurant");
+        return;
+      }
+
+      router.push("/auth");
+      return;
+    }
+
+    if (role === "seller") {
+      router.push("/client");
       return;
     }
 
@@ -80,6 +90,14 @@ export default function SignupLanding() {
               className="w-full rounded-[26px] bg-green-500 px-6 py-6 text-center text-3xl font-semibold text-white transition hover:opacity-95 active:scale-[0.99] max-sm:rounded-2xl max-sm:py-5 max-sm:text-2xl"
             >
               Restaurant
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handlePress("seller")}
+              className="w-full rounded-[26px] bg-violet-600 px-6 py-6 text-center text-3xl font-semibold text-white transition hover:opacity-95 active:scale-[0.99] max-sm:rounded-2xl max-sm:py-5 max-sm:text-2xl"
+            >
+              Marketplace Seller
             </button>
           </div>
         </div>

@@ -156,6 +156,7 @@ export type RootStackParamList = {
     sellerId: string;
     sellerName: string;
     sellerCountryCode?: string;
+    sellerIsOpen?: boolean;
   };
   MarketplaceProductDetails: {
     sellerId: string;
@@ -223,12 +224,12 @@ export type RootStackParamList = {
   DriverTabs: undefined;
   DriverOrderDetails: {
     orderId: string;
-    sourceTable?: "orders" | "delivery_requests" | "taxi_rides";
-    source_table?: "orders" | "delivery_requests" | "taxi_rides";
+    sourceTable?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
+    source_table?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
   };
   DriverMap: {
     orderId: string;
-    sourceTable?: "orders" | "delivery_requests" | "taxi_rides";
+    sourceTable?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
     destinationStage?: "pickup" | "dropoff";
   };
   DriverTaxiChat: { rideId: string };
@@ -290,7 +291,7 @@ type DriverStatus =
   | "suspended"
   | "disabled";
 
-type AppRole = "client" | "driver" | "restaurant" | "admin" | null;
+type AppRole = "client" | "driver" | "restaurant" | "seller" | "admin" | null;
 
 function normalizeAppRole(value: unknown): AppRole {
   const role = String(value ?? "").trim().toLowerCase();
@@ -298,6 +299,7 @@ function normalizeAppRole(value: unknown): AppRole {
   if (role === "client") return "client";
   if (role === "driver" || role === "livreur") return "driver";
   if (role === "restaurant") return "restaurant";
+  if (role === "seller") return "seller";
   if (role === "admin") return "admin";
 
   return null;
@@ -484,6 +486,9 @@ export function AppNavigator({
   }, []);
 
   const resolveUserRole = React.useCallback(async (uid: string): Promise<AppRole> => {
+    const selectedRole = normalizeAppRole(await getSelectedRole());
+    if (selectedRole === "seller") return "seller";
+
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -555,6 +560,17 @@ export function AppNavigator({
     },
     [navReady]
   );
+
+  const isInSellerArea = React.useCallback((r?: keyof RootStackParamList) => {
+    if (!r) return false;
+    return (
+      r === "SellerGate" ||
+      r === "SellerOnboarding" ||
+      r === "SellerDashboard" ||
+      r === "SellerProducts" ||
+      r === "SellerOrders"
+    );
+  }, []);
 
   const isInClientArea = React.useCallback((r?: keyof RootStackParamList) => {
     if (!r) return false;
@@ -810,6 +826,12 @@ export function AppNavigator({
         return;
       }
 
+      if (role === "seller") {
+        if (isInSellerArea(cur)) return;
+        resetTo("SellerGate");
+        return;
+      }
+
       if (role === "admin") {
         resetTo("RoleSelect");
         return;
@@ -833,6 +855,7 @@ export function AppNavigator({
     isInClientArea,
     isInDriverArea,
     isInRestaurantArea,
+    isInSellerArea,
   ]);
 
   const scheduleSync = React.useCallback(() => {

@@ -20,7 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductList"
 
 export default function MarketplaceProductListScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { sellerId, sellerName, sellerCountryCode } = route.params;
+  const { sellerId, sellerName, sellerCountryCode, sellerIsOpen = true } = route.params;
   const scope = { sellerCountryCode };
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,11 +53,17 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
         contentContainerStyle={{ padding: 20, gap: 12 }}
       >
         <Text style={{ color: "#F8FAFC", fontSize: 24, fontWeight: "700" }}>{sellerName}</Text>
+        {!sellerIsOpen ? (
+          <Text style={{ color: "#FCA5A5", marginBottom: 8 }}>
+            {t("marketplace.products.shopClosed", "This shop is currently closed.")}
+          </Text>
+        ) : null}
         <Text style={{ color: "#94A3B8", marginBottom: 8 }}>
           {t("marketplace.products.subtitle", "Browse active products")}
         </Text>
 
         <TouchableOpacity
+          disabled={!sellerIsOpen}
           onPress={() =>
             navigation.navigate("MarketplaceCart", {
               sellerId,
@@ -72,6 +78,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
             paddingVertical: 10,
             borderRadius: 10,
             marginBottom: 8,
+            opacity: sellerIsOpen ? 1 : 0.5,
           }}
         >
           <Text style={{ color: "#FFF" }}>
@@ -91,6 +98,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
           products.map((product) => (
             <TouchableOpacity
               key={product.id}
+              disabled={!sellerIsOpen}
               onPress={() =>
                 navigation.navigate("MarketplaceProductDetails", {
                   sellerId,

@@ -6,12 +6,15 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  Switch,
+  Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   loadOwnSeller,
   loadSellerDashboardCounts,
   requireSellerPlatformEnabled,
+  setSellerAcceptingOrders,
 } from "../../lib/sellerApi";
 import { sellerStatusLabel, type SellerRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
@@ -51,6 +54,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   const [productCount, setProductCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [platformOk, setPlatformOk] = useState(true);
+  const [togglingShop, setTogglingShop] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -78,6 +82,23 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   );
 
   const canManageProducts = platformOk && seller?.status === "approved";
+  const canToggleShop = platformOk && seller?.status === "approved";
+
+  const onToggleShopOpen = async (nextValue: boolean) => {
+    if (!seller || !canToggleShop) return;
+    try {
+      setTogglingShop(true);
+      const updated = await setSellerAcceptingOrders(seller.id, nextValue);
+      setSeller(updated);
+    } catch (e) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        t("seller.dashboard.toggleFailed", "Unable to update shop status.")
+      );
+    } finally {
+      setTogglingShop(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }}>
@@ -117,6 +138,42 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 </Text>
               ) : null}
             </View>
+
+            {seller && canToggleShop ? (
+              <View
+                style={{
+                  backgroundColor: "#111827",
+                  borderRadius: 16,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: "#1F2937",
+                  flexDirection: rowDirection(),
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
+                    {t("seller.dashboard.shopOpenTitle", "Shop open to clients")}
+                  </Text>
+                  <Text style={{ color: "#94A3B8", marginTop: 4 }}>
+                    {seller.is_accepting_orders
+                      ? t("seller.dashboard.shopOpenOn", "Clients can browse your active products.")
+                      : t("seller.dashboard.shopOpenOff", "Your shop is closed to new client orders.")}
+                  </Text>
+                </View>
+                <Switch
+                  value={Boolean(seller.is_accepting_orders)}
+                  disabled={togglingShop}
+                  onValueChange={(value) => {
+                    void onToggleShopOpen(value);
+                  }}
+                  trackColor={{ false: "#475569", true: "#7C3AED" }}
+                  thumbColor="#F8FAFC"
+                />
+              </View>
+            ) : null}
 
             <View style={{ flexDirection: rowDirection(), gap: 12 }}>
               <StatCard label={t("seller.stats.products", "Products")} value={productCount} />

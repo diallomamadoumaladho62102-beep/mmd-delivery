@@ -13,13 +13,19 @@
       "subtitle": "Achetez auprès de vendeurs locaux approuvés sur MMD.",
       "sellCta": "Vendre sur MMD →",
       "empty": "Aucun vendeur approuvé pour le moment.",
-      "loadError": "Impossible de charger le marketplace"
+      "loadError": "Impossible de charger le marketplace",
+      "emptyOpen": "Aucune boutique approuvée dans votre zone.",
+      "openCount": "{{open}} ouvertes · {{total}} boutiques",
+      "shopOpen": "Ouvert",
+      "shopClosed": "Fermé",
+      "productCount": "{{count}} produits disponibles"
     },
     "products": {
       "subtitle": "Parcourir les produits actifs",
       "openCart": "Ouvrir le panier / brouillon",
       "empty": "Aucun produit actif.",
-      "loadError": "Impossible de charger les produits"
+      "loadError": "Impossible de charger les produits",
+      "shopClosed": "Cette boutique est actuellement fermée."
     },
     "details": {
       "addedTitle": "Ajouté au brouillon",
@@ -63,6 +69,9 @@
       "comingSoonCta": "Checkout marketplace bientôt",
       "payLive": "Payer la commande marketplace",
       "missingCheckoutUrl": "URL checkout manquante"
+    },
+    "errors": {
+      "unavailable": "Marketplace indisponible dans votre zone."
     }
   },
   "seller": {
@@ -72,7 +81,16 @@
       "loading": "Chargement espace vendeur…"
     },
     "dashboard": {
-      "title": "Tableau de bord vendeur"
+      "title": "Tableau de bord vendeur",
+      "approved": "Votre compte vendeur est approuvé. Vous pouvez gérer vos produits.",
+      "pending": "Votre candidature vendeur est en attente de validation admin.",
+      "rejected": "Votre candidature vendeur a été refusée. Contactez le support.",
+      "suspended": "Votre compte vendeur est suspendu. Activité marketplace bloquée.",
+      "platformOff": "Services vendeur désactivés dans votre région.",
+      "shopOpenTitle": "Boutique ouverte aux clients",
+      "shopOpenOn": "Les clients peuvent parcourir vos produits actifs.",
+      "shopOpenOff": "Votre boutique est fermée aux nouvelles commandes.",
+      "toggleFailed": "Impossible de mettre à jour le statut boutique."
     },
     "stats": {
       "products": "Produits",
@@ -86,7 +104,9 @@
       "title": "Devenir vendeur",
       "required": "Veuillez remplir tous les champs requis.",
       "submittedTitle": "Candidature envoyée",
-      "submit": "Envoyer pour validation"
+      "submit": "Envoyer pour validation",
+      "submittedBody": "Votre profil vendeur est en attente de validation admin.",
+      "scopeRequired": "Votre marché doit être résolu avant de postuler."
     },
     "fields": {
       "businessName": "Nom de l'entreprise",
@@ -416,6 +436,24 @@
       "saved": "Enregistré.",
       "submitFailed": "Submit failed",
       "tinKeepCurrent": "Leave blank to keep current TIN"
+    },
+    "marketplace": {
+      "status": {
+        "pending": "En attente",
+        "ready": "Prêt pour retrait",
+        "assigned": "Assignée",
+        "pickedUp": "Colis récupéré",
+        "delivered": "Livrée",
+        "cancelled": "Annulée"
+      },
+      "confirmPickup": "Confirmer le retrait marketplace",
+      "confirmDelivered": "Confirmer la livraison marketplace",
+      "updateFailed": "Impossible de mettre à jour la livraison marketplace."
+    },
+    "home": {
+      "kind": {
+        "marketplace": "Livraison marketplace"
+      }
     }
   },
   "restaurant": {
@@ -535,6 +573,16 @@
       "monthlyStatements": "Relevés mensuels",
       "noStatements": "No statements available yet.",
       "taxDocuments": "Documents fiscaux"
+    }
+  },
+  "roleSelect": {
+    "title": "Choose your mode",
+    "subtitle": "Choisissez un rôle pour accéder à l'interface correspondante.",
+    "roles": {
+      "client": "Client",
+      "driver": "Chauffeur",
+      "restaurant": "Restaurant",
+      "seller": "Vendeur Marketplace"
     }
   }
 }

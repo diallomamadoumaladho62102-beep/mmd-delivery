@@ -13,13 +13,19 @@
       "subtitle": "在 MMD 购买本地认证卖家商品。",
       "sellCta": "Vendre sur MMD →",
       "empty": "Aucun vendeur approuvé pour le moment.",
-      "loadError": "Impossible de charger le marketplace"
+      "loadError": "Impossible de charger le marketplace",
+      "emptyOpen": "您所在区域暂无已批准店铺。",
+      "openCount": "{{open}} 家营业 · 共 {{total}} 家店铺",
+      "shopOpen": "营业中",
+      "shopClosed": "已打烊",
+      "productCount": "{{count}} 件可购商品"
     },
     "products": {
       "subtitle": "Parcourir les produits actifs",
       "openCart": "Ouvrir le panier / brouillon",
       "empty": "Aucun produit actif.",
-      "loadError": "Impossible de charger les produits"
+      "loadError": "Impossible de charger les produits",
+      "shopClosed": "该店铺当前未营业。"
     },
     "details": {
       "addedTitle": "Ajouté au brouillon",
@@ -63,6 +69,9 @@
       "comingSoonCta": "结账 marketplace bientôt",
       "payLive": "Payer la commande marketplace",
       "missingCheckoutUrl": "URL checkout manquante"
+    },
+    "errors": {
+      "unavailable": "您所在区域暂未开放 Marketplace。"
     }
   },
   "seller": {
@@ -72,7 +81,16 @@
       "loading": "Chargement espace vendeur…"
     },
     "dashboard": {
-      "title": "卖家面板"
+      "title": "卖家面板",
+      "approved": "卖家账户已批准，可管理商品。",
+      "pending": "卖家申请待管理员审核。",
+      "rejected": "卖家申请被拒绝，请联系支持。",
+      "suspended": "卖家账户已暂停。",
+      "platformOff": "您所在区域卖家服务已关闭。",
+      "shopOpenTitle": "向客户开放店铺",
+      "shopOpenOn": "客户可浏览您的在售商品。",
+      "shopOpenOff": "店铺已关闭，不接受新订单。",
+      "toggleFailed": "无法更新店铺状态。"
     },
     "stats": {
       "products": "商品",
@@ -86,7 +104,9 @@
       "title": "Devenir vendeur",
       "required": "Veuillez remplir tous les champs requis.",
       "submittedTitle": "Candidature envoyée",
-      "submit": "Envoyer pour validation"
+      "submit": "Envoyer pour validation",
+      "submittedBody": "卖家资料待管理员审核。",
+      "scopeRequired": "提交前需确定市场范围。"
     },
     "fields": {
       "businessName": "Nom de l'entreprise",
@@ -416,6 +436,24 @@
       "saved": "Enregistré.",
       "submitFailed": "Submit failed",
       "tinKeepCurrent": "Leave blank to keep current TIN"
+    },
+    "marketplace": {
+      "status": {
+        "pending": "待处理",
+        "ready": "可取货",
+        "assigned": "已分配",
+        "pickedUp": "已取货",
+        "delivered": "已送达",
+        "cancelled": "已取消"
+      },
+      "confirmPickup": "确认 Marketplace 取货",
+      "confirmDelivered": "确认 Marketplace 送达",
+      "updateFailed": "无法更新 Marketplace 配送。"
+    },
+    "home": {
+      "kind": {
+        "marketplace": "Marketplace 配送"
+      }
     }
   },
   "restaurant": {
@@ -535,6 +573,16 @@
       "monthlyStatements": "Relevés mensuels",
       "noStatements": "No statements available yet.",
       "taxDocuments": "Documents fiscaux"
+    }
+  },
+  "roleSelect": {
+    "title": "Choose your mode",
+    "subtitle": "选择角色以进入对应界面。",
+    "roles": {
+      "client": "客户",
+      "driver": "司机",
+      "restaurant": "餐厅",
+      "seller": "Marketplace 卖家"
     }
   }
 }

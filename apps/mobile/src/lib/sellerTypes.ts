@@ -11,6 +11,7 @@ export type SellerRow = {
   region_code: string | null;
   mmd_zone_id: string | null;
   status: SellerStatus;
+  is_accepting_orders: boolean;
   review_notes: string | null;
   created_at: string;
   updated_at: string;

@@ -47,6 +47,11 @@ import { Audio } from "expo-av";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { DriverTaxiPanel } from "../components/driver/DriverTaxiPanel";
+import {
+  acceptDriverMarketplaceJob,
+  fetchDriverMarketplaceJobs,
+  mapMarketplaceJobToDriverOrder,
+} from "../lib/driverMarketplaceApi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type AnyNav = NativeStackNavigationProp<any>;
@@ -80,10 +85,11 @@ type DriverOrder = {
   pickup_lng: number | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
-  source_table?: "orders" | "delivery_requests";
+  source_table?: "orders" | "delivery_requests" | "marketplace_delivery_jobs";
   offer_id?: string | null;
   offer_expires_at?: string | null;
   is_dispatch_offer?: boolean;
+  marketplace_job_status?: string | null;
 };
 
 type ZoneDemand = "calm" | "busy" | "very_busy";
@@ -396,6 +402,11 @@ function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined)
   // They must be visible once paid and unassigned, not only when status === "pending".
   if (kind === "delivery") {
     return status === "pending" || status === "paid_pending" || status === "processing_pending";
+  }
+
+  if (kind === "marketplace") {
+    const jobStatus = String(order.marketplace_job_status ?? order.status ?? "").toLowerCase();
+    return jobStatus === "dispatch_ready";
   }
 
   return false;
@@ -1356,6 +1367,21 @@ export function DriverHomeScreen() {
           .order("created_at", { ascending: false });
 
         if (myDeliveryRequestsError) throw myDeliveryRequestsError;
+
+        let marketplaceAvailableList: DriverOrder[] = [];
+        let marketplaceMineList: DriverOrder[] = [];
+        try {
+          const marketplaceJobs = await fetchDriverMarketplaceJobs();
+          marketplaceAvailableList = (marketplaceJobs.available ?? []).map((job) =>
+            mapMarketplaceJobToDriverOrder(job) as DriverOrder
+          );
+          marketplaceMineList = (marketplaceJobs.mine ?? []).map((job) =>
+            mapMarketplaceJobToDriverOrder(job) as DriverOrder
+          );
+        } catch (marketplaceError) {
+          console.log("DriverHome marketplace jobs fetch:", marketplaceError);
+        }
+
         if (!mountedRef.current || fetchSeq !== fetchSeqRef.current) return;
 
         const orderAvailable = ((available ?? []) as DriverOrder[]).map((order) => ({
@@ -1411,6 +1437,7 @@ export function DriverHomeScreen() {
           ...pendingDeliveryOfferList,
           ...orderAvailable,
           ...deliveryAvailableList,
+          ...marketplaceAvailableList,
         ];
 
         const seenAvailableKeys = new Set<string>();
@@ -1432,6 +1459,7 @@ export function DriverHomeScreen() {
           const pickupLng = typeof pickupLngRaw === "number" ? pickupLngRaw : null;
           const hasPickupCoordinates = pickupLat != null && pickupLng != null;
           const isDeliveryRequest = o.source_table === "delivery_requests";
+          const isMarketplaceJob = o.source_table === "marketplace_delivery_jobs";
           let withinFiveMiles = false;
 
           if (driverLocation && hasPickupCoordinates) {
@@ -1442,14 +1470,14 @@ export function DriverHomeScreen() {
           // Production safety:
           // orders must have pickup coordinates for nearby filtering.
           // delivery_requests without coordinates are still shown so paid customer requests are not hidden.
-          if (isDeliveryRequest) {
+          if (isDeliveryRequest || isMarketplaceJob) {
             return statusVisible && (!driverLocation || !hasPickupCoordinates || withinFiveMiles);
           }
 
           return statusVisible && hasPickupCoordinates && (!driverLocation || withinFiveMiles);
         });
 
-        const myList = [...myOrderList, ...myDeliveryList];
+        const myList = [...myOrderList, ...myDeliveryList, ...marketplaceMineList];
 
         setAvailableOrders(visibleAvailable);
         setMyOrders(myList);
@@ -1771,6 +1799,9 @@ export function DriverHomeScreen() {
       }
       if (normalizedKind === "pickup_dropoff") return t("driver.home.kind.pickup_dropoff", "Pickup / dropoff");
       if (normalizedKind === "delivery") return t("driver.home.kind.delivery", "MMD Delivery");
+      if (normalizedKind === "marketplace") {
+        return t("driver.home.kind.marketplace", "Marketplace delivery");
+      }
       return String(kind ?? "—");
     },
     [t],
@@ -1831,6 +1862,8 @@ export function DriverHomeScreen() {
         } else if (offerSourceTable === "delivery_requests") {
           const { acceptDeliveryRequest } = await import("../lib/deliveryRequestDriverApi");
           await acceptDeliveryRequest(orderId);
+        } else if (offerSourceTable === "marketplace_delivery_jobs") {
+          await acceptDriverMarketplaceJob(orderId);
         } else {
           const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", { p_order_id: orderId });
           if (rpcError) throw rpcError;
