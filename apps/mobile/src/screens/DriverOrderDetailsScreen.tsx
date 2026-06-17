@@ -41,6 +41,7 @@ import {
   fetchDriverMarketplaceJob,
   updateDriverMarketplaceJobStatus,
 } from "../lib/driverMarketplaceApi";
+import { applyMarketplaceCoordsToOrder } from "../lib/marketplaceDriverNavigation";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -1026,6 +1027,19 @@ export function DriverOrderDetailsScreen() {
       } else if (sourceTable === "marketplace_delivery_jobs") {
         const job = await fetchDriverMarketplaceJob(orderId);
         nextOrder = mapMarketplaceJobToOrder(job);
+
+        const { data: navRow } = await supabase
+          .from("marketplace_delivery_jobs")
+          .select(
+            "pickup:pickup_location_id(pin_lat,pin_lng),dropoff:dropoff_location_id(pin_lat,pin_lng)"
+          )
+          .eq("id", orderId)
+          .maybeSingle();
+
+        nextOrder = applyMarketplaceCoordsToOrder(
+          nextOrder,
+          (navRow ?? null) as Record<string, unknown> | null
+        );
       } else {
         const { data, error } = await supabase
           .from("orders")
@@ -1312,14 +1326,17 @@ export function DriverOrderDetailsScreen() {
     }
 
     if (!pickupCoord && !dropoffCoord) {
-      Alert.alert(
-        t("driver.orderDetails.missingCoordsTitle", "Infos manquantes"),
-        t(
-          "driver.orderDetails.missingCoordsBody",
-          "Cette course n’a pas encore de coordonnées GPS."
-        )
-      );
-      return;
+      const isMarketplaceJob = getOrderSourceTable(order) === "marketplace_delivery_jobs";
+      if (!isMarketplaceJob) {
+        Alert.alert(
+          t("driver.orderDetails.missingCoordsTitle", "Infos manquantes"),
+          t(
+            "driver.orderDetails.missingCoordsBody",
+            "Cette course n’a pas encore de coordonnées GPS."
+          )
+        );
+        return;
+      }
     }
 
     (navigation as any).navigate("DriverMap", {

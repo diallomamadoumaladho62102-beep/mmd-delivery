@@ -2,7 +2,11 @@ import type { CoordinatePoint } from "../coordinates";
 
 export type NavigationStage = "pickup" | "dropoff";
 
-export type OrderSourceTable = "orders" | "delivery_requests" | "taxi_rides";
+export type OrderSourceTable =
+  | "orders"
+  | "delivery_requests"
+  | "taxi_rides"
+  | "marketplace_delivery_jobs";
 
 export type GpsQualityStatus = "initializing" | "active" | "degraded" | "lost";
 

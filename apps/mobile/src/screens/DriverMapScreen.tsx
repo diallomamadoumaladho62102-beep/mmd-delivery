@@ -67,6 +67,12 @@ import { DriverTripLocationCard } from "../components/location/DriverTripLocatio
 import { useNearbyDriverMapReports } from "../hooks/useNearbyDriverMapReports";
 import { useDriverTripHistory } from "../hooks/useDriverTripHistory";
 import { useDriverMapCountryCode } from "../hooks/useDriverMapCountryCode";
+import {
+  countryCodeFromMarketplaceNavRow,
+  coordsFromLocationJoin,
+  MARKETPLACE_DELIVERY_JOB_NAV_SELECT,
+  marketplaceDriverPayoutDollars,
+} from "../lib/marketplaceDriverNavigation";
 import { extractCountryCodeField } from "../lib/driverNavigation/reports/resolveCountryCode";
 import type { DriverMapReportSourceTable } from "../lib/driverNavigation/reports/config";
 import { DEFAULT_DRIVER_MAP_REPORT_CONTEXT } from "../lib/driverNavigation/reports/config";
@@ -85,6 +91,7 @@ type DriverMapRouteParams = {
 function normalizeSourceTable(value: unknown): OrderSourceTable {
   if (value === "delivery_requests") return "delivery_requests";
   if (value === "taxi_rides") return "taxi_rides";
+  if (value === "marketplace_delivery_jobs") return "marketplace_delivery_jobs";
   return "orders";
 }
 
@@ -93,6 +100,9 @@ function normalizeStage(value: unknown): NavigationStage {
 }
 
 function getDriverPayout(row: Record<string, unknown>) {
+  const marketplaceCents = numberOrNull(row.driver_earning_cents);
+  if (marketplaceCents != null) return marketplaceCents / 100;
+
   const taxiCents = numberOrNull(row.driver_payout_cents);
   if (taxiCents != null) return taxiCents / 100;
 
@@ -123,29 +133,49 @@ function buildTripFromRow(params: {
   const dropoffLng = numberOrNull(
     row.dropoff_lng ?? row.dropoff_lon ?? row.dropoff_longitude,
   );
+  const pickupFromLocation = coordsFromLocationJoin(row.pickup);
+  const dropoffFromLocation = coordsFromLocationJoin(row.dropoff);
+  const sellers = row.sellers as
+    | { business_name?: unknown }
+    | { business_name?: unknown }[]
+    | null;
+  const seller = Array.isArray(sellers) ? sellers[0] : sellers;
 
   return {
     orderId: String(row.id ?? ""),
     sourceTable,
     restaurantName:
       String(row.restaurant_name || "").trim() ||
+      String(seller?.business_name || "").trim() ||
       (sourceTable === "delivery_requests"
         ? "MMD Delivery"
         : sourceTable === "taxi_rides"
           ? "MMD Taxi"
-          : "Restaurant"),
+          : sourceTable === "marketplace_delivery_jobs"
+            ? "Marketplace"
+            : "Restaurant"),
     pickupAddress: String(row.pickup_address || "Pickup location"),
     dropoffAddress: String(row.dropoff_address || "Dropoff location"),
-    pickup: toCoordinatePoint(row.pickup_lat, pickupLng),
-    dropoff: toCoordinatePoint(row.dropoff_lat, dropoffLng),
+    pickup:
+      toCoordinatePoint(row.pickup_lat, pickupLng) ?? pickupFromLocation,
+    dropoff:
+      toCoordinatePoint(row.dropoff_lat, dropoffLng) ?? dropoffFromLocation,
     stage,
-    price: getDriverPayout(row),
-    distanceMiles: numberOrNull(row.distance_miles) ?? 0,
+    price:
+      sourceTable === "marketplace_delivery_jobs"
+        ? marketplaceDriverPayoutDollars(row)
+        : getDriverPayout(row),
+    distanceMiles:
+      numberOrNull(row.distance_miles) ??
+      numberOrNull(row.estimated_distance_miles) ??
+      0,
     etaMinutes:
       numberOrNull(row.eta_minutes) ??
       numberOrNull(row.duration_minutes) ??
+      numberOrNull(row.estimated_minutes) ??
       0,
-    orderCountryCode: extractCountryCodeField(row),
+    orderCountryCode:
+      extractCountryCodeField(row) ?? countryCodeFromMarketplaceNavRow(row),
     pickupLocationId: row.pickup_location_id
       ? String(row.pickup_location_id)
       : null,
@@ -339,29 +369,35 @@ export default function DriverMapScreen() {
 
     try {
       const result =
-        routeSourceTable === "delivery_requests"
+        routeSourceTable === "marketplace_delivery_jobs"
           ? await supabase
-              .from("delivery_requests")
-              .select(
-                "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout,dropoff_location_id",
-              )
+              .from("marketplace_delivery_jobs")
+              .select(MARKETPLACE_DELIVERY_JOB_NAV_SELECT)
               .eq("id", routeOrderId)
               .maybeSingle()
-          : routeSourceTable === "taxi_rides"
+          : routeSourceTable === "delivery_requests"
             ? await supabase
-                .from("taxi_rides")
+                .from("delivery_requests")
                 .select(
-                  "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code,pickup_location_id,dropoff_location_id",
+                  "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,eta_minutes,driver_delivery_payout,dropoff_location_id",
                 )
                 .eq("id", routeOrderId)
                 .maybeSingle()
-            : await supabase
-                .from("orders")
-                .select(
-                  "id,status,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout",
-                )
-                .eq("id", routeOrderId)
-                .maybeSingle();
+            : routeSourceTable === "taxi_rides"
+              ? await supabase
+                  .from("taxi_rides")
+                  .select(
+                    "id,status,pickup_address,dropoff_address,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,distance_miles,duration_minutes,driver_payout_cents,country_code,pickup_location_id,dropoff_location_id",
+                  )
+                  .eq("id", routeOrderId)
+                  .maybeSingle()
+              : await supabase
+                  .from("orders")
+                  .select(
+                    "id,status,restaurant_name,pickup_address,dropoff_address,pickup_lat,pickup_lng,pickup_lon,dropoff_lat,dropoff_lng,dropoff_lon,distance_miles,eta_minutes,driver_delivery_payout",
+                  )
+                  .eq("id", routeOrderId)
+                  .maybeSingle();
 
       if (result.error) throw result.error;
       if (!result.data) {
