@@ -22,7 +22,7 @@ entrypoint = "./functions/restaurant-connect-link/index.ts"
 enabled = false
 
 [functions.stripe_driver_onboarding]
-enabled = false
+enabled = true
 verify_jwt = true
 import_map = "./functions/stripe_driver_onboarding/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
