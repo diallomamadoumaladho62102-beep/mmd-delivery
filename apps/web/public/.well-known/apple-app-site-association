@@ -4,7 +4,17 @@
     "details": [
       {
         "appID": "RM57H8C5FR.com.maladho2025.mmddelivery",
-        "paths": ["/r/*", "/auth/*", "/orders/*", "/driver/*", "/client/*"]
+        "paths": [
+          "/r/*",
+          "/auth/*",
+          "/signup/*",
+          "/reset-password",
+          "/choose-role",
+          "/orders/*",
+          "/driver/*",
+          "/client/*",
+          "/restaurant/*"
+        ]
       }
     ]
   }

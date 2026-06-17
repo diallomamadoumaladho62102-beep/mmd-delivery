@@ -7,6 +7,14 @@ import { supabase } from "./supabase";
 
 let handlerInstalled = false;
 
+export type MobilePushRole = "client" | "driver" | "restaurant";
+
+const MOBILE_PUSH_ROLES: MobilePushRole[] = ["client", "driver", "restaurant"];
+
+function isMobilePushRole(value: unknown): value is MobilePushRole {
+  return typeof value === "string" && MOBILE_PUSH_ROLES.includes(value as MobilePushRole);
+}
+
 export function setupNotifications(): void {
   if (handlerInstalled) return;
 
@@ -61,7 +69,38 @@ export async function getExpoPushToken(): Promise<string | null> {
   }
 }
 
-export async function registerUserPushToken(role: "client" | "driver" | "restaurant" | "admin") {
+/** Authoritative push role from profiles.role — never AsyncStorage alone. */
+export async function resolvePushRoleForUser(
+  userId: string,
+): Promise<MobilePushRole | null> {
+  const uid = String(userId ?? "").trim();
+  if (!uid) return null;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", uid)
+    .maybeSingle();
+
+  if (error) {
+    console.log("❌ resolvePushRoleForUser error:", error);
+    return null;
+  }
+
+  const role = String(data?.role ?? "")
+    .trim()
+    .toLowerCase();
+
+  return isMobilePushRole(role) ? role : null;
+}
+
+/**
+ * Registers the Expo push token under the DB profile role.
+ * If expectedRole is provided it must match profiles.role or registration is skipped.
+ */
+export async function registerUserPushToken(
+  expectedRole?: MobilePushRole,
+): Promise<string | null> {
   try {
     setupNotifications();
 
@@ -71,6 +110,20 @@ export async function registerUserPushToken(role: "client" | "driver" | "restaur
     } = await supabase.auth.getUser();
 
     if (userError || !user?.id) return null;
+
+    const dbRole = await resolvePushRoleForUser(user.id);
+    if (!dbRole) {
+      console.log("❌ registerUserPushToken skipped: unsupported profile role");
+      return null;
+    }
+
+    if (expectedRole && expectedRole !== dbRole) {
+      console.log("❌ registerUserPushToken role mismatch", {
+        expectedRole,
+        dbRole,
+      });
+      return null;
+    }
 
     const expoPushToken = await getExpoPushToken();
     if (!expoPushToken) return null;
@@ -88,7 +141,7 @@ export async function registerUserPushToken(role: "client" | "driver" | "restaur
       {
         user_id: user.id,
         device_id: String(deviceId),
-        role,
+        role: dbRole,
         expo_push_token: expoPushToken,
         platform: Platform.OS,
         app_version: appVersion,
@@ -96,7 +149,7 @@ export async function registerUserPushToken(role: "client" | "driver" | "restaur
       },
       {
         onConflict: "user_id,device_id,role",
-      }
+      },
     );
 
     if (error) {

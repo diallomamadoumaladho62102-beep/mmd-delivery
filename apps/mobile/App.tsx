@@ -1,8 +1,6 @@
 // apps/mobile/App.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
-import * as Application from "expo-application";
-import * as Device from "expo-device";
 import { ActivityIndicator, Image, Text, View } from "react-native";
 
 // i18n boot
@@ -12,7 +10,7 @@ import { AppNavigator } from "./src/navigation/AppNavigator";
 import { supabase } from "./src/lib/supabase";
 import { getSelectedRole } from "./src/lib/authRole";
 import { API_BASE_URL } from "./lib/apiBase";
-import { setupNotifications, getExpoPushToken } from "./src/lib/notifications";
+import { setupNotifications, registerUserPushToken } from "./src/lib/notifications";
 import { syncLocaleForRole } from "./src/i18n";
 
 type Role = "client" | "driver" | "restaurant";
@@ -22,13 +20,6 @@ type SessionLike = {
     id?: string;
   } | null;
 } | null;
-
-type SavedTokenState = {
-  userId: string;
-  token: string;
-  role: string;
-  deviceId: string;
-};
 
 function toRole(value: unknown): Role {
   const normalized = String(value ?? "").toLowerCase();
@@ -97,28 +88,6 @@ function FatalFallback({ message }: { message: string }): React.JSX.Element {
   );
 }
 
-async function getDeviceIdSafe(): Promise<string> {
-  try {
-    const androidIdFn = (Application as { getAndroidId?: () => string | null }).getAndroidId;
-
-    if (typeof androidIdFn === "function") {
-      const androidId = androidIdFn();
-      if (androidId) return String(androidId);
-    }
-
-    const iosIdFn = (
-      Application as { getIosIdForVendorAsync?: () => Promise<string | null> }
-    ).getIosIdForVendorAsync;
-
-    if (typeof iosIdFn === "function") {
-      const iosId = await iosIdFn();
-      if (iosId) return String(iosId);
-    }
-  } catch {}
-
-  return `${Device.modelName ?? "device"}-${Device.osName ?? "os"}-${Device.osVersion ?? "0"}`;
-}
-
 function getStripeGateSafe(): React.ComponentType<{
   initialRouteName: string;
 }> | null {
@@ -146,7 +115,6 @@ export default function App(): React.JSX.Element {
   const [session, setSession] = useState<SessionLike>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const lastSavedRef = useRef<SavedTokenState | null>(null);
   const registerInFlightRef = useRef(false);
   const lastRoleRef = useRef<Role | null>(null);
   const syncingLocaleRef = useRef(false);
@@ -199,58 +167,14 @@ export default function App(): React.JSX.Element {
 
         if (__DEV__) console.log("👤 USER ID (session):", userId);
 
-        const expoToken = await getExpoPushToken();
-
-        if (__DEV__) console.log("📲 EXPO PUSH TOKEN:", expoToken);
-
-        if (!expoToken) {
-          if (__DEV__) {
-            console.log("❌ Pas de token push disponible");
-          }
-          return;
-        }
-
-        const deviceId = await getDeviceIdSafe();
-        const role = toRole((await getSelectedRole()) ?? "client");
-        const platform = `${Device.osName ?? ""} ${Device.osVersion ?? ""}`.trim();
-        const appVersion = Application.nativeApplicationVersion ?? "unknown";
-
-        if (
-          lastSavedRef.current?.userId === userId &&
-          lastSavedRef.current?.token === expoToken &&
-          lastSavedRef.current?.role === role &&
-          lastSavedRef.current?.deviceId === deviceId
-        ) {
-          if (__DEV__) {
-            console.log("↩️ Token déjà enregistré, skip");
-          }
-          return;
-        }
-
-        const { error } = await supabase.from("user_push_tokens").upsert({
-          user_id: userId,
-          device_id: deviceId,
-          role,
-          expo_push_token: expoToken,
-          platform,
-          app_version: appVersion,
-          updated_at: new Date().toISOString(),
-        });
-
-        if (error) {
-          if (__DEV__) console.log("❌ Save token error:", error);
-          return;
-        }
-
-        lastSavedRef.current = {
-          userId,
-          token: expoToken,
-          role,
-          deviceId,
-        };
+        const expoToken = await registerUserPushToken();
 
         if (__DEV__) {
-          console.log("✅ Token enregistré dans user_push_tokens");
+          console.log(
+            expoToken
+              ? "✅ Token enregistré dans user_push_tokens"
+              : "❌ Pas de token push disponible ou rôle non supporté",
+          );
         }
       } finally {
         registerInFlightRef.current = false;

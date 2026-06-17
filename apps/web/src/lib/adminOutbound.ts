@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 export type OutboundChannel = "push" | "sms" | "email";
 
 export type SendPushInput = {
@@ -18,9 +20,7 @@ export type SendEmailInput = {
   body: string;
 };
 
-function getPushApiKey(): string {
-  return String(process.env.PUSH_API_KEY ?? "").trim();
-}
+const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 function getTwilioCreds(): { sid: string; token: string; from: string } | null {
   const sid = String(process.env.TWILIO_ACCOUNT_SID ?? "").trim();
@@ -32,44 +32,98 @@ function getTwilioCreds(): { sid: string; token: string; from: string } | null {
   return { sid, token, from };
 }
 
-export async function sendAdminPush(
-  input: SendPushInput
-): Promise<{ ok: boolean; response: Record<string, unknown> }> {
-  const apiKey = getPushApiKey();
-  if (!apiKey) {
-    return { ok: false, response: { error: "PUSH_API_KEY not configured" } };
+function getSupabaseAdminClient() {
+  const supabaseUrl =
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error("Missing Supabase admin env");
   }
 
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
-    process.env.VERCEL_URL?.trim() ||
-    "http://localhost:3000";
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false },
+  });
+}
 
-  const base = origin.startsWith("http") ? origin : `https://${origin}`;
+function isExpoPushToken(token: unknown): token is string {
+  const s = String(token ?? "").trim();
+  return (
+    /^ExponentPushToken\[[A-Za-z0-9+\-_=:/]+\]$/.test(s) ||
+    /^ExpoPushToken\[[A-Za-z0-9+\-_=:/]+\]$/.test(s)
+  );
+}
 
-  const res = await fetch(`${base}/api/push/send`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      user_id: input.userId,
+/** Staff-initiated push — uses admin RBAC upstream; does not call /api/push/send. */
+export async function sendAdminPush(
+  input: SendPushInput,
+): Promise<{ ok: boolean; response: Record<string, unknown> }> {
+  try {
+    const supabase = getSupabaseAdminClient();
+    let query = supabase
+      .from("user_push_tokens")
+      .select("expo_push_token")
+      .eq("user_id", input.userId);
+
+    if (input.role) {
+      query = query.eq("role", input.role);
+    }
+
+    const { data: rows, error } = await query.limit(50);
+    if (error) {
+      return { ok: false, response: { error: error.message } };
+    }
+
+    const tokens = [...new Set(
+      ((rows ?? []) as { expo_push_token?: string | null }[])
+        .map((row) => String(row.expo_push_token ?? "").trim())
+        .filter(isExpoPushToken),
+    )];
+
+    if (tokens.length === 0) {
+      return { ok: false, response: { ok: true, reason: "no_tokens", sent: 0 } };
+    }
+
+    const messages = tokens.map((to) => ({
+      to,
+      sound: "default",
       title: input.title,
       body: input.body,
-      role: input.role,
-    }),
-    cache: "no-store",
-  });
+      data: { source: "admin_communication" },
+    }));
 
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  const delivered =
-    res.ok && data.ok === true && data.reason !== "no_tokens" && data.sent !== 0;
-  return { ok: delivered, response: data };
+    const res = await fetch(EXPO_PUSH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(messages),
+      cache: "no-store",
+    });
+
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const delivered = res.ok && tokens.length > 0;
+    return {
+      ok: delivered,
+      response: {
+        ok: res.ok,
+        sent: tokens.length,
+        provider: data,
+      },
+    };
+  } catch (e: unknown) {
+    return {
+      ok: false,
+      response: {
+        error: e instanceof Error ? e.message : "admin_push_failed",
+      },
+    };
+  }
 }
 
 export async function sendAdminSms(
-  input: SendSmsInput
+  input: SendSmsInput,
 ): Promise<{ ok: boolean; response: Record<string, unknown> }> {
   const creds = getTwilioCreds();
   if (!creds) {
@@ -79,17 +133,19 @@ export async function sendAdminSms(
   const auth = Buffer.from(`${creds.sid}:${creds.token}`).toString("base64");
   const url = `https://api.twilio.com/2010-04-01/Accounts/${creds.sid}/Messages.json`;
 
+  const body = new URLSearchParams({
+    To: input.to,
+    From: creds.from,
+    Body: input.body,
+  });
+
   const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Basic ${auth}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: new URLSearchParams({
-      To: input.to,
-      From: creds.from,
-      Body: input.body,
-    }),
+    body: body.toString(),
     cache: "no-store",
   });
 
@@ -98,16 +154,13 @@ export async function sendAdminSms(
 }
 
 export async function sendAdminEmail(
-  input: SendEmailInput
+  input: SendEmailInput,
 ): Promise<{ ok: boolean; response: Record<string, unknown> }> {
   const apiKey = String(process.env.RESEND_API_KEY ?? "").trim();
   const from = String(process.env.ADMIN_EMAIL_FROM ?? "").trim();
 
   if (!apiKey || !from) {
-    return {
-      ok: false,
-      response: { error: "RESEND_API_KEY or ADMIN_EMAIL_FROM not configured" },
-    };
+    return { ok: false, response: { error: "Resend email not configured" } };
   }
 
   const res = await fetch("https://api.resend.com/emails", {

@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  assertPushTargetInContext,
+  parseSecurePushSendBody,
+  type SecurePushPayload,
+} from "@/lib/securePushSend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type PushRole = "client" | "driver" | "restaurant";
-
-type Body = {
-  user_id?: unknown;
-  title?: unknown;
-  body?: unknown;
-  data?: unknown;
-  role?: unknown;
-};
 
 type PushTokenRow = {
   expo_push_token: string | null;
@@ -30,10 +25,6 @@ const JSON_HEADERS = {
   "X-Content-Type-Options": "nosniff",
 } as const;
 
-const USER_ID_MAX_LENGTH = 128;
-const TITLE_MAX_LENGTH = 120;
-const BODY_MAX_LENGTH = 1000;
-const MAX_DATA_JSON_LENGTH = 4000;
 const MAX_TOKENS_PER_REQUEST = 50;
 const EXPO_PUSH_TIMEOUT_MS = 15000;
 
@@ -46,59 +37,6 @@ function json(body: Record<string, unknown>, status = 200) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function normalizeString(
-  value: unknown,
-  fieldName: string,
-  maxLength: number
-): string {
-  const s = String(value ?? "").trim();
-
-  if (!s) {
-    throw new Error(`${fieldName} is required`);
-  }
-
-  if (s.length > maxLength) {
-    throw new Error(`${fieldName} too long`);
-  }
-
-  return s;
-}
-
-function normalizeOptionalRole(value: unknown): PushRole | undefined {
-  const v = String(value ?? "").trim().toLowerCase();
-
-  if (!v) return undefined;
-  if (v === "client" || v === "driver" || v === "restaurant") return v;
-
-  throw new Error("Invalid role");
-}
-
-function normalizeUserId(value: unknown): string {
-  const userId = normalizeString(value, "user_id", USER_ID_MAX_LENGTH);
-
-  if (!/^[A-Za-z0-9._:-]+$/.test(userId)) {
-    throw new Error("Invalid user_id");
-  }
-
-  return userId;
-}
-
-function normalizeData(value: unknown): Record<string, unknown> {
-  if (value == null) return {};
-
-  if (!isRecord(value)) {
-    throw new Error("data must be an object");
-  }
-
-  const serialized = JSON.stringify(value);
-
-  if (serialized.length > MAX_DATA_JSON_LENGTH) {
-    throw new Error("data too large");
-  }
-
-  return value;
 }
 
 function isExpoPushToken(token: unknown): token is string {
@@ -144,30 +82,6 @@ function getSupabaseAdminClient() {
   });
 }
 
-async function parseBody(req: Request): Promise<{
-  user_id: string;
-  title: string;
-  body: string;
-  data: Record<string, unknown>;
-  role?: PushRole;
-}> {
-  let raw: Body;
-
-  try {
-    raw = (await req.json()) as Body;
-  } catch {
-    throw new Error("Invalid JSON body");
-  }
-
-  return {
-    user_id: normalizeUserId(raw.user_id),
-    title: normalizeString(raw.title, "title", TITLE_MAX_LENGTH),
-    body: normalizeString(raw.body, "body", BODY_MAX_LENGTH),
-    data: normalizeData(raw.data),
-    role: normalizeOptionalRole(raw.role),
-  };
-}
-
 function summarizeExpoTickets(tickets: ExpoTicket[] | undefined) {
   const arr = Array.isArray(tickets) ? tickets : [];
 
@@ -184,6 +98,98 @@ function summarizeExpoTickets(tickets: ExpoTicket[] | undefined) {
     ok_count: ok,
     error_count: error,
   };
+}
+
+function mapValidationStatus(message: string): number {
+  if (
+    message === "Invalid JSON body" ||
+    message.startsWith("Invalid ") ||
+    message.includes(" is required") ||
+    message.includes(" too long") ||
+    message === "data must be an object" ||
+    message === "data too large"
+  ) {
+    return 400;
+  }
+
+  if (message === "Target user is not a participant of the provided context") {
+    return 403;
+  }
+
+  if (message === "Context resource not found") {
+    return 404;
+  }
+
+  if (message === "Context verification failed") {
+    return 503;
+  }
+
+  return 500;
+}
+
+async function sendExpoPush(payload: SecurePushPayload, tokens: string[]) {
+  const messages = tokens.map((to) => ({
+    to,
+    sound: "default",
+    title: payload.title,
+    body: payload.body,
+    data: payload.data,
+  }));
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), EXPO_PUSH_TIMEOUT_MS);
+
+  try {
+    const expoRes = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(messages),
+      signal: controller.signal,
+      cache: "no-store",
+    });
+
+    let expoJson: unknown = {};
+    try {
+      expoJson = await expoRes.json();
+    } catch {
+      return { ok: false as const, status: 502, error: "Invalid push provider response" };
+    }
+
+    const expoData = isRecord(expoJson) ? expoJson : {};
+    const tickets = Array.isArray(expoData.data)
+      ? (expoData.data as ExpoTicket[])
+      : undefined;
+    const summary = summarizeExpoTickets(tickets);
+
+    if (!expoRes.ok) {
+      return {
+        ok: false as const,
+        status: 502,
+        error: "Push provider rejected request",
+        summary,
+        token_count: tokens.length,
+      };
+    }
+
+    return {
+      ok: true as const,
+      summary,
+      token_count: tokens.length,
+    };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Expo push request failed";
+    console.error("[push/send] expo request failed", {
+      user_id: payload.user_id,
+      role: payload.role,
+      message,
+    });
+    return { ok: false as const, status: 502, error: "Push provider request failed" };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function POST(req: Request) {
@@ -203,24 +209,29 @@ export async function POST(req: Request) {
       return json({ ok: false, error: "Unauthorized" }, 401);
     }
 
-    const payload = await parseBody(req);
-    const supabase = getSupabaseAdminClient();
-
-    let query = supabase
-      .from("user_push_tokens")
-      .select("expo_push_token")
-      .eq("user_id", payload.user_id);
-
-    if (payload.role) {
-      query = query.eq("role", payload.role);
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return json({ ok: false, error: "Invalid JSON body" }, 400);
     }
 
-    const { data: rows, error } = await query.limit(MAX_TOKENS_PER_REQUEST);
+    const payload = parseSecurePushSendBody(raw);
+    const supabase = getSupabaseAdminClient();
+
+    await assertPushTargetInContext(supabase, payload);
+
+    const { data: rows, error } = await supabase
+      .from("user_push_tokens")
+      .select("expo_push_token")
+      .eq("user_id", payload.user_id)
+      .eq("role", payload.role)
+      .limit(MAX_TOKENS_PER_REQUEST);
 
     if (error) {
       console.error("[push/send] token lookup failed", {
         user_id: payload.user_id,
-        role: payload.role ?? null,
+        role: payload.role,
         message: error.message,
         code: error.code,
       });
@@ -242,108 +253,28 @@ export async function POST(req: Request) {
       });
     }
 
-    const messages = tokens.map((to) => ({
-      to,
-      sound: "default",
-      title: payload.title,
-      body: payload.body,
-      data: payload.data,
-    }));
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), EXPO_PUSH_TIMEOUT_MS);
-
-    let expoRes: Response;
-    try {
-      expoRes = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(messages),
-        signal: controller.signal,
-        cache: "no-store",
-      });
-    } catch (e: unknown) {
-      clearTimeout(timeout);
-
-      const message =
-        e instanceof Error ? e.message : "Expo push request failed";
-
-      console.error("[push/send] expo request failed", {
-        user_id: payload.user_id,
-        role: payload.role ?? null,
-        message,
-      });
-
-      return json({ ok: false, error: "Push provider request failed" }, 502);
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    let expoJson: unknown = {};
-    try {
-      expoJson = await expoRes.json();
-    } catch {
-      console.error("[push/send] expo returned non-json response", {
-        user_id: payload.user_id,
-        role: payload.role ?? null,
-        status: expoRes.status,
-      });
-
-      return json({ ok: false, error: "Invalid push provider response" }, 502);
-    }
-
-    const expoData = isRecord(expoJson) ? expoJson : {};
-    const tickets = Array.isArray(expoData.data)
-      ? (expoData.data as ExpoTicket[])
-      : undefined;
-
-    const summary = summarizeExpoTickets(tickets);
-
-    if (!expoRes.ok) {
-      console.error("[push/send] expo provider error", {
-        user_id: payload.user_id,
-        role: payload.role ?? null,
-        status: expoRes.status,
-        summary,
-      });
-
+    const expoResult = await sendExpoPush(payload, tokens);
+    if (!expoResult.ok) {
       return json(
         {
           ok: false,
-          error: "Push provider rejected request",
+          error: expoResult.error,
           sent: 0,
-          token_count: tokens.length,
+          token_count: expoResult.token_count ?? tokens.length,
         },
-        502
+        expoResult.status,
       );
     }
 
     return json({
       ok: true,
       sent: tokens.length,
-      token_count: tokens.length,
-      ...summary,
+      token_count: expoResult.token_count,
+      ...expoResult.summary,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "unknown_error";
-
-    const status =
-      message === "Invalid JSON body" ||
-      message === "Invalid role" ||
-      message === "Invalid user_id" ||
-      message === "data must be an object" ||
-      message === "data too large" ||
-      message === "title is required" ||
-      message === "body is required" ||
-      message === "user_id is required" ||
-      message === "title too long" ||
-      message === "body too long" ||
-      message === "user_id too long"
-        ? 400
-        : 500;
+    const status = mapValidationStatus(message);
 
     if (status === 500) {
       console.error("[push/send] fatal error", { message });
@@ -352,9 +283,9 @@ export async function POST(req: Request) {
     return json(
       {
         ok: false,
-        error: status === 400 ? message : "Internal server error",
+        error: status >= 500 ? "Internal server error" : message,
       },
-      status
+      status,
     );
   }
 }

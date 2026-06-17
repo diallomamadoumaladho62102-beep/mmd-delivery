@@ -91,9 +91,6 @@ export async function POST(request: NextRequest) {
 
     if (channel === "push") {
       if (!userId) return fail("invalid_user_id", 400);
-      if (!process.env.PUSH_API_KEY?.trim()) {
-        return fail("missing_push_config", 503);
-      }
     }
 
     if (channel === "sms" && !recipientAddress) {

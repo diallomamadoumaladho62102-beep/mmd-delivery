@@ -4,6 +4,7 @@ import * as Linking from "expo-linking";
 import {
   CANONICAL_APP_SCHEME,
   LEGACY_APP_SCHEME,
+  MOBILE_LINKING_SCREEN_PATHS,
   normalizeDeepLinkUrl,
 } from "../lib/deepLinks";
 import { NavigationContainer } from "@react-navigation/native";
@@ -304,9 +305,10 @@ function normalizeAppRole(value: unknown): AppRole {
 
 function isResetPasswordUrl(url: string | null | undefined) {
   if (!url) return false;
-  const normalized = url.toLowerCase();
+  const normalized = (normalizeDeepLinkUrl(url) ?? url).toLowerCase();
 
   return (
+    normalized.includes("auth/reset-password") ||
     normalized.includes("reset-password") ||
     normalized.includes("type=recovery") ||
     normalized.includes("type%3drecovery")
@@ -384,10 +386,10 @@ export function AppNavigator({
       ],
       config: {
         screens: {
-          ResetPassword: "reset-password",
-          ClientAuth: "signup/client",
-          DriverAuth: "signup/driver",
-          RestaurantAuth: "signup/restaurant",
+          ResetPassword: MOBILE_LINKING_SCREEN_PATHS.ResetPassword,
+          ClientAuth: MOBILE_LINKING_SCREEN_PATHS.ClientAuth,
+          DriverAuth: MOBILE_LINKING_SCREEN_PATHS.DriverAuth,
+          RestaurantAuth: MOBILE_LINKING_SCREEN_PATHS.RestaurantAuth,
         },
       },
     }),
@@ -568,7 +570,7 @@ export function AppNavigator({
       r === "ClientChat" ||
       r === "MmdAi" ||
       r === "ClientProfile" ||
-      r === "LocationPickerTest" ||
+      (__DEV__ ? r === "LocationPickerTest" : false) ||
       r === "MMDLocationPicker" ||
       r === "TaxiHome" ||
       r === "TaxiQuote" ||
@@ -960,11 +962,13 @@ export function AppNavigator({
         <Stack.Screen name="RestaurantAuth" component={RestaurantAuthScreen} />
 
         <Stack.Screen name="ClientProfile" component={ClientProfileScreen} />
-        <Stack.Screen
-          name="LocationPickerTest"
-          component={LocationPickerTestScreen}
-          options={{ title: "Africa Location Test" }}
-        />
+        {__DEV__ ? (
+          <Stack.Screen
+            name="LocationPickerTest"
+            component={LocationPickerTestScreen}
+            options={{ title: "Africa Location Test" }}
+          />
+        ) : null}
 
         <Stack.Screen
           name="MMDLocationPicker"

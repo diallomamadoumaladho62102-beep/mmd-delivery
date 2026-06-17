@@ -18,7 +18,7 @@ import { Audio } from "expo-av";
 import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
 import { supabase } from "../lib/supabase";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
 import MarketScopePill from "../components/market/MarketScopePill";
@@ -28,6 +28,7 @@ import {
   getMapStyleDark,
   getMapStyleStreets,
 } from "../lib/mapboxConfig";
+import { registerUserPushToken } from "../lib/notifications";
 
 const FALLBACK_RESTAURANT_ID = "";
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
@@ -615,6 +616,12 @@ export function RestaurantHomeScreen({ navigation }: any) {
   useEffect(() => {
     ensureMapboxTokenApplied();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void registerUserPushToken("restaurant");
+    }, []),
+  );
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);

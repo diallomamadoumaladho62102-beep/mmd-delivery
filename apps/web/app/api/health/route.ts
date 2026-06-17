@@ -1,14 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { isInternalHealthAuthorized } from "@/lib/internalHealthAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!isInternalHealthAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const checks: Record<string, unknown> = {
     ok: true,
     time: new Date().toISOString(),
-    env: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "unknown",
   };
 
   try {

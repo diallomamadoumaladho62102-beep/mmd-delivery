@@ -21,6 +21,7 @@ import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { ClientHomeV4View } from "../components/client/home/ClientHomeV4View";
 import { v4Styles } from "../components/client/home/clientHomeTheme";
+import { registerUserPushToken } from "../lib/notifications";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientHome">;
 
@@ -476,6 +477,7 @@ export function ClientHomeScreen() {
     useCallback(() => {
       setMenuOpen(false);
       void refreshPlatformFeatures();
+      void registerUserPushToken("client");
       return () => {
         setMenuOpen(false);
       };

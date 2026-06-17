@@ -1,19 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { countStripeWebhookEvents24h } from "@/lib/stripeWebhookEventsHealth";
+import { isInternalHealthAuthorized } from "@/lib/internalHealthAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CANONICAL_WEBHOOK_URL = "https://www.mmddelivery.com/api/stripe/webhook";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  if (!isInternalHealthAuthorized(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const checks: Record<string, unknown> = {
     ok: true,
     canonical_webhook_url: CANONICAL_WEBHOOK_URL,
     edge_webhook_must_be_disabled: true,
-    edge_disable_env: "MMD_STRIPE_WEBHOOK_DISABLED=true",
-    vercel_handler: "apps/web/app/api/stripe/webhook/route.ts",
     time: new Date().toISOString(),
   };
 
