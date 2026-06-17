@@ -45,3 +45,28 @@ test("AASA file includes signup and auth reset paths", () => {
     );
   }
 });
+
+test("assetlinks.json includes Android package and fingerprint", () => {
+  const assetPath = path.join(
+    repoRoot,
+    "apps/web/public/.well-known/assetlinks.json",
+  );
+  const parsed = JSON.parse(fs.readFileSync(assetPath, "utf8")) as Array<{
+    target?: { package_name?: string; sha256_cert_fingerprints?: string[] };
+  }>;
+  assert.equal(parsed[0]?.target?.package_name, "com.maladho2025.mmddelivery");
+  assert.ok((parsed[0]?.target?.sha256_cert_fingerprints?.length ?? 0) > 0);
+});
+
+test("required device universal link paths are declared", () => {
+  const devicePaths = [
+    "signup/client",
+    "signup/driver",
+    "signup/restaurant",
+    "auth/reset-password",
+  ];
+  for (const p of devicePaths) {
+    assert.equal(isAasaPathCovered(p), true, `AASA must cover /${p}`);
+  }
+  assert.equal(isAasaPathCovered("r/TESTCODE"), true, "AASA must cover /r/*");
+});
