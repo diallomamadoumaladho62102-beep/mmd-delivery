@@ -27,6 +27,7 @@ apps/mobile/android/
 
 # Local UI validation captures (never commit)
 docs/screenshots/
+apps/mobile/artifacts/
 
 *.ipa
 build*/
