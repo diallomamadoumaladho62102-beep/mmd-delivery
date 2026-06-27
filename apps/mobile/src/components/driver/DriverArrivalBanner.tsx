@@ -34,6 +34,7 @@ export function DriverArrivalBanner({
         left: 14,
         right: 14,
         bottom: 120,
+        zIndex: 28,
         borderRadius: 22,
         padding: 14,
         backgroundColor: "rgba(5,46,22,0.96)",

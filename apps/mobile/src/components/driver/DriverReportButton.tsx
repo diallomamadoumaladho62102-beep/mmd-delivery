@@ -113,6 +113,7 @@ export function DriverReportButton({
           position: "absolute",
           left: 14,
           bottom: bottomOffset,
+          zIndex: 30,
           alignItems: "flex-start",
         }}
       >

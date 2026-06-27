@@ -1,21 +1,29 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import type { NavigationRoute } from "../../lib/navigationService";
+import {
+  formatRouteAltLabel,
+  formatTripDistance,
+  type NavigationLocale,
+} from "../../lib/navigationLocale";
 
 type Props = {
   routes: NavigationRoute[];
   selectedIndex: number;
+  topOffset: number;
+  navLocale: NavigationLocale;
   onSelect: (index: number) => void;
 };
 
-function formatRouteSummary(route: NavigationRoute): string {
-  const miles = route.distanceMeters / 1609.344;
-  return `${route.etaMinutes} min · ${miles.toFixed(1)} mi`;
+function formatRouteSummary(route: NavigationRoute, locale: NavigationLocale): string {
+  return `${route.etaMinutes} min · ${formatTripDistance(route.distanceMeters, locale)}`;
 }
 
 export function DriverNavigationRouteAlternatives({
   routes,
   selectedIndex,
+  topOffset,
+  navLocale,
   onSelect,
 }: Props) {
   if (routes.length <= 1) return null;
@@ -24,9 +32,10 @@ export function DriverNavigationRouteAlternatives({
     <View
       style={{
         position: "absolute",
-        left: 12,
-        right: 12,
-        top: 210,
+        left: 10,
+        right: 56,
+        top: topOffset,
+        zIndex: 35,
       }}
     >
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -38,31 +47,31 @@ export function DriverNavigationRouteAlternatives({
               onPress={() => onSelect(index)}
               activeOpacity={0.9}
               style={{
-                marginRight: 10,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 16,
+                marginRight: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 10,
                 backgroundColor: selected
-                  ? "rgba(37,99,235,0.92)"
-                  : "rgba(2,6,23,0.88)",
+                  ? "rgba(37,99,235,0.88)"
+                  : "rgba(15,23,42,0.72)",
                 borderWidth: 1,
                 borderColor: selected
-                  ? "rgba(147,197,253,0.8)"
-                  : "rgba(148,163,184,0.24)",
+                  ? "rgba(96,165,250,0.55)"
+                  : "rgba(71,85,105,0.35)",
               }}
             >
-              <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "900" }}>
-                {index === 0 ? "Fastest" : `Alt ${index}`}
+              <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "900" }}>
+                {formatRouteAltLabel(index, navLocale)}
               </Text>
               <Text
                 style={{
-                  color: selected ? "#DBEAFE" : "#CBD5E1",
-                  fontSize: 11,
+                  color: selected ? "#DBEAFE" : "#94A3B8",
+                  fontSize: 10,
                   fontWeight: "700",
-                  marginTop: 3,
+                  marginTop: 1,
                 }}
               >
-                {formatRouteSummary(route)}
+                {formatRouteSummary(route, navLocale)}
               </Text>
             </TouchableOpacity>
           );

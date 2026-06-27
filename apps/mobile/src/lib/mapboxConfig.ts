@@ -63,6 +63,11 @@ export function getMapStyleDark(): string {
   );
 }
 
+/** Style sombre sans surbrillance route Mapbox (navigation-night colore toute la chaussée). */
+export function getMapStyleNavigation(): string {
+  return getMapStyleDark();
+}
+
 /** @deprecated Use getMapStyleStreets() for lazy Mapbox access */
 export const MAP_STYLE_STREETS = "mapbox://styles/mapbox/streets-v12";
 

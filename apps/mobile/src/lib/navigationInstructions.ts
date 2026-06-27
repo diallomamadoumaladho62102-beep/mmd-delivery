@@ -1,5 +1,10 @@
 import type { NavigationRouteStep } from "./navigationService";
 import type { NavigationStage } from "./driverNavigation/types";
+import {
+  formatManeuverDistanceLabel,
+  resolveNavigationLocale,
+  type NavigationLocale,
+} from "./navigationLocale";
 
 export type NavigationInstruction = {
   title: string;
@@ -8,15 +13,19 @@ export type NavigationInstruction = {
   distanceMeters: number;
   voiceText: string;
   maneuverType?: string;
+  secondaryTitle?: string;
+  secondaryManeuverType?: string;
+  secondaryDistanceMeters?: number;
 };
 
 export function formatNavigationDistance(
   meters: number,
-  locale = "en",
+  locale: string | NavigationLocale = "en",
 ): string {
   if (!Number.isFinite(meters)) return "—";
 
-  const useMetric = !locale.startsWith("en");
+  const resolved = typeof locale === "string" ? resolveNavigationLocale(locale) : locale;
+  const useMetric = resolved !== "en";
 
   if (useMetric) {
     if (meters < 1000) {
@@ -51,40 +60,90 @@ export function pickCurrentStep(
   return steps[steps.length - 1] ?? null;
 }
 
+export function pickNextStep(
+  steps: NavigationRouteStep[],
+  remainingMeters: number,
+): NavigationRouteStep | null {
+  if (steps.length < 2) return null;
+
+  const current = pickCurrentStep(steps, remainingMeters);
+  if (!current) return null;
+
+  const currentIndex = steps.indexOf(current);
+  if (currentIndex < 0 || currentIndex >= steps.length - 1) return null;
+
+  return steps[currentIndex + 1] ?? null;
+}
+
+function inferManeuverType(instruction: string): string | undefined {
+  const token = instruction.split(" ")[0]?.toLowerCase();
+  return token || undefined;
+}
+
+export function extractStreetName(instruction: string): string {
+  const trimmed = instruction.trim();
+  const patterns = [
+    /\bsur\s+(.+)$/i,
+    /\bonto\s+(.+)$/i,
+    /\bon\s+(.+)$/i,
+    /\bvers\s+(.+)$/i,
+    /\btoward\s+(.+)$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = trimmed.match(pattern);
+    if (match?.[1]) return match[1].trim().replace(/[.,]$/, "");
+  }
+
+  return trimmed;
+}
+
 export function buildNavigationInstruction(params: {
   remainingMeters: number;
   stage: NavigationStage;
   steps?: NavigationRouteStep[];
   locale?: string;
 }): NavigationInstruction {
-  const { remainingMeters, stage, steps = [], locale = "en" } = params;
+  const { remainingMeters, stage, steps = [], locale: appLocale = "en" } = params;
+  const locale = resolveNavigationLocale(appLocale);
   const currentStep = pickCurrentStep(steps, remainingMeters);
+  const nextStep = pickNextStep(steps, remainingMeters);
   const maneuverDistanceMeters = currentStep?.distanceMeters ?? remainingMeters;
-  const maneuverDistanceText = formatNavigationDistance(
+  const maneuverDistanceText = formatManeuverDistanceLabel(
     maneuverDistanceMeters,
     locale,
   );
   const totalRemainingText = formatNavigationDistance(remainingMeters, locale);
 
   if (currentStep?.instruction) {
+    const secondaryTitle = nextStep?.instruction?.trim();
     return {
       title: currentStep.instruction,
       subtitle: totalRemainingText,
       maneuverDistanceMeters,
       distanceMeters: remainingMeters,
       voiceText: `${maneuverDistanceText}. ${currentStep.instruction}.`,
-      maneuverType: currentStep.instruction.split(" ")[0]?.toLowerCase(),
+      maneuverType: inferManeuverType(currentStep.instruction),
+      secondaryTitle: secondaryTitle || undefined,
+      secondaryManeuverType: secondaryTitle
+        ? inferManeuverType(secondaryTitle)
+        : undefined,
+      secondaryDistanceMeters: nextStep?.distanceMeters,
     };
   }
 
   const fallbackTitle =
     stage === "pickup"
-      ? locale.startsWith("fr")
+      ? locale === "fr"
         ? "Dirigez-vous vers le pickup"
-        : "Head to pickup location"
-      : locale.startsWith("fr")
+        : locale === "es"
+          ? "Dirígete al punto de recogida"
+          : "Head to pickup location"
+      : locale === "fr"
         ? "Dirigez-vous vers le dropoff"
-        : "Head to dropoff location";
+        : locale === "es"
+          ? "Dirígete al punto de entrega"
+          : "Head to dropoff location";
 
   return {
     title: fallbackTitle,

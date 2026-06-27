@@ -20,6 +20,7 @@ type UseDriverNavigationRouteParams = {
   destination: CoordinatePoint | null;
   stage: NavigationStage;
   language?: string;
+  alternatives?: boolean;
   onNetworkFailure?: () => void;
   onNetworkSuccess?: () => void;
   onReroute?: () => void;
@@ -45,6 +46,7 @@ export function useDriverNavigationRoute(
     destination,
     stage,
     language = "en",
+    alternatives = false,
     onNetworkFailure,
     onNetworkSuccess,
     onReroute,
@@ -115,7 +117,7 @@ export function useDriverNavigationRoute(
           destination,
           [],
           controller.signal,
-          { language, alternatives: true },
+          { language, alternatives },
         );
 
         if (controller.signal.aborted) return;
@@ -145,6 +147,7 @@ export function useDriverNavigationRoute(
       }
     },
     [
+      alternatives,
       applyRoute,
       destination,
       language,

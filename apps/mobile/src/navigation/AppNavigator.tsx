@@ -231,6 +231,7 @@ export type RootStackParamList = {
     orderId: string;
     sourceTable?: "orders" | "delivery_requests" | "taxi_rides" | "marketplace_delivery_jobs";
     destinationStage?: "pickup" | "dropoff";
+    previewProgress?: number;
   };
   DriverTaxiChat: { rideId: string };
   DriverChat: {
@@ -724,6 +725,12 @@ export function AppNavigator({
       if (!navReady()) return;
 
       const cur = currentRoute();
+      const navPreviewActive =
+        __DEV__ && process.env.EXPO_PUBLIC_DRIVER_NAV_PREVIEW === "1";
+
+      if (navPreviewActive && cur === "DriverMap") {
+        return;
+      }
 
       if (cur === "ResetPassword" || resetPasswordFlowRef.current) {
         if (cur !== "ResetPassword") openResetPassword();
@@ -734,6 +741,10 @@ export function AppNavigator({
       const session = data.session ?? null;
 
       if (!session) {
+        if (navPreviewActive && cur === "DriverMap") {
+          return;
+        }
+
         if (
           cur === "RoleSelect" ||
           cur === "ClientAuth" ||
@@ -1059,7 +1070,15 @@ export function AppNavigator({
           name="DriverOrderDetails"
           component={DriverOrderDetailsScreen}
         />
-        <Stack.Screen name="DriverMap" component={DriverMapScreen} />
+        <Stack.Screen
+          name="DriverMap"
+          component={DriverMapScreen}
+          initialParams={
+            __DEV__ && process.env.EXPO_PUBLIC_DRIVER_NAV_PREVIEW === "1"
+              ? { orderId: "__preview__" }
+              : undefined
+          }
+        />
         <Stack.Screen name="DriverChat" component={DriverChatScreen} />
         <Stack.Screen name="DriverTaxiChat" component={DriverTaxiChatScreen} />
         <Stack.Screen

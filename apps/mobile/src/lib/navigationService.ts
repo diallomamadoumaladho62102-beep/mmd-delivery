@@ -4,6 +4,7 @@ import type { CoordinatePoint } from "./coordinates";
 import { distanceMeters } from "./coordinates";
 import { distanceToRouteMeters } from "./navigationProgress";
 import { getMapboxToken, isMapboxConfigured } from "./mapboxConfig";
+import { resolveNavigationLocale } from "./navigationLocale";
 
 export type RoutePoint = CoordinatePoint;
 
@@ -27,12 +28,7 @@ const DIRECTIONS_BASE =
 
 /** Map app locale to Mapbox Directions language code. */
 export function mapboxDirectionsLanguage(appLocale: string): string {
-  const base = String(appLocale || "en").trim().toLowerCase().split("-")[0];
-  if (base.startsWith("fr") || base === "ff") return "fr";
-  if (base.startsWith("es")) return "es";
-  if (base.startsWith("ar")) return "ar";
-  if (base.startsWith("zh")) return "zh";
-  return "en";
+  return resolveNavigationLocale(appLocale);
 }
 
 export type FetchNavigationRouteOptions = {

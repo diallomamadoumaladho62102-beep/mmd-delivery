@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import { ActivityIndicator, Image, Text, View } from "react-native";
+import * as DevClient from "expo-dev-client";
 
 // i18n boot
 import "./src/i18n";
@@ -240,10 +241,27 @@ export default function App(): React.JSX.Element {
     };
   }, []);
 
+  const navPreviewActive =
+    __DEV__ && process.env.EXPO_PUBLIC_DRIVER_NAV_PREVIEW === "1";
+
+  useEffect(() => {
+    if (!navPreviewActive) return;
+    const timer = setTimeout(() => {
+      try {
+        DevClient.hideMenu();
+      } catch {
+        // ignore dev-client menu errors
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [navPreviewActive]);
+
   // Important production fix:
   // Do not open ClientHome by default for every authenticated user.
   // AppNavigator resolves the real role and redirects properly.
-  const initialRouteName: "RoleSelect" = "RoleSelect";
+  const initialRouteName: "RoleSelect" | "DriverMap" = navPreviewActive
+    ? "DriverMap"
+    : "RoleSelect";
 
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
   const StripeGate = useMemo(() => getStripeGateSafe(), []);
