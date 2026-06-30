@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { RestaurantCommandCenterData } from "../../../lib/restaurantCommandCenterApi";
 import {
   ensureMapboxTokenApplied,
-  getMapStyleDark,
+  getMapStyleStreets,
   isMapboxConfigured,
 } from "../../../lib/mapboxConfig";
 import { rowDirection, textAlignStart } from "../../../i18n/rtl";
@@ -103,7 +103,7 @@ function RestaurantLiveMapComponent({
         <View style={[styles.frame, { height: mapHeight }]}>
           <View style={styles.frameGlow} pointerEvents="none" />
           <View style={styles.wrap}>
-            <Mapbox.MapView style={styles.map} styleURL={getMapStyleDark()} scaleBarEnabled={false}>
+            <Mapbox.MapView style={styles.map} styleURL={getMapStyleStreets()} scaleBarEnabled={false}>
               <Mapbox.Camera ref={cameraRef} centerCoordinate={restaurantCoordinate} zoomLevel={13} />
 
               <Mapbox.PointAnnotation id="restaurant-pin" coordinate={restaurantCoordinate}>
