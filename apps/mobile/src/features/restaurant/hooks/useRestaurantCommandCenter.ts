@@ -115,6 +115,18 @@ export function useRestaurantCommandCenter(): UseRestaurantCommandCenterResult {
           void silentRefresh();
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "restaurant_profiles",
+          filter: `user_id=eq.${restaurantUserId}`,
+        },
+        () => {
+          void silentRefresh();
+        }
+      )
       .subscribe();
 
     return () => {

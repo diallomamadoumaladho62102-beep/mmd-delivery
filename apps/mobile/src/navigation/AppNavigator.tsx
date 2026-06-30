@@ -833,7 +833,7 @@ export function AppNavigator({
         }
 
         if (isInRestaurantArea(cur)) return;
-        resetTo("RestaurantHome");
+        resetTo("RestaurantCommandCenter");
         return;
       }
 

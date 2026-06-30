@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useRef } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Mapbox from "@rnmapbox/maps";
 import { useTranslation } from "react-i18next";
 import type { RestaurantCommandCenterData } from "../../../lib/restaurantCommandCenterApi";
@@ -18,6 +18,7 @@ type Props = {
   mapData: RestaurantCommandCenterData["map"];
   focusOrderId?: string | null;
   height?: number;
+  onOpenFullMap?: () => void;
 };
 
 function RestaurantLiveMapComponent({
@@ -25,6 +26,7 @@ function RestaurantLiveMapComponent({
   mapData,
   focusOrderId,
   height = 360,
+  onOpenFullMap,
 }: Props) {
   const { t } = useTranslation();
   const cameraRef = useRef<Mapbox.Camera | null>(null);
@@ -80,6 +82,15 @@ function RestaurantLiveMapComponent({
         subtitle={restaurant.name}
         badge={driverPoints.length > 0 ? String(driverPoints.length) : undefined}
         badgeColor={CC.blue}
+        rightSlot={
+          onOpenFullMap ? (
+            <Pressable style={styles.fullMapBtn} onPress={onOpenFullMap}>
+              <Text style={styles.fullMapText}>
+                {t("restaurant.commandCenter.liveMapFull", "Map operations")}
+              </Text>
+            </Pressable>
+          ) : null
+        }
       />
 
       {!isMapboxConfigured() || !mapReady || !restaurantCoordinate ? (
@@ -179,6 +190,19 @@ export const RestaurantLiveMap = memo(RestaurantLiveMapComponent);
 const styles = StyleSheet.create({
   shell: {
     paddingBottom: 14,
+  },
+  fullMapBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: CC.purpleGlow,
+    borderWidth: 1,
+    borderColor: CC.glassBorder,
+  },
+  fullMapText: {
+    color: CC.purpleLight,
+    fontSize: 11,
+    fontWeight: "900",
   },
   frame: {
     position: "relative",

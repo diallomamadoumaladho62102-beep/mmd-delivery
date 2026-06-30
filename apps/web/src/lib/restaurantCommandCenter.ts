@@ -4,10 +4,18 @@ import {
   computeRestaurantTotalsFromOrders,
   getRestaurantCommissionRate,
 } from "@/lib/restaurantTax";
+import {
+  computeDayKpiSnapshot,
+  isCompletedOrderStatus,
+  isPaidFoodOrder,
+  orderAmount,
+  pctChange,
+} from "@/lib/restaurantCommandCenterKpi";
 
 type GenericRow = Record<string, unknown>;
 
 const DRIVER_ARRIVED_METERS = 50;
+const DRIVER_APPROACHING_METERS = 400;
 const DRIVER_APPROACHING_ETA_MINUTES = 5;
 const ATTENTION_READY_WAIT_MINUTES = 8;
 const ATTENTION_PENDING_MINUTES = 3;
@@ -98,8 +106,8 @@ export type CommandCenterData = {
     customersToday: number;
     customersYesterday: number;
     customersChangePct: number | null;
-    averageBasket: number;
-    averageBasketYesterday: number;
+    averageBasket: number | null;
+    averageBasketYesterday: number | null;
     averageBasketChangePct: number | null;
     rating: number | null;
     ratingCount: number;
@@ -141,22 +149,8 @@ function asNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function pctChange(current: number, previous: number): number | null {
-  if (!Number.isFinite(previous) || previous <= 0) {
-    if (current > 0) return 100;
-    return null;
-  }
-  return Math.round(((current - previous) / previous) * 1000) / 10;
-}
-
 function startOfLocalDayUtc(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-function orderAmount(row: GenericRow): number {
-  const total = asNumber(row.total);
-  if (total > 0) return total;
-  return asNumber(row.subtotal) + asNumber(row.tax);
 }
 
 function orderLabel(orderId: string): string {
@@ -181,9 +175,19 @@ function distanceMeters(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function estimateEtaMinutes(distanceM: number): number {
-  const avgSpeedMps = 8.5;
-  return Math.max(1, Math.ceil(distanceM / avgSpeedMps / 60));
+function isDriverApproaching(params: {
+  distanceMeters: number | null;
+  etaMinutes: number | null;
+}): boolean {
+  const { distanceMeters, etaMinutes } = params;
+  if (etaMinutes != null && etaMinutes > 0 && etaMinutes <= DRIVER_APPROACHING_ETA_MINUTES) {
+    return true;
+  }
+  return (
+    distanceMeters != null &&
+    distanceMeters > DRIVER_ARRIVED_METERS &&
+    distanceMeters <= DRIVER_APPROACHING_METERS
+  );
 }
 
 function isRestaurantOrder(row: GenericRow, restaurantUserId: string): boolean {
@@ -252,6 +256,7 @@ export async function getRestaurantCommandCenter(params: {
       )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
+      .eq("payment_status", "paid")
       .gte("created_at", todayStart.toISOString()),
     supabase
       .from("orders")
@@ -260,6 +265,7 @@ export async function getRestaurantCommandCenter(params: {
       )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
+      .eq("payment_status", "paid")
       .gte("created_at", yesterdayStart.toISOString())
       .lt("created_at", todayStart.toISOString()),
     supabase
@@ -346,36 +352,10 @@ export async function getRestaurantCommandCenter(params: {
     ],
   });
 
-  const deliveredToday = todayRows.filter((row) => {
-    const status = String(row.status ?? "").toLowerCase();
-    return status === "delivered" || status === "completed";
+  const dayKpis = computeDayKpiSnapshot({
+    todayRows,
+    yesterdayRows,
   });
-
-  const revenueToday = deliveredToday.reduce((sum, row) => sum + orderAmount(row), 0);
-  const revenueYesterday = yesterdayRows
-    .filter((row) => {
-      const status = String(row.status ?? "").toLowerCase();
-      return status === "delivered" || status === "completed";
-    })
-    .reduce((sum, row) => sum + orderAmount(row), 0);
-
-  const ordersToday = todayRows.length;
-  const ordersYesterday = yesterdayRows.length;
-
-  const customersToday = new Set(
-    todayRows
-      .map((row) => String(row.client_id ?? row.client_user_id ?? "").trim())
-      .filter(Boolean)
-  ).size;
-  const customersYesterday = new Set(
-    yesterdayRows
-      .map((row) => String(row.client_id ?? row.client_user_id ?? "").trim())
-      .filter(Boolean)
-  ).size;
-
-  const averageBasket = ordersToday > 0 ? revenueToday / ordersToday : 0;
-  const averageBasketYesterday =
-    ordersYesterday > 0 ? revenueYesterday / ordersYesterday : 0;
 
   let ratingValues: number[] = [];
   const deliveredOrderIds = ((ratingsRes.data ?? []) as GenericRow[])
@@ -436,19 +416,24 @@ export async function getRestaurantCommandCenter(params: {
 
     const profileRow = driverProfileMap.get(driverId);
     const location = driverLocationMap.get(driverId);
-    const pickupLat = asNumber(row.pickup_lat) || restaurantLat;
-    const pickupLng = asNumber(row.pickup_lng) || restaurantLng;
+    const pickupLat = asNumber(row.pickup_lat);
+    const pickupLng = asNumber(row.pickup_lng);
+    const hasPickupCoordinate =
+      Number.isFinite(pickupLat) &&
+      Number.isFinite(pickupLng) &&
+      pickupLat !== 0 &&
+      pickupLng !== 0;
 
     let distanceM: number | null = null;
-    let etaMinutes = asNumber(row.eta_minutes) || null;
+    const rawEta = asNumber(row.eta_minutes);
+    const etaMinutes = rawEta > 0 ? rawEta : null;
     let arrivedSecondsAgo: number | null = null;
 
     if (
       location &&
+      hasPickupCoordinate &&
       Number.isFinite(asNumber(location.lat)) &&
-      Number.isFinite(asNumber(location.lng)) &&
-      pickupLat != null &&
-      pickupLng != null
+      Number.isFinite(asNumber(location.lng))
     ) {
       distanceM = distanceMeters(
         asNumber(location.lat),
@@ -456,9 +441,6 @@ export async function getRestaurantCommandCenter(params: {
         pickupLat,
         pickupLng
       );
-      if (!etaMinutes || etaMinutes <= 0) {
-        etaMinutes = estimateEtaMinutes(distanceM);
-      }
       if (distanceM <= DRIVER_ARRIVED_METERS) {
         arrivedSecondsAgo = secondsAgo(String(location.updated_at ?? ""));
       }
@@ -476,8 +458,8 @@ export async function getRestaurantCommandCenter(params: {
       etaMinutes,
       distanceMeters: distanceM,
       arrivedSecondsAgo,
-      pickupLat,
-      pickupLng,
+      pickupLat: hasPickupCoordinate ? pickupLat : null,
+      pickupLng: hasPickupCoordinate ? pickupLng : null,
       dropoffLat: asNumber(row.dropoff_lat) || null,
       dropoffLng: asNumber(row.dropoff_lng) || null,
     };
@@ -507,10 +489,10 @@ export async function getRestaurantCommandCenter(params: {
         orderLabel: card.orderLabel,
         etaMinutes: card.etaMinutes,
       });
-    } else if (
-      card.etaMinutes != null &&
-      card.etaMinutes <= DRIVER_APPROACHING_ETA_MINUTES
-    ) {
+    } else if (isDriverApproaching({
+      distanceMeters: card.distanceMeters,
+      etaMinutes: card.etaMinutes,
+    })) {
       driverApproaching.push(card);
       mapDrivers.push({
         driverId: card.driverId,
@@ -619,19 +601,21 @@ export async function getRestaurantCommandCenter(params: {
       lng: asNumber(row.dropoff_lng),
     }));
 
+  const todayPaidRows = todayRows.filter(isPaidFoodOrder);
   const statusCounts = new Map<string, number>();
-  for (const row of todayRows) {
+  for (const row of todayPaidRows) {
     const status = String(row.status ?? "unknown").toLowerCase();
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
   }
-  const totalTodayForBreakdown = Math.max(todayRows.length, 1);
+  const totalTodayForBreakdown = Math.max(todayPaidRows.length, 1);
   const orderStatusBreakdown = Array.from(statusCounts.entries()).map(([status, count]) => ({
     status,
     count,
     pct: Math.round((count / totalTodayForBreakdown) * 1000) / 10,
   }));
 
-  const prepDurations = todayRows
+  const prepDurations = todayPaidRows
+    .filter((row) => isCompletedOrderStatus(row.status))
     .map((row) => {
       const accepted = String(row.accepted_at ?? "");
       const ready = String(row.ready_at ?? "");
@@ -760,18 +744,18 @@ export async function getRestaurantCommandCenter(params: {
       currency,
     },
     kpis: {
-      revenueToday,
-      revenueYesterday,
-      revenueChangePct: pctChange(revenueToday, revenueYesterday),
-      ordersToday,
-      ordersYesterday,
-      ordersChangePct: pctChange(ordersToday, ordersYesterday),
-      customersToday,
-      customersYesterday,
-      customersChangePct: pctChange(customersToday, customersYesterday),
-      averageBasket,
-      averageBasketYesterday,
-      averageBasketChangePct: pctChange(averageBasket, averageBasketYesterday),
+      revenueToday: dayKpis.revenueToday,
+      revenueYesterday: dayKpis.revenueYesterday,
+      revenueChangePct: dayKpis.revenueChangePct,
+      ordersToday: dayKpis.ordersToday,
+      ordersYesterday: dayKpis.ordersYesterday,
+      ordersChangePct: dayKpis.ordersChangePct,
+      customersToday: dayKpis.customersToday,
+      customersYesterday: dayKpis.customersYesterday,
+      customersChangePct: dayKpis.customersChangePct,
+      averageBasket: dayKpis.averageBasket,
+      averageBasketYesterday: dayKpis.averageBasketYesterday,
+      averageBasketChangePct: dayKpis.averageBasketChangePct,
       rating,
       ratingCount: ratingValues.length,
       currency,
@@ -791,10 +775,7 @@ export async function getRestaurantCommandCenter(params: {
     prepTime: {
       averageMinutes: prepAverageMinutes,
       targetMinutes: PREP_TIME_TARGET_MINUTES,
-      percentileBetterThan:
-        prepAverageMinutes != null && prepAverageMinutes <= PREP_TIME_TARGET_MINUTES
-          ? 94
-          : null,
+      percentileBetterThan: null,
     },
     topProducts,
     financial: {

@@ -137,7 +137,7 @@ export default function RestaurantGateScreen({ navigation }: Props) {
           return;
         }
 
-        navigation.replace("RestaurantHome");
+        navigation.replace("RestaurantCommandCenter");
       } catch (error) {
         console.log("RestaurantGate unexpected error:", error);
         if (!mounted) return;

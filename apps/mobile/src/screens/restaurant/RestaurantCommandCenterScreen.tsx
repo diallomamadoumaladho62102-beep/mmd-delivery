@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { useRestaurantCommandCenter } from "../../features/restaurant/hooks/useRestaurantCommandCenter";
+import { useRestaurantAvailability } from "../../hooks/useRestaurantAvailability";
 import { RestaurantKpiCard } from "../../features/restaurant/components/RestaurantKpiCard";
 import { LiveOperationsCenter } from "../../features/restaurant/components/LiveOperationsCenter";
 import { RestaurantLiveMap } from "../../features/restaurant/components/RestaurantLiveMap";
@@ -25,14 +27,19 @@ import { OrderInsightsCard } from "../../features/restaurant/components/OrderIns
 import { CommandCenterSkeleton } from "../../features/restaurant/components/CommandCenterSkeleton";
 import { CC } from "../../features/restaurant/components/commandCenterTheme";
 import { formatDate, formatMoney } from "../../i18n/formatters";
-import { mirrorChevron, rowDirection, textAlignStart } from "../../i18n/rtl";
+import { rowDirection, textAlignStart } from "../../i18n/rtl";
 
 type Props = NativeStackScreenProps<RootStackParamList, "RestaurantCommandCenter">;
 
 export default function RestaurantCommandCenterScreen({ navigation }: Props) {
   const { t, i18n } = useTranslation();
-  const { data, aiGrowth, loading, refreshing, error, refresh } = useRestaurantCommandCenter();
+  const { data, aiGrowth, loading, refreshing, error, refresh, restaurantUserId } =
+    useRestaurantCommandCenter();
+  const { availabilityLoading, confirmToggleAvailability } = useRestaurantAvailability();
   const [mapFocusOrderId, setMapFocusOrderId] = useState<string | null>(null);
+  const [isOpenOverride, setIsOpenOverride] = useState<boolean | null>(null);
+
+  const isRestaurantOpen = isOpenOverride ?? data?.restaurant.isOpen ?? false;
 
   const currency = data?.restaurant.currency ?? data?.kpis.currency ?? "USD";
 
@@ -106,6 +113,55 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
     [navigation]
   );
 
+  const openHomeMenu = useCallback(() => {
+    Alert.alert(t("restaurant.commandCenter.homeMenuTitle", "Restaurant menu"), undefined, [
+      {
+        text: t("restaurant.commandCenter.liveMapFull", "Map operations"),
+        onPress: () => navigation.navigate("RestaurantHome"),
+      },
+      {
+        text: t("restaurant.commandCenter.viewAllOrders", "View all orders"),
+        onPress: () => navigation.navigate("RestaurantOrders"),
+      },
+      {
+        text: t("restaurant.menu.title", "Menu"),
+        onPress: () => navigation.navigate("RestaurantMenu"),
+      },
+      {
+        text: t("restaurant.financialCenter.title", "Financial center"),
+        onPress: () => navigation.navigate("RestaurantFinancialCenter"),
+      },
+      {
+        text: t("restaurant.security.title", "Security"),
+        onPress: () => navigation.navigate("RestaurantSecurity"),
+      },
+      { text: t("common.cancel", "Cancel"), style: "cancel" },
+    ]);
+  }, [navigation, t]);
+
+  const onToggleOpen = useCallback(() => {
+    if (!restaurantUserId || !data) return;
+    confirmToggleAvailability({
+      restaurantUserId,
+      currentlyOpen: isRestaurantOpen,
+      onSuccess: (nextOpen) => {
+        setIsOpenOverride(nextOpen);
+        void refresh();
+      },
+    });
+  }, [confirmToggleAvailability, data, isRestaurantOpen, refresh, restaurantUserId]);
+
+  useEffect(() => {
+    if (data?.restaurant.isOpen != null) {
+      setIsOpenOverride(null);
+    }
+  }, [data?.restaurant.isOpen]);
+
+  const averageBasketLabel = useMemo(() => {
+    if (data?.kpis.averageBasket == null) return t("common.na");
+    return fmtMoney(data.kpis.averageBasket);
+  }, [data?.kpis.averageBasket, fmtMoney, t]);
+
   if (loading && !data) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -143,8 +199,8 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
         }
       >
         <View style={[styles.headerRow, { flexDirection: rowDirection() }]}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backText}>{mirrorChevron("back")}</Text>
+          <Pressable onPress={openHomeMenu} style={styles.backBtn} accessibilityRole="button">
+            <Text style={styles.menuText}>☰</Text>
           </Pressable>
           <View style={styles.headerMeta}>
             <Text style={[styles.headerTitle, { textAlign: textAlignStart() }]}>
@@ -154,19 +210,27 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
               {formatDate(new Date(), i18n.language)} • {t("restaurant.commandCenter.today")}
             </Text>
           </View>
-          <View
+          <Pressable
+            onPress={onToggleOpen}
+            disabled={availabilityLoading || !restaurantUserId}
             style={[
               styles.statusPill,
-              data.restaurant.isOpen ? styles.statusOpen : styles.statusClosed,
+              isRestaurantOpen ? styles.statusOpen : styles.statusClosed,
+              availabilityLoading ? styles.statusLoading : null,
             ]}
+            accessibilityRole="button"
           >
-            <View style={[styles.statusDot, data.restaurant.isOpen ? styles.dotOpen : styles.dotClosed]} />
+            <View
+              style={[styles.statusDot, isRestaurantOpen ? styles.dotOpen : styles.dotClosed]}
+            />
             <Text style={styles.statusText}>
-              {data.restaurant.isOpen
-                ? t("restaurant.commandCenter.open")
-                : t("restaurant.commandCenter.closed")}
+              {availabilityLoading
+                ? t("common.loading", "Loading…")
+                : isRestaurantOpen
+                  ? t("restaurant.commandCenter.open")
+                  : t("restaurant.commandCenter.closed")}
             </Text>
-          </View>
+          </Pressable>
         </View>
 
         <Text style={[styles.greeting, { textAlign: textAlignStart() }]} numberOfLines={2}>
@@ -216,9 +280,13 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
             />
             <RestaurantKpiCard
               title={t("restaurant.commandCenter.averageBasket")}
-              value={fmtMoney(data.kpis.averageBasket)}
+              value={averageBasketLabel}
               changePct={data.kpis.averageBasketChangePct}
-              sparklineValues={[data.kpis.averageBasketYesterday, data.kpis.averageBasket]}
+              sparklineValues={
+                data.kpis.averageBasketYesterday != null && data.kpis.averageBasket != null
+                  ? [data.kpis.averageBasketYesterday, data.kpis.averageBasket]
+                  : []
+              }
               accent="orange"
             />
             <RestaurantKpiCard
@@ -244,6 +312,7 @@ export default function RestaurantCommandCenterScreen({ navigation }: Props) {
           mapData={data.map}
           focusOrderId={mapFocusOrderId}
           height={360}
+          onOpenFullMap={() => navigation.navigate("RestaurantHome")}
         />
 
         <OrderInsightsCard
@@ -336,6 +405,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
   },
+  menuText: {
+    color: CC.textPrimary,
+    fontSize: 20,
+    fontWeight: "900",
+    lineHeight: 22,
+  },
   headerMeta: {
     flex: 1,
   },
@@ -367,6 +442,9 @@ const styles = StyleSheet.create({
   statusClosed: {
     backgroundColor: CC.redDim,
     borderColor: "rgba(239,68,68,0.35)",
+  },
+  statusLoading: {
+    opacity: 0.65,
   },
   statusDot: {
     width: 8,

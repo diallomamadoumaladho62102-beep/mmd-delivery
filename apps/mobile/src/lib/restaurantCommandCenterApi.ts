@@ -82,8 +82,8 @@ export type RestaurantCommandCenterData = {
     customersToday: number;
     customersYesterday: number;
     customersChangePct: number | null;
-    averageBasket: number;
-    averageBasketYesterday: number;
+    averageBasket: number | null;
+    averageBasketYesterday: number | null;
     averageBasketChangePct: number | null;
     rating: number | null;
     ratingCount: number;
