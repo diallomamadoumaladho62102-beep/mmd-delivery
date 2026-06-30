@@ -4,17 +4,23 @@ Items below cannot be completed in code alone. Execute manually before commercia
 
 ## Supabase migrations (production)
 
-Apply in order after current prod head:
+Apply **all** timestamped files in `supabase/migrations/` (64+ migrations). Do not apply stray or PROPOSED files.
 
-1. `20260624120000_platform_countries_launch_control.sql`
-2. `20260625120000_production_p0_p1_closure.sql`
+```bash
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+node scripts/verify-migration-files.mjs   # local inventory check
+```
 
-Verify:
+Verify after apply:
 
 ```sql
+-- See full suite: docs/production/sql/final_certification_checks.sql
 select count(*) from public.platform_countries;
 select country_code, is_active from public.mmd_zones where country_code in ('SN','CI','ML','SL','MR');
 ```
+
+See: `supabase/migrations/README.md`, `docs/production/ADMIN_MIGRATION_APPLY.md`
 
 ## Vercel
 

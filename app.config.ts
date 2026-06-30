@@ -157,6 +157,7 @@ export default ({ config }) => {
         NSLocationAlwaysUsageDescription:
           "MMD Delivery utilise votre position pour suivre les livraisons en temps réel lorsque vous êtes en ligne.",
         UIBackgroundModes: ["location"],
+        LSApplicationQueriesSchemes: ["waze", "comgooglemaps", "googlemaps"],
       },
     },
 
@@ -169,6 +170,8 @@ export default ({ config }) => {
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
         "CAMERA",
         "READ_MEDIA_IMAGES",
         "READ_EXTERNAL_STORAGE",

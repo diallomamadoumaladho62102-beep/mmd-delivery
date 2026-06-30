@@ -17,7 +17,8 @@
     "test:marketplace-shadow": "node scripts/smoke-marketplace-shadow.mjs",
     "test:marketplace-driver-jobs": "node scripts/marketplace-driver-jobs.test.mjs",
     "test:mmd-ai": "npx tsx scripts/smoke-mmd-ai.mjs",
-    "test:store-submission": "node scripts/store-submission-readiness.mjs && npx tsx src/lib/deepLinkWellKnown.test.ts && npx tsx src/lib/twilioMaskedCallReadiness.test.ts"
+    "test:store-submission": "node scripts/store-submission-readiness.mjs && npx tsx src/lib/deepLinkWellKnown.test.ts && npx tsx src/lib/twilioMaskedCallReadiness.test.ts",
+    "test:ci": "pnpm test:rbac && npx tsx src/lib/productionTrustBoundary.test.ts && npx tsx src/lib/foodOrderTrustBoundary.test.ts && pnpm test:platform-launch && pnpm test:delivery-pricing-v2 && node scripts/store-submission-readiness.mjs && npx tsx src/lib/deepLinkWellKnown.test.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "latest",
