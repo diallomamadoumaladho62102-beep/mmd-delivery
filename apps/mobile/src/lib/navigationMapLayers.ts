@@ -232,8 +232,6 @@ export async function reduceNavigationMapClutter(
   for (const layerId of NAV_STYLE_SPEED_LIMIT_LAYERS) {
     await hideLayer(map, layerId);
   }
-
-  await applyAppleDayMapStyle(map);
 }
 
 export { APPLE_DAY_MAP };

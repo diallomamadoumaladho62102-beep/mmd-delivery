@@ -16,7 +16,7 @@ import { useKeepAwake } from "expo-keep-awake";
 import { supabase } from "../lib/supabase";
 import {
   ensureMapboxTokenApplied,
-  getMapStyleNavigation,
+  getMapStyleStreets,
   isMapboxConfigured,
 } from "../lib/mapboxConfig";
 import { buildNavigationInstruction } from "../lib/navigationInstructions";
@@ -897,7 +897,7 @@ export default function DriverMapScreen() {
     );
   }
 
-  const mapStyleURL = getMapStyleNavigation();
+  const mapStyleURL = getMapStyleStreets();
 
   return (
     <View style={{ flex: 1, backgroundColor: APPLE_DAY_MAP.land }}>
