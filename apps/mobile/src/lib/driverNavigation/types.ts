@@ -14,6 +14,7 @@ export type RouteEngineStatus =
   | "idle"
   | "loading"
   | "ready"
+  | "rerouting"
   | "error"
   | "stale";
 
@@ -29,8 +30,8 @@ export type NavigationTrip = {
   price: number;
   distanceMiles: number;
   etaMinutes: number;
-  /** Raw order country_code when present on the loaded row. */
-  orderCountryCode?: unknown;
+  /** ISO country code when present on the loaded order row. */
+  orderCountryCode?: string | null;
   pickupLocationId?: string | null;
   dropoffLocationId?: string | null;
 };

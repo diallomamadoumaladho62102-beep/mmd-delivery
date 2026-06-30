@@ -3,27 +3,25 @@ import type { CoordinatePoint } from "./coordinates";
 import { distanceMeters } from "./coordinates";
 import {
   NAV_ARROW_TIP_AHEAD_METERS,
+  NAV_ROUTE_ICON_LEAD_METERS,
+  junctionRouteMetersFromTraveled,
   ROUTE_FUTURE_GLOW_MULTIPLIER,
-  ROUTE_FUTURE_WIDTH_RATIO,
-  ROUTE_TRAVELED_WIDTH_RATIO,
+  ROUTE_LINE_WIDTH_RATIO,
 } from "./driverNavigationVisual";
 
 export type RouteSplit = {
   anchor: CoordinatePoint;
   segmentIndex: number;
   forwardBearing: number;
+  /** Distance route (m) du point de transition vert/cyan. */
+  junctionRouteMeters: number;
   traveled: Feature<LineString> | null;
-  /** Cyan plein — démarre à l'ancre (sous l'icône), uniquement vers l'avant. */
+  /** Cyan — démarre au centre icône, uniquement vers l'avant. */
   future: Feature<LineString>;
-  /** Halo sans blur à l'ancre — évite le cyan visible derrière l'icône. */
   futureGlow: Feature<LineString> | null;
 };
 
 const MAX_TRAVELED_BEHIND_METERS = 55;
-const MIN_TRAVELED_BEHIND_METERS = 3;
-/** Vert s'arrête avant la base — l'icône masque la jonction (Waze). */
-const TRAVELED_STOP_BEFORE_ANCHOR_METERS = 4;
-/** Halo cyan — après la pointe. */
 const FUTURE_GLOW_EXTRA_AHEAD_METERS = 8;
 
 function coordinatePoint(coord: Position): CoordinatePoint {
@@ -31,6 +29,99 @@ function coordinatePoint(coord: Position): CoordinatePoint {
     latitude: Number(coord[1]),
     longitude: Number(coord[0]),
   };
+}
+
+function positionEqual(a: Position, b: Position): boolean {
+  return Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
+}
+
+function pushPosition(target: Position[], coord: Position): void {
+  const last = target[target.length - 1];
+  if (last && positionEqual(last, coord)) return;
+  target.push(coord);
+}
+
+function interpolatePosition(
+  start: CoordinatePoint,
+  end: CoordinatePoint,
+  t: number,
+): Position {
+  return [
+    start.longitude + t * (end.longitude - start.longitude),
+    start.latitude + t * (end.latitude - start.latitude),
+  ];
+}
+
+function routeTotalMeters(coords: Position[]): number {
+  let total = 0;
+  for (let i = 0; i < coords.length - 1; i += 1) {
+    const start = coordinatePoint(coords[i]);
+    const end = coordinatePoint(coords[i + 1]);
+    total += distanceMeters(
+      start.latitude,
+      start.longitude,
+      end.latitude,
+      end.longitude,
+    );
+  }
+  return total;
+}
+
+/** Extrait une portion de polyline Mapbox entre startMeters et endMeters. */
+export function extractRouteSlice(
+  geometry: Feature<LineString>,
+  startMeters: number,
+  endMeters: number,
+): Position[] {
+  const coords = geometry.geometry.coordinates;
+  if (coords.length < 2) return [];
+
+  const start = Math.max(0, startMeters);
+  const end = Math.max(start, endMeters);
+  const slice: Position[] = [];
+  let walked = 0;
+
+  for (let i = 0; i < coords.length - 1; i += 1) {
+    const segStart = coordinatePoint(coords[i]);
+    const segEnd = coordinatePoint(coords[i + 1]);
+    const segLen = distanceMeters(
+      segStart.latitude,
+      segStart.longitude,
+      segEnd.latitude,
+      segEnd.longitude,
+    );
+    if (segLen <= 0) continue;
+
+    const segStartM = walked;
+    const segEndM = walked + segLen;
+
+    if (segEndM < start - 1e-6) {
+      walked += segLen;
+      continue;
+    }
+    if (segStartM > end + 1e-6) break;
+
+    if (slice.length === 0) {
+      if (start <= segStartM + 1e-6) {
+        pushPosition(slice, [segStart.longitude, segStart.latitude]);
+      } else if (start < segEndM - 1e-6) {
+        const t = (start - segStartM) / segLen;
+        pushPosition(slice, interpolatePosition(segStart, segEnd, t));
+      }
+    }
+
+    if (end >= segEndM - 1e-6) {
+      pushPosition(slice, [segEnd.longitude, segEnd.latitude]);
+    } else if (end > segStartM + 1e-6 && end < segEndM - 1e-6) {
+      const t = (end - segStartM) / segLen;
+      pushPosition(slice, interpolatePosition(segStart, segEnd, t));
+      break;
+    }
+
+    walked += segLen;
+  }
+
+  return slice;
 }
 
 /** Point exact sur la polyline Mapbox à N mètres depuis le départ. */
@@ -88,7 +179,6 @@ function bearingBetween(start: CoordinatePoint, end: CoordinatePoint): number {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-/** Cap route devant l'ancre — point 12 m plus loin sur la polyline. */
 export function forwardBearingFromAnchor(
   geometry: Feature<LineString>,
   anchor: CoordinatePoint,
@@ -109,55 +199,17 @@ export function forwardBearingFromAnchor(
   return bearingBetween(anchor, ahead.point);
 }
 
-function pointAheadOnSegment(
-  anchor: CoordinatePoint,
-  segEnd: CoordinatePoint,
-  distToEnd: number,
-  aheadMeters: number,
-): CoordinatePoint | null {
-  if (distToEnd <= aheadMeters + 0.05) return null;
-  const t = aheadMeters / distToEnd;
+function lineFeature(coords: Position[]): Feature<LineString> {
   return {
-    longitude: anchor.longitude + t * (segEnd.longitude - anchor.longitude),
-    latitude: anchor.latitude + t * (segEnd.latitude - anchor.latitude),
+    type: "Feature",
+    properties: {},
+    geometry: { type: "LineString", coordinates: coords },
   };
-}
-
-function pointBehindOnSegment(
-  anchor: CoordinatePoint,
-  segStart: CoordinatePoint,
-  behindLen: number,
-  backMeters: number,
-): CoordinatePoint {
-  if (behindLen <= backMeters + 0.05) return segStart;
-  const t = backMeters / behindLen;
-  return {
-    longitude: anchor.longitude + t * (segStart.longitude - anchor.longitude),
-    latitude: anchor.latitude + t * (segStart.latitude - anchor.latitude),
-  };
-}
-
-function appendRouteTail(
-  target: Position[],
-  coords: Position[],
-  fromIndex: number,
-): void {
-  for (let i = fromIndex; i < coords.length; i += 1) {
-    const lng = Number(coords[i][0]);
-    const lat = Number(coords[i][1]);
-    const last = target[target.length - 1];
-    if (last && Math.abs(last[0] - lng) < 1e-9 && Math.abs(last[1] - lat) < 1e-9) {
-      continue;
-    }
-    target.push([lng, lat]);
-  }
 }
 
 /**
- * Split Waze — vert jusqu'à la base GPS (derrière), cyan depuis la pointe (devant).
- *       │  cyan
- *       ▲  icône
- *       │  vert (Waze — icône masque la jonction)
+ * Split Waze — distance absolue sur la polyline Mapbox :
+ * vert jusqu'au centre icône, cyan depuis le centre icône (même point).
  */
 export function splitNavigationRoute(
   geometry: Feature<LineString>,
@@ -166,155 +218,84 @@ export function splitNavigationRoute(
   const coords = geometry.geometry.coordinates;
   if (coords.length < 2) return null;
 
-  const located = pointAtRouteDistance(geometry, traveledMeters);
-  if (!located) return null;
+  const anchorRouteMeters = traveledMeters + NAV_ROUTE_ICON_LEAD_METERS;
+  const junctionRouteMeters = junctionRouteMetersFromTraveled(traveledMeters);
 
-  const { point: anchor, segmentIndex } = located;
-  const segStart = coordinatePoint(coords[segmentIndex]);
-  const segEnd = coordinatePoint(coords[segmentIndex + 1]);
+  const anchorLocated = pointAtRouteDistance(geometry, anchorRouteMeters);
+  if (!anchorLocated) return null;
 
-  const distToEnd = distanceMeters(
-    anchor.latitude,
-    anchor.longitude,
-    segEnd.latitude,
-    segEnd.longitude,
-  );
+  const { point: anchor, segmentIndex } = anchorLocated;
+  const totalMeters = routeTotalMeters(coords);
 
-  const behindLen = distanceMeters(
-    anchor.latitude,
-    anchor.longitude,
-    segStart.latitude,
-    segStart.longitude,
-  );
+  const junctionLocated = pointAtRouteDistance(geometry, junctionRouteMeters);
+  if (!junctionLocated) return null;
 
-  const tipPoint = pointAheadOnSegment(
-    anchor,
-    segEnd,
-    distToEnd,
-    NAV_ARROW_TIP_AHEAD_METERS,
-  );
-
-  let future: Feature<LineString> | null = null;
-  if (tipPoint) {
-    const futureCoords: Position[] = [[tipPoint.longitude, tipPoint.latitude]];
-    futureCoords.push([segEnd.longitude, segEnd.latitude]);
-    appendRouteTail(futureCoords, coords, segmentIndex + 2);
-    if (futureCoords.length >= 2) {
-      future = {
-        type: "Feature",
-        properties: {},
-        geometry: { type: "LineString", coordinates: futureCoords },
-      };
-    }
-  }
-
-  const glowAhead =
-    NAV_ARROW_TIP_AHEAD_METERS + FUTURE_GLOW_EXTRA_AHEAD_METERS;
-  const glowStart = pointAheadOnSegment(anchor, segEnd, distToEnd, glowAhead);
-  let futureGlow: Feature<LineString> | null = null;
-  if (glowStart) {
-    const glowCoords: Position[] = [[glowStart.longitude, glowStart.latitude]];
-    if (distToEnd > glowAhead + 0.15) {
-      glowCoords.push([segEnd.longitude, segEnd.latitude]);
-    }
-    appendRouteTail(glowCoords, coords, segmentIndex + 2);
-    if (glowCoords.length >= 2) {
-      futureGlow = {
-        type: "Feature",
-        properties: {},
-        geometry: { type: "LineString", coordinates: glowCoords },
-      };
-    }
-  }
-
-  let traveled: Feature<LineString> | null = null;
-  const traveledEnd = pointBehindOnSegment(
-    anchor,
-    segStart,
-    behindLen,
-    TRAVELED_STOP_BEFORE_ANCHOR_METERS,
-  );
-
-  const traveledCoords: Position[] = [
-    [traveledEnd.longitude, traveledEnd.latitude],
+  const junctionCoord: Position = [
+    junctionLocated.point.longitude,
+    junctionLocated.point.latitude,
   ];
-  let budget = MAX_TRAVELED_BEHIND_METERS - TRAVELED_STOP_BEFORE_ANCHOR_METERS;
 
-  const onCurrentSegment = distanceMeters(
-    traveledEnd.latitude,
-    traveledEnd.longitude,
-    segStart.latitude,
-    segStart.longitude,
+  const traveledCoords = extractRouteSlice(
+    geometry,
+    Math.max(0, junctionRouteMeters - MAX_TRAVELED_BEHIND_METERS),
+    junctionRouteMeters,
   );
-
-  if (onCurrentSegment > 0.4 && budget > 0) {
-    if (budget >= onCurrentSegment) {
-      traveledCoords.unshift([segStart.longitude, segStart.latitude]);
-      budget -= onCurrentSegment;
-    } else {
-      const t = 1 - budget / onCurrentSegment;
-      traveledCoords.unshift([
-        segStart.longitude + t * (traveledEnd.longitude - segStart.longitude),
-        segStart.latitude + t * (traveledEnd.latitude - segStart.latitude),
-      ]);
-      budget = 0;
-    }
+  if (traveledCoords.length >= 1) {
+    traveledCoords[traveledCoords.length - 1] = junctionCoord;
   }
 
-  for (let i = segmentIndex - 1; i >= 0 && budget > 0.4; i -= 1) {
-    const prev = coordinatePoint(coords[i]);
-    const next = coordinatePoint(coords[i + 1]);
-    const segLen = distanceMeters(
-      prev.latitude,
-      prev.longitude,
-      next.latitude,
-      next.longitude,
+  const futureCoords = extractRouteSlice(
+    geometry,
+    junctionRouteMeters,
+    totalMeters,
+  );
+  if (futureCoords.length >= 1) {
+    futureCoords[0] = junctionCoord;
+  } else {
+    futureCoords.push(junctionCoord);
+    const tail = extractRouteSlice(
+      geometry,
+      junctionRouteMeters + 0.05,
+      totalMeters,
     );
-    if (segLen <= 0) continue;
-
-    if (budget >= segLen) {
-      traveledCoords.unshift([prev.longitude, prev.latitude]);
-      budget -= segLen;
-    } else {
-      const t = budget / segLen;
-      traveledCoords.unshift([
-        next.longitude + t * (prev.longitude - next.longitude),
-        next.latitude + t * (prev.latitude - next.latitude),
-      ]);
-      budget = 0;
+    for (const coord of tail) {
+      pushPosition(futureCoords, coord);
     }
   }
 
-  if (traveledCoords.length >= 2) {
-    traveled = {
-      type: "Feature",
-      properties: {},
-      geometry: { type: "LineString", coordinates: traveledCoords },
-    };
+  let futureGlow: Feature<LineString> | null = null;
+  const glowRouteMeters =
+    anchorRouteMeters +
+    NAV_ARROW_TIP_AHEAD_METERS +
+    FUTURE_GLOW_EXTRA_AHEAD_METERS;
+  const glowCoords = extractRouteSlice(geometry, glowRouteMeters, totalMeters);
+  if (glowCoords.length >= 2) {
+    futureGlow = lineFeature(glowCoords);
   }
 
   return {
     anchor,
     segmentIndex,
-    forwardBearing: forwardBearingFromAnchor(geometry, anchor, traveledMeters),
-    traveled,
-    future: future ?? {
-      type: "Feature",
-      properties: {},
-      geometry: { type: "LineString", coordinates: [] },
-    },
+    junctionRouteMeters,
+    forwardBearing: forwardBearingFromAnchor(geometry, anchor, anchorRouteMeters),
+    traveled: traveledCoords.length >= 2 ? lineFeature(traveledCoords) : null,
+    future:
+      futureCoords.length >= 2
+        ? lineFeature(futureCoords)
+        : lineFeature([]),
     futureGlow,
   };
 }
 
 export function routeLineWidths(screenWidth: number) {
+  const width = routeLineWidthExpression(screenWidth, ROUTE_LINE_WIDTH_RATIO);
   return {
-    future: routeLineWidthExpression(screenWidth, ROUTE_FUTURE_WIDTH_RATIO),
+    future: width,
     futureGlow: routeLineWidthExpression(
       screenWidth,
-      ROUTE_FUTURE_WIDTH_RATIO * ROUTE_FUTURE_GLOW_MULTIPLIER,
+      ROUTE_LINE_WIDTH_RATIO * ROUTE_FUTURE_GLOW_MULTIPLIER,
     ),
-    traveled: routeLineWidthExpression(screenWidth, ROUTE_TRAVELED_WIDTH_RATIO),
+    traveled: width,
   };
 }
 
@@ -325,10 +306,12 @@ export function routeLineWidthPx(
   return Math.max(7, Math.round(screenWidth * widthRatio));
 }
 
+export type MapboxZoomLineWidth = readonly (string | number | readonly string[])[];
+
 export function routeLineWidthExpression(
   screenWidth: number,
   widthRatio: number,
-): unknown {
+): MapboxZoomLineWidth {
   const base = routeLineWidthPx(screenWidth, widthRatio);
   return [
     "interpolate",

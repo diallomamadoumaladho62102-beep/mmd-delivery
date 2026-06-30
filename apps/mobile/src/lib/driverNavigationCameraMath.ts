@@ -52,8 +52,8 @@ export function computeAdaptiveCameraSettings(params: {
 }): AdaptiveCameraSettings {
   const { maneuverDistanceMeters, speedMps, paddingTop, paddingBottom } = params;
 
-  let zoom = NAV_CAMERA.zoom;
-  let pitch = NAV_CAMERA.pitch;
+  let zoom: number = NAV_CAMERA.zoom;
+  let pitch: number = NAV_CAMERA.pitch;
 
   if (maneuverDistanceMeters != null && Number.isFinite(maneuverDistanceMeters)) {
     if (maneuverDistanceMeters < 45) {

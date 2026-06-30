@@ -32,6 +32,11 @@ export function DriverNavigationHud({ visible, instruction }: Props) {
         paddingBottom: 12,
         paddingHorizontal: 12,
         backgroundColor: "#000000",
+        shadowColor: "#000",
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 6,
       }}
     >
       <View style={{ flexDirection: "row", alignItems: "center" }}>

@@ -80,7 +80,12 @@ export function resolveDriverMapCountryCode(input: {
   };
 }
 
-export function extractCountryCodeField(row: Record<string, unknown> | null | undefined) {
+export function extractCountryCodeField(
+  row: Record<string, unknown> | null | undefined,
+): string | null {
   if (!row) return null;
-  return row.country_code ?? row.countryCode ?? null;
+  const raw = row.country_code ?? row.countryCode ?? null;
+  if (raw == null) return null;
+  const code = String(raw).trim().toUpperCase();
+  return code || null;
 }

@@ -18,7 +18,7 @@ type Props = {
 };
 
 /**
- * Routes Mapbox — comportement Waze : vert → base icône, cyan → pointe, masque sous le véhicule.
+ * Routes Mapbox — vert jusqu'au centre icône, cyan depuis le centre icône.
  */
 export function DriverNavigationRouteLayers({
   geometry,
@@ -48,7 +48,7 @@ export function DriverNavigationRouteLayers({
             layerIndex={995}
             style={{
               lineColor: NAV_ROUTE_TRAVELED.color,
-              lineWidth: traveledWidth,
+              lineWidth: traveledWidth as unknown as number,
               lineCap: "butt",
               lineJoin: "round",
               lineOpacity: NAV_ROUTE_TRAVELED.opacity,
@@ -67,7 +67,7 @@ export function DriverNavigationRouteLayers({
             layerIndex={998}
             style={{
               lineColor: NAV_ROUTE_FUTURE.glowColor,
-              lineWidth: futureGlow,
+              lineWidth: futureGlow as unknown as number,
               lineCap: "butt",
               lineJoin: "round",
               lineOpacity: NAV_ROUTE_FUTURE.glowOpacity,
@@ -87,7 +87,7 @@ export function DriverNavigationRouteLayers({
             layerIndex={1000}
             style={{
               lineColor: NAV_ROUTE_FUTURE.color,
-              lineWidth: futureWidth,
+              lineWidth: futureWidth as unknown as number,
               lineCap: "butt",
               lineJoin: "round",
               lineOpacity: NAV_ROUTE_FUTURE.opacity,

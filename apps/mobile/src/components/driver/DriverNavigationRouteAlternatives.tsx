@@ -52,12 +52,17 @@ export function DriverNavigationRouteAlternatives({
                 paddingVertical: 6,
                 borderRadius: 10,
                 backgroundColor: selected
-                  ? "rgba(37,99,235,0.88)"
-                  : "rgba(15,23,42,0.72)",
+                  ? "rgba(37,99,235,0.92)"
+                  : "rgba(15,23,42,0.84)",
                 borderWidth: 1,
                 borderColor: selected
                   ? "rgba(96,165,250,0.55)"
-                  : "rgba(71,85,105,0.35)",
+                  : "rgba(0,0,0,0.12)",
+                shadowColor: "#000",
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+                shadowOffset: { width: 0, height: 1 },
+                elevation: 3,
               }}
             >
               <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "900" }}>

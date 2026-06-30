@@ -1,11 +1,14 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, useWindowDimensions } from "react-native";
 import { formatTripDistance } from "../../lib/navigationLocale";
+import { computeSpeedClusterLayout } from "../../lib/driverNavigationVisual";
 
 type Props = {
   etaMinutes: number;
   remainingMeters: number;
   speedMps: number | null;
+  postedSpeed: number | null;
+  isSpeeding: boolean;
 };
 
 function formatArrivalTime(minutes: number): string {
@@ -26,37 +29,21 @@ export function DriverNavigationBottomBar({
   etaMinutes,
   remainingMeters,
   speedMps,
+  postedSpeed,
+  isSpeeding,
 }: Props) {
+  const { width, height } = useWindowDimensions();
+  const showSpeedLimit =
+    postedSpeed != null &&
+    Number.isFinite(postedSpeed) &&
+    postedSpeed > 0;
+  const cluster = computeSpeedClusterLayout({ width, height }, showSpeedLimit);
   const etaLabel = etaMinutes > 0 ? `${etaMinutes} min` : "—";
   const distanceLabel = formatTripDistance(remainingMeters, "fr");
   const arrivalLabel = formatArrivalTime(etaMinutes);
 
   return (
     <>
-      <View
-        style={{
-          position: "absolute",
-          left: 12,
-          bottom: 54,
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          backgroundColor: "rgba(8,8,8,0.94)",
-          borderWidth: 1.5,
-          borderColor: "rgba(255,255,255,0.16)",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 26,
-        }}
-      >
-        <Text style={{ color: "#FFFFFF", fontSize: 20, fontWeight: "900" }}>
-          {formatSpeed(speedMps)}
-        </Text>
-        <Text style={{ color: "#9CA3AF", fontSize: 9, fontWeight: "700" }}>
-          km/h
-        </Text>
-      </View>
-
       <View
         style={{
           position: "absolute",
@@ -70,22 +57,104 @@ export function DriverNavigationBottomBar({
           backgroundColor: "#000000",
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,
+          shadowColor: "#000",
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: -2 },
+          elevation: 4,
         }}
       >
         <Text
           style={{
             color: "#FFFFFF",
-            fontSize: 18,
-            fontWeight: "600",
+            fontSize: 17,
+            fontWeight: "800",
             textAlign: "center",
           }}
         >
-          {etaLabel}
-          <Text style={{ color: "#6B7280" }}>  •  </Text>
-          <Text style={{ fontWeight: "900", fontSize: 22 }}>{arrivalLabel}</Text>
-          <Text style={{ color: "#6B7280" }}>  •  </Text>
-          {distanceLabel}
+          {etaLabel} • {arrivalLabel} • {distanceLabel}
         </Text>
+      </View>
+
+      <View
+        style={{
+          position: "absolute",
+          left: cluster.left,
+          bottom: cluster.bottom,
+          zIndex: 32,
+          alignItems: "center",
+          elevation: 12,
+        }}
+      >
+        {showSpeedLimit ? (
+          <View
+            style={{
+              width: cluster.limitSize,
+              height: cluster.limitSize,
+              borderRadius: cluster.limitSize / 2,
+              backgroundColor: isSpeeding ? "#DC2626" : "#FFFFFF",
+              borderWidth: 3,
+              borderColor: isSpeeding ? "#991B1B" : "#DC2626",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: cluster.gap,
+              shadowColor: isSpeeding ? "#DC2626" : "#000",
+              shadowOpacity: isSpeeding ? 0.42 : 0.16,
+              shadowRadius: isSpeeding ? 8 : 5,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 12,
+            }}
+          >
+            <Text
+              style={{
+                color: isSpeeding ? "#FFFFFF" : "#111827",
+                fontSize: Math.max(14, Math.round(cluster.limitSize * 0.34)),
+                fontWeight: "900",
+              }}
+            >
+              {Math.round(postedSpeed)}
+            </Text>
+          </View>
+        ) : null}
+
+        <View
+          style={{
+            width: cluster.speedSize,
+            height: cluster.speedSize,
+            borderRadius: cluster.speedSize / 2,
+            backgroundColor: "rgba(8,8,8,0.94)",
+            borderWidth: 1.5,
+            borderColor: isSpeeding
+              ? "rgba(220,38,38,0.55)"
+              : "rgba(0,0,0,0.12)",
+            shadowColor: "#000",
+            shadowOpacity: isSpeeding ? 0.24 : 0.2,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 12,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{
+              color: "#FFFFFF",
+              fontSize: Math.max(17, Math.round(cluster.speedSize * 0.33)),
+              fontWeight: "900",
+            }}
+          >
+            {formatSpeed(speedMps)}
+          </Text>
+          <Text
+            style={{
+              color: "#9CA3AF",
+              fontSize: Math.max(8, Math.round(cluster.speedSize * 0.15)),
+              fontWeight: "700",
+            }}
+          >
+            km/h
+          </Text>
+        </View>
       </View>
     </>
   );

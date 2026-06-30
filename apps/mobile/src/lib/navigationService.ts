@@ -5,6 +5,11 @@ import { distanceMeters } from "./coordinates";
 import { distanceToRouteMeters } from "./navigationProgress";
 import { getMapboxToken, isMapboxConfigured } from "./mapboxConfig";
 import { resolveNavigationLocale } from "./navigationLocale";
+import {
+  parseRouteSpeedLimitSegments,
+  type MapboxMaxSpeedRaw,
+  type RouteSpeedLimitSegment,
+} from "./navigationSpeedLimit";
 
 export type RoutePoint = CoordinatePoint;
 
@@ -21,6 +26,8 @@ export type NavigationRoute = {
   geometry: GeoJSON.Feature<GeoJSON.LineString>;
   steps: NavigationRouteStep[];
   routeIndex?: number;
+  /** Limitations Mapbox Directions (`annotations=maxspeed`). */
+  speedLimitSegments: RouteSpeedLimitSegment[];
 };
 
 const DIRECTIONS_BASE =
@@ -76,7 +83,10 @@ function parseRoute(raw: {
   geometry?: { coordinates?: number[][] };
   distance?: number;
   duration?: number;
-  legs?: Array<{ steps?: unknown[] }>;
+  legs?: Array<{
+    steps?: unknown[];
+    annotation?: { maxspeed?: MapboxMaxSpeedRaw[] };
+  }>;
 }, routeIndex = 0): NavigationRoute | null {
   const coordinates = raw?.geometry?.coordinates;
   if (!coordinates?.length) return null;
@@ -93,6 +103,7 @@ function parseRoute(raw: {
   const durationSeconds = Math.round(raw.duration || 0);
   const distanceMetersValue = Math.round(raw.distance || 0);
   const rawSteps = raw.legs?.flatMap((leg) => leg.steps ?? []) ?? [];
+  const maxspeed = raw.legs?.flatMap((leg) => leg.annotation?.maxspeed ?? []) ?? [];
 
   return {
     geometry,
@@ -101,6 +112,7 @@ function parseRoute(raw: {
     etaMinutes: Math.max(1, Math.round(durationSeconds / 60)),
     steps: parseSteps(rawSteps),
     routeIndex,
+    speedLimitSegments: parseRouteSpeedLimitSegments(geometry, maxspeed),
   };
 }
 
@@ -127,6 +139,7 @@ export async function fetchNavigationRoutes(
       `&continue_straight=true` +
       `&geometries=geojson` +
       `&overview=full` +
+      `&annotations=maxspeed` +
       `&steps=true` +
       `&banner_instructions=true` +
       `&language=${encodeURIComponent(language)}` +
@@ -140,7 +153,10 @@ export async function fetchNavigationRoutes(
         geometry?: { coordinates?: number[][] };
         distance?: number;
         duration?: number;
-        legs?: Array<{ steps?: unknown[] }>;
+        legs?: Array<{
+          steps?: unknown[];
+          annotation?: { maxspeed?: MapboxMaxSpeedRaw[] };
+        }>;
       }>;
     };
 

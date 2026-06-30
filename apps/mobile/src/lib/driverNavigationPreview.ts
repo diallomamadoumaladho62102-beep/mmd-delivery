@@ -23,18 +23,68 @@ export function parseDriverNavPreviewProgress(
   return Math.max(0, Math.min(1, parsed));
 }
 
+export type PreviewQaStatus =
+  | "gps_weak"
+  | "gps_lost"
+  | "network_weak"
+  | "network_offline"
+  | "rerouting"
+  | "stale";
+
+export type PreviewQaParams = {
+  progress: number | null;
+  paused: boolean;
+  arrival: boolean;
+  status: PreviewQaStatus | null;
+  speeding: boolean;
+};
+
+function readPreviewQueryParam(
+  decoded: string,
+  name: string,
+): string | null {
+  const match = decoded.match(new RegExp(`[?&]${name}=([^&]+)`, "i"));
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+export function parsePreviewQaParamsFromUrl(
+  url: string | null | undefined,
+): PreviewQaParams {
+  if (!url) {
+    return { progress: null, paused: false, arrival: false, status: null, speeding: false };
+  }
+
+  try {
+    const decoded = decodeURIComponent(url);
+    const progressRaw = readPreviewQueryParam(decoded, "previewProgress");
+    const statusRaw = readPreviewQueryParam(decoded, "previewStatus");
+    const validStatus: PreviewQaStatus[] = [
+      "gps_weak",
+      "gps_lost",
+      "network_weak",
+      "network_offline",
+      "rerouting",
+      "stale",
+    ];
+
+    return {
+      progress: progressRaw ? parseDriverNavPreviewProgress(progressRaw) : null,
+      paused: readPreviewQueryParam(decoded, "previewPaused") === "1",
+      arrival: readPreviewQueryParam(decoded, "previewArrival") === "1",
+      speeding: readPreviewQueryParam(decoded, "previewSpeeding") === "1",
+      status: validStatus.includes(statusRaw as PreviewQaStatus)
+        ? (statusRaw as PreviewQaStatus)
+        : null,
+    };
+  } catch {
+    return { progress: null, paused: false, arrival: false, status: null, speeding: false };
+  }
+}
+
 export function parsePreviewProgressFromUrl(
   url: string | null | undefined,
 ): number | null {
-  if (!url) return null;
-  try {
-    const decoded = decodeURIComponent(url);
-    const match = decoded.match(/[?&]previewProgress=([\d.]+)/i);
-    if (!match?.[1]) return null;
-    return parseDriverNavPreviewProgress(match[1]);
-  } catch {
-    return null;
-  }
+  return parsePreviewQaParamsFromUrl(url).progress;
 }
 
 export function readEnvPreviewProgress(): number | null {

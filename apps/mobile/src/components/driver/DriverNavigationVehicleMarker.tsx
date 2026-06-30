@@ -5,6 +5,7 @@ import type { CoordinatePoint } from "../../lib/coordinates";
 import {
   NAV_ARROW_BEARING_OFFSET,
   NAV_ARROW_ICON,
+  NAV_ARROW_SCREEN_OFFSET_X,
   NAV_ARROW_SCREEN_OFFSET_Y,
 } from "../../lib/driverNavigationVisual";
 
@@ -30,7 +31,8 @@ export function DriverNavigationVehicleMarker({
   bearing,
   followMode,
 }: Props) {
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const iconOffsetX = (NAV_ARROW_SCREEN_OFFSET_X * width) / 1080;
   const iconOffsetY = (NAV_ARROW_SCREEN_OFFSET_Y * height) / 2340;
   const iconBearing = normalizeBearing(bearing + NAV_ARROW_BEARING_OFFSET);
 
@@ -56,15 +58,15 @@ export function DriverNavigationVehicleMarker({
           layerIndex={1100}
           style={{
             iconImage: "driverNavArrow",
-            iconSize: NAV_ARROW_ICON.size,
-            iconOffset: [0, iconOffsetY],
+            iconSize: NAV_ARROW_ICON.size as unknown as number,
+            iconOffset: [iconOffsetX, iconOffsetY],
             iconRotate: followMode ? 0 : ["get", "iconBearing"],
             iconRotationAlignment: followMode ? "viewport" : "map",
             iconPitchAlignment: "viewport",
             iconAnchor: "bottom",
             iconAllowOverlap: true,
             iconIgnorePlacement: true,
-            symbolSortKey: 200,
+            symbolSortKey: 9999,
           }}
         />
       </Mapbox.ShapeSource>

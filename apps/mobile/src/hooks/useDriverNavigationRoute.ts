@@ -16,6 +16,8 @@ const REROUTE_COOLDOWN_MS = 12_000;
 
 type UseDriverNavigationRouteParams = {
   enabled: boolean;
+  /** When false, keeps the current route but skips automatic reroute. */
+  allowReroute?: boolean;
   driverPoint: CoordinatePoint | null;
   destination: CoordinatePoint | null;
   stage: NavigationStage;
@@ -42,6 +44,7 @@ export function useDriverNavigationRoute(
 ): DriverNavigationRouteState {
   const {
     enabled,
+    allowReroute = true,
     driverPoint,
     destination,
     stage,
@@ -107,9 +110,7 @@ export function useDriverNavigationRoute(
       const controller = new AbortController();
       abortRef.current = controller;
 
-      if (reason !== "reroute") {
-        setStatus("loading");
-      }
+      setStatus(reason === "reroute" ? "rerouting" : "loading");
 
       try {
         const nextRoutes = await fetchNavigationRoutes(
@@ -208,7 +209,9 @@ export function useDriverNavigationRoute(
 
   useEffect(() => {
     const route = routes[selectedRouteIndex];
-    if (!enabled || !driverPoint || !destination || !route?.geometry) return;
+    if (!enabled || !allowReroute || !driverPoint || !destination || !route?.geometry) {
+      return;
+    }
     if (rerouteInFlightRef.current) return;
 
     const needsReroute = shouldReroute(
@@ -228,6 +231,7 @@ export function useDriverNavigationRoute(
     destination,
     driverPoint?.latitude,
     driverPoint?.longitude,
+    allowReroute,
     enabled,
     loadRoutes,
     routes,

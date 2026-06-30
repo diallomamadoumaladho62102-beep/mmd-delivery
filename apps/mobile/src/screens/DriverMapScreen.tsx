@@ -21,6 +21,9 @@ import {
 } from "../lib/mapboxConfig";
 import { buildNavigationInstruction } from "../lib/navigationInstructions";
 import {
+  fitCameraToRoute,
+} from "../lib/navigationService";
+import {
   resolveNavigationVoiceLanguage,
   speakArrival,
   speakNavigationProgress,
@@ -52,6 +55,15 @@ import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { useDriverNavigationAlert } from "../hooks/useDriverNavigationAlert";
 import { DriverNavigationHud } from "../components/driver/DriverNavigationHud";
 import { DriverNavigationBottomBar } from "../components/driver/DriverNavigationBottomBar";
+import { DriverNavigationControls } from "../components/driver/DriverNavigationControls";
+import { DriverNavigationThenToast } from "../components/driver/DriverNavigationThenToast";
+import { DriverArrivalBanner } from "../components/driver/DriverArrivalBanner";
+import { DriverNavigationRouteAlternatives } from "../components/driver/DriverNavigationRouteAlternatives";
+import {
+  DriverNavigationStatusBanner,
+  previewStatusBannerFromQa,
+  resolveNavigationStatusBanner,
+} from "../components/driver/DriverNavigationStatusBanner";
 import { DriverNavigationRouteLayers } from "../components/driver/DriverNavigationRouteLayers";
 import { DriverNavigationStreetBubbleLabel } from "../components/driver/DriverNavigationStreetBubble";
 import { DriverNavigationAlertPill } from "../components/driver/DriverNavigationAlertPill";
@@ -76,10 +88,16 @@ import {
   isDriverNavigationPreviewOrderId,
   parseDriverNavPreviewProgress,
   parsePreviewProgressFromUrl,
+  parsePreviewQaParamsFromUrl,
+  type PreviewQaParams,
   readEnvPreviewProgress,
 } from "../lib/driverNavigationPreview";
-import { reduceNavigationMapClutter } from "../lib/navigationMapLayers";
-import { NAV_CAMERA } from "../lib/driverNavigationVisual";
+import { reduceNavigationMapClutter, APPLE_DAY_MAP } from "../lib/navigationMapLayers";
+import { resolveRouteSpeedLimitState } from "../lib/navigationSpeedLimit";
+import { NAV_CAMERA, NAV_ROUTE_ICON_LEAD_METERS } from "../lib/driverNavigationVisual";
+import { pointAtRouteDistance } from "../lib/driverNavigationRouteStyle";
+import { resolveNavigationLocale } from "../lib/navigationLocale";
+import { upsertDriverLiveLocation } from "../lib/driverLocationTracker";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverMap">;
 
@@ -192,12 +210,12 @@ function buildTripFromRow(params: {
 
 export default function DriverMapScreen() {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<RouteProp<RootStackParamList, "DriverMap">>();
+  const navRoute = useRoute<RouteProp<RootStackParamList, "DriverMap">>();
   const { t, i18n } = useTranslation();
 
   useKeepAwake();
 
-  const routeParams = (route.params ?? {}) as DriverMapRouteParams;
+  const routeParams = (navRoute.params ?? {}) as DriverMapRouteParams;
   const routeOrderId = String(
     routeParams.orderId ?? routeParams.order_id ?? "",
   ).trim();
@@ -208,10 +226,20 @@ export default function DriverMapScreen() {
     routeParams.destinationStage ?? routeParams.destination_stage,
   );
   const previewMode = isDriverNavigationPreviewOrderId(routeOrderId);
-  const navLocale = "fr" as const;
+  const navLocale = useMemo(
+    () => resolveNavigationLocale(i18n.language),
+    [i18n.language],
+  );
   const [urlPreviewProgress, setUrlPreviewProgress] = useState<number | null>(
     null,
   );
+  const [previewQa, setPreviewQa] = useState<PreviewQaParams>({
+    progress: null,
+    paused: false,
+    arrival: false,
+    status: null,
+    speeding: false,
+  });
 
   const fixedPreviewProgress = useMemo(() => {
     return (
@@ -225,10 +253,12 @@ export default function DriverMapScreen() {
     if (!previewMode) return;
 
     const applyUrl = (url: string | null | undefined) => {
-      const parsed = parsePreviewProgressFromUrl(url);
-      if (parsed != null) {
-        setUrlPreviewProgress(parsed);
+      const qa = parsePreviewQaParamsFromUrl(url);
+      setPreviewQa(qa);
+      if (qa.progress != null) {
+        setUrlPreviewProgress(qa.progress);
       }
+      setNavigationPaused(qa.paused);
     };
 
     void Linking.getInitialURL().then(applyUrl);
@@ -257,6 +287,7 @@ export default function DriverMapScreen() {
   const [orderLoading, setOrderLoading] = useState(true);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [navigationPaused, setNavigationPaused] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
 
   const network = useNetworkStatus();
@@ -274,7 +305,9 @@ export default function DriverMapScreen() {
     void speakReroute(voiceLanguage);
   }, [voiceEnabled, voiceLanguage]);
 
-  const liveLocation = useDriverMapLocation(mapboxReady && !!trip && !previewMode);
+  const liveLocation = useDriverMapLocation(
+    mapboxReady && !!trip && !previewMode && !navigationPaused,
+  );
 
   const routeState = useDriverNavigationRoute({
     enabled:
@@ -282,19 +315,31 @@ export default function DriverMapScreen() {
       !!trip &&
       !!activeDestination &&
       (!!liveLocation.point || previewMode),
+    allowReroute: !navigationPaused && !previewMode,
     driverPoint: liveLocation.point ?? trip?.pickup ?? null,
     destination: activeDestination,
     stage: trip?.stage ?? "pickup",
     language: navLocale,
-    alternatives: false,
+    alternatives: true,
     onNetworkFailure: network.reportFailure,
     onNetworkSuccess: network.reportSuccess,
     onReroute: handleReroute,
   });
 
+  const {
+    route: navigationRoute,
+    routes,
+    selectedRouteIndex,
+    selectRouteIndex,
+    status: routeStatus,
+    remainingMeters,
+    remainingMinutes,
+    refreshRoute,
+  } = routeState;
+
   const previewLocation = useDriverNavigationPreviewLocation(
     mapboxReady && !!trip && previewMode,
-    routeState.route?.geometry,
+    navigationRoute?.geometry,
     fixedPreviewProgress,
   );
   const location = previewMode ? previewLocation : liveLocation;
@@ -302,7 +347,7 @@ export default function DriverMapScreen() {
   const lastTraveledMetersRef = useRef(0);
   const routeGeometryKeyRef = useRef<string | null>(null);
 
-  const activeRouteGeometry = routeState.route?.geometry ?? null;
+  const activeRouteGeometry = navigationRoute?.geometry ?? null;
 
   const routeProgress = useMemo(() => {
     if (!location.point || !activeRouteGeometry) return null;
@@ -324,8 +369,25 @@ export default function DriverMapScreen() {
     return progress;
   }, [activeRouteGeometry, location.point]);
 
-  /** GPS snapé sur la LineString Mapbox — unique ancrage véhicule / routes / caméra. */
+  /** GPS snapé sur la LineString Mapbox — caméra / guidage / progression. */
   const navigationPoint = routeProgress?.anchorPoint ?? location.point ?? null;
+
+  /** Ancre visuelle flèche = split route (aligné vert/cyan sous la base). */
+  const vehicleMarkerPoint = useMemo(() => {
+    if (!navigationPoint || !activeRouteGeometry || !routeProgress) {
+      return navigationPoint;
+    }
+    if (NAV_ROUTE_ICON_LEAD_METERS <= 0) return navigationPoint;
+    const located = pointAtRouteDistance(
+      activeRouteGeometry,
+      routeProgress.traveledMeters + NAV_ROUTE_ICON_LEAD_METERS,
+    );
+    return located?.point ?? navigationPoint;
+  }, [
+    activeRouteGeometry,
+    navigationPoint,
+    routeProgress,
+  ]);
 
   const vehicleBearing = useMemo(() => {
     if (!navigationPoint || !routeProgress) return location.heading;
@@ -346,18 +408,18 @@ export default function DriverMapScreen() {
   const navigationActive = Boolean(activeRouteGeometry);
 
   const displayRemainingMeters =
-    routeProgress?.remainingMeters ?? routeState.remainingMeters;
+    routeProgress?.remainingMeters ?? remainingMeters;
 
   const instruction = useMemo(() => {
-    if (!trip || !routeState.route) return null;
+    if (!trip || !navigationRoute) return null;
 
     return buildNavigationInstruction({
       remainingMeters: displayRemainingMeters,
       stage: trip.stage,
-      steps: routeState.route.steps,
+      steps: navigationRoute.steps,
       locale: navLocale,
     });
-  }, [displayRemainingMeters, navLocale, routeState.route, trip]);
+  }, [displayRemainingMeters, navLocale, navigationRoute, trip]);
 
   const camera = useDriverNavigationCamera({
     cameraRef,
@@ -367,11 +429,11 @@ export default function DriverMapScreen() {
     maneuverDistanceMeters: instruction?.maneuverDistanceMeters ?? null,
     speedMps: location.speedMps,
     navigationActive,
-    enabled: mapboxReady && !!navigationPoint,
+    enabled: mapboxReady && !!navigationPoint && !navigationPaused,
   });
 
   const navigationAlert = useDriverNavigationAlert({
-    enabled: navigationActive && !!trip,
+    enabled: navigationActive && !!trip && !navigationPaused,
     point: navigationPoint,
     countryCode: trip?.orderCountryCode,
     moduleType:
@@ -379,25 +441,170 @@ export default function DriverMapScreen() {
   });
 
   const displayRemainingMinutes = useMemo(() => {
-    if (!routeState.route) return routeState.remainingMinutes;
+    if (!navigationRoute) return remainingMinutes;
     return estimateRemainingMinutes(
       displayRemainingMeters,
-      routeState.route.durationSeconds,
-      routeState.route.distanceMeters,
+      navigationRoute.durationSeconds,
+      navigationRoute.distanceMeters,
     );
   }, [
     displayRemainingMeters,
-    routeState.remainingMinutes,
-    routeState.route,
+    remainingMinutes,
+    navigationRoute,
+  ]);
+
+  const previewSpeedMps = useMemo(() => {
+    if (!previewMode || !previewQa.speeding) {
+      return location.speedMps;
+    }
+    const limit = resolveRouteSpeedLimitState({
+      segments: navigationRoute?.speedLimitSegments ?? [],
+      traveledMeters: routeProgress?.traveledMeters ?? 0,
+      speedMps: location.speedMps,
+    }).speedLimitKmh;
+    if (limit != null && limit > 0) {
+      return (limit + 14) / 3.6;
+    }
+    return location.speedMps;
+  }, [
+    location.speedMps,
+    navigationRoute,
+    previewMode,
+    previewQa.speeding,
+    routeProgress?.traveledMeters,
+  ]);
+
+  const speedLimitState = useMemo(() => {
+    if (!navigationRoute) {
+      return {
+        speedLimitKmh: null,
+        postedSpeed: null,
+        postedUnit: null,
+        isSpeeding: false,
+      };
+    }
+    return resolveRouteSpeedLimitState({
+      segments: navigationRoute.speedLimitSegments,
+      traveledMeters: routeProgress?.traveledMeters ?? 0,
+      speedMps: previewSpeedMps,
+    });
+  }, [
+    navigationRoute,
+    previewSpeedMps,
+    routeProgress?.traveledMeters,
   ]);
 
   const arrival = useArrivalGeofence({
-    enabled: !!trip && !!location.point && !previewMode,
+    enabled: !!trip && !!location.point && !previewMode && !navigationPaused,
     driverPoint: location.point,
     stage: trip?.stage ?? "pickup",
     pickup: trip?.pickup ?? null,
     dropoff: trip?.dropoff ?? null,
   });
+
+  const destinationArrived = useMemo(() => {
+    if (previewMode && previewQa.arrival) return true;
+    if (!trip || navigationPaused) return false;
+    return trip.stage === "pickup" ? arrival.pickupArrived : arrival.dropoffArrived;
+  }, [
+    arrival.dropoffArrived,
+    arrival.pickupArrived,
+    navigationPaused,
+    previewMode,
+    previewQa.arrival,
+    trip,
+  ]);
+
+  const statusBanner = useMemo(() => {
+    if (previewMode && previewQa.status) {
+      return previewStatusBannerFromQa(previewQa.status);
+    }
+
+    return resolveNavigationStatusBanner({
+      navigationPaused,
+      gpsStatus: location.gpsStatus,
+      routeStatus: routeStatus,
+      networkQuality: network.quality,
+    });
+  }, [
+    location.gpsStatus,
+    navigationPaused,
+    network.quality,
+    previewMode,
+    previewQa.status,
+    routeStatus,
+  ]);
+
+  const controlsTopOffset = Math.max(
+    96,
+    Math.round(camera.screenLayout.cameraPaddingTop - 28),
+  );
+
+  const handleToggleVoice = useCallback(() => {
+    setVoiceEnabled((enabled) => {
+      if (enabled) {
+        void stopNavigationVoice();
+      }
+      return !enabled;
+    });
+  }, []);
+
+  const handleRecenter = useCallback(() => {
+    camera.setFollowMode();
+    camera.recenter();
+  }, [camera]);
+
+  const handleRouteOverview = useCallback(() => {
+    if (!activeRouteGeometry) return;
+    camera.setFreeMode();
+    void fitCameraToRoute(cameraRef, activeRouteGeometry);
+  }, [activeRouteGeometry, camera]);
+
+  const handleOpenOrderDetails = useCallback(() => {
+    if (!trip) return;
+    navigation.navigate("DriverOrderDetails", {
+      orderId: trip.orderId,
+      sourceTable: trip.sourceTable,
+    });
+  }, [navigation, trip]);
+
+  const handleTogglePause = useCallback(() => {
+    setNavigationPaused((paused) => {
+      if (!paused) {
+        void stopNavigationVoice();
+      }
+      return !paused;
+    });
+  }, []);
+
+  const handleResumeNavigation = useCallback(() => {
+    setNavigationPaused(false);
+    camera.setFollowMode();
+    camera.recenter();
+  }, [camera]);
+
+  const handleStopNavigation = useCallback(() => {
+    void stopNavigationVoice();
+    const session = tripSessionRef.current;
+    if (session) {
+      void appendDriverTripHistory(finalizeTripHistorySession(session)).then(() => {
+        void tripHistory.refresh();
+      });
+      tripSessionRef.current = null;
+    }
+    navigation.goBack();
+  }, [navigation, tripHistory]);
+
+  const handleSelectRouteIndex = useCallback(
+    (index: number) => {
+      selectRouteIndex(index);
+      lastTraveledMetersRef.current = 0;
+      routeGeometryKeyRef.current = null;
+      camera.setFollowMode();
+      camera.recenter();
+    },
+    [camera, selectRouteIndex],
+  );
 
   const maneuverBubblePoint = useMemo(() => {
     if (!instruction || !navigationPoint || !activeRouteGeometry) return null;
@@ -559,15 +766,33 @@ export default function DriverMapScreen() {
   }, [loadTrip]);
 
   useEffect(() => {
+    if (previewMode || navigationPaused || !driverId || !location.point) {
+      return;
+    }
+
+    void upsertDriverLiveLocation(
+      driverId,
+      location.point.latitude,
+      location.point.longitude,
+    );
+  }, [
+    driverId,
+    location.point?.latitude,
+    location.point?.longitude,
+    navigationPaused,
+    previewMode,
+  ]);
+
+  useEffect(() => {
     if (!location.point || !tripSessionRef.current) return;
     tripSessionRef.current = updateTripHistorySessionPoint(
       tripSessionRef.current,
       location.point,
     );
-    if (routeState.route?.distanceMeters) {
-      tripSessionRef.current.routeDistanceMeters = routeState.route.distanceMeters;
+    if (navigationRoute?.distanceMeters) {
+      tripSessionRef.current.routeDistanceMeters = navigationRoute.distanceMeters;
     }
-  }, [location.point, routeState.route?.distanceMeters]);
+  }, [location.point, navigationRoute?.distanceMeters]);
 
   useEffect(() => {
     if (!activeRouteGeometry || hasFitRouteRef.current) return;
@@ -577,7 +802,7 @@ export default function DriverMapScreen() {
   }, [activeRouteGeometry, camera.recenter]);
 
   useEffect(() => {
-    if (!voiceEnabled || !instruction || !trip) return;
+    if (!voiceEnabled || navigationPaused || !instruction || !trip) return;
 
     if (trip.stage === "pickup" && arrival.pickupArrived && !arrivalVoiceRef.current.pickup) {
       arrivalVoiceRef.current.pickup = true;
@@ -600,6 +825,7 @@ export default function DriverMapScreen() {
     arrival.dropoffArrived,
     arrival.pickupArrived,
     instruction,
+    navigationPaused,
     trip,
     voiceEnabled,
     voiceLanguage,
@@ -659,13 +885,13 @@ export default function DriverMapScreen() {
     );
   }
 
-  if (routeState.status === "error" && !routeState.route && !previewMode) {
+  if (routeStatus === "error" && !navigationRoute && !previewMode) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
         <DriverMapFallbackStates
           variant="route_error"
           onGoBack={() => navigation.goBack()}
-          onRetry={routeState.refreshRoute}
+          onRetry={refreshRoute}
         />
       </SafeAreaView>
     );
@@ -674,7 +900,7 @@ export default function DriverMapScreen() {
   const mapStyleURL = getMapStyleNavigation();
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+    <View style={{ flex: 1, backgroundColor: APPLE_DAY_MAP.land }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
       <View style={{ flex: 1 }}>
@@ -728,9 +954,9 @@ export default function DriverMapScreen() {
             />
           )}
 
-          {navigationPoint && navigationActive && (
+          {vehicleMarkerPoint && navigationActive && (
             <DriverNavigationVehicleMarker
-              point={navigationPoint}
+              point={vehicleMarkerPoint}
               bearing={vehicleBearing}
               followMode={camera.mode === "follow"}
             />
@@ -754,13 +980,58 @@ export default function DriverMapScreen() {
 
         <DriverNavigationHud visible={!!instruction} instruction={instruction} />
 
+        <DriverNavigationStatusBanner
+          banner={statusBanner}
+          onResume={navigationPaused ? handleResumeNavigation : undefined}
+        />
+
+        <DriverNavigationRouteAlternatives
+          routes={routes}
+          selectedIndex={selectedRouteIndex}
+          topOffset={controlsTopOffset + 52}
+          navLocale={navLocale}
+          onSelect={handleSelectRouteIndex}
+        />
+
+        <DriverNavigationControls
+          topOffset={controlsTopOffset}
+          voiceEnabled={voiceEnabled}
+          navigationPaused={navigationPaused}
+          onToggleVoice={handleToggleVoice}
+          onRecenter={handleRecenter}
+          onRouteOverview={handleRouteOverview}
+          onOpenOrderDetails={handleOpenOrderDetails}
+          onTogglePause={handleTogglePause}
+          onStopNavigation={handleStopNavigation}
+        />
+
         <DriverNavigationAlertPill alert={navigationAlert} />
+
+        {!destinationArrived ? (
+          <DriverNavigationThenToast
+            instruction={instruction}
+            hasSpeedLimit={speedLimitState.postedSpeed != null}
+          />
+        ) : null}
+
+        {trip && destinationArrived ? (
+          <DriverArrivalBanner
+            visible
+            stage={trip.stage}
+            address={
+              trip.stage === "pickup" ? trip.pickupAddress : trip.dropoffAddress
+            }
+            onOpenOrderDetails={handleOpenOrderDetails}
+          />
+        ) : null}
 
         {trip ? (
           <DriverNavigationBottomBar
             etaMinutes={displayRemainingMinutes}
             remainingMeters={displayRemainingMeters}
-            speedMps={location.speedMps}
+            speedMps={previewSpeedMps}
+            postedSpeed={speedLimitState.postedSpeed}
+            isSpeeding={speedLimitState.isSpeeding}
           />
         ) : null}
       </View>

@@ -63,9 +63,9 @@ export function getMapStyleDark(): string {
   );
 }
 
-/** Style sombre sans surbrillance route Mapbox (navigation-night colore toute la chaussée). */
+/** Style clair naturel — rues, bâtiments et POI visibles (comme Waze / Google Maps jour). */
 export function getMapStyleNavigation(): string {
-  return getMapStyleDark();
+  return getMapStyleStreets();
 }
 
 /** @deprecated Use getMapStyleStreets() for lazy Mapbox access */

@@ -70,7 +70,8 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
         "NSLocationAlwaysUsageDescription": "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
         "NSCameraUsageDescription": "MMD Delivery uses the camera to capture delivery proof photos, location reference photos, and profile pictures.",
-        "NSPhotoLibraryUsageDescription": "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos."
+        "NSPhotoLibraryUsageDescription": "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
+        "LSApplicationQueriesSchemes": ["waze", "comgooglemaps", "googlemaps"]
       }
     },
     "extra": {
