@@ -92,7 +92,6 @@ import {
   type PreviewQaParams,
   readEnvPreviewProgress,
 } from "../lib/driverNavigationPreview";
-import { reduceNavigationMapClutter, APPLE_DAY_MAP } from "../lib/navigationMapLayers";
 import { resolveRouteSpeedLimitState } from "../lib/navigationSpeedLimit";
 import { NAV_CAMERA, NAV_ROUTE_ICON_LEAD_METERS } from "../lib/driverNavigationVisual";
 import { pointAtRouteDistance } from "../lib/driverNavigationRouteStyle";
@@ -900,7 +899,7 @@ export default function DriverMapScreen() {
   const mapStyleURL = getMapStyleStreets();
 
   return (
-    <View style={{ flex: 1, backgroundColor: APPLE_DAY_MAP.land }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
       <View style={{ flex: 1 }}>
@@ -913,11 +912,6 @@ export default function DriverMapScreen() {
           attributionEnabled={false}
           compassEnabled={false}
           onTouchStart={camera.setFreeMode}
-          onDidFinishLoadingMap={() => {
-            void reduceNavigationMapClutter(mapRef);
-            setTimeout(() => void reduceNavigationMapClutter(mapRef), 800);
-            setTimeout(() => void reduceNavigationMapClutter(mapRef), 2500);
-          }}
         >
           <Mapbox.Camera
             ref={cameraRef}
