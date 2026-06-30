@@ -98,6 +98,15 @@ function authHeaders(token) {
   };
 }
 
+/** Matches apps/web/src/lib/internalHealthAuth.ts — Bearer monitoring or cron secret. */
+function internalProbeAuthHeaders() {
+  const monitoringSecret = String(process.env.MONITORING_SECRET ?? "").trim();
+  const cronSecret = String(process.env.CRON_SECRET ?? "").trim();
+  const expected = monitoringSecret || cronSecret;
+  if (!expected) return {};
+  return { Authorization: `Bearer ${expected}` };
+}
+
 async function recordStripeWebhookEvents24hChecks(admin) {
   const result = await countStripeWebhookEvents24h(admin);
   const detail = {
@@ -119,7 +128,21 @@ async function recordStripeWebhookEvents24hChecks(admin) {
 }
 
 async function checkHealthEndpoints() {
-  const health = await fetchJson(`${apiBase}/api/health`);
+  const probeAuth = internalProbeAuthHeaders();
+  if (!probeAuth.Authorization) {
+    recordCheck("api", "health", "SKIP", {
+      note: "Set CRON_SECRET or MONITORING_SECRET in final-certification.env",
+    });
+    recordCheck("api", "ai_health", "SKIP", {
+      note: "Set CRON_SECRET or MONITORING_SECRET in final-certification.env",
+    });
+    recordCheck("stripe", "vercel_webhook_health", "SKIP", {
+      note: "Set CRON_SECRET or MONITORING_SECRET in final-certification.env",
+    });
+    return;
+  }
+
+  const health = await fetchJson(`${apiBase}/api/health`, { headers: probeAuth });
   if (health.res.ok && health.body?.ok === true && health.body?.platform_countries?.ok === true) {
     recordCheck("api", "health", "PASS", {
       count: health.body.platform_countries.count,
@@ -132,7 +155,7 @@ async function checkHealthEndpoints() {
     });
   }
 
-  const ai = await fetchJson(`${apiBase}/api/ai/health`);
+  const ai = await fetchJson(`${apiBase}/api/ai/health`, { headers: probeAuth });
   if (ai.res.ok && ai.body?.ok === true) {
     recordCheck("api", "ai_health", "PASS", {
       assistantEnabled: ai.body.assistantEnabled,
@@ -142,7 +165,9 @@ async function checkHealthEndpoints() {
     recordCheck("api", "ai_health", "FAIL", { httpStatus: ai.res.status, body: ai.body });
   }
 
-  const stripeHealth = await fetchJson(`${apiBase}/api/health/stripe-webhook`);
+  const stripeHealth = await fetchJson(`${apiBase}/api/health/stripe-webhook`, {
+    headers: probeAuth,
+  });
   const canonicalOk =
     stripeHealth.body?.canonical_webhook_url === CANONICAL_STRIPE_WEBHOOK;
   if (stripeHealth.res.ok && canonicalOk) {
@@ -589,10 +614,6 @@ async function checkAuthenticatedApis(token) {
 
 async function checkCronEndpoints() {
   const certificationEnvLoaded = fs.existsSync(envFile);
-  const cronSecret = (process.env.CRON_SECRET || "").trim();
-  const useCronSecret =
-    Boolean(cronSecret) &&
-    (certificationEnvLoaded || truthy(process.env.CERTIFICATION_USE_LOCAL_SECRETS));
   const safeCronPaths = [
     "/api/cron/retry-order-dispatch",
     "/api/cron/retry-taxi-dispatch",
@@ -613,16 +634,16 @@ async function checkCronEndpoints() {
     }
   }
 
-  if (!useCronSecret) {
+  const authHeader = internalProbeAuthHeaders();
+  if (!authHeader.Authorization) {
     recordCheck("ops", "cron_authenticated_execution", "SKIP", {
       note: certificationEnvLoaded
-        ? "Set CRON_SECRET in final-certification.env"
+        ? "Set CRON_SECRET or MONITORING_SECRET in final-certification.env"
         : "Load --env docs/production/final-certification.env (or CERTIFICATION_USE_LOCAL_SECRETS=true)",
     });
     return;
   }
 
-  const authHeader = { Authorization: `Bearer ${cronSecret}` };
   for (const pathname of safeCronPaths) {
     const label = pathname.replace(/^\//, "");
     const authed = await fetchJson(`${apiBase}${pathname}`, { headers: authHeader });

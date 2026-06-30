@@ -8,6 +8,7 @@ out
 .env.production
 .env.production.local
 apps/web/.env.local
+apps/web/.env.vercel.production.local
 apps/mobile/.env
 npm-debug.log*
 yarn-debug.log*
