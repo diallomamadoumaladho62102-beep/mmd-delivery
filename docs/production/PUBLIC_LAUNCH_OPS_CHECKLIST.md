@@ -15,6 +15,8 @@ Legend: **CODE** = verified in repo/CI · **OPS** = manual external action requi
 | A3 | Migration files valid | `node scripts/verify-migration-files.mjs` | CODE |
 | A4 | No secrets in git | `.env*` gitignored; no `sk_live` in history | CODE |
 | A5 | Dev artifacts excluded | `docs/screenshots/`, `.expo/`, reports gitignored | CODE |
+| A6 | ESLint in CI | Workflow runs `pnpm --dir apps/mobile lint && pnpm --dir apps/web lint` | CODE |
+| A7 | Transactional hooks env-gated | `TRANSACTIONAL_*_ENABLED=false` by default in `.env.example` | CODE |
 
 ---
 
@@ -50,6 +52,8 @@ Legend: **CODE** = verified in repo/CI · **OPS** = manual external action requi
 | C10 | Mapbox | `NEXT_PUBLIC_MAPBOX_TOKEN`, `MAPBOX_ACCESS_TOKEN` |
 | C11 | Health check | `GET /api/health` → 200 |
 | C12 | Stripe webhook health | `GET /api/health/stripe-webhook` with `Authorization: Bearer $CRON_SECRET` |
+| C13 | Auth policy (optional) | `REQUIRE_EMAIL_VERIFICATION=true` after Supabase email confirm enabled |
+| C14 | Transactional SMS/email (optional) | `TRANSACTIONAL_SMS_ENABLED`, `TRANSACTIONAL_EMAIL_ENABLED` — only after Twilio/Resend live |
 
 Full list: `.env.example`
 

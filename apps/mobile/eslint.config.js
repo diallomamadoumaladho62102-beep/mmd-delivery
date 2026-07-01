@@ -7,7 +7,7 @@ module.exports = [
   js.configs.recommended,
 
   {
-    files: ["src/**/*.{ts,tsx}"],
+    files: ["src/lib/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: "latest",

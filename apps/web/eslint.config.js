@@ -5,7 +5,7 @@ const tsPlugin = require("@typescript-eslint/eslint-plugin");
 module.exports = [
   js.configs.recommended,
   {
-    files: ["src/lib/**/*.{ts,tsx}"],
+    files: ["src/lib/**/*.{ts,tsx}", "app/api/**/route.ts"],
     languageOptions: {
       parser: tsParser,
       ecmaVersion: "latest",

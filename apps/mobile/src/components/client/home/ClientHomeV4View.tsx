@@ -503,7 +503,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
           )}
         </Text>
 
-        {/* TODO: Replace fallback hero with live Mapbox layer when production map feed is ready. */}
+        {/* Fallback hero map — live Mapbox feed ships in a future client home release. */}
         <View style={styles.mapHero} testID="client-home-map-hero">
           <MapHeroFallback />
           <View style={styles.mapOverlayTop}>

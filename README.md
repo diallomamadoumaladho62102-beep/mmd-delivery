@@ -39,7 +39,7 @@ On every push/PR to `main`:
 pnpm test:ci
 ```
 
-Runs: migration file check, web build, trust boundary tests, platform guards, store-readiness static checks, mobile navigation tests.
+Runs: migration file check, **ESLint** (web `src/lib` + `app/api`, mobile `src/lib`), web build, trust boundary tests, platform guards, store-readiness static checks, mobile navigation tests.
 
 ## Production deployment
 

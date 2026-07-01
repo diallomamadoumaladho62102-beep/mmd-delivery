@@ -181,7 +181,9 @@ async function loadLogoPngBytes(): Promise<Uint8Array | null> {
     try {
       const buf = await fs.readFile(p);
       if (buf?.byteLength) return new Uint8Array(buf);
-    } catch {}
+    } catch {
+      // try next logo candidate path
+    }
   }
 
   return null;

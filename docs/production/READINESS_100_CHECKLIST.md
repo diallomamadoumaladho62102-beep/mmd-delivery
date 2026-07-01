@@ -25,9 +25,21 @@ Code paths for payment, commissions, dispatch, and legal URLs are in the repo.
 3. `20260604150000_production_dispatch_hardening.sql`
 4. `20260624120000_platform_countries_launch_control.sql`
 5. `20260625120000_production_p0_p1_closure.sql`
-6. `20260626120000_partial_closure_completion.sql`
+6. `20260717120000_production_hardening_p0_p1.sql`
+7. `20260720120000_driver_locations_participant_read.sql` — client/restaurant read `driver_locations` for active trips only
 
 See also `docs/production/EXTERNAL_OPS_MANUAL.md` for Stripe Connect Africa, stores, and legal sign-off.
+
+## Transactional notifications (optional at launch)
+
+Set in Vercel **only after** Twilio/Resend production credentials are verified:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `TRANSACTIONAL_SMS_ENABLED` | `false` | SMS on food delivery + driver assigned (food/DR/taxi) |
+| `TRANSACTIONAL_EMAIL_ENABLED` | `false` | Email on same lifecycle events |
+
+Hooks are env-gated — no outbound SMS/email when flags are `false`.
 
 ## Smoke test (manual, Live)
 

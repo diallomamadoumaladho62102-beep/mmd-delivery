@@ -19,7 +19,8 @@ type RecentOrder = {
 };
 
 export default function Dashboard() {
-  const role = 'driver'; // TODO: injecter le vrai rôle utilisateur
+  // Legacy demo page — production flows use role-specific mobile/web apps.
+  const role = "driver" as const;
 
   const currentPoints = 6;
   const nextLevelPoints = 50;

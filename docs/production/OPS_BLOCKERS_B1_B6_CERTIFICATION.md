@@ -34,7 +34,7 @@ retourne exit code `0` et verdict `READY FOR REAL PUBLIC PRODUCTION`.
 | Système | Chemin UI |
 |---------|-----------|
 | **Supabase** | [Dashboard](https://supabase.com/dashboard) → projet **production** → **SQL Editor** |
-| **Repo (référence)** | `supabase/migrations/20260716120000_food_order_trust_boundary.sql`, `20260717120000_production_hardening_p0_p1.sql` |
+| **Repo (référence)** | `supabase/migrations/20260716120000_food_order_trust_boundary.sql`, `20260717120000_production_hardening_p0_p1.sql`, `20260720120000_driver_locations_participant_read.sql` |
 | **Script SQL** | `docs/production/sql/final_certification_checks.sql` |
 
 ### Étapes de vérification
@@ -45,7 +45,7 @@ retourne exit code `0` et verdict `READY FOR REAL PUBLIC PRODUCTION`.
 
 | Section SQL | Vérification | Résultat attendu |
 |-------------|--------------|------------------|
-| §1 Migrations | `SELECT version, name FROM supabase_migrations.schema_migrations WHERE version IN ('20260716120000','20260717120000')` | **2 lignes** : `food_order_trust_boundary`, `production_hardening_p0_p1` |
+| §1 Migrations | `SELECT version, name FROM supabase_migrations.schema_migrations WHERE version IN ('20260716120000','20260717120000','20260720120000')` | **3 lignes** : trust boundary, P0/P1 hardening, driver_locations participant read |
 | §2 RLS | `orders`, `delivery_requests`, `taxi_rides` | **3 lignes**, `rls_enabled = true` |
 | §3 INSERT policies | Forbidden policy names query | **0 lignes** |
 | §4 Triggers | `trg_guard_orders_client_financial_update`, `trg_guard_delivery_requests_client_financial_update` | **2 lignes**, `tgenabled = 'O'` |
