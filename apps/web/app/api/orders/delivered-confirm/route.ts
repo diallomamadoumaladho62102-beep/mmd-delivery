@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
+import { notifyOrderDeliveredTransactional } from "@/lib/transactionalOutbound";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 
@@ -719,6 +720,33 @@ export async function POST(req: NextRequest) {
         order_id: orderId,
         user_id: user.id,
         message: getErrorMessage(notifyErr),
+      });
+    }
+
+    try {
+      const { data: notifyRow } = await supabaseAdmin
+        .from("orders")
+        .select("client_user_id, client_id, created_by, dropoff_address")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      const clientUserId =
+        notifyRow?.client_user_id ??
+        notifyRow?.client_id ??
+        notifyRow?.created_by ??
+        null;
+
+      await notifyOrderDeliveredTransactional({
+        supabaseAdmin,
+        clientUserId,
+        orderId,
+        dropoffAddress: notifyRow?.dropoff_address ?? null,
+      });
+    } catch (transactionalErr) {
+      console.error("[delivered-confirm] transactional notification failed", {
+        order_id: orderId,
+        user_id: user.id,
+        message: getErrorMessage(transactionalErr),
       });
     }
 
