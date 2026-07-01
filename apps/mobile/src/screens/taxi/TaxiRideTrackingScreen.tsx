@@ -21,6 +21,7 @@ import {
   fetchTaxiRide,
   formatTaxiCents,
 } from "../../lib/taxiClientApi";
+import { supabase } from "../../lib/supabase";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiRideTracking">;
 type TrackingRoute = RouteProp<RootStackParamList, "TaxiRideTracking">;
@@ -112,6 +113,30 @@ export default function TaxiRideTrackingScreen() {
     const timer = setInterval(() => void load(), 12000);
     return () => clearInterval(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (!rideId) return;
+
+    const channel = supabase
+      .channel(`taxi-ride-tracking:${rideId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "taxi_rides",
+          filter: `id=eq.${rideId}`,
+        },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rideId, load]);
 
   const status = String(ride?.status ?? "").toLowerCase();
   const paymentStatus = String(ride?.payment_status ?? "").toLowerCase();

@@ -663,6 +663,30 @@ export function ClientOrderDetailsScreen() {
     return () => sub.remove();
   }, [orderId, fetchOrder]);
 
+  useEffect(() => {
+    if (!orderId) return;
+
+    const channel = supabase
+      .channel(`client-order-detail:${orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `id=eq.${orderId}`,
+        },
+        () => {
+          void fetchOrder();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, fetchOrder]);
+
   const setTipPreset = useCallback((v: number) => {
     setTipDollars(v);
     setTipCustom(v === 0 ? "" : String(v));

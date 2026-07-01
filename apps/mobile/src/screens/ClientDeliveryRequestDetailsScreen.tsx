@@ -656,6 +656,52 @@ export function ClientDeliveryRequestDetailsScreen() {
   }, [loadDetails]);
 
   useEffect(() => {
+    if (!requestId) return;
+
+    const reload = () => {
+      void loadDetails({ silent: true });
+    };
+
+    const channel = supabase
+      .channel(`client-dr-detail:${requestId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "delivery_requests",
+          filter: `id=eq.${requestId}`,
+        },
+        reload,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `id=eq.${requestId}`,
+        },
+        reload,
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `external_ref_id=eq.${requestId}`,
+        },
+        reload,
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [requestId, loadDetails]);
+
+  useEffect(() => {
     let alive = true;
 
     (async () => {

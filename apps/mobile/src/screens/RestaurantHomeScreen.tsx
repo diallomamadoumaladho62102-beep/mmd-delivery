@@ -723,9 +723,50 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
   const loadNearbyDrivers = useCallback(async () => {
     try {
+      if (!activeRestaurantId) {
+        setNearbyDrivers([]);
+        return;
+      }
+
+      const { data: orderRows, error: ordersError } = await supabase
+        .from("orders")
+        .select("driver_id")
+        .eq("restaurant_id", activeRestaurantId)
+        .not("driver_id", "is", null)
+        .in("status", [
+          "preparing",
+          "ready",
+          "dispatched",
+          "picked_up",
+          "in_transit",
+          "out_for_delivery",
+        ]);
+
+      if (ordersError) {
+        console.log("Restaurant active order drivers lookup error:", ordersError);
+        setNearbyDrivers([]);
+        return;
+      }
+
+      const driverIds = [
+        ...new Set(
+          (orderRows ?? [])
+            .map((row) =>
+              String((row as { driver_id?: string | null }).driver_id ?? "").trim(),
+            )
+            .filter(Boolean),
+        ),
+      ];
+
+      if (driverIds.length === 0) {
+        setNearbyDrivers([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("driver_locations")
         .select("driver_id,lat,lng,updated_at")
+        .in("driver_id", driverIds)
         .order("updated_at", { ascending: false })
         .limit(MAX_NEARBY_DRIVERS);
 
@@ -740,7 +781,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
       console.log("Restaurant nearby drivers exception:", e);
       setNearbyDrivers([]);
     }
-  }, []);
+  }, [activeRestaurantId]);
 
   const loadRestaurantProfile = useCallback(async (uid: string) => {
     try {
