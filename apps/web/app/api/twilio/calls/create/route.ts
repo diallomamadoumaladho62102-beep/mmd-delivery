@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   buildParticipantRpc,
   getResourceLabel,
@@ -17,12 +17,11 @@ type ProfilePhoneRow = {
   role?: string | null;
 };
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 const MMD_TWILIO_NUMBER = "+19294924563";
+
+function getSupabaseAdmin() {
+  return buildSupabaseAdminClient();
+}
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -45,7 +44,7 @@ function normalizePhone(phone: string | null | undefined): string | null {
 }
 
 async function getProfilePhone(userId: string): Promise<string | null> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("profiles")
     .select("id, phone")
     .eq("id", userId)
@@ -60,7 +59,7 @@ async function getProfilePhone(userId: string): Promise<string | null> {
 }
 
 async function getAdminProfile(): Promise<ProfilePhoneRow | null> {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from("profiles")
     .select("id, phone, role")
     .eq("role", "admin")
@@ -103,7 +102,7 @@ async function loadResourceRow(
       ? "taxi_rides"
       : "orders";
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await getSupabaseAdmin()
     .from(table)
     .select(selectColumns(sourceTable))
     .eq("id", resourceId)
@@ -127,7 +126,7 @@ async function isParticipant(
   userId: string,
 ): Promise<boolean> {
   const { fn, args } = buildParticipantRpc(sourceTable, resourceId);
-  const { data, error } = await supabaseAdmin.rpc(fn, args);
+  const { data, error } = await getSupabaseAdmin().rpc(fn, args);
 
   if (error) {
     console.error("[twilio/calls/create] participant rpc failed", {
@@ -154,7 +153,7 @@ export async function POST(req: NextRequest) {
     const {
       data: { user },
       error: userError,
-    } = await supabaseAdmin.auth.getUser(token);
+    } = await getSupabaseAdmin().auth.getUser(token);
 
     if (userError || !user) {
       return jsonError("Invalid user token", 401);
@@ -188,7 +187,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (callerRole === "admin") {
-      const { data: adminProfile } = await supabaseAdmin
+      const { data: adminProfile } = await getSupabaseAdmin()
         .from("profiles")
         .select("id, role")
         .eq("id", user.id)
@@ -260,7 +259,7 @@ export async function POST(req: NextRequest) {
 
     const expiresAt = new Date(Date.now() + 1000 * 60 * 30).toISOString();
 
-    const { data: session, error: insertError } = await supabaseAdmin
+    const { data: session, error: insertError } = await getSupabaseAdmin()
       .from("call_sessions")
       .insert({
         order_id: resourceId,

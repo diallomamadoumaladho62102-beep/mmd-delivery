@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   assertTwilioWebhookRequest,
   formDataToParamRecord,
@@ -10,11 +10,6 @@ export const runtime = "nodejs";
 const MMD_TWILIO_NUMBER = "+19294924563";
 const ADMIN_SUPPORT_PHONE =
   process.env.MMD_ADMIN_SUPPORT_PHONE || "+19297408722";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 function escapeXml(value: string) {
   return String(value || "")
@@ -94,6 +89,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabaseAdmin = buildSupabaseAdminClient();
     const formData = await req.formData();
     const twilioParams = await formDataToParamRecord(formData);
     const twilioAuth = await assertTwilioWebhookRequest(req, twilioParams);
