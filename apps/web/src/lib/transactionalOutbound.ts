@@ -147,3 +147,39 @@ export async function notifyOrderDispatchedTransactional(params: {
     body,
   });
 }
+
+export async function notifyDeliveryRequestDispatchedTransactional(params: {
+  supabaseAdmin: SupabaseClient;
+  clientUserId: string | null;
+  deliveryRequestId: string;
+}): Promise<void> {
+  if (!params.clientUserId) return;
+
+  const shortId = params.deliveryRequestId.slice(0, 8).toUpperCase();
+  const body = `MMD Delivery: a driver is on the way for your delivery #${shortId}. Track it in the app.`;
+
+  await notifyUserTransactional({
+    supabaseAdmin: params.supabaseAdmin,
+    recipient: { userId: params.clientUserId },
+    subject: `MMD Delivery — driver assigned (#${shortId})`,
+    body,
+  });
+}
+
+export async function notifyTaxiRideDispatchedTransactional(params: {
+  supabaseAdmin: SupabaseClient;
+  clientUserId: string | null;
+  taxiRideId: string;
+}): Promise<void> {
+  if (!params.clientUserId) return;
+
+  const shortId = params.taxiRideId.slice(0, 8).toUpperCase();
+  const body = `MMD Taxi: your driver is on the way for ride #${shortId}. Track your ride in the app.`;
+
+  await notifyUserTransactional({
+    supabaseAdmin: params.supabaseAdmin,
+    recipient: { userId: params.clientUserId },
+    subject: `MMD Taxi — driver assigned (#${shortId})`,
+    body,
+  });
+}

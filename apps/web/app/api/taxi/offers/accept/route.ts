@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getTaxiOfferId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
+import { fireTaxiRideDispatchedTransactional } from "@/lib/transactionalDispatchNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,11 @@ export async function POST(req: NextRequest) {
         triggeredRole: "driver",
         description: "Driver accepted taxi offer via API",
         metadata: { offer_id: offerId },
+      });
+
+      await fireTaxiRideDispatchedTransactional({
+        supabaseAdmin: auth.supabaseAdmin,
+        taxiRideId,
       });
     }
 

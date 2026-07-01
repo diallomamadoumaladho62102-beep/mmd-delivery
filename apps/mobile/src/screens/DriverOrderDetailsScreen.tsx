@@ -1787,29 +1787,8 @@ export function DriverOrderDetailsScreen() {
       } else if (getOrderSourceTable(order) === "marketplace_delivery_jobs") {
         await acceptDriverMarketplaceJob(order.id);
       } else {
-        const { data: accepted, error: accErr } = await supabase.rpc("driver_accept_ready_order", {
-          p_order_id: order.id,
-        });
-
-        if (accErr) {
-          console.error("❌ accept_order error:", accErr);
-          Alert.alert(
-            t("driver.orderDetails.acceptDeniedTitle", "Impossible d'accepter"),
-            accErr.message?.includes("Stripe onboarding required")
-              ? t(
-                  "driver.orderDetails.acceptDeniedStripe",
-                  "Tu dois terminer la configuration Stripe avant d'accepter des courses."
-                )
-              : accErr.message ??
-                  t(
-                    "driver.orderDetails.acceptDeniedGeneric",
-                    "Impossible d'accepter cette course."
-                  )
-          );
-          return;
-        }
-
-        console.log("✅ Course acceptée via RPC:", (accepted as any)?.id ?? accepted);
+        const { acceptReadyFoodOrder } = await import("../lib/driverOrderDriverApi");
+        await acceptReadyFoodOrder(order.id);
       }
 
       const uid =

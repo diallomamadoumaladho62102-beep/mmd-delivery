@@ -1832,31 +1832,28 @@ export function DriverHomeScreen() {
         setAcceptingId(offerKey);
 
         if (offer.offer_id) {
-          const rpcName =
-            offerSourceTable === "delivery_requests"
-              ? "driver_accept_delivery_request_offer"
-              : "driver_accept_order_offer";
-
-          const { data, error } = await supabase.rpc(rpcName, {
-            p_offer_id: offer.offer_id,
-          });
-
-          if (error) throw error;
-
-          const result = getRpcRow<{ ok?: boolean; message?: string }>(data as any);
-
-          if (!result?.ok) {
-            if (
-              offerSourceTable === "delivery_requests" &&
-              (result?.message === "request_no_longer_available" ||
-                result?.message === "offer_not_available")
-            ) {
-              const { acceptDeliveryRequest } = await import(
-                "../lib/deliveryRequestDriverApi"
-              );
-              await acceptDeliveryRequest(orderId);
-            } else {
-              throw new Error(result?.message ?? getOfferUnavailableMessage(t));
+          if (offerSourceTable === "delivery_requests") {
+            const { acceptDeliveryRequestOffer } = await import("../lib/driverOrderDriverApi");
+            try {
+              await acceptDeliveryRequestOffer(offer.offer_id);
+            } catch (apiErr: any) {
+              if (
+                apiErr?.message === "request_no_longer_available" ||
+                apiErr?.message === "offer_not_available"
+              ) {
+                const { acceptDeliveryRequest } = await import(
+                  "../lib/deliveryRequestDriverApi"
+                );
+                await acceptDeliveryRequest(orderId);
+              } else {
+                throw apiErr;
+              }
+            }
+          } else {
+            const { acceptFoodOrderOffer } = await import("../lib/driverOrderDriverApi");
+            const out = await acceptFoodOrderOffer(offer.offer_id);
+            if (out?.ok === false) {
+              throw new Error(out?.error ?? getOfferUnavailableMessage(t));
             }
           }
         } else if (offerSourceTable === "delivery_requests") {
@@ -1865,8 +1862,8 @@ export function DriverHomeScreen() {
         } else if (offerSourceTable === "marketplace_delivery_jobs") {
           await acceptDriverMarketplaceJob(orderId);
         } else {
-          const { error: rpcError } = await supabase.rpc("driver_accept_ready_order", { p_order_id: orderId });
-          if (rpcError) throw rpcError;
+          const { acceptReadyFoodOrder } = await import("../lib/driverOrderDriverApi");
+          await acceptReadyFoodOrder(orderId);
 
           const { error: joinError } = await supabase.rpc("join_order", { p_order_id: orderId, p_role: "driver" });
           if (joinError) console.log("join_order driver warning:", joinError);

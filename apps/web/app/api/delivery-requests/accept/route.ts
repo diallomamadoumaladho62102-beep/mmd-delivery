@@ -5,6 +5,8 @@ import {
   mapDeliveryRpcError,
   type DeliveryRequestRpcResult,
 } from "@/lib/deliveryRequestDriver";
+import { getSupabaseAdminClient } from "@/lib/driverAcceptApi";
+import { fireDeliveryRequestDispatchedTransactional } from "@/lib/transactionalDispatchNotify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +62,22 @@ export async function POST(req: NextRequest) {
     if (!result?.ok) {
       const mapped = mapDeliveryRpcError(result?.message ?? result?.error ?? "");
       return json({ error: mapped.message }, mapped.status);
+    }
+
+    try {
+      const supabaseAdmin = getSupabaseAdminClient();
+      await fireDeliveryRequestDispatchedTransactional({
+        supabaseAdmin,
+        deliveryRequestId: requestId,
+      });
+    } catch (transactionalErr) {
+      console.error("[delivery-requests/accept] transactional notification failed", {
+        delivery_request_id: requestId,
+        message:
+          transactionalErr instanceof Error
+            ? transactionalErr.message
+            : String(transactionalErr),
+      });
     }
 
     return json({ ok: true, delivery_request_id: requestId, result });
