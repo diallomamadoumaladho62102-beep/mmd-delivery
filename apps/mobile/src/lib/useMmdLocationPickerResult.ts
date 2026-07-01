@@ -22,7 +22,10 @@ export function useMmdLocationPickerResult(
   >
 ) {
   const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
+
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
 
   const pickerResult = route.params?.locationPickerResult;
 

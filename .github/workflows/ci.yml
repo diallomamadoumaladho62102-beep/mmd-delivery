@@ -36,6 +36,9 @@ jobs:
       - name: Verify migration files
         run: node scripts/verify-migration-files.mjs
 
+      - name: Lint
+        run: pnpm --dir apps/mobile lint && pnpm --dir apps/web lint
+
       - name: Web build
         run: pnpm --dir apps/web build
 

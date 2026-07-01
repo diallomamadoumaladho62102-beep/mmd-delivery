@@ -34,7 +34,7 @@ function mapboxShortCodeToCountry(code: unknown): string | null {
   const raw = String(code ?? "")
     .trim()
     .toUpperCase()
-    .replace(/^([A-Z]{2})\-.+$/, "$1");
+    .replace(/^([A-Z]{2})-.+$/, "$1");
   if (raw.length !== 2) return null;
   return TAXI_SUPPORTED_COUNTRY_CODES.has(raw) ? raw : null;
 }

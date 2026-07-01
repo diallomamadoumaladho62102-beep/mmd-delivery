@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
+    "lint": "eslint src/lib",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
@@ -27,7 +28,6 @@
     "expo-av": "~16.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.12",
-    "expo-dev-client": "~6.0.20",
     "expo-device": "~8.0.10",
     "expo-document-picker": "~14.0.8",
     "expo-file-system": "~19.0.23",
@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@expo/cli": "^54.0.16",
+    "expo-dev-client": "~6.0.20",
     "@types/react": "^19.1.17",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
