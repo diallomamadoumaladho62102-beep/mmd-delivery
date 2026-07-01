@@ -28,7 +28,7 @@ supabase db push
 cd apps/web && pnpm dev
 
 # Mobile (from repo root — canonical app.config.ts)
-pnpm start   # or: cd apps/mobile && pnpm start
+cd apps/mobile && pnpm start
 ```
 
 ## CI (GitHub Actions)

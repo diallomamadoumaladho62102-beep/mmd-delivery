@@ -355,7 +355,7 @@ function checkSupabaseTrustBoundarySqlSignOff() {
   recordCheck("supabase", "trust_boundary_migrations", "PASS", {
     signOff: true,
     validatedAt,
-    migrations: ["20260716120000", "20260717120000"],
+    migrations: ["20260716120000", "20260717120000", "20260720120000"],
   });
   recordCheck("supabase", "trust_boundary_rls", "PASS", {
     signOff: true,

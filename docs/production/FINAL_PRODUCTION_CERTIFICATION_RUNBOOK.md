@@ -70,7 +70,7 @@ If missing: `supabase db push` from a trusted machine (outside this runbook scop
 
 | Section | PASS when |
 |---------|-----------|
-| Migrations | 2 rows (`20260716120000`, `20260717120000`) |
+| Migrations | 3 rows (`20260716120000`, `20260717120000`, `20260720120000`) |
 | RLS enabled | `orders`, `delivery_requests`, `taxi_rides` → `rls_enabled = true` |
 | Forbidden INSERT policies | 0 rows for client insert policy names |
 | Triggers | Both `trg_guard_*` triggers present |

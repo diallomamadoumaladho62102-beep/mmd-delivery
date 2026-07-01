@@ -51,7 +51,9 @@ export default function ResetPasswordScreen() {
     try {
       if (!url) return;
 
-      console.log("RESET PASSWORD URL =", url);
+      if (__DEV__) {
+        console.log("RESET PASSWORD deep link received");
+      }
 
       const params = getUrlParams(url);
       const accessToken = params.access_token;

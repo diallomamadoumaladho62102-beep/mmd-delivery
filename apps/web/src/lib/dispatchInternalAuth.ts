@@ -2,6 +2,17 @@ import { NextRequest } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { normalizeUserRole, type UserRole } from "@/lib/roles";
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let result = 0;
+  for (let i = 0; i < aBytes.length; i += 1) {
+    result |= aBytes[i] ^ bBytes[i];
+  }
+  return result === 0;
+}
+
 /** Server-only secret for /api/dispatch/smart (falls back to CRON_SECRET). */
 export function getDispatchInternalSecret(): string {
   return (
@@ -28,10 +39,10 @@ export function isDispatchInternalRequest(req: NextRequest): boolean {
     ""
   ).trim();
 
-  if (headerSecret && headerSecret === expected) return true;
+  if (headerSecret && timingSafeEqual(headerSecret, expected)) return true;
 
   const bearer = getBearerToken(req);
-  return bearer.length > 0 && bearer === expected;
+  return bearer.length > 0 && timingSafeEqual(bearer, expected);
 }
 
 export function buildDispatchInternalHeaders(): Record<string, string> {

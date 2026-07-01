@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
+import { validatePassword } from "@/lib/authValidation";
 
 const ROLE = "client";
 const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
@@ -339,8 +340,9 @@ export default function SignupClientPage() {
       return;
     }
 
-    if (password.trim().length < 6) {
-      setErr("Le mot de passe doit contenir au moins 6 caractères.");
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setErr("Le mot de passe doit contenir au moins 8 caractères.");
       return;
     }
 
@@ -618,7 +620,7 @@ export default function SignupClientPage() {
                 <input
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Minimum 6 caractères"
+                  placeholder="Minimum 8 caractères"
                   type={showPassword ? "text" : "password"}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   disabled={loading}

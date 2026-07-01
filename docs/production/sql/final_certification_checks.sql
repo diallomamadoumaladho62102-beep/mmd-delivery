@@ -8,11 +8,12 @@
 
 SELECT version, name
 FROM supabase_migrations.schema_migrations
-WHERE version IN ('20260716120000', '20260717120000')
+WHERE version IN ('20260716120000', '20260717120000', '20260720120000')
 ORDER BY version;
--- EXPECTED: 2 rows
+-- EXPECTED: 3 rows
 --   20260716120000 | food_order_trust_boundary
 --   20260717120000 | production_hardening_p0_p1
+--   20260720120000 | driver_locations_participant_read
 
 -- =============================================================================
 -- 2) RLS enabled on critical tables

@@ -464,10 +464,13 @@ export function AppNavigator({
         .eq("id", uid)
         .maybeSingle();
 
-      if (error) return "active";
+      if (error) {
+        console.log("profiles account_status check error:", error.message);
+        return "unknown";
+      }
       return String((data as { account_status?: string } | null)?.account_status ?? "active");
     } catch {
-      return "active";
+      return "unknown";
     }
   }, []);
 
@@ -670,8 +673,8 @@ export function AppNavigator({
           .maybeSingle();
 
         if (error) {
-          console.log("client_profiles check error (ignored):", error);
-          return true;
+          console.log("client_profiles check error:", error.message);
+          return false;
         }
 
         const phoneOk = !!(data as any)?.phone?.trim?.();
@@ -681,8 +684,8 @@ export function AppNavigator({
 
         return phoneOk && addrOk && nameOk && avatarOk;
       } catch (e) {
-        console.log("client profile complete check failed (ignored):", e);
-        return true;
+        console.log("client profile complete check failed:", e);
+        return false;
       }
     },
     []

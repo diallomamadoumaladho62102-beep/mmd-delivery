@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { getResetPasswordRedirectUrl } from "@/lib/productionSite";
+import { validatePassword } from "@/lib/authValidation";
 
 const ROLE = "restaurant";
 const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
@@ -157,8 +158,9 @@ export default function SignupRestaurantPage() {
       return;
     }
 
-    if (p.length < 6) {
-      setErr("Mot de passe trop court. Minimum 6 caractères.");
+    const passwordError = validatePassword(p);
+    if (passwordError) {
+      setErr("Mot de passe trop court. Minimum 8 caractères.");
       return;
     }
 

@@ -313,11 +313,21 @@ export function ClientAuthScreen() {
         throw new Error(t("client.auth.sessionNotCreated"));
       }
 
+      if (!data.user?.email_confirmed_at) {
+        await supabase.auth.signOut();
+        throw new Error(
+          t(
+            "client.auth.emailNotVerified",
+            "Confirme ton email avant de te connecter.",
+          ),
+        );
+      }
+
       await applyReferralIfAny();
 
       navigation.reset({
         index: 0,
-        routes: [{ name: "Home" }],
+        routes: [{ name: "ClientHome" }],
       });
     } catch (e: unknown) {
       console.error(e);

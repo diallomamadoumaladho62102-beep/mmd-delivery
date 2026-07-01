@@ -9,6 +9,8 @@ export function normalizeAccountStatus(
 }
 
 export function isAccountActive(status: string | null | undefined): boolean {
+  const clean = String(status ?? "").trim().toLowerCase();
+  if (!clean || clean === "unknown") return false;
   return normalizeAccountStatus(status) === "active";
 }
 
@@ -21,6 +23,9 @@ export function accountStatusBlockMessage(
   }
   if (normalized === "disabled") {
     return "Votre compte est désactivé. Contactez le support MMD Delivery.";
+  }
+  if (String(status ?? "").trim().toLowerCase() === "unknown") {
+    return "Impossible de vérifier le statut du compte. Réessaie dans un instant.";
   }
   return null;
 }

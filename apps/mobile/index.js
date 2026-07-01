@@ -16,8 +16,8 @@ import { supabase } from "./src/lib/supabase";
         console.log("AUTH_RESET: invalid refresh token -> signOut()");
         await supabase.auth.signOut();
       }
-    } else if (data?.session?.user?.id) {
-      console.log("AUTH_SESSION_USER_ID =", data.session.user.id);
+    } else if (data?.session?.user?.id && __DEV__) {
+      console.log("AUTH_SESSION_READY");
     }
   } catch (e) {
     console.log("AUTH_RESET_EXCEPTION =", e);

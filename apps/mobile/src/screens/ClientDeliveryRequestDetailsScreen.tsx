@@ -12,15 +12,13 @@ import {
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 import { formatMoney, formatDateTime as formatLocalizedDateTime } from "../i18n/formatters";
 import { rowDirection, textAlignStart, mirrorChevron } from "../i18n/rtl";
+import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
+import { getApiBaseUrl } from "../lib/apiBase";
 
-const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ||
-  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL ||
-  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_WEB_BASE_URL;
+const API_URL = getApiBaseUrl();
 
 const AVATARS_BUCKET = "avatars";
 
@@ -740,6 +738,10 @@ export function ClientDeliveryRequestDetailsScreen() {
     };
   }, [data?.driver_id]);
 
+  const { location: liveDriverLocation } = useLiveDriverLocation(
+    data?.driver_id ?? null,
+  );
+
   const primaryReference = useMemo(() => {
     if (data?.orderId) return shortRef(data.orderId);
     if (data?.requestId) return shortRef(data.requestId);
@@ -1074,6 +1076,20 @@ export function ClientDeliveryRequestDetailsScreen() {
             >
               {driverState}
             </Text>
+            {liveDriverLocation ? (
+              <Text style={{ color: "#93C5FD", fontSize: 13, marginBottom: 10 }}>
+                {t(
+                  "client.deliveryRequest.driverLiveLocation",
+                  "Driver location updated {{time}}",
+                  {
+                    time: new Date(liveDriverLocation.updated_at).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                  },
+                )}
+              </Text>
+            ) : null}
 
             {data.driver_id ? (
               <View

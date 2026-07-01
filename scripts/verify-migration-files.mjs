@@ -40,6 +40,7 @@ if (valid.length < 50) {
 const required = [
   "20260716120000_food_order_trust_boundary.sql",
   "20260717120000_production_hardening_p0_p1.sql",
+  "20260720120000_driver_locations_participant_read.sql",
   "20260602130000_driver_map_reports_v1_1.sql",
 ];
 
