@@ -1,6 +1,10 @@
 "use client";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import {
+  isEmailVerificationRequired,
+  isUserEmailVerified,
+} from "@/lib/authValidation";
 
 export default function SignInPassword() {
   const [email, setEmail] = useState("");
@@ -10,9 +14,17 @@ export default function SignInPassword() {
 
   async function submit() {
     setErr(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setErr(error.message);
+      return;
+    }
+    if (
+      isEmailVerificationRequired() &&
+      !isUserEmailVerified(data.user)
+    ) {
+      await supabase.auth.signOut();
+      setErr("Please verify your email before signing in.");
       return;
     }
     location.href = "/auth/whoami";

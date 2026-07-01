@@ -19,6 +19,7 @@ import * as Linking from "expo-linking";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
+import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
@@ -374,7 +375,7 @@ export function DriverAuthScreen() {
     const p = password.trim();
 
     if (!e || !p) return false;
-    if (p.length < 6) return false;
+    if (validatePassword(p)) return false;
 
     if (mode === "signup") {
       if (!fullName.trim()) return false;

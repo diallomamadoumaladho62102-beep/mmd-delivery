@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { validatePassword } from "../lib/authValidation";
 
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
@@ -282,10 +283,9 @@ export function RestaurantAuthScreen() {
       return;
     }
 
-    if (p.length < 6) {
-      setMsg(
-        t("restaurant.auth.errors.passwordTooShort", "❌ Mot de passe trop court (min 6 caractères)")
-      );
+    const passwordError = validatePassword(p);
+    if (passwordError) {
+      setMsg(passwordError);
       return;
     }
 

@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
+import {
+  sanitizeInternalRedirectPath,
+} from "@/lib/authValidation";
 
 export default function CallbackClient() {
   const router = useRouter();
@@ -17,7 +20,7 @@ export default function CallbackClient() {
 
     (async () => {
       try {
-        const next = params.get("next") || "/dashboard";
+        const next = sanitizeInternalRedirectPath(params.get("next"), "/dashboard");
         const code = params.get("code");
 
         if (code) {

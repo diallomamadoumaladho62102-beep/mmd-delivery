@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { useRouter } from "next/navigation";
+import { validatePassword } from "@/lib/authValidation";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -16,6 +17,11 @@ export default function SignUp() {
     setOk(false);
     if (!email || !password) {
       setErr("Email et mot de passe requis.");
+      return;
+    }
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setErr(passwordError);
       return;
     }
     const { error } = await supabase.auth.signUp({ email, password });

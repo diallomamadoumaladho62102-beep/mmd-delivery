@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { validatePassword } from "@/lib/authValidation";
 
 function getUrlParams(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -71,8 +72,9 @@ export default function ResetPasswordPage() {
   }, [prepareRecoverySession]);
 
   const handleUpdate = async () => {
-    if (password.length < 6) {
-      setMessage("Mot de passe trop court. Minimum 6 caractères.");
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      setMessage(passwordError);
       return;
     }
 

@@ -17,6 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import { validatePassword } from "../lib/authValidation";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Linking from "expo-linking";
@@ -485,11 +486,9 @@ export function ClientAuthScreen() {
       return;
     }
 
-    if (password.trim().length < 6) {
-      Alert.alert(
-        t("client.auth.passwordTitle"),
-        t("client.auth.passwordMin6")
-      );
+    const passwordError = validatePassword(password.trim());
+    if (passwordError) {
+      Alert.alert(t("client.auth.passwordTitle"), passwordError);
       return;
     }
 

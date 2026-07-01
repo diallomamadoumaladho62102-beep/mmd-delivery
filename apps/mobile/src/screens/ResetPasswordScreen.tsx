@@ -14,6 +14,7 @@ import * as Linking from "expo-linking";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
 import { rowDirection, textAlignStart } from "../i18n/rtl";
 
@@ -110,11 +111,9 @@ export default function ResetPasswordScreen() {
     const cleanedPassword = password.trim();
     const cleanedConfirmPassword = confirmPassword.trim();
 
-    if (cleanedPassword.length < 6) {
-      Alert.alert(
-        t("common.error", "Error"),
-        t("auth.resetPassword.tooShort", "Password too short. Minimum 6 characters.")
-      );
+    const passwordError = validatePassword(cleanedPassword);
+    if (passwordError) {
+      Alert.alert(t("common.error", "Error"), passwordError);
       return;
     }
 
