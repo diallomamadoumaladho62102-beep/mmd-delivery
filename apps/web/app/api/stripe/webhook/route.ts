@@ -20,6 +20,10 @@ import {
 } from "@/lib/scheduleDeliveryRequestDispatch";
 import { stripeEventNeedsReprocessing } from "@/lib/stripeWebhookReprocess";
 import {
+  syncStripeChargeRefunded,
+  syncStripeRefundObject,
+} from "@/lib/stripeWebhookChargeRefunded";
+import {
   getStripeAmountFromCheckoutSession as getTaxiCheckoutAmountCents,
   handleTaxiStripePayment,
   isTaxiStripeModule,
@@ -202,6 +206,8 @@ const HANDLED_EVENT_TYPES = new Set([
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
   "payment_intent.succeeded",
+  "charge.refunded",
+  "refund.updated",
 ]);
 
 function asErrorLike(value: unknown): GenericErrorLike | null {
@@ -2437,6 +2443,36 @@ export async function POST(req: NextRequest) {
 
     if (event.type === "payment_intent.succeeded") {
       return await handlePaymentIntentSucceeded(supabaseAdmin, event);
+    }
+
+    if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const result = await syncStripeChargeRefunded({ supabaseAdmin, charge });
+      return json({
+        received: true,
+        type: event.type,
+        ok: true,
+        refund_sync: result,
+      });
+    }
+
+    if (event.type === "refund.updated") {
+      const refund = event.data.object as Stripe.Refund;
+      if (String(refund.status ?? "").toLowerCase() !== "succeeded") {
+        return json({
+          received: true,
+          type: event.type,
+          ignored: "refund_not_succeeded",
+          status: refund.status ?? null,
+        });
+      }
+      const result = await syncStripeRefundObject({ supabaseAdmin, refund });
+      return json({
+        received: true,
+        type: event.type,
+        ok: true,
+        refund_sync: result,
+      });
     }
 
     return json({
