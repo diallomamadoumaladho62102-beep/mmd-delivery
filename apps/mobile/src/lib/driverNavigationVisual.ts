@@ -199,8 +199,50 @@ export function computeThenToastBottom(
   return computeThenToastLayout(screen, hasSpeedLimit).bottom;
 }
 
-/** Cyan / vert — même épaisseur (ref. capture 711 px). */
-export const ROUTE_LINE_WIDTH_RATIO = 26 / 711;
+/**
+ * Mesures pixel — image référence (472×1024 px).
+ * Source: scripts/measure-navigation-proportions.mjs (2026-06-30).
+ */
+export const REF_NAV_MEASURE = {
+  screenWidth: 472,
+  screenHeight: 1024,
+  routeMainWidthPx: 19,
+  routeGreenWidthPx: 19,
+  routeCyanWidthPx: 20,
+  vehicleFullWidthPx: 44,
+  vehicleFullHeightPx: 44,
+  routeWidthRatio: 19 / 472,
+  vehicleWidthRatio: 44 / 472,
+  iconToRouteRatio: 44 / 19,
+  vehicleScreenRatioY: 649.5 / 1024,
+  glowDiameterPx: 331,
+  haloDiameterPx: 155,
+  altRouteWidthPx: 26,
+} as const;
+
+/**
+ * Calibrage visuel progressif — dimensions écran uniquement.
+ * N'affecte pas GPS, recalcul, split vert/cyan, ETA, instructions, HUD.
+ */
+export const NAV_VISUAL_CALIB = {
+  /** Décalage zoom caméra (négatif = plus de carte Mapbox visible). */
+  zoomOffset: -1.85,
+  /** Multiplicateur largeur route vert + cyan (px écran). */
+  routeWidthScale: 0.58,
+  /** Multiplicateur largeur glow route (px écran). */
+  glowWidthScale: 0.58,
+  /** Multiplicateur largeur icône véhicule (px écran). */
+  iconWidthScale: 0.68,
+  /** Multiplicateur iconOffset visuel — masque jonction proportionnel à l'icône. */
+  iconOffsetScale: 0.68,
+} as const;
+
+/** Largeur route cyan/vert — ratio référence × calibrage visuel. */
+export const ROUTE_LINE_WIDTH_RATIO =
+  REF_NAV_MEASURE.routeWidthRatio * NAV_VISUAL_CALIB.routeWidthScale;
+/** Largeur glow route — calibrage visuel indépendant. */
+export const ROUTE_GLOW_WIDTH_RATIO =
+  REF_NAV_MEASURE.routeWidthRatio * NAV_VISUAL_CALIB.glowWidthScale;
 /** @deprecated Alias — même largeur cyan et vert. */
 export const ROUTE_FUTURE_WIDTH_RATIO = ROUTE_LINE_WIDTH_RATIO;
 /** @deprecated Alias — même largeur cyan et vert. */
@@ -237,13 +279,15 @@ export function computeNavigationScreenLayout(
  * Caméra conduite — compromis Waze : fine bande d'horizon (~3–5 %), légère 3D.
  * Pitch entre la version verticale (50°) et panoramique (67°).
  */
+const _navZoom = (base: number) => base + NAV_VISUAL_CALIB.zoomOffset;
+
 export const NAV_CAMERA = {
-  zoom: 19.32,
-  zoomOpenRoad: 19.18,
-  zoomTurnApproach: 19.36,
-  zoomTurnTight: 19.4,
-  zoomMin: 18.8,
-  zoomMax: 19.45,
+  zoom: _navZoom(19.32),
+  zoomOpenRoad: _navZoom(19.18),
+  zoomTurnApproach: _navZoom(19.36),
+  zoomTurnTight: _navZoom(19.4),
+  zoomMin: _navZoom(18.8),
+  zoomMax: _navZoom(19.45),
   pitch: 64,
   pitchOpenRoad: 62,
   pitchTurnApproach: 65,
@@ -339,22 +383,37 @@ export const NAV_MAP = {
   label: "#F1F5F9",
 } as const;
 
-/** Flèche MMD 112×58 dans canvas 128 — affichage ~58 px de haut à iconSize 1. */
+/** Flèche MMD 112×58 dans canvas 128 — iconSize 1 ≈ 112 px de large. */
+export const NAV_ARROW_SPRITE_WIDTH = 103;
+
+/** Calibrage iconSize — mesure MMD avant cal. 110 px @ 1080 (scripts/measure-mmd-precise.mjs). */
+const MMD_PRECAL_ICON_WIDTH_RATIO = 110 / 1080;
+export const NAV_ARROW_ICON_SCALE =
+  REF_NAV_MEASURE.vehicleWidthRatio / MMD_PRECAL_ICON_WIDTH_RATIO;
+
+const NAV_ARROW_ICON_SIZE_AT_ZOOM = {
+  15: 0.82,
+  16: 0.88,
+  17: 0.93,
+  18: 0.97,
+  19: 1.0,
+} as const;
+
 export const NAV_ARROW_ICON = {
   size: [
     "interpolate",
     ["linear"],
     ["zoom"],
     15,
-    0.82,
+    NAV_ARROW_ICON_SIZE_AT_ZOOM[15] * NAV_ARROW_ICON_SCALE,
     16,
-    0.88,
+    NAV_ARROW_ICON_SIZE_AT_ZOOM[16] * NAV_ARROW_ICON_SCALE,
     17,
-    0.93,
+    NAV_ARROW_ICON_SIZE_AT_ZOOM[17] * NAV_ARROW_ICON_SCALE,
     18,
-    0.97,
+    NAV_ARROW_ICON_SIZE_AT_ZOOM[18] * NAV_ARROW_ICON_SCALE,
     19,
-    1.0,
+    NAV_ARROW_ICON_SIZE_AT_ZOOM[19] * NAV_ARROW_ICON_SCALE,
   ],
   offset: [0, 0] as const,
 } as const;

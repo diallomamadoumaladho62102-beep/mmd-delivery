@@ -48,11 +48,7 @@ export function ensureMapboxTokenApplied(): boolean {
 }
 
 export function getMapStyleStreets(): string {
-  const Mapbox = loadMapboxModule();
-  return (
-    (Mapbox as { StyleURL?: { Street?: string } } | null)?.StyleURL?.Street ??
-    "mapbox://styles/mapbox/streets-v12"
-  );
+  return "mapbox://styles/mapbox/streets-v12";
 }
 
 export function getMapStyleDark(): string {

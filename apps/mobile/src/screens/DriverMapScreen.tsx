@@ -58,7 +58,6 @@ import { DriverNavigationBottomBar } from "../components/driver/DriverNavigation
 import { DriverNavigationControls } from "../components/driver/DriverNavigationControls";
 import { DriverNavigationThenToast } from "../components/driver/DriverNavigationThenToast";
 import { DriverArrivalBanner } from "../components/driver/DriverArrivalBanner";
-import { DriverNavigationRouteAlternatives } from "../components/driver/DriverNavigationRouteAlternatives";
 import {
   DriverNavigationStatusBanner,
   previewStatusBannerFromQa,
@@ -903,14 +902,12 @@ export default function DriverMapScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
 
       <View style={{ flex: 1 }}>
+        {/* MapView aligné sur RestaurantLiveMap : streets-v12 natif, scaleBarEnabled=false uniquement. */}
         <Mapbox.MapView
           ref={mapRef}
           style={{ flex: 1 }}
           styleURL={mapStyleURL}
-          surfaceView={false}
-          logoEnabled={false}
-          attributionEnabled={false}
-          compassEnabled={false}
+          scaleBarEnabled={false}
           onTouchStart={camera.setFreeMode}
         >
           <Mapbox.Camera
@@ -979,18 +976,14 @@ export default function DriverMapScreen() {
           onResume={navigationPaused ? handleResumeNavigation : undefined}
         />
 
-        <DriverNavigationRouteAlternatives
-          routes={routes}
-          selectedIndex={selectedRouteIndex}
-          topOffset={controlsTopOffset + 52}
-          navLocale={navLocale}
-          onSelect={handleSelectRouteIndex}
-        />
-
         <DriverNavigationControls
           topOffset={controlsTopOffset}
           voiceEnabled={voiceEnabled}
           navigationPaused={navigationPaused}
+          routes={routes}
+          selectedRouteIndex={selectedRouteIndex}
+          navLocale={navLocale}
+          onSelectRouteIndex={handleSelectRouteIndex}
           onToggleVoice={handleToggleVoice}
           onRecenter={handleRecenter}
           onRouteOverview={handleRouteOverview}

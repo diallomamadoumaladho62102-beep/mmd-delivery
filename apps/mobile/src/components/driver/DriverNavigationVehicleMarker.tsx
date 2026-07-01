@@ -4,9 +4,11 @@ import Mapbox from "@rnmapbox/maps";
 import type { CoordinatePoint } from "../../lib/coordinates";
 import {
   NAV_ARROW_BEARING_OFFSET,
-  NAV_ARROW_ICON,
   NAV_ARROW_SCREEN_OFFSET_X,
   NAV_ARROW_SCREEN_OFFSET_Y,
+  NAV_ARROW_SPRITE_WIDTH,
+  NAV_VISUAL_CALIB,
+  REF_NAV_MEASURE,
 } from "../../lib/driverNavigationVisual";
 
 const ARROW_IMAGE = require("../../../assets/driver-navigation-arrow.png");
@@ -32,8 +34,14 @@ export function DriverNavigationVehicleMarker({
   followMode,
 }: Props) {
   const { width, height } = useWindowDimensions();
-  const iconOffsetX = (NAV_ARROW_SCREEN_OFFSET_X * width) / 1080;
-  const iconOffsetY = (NAV_ARROW_SCREEN_OFFSET_Y * height) / 2340;
+  const iconOffsetX =
+    ((NAV_ARROW_SCREEN_OFFSET_X * width) / 1080) * NAV_VISUAL_CALIB.iconOffsetScale;
+  const iconOffsetY =
+    ((NAV_ARROW_SCREEN_OFFSET_Y * height) / 2340) * NAV_VISUAL_CALIB.iconOffsetScale;
+  /** Largeur icône calibrée référence mesurée (44 px @ 472 px) + calibrage visuel. */
+  const iconSize =
+    (width * REF_NAV_MEASURE.vehicleWidthRatio * NAV_VISUAL_CALIB.iconWidthScale) /
+    NAV_ARROW_SPRITE_WIDTH;
   const iconBearing = normalizeBearing(bearing + NAV_ARROW_BEARING_OFFSET);
 
   const shape = useMemo(
@@ -58,7 +66,7 @@ export function DriverNavigationVehicleMarker({
           layerIndex={1100}
           style={{
             iconImage: "driverNavArrow",
-            iconSize: NAV_ARROW_ICON.size as unknown as number,
+            iconSize,
             iconOffset: [iconOffsetX, iconOffsetY],
             iconRotate: followMode ? 0 : ["get", "iconBearing"],
             iconRotationAlignment: followMode ? "viewport" : "map",

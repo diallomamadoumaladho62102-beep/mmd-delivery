@@ -5,7 +5,7 @@ import {
   NAV_ARROW_TIP_AHEAD_METERS,
   NAV_ROUTE_ICON_LEAD_METERS,
   junctionRouteMetersFromTraveled,
-  ROUTE_FUTURE_GLOW_MULTIPLIER,
+  ROUTE_GLOW_WIDTH_RATIO,
   ROUTE_LINE_WIDTH_RATIO,
 } from "./driverNavigationVisual";
 
@@ -291,10 +291,7 @@ export function routeLineWidths(screenWidth: number) {
   const width = routeLineWidthExpression(screenWidth, ROUTE_LINE_WIDTH_RATIO);
   return {
     future: width,
-    futureGlow: routeLineWidthExpression(
-      screenWidth,
-      ROUTE_LINE_WIDTH_RATIO * ROUTE_FUTURE_GLOW_MULTIPLIER,
-    ),
+    futureGlow: routeLineWidthExpression(screenWidth, ROUTE_GLOW_WIDTH_RATIO),
     traveled: width,
   };
 }
@@ -322,6 +319,6 @@ export function routeLineWidthExpression(
     16,
     base,
     17,
-    base * 1.08,
+    base,
   ];
 }
