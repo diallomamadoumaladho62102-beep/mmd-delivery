@@ -4,18 +4,20 @@
  */
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "..");
+const tsxCli = require.resolve("tsx/cli");
 
 function run(label, scriptPath) {
-  const res = spawnSync("npx", ["tsx", scriptPath], {
+  const res = spawnSync(process.execPath, [tsxCli, scriptPath], {
     cwd: webRoot,
     encoding: "utf8",
     stdio: "pipe",
-    shell: true,
   });
   if (res.status !== 0) {
     console.error(res.stdout);
