@@ -154,19 +154,118 @@ export async function handleMarketplaceStripePayment(params: {
   return { ok: true };
 }
 
+export async function handleMarketplaceCheckoutSessionExpired(params: {
+  supabaseAdmin: SupabaseClient;
+  sellerOrderId: string;
+  sessionId?: string | null;
+  paymentIntentId?: string | null;
+  source: string;
+}): Promise<{
+  ok: boolean;
+  ignored?: string;
+  error?: string;
+  sync?: { updated: string[]; skipped: string[] };
+}> {
+  if (!isMarketplaceCheckoutLiveEnabled()) {
+    return { ok: true, ignored: "marketplace_live_checkout_disabled" };
+  }
+
+  const { supabaseAdmin, sellerOrderId, sessionId, paymentIntentId, source } =
+    params;
+
+  const { data: order, error: orderError } = await supabaseAdmin
+    .from("seller_orders")
+    .select(
+      "id,payment_status,status,stripe_checkout_session_id,stripe_payment_intent_id"
+    )
+    .eq("id", sellerOrderId)
+    .maybeSingle();
+
+  if (orderError) return { ok: false, error: orderError.message };
+  if (!order) return { ok: false, error: "seller_order_not_found" };
+
+  const row = order as SellerOrderPaymentRow & {
+    stripe_checkout_session_id?: string | null;
+  };
+
+  if (row.payment_status === "paid" || row.status === "paid") {
+    return {
+      ok: true,
+      ignored: "already_paid",
+      sync: { updated: [], skipped: ["already_paid"] },
+    };
+  }
+
+  if (
+    row.stripe_checkout_session_id &&
+    sessionId &&
+    row.stripe_checkout_session_id !== sessionId
+  ) {
+    return {
+      ok: true,
+      ignored: "session_mismatch",
+      sync: { updated: [], skipped: ["session_mismatch"] },
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from("seller_orders")
+    .update({
+      status: "pending_checkout",
+      payment_status: "pending",
+      stripe_checkout_session_id: sessionId ?? row.stripe_checkout_session_id,
+      stripe_payment_intent_id:
+        paymentIntentId ?? row.stripe_payment_intent_id ?? null,
+      updated_at: nowIso,
+    })
+    .eq("id", sellerOrderId)
+    .neq("payment_status", "paid")
+    .in("status", ["pending_payment", "pending_checkout"])
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) return { ok: false, error: updateError.message };
+
+  if (!updated) {
+    return {
+      ok: true,
+      ignored: "update_noop",
+      sync: { updated: [], skipped: ["update_noop"] },
+    };
+  }
+
+  console.log("[marketplace-stripe-webhook] seller_order checkout expired", {
+    sellerOrderId,
+    sessionId,
+    paymentIntentId,
+    source,
+  });
+
+  return {
+    ok: true,
+    sync: { updated: [sellerOrderId], skipped: [] },
+  };
+}
+
 export async function handleMarketplaceStripePaymentFailed(params: {
   supabaseAdmin: SupabaseClient;
   sellerOrderId: string;
   paymentIntentId?: string | null;
   source: string;
-}): Promise<{ ok: boolean; ignored?: string; error?: string }> {
+}): Promise<{
+  ok: boolean;
+  ignored?: string;
+  error?: string;
+  sync?: { updated: string[]; skipped: string[] };
+}> {
   if (!isMarketplaceCheckoutLiveEnabled()) {
     return { ok: true, ignored: "marketplace_live_checkout_disabled" };
   }
 
   const { supabaseAdmin, sellerOrderId, paymentIntentId, source } = params;
 
-  const { error } = await supabaseAdmin
+  const { data: updated, error } = await supabaseAdmin
     .from("seller_orders")
     .update({
       status: "payment_failed",
@@ -176,9 +275,19 @@ export async function handleMarketplaceStripePaymentFailed(params: {
     })
     .eq("id", sellerOrderId)
     .in("status", ["pending_payment", "pending_checkout"])
-    .neq("payment_status", "paid");
+    .neq("payment_status", "paid")
+    .select("id")
+    .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
+
+  if (!updated) {
+    return {
+      ok: true,
+      ignored: "update_noop",
+      sync: { updated: [], skipped: ["update_noop"] },
+    };
+  }
 
   console.log("[marketplace-stripe-webhook] seller_order marked payment_failed", {
     sellerOrderId,
@@ -186,7 +295,10 @@ export async function handleMarketplaceStripePaymentFailed(params: {
     source,
   });
 
-  return { ok: true };
+  return {
+    ok: true,
+    sync: { updated: [sellerOrderId], skipped: [] },
+  };
 }
 
 export function getMarketplaceStripeAmountFromCheckoutSession(

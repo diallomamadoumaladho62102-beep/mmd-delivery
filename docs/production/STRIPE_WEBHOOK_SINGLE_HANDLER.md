@@ -16,6 +16,21 @@
 2. Endpoint URL must be exactly `https://www.mmddelivery.com/api/stripe/webhook`.
 3. Remove or disable any Supabase project URL pointing at `stripe_webhook`.
 4. Signing secret must match `STRIPE_WEBHOOK_SECRET` in Vercel production env.
+5. Subscribe exactly these Live events (handler in `route.ts`):
+   - `checkout.session.completed`
+   - `checkout.session.async_payment_succeeded`
+   - `payment_intent.succeeded`
+   - `checkout.session.expired`
+   - `payment_intent.payment_failed`
+   - `charge.refunded`
+   - `refund.updated`
+
+## Failure / expiry sync (Vercel)
+
+| Event | Effect (idempotent, never downgrades `paid` / `refunded`) |
+|-------|-----------------------------------------------------------|
+| `checkout.session.expired` | Food / DR / taxi → `payment_status=unpaid`; marketplace → `pending_checkout` |
+| `payment_intent.payment_failed` | Food / DR / taxi → `payment_status=failed`; marketplace → `payment_failed` |
 
 ## Idempotency table (Vercel webhook)
 

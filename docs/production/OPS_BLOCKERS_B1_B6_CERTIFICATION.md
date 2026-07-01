@@ -117,7 +117,14 @@ retourne exit code `0` et verdict `READY FOR REAL PUBLIC PRODUCTION`.
    - URL doit être **`https://www.mmddelivery.com/api/stripe/webhook`** (pas de trailing slash divergent).
 3. Vérifier qu’**aucune** URL du type `{SUPABASE_PROJECT}.supabase.co/functions/v1/stripe_webhook` n’est listée.
 4. Ouvrir l’endpoint → **Signing secret** → confirmer qu’il correspond à `STRIPE_WEBHOOK_SECRET` sur Vercel Production.
-5. Vérifier événements minimum abonnés : `checkout.session.completed`, `payment_intent.succeeded` (et autres requis par le handler).
+5. Vérifier événements abonnés (liste cible alignée sur le handler Vercel) :
+   - `checkout.session.completed`
+   - `checkout.session.async_payment_succeeded`
+   - `payment_intent.succeeded`
+   - `checkout.session.expired`
+   - `payment_intent.payment_failed`
+   - `charge.refunded`
+   - `refund.updated`
 6. (Post test paiement contrôlé) Onglet **Recent deliveries** : 1 delivery par `event.id`, HTTP 200.
 7. Appeler health (navigateur ou curl) :
 

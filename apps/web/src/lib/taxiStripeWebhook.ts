@@ -220,6 +220,163 @@ export async function handleTaxiStripePayment(params: {
   return { ok: true, already_paid: false };
 }
 
+async function markTaxiPaymentFailure(params: {
+  supabaseAdmin: SupabaseClient;
+  taxiRideId: string;
+  sessionId?: string | null;
+  paymentIntentId?: string | null;
+  targetPaymentStatus: "unpaid" | "failed";
+  source: string;
+}): Promise<{
+  ok: boolean;
+  already_paid?: boolean;
+  ignored?: string;
+  error?: string;
+  sync?: { updated: string[]; skipped: string[] };
+}> {
+  const {
+    supabaseAdmin,
+    taxiRideId,
+    sessionId,
+    paymentIntentId,
+    targetPaymentStatus,
+    source,
+  } = params;
+
+  const { data: ride, error: rideError } = await supabaseAdmin
+    .from("taxi_rides")
+    .select(
+      "id,payment_status,refund_status,stripe_refund_id,stripe_session_id,stripe_payment_intent_id"
+    )
+    .eq("id", taxiRideId)
+    .maybeSingle();
+
+  if (rideError) return { ok: false, error: rideError.message };
+  if (!ride) return { ok: false, error: "taxi_ride_not_found" };
+
+  const row = ride as TaxiRidePaymentRow & {
+    refund_status?: string | null;
+    stripe_refund_id?: string | null;
+  };
+
+  const paymentStatus = String(row.payment_status ?? "").trim().toLowerCase();
+  if (paymentStatus === "paid" || paymentStatus === "refunded") {
+    return {
+      ok: true,
+      already_paid: true,
+      sync: { updated: [], skipped: ["already_paid_or_refunded"] },
+    };
+  }
+
+  if (
+    String(row.refund_status ?? "").trim().toLowerCase() === "refunded" ||
+    String(row.stripe_refund_id ?? "").trim()
+  ) {
+    return {
+      ok: true,
+      already_paid: true,
+      sync: { updated: [], skipped: ["already_refunded"] },
+    };
+  }
+
+  if (
+    row.stripe_session_id &&
+    sessionId &&
+    row.stripe_session_id !== sessionId
+  ) {
+    return {
+      ok: true,
+      ignored: "session_id_mismatch",
+      sync: { updated: [], skipped: ["session_mismatch"] },
+    };
+  }
+
+  if (
+    row.stripe_payment_intent_id &&
+    paymentIntentId &&
+    row.stripe_payment_intent_id !== paymentIntentId
+  ) {
+    return {
+      ok: true,
+      ignored: "payment_intent_mismatch",
+      sync: { updated: [], skipped: ["payment_intent_mismatch"] },
+    };
+  }
+
+  if (paymentStatus === targetPaymentStatus) {
+    return {
+      ok: true,
+      sync: { updated: [], skipped: ["already_target_status"] },
+    };
+  }
+
+  const nowIso = new Date().toISOString();
+  const updatePayload: Record<string, unknown> = {
+    payment_status: targetPaymentStatus,
+    updated_at: nowIso,
+  };
+
+  if (sessionId) updatePayload.stripe_session_id = sessionId;
+  if (paymentIntentId) updatePayload.stripe_payment_intent_id = paymentIntentId;
+
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from("taxi_rides")
+    .update(updatePayload)
+    .eq("id", taxiRideId)
+    .neq("payment_status", "paid")
+    .neq("payment_status", "refunded")
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) return { ok: false, error: updateError.message };
+
+  if (!updated) {
+    return {
+      ok: true,
+      sync: { updated: [], skipped: ["update_noop"] },
+    };
+  }
+
+  console.log("[taxi-stripe-webhook] ride payment failure synced", {
+    taxiRideId,
+    targetPaymentStatus,
+    sessionId,
+    paymentIntentId,
+    source,
+  });
+
+  return {
+    ok: true,
+    sync: { updated: [taxiRideId], skipped: [] },
+  };
+}
+
+export async function handleTaxiStripeCheckoutExpired(params: {
+  supabaseAdmin: SupabaseClient;
+  taxiRideId: string;
+  sessionId?: string | null;
+  paymentIntentId?: string | null;
+  source: string;
+}) {
+  return markTaxiPaymentFailure({
+    ...params,
+    targetPaymentStatus: "unpaid",
+  });
+}
+
+export async function handleTaxiStripePaymentFailed(params: {
+  supabaseAdmin: SupabaseClient;
+  taxiRideId: string;
+  paymentIntentId?: string | null;
+  source: string;
+}) {
+  return markTaxiPaymentFailure({
+    ...params,
+    sessionId: null,
+    targetPaymentStatus: "failed",
+  });
+}
+
 export function getStripeAmountFromCheckoutSession(session: Stripe.Checkout.Session): number | null {
   if (Number.isFinite(session.amount_total) && session.amount_total! > 0) {
     return Math.round(session.amount_total!);

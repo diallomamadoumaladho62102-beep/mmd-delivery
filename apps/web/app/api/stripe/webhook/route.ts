@@ -24,6 +24,10 @@ import {
   syncStripeRefundObject,
 } from "@/lib/stripeWebhookChargeRefunded";
 import {
+  handleCheckoutSessionExpiredEvent,
+  handlePaymentIntentFailedEvent,
+} from "@/lib/stripeWebhookPaymentFailure";
+import {
   getStripeAmountFromCheckoutSession as getTaxiCheckoutAmountCents,
   handleTaxiStripePayment,
   isTaxiStripeModule,
@@ -206,6 +210,8 @@ const HANDLED_EVENT_TYPES = new Set([
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
   "payment_intent.succeeded",
+  "checkout.session.expired",
+  "payment_intent.payment_failed",
   "charge.refunded",
   "refund.updated",
 ]);
@@ -2443,6 +2449,26 @@ export async function POST(req: NextRequest) {
 
     if (event.type === "payment_intent.succeeded") {
       return await handlePaymentIntentSucceeded(supabaseAdmin, event);
+    }
+
+    if (event.type === "checkout.session.expired") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const result = await handleCheckoutSessionExpiredEvent({
+        supabaseAdmin,
+        session,
+        eventType: event.type,
+      });
+      return json(result);
+    }
+
+    if (event.type === "payment_intent.payment_failed") {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      const result = await handlePaymentIntentFailedEvent({
+        supabaseAdmin,
+        paymentIntent,
+        eventType: event.type,
+      });
+      return json(result);
     }
 
     if (event.type === "charge.refunded") {
