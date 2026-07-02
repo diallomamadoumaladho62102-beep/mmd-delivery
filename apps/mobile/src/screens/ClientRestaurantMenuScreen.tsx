@@ -480,9 +480,15 @@ export function ClientRestaurantMenuScreen() {
   const displayTax = serverPricing?.tax ?? tax;
   const displayTaxRatePct = serverPricing?.tax_rate_pct ?? 8.88;
   const displayDeliveryFee = serverPricing?.delivery_fee ?? deliveryFee;
+  const displayServiceFee = serverPricing?.service_fee ?? 0;
   const displayGrandTotal =
     serverPricing?.total ??
-    roundMoney((serverPricing?.subtotal ?? subtotal) + (serverPricing?.tax ?? tax) + (displayDeliveryFee ?? 0));
+    roundMoney(
+      (serverPricing?.subtotal ?? subtotal) +
+        (serverPricing?.tax ?? tax) +
+        (displayDeliveryFee ?? 0) +
+        displayServiceFee
+    );
 
   async function refreshServerQuote(
     pickupValue: string,
@@ -1494,6 +1500,15 @@ export function ClientRestaurantMenuScreen() {
                   </Text>
                   <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
                     {displayDeliveryFee != null ? `${money(displayDeliveryFee)} ${currency}` : "—"}
+                  </Text>
+                </View>
+
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+                  <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
+                    {tr("clientRestaurantMenu.totals.serviceFee", "Frais de service")}
+                  </Text>
+                  <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "800" }}>
+                    {money(displayServiceFee)} {currency}
                   </Text>
                 </View>
 

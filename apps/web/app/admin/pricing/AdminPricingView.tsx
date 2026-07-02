@@ -10,7 +10,7 @@ type PricingRow = {
   id: string;
   config_key: string;
   label: string;
-  order_type: "food" | "errand";
+  order_type: "food" | "errand" | "marketplace";
   active: boolean;
   client_pct: number | null;
   driver_pct: number | null;
@@ -33,6 +33,9 @@ type PricingRow = {
   tax_pct: number | null;
   tax_label: string | null;
   fixed_client_fee: number | null;
+  service_fee_enabled: boolean;
+  service_fee_pct: number | null;
+  service_fee_fixed_cents: number | null;
   currency: string | null;
   updated_at: string | null;
 };
@@ -367,11 +370,7 @@ export default function AdminPricingView() {
 
       <div className="grid gap-6">
         {rows.map((row) => {
-          const coreStatus = splitStatus([
-            row.client_pct,
-            row.restaurant_pct,
-            row.platform_pct,
-          ]);
+          const coreStatus = splitStatus([row.restaurant_pct, row.platform_pct]);
 
           const deliveryStatus = splitStatus([
             row.delivery_driver_pct,
@@ -380,6 +379,11 @@ export default function AdminPricingView() {
 
           const isFood = row.order_type === "food";
           const isErrand = row.order_type === "errand";
+          const isMarketplace = row.order_type === "marketplace";
+          const serviceFeeFixed =
+            row.service_fee_fixed_cents != null
+              ? row.service_fee_fixed_cents / 100
+              : row.fixed_client_fee ?? 0;
 
           return (
             <form
@@ -459,12 +463,44 @@ export default function AdminPricingView() {
                   title="Core split / Partage principal"
                   status={coreStatus}
                   items={[
-                    { label: "Client", value: row.client_pct },
                     { label: "Restaurant", value: row.restaurant_pct },
                     { label: "Platform", value: row.platform_pct },
                   ]}
                 />
 
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
+                  {sectionTitle(
+                    "Client Service Fee / Frais de service client",
+                    "Disabled by default. When enabled, the fee is added to the customer total at checkout. / Désactivé par défaut. Une fois activé, le fee s'ajoute au total client au checkout."
+                  )}
+                  <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <label className="space-y-1">
+                      <div className="text-sm font-medium text-slate-800">
+                        Service fee enabled
+                      </div>
+                      <select
+                        name="service_fee_enabled"
+                        defaultValue={row.service_fee_enabled ? "true" : "false"}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="false">OFF</option>
+                        <option value="true">ON</option>
+                      </select>
+                    </label>
+                    <PercentInput
+                      name="service_fee_pct"
+                      label="Service fee % / Frais de service %"
+                      value={row.service_fee_pct ?? row.client_pct}
+                    />
+                    <MoneyInput
+                      name="service_fee_fixed"
+                      label="Minimum fixed fee / Minimum fixe"
+                      value={serviceFeeFixed}
+                    />
+                  </div>
+                </div>
+
+                {!isMarketplace ? (
                 <div className="rounded-2xl border border-slate-200 p-4">
                   {sectionTitle(
                     "Core commission split / Partage commission principale",
@@ -473,14 +509,9 @@ export default function AdminPricingView() {
                       : "Errand: no driver percentage on order money. Driver is paid from delivery/transport split below. / Errand : pas de % chauffeur sur la commande. Le chauffeur est pay?? via le transport ci-dessous."
                   )}
 
-                  <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-                    <PercentInput
-                      name="client_pct"
-                      label="Client %"
-                      value={row.client_pct}
-                    />
+                  <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
                     <input type="hidden" name="driver_pct" value="0" />
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 md:col-span-3">
                       <div className="text-sm font-medium text-slate-800">
                         Driver order % / Chauffeur commande %
                       </div>
@@ -501,7 +532,10 @@ export default function AdminPricingView() {
                     />
                   </div>
                 </div>
+                ) : null}
 
+                {!isMarketplace ? (
+                <>
                 <SplitSummary
                   title="Delivery split / Partage livraison"
                   status={deliveryStatus}
@@ -636,6 +670,22 @@ export default function AdminPricingView() {
                     />
                   </div>
                 </div>
+                </>
+                ) : (
+                  <>
+                    <input type="hidden" name="restaurant_pct" value="0" />
+                    <input type="hidden" name="platform_pct" value="0" />
+                    <input type="hidden" name="delivery_platform_pct" value="0" />
+                    <input type="hidden" name="delivery_driver_pct" value="0" />
+                    <input type="hidden" name="delivery_fee_base" value="0" />
+                    <input type="hidden" name="delivery_fee_per_mile" value="0" />
+                    <input type="hidden" name="delivery_fee_per_minute" value="0" />
+                    <input type="hidden" name="minimum_order_amount" value="0" />
+                    <input type="hidden" name="promo_enabled" value="false" />
+                    <input type="hidden" name="tax_enabled" value="false" />
+                    <input type="hidden" name="tax_pct" value="0" />
+                  </>
+                )}
 
                 <div className="rounded-2xl border border-slate-200 p-4">
                   {sectionTitle(
@@ -655,11 +705,6 @@ export default function AdminPricingView() {
                         <option value="africa">africa</option>
                       </select>
                     </label>
-                    <MoneyInput
-                      name="fixed_client_fee"
-                      label="Fixed client fee / Frais fixe client"
-                      value={row.fixed_client_fee}
-                    />
                     <label className="space-y-1">
                       <div className="text-sm font-medium text-slate-800">Tax enabled</div>
                       <select

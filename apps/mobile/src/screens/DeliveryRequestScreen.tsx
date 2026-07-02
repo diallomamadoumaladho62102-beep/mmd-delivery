@@ -256,10 +256,13 @@ export function DeliveryRequestScreen() {
 
   const subtotal = serverPricing?.subtotal ?? 0;
   const tax = serverPricing?.tax ?? 0;
+  const serviceFee = serverPricing?.service_fee ?? 0;
   const displayDeliveryFee = serverPricing?.delivery_fee ?? deliveryFee;
   const displayGrandTotal =
     serverPricing?.total ??
-    roundMoney(subtotal + tax + toSafeMoney(displayDeliveryFee ?? 0));
+    roundMoney(
+      subtotal + tax + toSafeMoney(displayDeliveryFee ?? 0) + toSafeMoney(serviceFee)
+    );
   const currency =
     pricingConfig?.currency ||
     (market.scopeResolved ? market.currencyCode : "USD");
@@ -1238,6 +1241,13 @@ export function DeliveryRequestScreen() {
                   Tax:{" "}
                   <Text style={{ color: "white", fontWeight: "800" }}>
                     {money(tax, currency)}
+                  </Text>
+                </Text>
+
+                <Text style={{ color: "#CBD5E1", fontSize: 14, marginTop: 6 }}>
+                  Service fee:{" "}
+                  <Text style={{ color: "white", fontWeight: "800" }}>
+                    {money(serviceFee, currency)}
                   </Text>
                 </Text>
 

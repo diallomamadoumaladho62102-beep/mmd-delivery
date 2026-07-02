@@ -7,6 +7,11 @@ import {
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
 import { computeFoodTaxAmount } from "@/lib/foodOrderServerPricing";
 import {
+  computeClientServiceFee,
+  computeServiceFeeBaseAmount,
+} from "@/lib/clientServiceFee";
+import { loadErrandServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
+import {
   assertPlatformFeature,
   inferPlatformCountryCode,
   pricingConfigKeyForOrder,
@@ -64,7 +69,10 @@ export type DeliveryRequestPricingResult = {
   taxRatePct: number;
   taxSource: string;
   serviceFee: number;
+  serviceFeeCents: number;
   serviceFeePct: number;
+  serviceFeeEnabled: boolean;
+  serviceFeeFixedCents: number;
   deliveryFeeRaw: number;
   deliveryFee: number;
   deliveryDiscountAmount: number;
@@ -106,7 +114,7 @@ async function getActiveErrandDeliveryPricingConfig(
     lat?: number;
     lng?: number;
   }
-): Promise<DeliveryPricingConfig & { configKey: string; clientPct: number }> {
+): Promise<DeliveryPricingConfig & { configKey: string }> {
   const configKey = pricingConfigKeyForOrder({
     orderType: "errand",
     countryCode: params.countryCode,
@@ -118,7 +126,7 @@ async function getActiveErrandDeliveryPricingConfig(
   const { data, error } = await supabaseAdmin
     .from("pricing_config")
     .select(
-      "config_key, active, client_pct, delivery_fee_base, delivery_fee_per_mile, delivery_fee_per_minute, delivery_platform_pct, delivery_driver_pct"
+      "config_key, active, delivery_fee_base, delivery_fee_per_mile, delivery_fee_per_minute, delivery_platform_pct, delivery_driver_pct"
     )
     .eq("config_key", configKey)
     .eq("active", true)
@@ -130,7 +138,6 @@ async function getActiveErrandDeliveryPricingConfig(
 
   return {
     configKey,
-    clientPct: roundPlatformMoney(toFiniteNumber(data.client_pct, 0)),
     baseFare: roundPlatformMoney(toFiniteNumber(data.delivery_fee_base, 2.5)),
     perMile: roundPlatformMoney(toFiniteNumber(data.delivery_fee_per_mile, 0.9)),
     perMinute: roundPlatformMoney(toFiniteNumber(data.delivery_fee_per_minute, 0.15)),
@@ -263,11 +270,23 @@ export async function computeDeliveryRequestPricing(
     subtotalAfterDiscount
   );
 
-  const serviceFeePct = deliveryPricingConfig.clientPct;
-  const serviceFee = roundPlatformMoney(subtotalAfterDiscount * (serviceFeePct / 100));
+  const serviceFeeConfig = await loadErrandServiceFeeConfig(supabaseAdmin, {
+    countryCode: platformCountry,
+    currency,
+    lat: dropoffLat,
+    lng: dropoffLng,
+  });
+  const serviceFeeBase = computeServiceFeeBaseAmount({
+    subtotalAfterDiscount,
+    deliveryFeeAfterDiscount,
+  });
+  const serviceFeeResult = computeClientServiceFee(serviceFeeConfig, serviceFeeBase);
   const discounts = roundPlatformMoney(promoDiscountAmount + deliveryDiscountAmount);
   const total = roundPlatformMoney(
-    subtotalAfterDiscount + taxResult.tax + deliveryFeeAfterDiscount
+    subtotalAfterDiscount +
+      taxResult.tax +
+      deliveryFeeAfterDiscount +
+      serviceFeeResult.serviceFee
   );
   const totalCents = Math.round(total * 100);
 
@@ -279,8 +298,11 @@ export async function computeDeliveryRequestPricing(
     tax: taxResult.tax,
     taxRatePct: taxResult.taxRatePct,
     taxSource: taxResult.taxSource,
-    serviceFee,
-    serviceFeePct,
+    serviceFee: serviceFeeResult.serviceFee,
+    serviceFeeCents: serviceFeeResult.serviceFeeCents,
+    serviceFeePct: serviceFeeResult.pct,
+    serviceFeeEnabled: serviceFeeResult.enabled,
+    serviceFeeFixedCents: serviceFeeResult.fixedCents,
     deliveryFeeRaw: rawDeliveryFee,
     deliveryFee: deliveryFeeAfterDiscount,
     deliveryDiscountAmount,

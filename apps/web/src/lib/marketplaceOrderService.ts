@@ -4,6 +4,7 @@ import {
   type MarketplaceCheckoutShadow,
 } from "@/lib/marketplaceCheckout";
 import { persistMarketplaceDeliveryShadow } from "@/lib/marketplaceDeliveryShadow";
+import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 
 export type MarketplaceDraftItemInput = {
   product_id: string;
@@ -287,11 +288,16 @@ export async function upsertMarketplaceDraftOrder(
     };
   });
 
+  const serviceFeeConfig = await loadMarketplaceServiceFeeConfig(supabaseAdmin, {
+    countryCode: params.countryCode ?? undefined,
+  });
+
   const shadow = computeMarketplaceCheckoutShadow(
     lineItems.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
-    }))
+    })),
+    { serviceFeeConfig }
   );
 
   const currency = lineItems[0]?.currency ?? "USD";
@@ -335,6 +341,9 @@ export async function upsertMarketplaceDraftOrder(
     subtotal_cents: shadow.subtotal_cents,
     delivery_fee_cents: shadow.delivery_fee_cents,
     service_fee_cents: shadow.service_fee_cents,
+    service_fee_pct: shadow.service_fee_pct,
+    service_fee_enabled: shadow.service_fee_enabled,
+    service_fee_fixed_cents: shadow.service_fee_fixed_cents,
     total_cents: shadow.total_cents,
     country_code: params.countryCode ?? null,
     pickup_location_id: params.pickupLocationId ?? null,
@@ -423,11 +432,20 @@ export async function runMarketplaceCheckoutShadow(
     throw new Error("Draft order not found");
   }
 
+  const serviceFeeConfig = await loadMarketplaceServiceFeeConfig(supabaseAdmin, {
+    countryCode: order.country_code ?? undefined,
+    region: order.region_code ?? undefined,
+  });
+
   const shadow = computeMarketplaceCheckoutShadow(
     (order.items ?? []).map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
-    }))
+    })),
+    {
+      deliveryFeeCents: order.delivery_fee_cents,
+      serviceFeeConfig,
+    }
   );
 
   const nextStatus = shadow.checkout_enabled ? "pending_checkout" : "draft";
@@ -439,6 +457,9 @@ export async function runMarketplaceCheckoutShadow(
       subtotal_cents: shadow.subtotal_cents,
       delivery_fee_cents: shadow.delivery_fee_cents,
       service_fee_cents: shadow.service_fee_cents,
+      service_fee_pct: shadow.service_fee_pct,
+      service_fee_enabled: shadow.service_fee_enabled,
+      service_fee_fixed_cents: shadow.service_fee_fixed_cents,
       total_cents: shadow.total_cents,
       checkout_shadow: shadow,
       updated_at: new Date().toISOString(),

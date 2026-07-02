@@ -10,6 +10,7 @@ import {
 } from "@/lib/taxiApi";
 import { assertTaxiCheckoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
 import { snapshotFromRideRow } from "@/lib/taxiFinalPrice";
+import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 import {
   alignTaxiAmountCentsForZeroDecimal,
   formatTaxiCheckoutAmount,
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only"
+        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,subtotal_cents,service_fee_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -261,24 +262,49 @@ export async function POST(req: NextRequest) {
       .eq("id", taxiRideId)
       .neq("payment_status", "paid");
 
+    const serviceFeeCents = Math.round(
+      Number((ride as { service_fee_cents?: number }).service_fee_cents ?? 0)
+    );
+    const subtotalCents = Math.round(
+      Number((ride as { subtotal_cents?: number }).subtotal_cents ?? 0)
+    );
+    const checkoutLineItems =
+      totalDiscountCents > 0
+        ? [
+            {
+              quantity: 1,
+              price_data: {
+                currency,
+                unit_amount: stripeUnitAmount,
+                product_data: {
+                  name: `MMD Taxi ${taxiRideId.slice(0, 8)}`,
+                  description: `Taxi ride payment • ${checkoutLabel}`,
+                },
+              },
+            },
+          ]
+        : buildStripeCheckoutLineItems({
+            currency,
+            productName: `MMD Taxi ${taxiRideId.slice(0, 8)}`,
+            breakdown: {
+              subtotalCents,
+              serviceFeeCents,
+              taxCents,
+              totalCents: amountCents,
+            },
+            labels: {
+              subtotal: "Ride fare",
+              serviceFee: "Service fee",
+              tax: "Tax",
+            },
+          });
+
     const session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
         payment_method_types: ["card"],
         client_reference_id: taxiRideId,
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency,
-              unit_amount: stripeUnitAmount,
-              product_data: {
-                name: `MMD Taxi ${taxiRideId.slice(0, 8)}`,
-                description: `Taxi ride payment • ${checkoutLabel}`,
-              },
-            },
-          },
-        ],
+        line_items: checkoutLineItems,
         success_url: body.successUrl?.trim() || urls.successUrl,
         cancel_url: body.cancelUrl?.trim() || urls.cancelUrl,
         metadata: {

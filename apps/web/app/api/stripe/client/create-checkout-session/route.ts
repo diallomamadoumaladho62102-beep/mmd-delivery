@@ -15,6 +15,7 @@ import {
   safeFoodCheckoutCurrency,
 } from "@/lib/foodCurrencyGuard";
 import { validateFoodOrderBeforeCheckout } from "@/lib/foodOrderService";
+import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,6 +44,11 @@ type OrderRow = {
   pickup_lng: number | null;
   dropoff_lat: number | null;
   dropoff_lng: number | null;
+  delivery_fee: number | null;
+  service_fee: number | null;
+  service_fee_cents: number | null;
+  tax: number | null;
+  subtotal: number | null;
   kind: string | null;
   order_type: string | null;
 };
@@ -460,7 +466,7 @@ export async function POST(req: NextRequest) {
     const { data, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, kind, order_type"
+        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, kind, order_type, subtotal, tax, delivery_fee, service_fee, service_fee_cents"
       )
       .eq("id", requestedOrderId)
       .single();
@@ -819,21 +825,20 @@ export async function POST(req: NextRequest) {
           mode: "payment",
           client_reference_id: orderId,
           expires_at: Math.floor(effectiveExpiresAtMs / 1000),
-          line_items: [
-            {
-              quantity: 1,
-              price_data: {
-                currency,
-                unit_amount: stripeUnitAmount,
-                product_data: {
-                  name: `MMD Order ${orderId.slice(0, 8)}`,
-                  description: `Order payment • ${(amountCents / 100).toFixed(
-                    2
-                  )} ${currency.toUpperCase()}`,
-                },
-              },
+          line_items: buildStripeCheckoutLineItems({
+            currency,
+            productName: `MMD Order ${orderId.slice(0, 8)}`,
+            breakdown: {
+              subtotalCents: Math.round(Number(order.subtotal ?? 0) * 100),
+              deliveryFeeCents: Math.round(Number(order.delivery_fee ?? 0) * 100),
+              serviceFeeCents:
+                Number(order.service_fee_cents ?? 0) > 0
+                  ? Math.round(Number(order.service_fee_cents))
+                  : Math.round(Number(order.service_fee ?? 0) * 100),
+              taxCents: Math.round(Number(order.tax ?? 0) * 100),
+              totalCents: amountCents,
             },
-          ],
+          }),
           success_url: successUrl,
           cancel_url: cancelUrl,
           metadata: {

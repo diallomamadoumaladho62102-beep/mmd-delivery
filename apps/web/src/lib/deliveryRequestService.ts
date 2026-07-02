@@ -82,7 +82,13 @@ export async function createDeliveryRequestServerSide(
       subtotal: pricing.subtotal,
       delivery_fee: pricing.deliveryFee,
       tax: pricing.tax,
+      service_fee: pricing.serviceFee,
+      service_fee_cents: pricing.serviceFeeCents,
+      service_fee_pct: pricing.serviceFeePct,
+      service_fee_enabled: pricing.serviceFeeEnabled,
+      service_fee_fixed_cents: pricing.serviceFeeFixedCents,
       total: pricing.total,
+      total_cents: pricing.totalCents,
       currency: pricing.currency,
     })
     .select("id")

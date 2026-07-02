@@ -11,6 +11,7 @@
     "test:platform-launch": "node scripts/smoke-platform-launch.mjs && tsx src/lib/platformLaunchControl.test.ts && tsx src/lib/platformCountryInference.test.ts && tsx src/lib/platformScopeResolver.test.ts && tsx src/lib/platformScopeResolver.clientScope.test.ts && tsx src/lib/platformRouteGuards.test.ts && tsx src/lib/marketplaceLaunchControl.test.ts && tsx src/lib/adminPlatformLaunchPatch.test.ts",
     "test:delivery-pricing-v2": "tsx src/lib/deliveryPricingEngine/deliveryPricingEngine.test.ts",
     "test:marketplace-checkout": "tsx src/lib/marketplaceCheckout.test.ts",
+    "test:service-fee": "tsx src/lib/clientServiceFee.test.ts",
     "test:marketplace-delivery-shadow": "tsx src/lib/marketplaceDeliveryShadow.test.ts",
     "test:marketplace-live-checkout": "tsx src/lib/marketplaceLiveCheckout.test.ts",
     "test:marketplace-dispatch": "node scripts/smoke-marketplace-dispatch.mjs",
@@ -19,7 +20,7 @@
     "test:marketplace-driver-jobs": "node scripts/marketplace-driver-jobs.test.mjs",
     "test:mmd-ai": "tsx scripts/smoke-mmd-ai.mjs",
     "test:store-submission": "node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts && tsx src/lib/twilioMaskedCallReadiness.test.ts",
-    "test:ci": "pnpm test:rbac && tsx src/lib/authValidation.test.ts && tsx src/lib/transactionalOutbound.test.ts && tsx src/lib/driverLocationsRls.test.ts && tsx src/lib/productionTrustBoundary.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/stripeWebhookChargeRefunded.test.ts && tsx src/lib/stripeWebhookPaymentFailure.test.ts && pnpm test:platform-launch && pnpm test:delivery-pricing-v2 && node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts"
+    "test:ci": "pnpm test:rbac && tsx src/lib/authValidation.test.ts && tsx src/lib/transactionalOutbound.test.ts && tsx src/lib/driverLocationsRls.test.ts && tsx src/lib/productionTrustBoundary.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/stripeWebhookChargeRefunded.test.ts && tsx src/lib/stripeWebhookPaymentFailure.test.ts && pnpm test:platform-launch && pnpm test:delivery-pricing-v2 && pnpm test:service-fee && node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "4.10.0",

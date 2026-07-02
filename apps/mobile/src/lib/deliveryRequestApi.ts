@@ -10,7 +10,10 @@ export type DeliveryRequestPricingPayload = {
   tax_rate_pct: number;
   tax_source: string;
   service_fee: number;
+  service_fee_cents: number;
   service_fee_pct: number;
+  service_fee_enabled: boolean;
+  service_fee_fixed_cents: number;
   delivery_fee: number;
   delivery_fee_raw: number;
   delivery_discount_amount: number;

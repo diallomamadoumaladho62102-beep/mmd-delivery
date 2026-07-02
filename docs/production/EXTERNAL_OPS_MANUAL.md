@@ -2,6 +2,8 @@
 
 Items below cannot be completed in code alone. Execute manually before commercial launch.
 
+**Client Service Fee:** optional fee charged to end customers — disabled by default. See [CLIENT_SERVICE_FEE.md](./CLIENT_SERVICE_FEE.md).
+
 ## Supabase migrations (production)
 
 Apply **all** timestamped files in `supabase/migrations/` (64+ migrations). Do not apply stray or PROPOSED files.

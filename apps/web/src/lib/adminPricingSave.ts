@@ -30,6 +30,9 @@ export type PricingPayload = {
   tax_pct: number;
   tax_label: string | null;
   fixed_client_fee: number;
+  service_fee_enabled: boolean;
+  service_fee_pct: number;
+  service_fee_fixed_cents: number;
   updated_at: string;
 };
 
@@ -127,7 +130,10 @@ export function buildPricingPayload(formData: FormData): {
   const active = bool(formData.get("active"));
   const promoEnabled = bool(formData.get("promo_enabled"));
 
-  const clientPct = round2(parseNumber(formData.get("client_pct")));
+  const serviceFeeEnabled = bool(formData.get("service_fee_enabled"));
+  const serviceFeePct = round2(parseNumber(formData.get("service_fee_pct")));
+  const serviceFeeFixed = round2(parseNumber(formData.get("service_fee_fixed")));
+  const serviceFeeFixedCents = Math.max(0, Math.round(serviceFeeFixed * 100));
   const driverPct = 0;
   const restaurantPct = round2(parseNumber(formData.get("restaurant_pct")));
   const platformPct = round2(parseNumber(formData.get("platform_pct")));
@@ -163,10 +169,10 @@ export function buildPricingPayload(formData: FormData): {
   const taxEnabled = bool(formData.get("tax_enabled"));
   const taxPct = round2(parseNumber(formData.get("tax_pct")));
   const taxLabel = nullableText(formData.get("tax_label"));
-  const fixedClientFee = round2(parseNumber(formData.get("fixed_client_fee")));
   const currency = normalizeCurrency(text(formData.get("currency"), "USD"));
 
-  assertPercent("client_pct", clientPct);
+  assertPercent("service_fee_pct", serviceFeePct);
+  assertMoney("service_fee_fixed", serviceFeeFixed);
   assertPercent("driver_pct", driverPct);
   assertPercent("restaurant_pct", restaurantPct);
   assertPercent("platform_pct", platformPct);
@@ -177,20 +183,25 @@ export function buildPricingPayload(formData: FormData): {
   assertMoney("delivery_fee_per_mile", deliveryFeePerMile);
   assertMoney("delivery_fee_per_minute", deliveryFeePerMinute);
   assertMoney("minimum_order_amount", minimumOrderAmount);
-  assertMoney("fixed_client_fee", fixedClientFee);
   assertPercent("tax_pct", taxPct);
 
-  const deliveryTotal = round2(deliveryDriverPct + deliveryPlatformPct);
-  if (deliveryTotal !== 100) {
+  const coreTotal = round2(restaurantPct + platformPct);
+  if (coreTotal > 100) {
     throw new Error(
-      "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire 100."
+      "Restaurant % + Platform % must be <= 100 / Restaurant % + Plateforme % doit être <= 100."
     );
   }
 
-  const coreTotal = round2(clientPct + restaurantPct + platformPct);
-  if (coreTotal > 100) {
+  if (deliveryDriverPct + deliveryPlatformPct > 0) {
+    const deliveryTotal = round2(deliveryDriverPct + deliveryPlatformPct);
+    if (deliveryTotal !== 100) {
+      throw new Error(
+        "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire 100."
+      );
+    }
+  } else if (deliveryPlatformPct !== 0 || deliveryDriverPct !== 0) {
     throw new Error(
-      "Client % + Restaurant % + Platform % must be <= 100 / Client % + Plateforme % doit être <= 100."
+      "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire 100."
     );
   }
 
@@ -217,7 +228,7 @@ export function buildPricingPayload(formData: FormData): {
     payload: {
       active,
       currency,
-      client_pct: clientPct,
+      client_pct: serviceFeePct,
       driver_pct: driverPct,
       restaurant_pct: restaurantPct,
       platform_pct: platformPct,
@@ -240,7 +251,10 @@ export function buildPricingPayload(formData: FormData): {
       tax_enabled: taxEnabled,
       tax_pct: taxPct,
       tax_label: taxLabel,
-      fixed_client_fee: fixedClientFee,
+      fixed_client_fee: serviceFeeFixed,
+      service_fee_enabled: serviceFeeEnabled,
+      service_fee_pct: serviceFeePct,
+      service_fee_fixed_cents: serviceFeeFixedCents,
       updated_at: new Date().toISOString(),
     },
   };
@@ -296,4 +310,5 @@ export const PRICING_CONFIG_SELECT = `id, config_key, label, order_type, active,
   promo_enabled, promo_type, promo_value, promo_code,
   promo_starts_at, promo_ends_at,
   region, tax_enabled, tax_pct, tax_label, fixed_client_fee,
+  service_fee_enabled, service_fee_pct, service_fee_fixed_cents,
   updated_at`;

@@ -24,6 +24,10 @@ export const FORBIDDEN_CLIENT_FOOD_PRICING_FIELDS = [
   "line_total",
   "total_cents",
   "service_fee",
+  "service_fee_cents",
+  "service_fee_pct",
+  "service_fee_enabled",
+  "service_fee_fixed_cents",
   "commission",
   "platform_amount",
 ] as const;

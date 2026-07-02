@@ -7,8 +7,13 @@ import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import {
   assertTaxiQuotePriceMatches,
+  snapshotFromQuoteRpc,
   snapshotFromRideRow,
 } from "@/lib/taxiFinalPrice";
+import {
+  applyTaxiServiceFeeToQuote,
+  mergeTaxiServiceFeeIntoQuote,
+} from "@/lib/taxiServiceFee";
 import {
   assertTaxiLaunchFeature,
   fetchTaxiCountryLaunchConfig,
@@ -215,12 +220,23 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, ...quoteObj }, 400);
     }
 
+    const serviceFeeQuote = await applyTaxiServiceFeeToQuote(auth.supabaseAdmin, {
+      countryCode,
+      vehicleClass,
+      subtotalCents: Number(quoteObj.subtotal_cents ?? 0),
+      taxCents: Number(quoteObj.tax_cents ?? 0),
+    });
+    const quoteWithServiceFee = mergeTaxiServiceFeeIntoQuote(
+      quoteObj,
+      serviceFeeQuote
+    );
+
     const expectedQuoteTotalCents = Math.round(
       Number(
         body.expectedQuoteTotalCents ?? body.expected_quote_total_cents ?? 0
       )
     );
-    const quoteGrossCents = Math.round(Number(quoteObj.total_cents ?? 0));
+    const quoteGrossCents = Math.round(Number(quoteWithServiceFee.total_cents ?? 0));
 
     let businessMemberId: string | null = null;
     let businessApprovalStatus = "not_required";
@@ -281,14 +297,18 @@ export async function POST(req: NextRequest) {
         distance_miles: route.distanceMiles,
         duration_minutes: route.durationMinutes,
         country_code: countryCode,
-        currency: String(quoteObj.currency ?? "USD"),
-        pricing_snapshot_id: quoteObj.pricing_id ?? null,
-        subtotal_cents: quoteObj.subtotal_cents ?? 0,
-        tax_cents: quoteObj.tax_cents ?? 0,
-        platform_fee_cents: quoteObj.platform_fee_cents ?? 0,
-        driver_payout_cents: quoteObj.driver_payout_cents ?? 0,
-        total_cents: quoteObj.total_cents ?? 0,
-        gross_total_cents: quoteObj.total_cents ?? 0,
+        currency: String(quoteWithServiceFee.currency ?? "USD"),
+        pricing_snapshot_id: quoteWithServiceFee.pricing_id ?? null,
+        subtotal_cents: quoteWithServiceFee.subtotal_cents ?? 0,
+        tax_cents: quoteWithServiceFee.tax_cents ?? 0,
+        platform_fee_cents: quoteWithServiceFee.platform_fee_cents ?? 0,
+        driver_payout_cents: quoteWithServiceFee.driver_payout_cents ?? 0,
+        service_fee_cents: quoteWithServiceFee.service_fee_cents ?? 0,
+        service_fee_pct: quoteWithServiceFee.service_fee_pct ?? 0,
+        service_fee_enabled: quoteWithServiceFee.service_fee_enabled === true,
+        service_fee_fixed_cents: quoteWithServiceFee.service_fee_fixed_cents ?? 0,
+        total_cents: quoteWithServiceFee.total_cents ?? 0,
+        gross_total_cents: quoteWithServiceFee.gross_total_cents ?? 0,
         passenger_count: passengerCount,
         client_notes: clientNotes || null,
         payment_status: "unpaid",

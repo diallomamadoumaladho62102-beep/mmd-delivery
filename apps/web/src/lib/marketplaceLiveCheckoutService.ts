@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 import {
   computeMarketplaceCheckoutShadow,
   type MarketplaceCheckoutShadow,
@@ -10,6 +11,7 @@ import {
   type MarketplaceOrderRow,
 } from "@/lib/marketplaceOrderService";
 import { isMarketplaceCheckoutLiveEnvEnabled } from "@/lib/marketplaceLiveCheckout";
+import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 
 type ApprovedSellerRow = {
   id: string;
@@ -97,6 +99,11 @@ async function assertActiveOrderProducts(
     }
   }
 
+  const serviceFeeConfig = await loadMarketplaceServiceFeeConfig(supabaseAdmin, {
+    countryCode: order.country_code ?? undefined,
+    region: order.region_code ?? undefined,
+  });
+
   return computeMarketplaceCheckoutShadow(
     items.map((item) => ({
       price_cents: item.price_cents,
@@ -104,7 +111,7 @@ async function assertActiveOrderProducts(
     })),
     {
       deliveryFeeCents: order.delivery_fee_cents,
-      serviceFeeCents: order.service_fee_cents,
+      serviceFeeConfig,
     }
   );
 }
@@ -201,19 +208,16 @@ export async function createMarketplaceLiveCheckoutSession(
     mode: "payment",
     client_reference_id: order.id,
     customer_email: undefined,
-    line_items: [
-      {
-        quantity: 1,
-        price_data: {
-          currency,
-          unit_amount: totals.total_cents,
-          product_data: {
-            name: `MMD Marketplace — ${seller.business_name}`,
-            description: `Seller order ${order.id.slice(0, 8)}`,
-          },
-        },
+    line_items: buildStripeCheckoutLineItems({
+      currency,
+      productName: `MMD Marketplace — ${seller.business_name}`,
+      breakdown: {
+        subtotalCents: totals.subtotal_cents,
+        deliveryFeeCents: totals.delivery_fee_cents,
+        serviceFeeCents: totals.service_fee_cents,
+        totalCents: totals.total_cents,
       },
-    ],
+    }),
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata: {
@@ -244,6 +248,9 @@ export async function createMarketplaceLiveCheckoutSession(
       subtotal_cents: totals.subtotal_cents,
       delivery_fee_cents: totals.delivery_fee_cents,
       service_fee_cents: totals.service_fee_cents,
+      service_fee_pct: totals.service_fee_pct,
+      service_fee_enabled: totals.service_fee_enabled,
+      service_fee_fixed_cents: totals.service_fee_fixed_cents,
       total_cents: totals.total_cents,
       checkout_shadow: totals,
       stripe_checkout_session_id: session.id,

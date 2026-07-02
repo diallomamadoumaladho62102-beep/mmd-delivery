@@ -28,7 +28,21 @@ test("computeMarketplaceCheckoutShadow totals subtotal + delivery + service", ()
     shadow.total_cents,
     shadow.subtotal_cents + shadow.delivery_fee_cents + shadow.service_fee_cents
   );
-  assert.equal(shadow.pricing_engine_version, "marketplace_checkout_shadow_v1");
+  assert.equal(shadow.pricing_engine_version, "marketplace_checkout_shadow_v2");
+  assert.equal(shadow.service_fee_enabled, false);
+  assert.equal(shadow.service_fee_cents, 0);
+});
+
+test("marketplace service fee ON increases total", () => {
+  const shadow = computeMarketplaceCheckoutShadow(
+    [{ price_cents: 2000, quantity: 1 }],
+    {
+      serviceFeeConfig: { enabled: true, pct: 5, fixedCents: 99 },
+    }
+  );
+  assert.equal(shadow.service_fee_enabled, true);
+  assert.equal(shadow.service_fee_cents, 100);
+  assert.equal(shadow.total_cents, shadow.subtotal_cents + shadow.delivery_fee_cents + 100);
 });
 
 test("checkout flag defaults to disabled with coming soon message", () => {

@@ -13,6 +13,7 @@ import {
   safeFoodCheckoutCurrency,
 } from "@/lib/foodCurrencyGuard";
 import { validateDeliveryRequestBeforeCheckout } from "@/lib/deliveryRequestService";
+import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +38,11 @@ type DeliveryRequestRow = {
   title: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
+  subtotal: number | null;
+  tax: number | null;
+  delivery_fee: number | null;
+  service_fee: number | null;
+  service_fee_cents: number | null;
 };
 
 type GenericErrorLike = {
@@ -440,7 +446,7 @@ export async function POST(req: NextRequest) {
     const { data, error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
       .select(
-        "id, created_by, client_user_id, total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, title, pickup_lat, pickup_lng"
+        "id, created_by, client_user_id, total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, title, pickup_lat, pickup_lng, subtotal, tax, delivery_fee, service_fee, service_fee_cents"
       )
       .eq("id", requestedId)
       .single();
@@ -776,19 +782,26 @@ export async function POST(req: NextRequest) {
           mode: "payment",
           client_reference_id: deliveryRequestId,
           expires_at: Math.floor(effectiveExpiresAtMs / 1000),
-          line_items: [
-            {
-              quantity: 1,
-              price_data: {
-                currency,
-                unit_amount: stripeUnitAmount,
-                product_data: {
-                  name: displayTitle,
-                  description: displayDescription,
-                },
-              },
+          line_items: buildStripeCheckoutLineItems({
+            currency,
+            productName: displayTitle,
+            breakdown: {
+              subtotalCents: Math.round(Number(request.subtotal ?? 0) * 100),
+              deliveryFeeCents: Math.round(Number(request.delivery_fee ?? 0) * 100),
+              serviceFeeCents:
+                Number(request.service_fee_cents ?? 0) > 0
+                  ? Math.round(Number(request.service_fee_cents))
+                  : Math.round(Number(request.service_fee ?? 0) * 100),
+              taxCents: Math.round(Number(request.tax ?? 0) * 100),
+              totalCents: amountCents,
             },
-          ],
+            labels: {
+              subtotal: "Delivery subtotal",
+              deliveryFee: "Delivery fee",
+              serviceFee: "Service fee",
+              tax: "Tax",
+            },
+          }),
           success_url: successUrl,
           cancel_url: cancelUrl,
           metadata: {

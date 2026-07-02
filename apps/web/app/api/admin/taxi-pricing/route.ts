@@ -10,7 +10,7 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 export const dynamic = "force-dynamic";
 
 const PRICING_SELECT =
-  "id, config_key, vehicle_class, country_code, currency, active, base_fare, per_mile, per_minute, min_fare, booking_fee, driver_share_pct, platform_share_pct, class_multiplier, max_passengers, notes, updated_at";
+  "id, config_key, vehicle_class, country_code, currency, active, base_fare, per_mile, per_minute, min_fare, booking_fee, driver_share_pct, platform_share_pct, service_fee_enabled, service_fee_pct, service_fee_fixed_cents, class_multiplier, max_passengers, notes, updated_at";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -101,6 +101,18 @@ export async function PATCH(request: NextRequest) {
 
     if (typeof patch.active === "boolean") update.active = patch.active;
     if (typeof patch.notes === "string") update.notes = patch.notes;
+    if (typeof patch.service_fee_enabled === "boolean") {
+      update.service_fee_enabled = patch.service_fee_enabled;
+    }
+    if (patch.service_fee_pct != null) {
+      update.service_fee_pct = Number(patch.service_fee_pct);
+    }
+    if (patch.service_fee_fixed_cents != null) {
+      update.service_fee_fixed_cents = Math.max(
+        0,
+        Math.round(Number(patch.service_fee_fixed_cents))
+      );
+    }
 
     const { data: updated, error: updateErr } = await supabase
       .from("taxi_pricing")

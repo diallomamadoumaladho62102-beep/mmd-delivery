@@ -4,6 +4,7 @@ import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
+import { applyTaxiServiceFeeToQuote, mergeTaxiServiceFeeIntoQuote } from "@/lib/taxiServiceFee";
 import { snapshotFromQuoteRpc } from "@/lib/taxiFinalPrice";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 
@@ -127,15 +128,28 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, ...quoteObj }, 400);
     }
 
+    const serviceFeeQuote = await applyTaxiServiceFeeToQuote(auth.supabaseAdmin, {
+      countryCode,
+      vehicleClass,
+      subtotalCents: Number(quoteObj.subtotal_cents ?? 0),
+      taxCents: Number(quoteObj.tax_cents ?? 0),
+    });
+    const quoteWithServiceFee = mergeTaxiServiceFeeIntoQuote(
+      quoteObj,
+      serviceFeeQuote
+    );
+
     const sharedRide =
       body.sharedRide === true || body.shared_ride === true;
-    const priceSnapshot = snapshotFromQuoteRpc(quoteObj, { shared_ride: sharedRide });
+    const priceSnapshot = snapshotFromQuoteRpc(quoteWithServiceFee, {
+      shared_ride: sharedRide,
+    });
 
     return taxiJson({
       ok: true,
       country_resolution: countryResult.resolution,
       quote: {
-        ...quoteObj,
+        ...quoteWithServiceFee,
         ...priceSnapshot,
         shared_ride: sharedRide,
         shared_discount_percent: priceSnapshot.shared_discount_cents > 0 ? 15 : 0,

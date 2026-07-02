@@ -19,6 +19,9 @@ type TaxiPricingRow = {
   booking_fee: number;
   driver_share_pct: number;
   platform_share_pct: number;
+  service_fee_enabled: boolean;
+  service_fee_pct: number;
+  service_fee_fixed_cents: number;
   updated_at: string | null;
 };
 
@@ -110,6 +113,9 @@ export default function AdminTaxiPricingPage() {
           per_minute: Number(form.get("per_minute")),
           min_fare: Number(form.get("min_fare")),
           booking_fee: Number(form.get("booking_fee")),
+          service_fee_enabled: form.get("service_fee_enabled") === "on",
+          service_fee_pct: Number(form.get("service_fee_pct")),
+          service_fee_fixed_cents: Number(form.get("service_fee_fixed_cents")),
         }),
       });
 
@@ -238,6 +244,43 @@ export default function AdminTaxiPricingPage() {
                         />
                       </label>
                     ))}
+                  </div>
+
+                  <div className="mt-4 space-y-3 rounded-xl border border-indigo-100 bg-indigo-50 p-3 text-sm">
+                    <div className="font-semibold text-indigo-900">
+                      Client Service Fee / Frais de service
+                    </div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        name="service_fee_enabled"
+                        defaultChecked={row.service_fee_enabled}
+                        disabled={!canEdit}
+                      />
+                      Service fee enabled (OFF by default)
+                    </label>
+                    <label className="block">
+                      <span className="text-slate-600">Service fee %</span>
+                      <input
+                        name="service_fee_pct"
+                        type="number"
+                        step="0.01"
+                        defaultValue={row.service_fee_pct ?? 0}
+                        disabled={!canEdit}
+                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-slate-600">Minimum fixed fee (cents)</span>
+                      <input
+                        name="service_fee_fixed_cents"
+                        type="number"
+                        step="1"
+                        defaultValue={row.service_fee_fixed_cents ?? 0}
+                        disabled={!canEdit}
+                        className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
+                      />
+                    </label>
                   </div>
 
                   <p className="mt-3 text-xs text-slate-500">
