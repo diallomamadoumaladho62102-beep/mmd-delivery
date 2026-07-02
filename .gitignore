@@ -5,6 +5,7 @@ out
 .env
 .env.local
 .env.*.local
+**/.env.*.tmp
 .env.production
 .env.production.local
 apps/web/.env.local

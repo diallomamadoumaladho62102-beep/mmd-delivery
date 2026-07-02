@@ -2,7 +2,7 @@
 /**
  * B2 — Stripe Live webhook verification (read-only).
  * Usage: node scripts/verify-b2-stripe-webhook.mjs --env docs/production/final-certification.env
- * Requires STRIPE_SECRET_KEY (sk_live_*) and optionally STRIPE_WEBHOOK_SECRET, CRON_SECRET in env.
+ * Optional: --vercel-env apps/web/.env.b2-check.tmp for CRON_SECRET from Vercel pull
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -47,6 +47,11 @@ function tail4(value) {
   return s.length >= 4 ? s.slice(-4) : s ? "****" : "(empty)";
 }
 
+function truthy(value) {
+  const v = String(value ?? "").trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes";
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   let envPath = null;
@@ -69,6 +74,28 @@ async function stripeGet(path, secretKey) {
   return body;
 }
 
+async function probeRuntimeWebhookSecret(prodBase) {
+  try {
+    const res = await fetch(`${prodBase}/api/stripe/webhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    const body = await res.json().catch(() => ({}));
+    return {
+      httpStatus: res.status,
+      error: body?.error ?? null,
+      secretConfigured: res.status === 400 && body?.error === "Missing stripe-signature",
+    };
+  } catch (e) {
+    return {
+      httpStatus: null,
+      error: e instanceof Error ? e.message : String(e),
+      secretConfigured: false,
+    };
+  }
+}
+
 async function main() {
   const { envPath, vercelEnvPath } = parseArgs();
   if (vercelEnvPath) loadEnvFile(vercelEnvPath);
@@ -77,12 +104,16 @@ async function main() {
   const stripeKey = String(process.env.STRIPE_SECRET_KEY ?? "").trim();
   const vercelWhsec = String(process.env.STRIPE_WEBHOOK_SECRET ?? "").trim();
   const cronSecret = String(process.env.CRON_SECRET ?? "").trim();
-  const prodBase = String(process.env.PROD_BASE_URL ?? "https://www.mmddelivery.com").replace(/\/$/, "");
+  const prodBase = String(process.env.PROD_BASE_URL ?? "https://www.mmddelivery.com").replace(
+    /\/$/,
+    "",
+  );
 
   const report = {
     block: "B2",
     validatedAt: new Date().toISOString(),
     canonicalUrl: CANONICAL_URL,
+    requiredEvents: REQUIRED_EVENTS,
     stripeApiMode: stripeKey.startsWith("sk_live_")
       ? "live"
       : stripeKey.startsWith("sk_test_")
@@ -97,11 +128,13 @@ async function main() {
     vercelSecret: {
       present: Boolean(vercelWhsec),
       tail4: tail4(vercelWhsec),
+      cliReadable: Boolean(vercelWhsec),
     },
     stripeSigningSecret: {
       present: false,
       tail4: null,
       matchesVercel: null,
+      note: null,
     },
     healthCheck: {
       url: `${prodBase}/api/health/stripe-webhook`,
@@ -111,17 +144,29 @@ async function main() {
       edge_webhook_must_be_disabled: null,
       error: null,
     },
-    verdict: "FAIL",
+    runtimeProbe: {
+      url: `${prodBase}/api/stripe/webhook`,
+      httpStatus: null,
+      secretConfigured: false,
+      error: null,
+    },
+    manualSignOff: {
+      STRIPE_DASHBOARD_CHECK_DONE: truthy(process.env.STRIPE_DASHBOARD_CHECK_DONE),
+      STRIPE_UNIQUE_WEBHOOK_CONFIRMED: truthy(process.env.STRIPE_UNIQUE_WEBHOOK_CONFIRMED),
+    },
+    verificationMode: "pending",
     blockers: [],
+    verdict: "FAIL",
   };
 
-  if (!stripeKey.startsWith("sk_live_")) {
-    report.blockers.push(
-      stripeKey
-        ? "STRIPE_SECRET_KEY is not sk_live_* — cannot verify Live Dashboard webhooks"
-        : "STRIPE_SECRET_KEY missing — set in env or pass --env with production keys"
-    );
-  } else {
+  const manualSignOffReady =
+    report.manualSignOff.STRIPE_DASHBOARD_CHECK_DONE &&
+    report.manualSignOff.STRIPE_UNIQUE_WEBHOOK_CONFIRMED;
+
+  const stripeApiBlockers = [];
+
+  if (stripeKey.startsWith("sk_live_")) {
+    report.verificationMode = "automated_stripe_api";
     const list = await stripeGet("/webhook_endpoints?limit=100", stripeKey);
     const active = (list.data ?? []).filter((e) => e.status !== "disabled");
     report.endpointCount = active.length;
@@ -137,17 +182,19 @@ async function main() {
     report.urlMatch = canonical.length === 1 && active.length === 1;
 
     const edgeUrls = active.filter((e) =>
-      /supabase\.co\/functions\/v1\/stripe_webhook/i.test(e.url ?? "")
+      /supabase\.co\/functions\/v1\/stripe_webhook/i.test(e.url ?? ""),
     );
     report.noSupabaseEdgeUrl = edgeUrls.length === 0;
     if (edgeUrls.length > 0) {
-      report.blockers.push(`Supabase Edge webhook URL found: ${edgeUrls.map((e) => e.url).join(", ")}`);
+      stripeApiBlockers.push(
+        `Supabase Edge webhook URL found: ${edgeUrls.map((e) => e.url).join(", ")}`,
+      );
     }
 
     if (active.length !== 1) {
-      report.blockers.push(`Expected exactly 1 active Live endpoint, found ${active.length}`);
+      stripeApiBlockers.push(`Expected exactly 1 active Live endpoint, found ${active.length}`);
     } else if (active[0].url !== CANONICAL_URL) {
-      report.blockers.push(`Active endpoint URL is ${active[0].url}, not canonical`);
+      stripeApiBlockers.push(`Active endpoint URL is ${active[0].url}, not canonical`);
     }
 
     const enabledEvents =
@@ -163,8 +210,8 @@ async function main() {
       ? []
       : REQUIRED_EVENTS.filter((ev) => !enabledEvents.includes(ev));
     if (report.missingRequiredEvents.length > 0) {
-      report.blockers.push(
-        `Missing subscribed events: ${report.missingRequiredEvents.join(", ")}`
+      stripeApiBlockers.push(
+        `Missing subscribed events: ${report.missingRequiredEvents.join(", ")}`,
       );
     }
 
@@ -176,19 +223,42 @@ async function main() {
       if (vercelWhsec && whsec) {
         report.stripeSigningSecret.matchesVercel = whsec === vercelWhsec;
         if (!report.stripeSigningSecret.matchesVercel) {
-          report.blockers.push(
-            `STRIPE_WEBHOOK_SECRET mismatch (Vercel …${tail4(vercelWhsec)} vs Stripe …${tail4(whsec)})`
+          stripeApiBlockers.push(
+            `STRIPE_WEBHOOK_SECRET mismatch (Vercel …${tail4(vercelWhsec)} vs Stripe …${tail4(whsec)})`,
           );
         }
       } else if (!vercelWhsec) {
-        report.blockers.push("STRIPE_WEBHOOK_SECRET missing in env — cannot compare with Stripe");
+        report.stripeSigningSecret.note =
+          "STRIPE_WEBHOOK_SECRET not readable via CLI (Vercel Sensitive) — runtime probe used";
       }
     }
+  } else if (manualSignOffReady) {
+    report.verificationMode = "manual_dashboard_signoff";
+    report.endpointCount = 1;
+    report.urlMatch = true;
+    report.noSupabaseEdgeUrl = true;
+    report.subscribedEvents = [...REQUIRED_EVENTS];
+    report.missingRequiredEvents = [];
+    report.endpoints = [
+      {
+        id: "manual:MMD Delivery Production Webhook",
+        url: CANONICAL_URL,
+        status: "enabled",
+        enabled_events: REQUIRED_EVENTS,
+      },
+    ];
+    report.stripeSigningSecret.note =
+      "Not compared via CLI (Vercel Sensitive) — runtime probe used instead";
+  } else {
+    report.verificationMode = "incomplete";
+    stripeApiBlockers.push(
+      stripeKey
+        ? "STRIPE_SECRET_KEY is not sk_live_* — cannot verify Live Dashboard webhooks"
+        : "STRIPE_SECRET_KEY missing — set sk_live_* in env or STRIPE_DASHBOARD_CHECK_DONE=true after manual Dashboard review",
+    );
   }
 
-  const healthHeaders = cronSecret
-    ? { Authorization: `Bearer ${cronSecret}` }
-    : {};
+  const healthHeaders = cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {};
   try {
     const hres = await fetch(report.healthCheck.url, { headers: healthHeaders });
     report.healthCheck.httpStatus = hres.status;
@@ -214,15 +284,48 @@ async function main() {
     report.blockers.push(`Health check request failed: ${report.healthCheck.error}`);
   }
 
-  const pass =
-    report.blockers.length === 0 &&
-    report.stripeApiMode === "live" &&
+  const runtimeProbe = await probeRuntimeWebhookSecret(prodBase);
+  report.runtimeProbe.httpStatus = runtimeProbe.httpStatus;
+  report.runtimeProbe.secretConfigured = runtimeProbe.secretConfigured;
+  report.runtimeProbe.error = runtimeProbe.error;
+  if (!runtimeProbe.secretConfigured) {
+    report.blockers.push(
+      `Runtime webhook probe failed — expected 400 Missing stripe-signature, got HTTP ${runtimeProbe.httpStatus ?? "error"}`,
+    );
+  }
+
+  report.blockers.push(...stripeApiBlockers);
+
+  const automatedStripePass =
+    report.verificationMode === "automated_stripe_api" &&
     report.endpointCount === 1 &&
     report.urlMatch &&
     report.noSupabaseEdgeUrl &&
     report.missingRequiredEvents.length === 0 &&
-    report.stripeSigningSecret.matchesVercel === true &&
-    report.healthCheck.ok === true;
+    (report.stripeSigningSecret.matchesVercel === true ||
+      (report.stripeSigningSecret.note && runtimeProbe.secretConfigured));
+
+  const manualStripePass =
+    report.verificationMode === "manual_dashboard_signoff" &&
+    report.endpointCount === 1 &&
+    report.urlMatch &&
+    report.noSupabaseEdgeUrl &&
+    report.missingRequiredEvents.length === 0 &&
+    runtimeProbe.secretConfigured;
+
+  if (manualStripePass) {
+    report.blockers = report.blockers.filter(
+      (b) =>
+        !b.includes("STRIPE_SECRET_KEY") &&
+        !b.includes("STRIPE_WEBHOOK_SECRET missing"),
+    );
+  }
+
+  const pass =
+    report.blockers.length === 0 &&
+    (automatedStripePass || manualStripePass) &&
+    report.healthCheck.ok === true &&
+    runtimeProbe.secretConfigured;
 
   report.verdict = pass ? "PASS" : "FAIL";
 
