@@ -53,6 +53,7 @@ export type CreateFoodOrderPayload = {
   dropoff_lng: number;
   items: FoodOrderLinePayload[];
   promo_code?: string | null;
+  leave_at_door?: boolean;
 };
 
 async function getAccessToken(): Promise<string | null> {

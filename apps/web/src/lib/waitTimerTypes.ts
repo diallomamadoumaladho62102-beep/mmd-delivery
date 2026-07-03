@@ -80,3 +80,15 @@ export type WaitTimerRow = {
   driver_payout_cents?: number | null;
   total_cents?: number | null;
 };
+
+export function isWaitTimerGpsValidated(row: {
+  driver_arrived_at: string | null;
+  manual_arrival_required: boolean | null;
+  driver_distance_to_target_meters: number | null;
+}): boolean {
+  if (!row.driver_arrived_at) return false;
+  if (row.manual_arrival_required === true) return false;
+  const dist = Number(row.driver_distance_to_target_meters ?? NaN);
+  if (!Number.isFinite(dist) || dist > DRIVER_ARRIVAL_MAX_METERS) return false;
+  return true;
+}

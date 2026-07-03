@@ -16,6 +16,7 @@ export type FoodOrderRequestBody = {
   dropoff_lng?: number;
   items?: FoodOrderLineInput[];
   promo_code?: string | null;
+  leave_at_door?: boolean;
 };
 
 export function parseFoodOrderRequestBody(body: Record<string, unknown>): FoodOrderRequestBody {
@@ -36,6 +37,7 @@ export function readFoodOrderBodyFields(body: FoodOrderRequestBody) {
   const dropoffLng = Number(body.dropoff_lng);
   const items = Array.isArray(body.items) ? body.items : [];
   const promoCode = body.promo_code ?? null;
+  const leaveAtDoor = body.leave_at_door === true;
 
   return {
     restaurantUserId,
@@ -48,6 +50,7 @@ export function readFoodOrderBodyFields(body: FoodOrderRequestBody) {
     dropoffLng,
     items,
     promoCode,
+    leaveAtDoor,
   };
 }
 

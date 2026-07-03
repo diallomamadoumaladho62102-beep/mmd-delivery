@@ -6,7 +6,11 @@ import {
   mmdLocationJson,
 } from "@/lib/mmdLocationCore";
 import { cancelTaxiNoShow } from "@/lib/waitTimerService";
-import { recordWaitLateFeeLedgerEntries } from "@/lib/waitTimerLateFeeBridge";
+import {
+  chargeWaitLateFeeIfEligible,
+  recordTaxiNoShowDriverCompensation,
+} from "@/lib/waitTimerLateFeeBilling";
+import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,20 +44,35 @@ export async function POST(req: NextRequest) {
       return mmdLocationJson({ ok: false, error: result.error }, 409);
     }
 
-    if (result.wait_fee_cents > 0 && result.client_user_ids[0]) {
-      await recordWaitLateFeeLedgerEntries(supabaseAdmin, {
-        entityType: "taxi_ride",
-        entityId: rideId,
-        clientUserId: result.client_user_ids[0],
+    const feeResult = await chargeWaitLateFeeIfEligible(supabaseAdmin, {
+      entityType: "taxi_ride",
+      entityId: rideId,
+    });
+
+    const rideCompensationCents = Math.max(
+      0,
+      result.compensation_cents - result.wait_fee_cents
+    );
+
+    if (rideCompensationCents > 0) {
+      const countryCode = inferPlatformCountryCode({ currency: result.currency });
+      await recordTaxiNoShowDriverCompensation(supabaseAdmin, {
+        rideId,
         driverUserId: authData.user.id,
-        countryCode: "US",
+        countryCode,
         currency: result.currency,
-        feeCents: result.wait_fee_cents,
-        referenceId: rideId,
+        rideCompensationCents,
+        referenceId:
+          feeResult.charged === true
+            ? feeResult.payment_transaction_id
+            : rideId,
       });
     }
 
-    return mmdLocationJson(result);
+    return mmdLocationJson({
+      ...result,
+      late_fee_billing: feeResult,
+    });
   } catch (e) {
     return mmdLocationJson(
       { ok: false, error: e instanceof Error ? e.message : "taxi_no_show_cancel_failed" },

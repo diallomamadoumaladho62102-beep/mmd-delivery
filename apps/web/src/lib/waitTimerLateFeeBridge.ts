@@ -24,7 +24,7 @@ export async function recordWaitLateFeeLedgerEntries(
     currency: input.currency,
     direction: "credit",
     amountCents: input.feeCents,
-    referenceType: "commission",
+    referenceType: "payment_transaction",
     referenceId: input.referenceId,
     description: `Wait late fee (${input.entityType})`,
     metadata: {
@@ -41,7 +41,7 @@ export async function recordWaitLateFeeLedgerEntries(
     currency: input.currency,
     direction: "debit",
     amountCents: input.feeCents,
-    referenceType: "commission",
+    referenceType: "payment_transaction",
     referenceId: input.referenceId,
     description: "Wait late fee charged to client",
     metadata: {
@@ -58,7 +58,7 @@ export async function recordWaitLateFeeLedgerEntries(
     currency: input.currency,
     direction: "credit",
     amountCents: input.feeCents,
-    referenceType: "commission",
+    referenceType: "payment_transaction",
     referenceId: input.referenceId,
     description: "Wait late fee pass-through to driver",
     metadata: {

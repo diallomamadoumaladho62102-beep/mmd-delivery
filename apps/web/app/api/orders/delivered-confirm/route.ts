@@ -4,6 +4,7 @@ import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 import { notifyOrderDeliveredTransactional } from "@/lib/transactionalOutbound";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -550,7 +551,6 @@ export async function POST(req: NextRequest) {
     const body = await parseBody(req);
 
     let orderId = "";
-    let proofPhotoUrl = "";
 
     try {
       orderId = normalizeOrderId(body.order_id ?? body.orderId);
@@ -564,21 +564,11 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid order_id" }, 400);
     }
 
-    try {
-      proofPhotoUrl = normalizeProofPhotoUrl(body.proof_photo_url);
-    } catch (e) {
-      const message = getErrorMessage(e);
-
-      if (message === "Missing proof_photo_url") {
-        return json({ error: "Missing proof_photo_url" }, 400);
-      }
-
-      return json({ error: "Invalid proof_photo_url" }, 400);
-    }
-
     const { data: orderGate, error: orderGateErr } = await supabaseAdmin
       .from("orders")
-      .select("id,currency,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng")
+      .select(
+        "id,currency,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,leave_at_door,completion_reason,dropoff_photo_url"
+      )
       .eq("id", orderId)
       .maybeSingle();
 
@@ -587,6 +577,29 @@ export async function POST(req: NextRequest) {
     }
     if (!orderGate) {
       return json({ error: "Order not found" }, 404);
+    }
+
+    let proofPhotoUrl = "";
+
+    try {
+      if (
+        orderGate.leave_at_door === true &&
+        String(orderGate.completion_reason ?? "").toLowerCase() === "left_at_door"
+      ) {
+        const fromBody = String(body.proof_photo_url ?? "").trim();
+        const fromDeposit = String(orderGate.dropoff_photo_url ?? "").trim();
+        proofPhotoUrl = normalizeProofPhotoUrl(fromBody || fromDeposit);
+      } else {
+        proofPhotoUrl = normalizeProofPhotoUrl(body.proof_photo_url);
+      }
+    } catch (e) {
+      const message = getErrorMessage(e);
+
+      if (message === "Missing proof_photo_url") {
+        return json({ error: "Missing proof_photo_url" }, 400);
+      }
+
+      return json({ error: "Invalid proof_photo_url" }, 400);
     }
 
     const platformCountry = resolveOrderPlatformCountry(orderGate);
@@ -654,6 +667,23 @@ export async function POST(req: NextRequest) {
         },
         500
       );
+    }
+
+    let lateFeeBilling: Awaited<ReturnType<typeof chargeWaitLateFeeIfEligible>> | null =
+      null;
+
+    try {
+      lateFeeBilling = await chargeWaitLateFeeIfEligible(supabaseAdmin, {
+        entityType: "order",
+        entityId: orderId,
+        orderId,
+      });
+    } catch (lateFeeErr) {
+      console.error("[delivered-confirm] wait late fee billing failed", {
+        order_id: orderId,
+        user_id: user.id,
+        message: getErrorMessage(lateFeeErr),
+      });
     }
 
     let payoutResult:
@@ -756,6 +786,7 @@ export async function POST(req: NextRequest) {
       proof_photo_url: proofPhotoUrl,
       result,
       payout: payoutResult,
+      late_fee_billing: lateFeeBilling,
     });
   } catch (e: unknown) {
     const message = getErrorMessage(e);

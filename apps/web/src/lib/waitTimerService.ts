@@ -4,6 +4,7 @@ import { computeWaitTimerState } from "@/lib/waitFeeCalculator";
 import {
   DRIVER_ARRIVAL_MANUAL_REVIEW_METERS,
   DRIVER_ARRIVAL_MAX_METERS,
+  isWaitTimerGpsValidated,
   type WaitTimerEntityType,
   type WaitTimerRow,
 } from "@/lib/waitTimerTypes";
@@ -496,6 +497,11 @@ export async function cancelTaxiNoShow(
     entityKind: "taxi",
   });
 
+  const gpsValidated = isWaitTimerGpsValidated(ctx.row);
+  const waitFeeCents = gpsValidated ? computed.wait_fee_cents : 0;
+  const waitFeeMinutes = gpsValidated ? computed.billable_minutes : 0;
+  const waitFeeStatus = gpsValidated ? computed.wait_fee_status : "waived";
+
   if (!computed.can_cancel_no_penalty) {
     return { ok: false as const, error: "no_show_cancel_not_yet_allowed" };
   }
@@ -507,7 +513,7 @@ export async function cancelTaxiNoShow(
   const nowIso = new Date().toISOString();
   const currency = String(ctx.row.currency ?? "USD").toUpperCase();
   const ridePriceCents = Number(ctx.row.total_cents ?? 0);
-  const compensationCents = Math.round(ridePriceCents * 0.05) + computed.wait_fee_cents;
+  const compensationCents = Math.round(ridePriceCents * 0.05) + waitFeeCents;
 
   const { error } = await supabaseAdmin
     .from("taxi_rides")
@@ -518,9 +524,9 @@ export async function cancelTaxiNoShow(
       cancellation_exempt_reason: "customer_no_show_validated",
       customer_no_show_validated: true,
       completion_reason: "customer_no_show",
-      wait_fee_amount_cents: computed.wait_fee_cents,
-      wait_fee_minutes: computed.billable_minutes,
-      wait_fee_status: computed.wait_fee_status,
+      wait_fee_amount_cents: waitFeeCents,
+      wait_fee_minutes: waitFeeMinutes,
+      wait_fee_status: waitFeeStatus,
       updated_at: nowIso,
     })
     .eq("id", input.rideId)
@@ -536,9 +542,10 @@ export async function cancelTaxiNoShow(
     triggeredRole: "driver",
     description: "Taxi ride canceled without driver penalty — customer no-show",
     metadata: {
-      wait_fee_cents: computed.wait_fee_cents,
+      wait_fee_cents: waitFeeCents,
       compensation_cents: compensationCents,
       currency,
+      gps_validated: gpsValidated,
     },
   });
 
@@ -547,7 +554,7 @@ export async function cancelTaxiNoShow(
     taxi_ride_id: input.rideId,
     cancellation_exempt: true,
     customer_no_show_validated: true,
-    wait_fee_cents: computed.wait_fee_cents,
+    wait_fee_cents: waitFeeCents,
     compensation_cents: compensationCents,
     currency,
     client_user_ids: ctx.clientUserIds,

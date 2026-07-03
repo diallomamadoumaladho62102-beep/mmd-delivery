@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
   Image,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -259,6 +260,7 @@ export function ClientRestaurantMenuScreen() {
 
   const [pickupCoords, setPickupCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [dropoffCoords, setDropoffCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [leaveAtDoor, setLeaveAtDoor] = useState(false);
 
   const [creating, setCreating] = useState(false);
   const [serverPricing, setServerPricing] = useState<FoodOrderPricingPayload | null>(null);
@@ -986,6 +988,7 @@ export function ClientRestaurantMenuScreen() {
             item_id: item.id,
             quantity: item.quantity,
           })),
+          leave_at_door: leaveAtDoor,
         },
         {
           countryCode: market.countryCode,
@@ -1243,6 +1246,39 @@ export function ClientRestaurantMenuScreen() {
                 color: "white",
                 fontSize: 14,
               }}
+            />
+          </View>
+
+          <View
+            style={{
+              marginTop: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#1F2937",
+              backgroundColor: "#07111F",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+            }}
+          >
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ color: "white", fontSize: 14, fontWeight: "700" }}>
+                {tr("clientRestaurantMenu.leaveAtDoor.title", "Laisser devant la porte")}
+              </Text>
+              <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 4, lineHeight: 18 }}>
+                {tr(
+                  "clientRestaurantMenu.leaveAtDoor.hint",
+                  "Autorise le livreur à déposer la commande devant la porte après l’attente maximale (photo obligatoire)."
+                )}
+              </Text>
+            </View>
+            <Switch
+              value={leaveAtDoor}
+              onValueChange={setLeaveAtDoor}
+              trackColor={{ false: "#374151", true: "#166534" }}
+              thumbColor={leaveAtDoor ? "#22C55E" : "#9CA3AF"}
             />
           </View>
 

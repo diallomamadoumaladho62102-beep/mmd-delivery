@@ -44,6 +44,7 @@ export type CreateDeliveryRequestPayload = {
   dropoff_lng: number;
   dropoff_location_id?: string | null;
   promo_code?: string | null;
+  leave_at_door?: boolean;
 };
 
 async function getAccessToken(): Promise<string | null> {

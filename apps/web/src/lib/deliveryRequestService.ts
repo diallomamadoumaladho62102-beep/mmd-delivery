@@ -30,6 +30,7 @@ export type CreateDeliveryRequestInput = {
   dropoffLocationId?: string | null;
   countryCode: string;
   promoCode?: string | null;
+  leaveAtDoor?: boolean;
 };
 
 export type CreateDeliveryRequestResult = DeliveryRequestPricingResult & {
@@ -90,6 +91,7 @@ export async function createDeliveryRequestServerSide(
       total: pricing.total,
       total_cents: pricing.totalCents,
       currency: pricing.currency,
+      leave_at_door: input.leaveAtDoor === true,
     })
     .select("id")
     .single();

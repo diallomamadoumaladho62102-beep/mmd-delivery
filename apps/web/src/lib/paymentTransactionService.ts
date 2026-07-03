@@ -146,3 +146,44 @@ export async function findLatestOpenTransaction(
   if (error) throw new Error(error.message);
   return (data as PaymentTransactionRow | null) ?? null;
 }
+
+export async function createLateFeePaymentTransaction(
+  supabaseAdmin: SupabaseClient,
+  input: {
+    orderId?: string | null;
+    userId: string;
+    entityType: PaymentEntityType;
+    entityId: string;
+    countryCode: string;
+    amountCents: number;
+    currency: string;
+    providerPayload?: Record<string, unknown>;
+  }
+): Promise<PaymentTransactionRow> {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from("payment_transactions")
+    .insert({
+      order_id: input.orderId ?? null,
+      user_id: input.userId,
+      entity_type: input.entityType,
+      entity_id: input.entityId,
+      country_code: input.countryCode,
+      provider: "platform",
+      method_code: "late_fee_assessment",
+      amount_cents: input.amountCents,
+      currency: input.currency,
+      charge_category: "late_fee",
+      status: "paid",
+      paid_at: nowIso,
+      provider_payload: input.providerPayload ?? {},
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "late_fee_payment_transaction_create_failed");
+  }
+
+  return data as PaymentTransactionRow;
+}

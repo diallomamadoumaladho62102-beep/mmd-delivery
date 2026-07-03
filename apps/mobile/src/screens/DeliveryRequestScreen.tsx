@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Switch,
 } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -231,6 +232,7 @@ export function DeliveryRequestScreen() {
   const [requestType, setRequestType] = useState<RequestType>("package");
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
+  const [leaveAtDoor, setLeaveAtDoor] = useState(false);
   const [pickupContactName, setPickupContactName] = useState("");
   const [pickupPhone, setPickupPhone] = useState("");
   const [dropoffContactName, setDropoffContactName] = useState("");
@@ -800,6 +802,7 @@ export function DeliveryRequestScreen() {
           dropoff_lat: dropoffCoords.lat,
           dropoff_lng: dropoffCoords.lng,
           dropoff_location_id: dropoffLocationId,
+          leave_at_door: requestType === "package" ? leaveAtDoor : false,
         },
         {
           countryCode: market.countryCode,
@@ -1194,8 +1197,42 @@ export function DeliveryRequestScreen() {
               </Text>
             </TouchableOpacity>
 
+            {requestType === "package" ? (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: "#334155",
+                  backgroundColor: "rgba(15,23,42,0.8)",
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  marginBottom: 14,
+                }}
+              >
+                <View style={{ flex: 1, paddingRight: 12 }}>
+                  <Text style={{ color: "#F8FAFC", fontSize: 14, fontWeight: "700" }}>
+                    {tr("deliveryRequest.leaveAtDoor.title", "Laisser devant la porte")}
+                  </Text>
+                  <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 4, lineHeight: 18 }}>
+                    {tr(
+                      "deliveryRequest.leaveAtDoor.hint",
+                      "Autorise le livreur à déposer le colis devant la porte après l’attente maximale (photo obligatoire)."
+                    )}
+                  </Text>
+                </View>
+                <Switch
+                  value={leaveAtDoor}
+                  onValueChange={setLeaveAtDoor}
+                  trackColor={{ false: "#475569", true: "#166534" }}
+                  thumbColor={leaveAtDoor ? "#22C55E" : "#CBD5E1"}
+                />
+              </View>
+            ) : null}
+
             <Text style={{ color: "#CBD5E1", fontSize: 13, marginBottom: 8 }}>
-                {tr("deliveryRequest.fields.pickupContactName", "Nom du contact pickup")}
               </Text>
             <TextInput
               value={pickupContactName}

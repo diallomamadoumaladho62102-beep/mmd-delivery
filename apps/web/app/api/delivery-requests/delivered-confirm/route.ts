@@ -7,6 +7,7 @@ import {
   type DeliveryRequestRpcResult,
 } from "@/lib/deliveryRequestDriver";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
+import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,7 +72,40 @@ export async function POST(req: NextRequest) {
     }
 
     const dropoffCode = String(body.dropoff_code ?? body.code ?? "").trim() || null;
-    const proofPhotoUrl = String(body.proof_photo_url ?? "").trim() || null;
+
+    const supabaseAdmin = getAdminClient();
+    const { data: requestGate, error: requestGateErr } = await supabaseAdmin
+      .from("delivery_requests")
+      .select(
+        "id,currency,pickup_lat,pickup_lng,leave_at_door,completion_reason,dropoff_photo_url"
+      )
+      .eq("id", requestId)
+      .maybeSingle();
+
+    if (requestGateErr) {
+      return json({ error: requestGateErr.message }, 500);
+    }
+    if (!requestGate) {
+      return json({ error: "Delivery request not found" }, 404);
+    }
+
+    let proofPhotoUrl: string | null = null;
+    if (
+      requestGate.leave_at_door === true &&
+      String(requestGate.completion_reason ?? "").toLowerCase() === "left_at_door"
+    ) {
+      const fromBody = String(body.proof_photo_url ?? "").trim();
+      const fromDeposit = String(requestGate.dropoff_photo_url ?? "").trim();
+      proofPhotoUrl = fromBody || fromDeposit || null;
+      if (!proofPhotoUrl) {
+        return json({ error: "Missing proof_photo_url" }, 400);
+      }
+    } else {
+      proofPhotoUrl = String(body.proof_photo_url ?? "").trim() || null;
+      if (!proofPhotoUrl) {
+        return json({ error: "Missing proof_photo_url" }, 400);
+      }
+    }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,20 +119,6 @@ export async function POST(req: NextRequest) {
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData.user?.id) {
       return json({ error: "Invalid token" }, 401);
-    }
-
-    const supabaseAdmin = getAdminClient();
-    const { data: requestGate, error: requestGateErr } = await supabaseAdmin
-      .from("delivery_requests")
-      .select("id,currency,pickup_lat,pickup_lng")
-      .eq("id", requestId)
-      .maybeSingle();
-
-    if (requestGateErr) {
-      return json({ error: requestGateErr.message }, 500);
-    }
-    if (!requestGate) {
-      return json({ error: "Delivery request not found" }, 404);
     }
 
     const platformGate = await gateDeliveryRequestPlatformFeature(
@@ -142,12 +162,29 @@ export async function POST(req: NextRequest) {
       };
     }
 
+    let lateFeeBilling: Awaited<ReturnType<typeof chargeWaitLateFeeIfEligible>> | null =
+      null;
+
+    try {
+      lateFeeBilling = await chargeWaitLateFeeIfEligible(supabaseAdmin, {
+        entityType: "delivery_request",
+        entityId: requestId,
+        orderId: linkedOrderId,
+      });
+    } catch (lateFeeErr) {
+      console.error("[delivery-request delivered-confirm] wait late fee billing failed", {
+        delivery_request_id: requestId,
+        message: lateFeeErr instanceof Error ? lateFeeErr.message : String(lateFeeErr),
+      });
+    }
+
     return json({
       ok: true,
       delivery_request_id: requestId,
       linked_order_id: linkedOrderId,
       result,
       payout,
+      late_fee_billing: lateFeeBilling,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";

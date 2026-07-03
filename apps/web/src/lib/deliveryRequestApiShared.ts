@@ -20,6 +20,7 @@ export type DeliveryRequestBody = {
   dropoff_lng?: number;
   dropoff_location_id?: string | null;
   promo_code?: string | null;
+  leave_at_door?: boolean;
 };
 
 export function parseDeliveryRequestBody(body: Record<string, unknown>): DeliveryRequestBody {
@@ -43,6 +44,7 @@ export function readDeliveryRequestFields(body: DeliveryRequestBody): {
   dropoffLng: number;
   dropoffLocationId: string | null;
   promoCode: string | null;
+  leaveAtDoor: boolean;
 } {
   const requestType: "package" | "ride" = body.request_type === "ride" ? "ride" : "package";
   const title = String(body.title ?? "").trim();
@@ -70,12 +72,16 @@ export function readDeliveryRequestFields(body: DeliveryRequestBody): {
     dropoffLng,
     dropoffLocationId: body.dropoff_location_id ?? null,
     promoCode: body.promo_code ?? null,
+    leaveAtDoor: body.leave_at_door === true,
   };
 }
 
 export function validateDeliveryRequestFields(
   fields: ReturnType<typeof readDeliveryRequestFields>
 ) {
+  if (fields.requestType === "ride" && fields.leaveAtDoor) {
+    throw new Error("leave_at_door_not_allowed_for_ride");
+  }
   if (!fields.pickupAddress || !fields.dropoffAddress) {
     throw new Error("Missing pickup_address or dropoff_address");
   }

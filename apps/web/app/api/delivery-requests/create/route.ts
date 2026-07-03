@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       dropoffLocationId: fields.dropoffLocationId,
       countryCode,
       promoCode: fields.promoCode,
+      leaveAtDoor: fields.leaveAtDoor,
     });
 
     return mmdLocationJson({

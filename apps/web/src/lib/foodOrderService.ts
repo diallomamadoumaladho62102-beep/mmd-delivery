@@ -24,6 +24,7 @@ export type CreateFoodOrderInput = {
   items: FoodOrderLineInput[];
   countryCode: string;
   promoCode?: string | null;
+  leaveAtDoor?: boolean;
 };
 
 export type CreateFoodOrderResult = FoodOrderPricingResult & {
@@ -132,6 +133,7 @@ export async function createFoodOrderServerSide(
       eta_minutes: pricing.etaMinutes,
       delivery_fee: pricing.deliveryFee,
       delivery_pay: pricing.driverPayoutEstimate,
+      leave_at_door: input.leaveAtDoor === true,
     })
     .select("id")
     .single();
