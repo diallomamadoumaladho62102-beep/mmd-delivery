@@ -27,6 +27,7 @@ import {
   type TaxiDriverFeatures,
 } from "../../lib/taxiDriverApi";
 import { subscribeTaxiOfferPushRefresh } from "../../lib/taxiPushEvents";
+import { DriverWaitTimerPanel } from "./DriverWaitTimerPanel";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -278,13 +279,15 @@ export function DriverTaxiPanel({ isOnline }: Props) {
               </TouchableOpacity>
             </View>
 
-            {status === "accepted" ? (
-              <LifecycleBtn
-                label="Arrived at pickup"
-                loading={actionId === rideId}
-                onPress={() => lifecycle("arrive")}
+            {status === "accepted" || status === "driver_arrived" ? (
+              <DriverWaitTimerPanel
+                entityType="taxi_ride"
+                entityId={rideId}
+                mode="taxi"
+                onTaxiNoShowCanceled={() => void refresh()}
               />
             ) : null}
+
             {status === "driver_arrived" ? (
               <LifecycleBtn
                 label="Start ride"

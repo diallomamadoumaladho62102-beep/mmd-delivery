@@ -188,3 +188,89 @@ export async function notifyClientDeliveryRequestCancelled(params: {
 
   await sendExpoPushMessages(messages);
 }
+
+export async function notifyClientDriverArrived(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  entityType: string;
+  entityId: string;
+  entityKind: "delivery" | "taxi";
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const label = params.entityKind === "taxi" ? "chauffeur" : "livreur";
+  const messages = tokens.map((to) => ({
+    to,
+    sound: "default",
+    title: "Arrivée sur place",
+    body: `Votre ${label} est arrivé. Vous avez 5 minutes d'attente gratuite.`,
+    data: {
+      type: "driver_arrived",
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+    },
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+}
+
+export async function notifyClientWaitFeeStarted(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  entityType: string;
+  entityId: string;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const messages = tokens.map((to) => ({
+    to,
+    sound: "default",
+    title: "Frais de retard",
+    body: "Les frais de retard commencent maintenant.",
+    data: {
+      type: "wait_fee_started",
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+    },
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+}
+
+export async function notifyClientWaitFinalWarning(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  entityType: string;
+  entityId: string;
+  entityKind: "delivery" | "taxi";
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const body =
+    params.entityKind === "taxi"
+      ? "Votre temps d'attente gratuit est terminé. Veuillez rejoindre votre chauffeur."
+      : "Votre temps d'attente gratuit est terminé. Veuillez récupérer votre commande ou rejoindre votre livreur.";
+
+  const messages = tokens.map((to) => ({
+    to,
+    sound: "default",
+    title: "Temps d'attente écoulé",
+    body,
+    data: {
+      type: "wait_final_warning",
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+    },
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+}

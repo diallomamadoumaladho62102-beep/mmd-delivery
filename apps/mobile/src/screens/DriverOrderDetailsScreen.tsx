@@ -42,6 +42,7 @@ import {
   updateDriverMarketplaceJobStatus,
 } from "../lib/driverMarketplaceApi";
 import { applyMarketplaceCoordsToOrder } from "../lib/marketplaceDriverNavigation";
+import { DriverWaitTimerPanel } from "../components/driver/DriverWaitTimerPanel";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -1479,6 +1480,14 @@ export function DriverOrderDetailsScreen() {
     isMarketplaceJob &&
     isAssignedDriver &&
     String(order.status).toLowerCase() === "picked_up";
+
+  const showWaitTimer =
+    !!order &&
+    isAssignedDriver &&
+    !isMarketplaceJob &&
+    String(order.status).toLowerCase() === "picked_up";
+
+  const waitTimerEntityType = isDeliveryRequest ? "delivery_request" : "order";
 
   function openCodeModal(kind: VerifyKind) {
     if (kind === "pickup" && !canPickup) return;
@@ -3212,6 +3221,14 @@ export function DriverOrderDetailsScreen() {
             </View>
           </View>
         </View>
+
+        {showWaitTimer && order?.id ? (
+          <DriverWaitTimerPanel
+            entityType={waitTimerEntityType as "order" | "delivery_request"}
+            entityId={order.id}
+            mode="delivery"
+          />
+        ) : null}
 
         <TouchableOpacity
           onPress={openDriverChat}
