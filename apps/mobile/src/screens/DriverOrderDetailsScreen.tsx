@@ -3227,6 +3227,9 @@ export function DriverOrderDetailsScreen() {
             entityType={waitTimerEntityType as "order" | "delivery_request"}
             entityId={order.id}
             mode="delivery"
+            onDepositAuthorized={(proofPhotoUrl) => {
+              if (proofPhotoUrl) setProofPhotoUri(proofPhotoUrl);
+            }}
           />
         ) : null}
 

@@ -18,6 +18,7 @@
     "test:payout-routing": "tsx src/lib/payoutMethodRouting.test.ts",
     "test:payout-providers": "tsx src/lib/payoutProviders.test.ts",
     "test:wait-fee": "tsx src/lib/waitFeeCalculator.test.ts",
+    "test:wait-timer": "tsx src/lib/waitTimerPlatform.test.ts && tsx src/lib/waitTimerLateFeeBilling.test.ts",
     "test:marketplace-delivery-shadow": "tsx src/lib/marketplaceDeliveryShadow.test.ts",
     "test:marketplace-live-checkout": "tsx src/lib/marketplaceLiveCheckout.test.ts",
     "test:marketplace-dispatch": "node scripts/smoke-marketplace-dispatch.mjs",
@@ -26,7 +27,7 @@
     "test:marketplace-driver-jobs": "node scripts/marketplace-driver-jobs.test.mjs",
     "test:mmd-ai": "tsx scripts/smoke-mmd-ai.mjs",
     "test:store-submission": "node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts && tsx src/lib/twilioMaskedCallReadiness.test.ts",
-    "test:ci": "pnpm test:rbac && tsx src/lib/authValidation.test.ts && tsx src/lib/transactionalOutbound.test.ts && tsx src/lib/driverLocationsRls.test.ts && tsx src/lib/productionTrustBoundary.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/stripeWebhookChargeRefunded.test.ts && tsx src/lib/stripeWebhookPaymentFailure.test.ts && pnpm test:platform-launch && pnpm test:delivery-pricing-v2 && pnpm test:service-fee && pnpm test:payment-routing && pnpm test:payout-routing && pnpm test:payout-providers && pnpm test:wait-fee && pnpm test:admin-payment-methods && pnpm test:admin-payout-methods && node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts"
+    "test:ci": "pnpm test:rbac && tsx src/lib/authValidation.test.ts && tsx src/lib/transactionalOutbound.test.ts && tsx src/lib/driverLocationsRls.test.ts && tsx src/lib/productionTrustBoundary.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/stripeWebhookChargeRefunded.test.ts && tsx src/lib/stripeWebhookPaymentFailure.test.ts && pnpm test:platform-launch && pnpm test:delivery-pricing-v2 && pnpm test:service-fee && pnpm test:payment-routing && pnpm test:payout-routing && pnpm test:payout-providers && pnpm test:wait-fee && pnpm test:wait-timer && pnpm test:admin-payment-methods && pnpm test:admin-payout-methods && node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts"
   },
   "dependencies": {
     "@stripe/stripe-js": "4.10.0",

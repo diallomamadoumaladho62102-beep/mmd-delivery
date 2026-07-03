@@ -11,7 +11,8 @@
     "i18n:generate": "node scripts/generate-i18n-extras.mjs && node scripts/generate-i18n-flat-maps.mjs && node scripts/apply-i18n-flat-maps.mjs",
     "test:i18n-coverage": "node scripts/test-i18n-coverage.mjs && node scripts/i18n-coverage.test.mjs",
     "test:i18n-hardcoded": "node scripts/check-hardcoded-strings.mjs",
-    "test:navigation": "npx tsx src/lib/navigationInstructions.test.ts && npx tsx src/lib/navigationSpeedLimit.test.ts && npx tsx src/lib/driverNavigationRouteStyle.test.ts && npx tsx src/lib/driverNavigationLayout.test.ts && npx tsx src/lib/driverNavigationDeviceValidation.test.ts && npx tsx src/lib/marketplaceDriverNavigation.test.ts && npx tsx src/lib/externalNavigationUrls.test.ts && npx tsx src/lib/driverLocationTracker.test.ts && npx tsx src/lib/navigationMapLayers.test.ts && node scripts/marketplace-driver-navigation.test.mjs"
+    "test:navigation": "npx tsx src/lib/navigationInstructions.test.ts && npx tsx src/lib/navigationSpeedLimit.test.ts && npx tsx src/lib/driverNavigationRouteStyle.test.ts && npx tsx src/lib/driverNavigationLayout.test.ts && npx tsx src/lib/driverNavigationDeviceValidation.test.ts && npx tsx src/lib/marketplaceDriverNavigation.test.ts && npx tsx src/lib/externalNavigationUrls.test.ts && npx tsx src/lib/driverLocationTracker.test.ts && npx tsx src/lib/navigationMapLayers.test.ts && node scripts/marketplace-driver-navigation.test.mjs",
+    "test:wait-timer": "npx tsx src/lib/waitTimerApi.test.ts"
   },
   "dependencies": {
     "@mapbox/point-geometry": "^1.1.0",
