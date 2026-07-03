@@ -13,6 +13,7 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
   CI: "XOF",
 };
 
+function toNumber(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : 0;
 }
