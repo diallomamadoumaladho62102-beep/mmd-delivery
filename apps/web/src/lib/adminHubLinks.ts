@@ -135,6 +135,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "pricing.read",
   },
   {
+    href: "/admin/payment-methods",
+    title: "Payment Methods",
+    description: "Stripe vs mobile money routing par pays (GN, SN, CI, US…)",
+    permission: "pricing.read",
+  },
+  {
     href: "/admin/taxi-rides",
     title: "Taxi Rides",
     description: "Courses taxi, timeline, remboursements admin",

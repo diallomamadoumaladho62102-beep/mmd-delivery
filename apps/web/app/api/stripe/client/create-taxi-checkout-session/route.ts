@@ -9,6 +9,7 @@ import {
   taxiJson,
 } from "@/lib/taxiApi";
 import { assertTaxiCheckoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
+import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import { snapshotFromRideRow } from "@/lib/taxiFinalPrice";
 import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 import {
@@ -161,6 +162,19 @@ export async function POST(req: NextRequest) {
     );
     if (platformCheckout.ok === false) {
       return taxiJson({ ok: false, ...platformCheckout }, 403);
+    }
+
+    const stripeGuard = assertStripeCheckoutAllowed(String(ride.country_code ?? "US"));
+    if (stripeGuard.ok === false) {
+      return taxiJson(
+        {
+          ok: false,
+          error: "stripe_disabled_for_country",
+          message: stripeGuard.message,
+          country_code: ride.country_code,
+        },
+        403
+      );
     }
 
     let amountCents = Math.round(Number(ride.total_cents ?? 0));

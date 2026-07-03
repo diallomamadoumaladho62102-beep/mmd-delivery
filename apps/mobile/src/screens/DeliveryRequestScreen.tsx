@@ -19,6 +19,13 @@ import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { startCheckoutForDeliveryRequest } from "../utils/stripe";
+import { PaymentMethodPicker } from "../components/PaymentMethodPicker";
+import { type PaymentMethodOption } from "../lib/paymentMethodsApi";
+import {
+  loadLocalPaymentMethods,
+  shouldOfferLocalMobileMoney,
+  startLocalPaymentForMethod,
+} from "../lib/localPayments";
 import { fetchMmdLocation } from "../lib/mmdLocationApi";
 import {
   applyMmdLocationSelection,
@@ -247,6 +254,9 @@ export function DeliveryRequestScreen() {
   const [estimating, setEstimating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
   const [serverPricing, setServerPricing] = useState<DeliveryRequestPricingPayload | null>(null);
 
@@ -861,6 +871,21 @@ export function DeliveryRequestScreen() {
         throw new Error(tr("deliveryRequest.errors.loginRequiredPay", "Tu dois être connecté pour payer."));
       }
 
+      if (market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)) {
+        setPaying(true);
+        setLoadingPaymentMethods(true);
+        setPaymentPickerVisible(true);
+        const methods = await loadLocalPaymentMethods(accessToken, {
+          entityType: "delivery_request",
+          entityId: lastCreatedId,
+          countryCode: market.countryCode,
+        });
+        setPaymentMethods(methods);
+        setLoadingPaymentMethods(false);
+        setPaying(false);
+        return;
+      }
+
       setPaying(true);
 
       await startCheckoutForDeliveryRequest(lastCreatedId, accessToken);
@@ -890,9 +915,75 @@ export function DeliveryRequestScreen() {
     } finally {
       setPaying(false);
     }
-  }, [lastCreatedId, paying, createOrderFromPaidDeliveryRequest, waitForDeliveryPayment, tr]);
+  }, [lastCreatedId, paying, createOrderFromPaidDeliveryRequest, waitForDeliveryPayment, tr, market.countryCode]);
+
+  const handleLocalPaymentSelection = useCallback(
+    async (method: PaymentMethodOption) => {
+      if (!lastCreatedId || !market.countryCode) return;
+      setPaymentPickerVisible(false);
+
+      try {
+        setPaying(true);
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+
+        const user = sessionData?.session?.user;
+        const accessToken = sessionData?.session?.access_token;
+        if (!user || !accessToken) {
+          throw new Error(tr("deliveryRequest.errors.loginRequiredPay", "Tu dois être connecté pour payer."));
+        }
+
+        const result = await startLocalPaymentForMethod(accessToken, {
+          entityType: "delivery_request",
+          entityId: lastCreatedId,
+          countryCode: market.countryCode,
+          methodCode: method.method_code,
+        });
+
+        const paid = result.paid || (await waitForDeliveryPayment(lastCreatedId));
+        if (!paid) {
+          Alert.alert(
+            tr("deliveryRequest.payment.pendingTitle", "Paiement en attente"),
+            result.error ??
+              tr(
+                "deliveryRequest.payment.pendingBody",
+                "Le paiement a commencé, mais la confirmation est encore en attente. Le chauffeur ne verra pas la commande tant que le paiement n’est pas confirmé."
+              )
+          );
+          return;
+        }
+
+        const orderId = await createOrderFromPaidDeliveryRequest(lastCreatedId, user.id);
+        Alert.alert(
+          tr("deliveryRequest.payment.successTitle", "Paiement réussi ✅"),
+          orderId
+            ? tr(
+                "deliveryRequest.payment.successOrderVisible",
+                "Ton paiement est confirmé et la commande est maintenant visible pour les chauffeurs."
+              )
+            : tr("deliveryRequest.payment.successBody", "Ton paiement est confirmé.")
+        );
+      } catch (e: unknown) {
+        const message =
+          e instanceof Error
+            ? e.message
+            : tr("deliveryRequest.payment.unableToStart", "Impossible de démarrer le paiement pour le moment.");
+        Alert.alert(tr("deliveryRequest.payment.errorTitle", "Erreur de paiement"), message);
+      } finally {
+        setPaying(false);
+      }
+    },
+    [
+      lastCreatedId,
+      market.countryCode,
+      createOrderFromPaidDeliveryRequest,
+      waitForDeliveryPayment,
+      tr,
+    ]
+  );
 
   return (
+    <>
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
       <StatusBar barStyle="light-content" />
 
@@ -1422,6 +1513,15 @@ export function DeliveryRequestScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    <PaymentMethodPicker
+      visible={paymentPickerVisible}
+      title={tr("deliveryRequest.payment.title", "Paiement")}
+      methods={paymentMethods}
+      loading={loadingPaymentMethods}
+      onClose={() => setPaymentPickerVisible(false)}
+      onSelect={handleLocalPaymentSelection}
+    />
+  </>
   );
 }
 

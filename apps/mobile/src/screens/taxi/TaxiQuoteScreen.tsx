@@ -39,6 +39,14 @@ import {
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
+import { supabase } from "../../lib/supabase";
+import { PaymentMethodPicker } from "../../components/PaymentMethodPicker";
+import { type PaymentMethodOption } from "../../lib/paymentMethodsApi";
+import {
+  loadLocalPaymentMethods,
+  shouldOfferLocalMobileMoney,
+  startLocalPaymentForMethod,
+} from "../../lib/localPayments";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
@@ -48,6 +56,10 @@ export default function TaxiQuoteScreen() {
   const route = useRoute<QuoteRoute>();
   const { t } = useTranslation();
   const [paying, setPaying] = useState(false);
+  const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
+  const [pendingRideId, setPendingRideId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscountCents, setPromoDiscountCents] = useState(0);
   const [preferredDriverId, setPreferredDriverId] = useState<string | null>(null);
@@ -221,6 +233,40 @@ export default function TaxiQuoteScreen() {
     }
   }
 
+  async function handleLocalTaxiPayment(method: PaymentMethodOption) {
+    if (!pendingRideId) return;
+    setPaymentPickerVisible(false);
+    setPaying(true);
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (error || !accessToken) {
+        throw new Error(t("taxi.quote.loginRequired", "You must be logged in to pay."));
+      }
+
+      const result = await startLocalPaymentForMethod(accessToken, {
+        entityType: "taxi_ride",
+        entityId: pendingRideId,
+        countryCode,
+        methodCode: method.method_code,
+      });
+
+      if (!result.paid) {
+        throw new Error(result.error ?? t("taxi.quote.paymentFailed", "Unable to start payment"));
+      }
+
+      navigation.replace("TaxiRideTracking", { rideId: pendingRideId });
+    } catch (e: unknown) {
+      Alert.alert(
+        t("taxi.quote.payment", "Payment"),
+        e instanceof Error ? e.message : t("taxi.quote.paymentFailed", "Unable to start payment")
+      );
+    } finally {
+      setPaying(false);
+      setPendingRideId(null);
+    }
+  }
+
   async function handleConfirmAndPay() {
     setPaying(true);
     try {
@@ -251,6 +297,27 @@ export default function TaxiQuoteScreen() {
       }
 
       const rideId = String(created.ride.id);
+
+      if (shouldOfferLocalMobileMoney(countryCode)) {
+        const { data, error } = await supabase.auth.getSession();
+        const accessToken = data.session?.access_token;
+        if (error || !accessToken) {
+          throw new Error(t("taxi.quote.loginRequired", "You must be logged in to pay."));
+        }
+        setPendingRideId(rideId);
+        setLoadingPaymentMethods(true);
+        setPaymentPickerVisible(true);
+        const methods = await loadLocalPaymentMethods(accessToken, {
+          entityType: "taxi_ride",
+          entityId: rideId,
+          countryCode,
+        });
+        setPaymentMethods(methods);
+        setLoadingPaymentMethods(false);
+        setPaying(false);
+        return;
+      }
+
       const checkout = await startTaxiCheckout(rideId);
 
       if (checkout?.already_paid) {
@@ -282,6 +349,7 @@ export default function TaxiQuoteScreen() {
   }
 
   return (
+    <>
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
@@ -617,6 +685,18 @@ export default function TaxiQuoteScreen() {
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
+    <PaymentMethodPicker
+      visible={paymentPickerVisible}
+      title={t("taxi.quote.payment", "Payment")}
+      methods={paymentMethods}
+      loading={loadingPaymentMethods}
+      onClose={() => {
+        setPaymentPickerVisible(false);
+        setPendingRideId(null);
+      }}
+      onSelect={handleLocalTaxiPayment}
+    />
+  </>
   );
 }
 

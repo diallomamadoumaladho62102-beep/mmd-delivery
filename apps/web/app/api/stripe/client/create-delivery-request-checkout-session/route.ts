@@ -7,6 +7,7 @@ import {
 import { stripe } from "@/lib/stripe";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
+import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import {
   assertFoodCheckoutCurrencyAllowed,
   foodStripeUnitAmount,
@@ -518,6 +519,19 @@ export async function POST(req: NextRequest) {
           error: platformCheckout.error,
           message: platformCheckout.message,
           country_code: platformCheckout.country_code,
+        },
+        403
+      );
+    }
+
+    const stripeGuard = assertStripeCheckoutAllowed(platformCountry);
+    if (stripeGuard.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: "stripe_disabled_for_country",
+          message: stripeGuard.message,
+          country_code: platformCountry,
         },
         403
       );

@@ -24,6 +24,16 @@ import Constants from "expo-constants";
 import { openStripeCheckout } from "../lib/stripe";
 import { payOrderWithPaymentSheet } from "../utils/stripe";
 import { confirmOrderPaid } from "../../lib/payments";
+import { PaymentMethodPicker } from "../components/PaymentMethodPicker";
+import {
+  inferCountryCode,
+  type PaymentMethodOption,
+} from "../lib/paymentMethodsApi";
+import {
+  loadLocalPaymentMethods,
+  shouldOfferLocalMobileMoney,
+  startLocalPaymentForMethod,
+} from "../lib/localPayments";
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { useTranslation } from "react-i18next";
 import {
@@ -109,6 +119,7 @@ type Order = {
   delivery_fee: number | null;
   dropoff_code: string | null;
   payment_status?: string | null;
+  currency?: string | null;
   driver_id?: string | null;
   restaurant_id?: string | null;
   restaurant_user_id?: string | null;
@@ -378,6 +389,9 @@ export function ClientOrderDetailsScreen() {
   const [paying, setPaying] = useState(false);
   const [verifyingPay, setVerifyingPay] = useState(false);
   const [paymentPending, setPaymentPending] = useState(false);
+  const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
+  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [calling, setCalling] = useState<CommunicationTarget | null>(null);
   const [driverProfile, setDriverProfile] = useState<PublicProfile | null>(null);
@@ -544,6 +558,7 @@ export function ClientOrderDetailsScreen() {
             "delivery_fee",
             "dropoff_code",
             "payment_status",
+            "currency",
             "driver_id",
             "restaurant_id",
             "restaurant_user_id",
@@ -781,6 +796,50 @@ export function ClientOrderDetailsScreen() {
 
   const paymentTitle = useMemo(() => ts("common.payment.title", "Payment"), [i18n.language, ts]);
 
+  async function handleLocalPaymentSelection(method: PaymentMethodOption) {
+    if (!order?.id) return;
+    setPaymentPickerVisible(false);
+
+    try {
+      setPaying(true);
+      const { data, error } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (error || !accessToken) {
+        throw new Error(ts("client.orderDetails.mustBeLoggedInToPay", "You must be logged in to pay."));
+      }
+
+      const countryCode = inferCountryCode({
+        currency: order.currency,
+      });
+
+      const result = await startLocalPaymentForMethod(accessToken, {
+        entityType: "order",
+        entityId: order.id,
+        countryCode,
+        methodCode: method.method_code,
+      });
+
+      await fetchOrder();
+
+      if (result.paid) {
+        Alert.alert(
+          paymentTitle,
+          `${ts("client.orderDetails.paymentConfirmed", "Payment confirmed")} ✅`
+        );
+        return;
+      }
+
+      Alert.alert(paymentTitle, result.error ?? ts("client.orderDetails.paymentError", "Payment error."));
+    } catch (e: unknown) {
+      Alert.alert(
+        paymentTitle,
+        e instanceof Error ? e.message : ts("client.orderDetails.paymentError", "Payment error.")
+      );
+    } finally {
+      if (isMountedRef.current) setPaying(false);
+    }
+  }
+
   async function handlePay() {
     if (!order?.id || paying || verifyingPay || paymentPending || canceling) return;
 
@@ -813,6 +872,21 @@ export function ClientOrderDetailsScreen() {
 
       if (!accessToken) {
         throw new Error(ts("client.orderDetails.mustBeLoggedInToPay", "You must be logged in to pay."));
+      }
+
+      const countryCode = inferCountryCode({ currency: order.currency });
+      if (shouldOfferLocalMobileMoney(countryCode)) {
+        setLoadingPaymentMethods(true);
+        setPaymentPickerVisible(true);
+        const methods = await loadLocalPaymentMethods(accessToken, {
+          entityType: "order",
+          entityId: order.id,
+          countryCode,
+        });
+        setPaymentMethods(methods);
+        setLoadingPaymentMethods(false);
+        if (isMountedRef.current) setPaying(false);
+        return;
       }
 
       let paymentSheetSucceeded = false;
@@ -2417,6 +2491,14 @@ export function ClientOrderDetailsScreen() {
           </ScrollView>
         )}
       </View>
+      <PaymentMethodPicker
+        visible={paymentPickerVisible}
+        title={paymentTitle}
+        methods={paymentMethods}
+        loading={loadingPaymentMethods}
+        onClose={() => setPaymentPickerVisible(false)}
+        onSelect={handleLocalPaymentSelection}
+      />
     </SafeAreaView>
   );
 }
