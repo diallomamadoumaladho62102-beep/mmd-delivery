@@ -1,5 +1,4 @@
 import { getApiBaseUrl } from "../../lib/apiBase";
-import { inferCountryCode } from "./paymentMethodsApi";
 
 export type WalletAccountType = "driver" | "restaurant" | "seller" | "partner" | "client";
 
@@ -9,6 +8,15 @@ export type WalletSummaryResponse = {
   country_code?: string;
   currency?: string;
   balance_cents?: number;
+  available_cents?: number;
+  pending_cents?: number;
+  minimum_payout_cents?: number;
+  cashout_blocked_today?: boolean;
+  last_cashout_at?: string | null;
+  stripe_account_id?: string | null;
+  stripe_onboarded?: boolean;
+  can_cashout?: boolean;
+  cashout_block_reason?: string | null;
   error?: string;
 };
 
@@ -75,6 +83,52 @@ export type PayoutTransactionsResponse = {
   items?: PayoutTransactionItem[];
   error?: string;
 };
+
+export type DriverWalletSnapshot = {
+  summary: WalletSummaryResponse;
+  history: WalletHistoryResponse;
+  payoutMethods: PayoutMethodsResponse;
+  payoutTransactions: PayoutTransactionsResponse;
+};
+
+const CURRENCY_COUNTRY: Record<string, string> = {
+  USD: "US",
+  CAD: "CA",
+  GBP: "GB",
+  EUR: "FR",
+  GNF: "GN",
+  XOF: "SN",
+  SLE: "SL",
+  MRU: "MR",
+};
+
+export function inferCountryCode(input?: {
+  countryCode?: string | null;
+  currency?: string | null;
+}): string {
+  const explicit = String(input?.countryCode ?? "")
+    .trim()
+    .toUpperCase()
+    .slice(0, 2);
+  if (explicit.length === 2) return explicit;
+  const currency = String(input?.currency ?? "")
+    .trim()
+    .toUpperCase();
+  return CURRENCY_COUNTRY[currency] ?? "US";
+}
+
+export function formatWalletAmount(cents: number, currency = "USD"): string {
+  const value = (Number(cents) || 0) / 100;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: currency === "GNF" || currency === "XOF" ? 0 : 2,
+    }).format(value);
+  } catch {
+    return `${value.toFixed(2)} ${currency}`;
+  }
+}
 
 async function authFetch<T>(
   path: string,
@@ -154,4 +208,21 @@ export async function fetchPayoutTransactions(
   );
 }
 
-export { inferCountryCode };
+export async function fetchDriverWalletSnapshot(
+  accessToken: string,
+  params?: { countryCode?: string; currency?: string }
+): Promise<DriverWalletSnapshot> {
+  const countryCode = inferCountryCode(params);
+  const [summary, history, payoutMethods, payoutTransactions] = await Promise.all([
+    fetchWalletSummary(accessToken, { accountType: "driver", countryCode, currency: params?.currency }),
+    fetchWalletHistory(accessToken, { accountType: "driver", limit: 20 }),
+    fetchPayoutMethods(accessToken, { countryCode, recipientType: "driver" }),
+    fetchPayoutTransactions(accessToken, 20),
+  ]);
+
+  if (!summary.ok) {
+    throw new Error(summary.error ?? "wallet_summary_failed");
+  }
+
+  return { summary, history, payoutMethods, payoutTransactions };
+}
