@@ -4,40 +4,60 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canModifyPricing } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
-import type { PaymentProvider } from "@/lib/paymentTypes";
+import type {
+  PayoutFrequency,
+  PayoutProvider,
+  PayoutRecipientType,
+} from "@/lib/payoutTypes";
 
-type AdminPaymentMethodRow = {
+type AdminPayoutMethodRow = {
   id: string;
   country_code: string;
-  provider: PaymentProvider;
+  recipient_type: PayoutRecipientType;
+  provider: PayoutProvider;
   method_code: string;
   display_name: string;
   description: string | null;
   sort_order: number;
   enabled: boolean;
   test_mode: boolean;
+  auto_payout_enabled: boolean;
+  payout_frequency: PayoutFrequency;
+  minimum_payout_cents: number;
+  platform_commission_pct: number;
   runtime_available: boolean;
   unavailable_reason: string | null;
   secrets_configured: boolean;
   secrets_missing: string[];
-  stripe_gn_env_enabled: boolean;
-  webhook_url: string | null;
 };
 
 type Meta = {
-  public_base_url: string;
-  stripe_gn_env_enabled: boolean;
-  providers: PaymentProvider[];
+  providers: PayoutProvider[];
+  recipient_types: PayoutRecipientType[];
+  payout_frequencies: PayoutFrequency[];
+  payout_statuses: string[];
 };
 
-const PROVIDER_LABELS: Record<PaymentProvider, string> = {
-  stripe: "Stripe",
+const PROVIDER_LABELS: Record<PayoutProvider, string> = {
+  stripe_connect: "Stripe Connect",
   orange_money_gn: "Orange Money Guinea",
   paydunya: "PayDunya",
   cinetpay: "CinetPay",
+  bank_transfer: "Bank transfer",
+  wave: "Wave",
+  mtn_momo: "MTN Mobile Money",
+  moov_money: "Moov Money",
+  free_money: "Free Money",
 };
 
-function availabilityBadge(row: AdminPaymentMethodRow) {
+const RECIPIENT_LABELS: Record<PayoutRecipientType, string> = {
+  driver: "Driver / livreur",
+  restaurant: "Restaurant",
+  seller: "Marketplace seller",
+  partner: "Partner",
+};
+
+function availabilityBadge(row: AdminPayoutMethodRow) {
   if (row.runtime_available) {
     return (
       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
@@ -52,10 +72,11 @@ function availabilityBadge(row: AdminPaymentMethodRow) {
   );
 }
 
-export default function AdminPaymentMethodsPage() {
-  const [items, setItems] = useState<AdminPaymentMethodRow[]>([]);
+export default function AdminPayoutMethodsPage() {
+  const [items, setItems] = useState<AdminPayoutMethodRow[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [countryFilter, setCountryFilter] = useState("");
+  const [recipientFilter, setRecipientFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -70,8 +91,11 @@ export default function AdminPaymentMethodsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const query = countryFilter ? `?country_code=${encodeURIComponent(countryFilter)}` : "";
-      const res = await adminFetch(`/api/admin/payment-methods${query}`);
+      const params = new URLSearchParams();
+      if (countryFilter) params.set("country_code", countryFilter);
+      if (recipientFilter) params.set("recipient_type", recipientFilter);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const res = await adminFetch(`/api/admin/payout-methods${query}`);
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error ?? "Load failed");
       setItems(json.items ?? []);
@@ -81,7 +105,7 @@ export default function AdminPaymentMethodsPage() {
     } finally {
       setLoading(false);
     }
-  }, [countryFilter]);
+  }, [countryFilter, recipientFilter]);
 
   useEffect(() => {
     void resolveBrowserStaffSession().then((session) => {
@@ -93,7 +117,7 @@ export default function AdminPaymentMethodsPage() {
     void load();
   }, [load]);
 
-  async function saveRow(e: FormEvent<HTMLFormElement>, row: AdminPaymentMethodRow) {
+  async function saveRow(e: FormEvent<HTMLFormElement>, row: AdminPayoutMethodRow) {
     e.preventDefault();
     if (!canEdit) return;
 
@@ -104,12 +128,18 @@ export default function AdminPaymentMethodsPage() {
         provider: String(form.get("provider") ?? row.provider),
         enabled: form.get("enabled") === "on",
         test_mode: form.get("test_mode") === "on",
+        auto_payout_enabled: form.get("auto_payout_enabled") === "on",
         display_name: String(form.get("display_name") ?? row.display_name),
         description: String(form.get("description") ?? ""),
         sort_order: Number(form.get("sort_order") ?? row.sort_order),
+        payout_frequency: String(form.get("payout_frequency") ?? row.payout_frequency),
+        minimum_payout_cents: Number(form.get("minimum_payout_cents") ?? row.minimum_payout_cents),
+        platform_commission_pct: Number(
+          form.get("platform_commission_pct") ?? row.platform_commission_pct
+        ),
       };
 
-      const res = await adminFetch(`/api/admin/payment-methods/${row.id}`, {
+      const res = await adminFetch(`/api/admin/payout-methods/${row.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -130,23 +160,16 @@ export default function AdminPaymentMethodsPage() {
       <main className="min-h-screen bg-slate-50 p-6">
         <div className="mx-auto max-w-7xl space-y-6">
           <header className="space-y-2">
-            <h1 className="text-2xl font-bold text-slate-900">Payment Methods (Inbound)</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Payout Methods (Outbound)</h1>
             <p className="text-sm text-slate-600">
-              Client → MMD payment routing for Stripe and local mobile money. Outbound payout
-              methods for drivers and restaurants are managed separately.
+              Configure how MMD pays drivers, restaurants, marketplace sellers and partners per
+              country. Inbound client payment methods are managed separately.
             </p>
             {meta ? (
               <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
                 <div>
-                  <span className="font-semibold">Public base URL:</span> {meta.public_base_url}
-                </div>
-                <div className="mt-1">
-                  <span className="font-semibold">STRIPE_ENABLED_GN:</span>{" "}
-                  {meta.stripe_gn_env_enabled ? (
-                    <span className="text-emerald-700">true</span>
-                  ) : (
-                    <span className="text-amber-700">false — Stripe blocked in Guinea</span>
-                  )}
+                  <span className="font-semibold">Payout statuses:</span>{" "}
+                  {meta.payout_statuses.join(", ")}
                 </div>
               </div>
             ) : null}
@@ -168,6 +191,23 @@ export default function AdminPaymentMethodsPage() {
                 ))}
               </select>
             </label>
+            <label className="text-sm font-medium text-slate-700">
+              Recipient
+              <select
+                className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                value={recipientFilter}
+                onChange={(e) => setRecipientFilter(e.target.value)}
+              >
+                <option value="">All recipients</option>
+                {(meta?.recipient_types ?? ["driver", "restaurant", "seller", "partner"]).map(
+                  (type) => (
+                    <option key={type} value={type}>
+                      {RECIPIENT_LABELS[type as PayoutRecipientType] ?? type}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
             <button
               type="button"
               onClick={() => void load()}
@@ -176,23 +216,17 @@ export default function AdminPaymentMethodsPage() {
               Refresh
             </button>
             <a
-              href="/admin/pricing"
+              href="/admin/payment-methods"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
             >
-              Pricing →
-            </a>
-            <a
-              href="/admin/payout-methods"
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
-            >
-              Outbound payout methods →
+              Inbound payment methods →
             </a>
           </div>
 
           {loading ? (
-            <p className="text-sm text-slate-600">Loading payment methods…</p>
+            <p className="text-sm text-slate-600">Loading payout methods…</p>
           ) : items.length === 0 ? (
-            <p className="text-sm text-slate-600">No payment methods found.</p>
+            <p className="text-sm text-slate-600">No payout methods found.</p>
           ) : (
             <div className="space-y-4">
               {items.map((row) => (
@@ -205,7 +239,8 @@ export default function AdminPaymentMethodsPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="text-lg font-semibold text-slate-900">
-                          {row.country_code} · {row.display_name}
+                          {row.country_code} · {RECIPIENT_LABELS[row.recipient_type]} ·{" "}
+                          {row.display_name}
                         </h2>
                         {availabilityBadge(row)}
                         {row.enabled ? (
@@ -217,6 +252,11 @@ export default function AdminPaymentMethodsPage() {
                             Disabled
                           </span>
                         )}
+                        {row.auto_payout_enabled ? (
+                          <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
+                            Auto payout
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mt-1 text-sm text-slate-600">
                         Method code: <code>{row.method_code}</code>
@@ -242,7 +282,7 @@ export default function AdminPaymentMethodsPage() {
                       >
                         {(meta?.providers ?? Object.keys(PROVIDER_LABELS)).map((provider) => (
                           <option key={provider} value={provider}>
-                            {PROVIDER_LABELS[provider as PaymentProvider] ?? provider}
+                            {PROVIDER_LABELS[provider as PayoutProvider] ?? provider}
                           </option>
                         ))}
                       </select>
@@ -269,6 +309,50 @@ export default function AdminPaymentMethodsPage() {
                       />
                     </label>
 
+                    <label className="block text-sm">
+                      <span className="font-medium text-slate-700">Payout frequency</span>
+                      <select
+                        name="payout_frequency"
+                        defaultValue={row.payout_frequency}
+                        disabled={!canEdit}
+                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                      >
+                        {(meta?.payout_frequencies ?? ["immediate", "daily", "weekly", "manual"]).map(
+                          (frequency) => (
+                            <option key={frequency} value={frequency}>
+                              {frequency}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </label>
+
+                    <label className="block text-sm">
+                      <span className="font-medium text-slate-700">Minimum payout (cents)</span>
+                      <input
+                        name="minimum_payout_cents"
+                        type="number"
+                        min={0}
+                        defaultValue={row.minimum_payout_cents}
+                        disabled={!canEdit}
+                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+
+                    <label className="block text-sm">
+                      <span className="font-medium text-slate-700">Platform commission (%)</span>
+                      <input
+                        name="platform_commission_pct"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.01}
+                        defaultValue={row.platform_commission_pct}
+                        disabled={!canEdit}
+                        className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                      />
+                    </label>
+
                     <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-3">
                       <input
                         type="checkbox"
@@ -276,7 +360,7 @@ export default function AdminPaymentMethodsPage() {
                         defaultChecked={row.enabled}
                         disabled={!canEdit}
                       />
-                      <span className="font-medium text-slate-700">Enabled for clients</span>
+                      <span className="font-medium text-slate-700">Enabled for payouts</span>
                     </label>
 
                     <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-3">
@@ -287,6 +371,16 @@ export default function AdminPaymentMethodsPage() {
                         disabled={!canEdit}
                       />
                       <span className="font-medium text-slate-700">Test mode</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm md:col-span-2 xl:col-span-3">
+                      <input
+                        type="checkbox"
+                        name="auto_payout_enabled"
+                        defaultChecked={row.auto_payout_enabled}
+                        disabled={!canEdit}
+                      />
+                      <span className="font-medium text-slate-700">Automatic payout (vs manual approval)</span>
                     </label>
 
                     <label className="block text-sm md:col-span-2 xl:col-span-3">
@@ -311,17 +405,6 @@ export default function AdminPaymentMethodsPage() {
                         ? "Configured"
                         : `Missing: ${row.secrets_missing.join(", ")}`}
                     </div>
-                    {row.country_code === "GN" && row.provider === "stripe" ? (
-                      <div className="mt-1 text-amber-800">
-                        Guinea Stripe requires server env <code>STRIPE_ENABLED_GN=true</code>{" "}
-                        {row.stripe_gn_env_enabled ? "(currently ON)" : "(currently OFF)"}
-                      </div>
-                    ) : null}
-                    {row.webhook_url ? (
-                      <div className="mt-1 break-all">
-                        <span className="font-semibold">Webhook URL:</span> {row.webhook_url}
-                      </div>
-                    ) : null}
                   </div>
                 </form>
               ))}

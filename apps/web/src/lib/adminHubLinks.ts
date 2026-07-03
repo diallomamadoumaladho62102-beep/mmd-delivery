@@ -136,8 +136,14 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
   },
   {
     href: "/admin/payment-methods",
-    title: "Payment Methods",
-    description: "Stripe vs mobile money routing par pays (GN, SN, CI, US…)",
+    title: "Payment Methods (Inbound)",
+    description: "Client → MMD : Stripe et mobile money par pays",
+    permission: "pricing.read",
+  },
+  {
+    href: "/admin/payout-methods",
+    title: "Payout Methods (Outbound)",
+    description: "MMD → drivers, restaurants, vendeurs : méthodes et seuils par pays",
     permission: "pricing.read",
   },
   {

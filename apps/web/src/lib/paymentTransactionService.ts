@@ -5,6 +5,7 @@ import type {
   PaymentTransactionStatus,
   ResolvedPaymentEntity,
 } from "@/lib/paymentTypes";
+import { entityTypeToChargeCategory } from "@/lib/payoutTypes";
 
 export async function createPaymentTransaction(
   supabaseAdmin: SupabaseClient,
@@ -32,6 +33,7 @@ export async function createPaymentTransaction(
       method_code: input.methodCode,
       amount_cents: input.entity.amount_cents,
       currency: input.entity.currency,
+      charge_category: entityTypeToChargeCategory(input.entity.entity_type),
       status: input.status ?? "pending",
       external_reference: input.externalReference ?? null,
       payment_url: input.paymentUrl ?? null,

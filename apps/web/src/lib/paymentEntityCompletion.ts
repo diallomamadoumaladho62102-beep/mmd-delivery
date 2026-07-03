@@ -7,6 +7,8 @@ import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
 import { scheduleDeliveryRequestDispatch, getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
+import { recordInboundPaymentWalletEntries } from "@/lib/inboundWalletBridge";
+import { recordInboundPaymentWalletEntries } from "@/lib/inboundWalletBridge";
 import type { PaymentEntityType, PaymentTransactionRow } from "@/lib/paymentTypes";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 
@@ -205,6 +207,11 @@ export async function applyTransactionStatusUpdate(
   const updated = data as PaymentTransactionRow;
   if (status === "paid") {
     await completePaidEntityFromTransaction(supabaseAdmin, updated);
+    try {
+      await recordInboundPaymentWalletEntries(supabaseAdmin, updated);
+    } catch (walletErr) {
+      console.error("[paymentEntityCompletion] inbound wallet bridge failed", walletErr);
+    }
   }
   return updated;
 }

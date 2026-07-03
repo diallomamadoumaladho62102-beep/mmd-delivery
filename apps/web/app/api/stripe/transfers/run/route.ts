@@ -12,6 +12,7 @@ import { refreshOrderCommissions } from "@/lib/refreshOrderCommissions";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
+import { recordSuccessfulStripeOrderPayout } from "@/lib/payoutExecutionBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1084,6 +1085,27 @@ export async function POST(req: NextRequest) {
         },
         500
       );
+    }
+
+    const recipientUserId =
+      target === "restaurant"
+        ? String(order.restaurant_user_id ?? order.restaurant_id)
+        : String(order.driver_id);
+
+    try {
+      await recordSuccessfulStripeOrderPayout(supabaseAdmin, {
+        orderPayoutId: payout.id,
+        orderId: order.id,
+        target,
+        recipientUserId,
+        countryCode: payoutCountry,
+        currency,
+        amountCents: amount!,
+        stripeTransferId: transfer.id,
+        destinationAccountId: destination!,
+      });
+    } catch (bridgeErr) {
+      console.error("[transfers/run] payout ledger bridge failed", bridgeErr);
     }
 
     if (target === "restaurant") {
