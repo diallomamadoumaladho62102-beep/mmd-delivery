@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { mmdAudio } from "@/lib/mmdAudio";
 
 type Row = {
   id: number;
@@ -29,6 +30,14 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
 
   // ✅ timer fallback (si realtime ne refresh pas)
   const fallbackReloadRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    mmdAudio.unlockOnInteraction();
+    supabase.auth.getUser().then(({ data }) => {
+      userIdRef.current = data.user?.id ?? null;
+    });
+  }, []);
 
   const scrollToEnd = () => {
     listRef.current?.scrollTo({
@@ -100,13 +109,40 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
+          schema: "public",
+          table: "order_messages",
+          filter: `order_id=eq.${orderId}`,
+        },
+        (payload) => {
+          const row = payload.new as { user_id?: string | null };
+          if (row?.user_id && row.user_id !== userIdRef.current) {
+            void mmdAudio.play("chat");
+          }
+          void load();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
           schema: "public",
           table: "order_messages",
           filter: `order_id=eq.${orderId}`,
         },
         () => {
-          // realtime refresh
+          void load();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "order_messages",
+          filter: `order_id=eq.${orderId}`,
+        },
+        () => {
           void load();
         }
       )

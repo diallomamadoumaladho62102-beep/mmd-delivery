@@ -43,7 +43,7 @@ import { ensureMapboxTokenApplied } from "../lib/mapboxConfig";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
-import { Audio } from "expo-av";
+import { mmdAudio } from "../lib/mmdAudio";
 import { useTranslation } from "react-i18next";
 import { useKeepAwake } from "expo-keep-awake";
 import { DriverTaxiPanel } from "../components/driver/DriverTaxiPanel";
@@ -666,10 +666,6 @@ export function DriverHomeScreen() {
   );
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const volumeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const volumeRampTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gpsDbIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeqRef = useRef(0);
@@ -860,37 +856,7 @@ export function DriverHomeScreen() {
 
   const stopSound = useCallback(async () => {
     try {
-      if (volumeIntervalRef.current) {
-        clearInterval(volumeIntervalRef.current);
-        volumeIntervalRef.current = null;
-      }
-
-      if (volumeRampTimeoutRef.current) {
-        clearTimeout(volumeRampTimeoutRef.current);
-        volumeRampTimeoutRef.current = null;
-      }
-
-      if (stopTimeoutRef.current) {
-        clearTimeout(stopTimeoutRef.current);
-        stopTimeoutRef.current = null;
-      }
-
-      if (soundRef.current) {
-        const currentSound = soundRef.current;
-        soundRef.current = null;
-
-        try {
-          currentSound.setOnPlaybackStatusUpdate(null);
-        } catch {}
-
-        try {
-          await currentSound.stopAsync();
-        } catch {}
-
-        try {
-          await currentSound.unloadAsync();
-        } catch {}
-      }
+      await mmdAudio.stopLongRing();
     } catch (e) {
       console.log("stopSound error:", e);
     }
@@ -1967,78 +1933,12 @@ export function DriverHomeScreen() {
       return;
     }
 
-    if (lastOfferIdRef.current === getOrderCompositeKey(activeOffer) && soundRef.current) return;
+    if (lastOfferIdRef.current === getOrderCompositeKey(activeOffer)) return;
 
     lastOfferIdRef.current = getOrderCompositeKey(activeOffer);
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        await stopSound();
-
-        const { sound } = await Audio.Sound.createAsync(
-          require("../../assets/sounds/new_order.wav"),
-          {
-            shouldPlay: false,
-            isLooping: true,
-            volume: 0.35,
-          },
-        );
-
-        if (cancelled || !mountedRef.current || lastOfferIdRef.current !== getOrderCompositeKey(activeOffer)) {
-          await sound.unloadAsync().catch(() => {});
-          return;
-        }
-
-        soundRef.current = sound;
-
-        // Safety fallback: if Android/iOS does not loop the WAV correctly,
-        // restart the sound immediately when it finishes.
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (!status.isLoaded) return;
-          if (status.didJustFinish && soundRef.current === sound && activeOffer?.id) {
-            sound.replayAsync().catch(() => {});
-          }
-        });
-
-        await sound.setPositionAsync(0);
-        await sound.playAsync();
-
-        // Smooth volume ramp: starts softer, then reaches full volume after 10 seconds.
-        volumeRampTimeoutRef.current = setTimeout(() => {
-          let volume = 0.35;
-
-          volumeIntervalRef.current = setInterval(async () => {
-            if (!soundRef.current) return;
-
-            volume = Math.min(1, volume + 0.1);
-
-            try {
-              await soundRef.current.setVolumeAsync(volume);
-            } catch (e) {
-              console.log("setVolumeAsync error:", e);
-            }
-
-            if (volume >= 1 && volumeIntervalRef.current) {
-              clearInterval(volumeIntervalRef.current);
-              volumeIntervalRef.current = null;
-            }
-          }, 1000);
-        }, 10000);
-
-        // Driver offer duration is 60 seconds. The sound stops only when:
-        // accept, decline, offer timeout, app cleanup, or this safety timeout.
-        stopTimeoutRef.current = setTimeout(() => {
-          void stopSound();
-        }, 60000);
-      } catch (e) {
-        console.log("Sound error:", e);
-      }
-    })();
+    void mmdAudio.startLongRing("driver");
 
     return () => {
-      cancelled = true;
       void stopSound();
     };
   }, [activeOffer?.id, activeOffer?.source_table, stopSound]);

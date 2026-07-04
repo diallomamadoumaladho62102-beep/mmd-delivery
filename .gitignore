@@ -39,6 +39,11 @@ apps/mobile/android/
 docs/screenshots/
 apps/mobile/artifacts/
 
+# Audio dev previews / local legacy backups (production assets live in apps/*/assets|public/sounds)
+docs/audio-proposals/
+docs/audio-preview/
+docs/audio-backup/
+
 *.ipa
 build*/
 

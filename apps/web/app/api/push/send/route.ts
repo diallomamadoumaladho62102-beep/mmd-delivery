@@ -5,6 +5,7 @@ import {
   parseSecurePushSendBody,
   type SecurePushPayload,
 } from "@/lib/securePushSend";
+import { resolvePushSound } from "@/lib/mmdPushSounds";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -130,7 +131,9 @@ function mapValidationStatus(message: string): number {
 async function sendExpoPush(payload: SecurePushPayload, tokens: string[]) {
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(
+      typeof payload.data?.type === "string" ? payload.data.type : null,
+    ),
     title: payload.title,
     body: payload.body,
     data: payload.data,

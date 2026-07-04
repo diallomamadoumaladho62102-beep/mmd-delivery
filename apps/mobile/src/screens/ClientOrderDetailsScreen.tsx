@@ -19,6 +19,7 @@ import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import { mmdAudio } from "../lib/mmdAudio";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { openStripeCheckout } from "../lib/stripe";
@@ -408,6 +409,7 @@ export function ClientOrderDetailsScreen() {
   const [codeCopied, setCodeCopied] = useState(false);
 
   const isMountedRef = useRef(true);
+  const prevOrderStatusRef = useRef<string | null>(null);
   const backgroundPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
@@ -597,6 +599,14 @@ export function ClientOrderDetailsScreen() {
       await loadParticipantProfiles(nextOrder);
 
       if (isMountedRef.current) {
+        const prevStatus = prevOrderStatusRef.current;
+        const nextStatus = String(nextOrder.status ?? "").trim().toLowerCase();
+
+        if (prevStatus && prevStatus !== nextStatus) {
+          mmdAudio.playForOrderStatus(nextStatus);
+        }
+
+        prevOrderStatusRef.current = nextStatus || null;
         setOrder(nextOrder);
 
         if (normalizePaymentStatus(nextOrder.payment_status) === "paid") {
@@ -902,6 +912,7 @@ export function ClientOrderDetailsScreen() {
           await fetchOrder();
           const latestPaid = await fetchPaymentStatusOnly();
           if (confirmSheet.ok || latestPaid === "paid") {
+            void mmdAudio.play("paymentSuccess");
             Alert.alert(
               paymentTitle,
               `${ts("client.orderDetails.paymentConfirmed", "Payment confirmed")} ✅`

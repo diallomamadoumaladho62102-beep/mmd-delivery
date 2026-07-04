@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -358,7 +359,7 @@ async function notifyClientPickup(params: {
 
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: MMD_PUSH_SOUNDS.client,
     title: "Pickup confirmed",
     body: `Your driver picked up the package from ${pickupText} and is heading to ${dropoffText}.`,
     data: {

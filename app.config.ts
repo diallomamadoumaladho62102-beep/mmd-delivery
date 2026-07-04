@@ -100,7 +100,24 @@ export default ({ config }) => {
       [
         "expo-notifications",
         {
-          sounds: ["./apps/mobile/assets/sounds/new_order.wav"],
+          sounds: [
+            "./apps/mobile/assets/sounds/mmd_signature_driver_60s.wav",
+            "./apps/mobile/assets/sounds/mmd_signature_restaurant_120s.wav",
+            "./apps/mobile/assets/sounds/mmd_signature_client.wav",
+            "./apps/mobile/assets/sounds/mmd_chat_notification.wav",
+            "./apps/mobile/assets/sounds/mmd_payment_success.wav",
+            "./apps/mobile/assets/sounds/mmd_payment_failed.wav",
+            "./apps/mobile/assets/sounds/mmd_success.wav",
+            "./apps/mobile/assets/sounds/mmd_error.wav",
+            "./apps/mobile/assets/sounds/mmd_warning.wav",
+            "./apps/mobile/assets/sounds/mmd_promo.wav",
+            "./apps/mobile/assets/sounds/mmd_reward.wav",
+            "./apps/mobile/assets/sounds/mmd_system_notification.wav",
+            "./apps/mobile/assets/sounds/mmd_ride_accepted.wav",
+            "./apps/mobile/assets/sounds/mmd_order_accepted.wav",
+            "./apps/mobile/assets/sounds/mmd_driver_arrived.wav",
+            "./apps/mobile/assets/sounds/mmd_delivery_completed.wav",
+          ],
         },
       ],
       [

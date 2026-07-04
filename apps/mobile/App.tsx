@@ -12,6 +12,7 @@ import { supabase } from "./src/lib/supabase";
 import { getSelectedRole } from "./src/lib/authRole";
 import { API_BASE_URL } from "./lib/apiBase";
 import { setupNotifications, registerUserPushToken } from "./src/lib/notifications";
+import { mmdAudio } from "./src/lib/mmdAudio";
 import { syncLocaleForRole } from "./src/i18n";
 
 type Role = "client" | "driver" | "restaurant";
@@ -135,6 +136,7 @@ export default function App(): React.JSX.Element {
 
     try {
       setupNotifications();
+      void mmdAudio.init();
     } catch (error) {
       if (__DEV__) console.log("[App] setupNotifications error:", error);
     }
@@ -234,6 +236,7 @@ export default function App(): React.JSX.Element {
     return () => {
       isMounted = false;
       clearInterval(rolePoll);
+      void mmdAudio.dispose();
 
       try {
         authListener?.subscription?.unsubscribe?.();

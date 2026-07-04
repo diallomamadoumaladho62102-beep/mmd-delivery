@@ -5,6 +5,7 @@ import { notifyOrderDeliveredTransactional } from "@/lib/transactionalOutbound";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
+import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -403,7 +404,7 @@ async function notifyClientDelivered(params: {
 
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: MMD_PUSH_SOUNDS.deliveryCompleted,
     title: "Delivery completed",
     body: `Your delivery from ${pickupText} to ${dropoffText} has been completed successfully.`,
     data: {

@@ -1,4 +1,5 @@
 import { createDriverDeliveryRequestOffers } from "@/lib/createDriverDeliveryRequestOffers";
+import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 
 const MAX_DISPATCH_MILES = 5;
 
@@ -316,7 +317,7 @@ export async function runDeliveryRequestDispatch(params: {
   const messages = uniqueTokens.map(
     (tokenRow: { expo_push_token: string; user_id: string }) => ({
       to: tokenRow.expo_push_token,
-      sound: "default",
+      sound: MMD_PUSH_SOUNDS.driverRing,
       title: "Nouvelle livraison disponible 🚗",
       body: payout
         ? `Demande proche • Gain estimé ${payout.toFixed(2)} USD`

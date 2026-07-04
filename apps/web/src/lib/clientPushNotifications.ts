@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { resolvePushSound } from "./mmdPushSounds";
+
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 type PushTokenRow = {
@@ -84,16 +86,18 @@ export async function notifyClientOrderCreated(params: {
 
   if (tokens.length === 0) return;
 
+  const data = {
+    type: "order_paid",
+    order_id: params.orderId,
+    kind: params.kind ?? "food",
+  };
+
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(data.type),
     title: "Commande confirmée",
     body: "Votre paiement a été reçu. Nous préparons votre commande.",
-    data: {
-      type: "order_paid",
-      order_id: params.orderId,
-      kind: params.kind ?? "food",
-    },
+    data,
     priority: "high",
   }));
 
@@ -110,15 +114,17 @@ export async function notifyClientDeliveryRequestPaid(params: {
 
   if (tokens.length === 0) return;
 
+  const data = {
+    type: "delivery_request_paid",
+    delivery_request_id: params.deliveryRequestId,
+  };
+
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(data.type),
     title: "Livraison confirmée",
     body: "Votre demande de livraison est payée. Recherche d'un chauffeur en cours.",
-    data: {
-      type: "delivery_request_paid",
-      delivery_request_id: params.deliveryRequestId,
-    },
+    data,
     priority: "high",
   }));
 
@@ -141,16 +147,18 @@ export async function notifyClientOrderCancelled(params: {
       ? "Votre commande a été annulée. Un remboursement est en cours."
       : "Votre commande a été annulée.";
 
+  const data = {
+    type: "order_cancelled",
+    order_id: params.orderId,
+    refund: params.refund,
+  };
+
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(data.type),
     title: "Commande annulée",
     body,
-    data: {
-      type: "order_cancelled",
-      order_id: params.orderId,
-      refund: params.refund,
-    },
+    data,
     priority: "high",
   }));
 
@@ -173,16 +181,18 @@ export async function notifyClientDeliveryRequestCancelled(params: {
       ? "Votre livraison a été annulée. Un remboursement est en cours."
       : "Votre livraison a été annulée.";
 
+  const data = {
+    type: "delivery_request_cancelled",
+    delivery_request_id: params.deliveryRequestId,
+    refund: params.refund,
+  };
+
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(data.type),
     title: "Livraison annulée",
     body,
-    data: {
-      type: "delivery_request_cancelled",
-      delivery_request_id: params.deliveryRequestId,
-      refund: params.refund,
-    },
+    data,
     priority: "high",
   }));
 
@@ -201,16 +211,18 @@ export async function notifyClientDriverArrived(params: {
   if (tokens.length === 0) return;
 
   const label = params.entityKind === "taxi" ? "chauffeur" : "livreur";
+  const data = {
+    type: "driver_arrived",
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+  };
+
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(data.type),
     title: "Arrivée sur place",
     body: `Votre ${label} est arrivé. Vous avez 5 minutes d'attente gratuite.`,
-    data: {
-      type: "driver_arrived",
-      entity_type: params.entityType,
-      entity_id: params.entityId,
-    },
+    data,
     priority: "high",
   }));
 
@@ -227,16 +239,18 @@ export async function notifyClientWaitFeeStarted(params: {
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
   if (tokens.length === 0) return;
 
+  const data = {
+    type: "wait_fee_started",
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+  };
+
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(data.type),
     title: "Frais de retard",
     body: "Les frais de retard commencent maintenant.",
-    data: {
-      type: "wait_fee_started",
-      entity_type: params.entityType,
-      entity_id: params.entityId,
-    },
+    data,
     priority: "high",
   }));
 
@@ -259,16 +273,18 @@ export async function notifyClientWaitFinalWarning(params: {
       ? "Votre temps d'attente gratuit est terminé. Veuillez rejoindre votre chauffeur."
       : "Votre temps d'attente gratuit est terminé. Veuillez récupérer votre commande ou rejoindre votre livreur.";
 
+  const data = {
+    type: "wait_final_warning",
+    entity_type: params.entityType,
+    entity_id: params.entityId,
+  };
+
   const messages = tokens.map((to) => ({
     to,
-    sound: "default",
+    sound: resolvePushSound(data.type),
     title: "Temps d'attente écoulé",
     body,
-    data: {
-      type: "wait_final_warning",
-      entity_type: params.entityType,
-      entity_id: params.entityId,
-    },
+    data,
     priority: "high",
   }));
 

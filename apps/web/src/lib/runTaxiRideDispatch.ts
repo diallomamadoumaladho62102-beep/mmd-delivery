@@ -1,6 +1,7 @@
 import { createTaxiOffers } from "@/lib/createTaxiOffers";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { TAXI_FAVORITE_DISPATCH_TIMEOUT_SECONDS } from "@/lib/taxiPremiumDispatch";
+import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 
 const MAX_DISPATCH_MILES = 5;
 
@@ -294,7 +295,7 @@ export async function runTaxiRideDispatch(params: {
       )
       .map((tokenRow: { expo_push_token: string }) => ({
         to: tokenRow.expo_push_token,
-        sound: "default",
+        sound: MMD_PUSH_SOUNDS.driverRing,
         title: "Course favori client ⭐",
         body: payoutDollars
           ? `Un client vous a choisi • Gain estimé ${payoutDollars} USD`
@@ -624,7 +625,7 @@ export async function runTaxiRideDispatch(params: {
   const messages = uniqueTokens.map(
     (tokenRow: { expo_push_token: string; user_id: string }) => ({
       to: tokenRow.expo_push_token,
-      sound: "default",
+      sound: MMD_PUSH_SOUNDS.driverRing,
       title: "Nouvelle course taxi disponible 🚕",
       body: payoutDollars
         ? `Course proche • Gain estimé ${payoutDollars} USD`

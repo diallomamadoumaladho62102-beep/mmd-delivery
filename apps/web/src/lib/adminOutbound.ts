@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 
 export type OutboundChannel = "push" | "sms" | "email";
 
@@ -86,7 +87,7 @@ export async function sendAdminPush(
 
     const messages = tokens.map((to) => ({
       to,
-      sound: "default",
+      sound: MMD_PUSH_SOUNDS.system,
       title: input.title,
       body: input.body,
       data: { source: "admin_communication" },

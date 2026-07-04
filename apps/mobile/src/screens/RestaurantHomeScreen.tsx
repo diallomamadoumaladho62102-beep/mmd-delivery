@@ -14,7 +14,7 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import { Audio } from "expo-av";
+import { mmdAudio } from "../lib/mmdAudio";
 import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
 import { supabase } from "../lib/supabase";
@@ -609,7 +609,6 @@ const restaurantStyles = StyleSheet.create({
 
 export function RestaurantHomeScreen({ navigation }: any) {
   const { t } = useTranslation();
-  const soundRef = useRef<Audio.Sound | null>(null);
   const isFocused = useIsFocused();
   const cameraRef = useRef<Mapbox.Camera | null>(null);
 
@@ -1201,42 +1200,20 @@ export function RestaurantHomeScreen({ navigation }: any) {
   }, [liveOrder, liveOrderAnim]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: true,
-          shouldDuckAndroid: true,
-        });
-      } catch {}
-    })();
+    void mmdAudio.init();
   }, []);
 
-  const ensureSoundLoaded = useCallback(async () => {
-    if (soundRef.current) return;
-
-    const { sound } = await Audio.Sound.createAsync(
-      require("../../assets/sounds/new_order.wav"),
-      { shouldPlay: false, volume: 1.0 }
-    );
-    soundRef.current = sound;
-  }, []);
-
-  const playRing = useCallback(async () => {
+  const startRestaurantRing = useCallback(async () => {
     try {
-      await ensureSoundLoaded();
-
-      try {
-        await soundRef.current?.stopAsync();
-      } catch {}
-
-      try {
-        await soundRef.current?.setPositionAsync(0);
-      } catch {}
-
-      await soundRef.current?.playAsync();
+      await mmdAudio.startLongRing("restaurant");
     } catch {}
-  }, [ensureSoundLoaded]);
+  }, []);
+
+  const stopRestaurantRing = useCallback(async () => {
+    try {
+      await mmdAudio.stopLongRing();
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (checkingAuth || !activeRestaurantId) return;
@@ -1276,7 +1253,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
               created_at: row.created_at ?? null,
               total: Number.isFinite(Number(row.total)) ? Number(row.total) : null,
             });
-            await playRing();
+            await startRestaurantRing();
           }
 
           refreshLiveMap();
@@ -1297,6 +1274,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
             String(row?.payment_status ?? "").trim().toLowerCase() === "paid";
 
           if (!isFoodOrder || !isPaid) return;
+
+          if (row?.status && row.status !== "pending") {
+            void stopRestaurantRing();
+          }
 
           setLiveOrder((current): RestaurantMapOrder | null => {
             if (!current || current.id !== String(row?.id ?? "")) {
@@ -1327,7 +1308,8 @@ export function RestaurantHomeScreen({ navigation }: any) {
   }, [
     isFocused,
     checkingAuth,
-    playRing,
+    startRestaurantRing,
+    stopRestaurantRing,
     activeRestaurantId,
     refreshLiveMap,
     restaurantOnline,
@@ -1335,12 +1317,9 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
   useEffect(() => {
     return () => {
-      try {
-        soundRef.current?.unloadAsync();
-      } catch {}
-      soundRef.current = null;
+      void stopRestaurantRing();
     };
-  }, []);
+  }, [stopRestaurantRing]);
 
   const avatarLetter = useMemo(() => {
     const raw = String(restaurantName || "").trim();

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseBrowser';
 import Avatar from '@/components/Avatar';
 import { ORDER_MESSAGE_SELECT } from '@/lib/orderMessages';
+import { mmdAudio } from '@/lib/mmdAudio';
 
 type Profile = { full_name: string | null; avatar_url: string | null };
 type ProfileJoin = Profile | Profile[] | null | undefined;
@@ -45,11 +46,9 @@ export default function MessagesList({ orderId }: Props) {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const userIdRef = useRef<string | null>(null);
   const mountedRef = useRef(false);
-  const pingRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // ✅ Ton fichier est ici: apps/web/public/sounds/notify.mp3
-    pingRef.current = new Audio('/sounds/notify.mp3');
+    mmdAudio.unlockOnInteraction();
   }, []);
 
   // Récupérer l'utilisateur courant (pour ne pas jouer un son sur nos propres messages)
@@ -194,11 +193,8 @@ export default function MessagesList({ orderId }: Props) {
 
             // 🔔 jouer un son si le message vient d'un autre utilisateur
             const current = userIdRef.current;
-            if (pingRef.current && m.user_id !== current) {
-              try {
-                pingRef.current.currentTime = 0;
-                await pingRef.current.play();
-              } catch {}
+            if (m.user_id !== current) {
+              void mmdAudio.play('chat');
             }
 
             setTimeout(

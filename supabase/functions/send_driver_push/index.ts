@@ -9,6 +9,8 @@ import {
   parseSecurePushBody,
 } from "../_shared/securePush.ts";
 
+import { MMD_PUSH_SOUNDS } from "../_shared/mmdPushSounds.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -101,7 +103,7 @@ serve(async (req: Request) => {
 
     const messages = tokens.map((tokenRow: { expo_push_token: string }) => ({
       to: tokenRow.expo_push_token,
-      sound: "default",
+      sound: MMD_PUSH_SOUNDS.driverRing,
       title: payload.title,
       body: payload.message,
       priority: "high",

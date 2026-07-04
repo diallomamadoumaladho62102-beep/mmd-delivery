@@ -11,7 +11,24 @@
       [
         "expo-notifications",
         {
-          "sounds": ["./assets/sounds/new_order.wav"]
+          "sounds": [
+            "./assets/sounds/mmd_signature_driver_60s.wav",
+            "./assets/sounds/mmd_signature_restaurant_120s.wav",
+            "./assets/sounds/mmd_signature_client.wav",
+            "./assets/sounds/mmd_chat_notification.wav",
+            "./assets/sounds/mmd_payment_success.wav",
+            "./assets/sounds/mmd_payment_failed.wav",
+            "./assets/sounds/mmd_success.wav",
+            "./assets/sounds/mmd_error.wav",
+            "./assets/sounds/mmd_warning.wav",
+            "./assets/sounds/mmd_promo.wav",
+            "./assets/sounds/mmd_reward.wav",
+            "./assets/sounds/mmd_system_notification.wav",
+            "./assets/sounds/mmd_ride_accepted.wav",
+            "./assets/sounds/mmd_order_accepted.wav",
+            "./assets/sounds/mmd_driver_arrived.wav",
+            "./assets/sounds/mmd_delivery_completed.wav"
+          ]
         }
       ],
       [

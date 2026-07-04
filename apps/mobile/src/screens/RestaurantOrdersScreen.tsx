@@ -12,14 +12,12 @@ import {
   AppStateStatus,
   Alert,
 } from "react-native";
-import { Audio } from "expo-av";
+import { mmdAudio } from "../lib/mmdAudio";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 
 const ACCEPT_WINDOW_SECONDS = 180;
-const RING_REPEAT_EVERY_MS = 6000;
-const RING_COOLDOWN_MS = 2500;
 
 /**
  * Important fix:
@@ -329,15 +327,11 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   const [resolveDone, setResolveDone] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>("all");
 
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const lastRingAtRef = useRef(0);
-  const ringingLockRef = useRef(false);
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
 
   const [, forceTick] = useState(0);
   const hasPendingValidRef = useRef(false);
-  const ringRepeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ordersRef = useRef<Order[]>([]);
 
   useEffect(() => {
@@ -352,11 +346,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   }, []);
 
   useEffect(() => {
-    Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-      shouldDuckAndroid: true,
-    }).catch(() => {});
+    void mmdAudio.init();
   }, []);
 
   useEffect(() => {
@@ -436,80 +426,13 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     };
   }, [navigation]);
 
-  const ensureSoundLoaded = useCallback(async () => {
-    if (soundRef.current) return;
-
-    const { sound } = await Audio.Sound.createAsync(
-      require("../../assets/sounds/new_order.wav"),
-      { shouldPlay: false, volume: 1 }
-    );
-
-    soundRef.current = sound;
-  }, []);
-
-  const stopRingNow = useCallback(async () => {
-    try {
-      if (!soundRef.current) return;
-
-      try {
-        await soundRef.current.stopAsync();
-      } catch {}
-
-      try {
-        await soundRef.current.setPositionAsync(0);
-      } catch {}
-    } catch {}
-  }, []);
-
-  const ringOnceSafe = useCallback(async () => {
-    const now = Date.now();
-
-    if (ringingLockRef.current) return;
-    if (now - lastRingAtRef.current < RING_COOLDOWN_MS) return;
-
-    ringingLockRef.current = true;
-    lastRingAtRef.current = now;
-
-    try {
-      await ensureSoundLoaded();
-      if (!soundRef.current) return;
-
-      try {
-        await soundRef.current.stopAsync();
-      } catch {}
-
-      await soundRef.current.setPositionAsync(0);
-      await soundRef.current.playAsync();
-    } catch {
-      // ignore
-    } finally {
-      ringingLockRef.current = false;
-    }
-  }, [ensureSoundLoaded]);
-
   const stopRepeatRinging = useCallback(() => {
-    if (ringRepeatTimerRef.current) {
-      clearInterval(ringRepeatTimerRef.current);
-      ringRepeatTimerRef.current = null;
-    }
-
-    void stopRingNow();
-  }, [stopRingNow]);
+    void mmdAudio.stopLongRing();
+  }, []);
 
   const startRepeatRinging = useCallback(() => {
-    if (ringRepeatTimerRef.current) return;
-
-    void ringOnceSafe();
-
-    ringRepeatTimerRef.current = setInterval(() => {
-      if (!hasPendingValidRef.current) {
-        stopRepeatRinging();
-        return;
-      }
-
-      void ringOnceSafe();
-    }, RING_REPEAT_EVERY_MS);
-  }, [ringOnceSafe, stopRepeatRinging]);
+    void mmdAudio.startLongRing("restaurant");
+  }, []);
 
   const isPendingValid = useCallback((o: Order) => {
     if (o.status !== "pending") return false;
@@ -848,8 +771,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   useEffect(() => {
     return () => {
       stopRepeatRinging();
-      soundRef.current?.unloadAsync().catch(() => {});
-      soundRef.current = null;
+      void mmdAudio.stopLongRing();
     };
   }, [stopRepeatRinging]);
 

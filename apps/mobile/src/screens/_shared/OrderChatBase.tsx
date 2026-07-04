@@ -19,6 +19,7 @@ import { decode } from "base64-arraybuffer";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { supabase } from "../../lib/supabase";
+import { mmdAudio } from "../../lib/mmdAudio";
 
 type ChatTargetRole = "client" | "driver" | "restaurant" | "admin" | "";
 
@@ -285,6 +286,7 @@ export function OrderChatBaseScreen(props: {
   );
 
   const scrollRef = useRef<ScrollView | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
 
   const scrollToEnd = useCallback(() => {
     setTimeout(() => {
@@ -544,6 +546,7 @@ export function OrderChatBaseScreen(props: {
 
       const access = await verifyAccess();
       setCurrentUserId(access.userId || null);
+      currentUserIdRef.current = access.userId || null;
 
       if (!access.canAccess) {
         setRows([]);
@@ -627,7 +630,36 @@ export function OrderChatBaseScreen(props: {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
+          schema: "public",
+          table: "order_messages",
+          filter: `order_id=eq.${orderId}`,
+        },
+        (payload) => {
+          const row = payload.new as { user_id?: string | null };
+          if (
+            row?.user_id &&
+            row.user_id !== currentUserIdRef.current
+          ) {
+            void mmdAudio.play("chat");
+          }
+          void load();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "order_messages",
+          filter: `order_id=eq.${orderId}`,
+        },
+        () => void load()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
           schema: "public",
           table: "order_messages",
           filter: `order_id=eq.${orderId}`,

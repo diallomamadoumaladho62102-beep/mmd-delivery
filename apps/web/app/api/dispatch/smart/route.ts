@@ -9,6 +9,7 @@ import {
 } from "@/lib/dispatchInternalAuth";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -487,13 +488,13 @@ export async function POST(req: NextRequest) {
 
     const messages = uniqueTokens.map((tokenRow: any) => ({
       to: tokenRow.expo_push_token,
-      sound: "default",
+      sound: MMD_PUSH_SOUNDS.driverRing,
       title: "Nouvelle course disponible 🚗",
       body: payout
         ? `Course proche • Gain estimé ${payout.toFixed(2)} USD`
         : "Une course proche est disponible.",
       data: {
-        type: "smart_dispatch",
+        type: "driver_offer",
         orderId: order.id,
         wave: requestedWave,
         screen: "DriverTabs",

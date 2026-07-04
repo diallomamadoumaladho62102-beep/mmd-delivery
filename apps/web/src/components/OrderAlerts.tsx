@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
+import { mmdAudio } from "@/lib/mmdAudio";
 
 const IMPORTANT_STATUSES = new Set([
   "assigned",
@@ -12,31 +13,7 @@ const IMPORTANT_STATUSES = new Set([
 ]);
 
 const LS_ENABLED = "mmdAlertsEnabled";
-const LS_VOLUME = "mmdAlertsVolume"; // 0..1
-
-// ---- Audio globals
-let ACtx: AudioContext | null = null;
-let MasterGain: GainNode | null = null;
-let unlocked = false;
-
-function statusToFreq(status: string | null): number {
-  switch (status) {
-    case "assigned":
-      return 440; // A4
-    case "accepted":
-      return 523.25; // C5
-    case "prepared":
-      return 659.25; // E5
-    case "ready":
-      return 880; // A5
-    case "dispatched":
-      return 988; // B5
-    case "delivered":
-      return 1174.66; // D6 (~)
-    default:
-      return 880;
-  }
-}
+const LS_VOLUME = "mmdAlertsVolume";
 
 function statusToToastClass(status: string | null): string {
   switch (status) {
@@ -57,66 +34,6 @@ function statusToToastClass(status: string | null): string {
   }
 }
 
-async function ensureAudioUnlocked(volume = 0.6) {
-  try {
-    if (!ACtx) {
-      ACtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    if (ACtx.state === "suspended") {
-      await ACtx.resume();
-    }
-    if (!MasterGain) {
-      MasterGain = ACtx.createGain();
-      MasterGain.gain.value = volume;
-      MasterGain.connect(ACtx.destination);
-    }
-    unlocked = true;
-  } catch {}
-}
-
-async function playBeepWebAudio(freq: number, volume: number) {
-  await ensureAudioUnlocked(volume);
-  if (!ACtx || !unlocked || !MasterGain) return false;
-  try {
-    const ctx = ACtx;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.value = freq;
-    o.connect(g);
-    g.connect(MasterGain);
-
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + 0.02);
-
-    o.start();
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-    o.stop(ctx.currentTime + 0.4);
-
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const BEEP_DATA_URI =
-  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAAAAAAACAgICAgP///wAAAP///wAAAAAA";
-async function playBeepFallback(volume: number) {
-  try {
-    const a = new Audio(BEEP_DATA_URI);
-    a.volume = Math.max(0, Math.min(1, volume));
-    await a.play();
-    return true;
-  } catch {
-    return false;
-  }
-}
-async function playBeepForStatus(status: string | null, volume: number) {
-  const freq = statusToFreq(status);
-  const ok = await playBeepWebAudio(freq, volume);
-  if (!ok) await playBeepFallback(volume);
-}
-
 type Role =
   | "driver"
   | "restaurant"
@@ -125,17 +42,11 @@ type Role =
   | "seller";
 
 type Props = {
-  /**
-   * ✅ orderId OPTIONNEL:
-   * - Dashboard global: <OrderAlerts role="driver" />
-   * - Page commande: <OrderAlerts orderId="..." role="driver" />
-   */
   orderId?: string;
   role?: Role;
 };
 
 export default function OrderAlerts({ orderId, role = "driver" }: Props) {
-  // Préférences (chargées après montage)
   const [enabled, setEnabled] = useState<boolean>(true);
   const [volume, setVolume] = useState<number>(0.6);
 
@@ -159,21 +70,17 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
   useEffect(() => {
     try {
       localStorage.setItem(LS_VOLUME, String(volume));
-      if (MasterGain) MasterGain.gain.value = volume;
     } catch {}
   }, [volume]);
 
-  // Derniers états / anti-spam
   const [last, setLast] = useState<string | null>(null);
   const lastRef = useRef<string | null>(null);
   const lastUpdatedAtRef = useRef<string>("");
-  const lastBeepAtRef = useRef<number>(0); // debounce global
-  const statusCooldownRef = useRef<Record<string, number>>({}); // cooldown par statut
+  const lastBeepAtRef = useRef<number>(0);
+  const statusCooldownRef = useRef<Record<string, number>>({});
 
   function shouldBeep(now: number, status: string | null) {
-    // Debounce global 1.5s
     if (now - lastBeepAtRef.current <= 1500) return false;
-    // Cooldown par statut 60s
     if (status) {
       const lastForThis = statusCooldownRef.current[status] ?? 0;
       if (now - lastForThis <= 60000) return false;
@@ -186,7 +93,6 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
     if (status) statusCooldownRef.current[status] = now;
   }
 
-  // Toasts
   const [toast, setToast] = useState<{
     msg: string;
     visible: boolean;
@@ -204,21 +110,10 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
     setTimeout(() => setToast((t) => ({ ...t, visible: false })), 2500);
   }
 
-  // Déverrouiller audio au premier geste
   useEffect(() => {
-    const unlock = async () => {
-      await ensureAudioUnlocked(volume);
-    };
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    mmdAudio.unlockOnInteraction();
   }, []);
 
-  // Charger statut initial (uniquement si orderId)
   useEffect(() => {
     if (!orderId) return;
 
@@ -244,45 +139,45 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
     };
   }, [orderId]);
 
-  // Realtime + History + Polling (uniquement si orderId)
   useEffect(() => {
     if (!orderId) return;
 
     const canNotify = () =>
-      enabled && (role === "driver" || role === "restaurant");
+      enabled && (role === "driver" || role === "restaurant" || role === "client");
 
-    // ORDERS
+    const handleStatus = async (newStatus: string | null, newUpdated: string) => {
+      const now = Date.now();
+      if (!newStatus || !IMPORTANT_STATUSES.has(newStatus)) return;
+
+      const statusChanged = newStatus !== lastRef.current;
+      const updatedAtAdvanced =
+        newUpdated && newUpdated !== lastUpdatedAtRef.current;
+
+      if ((statusChanged || updatedAtAdvanced) && shouldBeep(now, newStatus)) {
+        if (canNotify()) {
+          mmdAudio.playForOrderStatus(newStatus);
+          showToastForStatus(newStatus);
+        }
+        markBeep(now, newStatus);
+        lastRef.current = newStatus;
+        if (updatedAtAdvanced) lastUpdatedAtRef.current = newUpdated;
+        setLast(newStatus);
+      }
+    };
+
     const chOrders = supabase
       .channel(`orders-alerts-${orderId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders", filter: `id=eq.${orderId}` },
         async (payload) => {
-          const now = Date.now();
           const newStatus = (payload.new as any)?.status ?? null;
           const newUpdated = (payload.new as any)?.updated_at ?? "";
-
-          if (!newStatus || !IMPORTANT_STATUSES.has(newStatus)) return;
-
-          const statusChanged = newStatus !== lastRef.current;
-          const updatedAtAdvanced =
-            newUpdated && newUpdated !== lastUpdatedAtRef.current;
-
-          if ((statusChanged || updatedAtAdvanced) && shouldBeep(now, newStatus)) {
-            if (canNotify()) {
-              await playBeepForStatus(newStatus, volume);
-              showToastForStatus(newStatus);
-            }
-            markBeep(now, newStatus);
-            lastRef.current = newStatus;
-            if (updatedAtAdvanced) lastUpdatedAtRef.current = newUpdated;
-            setLast(newStatus);
-          }
+          await handleStatus(newStatus, newUpdated);
         }
       )
       .subscribe();
 
-    // ORDER_STATUS_HISTORY (INSERT)
     const chHist = supabase
       .channel(`orders-hist-${orderId}`)
       .on(
@@ -294,24 +189,12 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
           filter: `order_id=eq.${orderId}`,
         },
         async (payload) => {
-          const now = Date.now();
           const ns = (payload.new as any)?.new_status ?? null;
-          if (!ns || !IMPORTANT_STATUSES.has(ns)) return;
-
-          if (shouldBeep(now, ns)) {
-            if (canNotify()) {
-              await playBeepForStatus(ns, volume);
-              showToastForStatus(ns);
-            }
-            markBeep(now, ns);
-            lastRef.current = ns;
-            setLast(ns);
-          }
+          await handleStatus(ns, "");
         }
       )
       .subscribe();
 
-    // Polling de secours
     const interval = setInterval(async () => {
       try {
         const { data, error } = await supabase
@@ -324,22 +207,7 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
 
         const polled = (data as any)?.status ?? null;
         const upd = (data as any)?.updated_at ?? "";
-        if (!polled || !IMPORTANT_STATUSES.has(polled)) return;
-
-        const now = Date.now();
-        const statusChanged = polled !== lastRef.current;
-        const updatedAtAdvanced = upd && upd !== lastUpdatedAtRef.current;
-
-        if ((statusChanged || updatedAtAdvanced) && shouldBeep(now, polled)) {
-          if (canNotify()) {
-            await playBeepForStatus(polled, volume);
-            showToastForStatus(polled);
-          }
-          markBeep(now, polled);
-          lastRef.current = polled;
-          if (updatedAtAdvanced) lastUpdatedAtRef.current = upd;
-          setLast(polled);
-        }
+        await handleStatus(polled, upd);
       } catch {}
     }, 2000);
 
@@ -352,7 +220,6 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
 
   return (
     <>
-      {/* Barre de contrôle */}
       <div className="text-xs text-gray-600 flex flex-wrap items-center gap-2">
         <span>
           🔔 Alertes actives ({role})
@@ -387,15 +254,14 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
 
         <button
           type="button"
-          onClick={async () => {
-            await ensureAudioUnlocked(volume);
-            await playBeepForStatus("ready", volume);
+          onClick={() => {
+            mmdAudio.playForOrderStatus("ready");
             showToastForStatus("ready");
           }}
           className="px-2 py-1 border rounded text-[11px]"
           title="Clique pour autoriser le son et tester"
         >
-          Test bip
+          Test son premium
         </button>
 
         {orderId ? (
@@ -405,7 +271,6 @@ export default function OrderAlerts({ orderId, role = "driver" }: Props) {
         ) : null}
       </div>
 
-      {/* Toast */}
       <div className="fixed top-4 right-4 z-50">
         <div
           className={
