@@ -21,6 +21,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.clients.read",
   },
   {
+    href: "/admin/driver-identity",
+    title: "Vérification identité chauffeur",
+    description: "Selfies, revue manuelle, règles de risque et audit",
+    permission: "drivers.identity.read",
+  },
+  {
     href: "/admin/drivers",
     title: "Chauffeurs",
     description: "Approuver, refuser, suspendre les chauffeurs",

@@ -42,6 +42,7 @@ import { ClientChatScreen } from "../screens/ClientChatScreen";
 import { DriverOrderDetailsScreen } from "../screens/DriverOrderDetailsScreen";
 import DriverMapScreen from "../screens/DriverMapScreen";
 import { DriverOnboardingScreen } from "../screens/DriverOnboardingScreen";
+import { DriverIdentityVerificationScreen } from "../screens/DriverIdentityVerificationScreen";
 import { DriverAuthScreen } from "../screens/DriverAuthScreen";
 import { DriverChatScreen } from "../screens/DriverChatScreen";
 
@@ -239,6 +240,7 @@ export type RootStackParamList = {
     targetRole?: "client" | "restaurant" | "admin" | "";
   };
   DriverOnboarding: undefined;
+  DriverIdentityVerification: undefined;
 
   DriverProfile: undefined;
   DriverReferrals: undefined;
@@ -624,6 +626,7 @@ export function AppNavigator({
       r === "DriverChat" ||
       r === "DriverTaxiChat" ||
       r === "DriverOnboarding" ||
+      r === "DriverIdentityVerification" ||
       r === "DriverProfile" ||
       r === "DriverReferrals" ||
       r === "DriverOpportunities" ||
@@ -1087,6 +1090,11 @@ export function AppNavigator({
         <Stack.Screen
           name="DriverOnboarding"
           component={DriverOnboardingScreen}
+        />
+        <Stack.Screen
+          name="DriverIdentityVerification"
+          component={DriverIdentityVerificationScreen}
+          options={{ title: "Vérification d'identité" }}
         />
 
         <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />

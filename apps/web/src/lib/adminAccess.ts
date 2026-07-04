@@ -43,6 +43,24 @@ export function canReviewDrivers(role: UserRole | null): boolean {
   return hasPermission(role, "users.drivers.manage");
 }
 
+export function canViewDriverIdentity(role: UserRole | null): boolean {
+  if (!role) return false;
+  return (
+    hasPermission(role, "drivers.identity.read") ||
+    hasPermission(role, "drivers.identity.manage")
+  );
+}
+
+export function canManageDriverIdentity(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "drivers.identity.manage");
+}
+
+export function canManageDriverIdentitySettings(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "drivers.identity.settings");
+}
+
 export function canViewRestaurants(role: UserRole | null): boolean {
   if (!role) return false;
   return (

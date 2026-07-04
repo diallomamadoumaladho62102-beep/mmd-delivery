@@ -40,6 +40,11 @@ import { useDriverPlatformFeatures } from "../hooks/useDriverPlatformFeatures";
 import MarketScopePill from "../components/market/MarketScopePill";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { ensureMapboxTokenApplied } from "../lib/mapboxConfig";
+import {
+  fetchDriverIdentityStatus,
+  identityBlocksDriverOnline,
+} from "../lib/driverIdentityApi";
+import { getStableDriverDeviceId } from "../lib/driverDeviceId";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -905,9 +910,42 @@ export function DriverHomeScreen() {
         return false;
       }
 
+      try {
+        const deviceId = await getStableDriverDeviceId();
+        const identityStatus = await fetchDriverIdentityStatus({
+          intent: "go_online",
+          deviceId,
+        });
+
+        if (identityBlocksDriverOnline(identityStatus.gate_status)) {
+          await setDriverOnlineStatus(false);
+          Alert.alert(
+            "Vérification d'identité",
+            identityStatus.message ??
+              "Une vérification d'identité est requise avant de passer en ligne.",
+            [
+              { text: "Annuler", style: "cancel" },
+              {
+                text: "Vérifier",
+                onPress: () => navigation.navigate("DriverIdentityVerification"),
+              },
+            ],
+          );
+          return false;
+        }
+      } catch (identityError) {
+        console.log("identity gate error:", identityError);
+        await setDriverOnlineStatus(false);
+        Alert.alert(
+          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          "Impossible de vérifier votre identité. Réessayez dans un instant.",
+        );
+        return false;
+      }
+
       return true;
     },
-    [driverLocation, refreshDriverPlatformFeatures, t],
+    [driverLocation, navigation, refreshDriverPlatformFeatures, t],
   );
 
   const getUserIdOrThrow = useCallback(async () => {
