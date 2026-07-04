@@ -74,6 +74,7 @@ import RestaurantFinancialCenterScreen from "../screens/RestaurantFinancialCente
 import RestaurantTaxScreen from "../screens/RestaurantTaxScreen";
 import { RestaurantLanguageScreen } from "../screens/RestaurantLanguageScreen";
 import { RestaurantSecurityScreen } from "../screens/RestaurantSecurityScreen";
+import { RestaurantOrderAutomationScreen } from "../screens/restaurant/RestaurantOrderAutomationScreen";
 import RestaurantGateScreen from "../screens/restaurant/RestaurantGateScreen";
 import RestaurantSetupScreen from "../screens/restaurant/RestaurantSetupScreen";
 import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
@@ -270,6 +271,7 @@ export type RootStackParamList = {
   RestaurantTax: undefined;
   RestaurantLanguage: undefined;
   RestaurantSecurity: undefined;
+  RestaurantOrderAutomation: undefined;
   RestaurantChat: {
     orderId: string;
     targetRole?: "client" | "driver" | "admin" | "";
@@ -657,6 +659,7 @@ export function AppNavigator({
         r === "RestaurantTax" ||
         r === "RestaurantLanguage" ||
         r === "RestaurantSecurity" ||
+        r === "RestaurantOrderAutomation" ||
         r === "RestaurantChat" ||
         r === "RestaurantGate" ||
         r === "RestaurantSetup" ||
@@ -1172,6 +1175,11 @@ export function AppNavigator({
         <Stack.Screen
           name="RestaurantSecurity"
           component={RestaurantSecurityScreen}
+        />
+        <Stack.Screen
+          name="RestaurantOrderAutomation"
+          component={RestaurantOrderAutomationScreen}
+          options={{ title: "Commandes & impression" }}
         />
         <Stack.Screen name="RestaurantChat" component={RestaurantChatScreen} />
       </Stack.Navigator>

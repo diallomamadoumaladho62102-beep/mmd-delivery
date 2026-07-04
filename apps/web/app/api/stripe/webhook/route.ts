@@ -1551,6 +1551,24 @@ async function handleCheckoutCompletedLikeEvent(
       );
     }
 
+    const { data: paidOrder } = await supabaseAdmin
+      .from("orders")
+      .select("id,kind,client_user_id,created_by")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (paidOrder && String(paidOrder.kind ?? "").toLowerCase() === "food") {
+      const { completeFoodOrderAfterPayment } = await import(
+        "@/lib/foodOrderPaymentCompletion"
+      );
+      await completeFoodOrderAfterPayment(supabaseAdmin, {
+        orderId,
+        clientUserIds: [paidOrder.client_user_id, paidOrder.created_by],
+        kind: paidOrder.kind,
+        dispatchOrigin: getDispatchSiteOrigin(),
+      });
+    }
+
     return json({
       received: true,
       ok: true,
@@ -2103,6 +2121,24 @@ async function handlePaymentIntentSucceeded(
         },
         500
       );
+    }
+
+    const { data: paidOrderPi } = await supabaseAdmin
+      .from("orders")
+      .select("id,kind,client_user_id,created_by")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (paidOrderPi && String(paidOrderPi.kind ?? "").toLowerCase() === "food") {
+      const { completeFoodOrderAfterPayment } = await import(
+        "@/lib/foodOrderPaymentCompletion"
+      );
+      await completeFoodOrderAfterPayment(supabaseAdmin, {
+        orderId,
+        clientUserIds: [paidOrderPi.client_user_id, paidOrderPi.created_by],
+        kind: paidOrderPi.kind,
+        dispatchOrigin: getDispatchSiteOrigin(),
+      });
     }
 
     return json({

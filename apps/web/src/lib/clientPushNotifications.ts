@@ -104,6 +104,39 @@ export async function notifyClientOrderCreated(params: {
   await sendExpoPushMessages(messages);
 }
 
+export async function notifyClientOrderAccepted(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  orderId: string;
+  prepMinutes?: number | null;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const prepText =
+    params.prepMinutes && params.prepMinutes > 0
+      ? ` Temps de préparation estimé : ${params.prepMinutes} min.`
+      : "";
+
+  const data = {
+    type: "order_accepted",
+    order_id: params.orderId,
+    prep_minutes: params.prepMinutes ?? null,
+  };
+
+  const messages = tokens.map((to) => ({
+    to,
+    sound: resolvePushSound(data.type),
+    title: "Commande acceptée",
+    body: `Le restaurant a accepté votre commande.${prepText}`,
+    data,
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+}
+
 export async function notifyClientDeliveryRequestPaid(params: {
   supabaseAdmin: SupabaseClient;
   userIds: Array<string | null | undefined>;

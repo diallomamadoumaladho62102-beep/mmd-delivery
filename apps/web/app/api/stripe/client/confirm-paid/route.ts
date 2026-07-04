@@ -5,7 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
-import { notifyClientOrderCreated } from "@/lib/clientPushNotifications";
+import { completeFoodOrderAfterPayment } from "@/lib/foodOrderPaymentCompletion";
 import { resolveOrderAmountCents } from "@/lib/orderAmountCents";
 import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
 import {
@@ -507,11 +507,11 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await notifyClientOrderCreated({
-        supabaseAdmin,
-        userIds: [order.client_user_id, order.created_by, user.id],
+      await completeFoodOrderAfterPayment(supabaseAdmin, {
         orderId,
+        clientUserIds: [order.client_user_id, order.created_by, user.id],
         kind: order.kind,
+        dispatchOrigin: req.nextUrl.origin,
       });
 
       return json({
@@ -652,11 +652,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await notifyClientOrderCreated({
-      supabaseAdmin,
-      userIds: [order.client_user_id, order.created_by, user.id],
+    await completeFoodOrderAfterPayment(supabaseAdmin, {
       orderId,
+      clientUserIds: [order.client_user_id, order.created_by, user.id],
       kind: order.kind,
+      dispatchOrigin: req.nextUrl.origin,
     });
 
     return json({

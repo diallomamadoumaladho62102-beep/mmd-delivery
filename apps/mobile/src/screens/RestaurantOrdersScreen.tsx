@@ -16,6 +16,8 @@ import { mmdAudio } from "../lib/mmdAudio";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
+import { useRestaurantAutoPrint } from "../hooks/useRestaurantAutoPrint";
+import { fetchRestaurantAutomationSettings } from "../lib/restaurantOrderAutomationApi";
 
 const ACCEPT_WINDOW_SECONDS = 180;
 
@@ -326,6 +328,20 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
   const [resolveDone, setResolveDone] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<FilterKey>("all");
+  const [autoPrintEnabled, setAutoPrintEnabled] = useState(false);
+
+  useRestaurantAutoPrint(autoPrintEnabled);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const result = await fetchRestaurantAutomationSettings();
+        setAutoPrintEnabled(Boolean(result.settings.auto_print_enabled));
+      } catch {
+        setAutoPrintEnabled(false);
+      }
+    })();
+  }, []);
 
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);

@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
 import { startMaskedCall } from "../lib/maskedCall";
+import { requestOrderPrint } from "../lib/restaurantOrderAutomationApi";
 
 type OrderStatus =
   | "pending"
@@ -625,6 +626,34 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     openRestaurantChat("admin");
   }, [openRestaurantChat]);
 
+  const [printing, setPrinting] = useState(false);
+
+  const handlePrintOrder = useCallback(
+    async (source: "manual" | "reprint") => {
+      if (!order || printing) return;
+      setPrinting(true);
+      try {
+        await requestOrderPrint(order.id, source);
+        Alert.alert(
+          "Impression",
+          source === "reprint"
+            ? "Réimpression lancée."
+            : "Ticket ajouté à la file d'impression.",
+        );
+      } catch (error) {
+        Alert.alert(
+          "Impression",
+          error instanceof Error
+            ? error.message
+            : "Impossible de lancer l'impression.",
+        );
+      } finally {
+        setPrinting(false);
+      }
+    },
+    [order, printing],
+  );
+
   const updateStatus = useCallback(
     async (next: OrderStatus) => {
       if (!order || updating) return;
@@ -828,6 +857,7 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const canPrepare = order.status === "accepted";
   const canReady = order.status === "prepared";
   const canCancel = canRestaurantCancel(order.status);
+  const canPrint = ["accepted", "prepared", "ready", "dispatched"].includes(order.status);
   const callDisabled = !!calling || updating || isFinalStatus(order.status);
 
   const clientId = order.client_user_id ?? order.client_id ?? null;
@@ -952,7 +982,24 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
               />
             )}
 
-            {!canAccept && !canPrepare && !canReady && !canCancel && (
+            {canPrint && (
+              <>
+                <ActionButton
+                  label={printing ? "Impression…" : "Imprimer ticket"}
+                  color="#0F766E"
+                  disabled={printing || updating}
+                  onPress={() => handlePrintOrder("manual")}
+                />
+                <ActionButton
+                  label={printing ? "Impression…" : "Réimprimer"}
+                  color="#115E59"
+                  disabled={printing || updating}
+                  onPress={() => handlePrintOrder("reprint")}
+                />
+              </>
+            )}
+
+            {!canAccept && !canPrepare && !canReady && !canCancel && !canPrint && (
               <View style={styles.notice}>
                 <Text style={styles.mutedText}>
                   {t("order.actions.none", "Aucune action restaurant requise maintenant.")}

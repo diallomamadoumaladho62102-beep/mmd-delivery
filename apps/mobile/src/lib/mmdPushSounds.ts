@@ -57,6 +57,7 @@ export function resolvePushSound(dataType?: string | null): string {
       return MMD_PUSH_SOUNDS.driverRing;
     case "restaurant_order":
     case "restaurant_order_update":
+    case "restaurant_new_order":
     case "scheduled_order":
       return MMD_PUSH_SOUNDS.restaurantRing;
     case "order_paid":

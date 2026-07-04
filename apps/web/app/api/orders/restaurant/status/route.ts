@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
-import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
-import { assertPlatformFeature } from "@/lib/platformLaunchControl";
-import { resolveRestaurantPlatformCountry } from "@/lib/platformCountryResolver";
+import { transitionRestaurantOrderStatus } from "@/lib/restaurantOrderStatusService";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ALLOWED_STATUSES = new Set(["accepted", "prepared", "ready"]);
-
-const NEXT_STATUS: Record<string, string[]> = {
-  pending: ["accepted"],
-  accepted: ["prepared"],
-  prepared: ["ready"],
-};
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -28,10 +20,6 @@ function getBearerToken(req: NextRequest) {
   const auth = req.headers.get("authorization") || "";
   if (!auth.startsWith("Bearer ")) return "";
   return auth.slice(7).trim();
-}
-
-function sameId(a: unknown, b: string) {
-  return String(a ?? "").trim() === b;
 }
 
 function getEnv(name: string) {
@@ -95,162 +83,38 @@ export async function POST(req: NextRequest) {
 
     const restaurantAccess = await assertRestaurantOrderEligible(
       supabaseAdmin,
-      user.id
+      user.id,
     );
 
     if (restaurantAccess.ok === false) {
-      return json(
-        { error: restaurantAccess.error },
-        restaurantAccess.httpStatus
-      );
+      return json({ error: restaurantAccess.error }, restaurantAccess.httpStatus);
     }
 
-    const { data: order, error: readError } = await supabaseAdmin
-      .from("orders")
-      .select(
-        "id,kind,status,driver_id,restaurant_id,restaurant_user_id,payment_status,restaurant_accept_expires_at,created_at,currency,dropoff_lat,dropoff_lng,pickup_lat,pickup_lng"
-      )
-      .eq("id", orderId)
-      .eq("kind", "food")
-      .eq("payment_status", "paid")
-      .maybeSingle();
-
-    if (readError) {
-      return json({ error: readError.message }, 500);
-    }
-
-    if (!order) {
-      return json({ error: "Order not found" }, 404);
-    }
-
-    const ownsOrder =
-      sameId(order.restaurant_id, user.id) || sameId(order.restaurant_user_id, user.id);
-
-    if (!ownsOrder) {
-      return json({ error: "Forbidden" }, 403);
-    }
-
-    const currentStatus = normalize(order.status);
-    const allowedNext = NEXT_STATUS[currentStatus] ?? [];
-
-    if (!allowedNext.includes(nextStatus)) {
-      return json(
-        {
-          error: "Invalid status transition",
-          status: currentStatus,
-          requested: nextStatus,
-        },
-        409
-      );
-    }
-
-    if (nextStatus === "accepted") {
-      const restaurantCountry = await resolveRestaurantPlatformCountry(
-        supabaseAdmin,
-        user.id
-      );
-      const platformCheck = await assertPlatformFeature(
-        supabaseAdmin,
-        restaurantCountry,
-        "restaurant",
-        "active"
-      );
-      if (platformCheck.ok === false) {
-        return json(
-          {
-            error: platformCheck.error,
-            message: platformCheck.message,
-            country_code: platformCheck.country_code,
-          },
-          403
-        );
-      }
-    }
-
-    const nowIso = new Date().toISOString();
-    const updatePayload: Record<string, unknown> = {
-      status: nextStatus,
-      updated_at: nowIso,
-    };
-
-    if (nextStatus === "accepted") {
-      updatePayload.restaurant_accepted_at = nowIso;
-    }
-    if (nextStatus === "prepared") {
-      updatePayload.restaurant_prepared_at = nowIso;
-    }
-    if (nextStatus === "ready") {
-      updatePayload.ready_at = nowIso;
-    }
-
-    const { data: updated, error: updateError } = await supabaseAdmin
-      .from("orders")
-      .update(updatePayload)
-      .eq("id", orderId)
-      .eq("kind", "food")
-      .eq("payment_status", "paid")
-      .eq("status", order.status)
-      .or(`restaurant_user_id.eq.${user.id},restaurant_id.eq.${user.id}`)
-      .select("id,status,driver_id")
-      .maybeSingle();
-
-    if (updateError) {
-      return json({ error: updateError.message }, 500);
-    }
-
-    if (!updated) {
-      return json({ error: "Order status changed. Please refresh and try again." }, 409);
-    }
-
-    const eventType =
-      nextStatus === "accepted"
-        ? "restaurant_accept"
-        : nextStatus === "prepared"
-          ? "restaurant_prepared"
-          : "restaurant_ready";
-
-    const { error: eventError } = await supabaseAdmin.from("order_events").insert({
-      order_id: orderId,
-      event_type: eventType,
-      old_status: currentStatus,
-      new_status: nextStatus,
-      note: null,
-      actor_id: user.id,
-      created_at: nowIso,
-      description:
-        nextStatus === "accepted"
-          ? "Restaurant accepted the order"
-          : nextStatus === "prepared"
-            ? "Restaurant started preparing the order"
-            : "Restaurant marked the order ready",
-      triggered_by: user.id,
-      triggered_role: "restaurant",
-      metadata: {
-        source: "api/orders/restaurant/status",
-        at: nowIso,
-      },
+    const result = await transitionRestaurantOrderStatus({
+      supabaseAdmin,
+      orderId,
+      nextStatus: nextStatus as "accepted" | "prepared" | "ready",
+      actorUserId: user.id,
+      actorRole: "restaurant",
+      source: "api/orders/restaurant/status",
+      dispatchOrigin: req.nextUrl.origin,
     });
 
-    if (eventError) {
-      console.log("order_events insert error:", eventError.message);
-    }
-
-    let smartDispatch: Awaited<ReturnType<typeof triggerSmartDispatchForOrder>> | null =
-      null;
-
-    if (nextStatus === "ready" && !updated.driver_id) {
-      smartDispatch = await triggerSmartDispatchForOrder({
-        origin: req.nextUrl.origin,
-        orderId,
-        wave: 1,
-      });
+    if (result.ok === false) {
+      return json(
+        {
+          error: result.error,
+          ...(result.details ?? {}),
+        },
+        result.httpStatus ?? 500,
+      );
     }
 
     return json({
       ok: true,
       orderId,
-      status: updated.status,
-      smartDispatch,
+      status: result.status,
+      smartDispatch: result.smartDispatch,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";

@@ -1837,7 +1837,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
           <MapActionButton
             icon="⚙️"
             label="Settings"
-            onPress={() => navigation.navigate("RestaurantSecurity")}
+            onPress={() => navigation.navigate("RestaurantOrderAutomation")}
           />
           <MapActionButton
             icon="👤"

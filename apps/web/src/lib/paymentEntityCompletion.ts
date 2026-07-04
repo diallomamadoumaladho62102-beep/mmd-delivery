@@ -1,8 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  notifyClientOrderCreated,
   notifyClientDeliveryRequestPaid,
 } from "@/lib/clientPushNotifications";
+import { completeFoodOrderAfterPayment } from "@/lib/foodOrderPaymentCompletion";
 import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
 import { scheduleDeliveryRequestDispatch, getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
@@ -60,10 +60,9 @@ async function completeOrderPayment(
     return { ok: false, error: commissions.error };
   }
 
-  await notifyClientOrderCreated({
-    supabaseAdmin,
-    userIds: [order.client_user_id, order.created_by, transaction.user_id],
+  await completeFoodOrderAfterPayment(supabaseAdmin, {
     orderId,
+    clientUserIds: [order.client_user_id, order.created_by, transaction.user_id],
     kind: order.kind,
   });
 

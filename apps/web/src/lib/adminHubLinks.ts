@@ -33,6 +33,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.drivers.read",
   },
   {
+    href: "/admin/restaurants/order-automation",
+    title: "Automation restaurant",
+    description: "Acceptation automatique, impression tickets, temps de préparation",
+    permission: "users.restaurants.manage",
+  },
+  {
     href: "/admin/restaurants",
     title: "Restaurants",
     description: "Approuver, refuser, suspendre les restaurants",
