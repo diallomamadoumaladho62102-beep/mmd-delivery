@@ -40,6 +40,7 @@ export function DriverServicesScreen() {
     food_delivery_enabled: false,
     package_delivery_enabled: false,
     taxi_rides_enabled: false,
+    accept_also_standard_rides: false,
   });
 
   const load = useCallback(async () => {
@@ -132,6 +133,14 @@ export function DriverServicesScreen() {
           value={prefs.taxi_rides_enabled}
           onValueChange={(v) => patch("taxi_rides_enabled", v)}
         />
+        {prefs.taxi_rides_enabled ? (
+          <ToggleRow
+            label="Accepter aussi les courses Standard"
+            description="Comfort, XL ou Wheelchair peuvent recevoir des courses Standard"
+            value={prefs.accept_also_standard_rides}
+            onValueChange={(v) => patch("accept_also_standard_rides", v)}
+          />
+        ) : null}
 
         {saving && <Text style={styles.saving}>Enregistrement…</Text>}
 

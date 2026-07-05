@@ -10,7 +10,8 @@ export type DriverVehicleNotificationKind =
   | "category_reactivated"
   | "vehicle_expired_age"
   | "document_expired"
-  | "document_validated";
+  | "document_validated"
+  | "taxi_accept_rejected";
 
 type PushTokenRow = {
   expo_push_token?: string | null;
@@ -132,6 +133,11 @@ function buildMessage(input: {
       return {
         title: "Document validé",
         body: `Votre document ${input.documentType ?? "véhicule"} a été validé par MMD.`,
+      };
+    case "taxi_accept_rejected":
+      return {
+        title: "Acceptation refusée",
+        body: input.reason ?? "Vous ne pouvez plus accepter cette course.",
       };
     default:
       return { title: "MMD Delivery", body: "Mise à jour véhicule chauffeur." };

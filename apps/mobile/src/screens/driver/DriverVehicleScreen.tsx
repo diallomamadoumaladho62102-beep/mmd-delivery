@@ -39,6 +39,8 @@ export function DriverVehicleScreen() {
     vehicle_type: "sedan",
     has_air_conditioning: false,
     wheelchair_accessible: false,
+    fuel_type: "gasoline",
+    nickname: "",
   });
 
   const load = useCallback(async () => {
@@ -58,6 +60,8 @@ export function DriverVehicleScreen() {
           vehicle_type: String(v.vehicle_type ?? "sedan"),
           has_air_conditioning: Boolean(v.has_air_conditioning),
           wheelchair_accessible: Boolean(v.wheelchair_accessible),
+          fuel_type: String(v.fuel_type ?? "gasoline"),
+          nickname: String(v.nickname ?? ""),
         });
       }
     } catch (error) {
@@ -84,6 +88,8 @@ export function DriverVehicleScreen() {
         vehicle_type: form.vehicle_type.trim(),
         has_air_conditioning: form.has_air_conditioning,
         wheelchair_accessible: form.wheelchair_accessible,
+        fuel_type: form.fuel_type,
+        nickname: form.nickname.trim() || null,
       });
       setCategories(data.categories);
       Alert.alert("Véhicule", "Informations enregistrées. L'éligibilité a été recalculée.");
@@ -129,6 +135,8 @@ export function DriverVehicleScreen() {
           ["license_plate", "Plaque"],
           ["seats_count", "Places passagers"],
           ["vehicle_type", "Type (sedan, suv, van, minivan)"],
+          ["fuel_type", "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)"],
+          ["nickname", "Surnom (optionnel)"],
         ].map(([key, label]) => (
           <View key={key}>
             <Text style={styles.fieldLabel}>{label}</Text>

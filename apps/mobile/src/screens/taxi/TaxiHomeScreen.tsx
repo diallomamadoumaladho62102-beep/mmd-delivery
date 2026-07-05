@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Switch,
 } from "react-native";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -92,6 +93,7 @@ export default function TaxiHomeScreen() {
     route.params?.dropoffLocationId ?? ""
   );
   const [vehicleClass, setVehicleClass] = useState<TaxiVehicleClass>("standard");
+  const [preferElectricOrHybrid, setPreferElectricOrHybrid] = useState(false);
   const [countryCode, setCountryCode] = useState(market.countryCode);
   const [currencyCode, setCurrencyCode] = useState(market.currencyCode);
   const [loading, setLoading] = useState(false);
@@ -200,6 +202,7 @@ export default function TaxiHomeScreen() {
         pickupLocationId: pickupLocationId.trim() || undefined,
         dropoffLocationId: dropoffLocationId.trim() || undefined,
         vehicleClass,
+        preferElectricOrHybrid,
         countryCode: resolvedCountry,
         countryResolution: result.country_resolution,
         quote: result.quote,
@@ -405,6 +408,36 @@ export default function TaxiHomeScreen() {
               );
             })}
           </View>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 14,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: "#334155",
+            backgroundColor: "rgba(15,23,42,0.8)",
+          }}
+        >
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+              {t("taxi.home.preferElectric", "Je préfère un véhicule électrique ou hybride")}
+            </Text>
+            <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 4 }}>
+              {t(
+                "taxi.home.preferElectricHint",
+                "Recherche prioritaire, puis bascule automatique si aucun véhicule vert n'est disponible.",
+              )}
+            </Text>
+          </View>
+          <Switch
+            value={preferElectricOrHybrid}
+            onValueChange={setPreferElectricOrHybrid}
+            trackColor={{ false: "#334155", true: "#22C55E" }}
+          />
         </View>
 
         <TouchableOpacity

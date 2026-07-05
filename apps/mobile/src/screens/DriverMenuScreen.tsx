@@ -510,7 +510,7 @@ export function DriverMenuScreen() {
           <TouchableOpacity
             activeOpacity={0.86}
             style={styles.quickCard}
-            onPress={() => navigation.navigate("DriverVehicle")}
+            onPress={() => navigation.navigate("DriverVehicles")}
           >
             <View style={styles.quickIcon}>
               <MenuIcon name="shield" />

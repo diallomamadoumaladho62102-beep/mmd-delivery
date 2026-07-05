@@ -9,6 +9,7 @@ export type DriverServicePreferences = {
   food_delivery_enabled: boolean;
   package_delivery_enabled: boolean;
   taxi_rides_enabled: boolean;
+  accept_also_standard_rides: boolean;
 };
 
 export type VehicleCategoryStatus = {
@@ -130,6 +131,77 @@ export async function updateDriverVehicle(
 
 export async function requestDriverVehicleReview(): Promise<void> {
   await authFetch("/api/driver/vehicle", { method: "POST" });
+}
+
+export type DriverVehicleListItem = {
+  id: string;
+  vehicle_make: string | null;
+  vehicle_model: string | null;
+  vehicle_year: number | null;
+  license_plate: string | null;
+  fuel_type: string;
+  vehicle_status: string;
+  nickname: string | null;
+  categories: VehicleCategoryStatus[];
+  eligible_categories: string[];
+  is_active: boolean;
+  inspection_status: string;
+  insurance_status: string;
+  registration_status: string;
+  admin_review_status: string;
+  admin_review_notes: string | null;
+};
+
+export type DriverVehicleHistoryRow = {
+  id: string;
+  action: string;
+  vehicle_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+};
+
+export async function fetchDriverVehiclesList(): Promise<{
+  vehicles: DriverVehicleListItem[];
+  active_vehicle_id: string | null;
+  is_online: boolean;
+  history: DriverVehicleHistoryRow[];
+}> {
+  const body = await authFetch("/api/driver/vehicles");
+  return {
+    vehicles: body.vehicles ?? [],
+    active_vehicle_id: body.active_vehicle_id ?? null,
+    is_online: Boolean(body.is_online),
+    history: body.history ?? [],
+  };
+}
+
+export async function addDriverVehicle(patch: Record<string, unknown>): Promise<void> {
+  await authFetch("/api/driver/vehicles", {
+    method: "POST",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function updateDriverVehicleById(
+  vehicleId: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  await authFetch(`/api/driver/vehicles/${vehicleId}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export async function deleteDriverVehicle(vehicleId: string): Promise<void> {
+  await authFetch(`/api/driver/vehicles/${vehicleId}`, { method: "DELETE" });
+}
+
+export async function setDriverActiveVehicle(vehicleId: string): Promise<string> {
+  const body = await authFetch("/api/driver/vehicles/active", {
+    method: "POST",
+    body: JSON.stringify({ vehicle_id: vehicleId }),
+  });
+  return String(body.active_vehicle_id ?? vehicleId);
 }
 
 export type TaxiCategoryAvailability = {

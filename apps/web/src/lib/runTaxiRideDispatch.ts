@@ -1,7 +1,8 @@
-import { createTaxiOffers } from "@/lib/createTaxiOffers";
+import { createTaxiOffers, sortCandidatesForElectricPreference } from "@/lib/createTaxiOffers";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { TAXI_FAVORITE_DISPATCH_TIMEOUT_SECONDS } from "@/lib/taxiPremiumDispatch";
 import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
+import { isElectricSearchActive } from "@/lib/taxiCategoryMatching";
 
 const MAX_DISPATCH_MILES = 5;
 
@@ -102,7 +103,7 @@ export async function runTaxiRideDispatch(params: {
   const { data: ride, error: rideError } = await supabase
     .from("taxi_rides")
     .select(
-      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at,premium_driver_only,is_shared_ride,shared_ride_id"
+      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,dropoff_address,driver_payout_cents,total_cents,vehicle_class,dispatch_wave,client_user_id,preferred_driver_id,favorite_dispatch_expires_at,premium_driver_only,is_shared_ride,shared_ride_id,prefer_electric_or_hybrid,electric_search_until,electric_search_expired,country_code"
     )
     .eq("id", taxiRideId)
     .maybeSingle();
@@ -139,6 +140,8 @@ export async function runTaxiRideDispatch(params: {
       message: "Taxi ride is not dispatchable",
     };
   }
+
+  await supabase.rpc("expire_taxi_electric_search_windows").catch(() => null);
 
   const premiumDriverOnly = ride.premium_driver_only === true;
 
@@ -214,11 +217,10 @@ export async function runTaxiRideDispatch(params: {
     });
 
     const { data: eligible, error: eligibleError } = await supabase.rpc(
-      "is_taxi_driver_eligible",
+      "is_taxi_driver_eligible_for_ride",
       {
         p_user_id: preferredDriverId,
-        p_vehicle_class: String(ride.vehicle_class ?? "standard"),
-        p_require_premium_driver: premiumDriverOnly,
+        p_taxi_ride_id: taxiRideId,
       }
     );
 
@@ -540,7 +542,7 @@ export async function runTaxiRideDispatch(params: {
     (taxiFeatures ?? []).map((f: { user_id: string }) => String(f.user_id))
   );
 
-  const candidates = (locations ?? [])
+  let rankedCandidates = (locations ?? [])
     .map((loc: { driver_id: string; lat: unknown; lng: unknown }) => {
       const driverId = String(loc.driver_id);
       if (!profileByUserId.has(driverId) || !taxiEnabledIds.has(driverId)) {
@@ -559,12 +561,42 @@ export async function runTaxiRideDispatch(params: {
         distanceMiles: Math.round(miles * 100) / 100,
       };
     })
-    .filter(Boolean)
-    .sort(
-      (a: { distanceMiles: number }, b: { distanceMiles: number }) =>
-        a.distanceMiles - b.distanceMiles
-    )
-    .slice(0, maxDrivers) as { driverId: string; distanceMiles: number }[];
+    .filter(Boolean) as { driverId: string; distanceMiles: number }[];
+
+  const electricActive = isElectricSearchActive({
+    preferElectricOrHybrid: ride.prefer_electric_or_hybrid === true,
+    electricSearchExpired: ride.electric_search_expired === true,
+    electricSearchUntil: ride.electric_search_until
+      ? String(ride.electric_search_until)
+      : null,
+  });
+
+  if (electricActive && rankedCandidates.length > 0) {
+    const fuelByDriver = new Map<string, string | null>();
+    for (const candidate of rankedCandidates) {
+      const { data: vehicleId } = await supabase.rpc("get_driver_active_vehicle_id", {
+        p_user_id: candidate.driverId,
+      });
+      if (!vehicleId) {
+        fuelByDriver.set(candidate.driverId, null);
+        continue;
+      }
+      const { data: vehicleRow } = await supabase
+        .from("driver_vehicles")
+        .select("fuel_type")
+        .eq("id", vehicleId)
+        .maybeSingle();
+      fuelByDriver.set(
+        candidate.driverId,
+        vehicleRow?.fuel_type ? String(vehicleRow.fuel_type) : null,
+      );
+    }
+    rankedCandidates = sortCandidatesForElectricPreference(rankedCandidates, fuelByDriver);
+  } else {
+    rankedCandidates.sort((a, b) => a.distanceMiles - b.distanceMiles);
+  }
+
+  const candidates = rankedCandidates.slice(0, maxDrivers);
 
   if (candidates.length === 0) {
     return {

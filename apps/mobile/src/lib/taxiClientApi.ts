@@ -73,6 +73,7 @@ export type TaxiQuoteInput = {
   stops?: { address?: string; lat?: number; lng?: number }[];
   sharedRide?: boolean;
   premiumDriverOnly?: boolean;
+  preferElectricOrHybrid?: boolean;
 };
 
 export function quoteTaxiRide(input: TaxiQuoteInput) {
@@ -102,9 +103,10 @@ export function createTaxiRide(
     rewardId?: string;
     stops?: { address?: string; lat?: number; lng?: number }[];
     sharedRide?: boolean;
-    premiumDriverOnly?: boolean;
-    businessAccountId?: string;
-    businessTripType?: "personal" | "business";
+  premiumDriverOnly?: boolean;
+  preferElectricOrHybrid?: boolean;
+  businessAccountId?: string;
+  businessTripType?: "personal" | "business";
   }
 ) {
   return taxiPost("/api/taxi/rides/create", {
@@ -127,6 +129,7 @@ export function createTaxiRide(
     stops: input.stops,
     sharedRide: input.sharedRide ?? false,
     premiumDriverOnly: input.premiumDriverOnly ?? false,
+    preferElectricOrHybrid: input.preferElectricOrHybrid ?? false,
     businessAccountId: input.businessAccountId,
     businessTripType: input.businessTripType ?? "personal",
   });

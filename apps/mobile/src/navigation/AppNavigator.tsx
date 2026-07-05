@@ -65,6 +65,7 @@ import { DriverRevenueHistoryScreen } from "../screens/DriverRevenueHistoryScree
 import { DriverWalletScreen } from "../screens/DriverWalletScreen";
 import { DriverServicesScreen } from "../screens/driver/DriverServicesScreen";
 import { DriverVehicleScreen } from "../screens/driver/DriverVehicleScreen";
+import { DriverVehiclesScreen } from "../screens/driver/DriverVehiclesScreen";
 import { DriverBenefitsScreen } from "../screens/DriverBenefitsScreen";
 
 import { RestaurantAuthScreen } from "../screens/RestaurantAuthScreen";
@@ -214,6 +215,7 @@ export type RootStackParamList = {
     quote: Record<string, unknown>;
     route: Record<string, unknown>;
     locationPickerResult?: MmdLocationPickerResult;
+    preferElectricOrHybrid?: boolean;
   };
   TaxiRideTracking: { rideId: string };
   TaxiHistory: undefined;
@@ -263,7 +265,8 @@ export type RootStackParamList = {
   DriverRevenueHistory: { range: "week" | "today" | "month" };
   DriverWallet: undefined;
   DriverServices: undefined;
-  DriverVehicle: undefined;
+  DriverVehicles: undefined;
+  DriverVehicle: { vehicleId?: string } | undefined;
   DriverBenefits: undefined;
 
   RestaurantHome: undefined;
@@ -1151,6 +1154,11 @@ export function AppNavigator({
           name="DriverServices"
           component={DriverServicesScreen}
           options={{ title: "Mes services" }}
+        />
+        <Stack.Screen
+          name="DriverVehicles"
+          component={DriverVehiclesScreen}
+          options={{ title: "Mes véhicules" }}
         />
         <Stack.Screen
           name="DriverVehicle"

@@ -55,6 +55,8 @@ type Body = {
   shared_ride?: boolean;
   premiumDriverOnly?: boolean;
   premium_driver_only?: boolean;
+  preferElectricOrHybrid?: boolean;
+  prefer_electric_or_hybrid?: boolean;
   businessAccountId?: string;
   business_account_id?: string;
   businessTripType?: string;
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
       body.sharedRide === true || body.shared_ride === true;
     const premiumDriverOnly =
       body.premiumDriverOnly === true || body.premium_driver_only === true;
+    const preferElectricOrHybrid =
+      body.preferElectricOrHybrid === true || body.prefer_electric_or_hybrid === true;
     const businessAccountId = String(
       body.businessAccountId ?? body.business_account_id ?? ""
     ).trim();
@@ -280,6 +284,19 @@ export async function POST(req: NextRequest) {
       body.dropoffAddress?.trim() ||
       `${route.dropoffLat}, ${route.dropoffLng}`;
 
+    let electricSearchUntil: string | null = null;
+    if (preferElectricOrHybrid) {
+      const { data: electricSeconds } = await auth.supabaseAdmin.rpc(
+        "resolve_electric_search_seconds",
+        {
+          p_country_code: countryCode,
+          p_city: null,
+        },
+      );
+      const seconds = Number(electricSeconds ?? 30);
+      electricSearchUntil = new Date(Date.now() + seconds * 1000).toISOString();
+    }
+
     const { data: ride, error: insertError } = await auth.supabaseAdmin
       .from("taxi_rides")
       .insert({
@@ -315,6 +332,9 @@ export async function POST(req: NextRequest) {
         preferred_driver_id: preferredDriverId || null,
         stop_count: route.stops.length,
         premium_driver_only: premiumDriverOnly,
+        prefer_electric_or_hybrid: preferElectricOrHybrid,
+        electric_search_until: electricSearchUntil,
+        electric_search_expired: false,
         business_account_id:
           businessTripType === "business" && businessAccountId
             ? businessAccountId

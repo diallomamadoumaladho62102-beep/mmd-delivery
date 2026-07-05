@@ -1,4 +1,5 @@
 import { DRIVER_ORDER_OFFER_TTL_SECONDS } from "@/lib/createDriverOrderOffers";
+import { taxiFuelTypeIsGreen } from "@/lib/taxiCategoryMatching";
 
 type DispatchCandidate = {
   driverId: string;
@@ -18,11 +19,9 @@ export async function createTaxiOffers(params: {
   const {
     supabase,
     taxiRideId,
-    vehicleClass,
     candidates,
     wave,
     isFavoriteDispatch,
-    premiumDriverOnly = false,
   } = params;
 
   if (candidates.length === 0) {
@@ -32,7 +31,7 @@ export async function createTaxiOffers(params: {
   const now = new Date();
   const nowIso = now.toISOString();
   const expiresAt = new Date(
-    now.getTime() + DRIVER_ORDER_OFFER_TTL_SECONDS * 1000
+    now.getTime() + DRIVER_ORDER_OFFER_TTL_SECONDS * 1000,
   ).toISOString();
 
   let created = 0;
@@ -47,17 +46,30 @@ export async function createTaxiOffers(params: {
     }
 
     const { data: eligible, error: eligibleError } = await supabase.rpc(
-      "is_taxi_driver_eligible",
+      "is_taxi_driver_eligible_for_ride",
       {
         p_user_id: driverId,
-        p_vehicle_class: vehicleClass,
-        p_require_premium_driver: premiumDriverOnly,
-      }
+        p_taxi_ride_id: taxiRideId,
+      },
     );
 
     if (eligibleError || eligible !== true) {
       skipped += 1;
       continue;
+    }
+
+    const { data: activeVehicleId } = await supabase.rpc("get_driver_active_vehicle_id", {
+      p_user_id: driverId,
+    });
+
+    let fuelType: string | null = null;
+    if (activeVehicleId) {
+      const { data: vehicleRow } = await supabase
+        .from("driver_vehicles")
+        .select("fuel_type")
+        .eq("id", activeVehicleId)
+        .maybeSingle();
+      fuelType = vehicleRow?.fuel_type ? String(vehicleRow.fuel_type) : null;
     }
 
     const { data: existing, error: existingError } = await supabase
@@ -83,6 +95,8 @@ export async function createTaxiOffers(params: {
       wave,
       distance_miles: candidate.distanceMiles,
       vehicle_class_match: true,
+      vehicle_id: activeVehicleId ?? null,
+      fuel_type: fuelType,
       expires_at: expiresAt,
       updated_at: nowIso,
       is_favorite_dispatch: isFavoriteDispatch === true,
@@ -140,4 +154,16 @@ export async function createTaxiOffers(params: {
   }
 
   return { created, refreshed, skipped };
+}
+
+export function sortCandidatesForElectricPreference<T extends { driverId: string; distanceMiles: number }>(
+  candidates: T[],
+  fuelByDriver: Map<string, string | null>,
+): T[] {
+  return [...candidates].sort((a, b) => {
+    const aGreen = taxiFuelTypeIsGreen(fuelByDriver.get(a.driverId));
+    const bGreen = taxiFuelTypeIsGreen(fuelByDriver.get(b.driverId));
+    if (aGreen !== bGreen) return aGreen ? -1 : 1;
+    return a.distanceMiles - b.distanceMiles;
+  });
 }

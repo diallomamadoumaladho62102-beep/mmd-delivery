@@ -141,6 +141,7 @@ export async function PATCH(request: NextRequest) {
         .from("driver_vehicles")
         .update({
           admin_review_status: "rejected",
+          vehicle_status: "rejected",
           admin_review_notes: String(body.notes ?? ""),
           updated_at: new Date().toISOString(),
         })
@@ -153,6 +154,57 @@ export async function PATCH(request: NextRequest) {
         action: "reject_vehicle",
         reason: String(body.notes ?? "Véhicule non conforme"),
       });
+    }
+
+    if (action === "suspend_vehicle") {
+      await supabase
+        .from("driver_vehicles")
+        .update({
+          vehicle_status: "suspended",
+          vehicle_active: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", vehicleId);
+
+      await supabase.rpc("log_driver_vehicle_history", {
+        p_driver_user_id: vehicle.driver_user_id,
+        p_vehicle_id: vehicleId,
+        p_action: "vehicle_suspended",
+        p_actor_user_id: session.userId,
+        p_metadata: { notes: body.notes ?? null },
+      });
+
+      notificationsSent += await notifyAdminCategoryAction({
+        supabaseAdmin: supabase,
+        driverUserId: String(vehicle.driver_user_id),
+        category: category || "standard",
+        action: "suspend_category",
+        reason: String(body.notes ?? "Véhicule suspendu"),
+      });
+    }
+
+    if (action === "reactivate_vehicle") {
+      await supabase
+        .from("driver_vehicles")
+        .update({
+          vehicle_status: "active",
+          vehicle_active: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", vehicleId);
+
+      await supabase.rpc("log_driver_vehicle_history", {
+        p_driver_user_id: vehicle.driver_user_id,
+        p_vehicle_id: vehicleId,
+        p_action: "vehicle_reactivated",
+        p_actor_user_id: session.userId,
+        p_metadata: {},
+      });
+
+      const recalc = await recalculateVehicleWithNotifications(supabase, vehicleId, {
+        adminAction: "unsuspend_category",
+      });
+      notificationsSent += recalc.notificationsSent;
     }
 
     if (category && ["approve_category", "suspend_category", "unsuspend_category"].includes(action)) {

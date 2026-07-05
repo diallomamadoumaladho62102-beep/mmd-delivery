@@ -5,6 +5,7 @@ export type DriverServicePreferences = {
   food_delivery_enabled: boolean;
   package_delivery_enabled: boolean;
   taxi_rides_enabled: boolean;
+  accept_also_standard_rides: boolean;
   updated_at?: string | null;
 };
 
@@ -15,6 +16,7 @@ export const DEFAULT_DRIVER_SERVICE_PREFERENCES: Omit<
   food_delivery_enabled: false,
   package_delivery_enabled: false,
   taxi_rides_enabled: false,
+  accept_also_standard_rides: false,
 };
 
 export type TaxiCategory =
@@ -59,6 +61,9 @@ export type DriverVehicleInput = {
   insurance_status: string;
   registration_status: string;
   vehicle_active: boolean;
+  fuel_type?: string;
+  vehicle_status?: string;
+  nickname?: string | null;
 };
 
 export type VehicleCategoryEligibilityResult = {

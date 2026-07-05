@@ -25,6 +25,10 @@ function extractPreferences(row: Record<string, unknown> | null, userId: string)
     taxi_rides_enabled: Boolean(
       row?.taxi_rides_enabled ?? DEFAULT_DRIVER_SERVICE_PREFERENCES.taxi_rides_enabled,
     ),
+    accept_also_standard_rides: Boolean(
+      row?.accept_also_standard_rides ??
+        DEFAULT_DRIVER_SERVICE_PREFERENCES.accept_also_standard_rides,
+    ),
     updated_at: row?.updated_at ? String(row.updated_at) : null,
   };
 }
@@ -65,6 +69,7 @@ export async function PATCH(req: NextRequest) {
     "food_delivery_enabled",
     "package_delivery_enabled",
     "taxi_rides_enabled",
+    "accept_also_standard_rides",
   ]);
   const extraKeys = Object.keys(body).filter((key) => !allowedKeys.has(key));
   if (extraKeys.length > 0) {
@@ -93,6 +98,10 @@ export async function PATCH(req: NextRequest) {
       body.taxi_rides_enabled !== undefined
         ? Boolean(body.taxi_rides_enabled)
         : current.taxi_rides_enabled,
+    accept_also_standard_rides:
+      body.accept_also_standard_rides !== undefined
+        ? Boolean(body.accept_also_standard_rides)
+        : current.accept_also_standard_rides,
   };
 
   if (!hasAnyServiceEnabled(next)) {

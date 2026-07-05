@@ -287,6 +287,7 @@ export default function TaxiQuoteScreen() {
         rewardId: rewardId ?? undefined,
         sharedRide,
         premiumDriverOnly,
+        preferElectricOrHybrid: route.params.preferElectricOrHybrid === true,
         businessAccountId:
           businessRide && businessAccountId ? businessAccountId : undefined,
         businessTripType: businessRide && businessAccountId ? "business" : "personal",
