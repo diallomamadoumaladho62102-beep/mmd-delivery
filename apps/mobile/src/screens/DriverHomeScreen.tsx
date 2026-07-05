@@ -41,6 +41,10 @@ import MarketScopePill from "../components/market/MarketScopePill";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { ensureMapboxTokenApplied } from "../lib/mapboxConfig";
 import {
+  fetchDriverServicePreferences,
+  hasAnyDriverServiceEnabled,
+} from "../lib/driverServicePreferencesApi";
+import {
   fetchDriverIdentityStatus,
   identityBlocksDriverOnline,
 } from "../lib/driverIdentityApi";
@@ -2072,6 +2076,23 @@ export function DriverHomeScreen() {
         const canGoOnline = await ensureDriverCanGoOnline(userId);
         if (!canGoOnline) {
           return;
+        }
+
+        try {
+          const servicePrefs = await fetchDriverServicePreferences();
+          if (!hasAnyDriverServiceEnabled(servicePrefs.preferences)) {
+            Alert.alert(
+              "Mes services",
+              "Activez au moins un service (Food, Colis ou Taxi) avant de passer en ligne.",
+              [
+                { text: "Configurer", onPress: () => navAny.navigate("DriverServices" as never) },
+                { text: "OK", style: "cancel" },
+              ],
+            );
+            return;
+          }
+        } catch (serviceErr) {
+          console.log("service preferences check error:", serviceErr);
         }
 
         const ok = await ensureGpsPermission();

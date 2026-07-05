@@ -51,7 +51,12 @@ async function taxiPost(path: string, body: Record<string, unknown>) {
   return out;
 }
 
-export type TaxiVehicleClass = "standard" | "xl" | "premium";
+export type TaxiVehicleClass =
+  | "standard"
+  | "comfort"
+  | "xl"
+  | "wheelchair_accessible"
+  | "premium";
 
 export type TaxiQuoteInput = {
   pickupAddress?: string;

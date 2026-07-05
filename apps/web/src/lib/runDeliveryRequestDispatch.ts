@@ -1,5 +1,6 @@
 import { createDriverDeliveryRequestOffers } from "@/lib/createDriverDeliveryRequestOffers";
 import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
+import { filterDriverIdsByServicePreference } from "@/lib/driverServiceDispatchFilter";
 
 const MAX_DISPATCH_MILES = 5;
 
@@ -246,10 +247,16 @@ export async function runDeliveryRequestDispatch(params: {
     profileByUserId.set(String((p as { user_id: string }).user_id), p as { user_id: string });
   }
 
+  const serviceEnabledDriverIds = await filterDriverIdsByServicePreference(
+    supabase,
+    Array.from(profileByUserId.keys()),
+    "package",
+  );
+
   const candidates = (locations ?? [])
     .map((loc: { driver_id: string; lat: unknown; lng: unknown }) => {
       const driverId = String(loc.driver_id);
-      if (!profileByUserId.has(driverId)) return null;
+      if (!profileByUserId.has(driverId) || !serviceEnabledDriverIds.has(driverId)) return null;
 
       const lat = toNumber(loc.lat);
       const lng = toNumber(loc.lng);

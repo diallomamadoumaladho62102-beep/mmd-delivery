@@ -498,6 +498,30 @@ export function DriverMenuScreen() {
           <TouchableOpacity
             activeOpacity={0.86}
             style={styles.quickCard}
+            onPress={() => navigation.navigate("DriverServices")}
+          >
+            <View style={styles.quickIcon}>
+              <MenuIcon name="spark" />
+            </View>
+            <Text style={styles.quickTitle}>Mes services</Text>
+            <Text style={styles.quickSub}>Food, colis, taxi</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.86}
+            style={styles.quickCard}
+            onPress={() => navigation.navigate("DriverVehicle")}
+          >
+            <View style={styles.quickIcon}>
+              <MenuIcon name="shield" />
+            </View>
+            <Text style={styles.quickTitle}>Mon véhicule</Text>
+            <Text style={styles.quickSub}>Catégories taxi</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.86}
+            style={styles.quickCard}
             onPress={() => navigation.navigate("DriverWallet")}
           >
             <View style={styles.quickIcon}>

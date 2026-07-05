@@ -10,6 +10,7 @@ import {
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
+import { filterDriverIdsByServicePreference } from "@/lib/driverServiceDispatchFilter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -387,11 +388,18 @@ export async function POST(req: NextRequest) {
       profileByUserId.set(String((p as any).user_id), p);
     }
 
+    const dispatchService = orderKind === "food" ? "food" : "package";
+    const serviceEnabledDriverIds = await filterDriverIdsByServicePreference(
+      supabase,
+      Array.from(profileByUserId.keys()),
+      dispatchService,
+    );
+
     const allCandidates = (locations ?? [])
       .map((loc: any) => {
         const driverId = String(loc.driver_id);
         const profile = profileByUserId.get(driverId);
-        if (!profile) return null;
+        if (!profile || !serviceEnabledDriverIds.has(driverId)) return null;
 
         const lat = toNumber(loc.lat);
         const lng = toNumber(loc.lng);

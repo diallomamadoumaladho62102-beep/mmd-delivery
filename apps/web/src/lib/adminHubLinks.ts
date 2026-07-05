@@ -171,6 +171,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "taxi_pricing.read",
   },
   {
+    href: "/admin/driver-vehicles",
+    title: "Véhicules & catégories taxi",
+    description: "Admissibilité Standard, Comfort, XL, Wheelchair, documents véhicule",
+    permission: "taxi_drivers.read",
+  },
+  {
     href: "/admin/taxi-drivers",
     title: "Taxi Drivers",
     description: "Chauffeurs taxi, classes véhicule et éligibilité",

@@ -63,6 +63,8 @@ import DriverW9Screen from "../screens/DriverW9Screen";
 import { DriverRevenueDetailsScreen } from "../screens/DriverRevenueDetailsScreen";
 import { DriverRevenueHistoryScreen } from "../screens/DriverRevenueHistoryScreen";
 import { DriverWalletScreen } from "../screens/DriverWalletScreen";
+import { DriverServicesScreen } from "../screens/driver/DriverServicesScreen";
+import { DriverVehicleScreen } from "../screens/driver/DriverVehicleScreen";
 import { DriverBenefitsScreen } from "../screens/DriverBenefitsScreen";
 
 import { RestaurantAuthScreen } from "../screens/RestaurantAuthScreen";
@@ -260,6 +262,8 @@ export type RootStackParamList = {
   DriverRevenueDetails: { range: "week" | "today" | "month" };
   DriverRevenueHistory: { range: "week" | "today" | "month" };
   DriverWallet: undefined;
+  DriverServices: undefined;
+  DriverVehicle: undefined;
   DriverBenefits: undefined;
 
   RestaurantHome: undefined;
@@ -1142,6 +1146,16 @@ export function AppNavigator({
         <Stack.Screen
           name="DriverRevenueHistory"
           component={DriverRevenueHistoryScreen}
+        />
+        <Stack.Screen
+          name="DriverServices"
+          component={DriverServicesScreen}
+          options={{ title: "Mes services" }}
+        />
+        <Stack.Screen
+          name="DriverVehicle"
+          component={DriverVehicleScreen}
+          options={{ title: "Mon véhicule" }}
         />
         <Stack.Screen name="DriverWallet" component={DriverWalletScreen} />
         <Stack.Screen name="DriverBenefits" component={DriverBenefitsScreen} />

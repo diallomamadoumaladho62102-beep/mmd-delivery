@@ -31,6 +31,10 @@ import {
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
 import { rowDirection } from "../../i18n/rtl";
+import {
+  fetchTaxiCategoryAvailability,
+  type TaxiCategoryAvailability,
+} from "../../lib/driverServicePreferencesApi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
@@ -53,6 +57,12 @@ export default function TaxiHomeScreen() {
   }, [refreshWithCurrentLocation]);
 
   useEffect(() => {
+    void fetchTaxiCategoryAvailability()
+      .then(setCategoryAvailability)
+      .catch(() => setCategoryAvailability([]));
+  }, []);
+
+  useEffect(() => {
     if (showDevCountryPicker) return;
     setCountryCode(market.countryCode);
     setCurrencyCode(market.currencyCode);
@@ -62,11 +72,17 @@ export default function TaxiHomeScreen() {
     () =>
       [
         { key: "standard" as const, label: t("taxi.home.standard", "Standard"), emoji: "🚕" },
+        { key: "comfort" as const, label: t("taxi.home.comfort", "Comfort"), emoji: "✨" },
         { key: "xl" as const, label: t("taxi.home.xl", "XL"), emoji: "🚐" },
-        { key: "premium" as const, label: t("taxi.home.premium", "Premium"), emoji: "✨" },
+        {
+          key: "wheelchair_accessible" as const,
+          label: t("taxi.home.wheelchair", "Wheelchair Accessible"),
+          emoji: "♿",
+        },
       ] as const,
     [t]
   );
+  const [categoryAvailability, setCategoryAvailability] = useState<TaxiCategoryAvailability[]>([]);
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [pickupLocationId, setPickupLocationId] = useState(
@@ -335,23 +351,38 @@ export default function TaxiHomeScreen() {
           <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
             {t("taxi.home.vehicle", "Vehicle")}
           </Text>
-          <View style={{ flexDirection: rowDirection(), gap: 10 }}>
+          <View style={{ flexDirection: rowDirection(), flexWrap: "wrap", gap: 10 }}>
             {CLASSES.map((item) => {
               const selected = vehicleClass === item.key;
+              const availability = categoryAvailability.find((c) => c.category === item.key);
+              const unavailable = availability && !availability.available;
               return (
                 <TouchableOpacity
                   key={item.key}
-                  onPress={() => setVehicleClass(item.key)}
+                  onPress={() => {
+                    if (unavailable) {
+                      Alert.alert(
+                        item.label,
+                        availability?.unavailable_message ??
+                          "Aucun chauffeur disponible pour cette catégorie actuellement.",
+                      );
+                      return;
+                    }
+                    setVehicleClass(item.key);
+                  }}
                   style={{
-                    flex: 1,
+                    width: "48%",
                     padding: 12,
                     borderRadius: 14,
                     borderWidth: 1,
-                    borderColor: selected ? "#38BDF8" : "#334155",
+                    borderColor: selected ? "#38BDF8" : unavailable ? "#64748B" : "#334155",
                     backgroundColor: selected
                       ? "rgba(56,189,248,0.12)"
-                      : "rgba(15,23,42,0.8)",
+                      : unavailable
+                        ? "rgba(100,116,139,0.15)"
+                        : "rgba(15,23,42,0.8)",
                     alignItems: "center",
+                    opacity: unavailable ? 0.7 : 1,
                   }}
                 >
                   <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
@@ -360,10 +391,16 @@ export default function TaxiHomeScreen() {
                       color: selected ? "#E0F2FE" : "#CBD5E1",
                       fontWeight: "700",
                       marginTop: 4,
+                      textAlign: "center",
                     }}
                   >
                     {item.label}
                   </Text>
+                  {unavailable ? (
+                    <Text style={{ color: "#94A3B8", fontSize: 11, marginTop: 4, textAlign: "center" }}>
+                      Indisponible
+                    </Text>
+                  ) : null}
                 </TouchableOpacity>
               );
             })}
