@@ -62,3 +62,15 @@ test("notification audit table exists", () => {
   const sql = fs.readFileSync(hardeningMigration, "utf8");
   assert.match(sql, /driver_vehicle_notification_events/i);
 });
+
+test("accept-offer RPCs re-check service preferences", () => {
+  const acceptGuardMigration = path.join(
+    repoRoot,
+    "supabase",
+    "migrations",
+    "20260728140000_dispatch_accept_service_guard.sql",
+  );
+  const sql = fs.readFileSync(acceptGuardMigration, "utf8");
+  assert.match(sql, /is_driver_service_enabled\(v_driver_id, 'food'\)/i);
+  assert.match(sql, /is_driver_service_enabled\(v_driver_id, 'package'\)/i);
+});

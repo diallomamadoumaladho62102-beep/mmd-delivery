@@ -112,6 +112,8 @@ $$;
 -- 4) Recalculate with country/city rules + return transition snapshot
 -- ---------------------------------------------------------------------------
 
+drop function if exists public.recalculate_vehicle_category_eligibility(uuid);
+
 create or replace function public.recalculate_vehicle_category_eligibility(p_vehicle_id uuid)
 returns jsonb
 language plpgsql

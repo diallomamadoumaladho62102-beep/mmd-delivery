@@ -82,7 +82,15 @@ export async function updateDriverServicePreferences(
     method: "PATCH",
     body: JSON.stringify(patch),
   });
-  return body.preferences;
+  const preferences = body.preferences as DriverServicePreferences;
+  await AsyncStorage.setItem(
+    PREFS_CACHE_KEY,
+    JSON.stringify({
+      preferences,
+      has_any_enabled: hasAnyDriverServiceEnabled(preferences),
+    }),
+  );
+  return preferences;
 }
 
 export async function fetchDriverVehicleSnapshot(): Promise<DriverVehicleSnapshot> {
@@ -111,11 +119,13 @@ export async function updateDriverVehicle(
     method: "PATCH",
     body: JSON.stringify(patch),
   });
-  return {
+  const snapshot = {
     vehicle: body.vehicle ?? null,
     categories: body.categories ?? [],
     eligible_categories: body.eligible_categories ?? [],
   };
+  await AsyncStorage.setItem(VEHICLE_CACHE_KEY, JSON.stringify(snapshot));
+  return snapshot;
 }
 
 export async function requestDriverVehicleReview(): Promise<void> {
