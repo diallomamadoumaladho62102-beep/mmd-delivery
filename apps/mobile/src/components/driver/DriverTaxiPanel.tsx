@@ -28,6 +28,7 @@ import {
 } from "../../lib/taxiDriverApi";
 import { subscribeTaxiOfferPushRefresh } from "../../lib/taxiPushEvents";
 import { DriverWaitTimerPanel } from "./DriverWaitTimerPanel";
+import { TaxiSafetyRecordingPanel } from "../taxi/TaxiSafetyRecordingPanel";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -269,6 +270,8 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                 )}
               </View>
             ) : null}
+
+            <TaxiSafetyRecordingPanel rideId={rideId} role="driver" rideActive />
 
             <View style={styles.row}>
               <TouchableOpacity

@@ -22,6 +22,7 @@ import {
   formatTaxiCents,
 } from "../../lib/taxiClientApi";
 import { supabase } from "../../lib/supabase";
+import { TaxiSafetyRecordingPanel } from "../../components/taxi/TaxiSafetyRecordingPanel";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiRideTracking">;
 type TrackingRoute = RouteProp<RootStackParamList, "TaxiRideTracking">;
@@ -36,6 +37,7 @@ const CANCELABLE = new Set([
 
 const PAYMENT_PENDING = new Set(["pending_payment", "processing"]);
 const PAID_PAYMENT = new Set(["paid", "refunded"]);
+const ACTIVE_SAFETY_STATUSES = new Set(["accepted", "driver_arrived", "in_progress"]);
 
 export default function TaxiRideTrackingScreen() {
   const navigation = useNavigation<Nav>();
@@ -340,6 +342,14 @@ export default function TaxiRideTrackingScreen() {
             <Text style={{ color: "#FDE68A", marginTop: 10 }}>
               {t("taxi.ride.lookingForDriver", "Looking for a driver…")}
             </Text>
+          ) : null}
+
+          {ride?.driver_id && ACTIVE_SAFETY_STATUSES.has(status) ? (
+            <TaxiSafetyRecordingPanel
+              rideId={rideId}
+              role="client"
+              rideActive
+            />
           ) : null}
 
           <View style={{ flexDirection: rowDirection(), gap: 10, marginTop: 16 }}>

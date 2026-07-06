@@ -237,6 +237,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "taxi_drivers.read",
   },
   {
+    href: "/admin/ride-safety-recording-rules",
+    title: "Ride Safety Recordings",
+    description: "Enregistrements audio/vidéo — conformité régionale et conservation",
+    permission: "taxi_drivers.read",
+  },
+  {
     href: "/admin/taxi-taxes",
     title: "Taxi Taxes",
     description: "Taxes par pays — TVA, sales tax placeholders",

@@ -23,6 +23,10 @@
     {
       "path": "/api/cron/taxi-active-ride-compliance",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/ride-safety-recording-retention",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
