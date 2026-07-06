@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 /**
- * Production SQL integrity checks via Supabase service role.
- * Loads apps/web/.env.local by default.
+ * Production SQL integrity checks via Supabase REST (read-only).
  */
 import fs from "node:fs";
 import path from "node:path";
-import { createClient } from "@supabase/supabase-js";
 
 function loadEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -30,79 +28,55 @@ function loadEnvFile(filePath) {
 const repoRoot = path.resolve(import.meta.dirname, "..");
 loadEnvFile(path.join(repoRoot, "apps/web/.env.local"));
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!url || !key) {
+if (!baseUrl || !serviceKey) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   process.exit(1);
 }
 
-const supabase = createClient(url, key, { auth: { persistSession: false } });
-
-async function countMismatch(table, expectedRole) {
-  const joinTable = table === "driver" ? "driver_profiles" : "restaurant_profiles";
-  const userCol = "user_id";
-
-  const { data, error } = await supabase
-    .from(joinTable)
-    .select(`${userCol}, profiles!inner(role)`);
-
-  if (error) {
-    throw new Error(`${table}_mismatch_query_failed: ${error.message}`);
+async function restGet(table, query = "select=*") {
+  const url = `${baseUrl}/rest/v1/${table}?${query}`;
+  const res = await fetch(url, {
+    headers: {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${table} ${res.status}: ${body}`);
   }
+  return res.json();
+}
 
+async function countRoleMismatch(joinTable, expectedRole) {
+  const rows = await restGet(joinTable, "select=user_id");
   let mismatches = 0;
-  for (const row of data ?? []) {
-    const role = (row as { profiles?: { role?: string } }).profiles?.role;
+
+  for (const row of rows) {
+    const userId = String(row.user_id ?? "");
+    if (!userId) continue;
+
+    const profiles = await restGet("profiles", `select=role&id=eq.${userId}`);
+    const role = profiles[0]?.role ?? "";
     if (role !== expectedRole) mismatches += 1;
   }
+
   return mismatches;
 }
 
-async function countPrivilegedNonStaff() {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, role, is_founder")
-    .in("role", ["admin", "ops", "support", "finance", "review"]);
-
-  if (error) throw new Error(error.message);
-  return (data ?? []).length;
-}
-
-async function verifyGuardFunction() {
-  const { data, error } = await supabase.rpc("guard_profiles_privilege_columns");
-  // RPC may not be exposed — fallback: check migration applied
-  if (error) {
-    const { data: migrations, error: migErr } = await supabase
-      .from("schema_migrations" as never)
-      .select("version")
-      .eq("version", "20260731300000");
-    if (migErr) {
-      return { ok: true, note: "guard verified via migration list file (RPC not callable)" };
-    }
-    return {
-      ok: Array.isArray(migrations) && migrations.length > 0,
-      note: "migration 20260731300000 present",
-    };
-  }
-  return { ok: true, note: String(data) };
-}
-
-async function verifyStripeIdempotencyIndex() {
-  // Indirect: duplicate stripe external refs should be 0 for paid rows
-  const { data, error } = await supabase
-    .from("payment_transactions")
-    .select("external_reference")
-    .eq("provider", "stripe")
-    .not("external_reference", "is", null);
-
-  if (error) throw new Error(error.message);
-
+async function verifyStripeDuplicates() {
+  const rows = await restGet(
+    "payment_transactions",
+    "select=external_reference&provider=eq.stripe&external_reference=not.is.null"
+  );
   const seen = new Set();
   let dupes = 0;
-  for (const row of data ?? []) {
-    const ref = String((row as { external_reference?: string }).external_reference);
+  for (const row of rows) {
+    const ref = String(row.external_reference ?? "");
     if (seen.has(ref)) dupes += 1;
     seen.add(ref);
   }
@@ -113,10 +87,10 @@ async function main() {
   const checks = [];
   let failed = 0;
 
-  console.log("Production SQL verification\n");
+  console.log("Production SQL verification (read-only)\n");
 
   try {
-    const driverMismatch = await countMismatch("driver", "driver");
+    const driverMismatch = await countRoleMismatch("driver_profiles", "driver");
     checks.push({
       name: "driver_profiles role alignment",
       value: driverMismatch,
@@ -127,7 +101,7 @@ async function main() {
   }
 
   try {
-    const restaurantMismatch = await countMismatch("restaurant", "restaurant");
+    const restaurantMismatch = await countRoleMismatch("restaurant_profiles", "restaurant");
     checks.push({
       name: "restaurant_profiles role alignment",
       value: restaurantMismatch,
@@ -138,19 +112,21 @@ async function main() {
   }
 
   try {
-    const privileged = await countPrivilegedNonStaff();
+    const privileged = await restGet(
+      "profiles",
+      "select=id,role&role=in.(admin,ops,support,finance,review)"
+    );
     checks.push({
-      name: "privileged role rows (manual staff review)",
-      value: privileged,
+      name: "privileged role rows (staff review)",
+      value: privileged.length,
       ok: true,
-      note: "non-zero OK if legitimate staff accounts",
     });
   } catch (e) {
     checks.push({ name: "privileged role rows", ok: false, error: String(e) });
   }
 
   try {
-    const dupes = await verifyStripeIdempotencyIndex();
+    const dupes = await verifyStripeDuplicates();
     checks.push({
       name: "duplicate stripe external_reference rows",
       value: dupes,
@@ -160,23 +136,21 @@ async function main() {
     checks.push({ name: "stripe idempotency data", ok: false, error: String(e) });
   }
 
-  const { data: roleCounts, error: roleErr } = await supabase
-    .from("profiles")
-    .select("role")
-    .in("role", ["client", "driver", "restaurant"]);
-
-  if (!roleErr) {
+  try {
+    const roles = await restGet("profiles", "select=role&role=in.(client,driver,restaurant)");
     const tally = {};
-    for (const row of roleCounts ?? []) {
-      const role = String((row as { role?: string }).role ?? "unknown");
+    for (const row of roles) {
+      const role = String(row.role ?? "unknown");
       tally[role] = (tally[role] ?? 0) + 1;
     }
     checks.push({ name: "profile role distribution", value: tally, ok: true });
+  } catch (e) {
+    checks.push({ name: "profile role distribution", ok: false, error: String(e) });
   }
 
   for (const check of checks) {
     const status = check.ok ? "PASS" : "FAIL";
-    console.log(`${status} ${check.name}`, check.value ?? check.error ?? check.note ?? "");
+    console.log(`${status} ${check.name}`, check.value ?? check.error ?? "");
     if (!check.ok) failed += 1;
   }
 
