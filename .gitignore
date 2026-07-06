@@ -34,6 +34,7 @@ docs/production/tools/
 .expo/
 apps/mobile/.expo/
 apps/mobile/android/
+.eas-tmp/
 
 # Local UI validation captures (never commit)
 docs/screenshots/

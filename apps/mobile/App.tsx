@@ -1,17 +1,18 @@
 // apps/mobile/App.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Constants from "expo-constants";
 import { ActivityIndicator, Image, Text, View } from "react-native";
-// i18n boot
+
+// i18n boot (no AppNavigator import — defer Mapbox/native stack)
 import "./src/i18n";
 
-import { AppNavigator } from "./src/navigation/AppNavigator";
+import { AppRootShell } from "./src/components/AppRootShell";
 import { supabase } from "./src/lib/supabase";
 import { getSelectedRole } from "./src/lib/authRole";
-import { API_BASE_URL } from "./lib/apiBase";
 import { setupNotifications, registerUserPushToken } from "./src/lib/notifications";
 import { mmdAudio } from "./src/lib/mmdAudio";
 import { syncLocaleForRole } from "./src/i18n";
+import { logStartupProbe, reportBootError } from "./src/lib/startupProbe";
 
 type Role = "client" | "driver" | "restaurant";
 
@@ -27,11 +28,6 @@ function toRole(value: unknown): Role {
     return normalized;
   }
   return "client";
-}
-
-function isExpoGo(): boolean {
-  const ownership = (Constants as { appOwnership?: string } | undefined)?.appOwnership;
-  return ownership === "expo";
 }
 
 function Splash(): React.JSX.Element {
@@ -73,44 +69,6 @@ function Splash(): React.JSX.Element {
   );
 }
 
-function FatalFallback({ message }: { message: string }): React.JSX.Element {
-  return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <Text style={{ textAlign: "center" }}>{message}</Text>
-    </View>
-  );
-}
-
-function getStripeGateSafe(): React.ComponentType<{
-  initialRouteName: string;
-}> | null {
-  try {
-    const stripeGateModule = require("./src/lib/StripeGate");
-    const StripeGate = stripeGateModule?.default ?? stripeGateModule;
-
-    if (!StripeGate) {
-      if (__DEV__) {
-        console.log("[App] StripeGate module loaded but export is empty");
-      }
-      return null;
-    }
-
-    return StripeGate;
-  } catch (error) {
-    if (__DEV__) {
-      console.log("[App] StripeGate load error:", error);
-    }
-    return null;
-  }
-}
-
 export default function App(): React.JSX.Element {
   const [session, setSession] = useState<SessionLike>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -119,15 +77,9 @@ export default function App(): React.JSX.Element {
   const lastRoleRef = useRef<Role | null>(null);
   const syncingLocaleRef = useRef(false);
 
-  if (__DEV__) {
-    console.log("MMD MOBILE API_BASE_URL =", API_BASE_URL);
-    console.log("SUPABASE_URL =", process.env.EXPO_PUBLIC_SUPABASE_URL);
-    console.log("SUPABASE_KEY_OK =", !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
-    console.log(
-      "MAPBOX_TOKEN_OK =",
-      !!String(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "").trim()
-    );
-  }
+  useEffect(() => {
+    logStartupProbe("app-mounted");
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -136,7 +88,7 @@ export default function App(): React.JSX.Element {
       setupNotifications();
       void mmdAudio.init();
     } catch (error) {
-      if (__DEV__) console.log("[App] setupNotifications error:", error);
+      reportBootError("setup-notifications", error);
     }
 
     const syncLocale = async (): Promise<void> => {
@@ -149,7 +101,7 @@ export default function App(): React.JSX.Element {
         await syncLocaleForRole(role as never);
         lastRoleRef.current = role;
       } catch (error) {
-        if (__DEV__) console.log("[App] syncLocale error:", error);
+        reportBootError("sync-locale", error);
 
         try {
           await syncLocaleForRole("client" as never);
@@ -165,18 +117,7 @@ export default function App(): React.JSX.Element {
         if (!isMounted || registerInFlightRef.current) return;
 
         registerInFlightRef.current = true;
-
-        if (__DEV__) console.log("👤 USER ID (session):", userId);
-
-        const expoToken = await registerUserPushToken();
-
-        if (__DEV__) {
-          console.log(
-            expoToken
-              ? "✅ Token enregistré dans user_push_tokens"
-              : "❌ Pas de token push disponible ou rôle non supporté",
-          );
-        }
+        await registerUserPushToken();
       } finally {
         registerInFlightRef.current = false;
       }
@@ -193,15 +134,17 @@ export default function App(): React.JSX.Element {
         const currentSession = (data.session ?? null) as SessionLike;
         setSession(currentSession);
         setAuthLoading(false);
+        logStartupProbe("auth-ready");
 
         const userId = currentSession?.user?.id;
         if (userId) void registerToken(userId);
       } catch (error) {
-        if (__DEV__) console.log("[App] getSession error:", error);
+        reportBootError("get-session", error);
 
         if (!isMounted) return;
 
         setAuthLoading(false);
+        logStartupProbe("auth-ready-with-error");
       }
     })();
 
@@ -249,46 +192,21 @@ export default function App(): React.JSX.Element {
     if (!navPreviewActive) return;
     const timer = setTimeout(() => {
       try {
-        // Dev-only: avoid importing expo-dev-client in release builds.
         require("expo-dev-client").hideMenu();
-      } catch {
-        // ignore dev-client menu errors
-      }
+      } catch {}
     }, 50);
     return () => clearTimeout(timer);
   }, [navPreviewActive]);
 
-  // Important production fix:
-  // Do not open ClientHome by default for every authenticated user.
-  // AppNavigator resolves the real role and redirects properly.
   const initialRouteName: "RoleSelect" | "DriverMap" = navPreviewActive
     ? "DriverMap"
     : "RoleSelect";
 
   const navKey = session?.user?.id ? `authed-${session.user.id}` : "guest";
-  const StripeGate = useMemo(() => getStripeGateSafe(), []);
 
   if (authLoading) {
     return <Splash />;
   }
 
-  if (isExpoGo()) {
-    return (
-      <View style={{ flex: 1 }}>
-        <AppNavigator key={navKey} initialRouteName={initialRouteName} />
-      </View>
-    );
-  }
-
-  if (!StripeGate) {
-    return (
-      <FatalFallback message="Module Stripe indisponible. Vérifie StripeGate et relance l’application." />
-    );
-  }
-
-  return (
-    <View style={{ flex: 1 }}>
-      <StripeGate key={navKey} initialRouteName={initialRouteName} />
-    </View>
-  );
+  return <AppRootShell initialRouteName={initialRouteName} navKey={navKey} />;
 }

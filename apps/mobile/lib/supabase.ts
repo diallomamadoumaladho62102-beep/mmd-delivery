@@ -15,15 +15,21 @@ const supabaseAnonKey =
   String(extra.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? extra.supabaseAnonKey ?? "").trim();
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  // Important: ne pas throw côté runtime mobile (ça casse l’app),
-  // on log pour debug.
-  console.warn("⚠️ Missing Supabase env:", {
+  console.error("[MMD-BOOT] Missing Supabase env:", {
     hasUrl: !!supabaseUrl,
     hasAnonKey: !!supabaseAnonKey,
   });
 }
 
-export const supabase = createClient(supabaseUrl!, supabaseAnonKey!, {
+// Never throw at module import — supabase-js throws if url/key are empty.
+const resolvedSupabaseUrl =
+  supabaseUrl || "https://invalid.supabase.co";
+const resolvedSupabaseAnonKey =
+  supabaseAnonKey || "missing-supabase-anon-key";
+
+export const supabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+export const supabase = createClient(resolvedSupabaseUrl, resolvedSupabaseAnonKey, {
   auth: {
     storage: AsyncStorage,
     persistSession: true,
