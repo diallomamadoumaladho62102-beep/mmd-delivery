@@ -136,37 +136,48 @@ create or replace function public.resolve_taxi_dispatch_preference_rules(
   p_city text default null
 )
 returns public.taxi_dispatch_preference_rules
-language sql
+language plpgsql
 stable
 security definer
 set search_path = public
 as $$
-  select coalesce(
-    (
-      select r.*
-      from public.taxi_dispatch_preference_rules r
-      where r.is_active = true
-        and lower(coalesce(r.country_code, '')) = lower(coalesce(p_country_code, ''))
-        and lower(coalesce(r.city, '')) = lower(coalesce(p_city, ''))
-      limit 1
-    ),
-    (
-      select r.*
-      from public.taxi_dispatch_preference_rules r
-      where r.is_active = true
-        and lower(coalesce(r.country_code, '')) = lower(coalesce(p_country_code, ''))
-        and coalesce(r.city, '') = ''
-      limit 1
-    ),
-    (
-      select r.*
-      from public.taxi_dispatch_preference_rules r
-      where r.is_active = true
-        and r.country_code is null
-        and r.city is null
-      limit 1
-    )
-  );
+declare
+  v_rules public.taxi_dispatch_preference_rules%rowtype;
+begin
+  select *
+  into v_rules
+  from public.taxi_dispatch_preference_rules r
+  where r.is_active = true
+    and lower(coalesce(r.country_code, '')) = lower(coalesce(p_country_code, ''))
+    and lower(coalesce(r.city, '')) = lower(coalesce(p_city, ''))
+  limit 1;
+
+  if found then
+    return v_rules;
+  end if;
+
+  select *
+  into v_rules
+  from public.taxi_dispatch_preference_rules r
+  where r.is_active = true
+    and lower(coalesce(r.country_code, '')) = lower(coalesce(p_country_code, ''))
+    and coalesce(r.city, '') = ''
+  limit 1;
+
+  if found then
+    return v_rules;
+  end if;
+
+  select *
+  into v_rules
+  from public.taxi_dispatch_preference_rules r
+  where r.is_active = true
+    and r.country_code is null
+    and r.city is null
+  limit 1;
+
+  return v_rules;
+end;
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -201,8 +212,7 @@ begin
 
   v_drop_order := coalesce(v_ride.preferences_drop_order, '[]'::jsonb);
 
-  select r.enabled_preferences into v_enabled
-  from public.resolve_taxi_dispatch_preference_rules(v_ride.country_code, null) r;
+  v_enabled := (public.resolve_taxi_dispatch_preference_rules(v_ride.country_code, null)).enabled_preferences;
 
   v_dropped := array[]::text[];
   if jsonb_array_length(v_drop_order) > 0 then
