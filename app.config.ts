@@ -3,6 +3,30 @@ const ANDROID_PACKAGE = "com.maladho2025.mmddelivery";
 const IOS_BUNDLE_ID = "com.maladho2025.mmddelivery";
 const STRIPE_MERCHANT_ID = "merchant.com.maladho2025.mmddelivery";
 
+/** iOS rejects custom push sounds longer than 30s — keep long rings for in-app audio only. */
+const MMD_EXPO_NOTIFICATION_SOUNDS = [
+  "./apps/mobile/assets/sounds/mmd_signature_driver_60s.wav",
+  "./apps/mobile/assets/sounds/mmd_signature_restaurant_120s.wav",
+  "./apps/mobile/assets/sounds/mmd_signature_client.wav",
+  "./apps/mobile/assets/sounds/mmd_chat_notification.wav",
+  "./apps/mobile/assets/sounds/mmd_payment_success.wav",
+  "./apps/mobile/assets/sounds/mmd_payment_failed.wav",
+  "./apps/mobile/assets/sounds/mmd_success.wav",
+  "./apps/mobile/assets/sounds/mmd_error.wav",
+  "./apps/mobile/assets/sounds/mmd_warning.wav",
+  "./apps/mobile/assets/sounds/mmd_promo.wav",
+  "./apps/mobile/assets/sounds/mmd_reward.wav",
+  "./apps/mobile/assets/sounds/mmd_system_notification.wav",
+  "./apps/mobile/assets/sounds/mmd_ride_accepted.wav",
+  "./apps/mobile/assets/sounds/mmd_order_accepted.wav",
+  "./apps/mobile/assets/sounds/mmd_driver_arrived.wav",
+  "./apps/mobile/assets/sounds/mmd_delivery_completed.wav",
+];
+
+const MMD_IOS_NOTIFICATION_SOUNDS = MMD_EXPO_NOTIFICATION_SOUNDS.filter(
+  (path) => !path.includes("_60s") && !path.includes("_120s"),
+);
+
 function cleanEnv(value) {
   return String(value ?? "").trim();
 }
@@ -82,6 +106,10 @@ export default ({ config }) => {
   const existingAndroid = config.android ?? {};
   const existingExtra = config.extra ?? {};
   const existingInfoPlist = existingIos.infoPlist ?? {};
+  const isIosEasBuild = cleanEnv(env.EAS_BUILD_PLATFORM).toLowerCase() === "ios";
+  const expoNotificationSounds = isIosEasBuild
+    ? MMD_IOS_NOTIFICATION_SOUNDS
+    : MMD_EXPO_NOTIFICATION_SOUNDS;
 
   return {
     ...config,
@@ -100,24 +128,7 @@ export default ({ config }) => {
       [
         "expo-notifications",
         {
-          sounds: [
-            "./apps/mobile/assets/sounds/mmd_signature_driver_60s.wav",
-            "./apps/mobile/assets/sounds/mmd_signature_restaurant_120s.wav",
-            "./apps/mobile/assets/sounds/mmd_signature_client.wav",
-            "./apps/mobile/assets/sounds/mmd_chat_notification.wav",
-            "./apps/mobile/assets/sounds/mmd_payment_success.wav",
-            "./apps/mobile/assets/sounds/mmd_payment_failed.wav",
-            "./apps/mobile/assets/sounds/mmd_success.wav",
-            "./apps/mobile/assets/sounds/mmd_error.wav",
-            "./apps/mobile/assets/sounds/mmd_warning.wav",
-            "./apps/mobile/assets/sounds/mmd_promo.wav",
-            "./apps/mobile/assets/sounds/mmd_reward.wav",
-            "./apps/mobile/assets/sounds/mmd_system_notification.wav",
-            "./apps/mobile/assets/sounds/mmd_ride_accepted.wav",
-            "./apps/mobile/assets/sounds/mmd_order_accepted.wav",
-            "./apps/mobile/assets/sounds/mmd_driver_arrived.wav",
-            "./apps/mobile/assets/sounds/mmd_delivery_completed.wav",
-          ],
+          sounds: expoNotificationSounds,
         },
       ],
       [
@@ -167,6 +178,8 @@ export default ({ config }) => {
           "MMD Delivery accède à vos photos pour joindre des preuves ou images au chat.",
         NSPhotoLibraryAddUsageDescription:
           "MMD Delivery peut enregistrer des photos de preuve dans votre galerie.",
+        NSMicrophoneUsageDescription:
+          "MMD Delivery utilise le micro pour les enregistrements de sécurité optionnels pendant une course.",
         NSLocationWhenInUseUsageDescription:
           "MMD Delivery utilise votre position pour localiser le chauffeur et afficher les livraisons proches.",
         NSLocationAlwaysAndWhenInUseUsageDescription:

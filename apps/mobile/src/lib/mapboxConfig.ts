@@ -1,7 +1,13 @@
 import type MapboxGL from "@rnmapbox/maps";
+import Constants from "expo-constants";
 
 const MAPBOX_TOKEN =
-  process.env.EXPO_PUBLIC_MAPBOX_TOKEN || process.env.MAPBOX_TOKEN || "";
+  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ||
+  process.env.MAPBOX_TOKEN ||
+  String(
+    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)
+      ?.EXPO_PUBLIC_MAPBOX_TOKEN ?? "",
+  ).trim();
 
 let mapboxModule: typeof MapboxGL | null = null;
 let tokenApplied = false;

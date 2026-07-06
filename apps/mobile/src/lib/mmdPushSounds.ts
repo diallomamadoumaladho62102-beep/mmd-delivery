@@ -1,10 +1,21 @@
+import { Platform } from "react-native";
+
 /**
  * MMD Signature Collection — mobile push sound filenames.
  * Keep in sync with apps/web/src/lib/mmdPushSounds.ts
+ *
+ * iOS bundles only include notification sounds <= 30s (see app.config.ts).
+ * Long rings stay available for in-app playback via MMD_SOUND_ASSETS.
  */
 export const MMD_PUSH_SOUNDS = {
-  driverRing: "mmd_signature_driver_60s.wav",
-  restaurantRing: "mmd_signature_restaurant_120s.wav",
+  driverRing:
+    Platform.OS === "ios"
+      ? "mmd_ride_accepted.wav"
+      : "mmd_signature_driver_60s.wav",
+  restaurantRing:
+    Platform.OS === "ios"
+      ? "mmd_order_accepted.wav"
+      : "mmd_signature_restaurant_120s.wav",
   client: "mmd_signature_client.wav",
   chat: "mmd_chat_notification.wav",
   paymentSuccess: "mmd_payment_success.wav",

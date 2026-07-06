@@ -2,8 +2,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Constants from "expo-constants";
 import { ActivityIndicator, Image, Text, View } from "react-native";
-import * as DevClient from "expo-dev-client";
-
 // i18n boot
 import "./src/i18n";
 
@@ -251,7 +249,8 @@ export default function App(): React.JSX.Element {
     if (!navPreviewActive) return;
     const timer = setTimeout(() => {
       try {
-        DevClient.hideMenu();
+        // Dev-only: avoid importing expo-dev-client in release builds.
+        require("expo-dev-client").hideMenu();
       } catch {
         // ignore dev-client menu errors
       }

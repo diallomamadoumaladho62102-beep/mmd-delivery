@@ -12,8 +12,6 @@
         "expo-notifications",
         {
           "sounds": [
-            "./assets/sounds/mmd_signature_driver_60s.wav",
-            "./assets/sounds/mmd_signature_restaurant_120s.wav",
             "./assets/sounds/mmd_signature_client.wav",
             "./assets/sounds/mmd_chat_notification.wav",
             "./assets/sounds/mmd_payment_success.wav",
