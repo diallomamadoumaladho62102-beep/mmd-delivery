@@ -19,6 +19,7 @@ import {
   fetchTaxiCountryLaunchConfig,
 } from "@/lib/taxiLaunchControl";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,7 +62,45 @@ type Body = {
   business_account_id?: string;
   businessTripType?: string;
   business_trip_type?: string;
+  clientPreferences?: Partial<TaxiClientPreferences> & Record<string, unknown>;
+  client_preferences?: Partial<TaxiClientPreferences> & Record<string, unknown>;
+  ambiancePreference?: TaxiAmbiancePreference;
+  ambiance_preference?: TaxiAmbiancePreference;
 };
+
+function parseClientPreferences(body: Body): {
+  clientPreferences: Record<string, boolean>;
+  ambiance: TaxiAmbiancePreference;
+  preferElectricOrHybrid: boolean;
+} {
+  const raw = (body.clientPreferences ?? body.client_preferences ?? {}) as Record<string, unknown>;
+  const ambiance = String(
+    body.ambiancePreference ?? body.ambiance_preference ?? raw.ambiance ?? "none",
+  ).trim() as TaxiAmbiancePreference;
+
+  const clientPreferences: Record<string, boolean> = {
+    non_smoking_driver: Boolean(raw.non_smoking_driver),
+    child_seat_required: Boolean(raw.child_seat_required),
+    pets_allowed: Boolean(raw.pets_allowed),
+    large_luggage: Boolean(raw.large_luggage),
+    air_conditioning_required: Boolean(raw.air_conditioning_required),
+    phone_charger_requested: Boolean(raw.phone_charger_requested),
+    prefer_quiet_vehicle: Boolean(raw.prefer_quiet_vehicle),
+  };
+
+  const preferElectricOrHybrid =
+    body.preferElectricOrHybrid === true ||
+    body.prefer_electric_or_hybrid === true ||
+    Boolean(raw.prefer_electric_or_hybrid);
+
+  return {
+    clientPreferences,
+    ambiance: ["quiet", "music", "conversation", "none"].includes(ambiance)
+      ? ambiance
+      : "none",
+    preferElectricOrHybrid,
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -91,8 +130,8 @@ export async function POST(req: NextRequest) {
       body.sharedRide === true || body.shared_ride === true;
     const premiumDriverOnly =
       body.premiumDriverOnly === true || body.premium_driver_only === true;
-    const preferElectricOrHybrid =
-      body.preferElectricOrHybrid === true || body.prefer_electric_or_hybrid === true;
+    const parsedPrefs = parseClientPreferences(body);
+    const preferElectricOrHybrid = parsedPrefs.preferElectricOrHybrid;
     const businessAccountId = String(
       body.businessAccountId ?? body.business_account_id ?? ""
     ).trim();
@@ -335,6 +374,8 @@ export async function POST(req: NextRequest) {
         prefer_electric_or_hybrid: preferElectricOrHybrid,
         electric_search_until: electricSearchUntil,
         electric_search_expired: false,
+        client_preferences: parsedPrefs.clientPreferences,
+        ambiance_preference: parsedPrefs.ambiance,
         business_account_id:
           businessTripType === "business" && businessAccountId
             ? businessAccountId

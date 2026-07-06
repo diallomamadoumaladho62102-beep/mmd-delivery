@@ -41,6 +41,11 @@ export function DriverVehicleScreen() {
     wheelchair_accessible: false,
     fuel_type: "gasoline",
     nickname: "",
+    child_seat_available: false,
+    pets_allowed: false,
+    large_luggage: false,
+    phone_charger_available: false,
+    quiet_vehicle: false,
   });
 
   const load = useCallback(async () => {
@@ -62,6 +67,11 @@ export function DriverVehicleScreen() {
           wheelchair_accessible: Boolean(v.wheelchair_accessible),
           fuel_type: String(v.fuel_type ?? "gasoline"),
           nickname: String(v.nickname ?? ""),
+          child_seat_available: Boolean(v.child_seat_available),
+          pets_allowed: Boolean(v.pets_allowed),
+          large_luggage: Boolean(v.large_luggage),
+          phone_charger_available: Boolean(v.phone_charger_available),
+          quiet_vehicle: Boolean(v.quiet_vehicle),
         });
       }
     } catch (error) {
@@ -90,6 +100,11 @@ export function DriverVehicleScreen() {
         wheelchair_accessible: form.wheelchair_accessible,
         fuel_type: form.fuel_type,
         nickname: form.nickname.trim() || null,
+        child_seat_available: form.child_seat_available,
+        pets_allowed: form.pets_allowed,
+        large_luggage: form.large_luggage,
+        phone_charger_available: form.phone_charger_available,
+        quiet_vehicle: form.quiet_vehicle,
       });
       setCategories(data.categories);
       Alert.alert("Véhicule", "Informations enregistrées. L'éligibilité a été recalculée.");
@@ -162,6 +177,25 @@ export function DriverVehicleScreen() {
             onValueChange={(v) => setForm((prev) => ({ ...prev, wheelchair_accessible: v }))}
           />
         </View>
+
+        <Text style={[styles.title, { marginTop: 16, fontSize: 18 }]}>Capacités & préférences client</Text>
+        {(
+          [
+            ["child_seat_available", "Siège enfant disponible"],
+            ["pets_allowed", "Animaux acceptés"],
+            ["large_luggage", "Grand espace bagages"],
+            ["phone_charger_available", "Chargeur téléphone"],
+            ["quiet_vehicle", "Véhicule silencieux"],
+          ] as const
+        ).map(([key, label]) => (
+          <View style={styles.row} key={key}>
+            <Text style={styles.fieldLabel}>{label}</Text>
+            <Switch
+              value={form[key as keyof typeof form] as boolean}
+              onValueChange={(v) => setForm((prev) => ({ ...prev, [key]: v }))}
+            />
+          </View>
+        ))}
 
         <TouchableOpacity style={styles.primaryBtn} disabled={saving} onPress={() => void save()}>
           <Text style={styles.primaryBtnText}>{saving ? "Enregistrement…" : "Enregistrer"}</Text>

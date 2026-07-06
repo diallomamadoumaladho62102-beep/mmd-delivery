@@ -104,8 +104,10 @@ export function createTaxiRide(
     stops?: { address?: string; lat?: number; lng?: number }[];
     sharedRide?: boolean;
   premiumDriverOnly?: boolean;
-  preferElectricOrHybrid?: boolean;
-  businessAccountId?: string;
+    preferElectricOrHybrid?: boolean;
+    clientPreferences?: Record<string, boolean>;
+    ambiancePreference?: "quiet" | "music" | "conversation" | "none";
+    businessAccountId?: string;
   businessTripType?: "personal" | "business";
   }
 ) {
@@ -130,6 +132,8 @@ export function createTaxiRide(
     sharedRide: input.sharedRide ?? false,
     premiumDriverOnly: input.premiumDriverOnly ?? false,
     preferElectricOrHybrid: input.preferElectricOrHybrid ?? false,
+    clientPreferences: input.clientPreferences ?? {},
+    ambiancePreference: input.ambiancePreference ?? "none",
     businessAccountId: input.businessAccountId,
     businessTripType: input.businessTripType ?? "personal",
   });

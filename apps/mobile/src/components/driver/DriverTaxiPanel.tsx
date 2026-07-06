@@ -38,7 +38,8 @@ type TaxiOfferRow = {
   distance_miles?: number | null;
   is_favorite_dispatch?: boolean | null;
   wave?: number | null;
-    taxi_rides?: {
+  client_preference_lines?: Array<{ emoji: string; label: string }>;
+  taxi_rides?: {
     pickup_address?: string | null;
     dropoff_address?: string | null;
     driver_payout_cents?: number | null;
@@ -50,6 +51,7 @@ type TaxiOfferRow = {
     is_shared_ride?: boolean | null;
     premium_driver_only?: boolean | null;
     business_trip_type?: string | null;
+    client_preference_lines?: Array<{ emoji: string; label: string }>;
     shared_passengers?: {
       segment_order: number;
       pickup_address?: string | null;
@@ -254,6 +256,19 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                 String(activeRide.currency ?? "USD")
               )}
             </Text>
+            {(activeRide.client_preference_lines as Array<{ emoji: string; label: string }> | undefined)
+              ?.length ? (
+              <View style={styles.prefsBox}>
+                <Text style={styles.prefsTitle}>Client Preferences</Text>
+                {(activeRide.client_preference_lines as Array<{ emoji: string; label: string }>).map(
+                  (line) => (
+                    <Text key={line.label} style={styles.prefLine}>
+                      {line.emoji} {line.label}
+                    </Text>
+                  ),
+                )}
+              </View>
+            ) : null}
 
             <View style={styles.row}>
               <TouchableOpacity
@@ -348,6 +363,19 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                       String(ride?.currency ?? "USD")
                     )}
                   </Text>
+                  {(offer.client_preference_lines ?? ride?.client_preference_lines ?? []).length >
+                  0 ? (
+                    <View style={styles.prefsBox}>
+                      <Text style={styles.prefsTitle}>Client Preferences</Text>
+                      {(offer.client_preference_lines ?? ride?.client_preference_lines ?? []).map(
+                        (line: { emoji: string; label: string }) => (
+                          <Text key={line.label} style={styles.prefLine}>
+                            {line.emoji} {line.label}
+                          </Text>
+                        ),
+                      )}
+                    </View>
+                  ) : null}
                   <View style={styles.row}>
                     <TouchableOpacity
                       style={styles.rejectBtn}
@@ -483,4 +511,15 @@ const styles = StyleSheet.create({
   },
   rejectText: { color: "#E2E8F0", fontWeight: "700" },
   empty: { color: "#64748B", marginTop: 8, fontSize: 13 },
+  prefsBox: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "rgba(15,23,42,0.65)",
+    borderWidth: 1,
+    borderColor: "#475569",
+    gap: 4,
+  },
+  prefsTitle: { color: "#E2E8F0", fontWeight: "800", marginBottom: 2 },
+  prefLine: { color: "#CBD5E1", fontSize: 12 },
 });

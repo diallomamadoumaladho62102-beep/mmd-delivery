@@ -1,8 +1,31 @@
 import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { formatClientPreferencesForDriver } from "@/lib/taxiClientPreferences";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+function enrichOffer(offer: Record<string, unknown>) {
+  const ride = offer.taxi_rides as Record<string, unknown> | null;
+  if (!ride) return offer;
+
+  const preference_lines = formatClientPreferencesForDriver({
+    clientPreferences: ride.client_preferences as Record<string, unknown>,
+    preferElectricOrHybrid: ride.prefer_electric_or_hybrid === true,
+    ambiance: String(ride.ambiance_preference ?? "none"),
+  });
+
+  return {
+    ...offer,
+    client_preference_lines: preference_lines,
+    taxi_rides: {
+      ...ride,
+      client_preference_lines: preference_lines,
+      preferences_client_message: ride.preferences_client_message ?? null,
+      preferences_unmet: ride.preferences_unmet ?? [],
+    },
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,6 +60,12 @@ export async function GET(req: NextRequest) {
           business_trip_type,
           is_shared_ride,
           shared_ride_id,
+          client_preferences,
+          ambiance_preference,
+          prefer_electric_or_hybrid,
+          preferences_client_message,
+          preferences_unmet,
+          preferences_dispatch_stage,
           taxi_ride_stops (
             id,
             stop_order,
@@ -57,7 +86,7 @@ export async function GET(req: NextRequest) {
       return taxiJson({ ok: false, error: error.message }, 500);
     }
 
-    const offers = data ?? [];
+    const offers = (data ?? []).map((offer) => enrichOffer(offer as Record<string, unknown>));
     for (const offer of offers) {
       const ride = offer.taxi_rides as Record<string, unknown> | null;
       const sharedRideId = ride?.shared_ride_id;

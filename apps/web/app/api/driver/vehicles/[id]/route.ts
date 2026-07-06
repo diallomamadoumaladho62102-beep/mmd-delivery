@@ -26,6 +26,10 @@ const DRIVER_WRITABLE_FIELDS = new Set([
   "luggage_capacity",
   "fuel_type",
   "nickname",
+  "pets_allowed",
+  "large_luggage",
+  "phone_charger_available",
+  "quiet_vehicle",
 ]);
 
 const DRIVER_FORBIDDEN_FIELDS = new Set([

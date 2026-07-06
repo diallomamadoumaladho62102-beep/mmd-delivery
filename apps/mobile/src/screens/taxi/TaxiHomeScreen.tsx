@@ -94,6 +94,18 @@ export default function TaxiHomeScreen() {
   );
   const [vehicleClass, setVehicleClass] = useState<TaxiVehicleClass>("standard");
   const [preferElectricOrHybrid, setPreferElectricOrHybrid] = useState(false);
+  const [clientPreferences, setClientPreferences] = useState({
+    non_smoking_driver: false,
+    child_seat_required: false,
+    pets_allowed: false,
+    large_luggage: false,
+    air_conditioning_required: false,
+    phone_charger_requested: false,
+    prefer_quiet_vehicle: false,
+  });
+  const [ambiancePreference, setAmbiancePreference] = useState<
+    "none" | "quiet" | "music" | "conversation"
+  >("none");
   const [countryCode, setCountryCode] = useState(market.countryCode);
   const [currencyCode, setCurrencyCode] = useState(market.currencyCode);
   const [loading, setLoading] = useState(false);
@@ -203,6 +215,8 @@ export default function TaxiHomeScreen() {
         dropoffLocationId: dropoffLocationId.trim() || undefined,
         vehicleClass,
         preferElectricOrHybrid,
+        clientPreferences,
+        ambiancePreference,
         countryCode: resolvedCountry,
         countryResolution: result.country_resolution,
         quote: result.quote,
@@ -408,6 +422,73 @@ export default function TaxiHomeScreen() {
               );
             })}
           </View>
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+            {t("taxi.home.optionalPreferences", "Préférences facultatives")}
+          </Text>
+          {(
+            [
+              ["non_smoking_driver", "Chauffeur non-fumeur"],
+              ["child_seat_required", "Siège enfant disponible"],
+              ["pets_allowed", "Animaux acceptés"],
+              ["large_luggage", "Grand espace bagages"],
+              ["air_conditioning_required", "Climatisation obligatoire"],
+              ["phone_charger_requested", "Chargeur téléphone"],
+              ["prefer_quiet_vehicle", "Véhicule silencieux"],
+            ] as const
+          ).map(([key, label]) => (
+            <View
+              key={key}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingVertical: 8,
+              }}
+            >
+              <Text style={{ color: "#E2E8F0", flex: 1, paddingRight: 12 }}>{label}</Text>
+              <Switch
+                value={clientPreferences[key]}
+                onValueChange={(value) =>
+                  setClientPreferences((prev) => ({ ...prev, [key]: value }))
+                }
+                trackColor={{ false: "#334155", true: "#38BDF8" }}
+              />
+            </View>
+          ))}
+        </View>
+
+        <View style={{ gap: 8 }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+            {t("taxi.home.ambiance", "Ambiance pendant le trajet")}
+          </Text>
+          {(
+            [
+              ["none", "🙂 Aucune préférence"],
+              ["quiet", "🔇 Trajet calme"],
+              ["music", "🎵 Musique"],
+              ["conversation", "🗣️ Discussion"],
+            ] as const
+          ).map(([key, label]) => {
+            const selected = ambiancePreference === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setAmbiancePreference(key)}
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: selected ? "#38BDF8" : "#334155",
+                  backgroundColor: selected ? "rgba(56,189,248,0.12)" : "rgba(15,23,42,0.8)",
+                }}
+              >
+                <Text style={{ color: selected ? "#E0F2FE" : "#CBD5E1" }}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View

@@ -10,6 +10,7 @@ import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDisp
 import { recordInboundPaymentWalletEntries } from "@/lib/inboundWalletBridge";
 import type { PaymentEntityType, PaymentTransactionRow } from "@/lib/paymentTypes";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
+import { initializeTaxiRidePreferenceDispatch } from "@/lib/taxiPreferenceDispatch";
 
 export async function completePaidEntityFromTransaction(
   supabaseAdmin: SupabaseClient,
@@ -129,11 +130,16 @@ async function completeTaxiRidePayment(
 
   const { data: ride } = await supabaseAdmin
     .from("taxi_rides")
-    .select("id,payment_status,is_scheduled,status")
+    .select("id,payment_status,is_scheduled,status,country_code")
     .eq("id", rideId)
     .maybeSingle();
 
   if (ride && String(ride.payment_status ?? "").toLowerCase() === "paid") {
+    await initializeTaxiRidePreferenceDispatch(
+      supabaseAdmin,
+      rideId,
+      ride.country_code ? String(ride.country_code) : null,
+    );
     await runTaxiRideDispatch({ supabase: supabaseAdmin, taxiRideId: rideId });
   }
 

@@ -216,6 +216,8 @@ export type RootStackParamList = {
     route: Record<string, unknown>;
     locationPickerResult?: MmdLocationPickerResult;
     preferElectricOrHybrid?: boolean;
+    clientPreferences?: Record<string, boolean>;
+    ambiancePreference?: "quiet" | "music" | "conversation" | "none";
   };
   TaxiRideTracking: { rideId: string };
   TaxiHistory: undefined;
