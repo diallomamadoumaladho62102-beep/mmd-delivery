@@ -7,6 +7,8 @@ import {
 import { stripe } from "@/lib/stripe";
 import { scheduleDeliveryRequestDispatch } from "@/lib/scheduleDeliveryRequestDispatch";
 import { notifyClientDeliveryRequestPaid } from "@/lib/clientPushNotifications";
+import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
+import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
 import {
   isAmountVerificationFailure,
   verifyStripePaidMatchesDeliveryRequest,
@@ -519,6 +521,39 @@ export async function POST(req: NextRequest) {
         { error: "Payment update could not be verified after write" },
         500
       );
+    }
+
+    const clientId = String(
+      deliveryRequest.client_user_id ?? deliveryRequest.created_by ?? user.id
+    ).trim();
+
+    const syncResult = await syncPaidDeliveryRequestOrder(
+      supabaseAdmin,
+      deliveryRequest.id,
+      clientId
+    );
+
+    if (syncResult.ok === false) {
+      console.error("[confirm-delivery-request-paid] sync order failed", {
+        delivery_request_id: deliveryRequest.id,
+        error: syncResult.error,
+      });
+      return json({ error: syncResult.error }, 500);
+    }
+
+    const commissions = await ensureOrderCommissionsReady(
+      supabaseAdmin,
+      syncResult.orderId,
+      "confirm-delivery-request-paid"
+    );
+
+    if (commissions.ok === false) {
+      console.error("[confirm-delivery-request-paid] commissions failed", {
+        delivery_request_id: deliveryRequest.id,
+        order_id: syncResult.orderId,
+        error: commissions.error,
+      });
+      return json({ error: commissions.error }, 500);
     }
 
     scheduleDeliveryRequestDispatch({

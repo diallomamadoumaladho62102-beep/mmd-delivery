@@ -628,19 +628,40 @@ export default function OrderPage() {
     setSuccessMsg(null);
 
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .update({ status: nextStatus })
-        .eq("id", order.id)
-        .select(ORDER_SELECT)
-        .single();
+      const token = await getAccessToken();
 
-      if (error || !data) {
-        console.error("update status error restaurant", error);
-        throw error ?? new Error("Mise à jour du statut échouée.");
+      const response = await fetch("/api/orders/restaurant/status", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          status: nextStatus,
+        }),
+        cache: "no-store",
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error || "Mise à jour du statut échouée."
+        );
       }
 
-      const nextOrder = data as Order;
+      const { data: refreshed, error: refreshError } = await supabase
+        .from("orders")
+        .select(ORDER_SELECT)
+        .eq("id", order.id)
+        .single();
+
+      if (refreshError || !refreshed) {
+        throw refreshError ?? new Error("Impossible de recharger la commande.");
+      }
+
+      const nextOrder = refreshed as Order;
 
       setOrder(nextOrder);
       setDriverId(nextOrder.driver_id ?? null);
