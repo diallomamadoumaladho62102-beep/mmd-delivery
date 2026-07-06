@@ -71,6 +71,15 @@ export const TAXI_CLIENT_PREFERENCE_LABELS: Record<
   },
 };
 
+export const TAXI_CLIENT_PREFERENCE_KEYS = Object.keys(
+  TAXI_CLIENT_PREFERENCE_LABELS,
+) as TaxiClientPreferenceKey[];
+
+export const DEFAULT_ENABLED_PREFERENCES: Record<TaxiClientPreferenceKey, boolean> =
+  Object.fromEntries(
+    TAXI_CLIENT_PREFERENCE_KEYS.map((key) => [key, true]),
+  ) as Record<TaxiClientPreferenceKey, boolean>;
+
 export const TAXI_AMBIANCE_LABELS: Record<
   Exclude<TaxiAmbiancePreference, "none">,
   { emoji: string; label: string; driverLabel: string }
@@ -114,7 +123,7 @@ export function getEnforcedPreferences(params: {
   }
 
   const enforced: TaxiClientPreferences = {};
-  for (const key of Object.keys(merged) as TaxiClientPreferenceKey[]) {
+  for (const key of Object.keys(TAXI_CLIENT_PREFERENCE_LABELS) as TaxiClientPreferenceKey[]) {
     if (!merged[key]) continue;
     if (enabled[key] === false) continue;
     if (dropped.has(key)) continue;

@@ -264,6 +264,23 @@ export default function TaxiRideTrackingScreen() {
             <Text style={{ color: "#FCA5A5", marginTop: 8 }}>{loadError}</Text>
           ) : null}
 
+          {ride?.preferences_client_message ? (
+            <View
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: "rgba(59,130,246,0.12)",
+                borderWidth: 1,
+                borderColor: "rgba(59,130,246,0.35)",
+              }}
+            >
+              <Text style={{ color: "#BFDBFE", lineHeight: 20 }}>
+                {String(ride.preferences_client_message)}
+              </Text>
+            </View>
+          ) : null}
+
           {awaitingPayment ? (
             <View
               style={{

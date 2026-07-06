@@ -133,6 +133,21 @@ export async function requestDriverVehicleReview(): Promise<void> {
   await authFetch("/api/driver/vehicle", { method: "POST" });
 }
 
+export async function fetchDriverCapabilities(): Promise<{ non_smoking: boolean }> {
+  const body = await authFetch("/api/driver/capabilities");
+  return { non_smoking: Boolean(body.non_smoking) };
+}
+
+export async function updateDriverCapabilities(
+  patch: Record<string, unknown>,
+): Promise<{ non_smoking: boolean }> {
+  const body = await authFetch("/api/driver/capabilities", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return { non_smoking: Boolean(body.non_smoking) };
+}
+
 export type DriverVehicleListItem = {
   id: string;
   vehicle_make: string | null;

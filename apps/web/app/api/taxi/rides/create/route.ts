@@ -5,6 +5,7 @@ import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
+import { resolveTaxiPickupCity } from "@/lib/taxiCityDetection";
 import {
   assertTaxiQuotePriceMatches,
   snapshotFromQuoteRpc,
@@ -323,13 +324,21 @@ export async function POST(req: NextRequest) {
       body.dropoffAddress?.trim() ||
       `${route.dropoffLat}, ${route.dropoffLng}`;
 
+    const pickupCity = await resolveTaxiPickupCity({
+      supabaseAdmin: auth.supabaseAdmin,
+      pickupLocationId: locationInput.pickupLocationId,
+      pickupLat: route.pickupLat,
+      pickupLng: route.pickupLng,
+      pickupAddress,
+    });
+
     let electricSearchUntil: string | null = null;
     if (preferElectricOrHybrid) {
       const { data: electricSeconds } = await auth.supabaseAdmin.rpc(
         "resolve_electric_search_seconds",
         {
           p_country_code: countryCode,
-          p_city: null,
+          p_city: pickupCity,
         },
       );
       const seconds = Number(electricSeconds ?? 30);
@@ -345,6 +354,7 @@ export async function POST(req: NextRequest) {
         pickup_address: pickupAddress,
         pickup_lat: route.pickupLat,
         pickup_lng: route.pickupLng,
+        pickup_city: pickupCity,
         pickup_location_id: locationInput.pickupLocationId,
         dropoff_address: dropoffAddress,
         dropoff_lat: route.dropoffLat,

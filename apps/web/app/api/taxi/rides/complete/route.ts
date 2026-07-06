@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { getTaxiRideId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
+import { recordTaxiPreferenceStats } from "@/lib/taxiPreferenceDispatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,14 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: message }, 400);
     }
 
+    const { data: rideBeforeComplete } = await auth.supabaseAdmin
+      .from("taxi_rides")
+      .select(
+        "id,status,client_preferences,ambiance_preference,country_code,vehicle_class,assigned_fuel_type,prefer_electric_or_hybrid",
+      )
+      .eq("id", rideId)
+      .maybeSingle();
+
     const { data, error } = await auth.supabaseUser.rpc("driver_complete_taxi_ride", {
       p_ride_id: rideId,
     });
@@ -34,6 +43,12 @@ export async function POST(req: NextRequest) {
     if (!result?.ok) {
       const mapped = mapTaxiRpcError(result?.message ?? result?.error ?? "");
       return taxiJson({ ok: false, error: mapped.message }, mapped.status);
+    }
+
+    if (rideBeforeComplete) {
+      await recordTaxiPreferenceStats(auth.supabaseAdmin, rideBeforeComplete).catch((err) => {
+        console.log("[taxi preferences] stats error:", err instanceof Error ? err.message : err);
+      });
     }
 
     await logTaxiEventServer(auth.supabaseAdmin, {

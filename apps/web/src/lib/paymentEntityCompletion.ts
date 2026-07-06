@@ -130,7 +130,7 @@ async function completeTaxiRidePayment(
 
   const { data: ride } = await supabaseAdmin
     .from("taxi_rides")
-    .select("id,payment_status,is_scheduled,status,country_code")
+    .select("id,payment_status,is_scheduled,status,country_code,pickup_city")
     .eq("id", rideId)
     .maybeSingle();
 
@@ -139,6 +139,7 @@ async function completeTaxiRidePayment(
       supabaseAdmin,
       rideId,
       ride.country_code ? String(ride.country_code) : null,
+      ride.pickup_city ? String(ride.pickup_city) : null,
     );
     await runTaxiRideDispatch({ supabase: supabaseAdmin, taxiRideId: rideId });
   }

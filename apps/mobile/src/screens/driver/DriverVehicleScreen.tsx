@@ -13,7 +13,9 @@ import {
 } from "react-native";
 import {
   fetchDriverVehicleSnapshot,
+  fetchDriverCapabilities,
   requestDriverVehicleReview,
+  updateDriverCapabilities,
   updateDriverVehicle,
   type VehicleCategoryStatus,
 } from "../../lib/driverServicePreferencesApi";
@@ -46,12 +48,16 @@ export function DriverVehicleScreen() {
     large_luggage: false,
     phone_charger_available: false,
     quiet_vehicle: false,
+    non_smoking: false,
   });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchDriverVehicleSnapshot();
+      const [data, capabilities] = await Promise.all([
+        fetchDriverVehicleSnapshot(),
+        fetchDriverCapabilities().catch(() => ({ non_smoking: false })),
+      ]);
       setCategories(data.categories);
       const v = data.vehicle;
       if (v) {
@@ -72,7 +78,10 @@ export function DriverVehicleScreen() {
           large_luggage: Boolean(v.large_luggage),
           phone_charger_available: Boolean(v.phone_charger_available),
           quiet_vehicle: Boolean(v.quiet_vehicle),
+          non_smoking: capabilities.non_smoking,
         });
+      } else {
+        setForm((prev) => ({ ...prev, non_smoking: capabilities.non_smoking }));
       }
     } catch (error) {
       Alert.alert("Erreur", error instanceof Error ? error.message : "Chargement impossible");
@@ -88,24 +97,27 @@ export function DriverVehicleScreen() {
   const save = async () => {
     setSaving(true);
     try {
-      const data = await updateDriverVehicle({
-        vehicle_make: form.vehicle_make.trim(),
-        vehicle_model: form.vehicle_model.trim(),
-        vehicle_year: Number(form.vehicle_year) || null,
-        vehicle_color: form.vehicle_color.trim(),
-        license_plate: form.license_plate.trim(),
-        seats_count: Number(form.seats_count) || 4,
-        vehicle_type: form.vehicle_type.trim(),
-        has_air_conditioning: form.has_air_conditioning,
-        wheelchair_accessible: form.wheelchair_accessible,
-        fuel_type: form.fuel_type,
-        nickname: form.nickname.trim() || null,
-        child_seat_available: form.child_seat_available,
-        pets_allowed: form.pets_allowed,
-        large_luggage: form.large_luggage,
-        phone_charger_available: form.phone_charger_available,
-        quiet_vehicle: form.quiet_vehicle,
-      });
+      const [data] = await Promise.all([
+        updateDriverVehicle({
+          vehicle_make: form.vehicle_make.trim(),
+          vehicle_model: form.vehicle_model.trim(),
+          vehicle_year: Number(form.vehicle_year) || null,
+          vehicle_color: form.vehicle_color.trim(),
+          license_plate: form.license_plate.trim(),
+          seats_count: Number(form.seats_count) || 4,
+          vehicle_type: form.vehicle_type.trim(),
+          has_air_conditioning: form.has_air_conditioning,
+          wheelchair_accessible: form.wheelchair_accessible,
+          fuel_type: form.fuel_type,
+          nickname: form.nickname.trim() || null,
+          child_seat_available: form.child_seat_available,
+          pets_allowed: form.pets_allowed,
+          large_luggage: form.large_luggage,
+          phone_charger_available: form.phone_charger_available,
+          quiet_vehicle: form.quiet_vehicle,
+        }),
+        updateDriverCapabilities({ non_smoking: form.non_smoking }),
+      ]);
       setCategories(data.categories);
       Alert.alert("Véhicule", "Informations enregistrées. L'éligibilité a été recalculée.");
     } catch (error) {
@@ -179,6 +191,13 @@ export function DriverVehicleScreen() {
         </View>
 
         <Text style={[styles.title, { marginTop: 16, fontSize: 18 }]}>Capacités & préférences client</Text>
+        <View style={styles.row}>
+          <Text style={styles.fieldLabel}>Chauffeur non-fumeur</Text>
+          <Switch
+            value={form.non_smoking}
+            onValueChange={(v) => setForm((prev) => ({ ...prev, non_smoking: v }))}
+          />
+        </View>
         {(
           [
             ["child_seat_available", "Siège enfant disponible"],

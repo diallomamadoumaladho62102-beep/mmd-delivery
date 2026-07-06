@@ -231,6 +231,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "taxi_countries.read",
   },
   {
+    href: "/admin/taxi-dispatch-preferences",
+    title: "Taxi Dispatch Preferences",
+    description: "Préférences client — délai élargissement, ordre suppression, stats",
+    permission: "taxi_drivers.read",
+  },
+  {
     href: "/admin/taxi-taxes",
     title: "Taxi Taxes",
     description: "Taxes par pays — TVA, sales tax placeholders",

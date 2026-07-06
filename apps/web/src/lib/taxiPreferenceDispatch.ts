@@ -45,11 +45,12 @@ export async function initializeTaxiRidePreferenceDispatch(
   supabase: SupabaseClient,
   taxiRideId: string,
   countryCode: string | null,
+  pickupCity?: string | null,
 ): Promise<void> {
   await supabase.rpc("initialize_taxi_ride_preference_dispatch", {
     p_ride_id: taxiRideId,
     p_country_code: countryCode,
-    p_city: null,
+    p_city: pickupCity ?? null,
   });
 }
 
