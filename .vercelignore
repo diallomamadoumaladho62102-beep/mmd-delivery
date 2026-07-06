@@ -1,0 +1,11 @@
+apps/mobile
+android
+docs
+supabase
+scripts
+*.md
+!apps/web/**
+.git
+.expo
+apps/mobile/artifacts
+docs/screenshots
