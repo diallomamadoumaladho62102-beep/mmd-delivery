@@ -8,6 +8,7 @@ import {
 } from "@/lib/deliveryRequestDriver";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
+import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,21 +91,23 @@ export async function POST(req: NextRequest) {
     }
 
     let proofPhotoUrl: string | null = null;
-    if (
-      requestGate.leave_at_door === true &&
-      String(requestGate.completion_reason ?? "").toLowerCase() === "left_at_door"
-    ) {
-      const fromBody = String(body.proof_photo_url ?? "").trim();
-      const fromDeposit = String(requestGate.dropoff_photo_url ?? "").trim();
-      proofPhotoUrl = fromBody || fromDeposit || null;
-      if (!proofPhotoUrl) {
-        return json({ error: "Missing proof_photo_url" }, 400);
+    try {
+      if (
+        requestGate.leave_at_door === true &&
+        String(requestGate.completion_reason ?? "").toLowerCase() === "left_at_door"
+      ) {
+        const fromBody = String(body.proof_photo_url ?? "").trim();
+        const fromDeposit = String(requestGate.dropoff_photo_url ?? "").trim();
+        proofPhotoUrl = normalizeDeliveryProofPhotoUrl(fromBody || fromDeposit, {
+          orderId: requestId,
+        });
+      } else {
+        proofPhotoUrl = normalizeDeliveryProofPhotoUrl(body.proof_photo_url, {
+          orderId: requestId,
+        });
       }
-    } else {
-      proofPhotoUrl = String(body.proof_photo_url ?? "").trim() || null;
-      if (!proofPhotoUrl) {
-        return json({ error: "Missing proof_photo_url" }, 400);
-      }
+    } catch {
+      return json({ error: "Invalid proof_photo_url" }, 400);
     }
 
     const supabase = createClient(

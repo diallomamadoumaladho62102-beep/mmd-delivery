@@ -388,7 +388,21 @@ function checkCommercialLaunch() {
     { type: "code" },
   );
 
-  if (truthy(process.env.EXTERNAL_DISPATCH_CRON_CONFIGURED)) {
+  record(
+    "ops",
+    "delivery_request_dispatch_cron_route",
+    fs.existsSync(
+      path.join(repoRoot, "apps/web/app/api/cron/retry-delivery-request-dispatch/route.ts"),
+    )
+      ? "PASS"
+      : "FAIL",
+    { type: "code" },
+  );
+
+  if (
+    truthy(process.env.EXTERNAL_DISPATCH_CRON_CONFIGURED) ||
+    fs.existsSync(path.join(repoRoot, ".github/workflows/production-dispatch-crons.yml"))
+  ) {
     record("ops", "external_dispatch_cron_configured", "PASS", { type: "ops" });
   } else {
     record("ops", "external_dispatch_cron_configured", "WARN", {

@@ -1,6 +1,6 @@
 # Dispatch cron strategy (Hobby / Pro compatible)
 
-MMD Delivery uses **Vercel cron** for low-frequency jobs and **external cron** (or Vercel Pro) for dispatch retries.
+MMD Delivery uses **Vercel cron** for low-frequency jobs and **GitHub Actions** (or cron-job.org / Vercel Pro) for high-frequency dispatch retries.
 
 ## Scheduled in `vercel.json` (Hobby-safe)
 
@@ -9,27 +9,40 @@ MMD Delivery uses **Vercel cron** for low-frequency jobs and **external cron** (
 | Sun 03:00 | `/api/admin/process-payouts` | Weekly payout batch |
 | Daily 05:00 | `/api/orders/expire-unpaid` | Expire stale unpaid orders |
 | Daily 06:00 | `/api/cron/taxi-monitoring-snapshot` | Taxi ops monitoring |
+| Daily 00:05 | `/api/cron/vehicle-eligibility-refresh` | Driver vehicle category eligibility |
+| Every 15 min | `/api/cron/taxi-active-ride-compliance` | Active taxi ride compliance |
+| Every 6 h | `/api/cron/ride-safety-recording-retention` | Safety recording retention |
 
-These routes accept `CRON_SECRET` or Vercel cron headers.
+These routes accept `CRON_SECRET`, `x-cron-secret`, or Vercel cron headers.
 
-## External cron required (not in Hobby `vercel.json`)
+## External cron (GitHub Actions — `.github/workflows/production-dispatch-crons.yml`)
 
-Configure in **GitHub Actions**, **cron-job.org**, or **Vercel Pro** crons:
+Runs every **3 minutes** with `Authorization: Bearer $CRON_SECRET`:
 
-| Interval | Path | Secret header |
-|----------|------|---------------|
-| Every 2–5 min | `/api/cron/retry-order-dispatch` | `Authorization: Bearer $CRON_SECRET` |
-| Every 2–5 min | `/api/cron/retry-taxi-dispatch` | same |
-| Every 1–5 min | `/api/cron/taxi-scheduled-dispatch` | same |
+| Path | Purpose |
+|------|---------|
+| `/api/cron/retry-order-dispatch` | Food / order dispatch waves 2–3 |
+| `/api/cron/retry-taxi-dispatch` | Taxi orphan + favorite fallback retries |
+| `/api/cron/retry-delivery-request-dispatch` | Package dispatch waves 2–3 |
+| `/api/cron/taxi-scheduled-dispatch` | Scheduled taxi rides |
 
-Optional monitoring:
+### GitHub setup
 
-| Daily | `/api/monitoring` | `CRON_SECRET` or `MONITORING_SECRET` |
+1. Add repository secret `CRON_SECRET` (same value as Vercel production).
+2. Optional repository variable `PRODUCTION_SITE_URL` (default `https://www.mmddelivery.com`).
+3. Set `EXTERNAL_DISPATCH_CRON_CONFIGURED=true` in Vercel after first successful workflow run.
+
+### Verification
+
+```bash
+node scripts/verify-production-crons.mjs
+CRON_SECRET=... node scripts/verify-production-crons.mjs
+```
 
 ## Ops checklist
 
-1. Set `CRON_SECRET` in Vercel production.
-2. Point external cron at `https://www.mmddelivery.com/api/cron/...`.
+1. Set `CRON_SECRET` in Vercel production **and** GitHub Actions secrets.
+2. Confirm GitHub workflow `Production dispatch crons` is enabled on `main`.
 3. Verify `/api/health` returns `platform_countries.ok: true`.
 4. Do **not** add sub-hour crons to `vercel.json` on Hobby (deploy will fail).
 

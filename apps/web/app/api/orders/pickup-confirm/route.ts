@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
+import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +46,6 @@ type PushTokenRow = {
 
 const ORDER_ID_MAX_LENGTH = 128;
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
-const PROOF_URL_MAX_LENGTH = 2048;
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 function json(body: Record<string, unknown>, status = 200) {
@@ -114,29 +114,8 @@ function normalizeOrderId(value: unknown): string {
   return raw;
 }
 
-function normalizeProofPhotoUrl(value: unknown): string {
-  const raw = String(value ?? "").trim();
-
-  if (!raw) {
-    throw new Error("Missing proof_photo_url");
-  }
-
-  if (raw.length > PROOF_URL_MAX_LENGTH) {
-    throw new Error("Invalid proof_photo_url");
-  }
-
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    throw new Error("Invalid proof_photo_url");
-  }
-
-  if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error("Invalid proof_photo_url");
-  }
-
-  return parsed.toString();
+function normalizeProofPhotoUrl(value: unknown, orderId: string): string {
+  return normalizeDeliveryProofPhotoUrl(value, { orderId });
 }
 
 async function parseBody(req: NextRequest): Promise<Body> {
@@ -424,7 +403,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      proofPhotoUrl = normalizeProofPhotoUrl(body.proof_photo_url);
+      proofPhotoUrl = normalizeProofPhotoUrl(body.proof_photo_url, orderId);
     } catch (e) {
       const message = getErrorMessage(e);
       if (message === "Missing proof_photo_url") {

@@ -1,0 +1,47 @@
+name: Production dispatch crons
+
+on:
+  schedule:
+    - cron: "*/3 * * * *"
+  workflow_dispatch:
+
+jobs:
+  dispatch-crons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Retry food order dispatch waves
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+        run: |
+          curl -fsS -X POST "$SITE_URL/api/cron/retry-order-dispatch" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json"
+
+      - name: Retry taxi dispatch waves
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+        run: |
+          curl -fsS -X POST "$SITE_URL/api/cron/retry-taxi-dispatch" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json"
+
+      - name: Retry delivery request dispatch waves
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+        run: |
+          curl -fsS -X POST "$SITE_URL/api/cron/retry-delivery-request-dispatch" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json"
+
+      - name: Taxi scheduled dispatch
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+        run: |
+          curl -fsS -X POST "$SITE_URL/api/cron/taxi-scheduled-dispatch" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json"

@@ -7,6 +7,7 @@ import {
   fromStripeAmount,
   normalizeTaxiCurrencyUpper,
 } from "@/lib/taxiStripeAmounts";
+import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -17,6 +18,8 @@ type TaxiRidePaymentRow = {
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
   client_user_id: string | null;
+  created_by?: string | null;
+  country_code?: string | null;
   preferred_driver_id?: string | null;
   is_scheduled?: boolean | null;
 };
@@ -118,7 +121,7 @@ export async function handleTaxiStripePayment(params: {
   const { data: ride, error: rideError } = await supabaseAdmin
     .from("taxi_rides")
     .select(
-      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id,preferred_driver_id,is_scheduled"
+      "id,payment_status,status,total_cents,currency,stripe_session_id,stripe_payment_intent_id,client_user_id,preferred_driver_id,is_scheduled,country_code,created_by"
     )
     .eq("id", taxiRideId)
     .maybeSingle();
@@ -186,6 +189,13 @@ export async function handleTaxiStripePayment(params: {
       taxiRideId,
       source,
     });
+    if (paymentIntentId) {
+      await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
+        paymentIntentId,
+        taxiRide: row,
+        source: `${source}:already_paid`,
+      });
+    }
     return { ok: true, already_paid: true };
   }
 
@@ -215,6 +225,20 @@ export async function handleTaxiStripePayment(params: {
       taxiRideId,
       rideForWave: row,
     });
+  }
+
+  if (paymentIntentId) {
+    const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
+      paymentIntentId,
+      taxiRide: row,
+      source,
+    });
+    if (walletBridge.ok === false) {
+      console.error("[handleTaxiStripePayment] wallet bridge failed", {
+        taxi_ride_id: taxiRideId,
+        error: walletBridge.error,
+      });
+    }
   }
 
   return { ok: true, already_paid: false };

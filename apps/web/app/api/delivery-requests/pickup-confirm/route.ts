@@ -7,6 +7,7 @@ import {
   type DeliveryRequestRpcResult,
 } from "@/lib/deliveryRequestDriver";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
+import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +45,17 @@ export async function POST(req: NextRequest) {
     }
 
     const pickupCode = String(body.pickup_code ?? body.code ?? "").trim() || null;
-    const proofPhotoUrl = String(body.proof_photo_url ?? "").trim() || null;
+    let proofPhotoUrl: string | null = null;
+    const rawProof = String(body.proof_photo_url ?? "").trim();
+    if (rawProof) {
+      try {
+        proofPhotoUrl = normalizeDeliveryProofPhotoUrl(rawProof, {
+          orderId: requestId,
+        });
+      } catch {
+        return json({ error: "Invalid proof_photo_url" }, 400);
+      }
+    }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -41,6 +41,10 @@ import {
   isMarketplaceStripeModule,
   pickSellerOrderIdFromMetadata,
 } from "@/lib/marketplaceStripeWebhook";
+import {
+  bridgeStripeWalletFromPaidDeliveryRequest,
+  bridgeStripeWalletFromPaidOrder,
+} from "@/lib/stripeInboundWalletBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +68,9 @@ type DeliveryRequestRow = {
   currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  client_user_id?: string | null;
+  created_by?: string | null;
+  country_code?: string | null;
 };
 
 type MinimalOrderForAmount = Pick<
@@ -415,7 +422,7 @@ async function loadDeliveryRequestForPaymentCheck(
   const { data, error } = await supabaseAdmin
     .from("delivery_requests")
     .select(
-      "id, payment_status, total, total_cents, currency, stripe_session_id, stripe_payment_intent_id"
+      "id, payment_status, total, total_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, country_code"
     )
     .eq("id", deliveryRequestId)
     .maybeSingle<DeliveryRequestRow>();
@@ -1553,7 +1560,9 @@ async function handleCheckoutCompletedLikeEvent(
 
     const { data: paidOrder } = await supabaseAdmin
       .from("orders")
-      .select("id,kind,client_user_id,created_by")
+      .select(
+        "id,kind,client_user_id,created_by,total_cents,total,grand_total,currency,country_code"
+      )
       .eq("id", orderId)
       .maybeSingle();
 
@@ -1567,6 +1576,20 @@ async function handleCheckoutCompletedLikeEvent(
         kind: paidOrder.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
+    }
+
+    if (paidOrder && paymentIntentId) {
+      const walletBridge = await bridgeStripeWalletFromPaidOrder(supabaseAdmin, {
+        paymentIntentId,
+        order: paidOrder,
+        source: "webhook:checkout_session",
+      });
+      if (walletBridge.ok === false) {
+        console.error("[webhook] wallet bridge failed (checkout order)", {
+          order_id: orderId,
+          error: walletBridge.error,
+        });
+      }
     }
 
     return json({
@@ -1787,6 +1810,23 @@ console.log("✅ WEBHOOK PI: order released to drivers", {
 });
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
+
+  if (paymentIntentId && deliveryRequest) {
+    const walletBridge = await bridgeStripeWalletFromPaidDeliveryRequest(
+      supabaseAdmin,
+      {
+        paymentIntentId,
+        deliveryRequest,
+        source: "webhook:checkout_session",
+      }
+    );
+    if (walletBridge.ok === false) {
+      console.error("[webhook] wallet bridge failed (checkout DR)", {
+        delivery_request_id: deliveryRequestId,
+        error: walletBridge.error,
+      });
+    }
+  }
 
   const dispatchOriginCheckout = getDispatchSiteOrigin();
   if (dispatchOriginCheckout) {
@@ -2125,7 +2165,9 @@ async function handlePaymentIntentSucceeded(
 
     const { data: paidOrderPi } = await supabaseAdmin
       .from("orders")
-      .select("id,kind,client_user_id,created_by")
+      .select(
+        "id,kind,client_user_id,created_by,total_cents,total,grand_total,currency,country_code"
+      )
       .eq("id", orderId)
       .maybeSingle();
 
@@ -2139,6 +2181,20 @@ async function handlePaymentIntentSucceeded(
         kind: paidOrderPi.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
+    }
+
+    if (paidOrderPi && paymentIntentId) {
+      const walletBridge = await bridgeStripeWalletFromPaidOrder(supabaseAdmin, {
+        paymentIntentId,
+        order: paidOrderPi,
+        source: "webhook:payment_intent.succeeded",
+      });
+      if (walletBridge.ok === false) {
+        console.error("[webhook] wallet bridge failed (PI order)", {
+          order_id: orderId,
+          error: walletBridge.error,
+        });
+      }
     }
 
     return json({
