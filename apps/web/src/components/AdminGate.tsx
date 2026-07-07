@@ -6,6 +6,7 @@ import {
   resolveBrowserStaffSession,
   waitForBrowserSession,
 } from "@/lib/adminBrowserAuth";
+import { STAFF_LOGIN_DENIED_MESSAGE } from "@/lib/adminStaffLogin";
 import {
   hasPermission,
   roleDisplayName,
@@ -128,7 +129,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
               Réessayer
             </button>
             <Link
-              href="/auth"
+              href="/admin/login"
               className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
             >
               Se connecter
@@ -151,7 +152,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
             l&apos;espace admin.
           </p>
           <Link
-            href="/auth"
+            href="/admin/login"
             className="mt-4 inline-block text-sm font-medium text-blue-700 underline"
           >
             Se connecter
@@ -167,7 +168,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="text-lg font-semibold text-slate-900">Accès refusé</div>
           <p className="mt-2 text-sm text-slate-600">
-            Cette section est réservée au personnel MMD Delivery autorisé.
+            {STAFF_LOGIN_DENIED_MESSAGE}
           </p>
           <Link
             href="/dashboard"

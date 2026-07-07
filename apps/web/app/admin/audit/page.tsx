@@ -166,7 +166,7 @@ export default function AdminAuditPage() {
         if (!user) {
           setAuthChecked(true);
           setIsAdmin(false);
-          router.push("/auth/login");
+          router.push("/admin/login");
           return;
         }
 

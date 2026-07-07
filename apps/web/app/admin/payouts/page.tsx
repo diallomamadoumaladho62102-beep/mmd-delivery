@@ -1179,7 +1179,7 @@ export default function AdminPayoutsPage() {
         if (message === "User not logged in") {
           setIsAdmin(false);
           setAuthChecked(true);
-          router.push("/auth/login");
+          router.push("/admin/login");
           return;
         }
 

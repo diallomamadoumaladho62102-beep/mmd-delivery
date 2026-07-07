@@ -26,7 +26,7 @@ export async function requireStaffPageAccess(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/sign-in");
+  if (!user) redirect("/admin/login");
 
   const admin = getAdminClient();
   const { data: profile } = await admin
@@ -54,7 +54,7 @@ export async function requirePricingPageAccess(): Promise<{
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/sign-in");
+  if (!user) redirect("/admin/login");
 
   const admin = getAdminClient();
   const { data: profile } = await admin

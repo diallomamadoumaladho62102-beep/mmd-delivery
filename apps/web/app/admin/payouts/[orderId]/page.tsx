@@ -322,7 +322,7 @@ export default function AdminPayoutDetailPage({
         if (!user) {
           setIsAdmin(false);
           setAuthChecked(true);
-          router.push("/auth/login");
+          router.push("/admin/login");
           return;
         }
 

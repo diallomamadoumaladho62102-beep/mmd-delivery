@@ -570,7 +570,7 @@ export default function AdminDriversPage() {
             setAuthChecked(true);
             setIsAdmin(false);
             setErr("Tu dois te connecter en admin.");
-            router.push("/auth/login");
+            router.push("/admin/login");
           }
           return;
         }
