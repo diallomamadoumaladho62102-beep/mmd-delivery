@@ -1,5 +1,3 @@
-import * as Print from "expo-print";
-
 type TicketPayload = {
   order_id: string;
   order_number: string;
@@ -90,10 +88,31 @@ export function buildRestaurantTicketHtml(payload: TicketPayload): string {
 </html>`;
 }
 
+async function loadExpoPrint() {
+  try {
+    return await import("expo-print");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "expo_print_unavailable";
+    if (/ExpoPrint|native module/i.test(message)) {
+      throw new Error("print_unavailable");
+    }
+    throw error;
+  }
+}
+
 export async function printRestaurantTicket(payload: TicketPayload, copies = 1) {
+  const Print = await loadExpoPrint();
   const html = buildRestaurantTicketHtml(payload);
   for (let i = 0; i < copies; i += 1) {
-    await Print.printAsync({ html });
+    try {
+      await Print.printAsync({ html });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "print_failed";
+      if (/ExpoPrint|native module/i.test(message)) {
+        throw new Error("print_unavailable");
+      }
+      throw error;
+    }
   }
 }
 
