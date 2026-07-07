@@ -218,6 +218,7 @@ export const IDENTITY_QUEUE_FILTERS = [
   { id: "manual_review", label: "Revue manuelle" },
   { id: "high_risk", label: "Risque élevé" },
   { id: "expired", label: "Expiré" },
+  { id: "assigned_to_me", label: "Attribué à moi" },
 ] as const;
 
 export type IdentityQueueFilterId = (typeof IDENTITY_QUEUE_FILTERS)[number]["id"];
@@ -290,6 +291,70 @@ export function formatIdentityWaitSla(input: {
     return `En attente depuis ${hours} h`;
   }
   return `En attente depuis ${hours} h ${minutes}`;
+}
+
+export type IdentitySlaTone = "ok" | "warning" | "critical";
+
+export function resolveIdentitySlaTone(
+  elapsedMinutes: number,
+  warningMinutes = 30,
+  criticalMinutes = 120,
+): IdentitySlaTone {
+  if (elapsedMinutes < warningMinutes) return "ok";
+  if (elapsedMinutes < criticalMinutes) return "warning";
+  return "critical";
+}
+
+export function identitySlaTextClass(tone: IdentitySlaTone): string {
+  switch (tone) {
+    case "ok":
+      return "text-emerald-700 dark:text-emerald-300";
+    case "warning":
+      return "text-amber-700 dark:text-amber-300";
+    case "critical":
+      return "text-red-700 dark:text-red-300";
+  }
+}
+
+export function identitySlaBadgeClass(tone: IdentitySlaTone): string {
+  switch (tone) {
+    case "ok":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200";
+    case "warning":
+      return "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200";
+    case "critical":
+      return "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-200";
+  }
+}
+
+export function evaluateIdentityWaitSla(input: {
+  status: string | null | undefined;
+  created_at: string | null | undefined;
+  submitted_at?: string | null;
+  sla_warning_minutes?: number;
+  sla_critical_minutes?: number;
+}): { label: string; tone: IdentitySlaTone; elapsedMinutes: number } | null {
+  const status = String(input.status ?? "");
+  if (!WAITING_STATUSES.has(status)) return null;
+
+  const sinceIso = input.submitted_at ?? input.created_at;
+  if (!sinceIso) return null;
+
+  const since = new Date(sinceIso);
+  if (Number.isNaN(since.getTime())) return null;
+
+  const elapsedMs = Date.now() - since.getTime();
+  if (elapsedMs < 0) return null;
+
+  const elapsedMinutes = Math.floor(elapsedMs / 60000);
+  const warningMinutes = input.sla_warning_minutes ?? 30;
+  const criticalMinutes = input.sla_critical_minutes ?? 120;
+
+  return {
+    label: formatIdentityWaitSla(input) ?? "",
+    tone: resolveIdentitySlaTone(elapsedMinutes, warningMinutes, criticalMinutes),
+    elapsedMinutes,
+  };
 }
 
 export function buildIdentityRiskReasonBadges(check: {
@@ -373,7 +438,62 @@ export function matchesIdentityQueueFilter(
       return check.status === "expired";
     case "manual_review":
       return check.requires_manual_review || check.status === "manual_review";
+    case "assigned_to_me":
+      return true;
     default:
       return true;
+  }
+}
+
+export const IDENTITY_OPS_PREFS_KEY = "mmd.driverIdentity.opsPrefs";
+
+export type IdentityOpsPrefs = {
+  autoAdvanceNext: boolean;
+  fastProcessingMode: boolean;
+};
+
+export function loadIdentityOpsPrefs(): IdentityOpsPrefs {
+  if (typeof window === "undefined") {
+    return { autoAdvanceNext: true, fastProcessingMode: false };
+  }
+  try {
+    const raw = window.localStorage.getItem(IDENTITY_OPS_PREFS_KEY);
+    if (!raw) return { autoAdvanceNext: true, fastProcessingMode: false };
+    const parsed = JSON.parse(raw) as Partial<IdentityOpsPrefs>;
+    return {
+      autoAdvanceNext: parsed.autoAdvanceNext !== false,
+      fastProcessingMode: parsed.fastProcessingMode === true,
+    };
+  } catch {
+    return { autoAdvanceNext: true, fastProcessingMode: false };
+  }
+}
+
+export function saveIdentityOpsPrefs(prefs: IdentityOpsPrefs): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(IDENTITY_OPS_PREFS_KEY, JSON.stringify(prefs));
+}
+
+export function formatProcessingDuration(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+  const totalMinutes = Math.round(ms / 60000);
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
+}
+
+export function identityDecisionActionLabel(action: string): string {
+  switch (action) {
+    case "approve":
+      return "Approuvé";
+    case "reject":
+      return "Refusé";
+    case "request_new_photo":
+      return "Nouvelle photo demandée";
+    case "suspend":
+      return "Suspendu";
+    default:
+      return action;
   }
 }

@@ -8,6 +8,7 @@ import {
   adminRequestIdentityCheck,
   createSignedSelfieUrl,
 } from "@/lib/driverIdentityService";
+import { loadStaffNameMap } from "@/lib/driverIdentityOps";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
@@ -22,8 +23,9 @@ function adminJson(body: Record<string, unknown>, status = 200) {
 }
 
 export async function GET(req: NextRequest) {
+  let staff;
   try {
-    await assertStaffPermission("drivers.identity.read", req);
+    staff = await assertStaffPermission("drivers.identity.read", req);
   } catch (error) {
     if (error instanceof AdminAccessError) {
       return adminJson({ ok: false, error: error.message }, error.status);
@@ -35,6 +37,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const statusFilter = url.searchParams.get("status");
   const queueFilter = url.searchParams.get("queue");
+  const assignedFilter = url.searchParams.get("assigned");
   const country = url.searchParams.get("country");
   const city = url.searchParams.get("city");
   const search = url.searchParams.get("q");
@@ -47,6 +50,7 @@ export async function GET(req: NextRequest) {
     .limit(limit);
 
   if (statusFilter) query = query.eq("status", statusFilter);
+  if (assignedFilter === "me") query = query.eq("assigned_to", staff.userId);
   if (country) query = query.ilike("country", country);
   if (city) query = query.ilike("city", `%${city}%`);
 
@@ -101,7 +105,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const withThumbs = await Promise.all(
+  const withThumbs: Record<string, unknown>[] = await Promise.all(
     filtered.map(async (row: Record<string, unknown>) => {
       const selfiePath = row.selfie_path ? String(row.selfie_path) : "";
       if (!selfiePath) {
@@ -121,7 +125,23 @@ export async function GET(req: NextRequest) {
     }),
   );
 
-  return adminJson({ ok: true, checks: withThumbs, total: count ?? withThumbs.length });
+  const staffIds = withThumbs.flatMap((row) => [
+    String(row.assigned_to ?? ""),
+    String(row.locked_by ?? ""),
+  ]);
+  const staffNames = await loadStaffNameMap(admin, staffIds);
+
+  const checks = withThumbs.map((row) => ({
+    ...row,
+    assigned_to_name: row.assigned_to
+      ? staffNames.get(String(row.assigned_to)) ?? null
+      : null,
+    locked_by_name: row.locked_by
+      ? staffNames.get(String(row.locked_by)) ?? null
+      : null,
+  }));
+
+  return adminJson({ ok: true, checks, total: count ?? checks.length });
 }
 
 export async function POST(req: NextRequest) {

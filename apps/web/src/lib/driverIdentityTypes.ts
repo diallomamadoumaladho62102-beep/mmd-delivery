@@ -62,6 +62,9 @@ export type DriverIdentitySettings = {
   verification_validity_days: number;
   retention_days: number;
   default_provider: string;
+  sla_warning_minutes?: number;
+  sla_critical_minutes?: number;
+  lock_ttl_minutes?: number;
 };
 
 export type DriverIdentityStateRow = {

@@ -13,13 +13,15 @@ import {
   confidenceScoreBadgeClass,
   driverProfileStatusBadgeClass,
   driverProfileStatusLabel,
+  evaluateIdentityWaitSla,
   formatIdentityDate,
   formatIdentityDateTime,
   formatIdentityTime,
-  formatIdentityWaitSla,
-  IDENTITY_QUEUE_FILTERS,
+  formatProcessingDuration,
+  identityDecisionActionLabel,
   identityEventNotes,
   identityEventToneDotClass,
+  identitySlaBadgeClass,
   identityStatusBadgeClass,
   identityStatusLabel,
   identityTriggerLabel,
@@ -27,9 +29,53 @@ import {
   riskScoreBadgeClass,
   sortIdentityEventsChronologically,
   type IdentityEventRow,
+  type IdentityOpsPrefs,
   type IdentityQueueFilterId,
+  IDENTITY_QUEUE_FILTERS,
 } from "@/lib/driverIdentityDisplay";
 
+import type { UserRole } from "@/lib/roles";
+
+export type IdentityMetrics = {
+  waiting: number;
+  manual_review: number;
+  high_risk: number;
+  processed_today: number;
+};
+
+export type IdentityOpsStats = {
+  avg_review_minutes: number;
+  approval_rate: number;
+  rejection_rate: number;
+  expired_count: number;
+  sla_compliance_rate: number;
+  processed_today: number;
+  dossiers_by_agent: Array<{ agent_user_id: string; count: number }>;
+  sla_settings?: {
+    sla_warning_minutes: number;
+    sla_critical_minutes: number;
+    lock_ttl_minutes: number;
+  };
+};
+
+export type IdentityStaffOption = {
+  id: string;
+  role: UserRole;
+  full_name: string | null;
+  email: string | null;
+};
+
+export type IdentityDecisionView = {
+  id: string;
+  action: string;
+  actor_name?: string | null;
+  processing_duration_ms?: number | null;
+  decision_change_index: number;
+  created_at: string;
+  notes?: string | null;
+  previous_status?: string | null;
+  new_status?: string;
+};
 export type IdentityCheckListItem = {
   id: string;
   driver_id: string;
@@ -43,6 +89,11 @@ export type IdentityCheckListItem = {
   created_at: string;
   submitted_at: string | null;
   selfie_thumb_signed_url?: string | null;
+  assigned_to?: string | null;
+  assigned_to_name?: string | null;
+  locked_by?: string | null;
+  locked_by_name?: string | null;
+  decision_change_count?: number;
   driver_profile?: {
     full_name: string | null;
     phone: string | null;
@@ -71,6 +122,11 @@ export type IdentityCheckDetail = Record<string, unknown> & {
     device_id_hash?: string | null;
     ip_hash?: string | null;
     review_notes?: string | null;
+    assigned_to?: string | null;
+    assigned_to_name?: string | null;
+    locked_by?: string | null;
+    locked_by_name?: string | null;
+    decision_change_count?: number;
     driver_profile?: {
       full_name?: string | null;
       phone?: string | null;
@@ -81,8 +137,11 @@ export type IdentityCheckDetail = Record<string, unknown> & {
     } | null;
   };
   events?: IdentityEventRow[];
+  decisions?: IdentityDecisionView[];
   selfie_signed_url?: string | null;
   profile_photo_signed_url?: string | null;
+  sla_settings?: IdentityOpsStats["sla_settings"];
+  lock_warning?: string | null;
 };
 
 type Props = {
@@ -94,6 +153,13 @@ type Props = {
   reviewNotes: string;
   busy: boolean;
   canManage: boolean;
+  canAssign: boolean;
+  userId: string | null;
+  lockError: string | null;
+  metrics: IdentityMetrics | null;
+  stats: IdentityOpsStats | null;
+  staffOptions: IdentityStaffOption[];
+  opsPrefs: IdentityOpsPrefs;
   statusFilter: string;
   queueFilter: IdentityQueueFilterId;
   search: string;
@@ -106,6 +172,8 @@ type Props = {
   onNavigateCheck: (direction: "prev" | "next") => void;
   onReviewNotesChange: (value: string) => void;
   onReview: (action: string) => void;
+  onAssignCheck: (checkId: string, assigneeUserId: string) => void;
+  onOpsPrefsChange: (patch: Partial<IdentityOpsPrefs>) => void;
 };
 
 function Badge({
@@ -391,6 +459,13 @@ export default function DriverIdentityControlCenter(props: Props) {
     reviewNotes,
     busy,
     canManage,
+    canAssign,
+    userId,
+    lockError,
+    metrics,
+    stats,
+    staffOptions,
+    opsPrefs,
     statusFilter,
     queueFilter,
     search,
@@ -403,9 +478,13 @@ export default function DriverIdentityControlCenter(props: Props) {
     onNavigateCheck,
     onReviewNotesChange,
     onReview,
+    onAssignCheck,
+    onOpsPrefsChange,
   } = props;
 
   const check = detail?.check;
+  const decisions = detail?.decisions ?? [];
+  const slaSettings = detail?.sla_settings ?? stats?.sla_settings;
   const driverProfile = check?.driver_profile;
   const events = detail?.events ?? [];
   const selfieUrl =
@@ -433,14 +512,18 @@ export default function DriverIdentityControlCenter(props: Props) {
   const waitSla = useMemo(
     () =>
       check
-        ? formatIdentityWaitSla({
+        ? evaluateIdentityWaitSla({
             status: String(check.status ?? ""),
             created_at: String(check.created_at ?? ""),
             submitted_at: check.submitted_at ?? null,
+            sla_warning_minutes: slaSettings?.sla_warning_minutes,
+            sla_critical_minutes: slaSettings?.sla_critical_minutes,
           })
         : null,
-    [check],
+    [check, slaSettings?.sla_critical_minutes, slaSettings?.sla_warning_minutes],
   );
+
+  const listSlaSettings = stats?.sla_settings ?? slaSettings;
 
   const scrollToHistory = useCallback(() => {
     document.getElementById("driver-identity-history")?.scrollIntoView({
@@ -517,6 +600,73 @@ export default function DriverIdentityControlCenter(props: Props) {
           </Link>
         </header>
 
+        {metrics ? (
+          <section className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              { label: "En attente", value: metrics.waiting, tone: "text-blue-700 dark:text-blue-300" },
+              { label: "Revue manuelle", value: metrics.manual_review, tone: "text-amber-700 dark:text-amber-300" },
+              { label: "Risque élevé", value: metrics.high_risk, tone: "text-red-700 dark:text-red-300" },
+              { label: "Traités aujourd'hui", value: metrics.processed_today, tone: "text-emerald-700 dark:text-emerald-300" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <div className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  {item.label}
+                </div>
+                <div className={`mt-1 text-2xl font-bold ${item.tone}`}>{item.value}</div>
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        {stats ? (
+          <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Statistiques Ops (30 jours)
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+              {[
+                ["Temps moyen", `${stats.avg_review_minutes} min`],
+                ["Approbation", `${stats.approval_rate}%`],
+                ["Refus", `${stats.rejection_rate}%`],
+                ["Expirés", String(stats.expired_count)],
+                ["SLA respecté", `${stats.sla_compliance_rate}%`],
+                ["Agents actifs", String(stats.dossiers_by_agent.length)],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/60">
+                  <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{value}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="mb-4 flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input
+              type="checkbox"
+              checked={opsPrefs.autoAdvanceNext}
+              onChange={(event) =>
+                onOpsPrefsChange({ autoAdvanceNext: event.target.checked })
+              }
+            />
+            Ouvrir le dossier suivant après décision
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+            <input
+              type="checkbox"
+              checked={opsPrefs.fastProcessingMode}
+              onChange={(event) =>
+                onOpsPrefsChange({ fastProcessingMode: event.target.checked })
+              }
+            />
+            Mode traitement rapide
+          </label>
+        </section>
+
         <section className="mb-6 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex flex-wrap gap-2">
             {IDENTITY_QUEUE_FILTERS.map((filter) => {
@@ -584,10 +734,12 @@ export default function DriverIdentityControlCenter(props: Props) {
               ) : null}
               {checks.map((item) => {
                 const selected = selectedId === item.id;
-                const itemSla = formatIdentityWaitSla({
+                const itemSla = evaluateIdentityWaitSla({
                   status: item.status,
                   created_at: item.created_at,
                   submitted_at: item.submitted_at,
+                  sla_warning_minutes: listSlaSettings?.sla_warning_minutes,
+                  sla_critical_minutes: listSlaSettings?.sla_critical_minutes,
                 });
                 return (
                   <button
@@ -633,17 +785,29 @@ export default function DriverIdentityControlCenter(props: Props) {
                           <Badge className={riskScoreBadgeClass(item.risk_score)}>
                             Risque {item.risk_score}
                           </Badge>
-                          {item.requires_manual_review ? (
-                            <Badge className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
-                              Revue manuelle
-                            </Badge>
-                          ) : null}
-                        </div>
-                        {itemSla ? (
-                          <div className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">
-                            {itemSla}
-                          </div>
+                        {item.requires_manual_review ? (
+                          <Badge className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
+                            Revue manuelle
+                          </Badge>
                         ) : null}
+                        {item.assigned_to_name ? (
+                          <Badge className="border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-200">
+                            {item.assigned_to === userId ? "Attribué à moi" : item.assigned_to_name}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      {itemSla ? (
+                        <div className="mt-2">
+                          <Badge className={identitySlaBadgeClass(itemSla.tone)}>
+                            {itemSla.label}
+                          </Badge>
+                        </div>
+                      ) : null}
+                      {item.locked_by_name && item.locked_by !== userId ? (
+                        <div className="mt-2 text-xs text-red-600 dark:text-red-300">
+                          Verrouillé par {item.locked_by_name}
+                        </div>
+                      ) : null}
                         <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                           {formatIdentityDateTime(item.created_at)}
                         </div>
@@ -676,12 +840,14 @@ export default function DriverIdentityControlCenter(props: Props) {
                       {driverProfile?.full_name ?? check.id}
                     </div>
                     {waitSla ? (
-                      <div className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-                        {waitSla}
+                      <div className="mt-1">
+                        <Badge className={identitySlaBadgeClass(waitSla.tone)}>
+                          {waitSla.label}
+                        </Badge>
                       </div>
                     ) : null}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       disabled={selectedIndex <= 0}
@@ -703,6 +869,39 @@ export default function DriverIdentityControlCenter(props: Props) {
                     </button>
                   </div>
                 </div>
+
+                {lockError ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                    {lockError}
+                  </div>
+                ) : null}
+
+                {canAssign && check.id ? (
+                  <DetailCard title="Attribution" subtitle="Super Admin — assigner à un agent Ops">
+                    <div className="flex flex-wrap items-center gap-3 py-3">
+                      <select
+                        defaultValue={String(check.assigned_to ?? "")}
+                        onChange={(event) => {
+                          const assignee = event.target.value;
+                          if (assignee) onAssignCheck(String(check.id), assignee);
+                        }}
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+                      >
+                        <option value="">Non assigné</option>
+                        {staffOptions.map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.full_name ?? staff.email ?? staff.id} ({staff.role})
+                          </option>
+                        ))}
+                      </select>
+                      {check.assigned_to_name ? (
+                        <span className="text-sm text-slate-600 dark:text-slate-300">
+                          Actuellement : {check.assigned_to_name}
+                        </span>
+                      ) : null}
+                    </div>
+                  </DetailCard>
+                ) : null}
 
                 <DetailCard title="Informations du chauffeur">
                   <InfoRow label="Nom" value={driverProfile?.full_name ?? "—"} />
@@ -866,14 +1065,14 @@ export default function DriverIdentityControlCenter(props: Props) {
                       value={reviewNotes}
                       onChange={(event) => onReviewNotesChange(event.target.value)}
                       rows={3}
-                      disabled={busy}
+                      disabled={busy || Boolean(lockError)}
                       className="mb-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
                     />
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       <ActionButton
                         label="Approuver"
                         tone="approve"
-                        disabled={busy}
+                        disabled={busy || Boolean(lockError)}
                         onClick={() => onReview("approve")}
                         icon={
                           <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -884,7 +1083,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                       <ActionButton
                         label="Refuser"
                         tone="reject"
-                        disabled={busy}
+                        disabled={busy || Boolean(lockError)}
                         onClick={() => onReview("reject")}
                         icon={
                           <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -895,7 +1094,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                       <ActionButton
                         label="Nouvelle photo"
                         tone="photo"
-                        disabled={busy}
+                        disabled={busy || Boolean(lockError)}
                         onClick={() => onReview("request_new_photo")}
                         icon={
                           <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -907,7 +1106,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                       <ActionButton
                         label="Suspendre"
                         tone="suspend"
-                        disabled={busy}
+                        disabled={busy || Boolean(lockError)}
                         onClick={handleSuspend}
                         icon={
                           <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -918,7 +1117,7 @@ export default function DriverIdentityControlCenter(props: Props) {
                       <ActionButton
                         label="Historique"
                         tone="history"
-                        disabled={busy}
+                        disabled={busy || Boolean(lockError)}
                         onClick={scrollToHistory}
                         icon={
                           <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
@@ -938,6 +1137,49 @@ export default function DriverIdentityControlCenter(props: Props) {
                     </p>
                   </DetailCard>
                 ) : null}
+
+                <DetailCard
+                  title="Historique des décisions"
+                  subtitle="Qui a décidé, combien de temps, changements de décision"
+                >
+                  {decisions.length === 0 ? (
+                    <p className="py-4 text-sm text-slate-500 dark:text-slate-400">
+                      Aucune décision enregistrée.
+                    </p>
+                  ) : (
+                    <div className="space-y-3 py-2">
+                      <InfoRow
+                        label="Changements de décision"
+                        value={String(check.decision_change_count ?? decisions[0]?.decision_change_index ?? 0)}
+                      />
+                      {decisions.map((decision) => (
+                        <div
+                          key={decision.id}
+                          className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {identityDecisionActionLabel(decision.action)} ·{" "}
+                              {decision.actor_name ?? "Système"}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
+                              {formatIdentityDateTime(decision.created_at)}
+                            </div>
+                          </div>
+                          <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                            Durée de traitement :{" "}
+                            {formatProcessingDuration(decision.processing_duration_ms)}
+                          </div>
+                          {decision.notes ? (
+                            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                              {decision.notes}
+                            </p>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </DetailCard>
 
                 <DetailCard
                   id="driver-identity-history"

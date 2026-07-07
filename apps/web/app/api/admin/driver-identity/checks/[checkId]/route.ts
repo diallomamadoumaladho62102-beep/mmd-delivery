@@ -2,7 +2,13 @@ import { NextRequest } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import {
-  adminReviewIdentityCheck,
+  adminReviewIdentityCheckWithOps,
+  IdentityCheckLockError,
+  loadIdentityDecisionsForCheck,
+  loadIdentitySlaSettings,
+  loadStaffNameMap,
+} from "@/lib/driverIdentityOps";
+import {
   createSignedSelfieUrl,
 } from "@/lib/driverIdentityService";
 import { loadDriverProfilePhotoSignedUrl } from "@/lib/driverDocumentSigning";
@@ -18,9 +24,10 @@ function adminJson(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-export async function GET(_req: NextRequest, context: RouteContext) {
+export async function GET(req: NextRequest, context: RouteContext) {
+  let staff;
   try {
-    await assertStaffPermission("drivers.identity.read", _req);
+    staff = await assertStaffPermission("drivers.identity.read", req);
   } catch (error) {
     if (error instanceof AdminAccessError) {
       return adminJson({ ok: false, error: error.message }, error.status);
@@ -40,12 +47,16 @@ export async function GET(_req: NextRequest, context: RouteContext) {
   if (error) return adminJson({ ok: false, error: error.message }, 500);
   if (!check) return adminJson({ ok: false, error: "not_found" }, 404);
 
-  const { data: events } = await admin
-    .from("driver_identity_events")
-    .select("*")
-    .eq("check_id", checkId)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const [{ data: events }, decisions, slaSettings] = await Promise.all([
+    admin
+      .from("driver_identity_events")
+      .select("*")
+      .eq("check_id", checkId)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    loadIdentityDecisionsForCheck(admin, checkId),
+    loadIdentitySlaSettings(admin),
+  ]);
 
   let selfieSignedUrl: string | null = null;
   if (check.selfie_path) {
@@ -73,12 +84,46 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     .eq("user_id", check.driver_id)
     .maybeSingle();
 
+  const staffNames = await loadStaffNameMap(admin, [
+    String(check.assigned_to ?? ""),
+    String(check.locked_by ?? ""),
+    String(check.reviewed_by ?? ""),
+    ...decisions.map((row) => String(row.actor_user_id ?? "")),
+  ]);
+
+  let lockWarning: string | null = null;
+  if (
+    check.locked_by &&
+    check.lock_expires_at &&
+    new Date(check.lock_expires_at).getTime() > Date.now() &&
+    check.locked_by !== staff.userId
+  ) {
+    lockWarning = `Verrouillé par ${staffNames.get(String(check.locked_by)) ?? "un autre agent"}`;
+  }
+
   return adminJson({
     ok: true,
-    check: { ...check, driver_profile: driverProfile ?? null },
+    check: {
+      ...check,
+      driver_profile: driverProfile ?? null,
+      assigned_to_name: check.assigned_to
+        ? staffNames.get(String(check.assigned_to)) ?? null
+        : null,
+      locked_by_name: check.locked_by
+        ? staffNames.get(String(check.locked_by)) ?? null
+        : null,
+    },
     events: events ?? [],
+    decisions: decisions.map((row) => ({
+      ...row,
+      actor_name: row.actor_user_id
+        ? staffNames.get(String(row.actor_user_id)) ?? null
+        : null,
+    })),
     selfie_signed_url: selfieSignedUrl,
     profile_photo_signed_url: profilePhotoSignedUrl,
+    sla_settings: slaSettings,
+    lock_warning: lockWarning,
   });
 }
 
@@ -106,7 +151,7 @@ export async function POST(req: NextRequest, context: RouteContext) {
   const admin = buildSupabaseAdminClient();
 
   try {
-    const check = await adminReviewIdentityCheck(admin, {
+    const result = await adminReviewIdentityCheckWithOps(admin, {
       checkId,
       adminUserId: staff.userId,
       action: action as "approve" | "reject" | "request_new_photo" | "suspend",
@@ -120,12 +165,22 @@ export async function POST(req: NextRequest, context: RouteContext) {
       action: `driver_identity.${action}`,
       targetType: "driver_identity_check",
       targetId: checkId,
-      metadata: { review_notes: reviewNotes, resulting_status: check.status },
+      metadata: {
+        review_notes: reviewNotes,
+        resulting_status: result.check.status,
+        decision_id: result.decision.id,
+      },
       request: req,
     });
 
-    return adminJson({ ok: true, check });
+    return adminJson({ ok: true, check: result.check, decision: result.decision });
   } catch (error) {
+    if (error instanceof IdentityCheckLockError) {
+      return adminJson(
+        { ok: false, error: error.message, locked_by: error.lockedBy },
+        error.status,
+      );
+    }
     const message = error instanceof Error ? error.message : "review_failed";
     return adminJson({ ok: false, error: message }, message === "check_not_found" ? 404 : 500);
   }
