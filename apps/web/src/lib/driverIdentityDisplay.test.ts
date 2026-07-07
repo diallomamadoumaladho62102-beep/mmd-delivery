@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import {
+  buildIdentityRiskReasonBadges,
   confidenceScoreBadgeClass,
+  formatIdentityWaitSla,
   identityStatusBadgeClass,
   identityStatusLabel,
   mapIdentityEvent,
+  matchesIdentityQueueFilter,
   riskScoreBadgeClass,
 } from "./driverIdentityDisplay";
 
@@ -71,6 +74,46 @@ test("maps timeline events to readable labels", () => {
       created_at: new Date().toISOString(),
     }).icon,
     "✅",
+  );
+});
+
+test("formats wait SLA in French", () => {
+  const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+  assert.equal(
+    formatIdentityWaitSla({
+      status: "submitted",
+      created_at: twentyMinutesAgo,
+      submitted_at: twentyMinutesAgo,
+    }),
+    "En attente depuis 20 min",
+  );
+});
+
+test("builds explicit risk reason badges", () => {
+  const badges = buildIdentityRiskReasonBadges({
+    trigger_type: "phone_change",
+    reason: "Phone number was updated.",
+    requires_manual_review: true,
+    risk_score: 65,
+  });
+  assert.ok(badges.some((badge) => badge.label.includes("téléphone")));
+  assert.ok(badges.some((badge) => badge.label.includes("Revue manuelle")));
+});
+
+test("matches queue filters", () => {
+  assert.equal(
+    matchesIdentityQueueFilter(
+      { status: "submitted", risk_score: 70, requires_manual_review: false },
+      "waiting",
+    ),
+    true,
+  );
+  assert.equal(
+    matchesIdentityQueueFilter(
+      { status: "verified", risk_score: 70, requires_manual_review: false },
+      "high_risk",
+    ),
+    true,
   );
 });
 

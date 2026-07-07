@@ -211,3 +211,169 @@ export function sortIdentityEventsChronologically(events: IdentityEventRow[]): I
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
   );
 }
+
+export const IDENTITY_QUEUE_FILTERS = [
+  { id: "", label: "Tous" },
+  { id: "waiting", label: "En attente" },
+  { id: "manual_review", label: "Revue manuelle" },
+  { id: "high_risk", label: "Risque élevé" },
+  { id: "expired", label: "Expiré" },
+] as const;
+
+export type IdentityQueueFilterId = (typeof IDENTITY_QUEUE_FILTERS)[number]["id"];
+
+export type IdentityRiskReasonBadge = {
+  key: string;
+  label: string;
+  className: string;
+};
+
+const RISK_REASON_BADGE_CLASS = {
+  info: "border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-200",
+  warning:
+    "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200",
+  danger:
+    "border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-200",
+} as const;
+
+const TRIGGER_RISK_BADGES: Record<
+  string,
+  { label: string; tone: keyof typeof RISK_REASON_BADGE_CLASS }
+> = {
+  phone_change: { label: "Changement téléphone", tone: "warning" },
+  new_device: { label: "Nouvel appareil", tone: "warning" },
+  profile_photo_change: { label: "Changement photo profil", tone: "warning" },
+  city_change: { label: "Changement de ville", tone: "info" },
+  country_change: { label: "Changement de pays", tone: "warning" },
+  client_report: { label: "Signalement client", tone: "danger" },
+  suspicious_behavior: { label: "Comportement suspect", tone: "danger" },
+  post_suspension: { label: "Après suspension", tone: "danger" },
+  admin_manual: { label: "Demande administrative", tone: "danger" },
+  inactivity: { label: "Inactivité prolongée", tone: "info" },
+  first_online: { label: "Première mise en ligne", tone: "info" },
+  random: { label: "Contrôle aléatoire", tone: "info" },
+  periodic: { label: "Contrôle périodique", tone: "info" },
+};
+
+const WAITING_STATUSES = new Set([
+  "required",
+  "pending",
+  "submitted",
+  "manual_review",
+]);
+
+export function formatIdentityWaitSla(input: {
+  status: string | null | undefined;
+  created_at: string | null | undefined;
+  submitted_at?: string | null;
+}): string | null {
+  const status = String(input.status ?? "");
+  if (!WAITING_STATUSES.has(status)) return null;
+
+  const sinceIso = input.submitted_at ?? input.created_at;
+  if (!sinceIso) return null;
+
+  const since = new Date(sinceIso);
+  if (Number.isNaN(since.getTime())) return null;
+
+  const elapsedMs = Date.now() - since.getTime();
+  if (elapsedMs < 0) return null;
+
+  const totalMinutes = Math.floor(elapsedMs / 60000);
+  if (totalMinutes < 60) {
+    return `En attente depuis ${totalMinutes} min`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) {
+    return `En attente depuis ${hours} h`;
+  }
+  return `En attente depuis ${hours} h ${minutes}`;
+}
+
+export function buildIdentityRiskReasonBadges(check: {
+  trigger_type?: string | null;
+  reason?: string | null;
+  device_id_hash?: string | null;
+  ip_hash?: string | null;
+  requires_manual_review?: boolean;
+  risk_score?: number | null;
+}): IdentityRiskReasonBadge[] {
+  const badges: IdentityRiskReasonBadge[] = [];
+  const seen = new Set<string>();
+
+  const push = (
+    key: string,
+    label: string,
+    tone: keyof typeof RISK_REASON_BADGE_CLASS,
+  ) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    badges.push({
+      key,
+      label,
+      className: RISK_REASON_BADGE_CLASS[tone],
+    });
+  };
+
+  const trigger = String(check.trigger_type ?? "").trim();
+  if (trigger) {
+    const mapped = TRIGGER_RISK_BADGES[trigger];
+    push(
+      `trigger:${trigger}`,
+      mapped?.label ?? identityTriggerLabel(trigger),
+      mapped?.tone ?? "info",
+    );
+  }
+
+  if (check.ip_hash && ["new_device", "suspicious_behavior", "admin_manual"].includes(trigger)) {
+    push("ip_hash", "Nouvelle IP", "warning");
+  }
+
+  if (check.device_id_hash && trigger === "new_device") {
+    push("device_hash", "Empreinte appareil inconnue", "warning");
+  }
+
+  if (check.requires_manual_review) {
+    push("manual_review", "Revue manuelle requise", "danger");
+  }
+
+  if (Number(check.risk_score ?? 0) >= 61) {
+    push("high_risk_score", "Score de risque élevé", "danger");
+  }
+
+  const reason = String(check.reason ?? "").trim();
+  if (reason) {
+    const triggerLabel = trigger ? identityTriggerLabel(trigger) : "";
+    if (reason !== triggerLabel && reason.length <= 96) {
+      push(`reason:${reason}`, reason, "info");
+    }
+  }
+
+  return badges;
+}
+
+export function matchesIdentityQueueFilter(
+  check: {
+    status: string;
+    risk_score: number;
+    requires_manual_review: boolean;
+  },
+  filter: IdentityQueueFilterId,
+): boolean {
+  if (!filter) return true;
+
+  switch (filter) {
+    case "high_risk":
+      return Number(check.risk_score) >= 61;
+    case "waiting":
+      return WAITING_STATUSES.has(check.status);
+    case "expired":
+      return check.status === "expired";
+    case "manual_review":
+      return check.requires_manual_review || check.status === "manual_review";
+    default:
+      return true;
+  }
+}

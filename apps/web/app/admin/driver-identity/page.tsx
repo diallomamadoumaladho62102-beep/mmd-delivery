@@ -7,6 +7,7 @@ import DriverIdentityControlCenter, {
 } from "@/components/admin/DriverIdentityControlCenter";
 import { canManageDriverIdentity, canViewDriverIdentity } from "@/lib/adminAccess";
 import { adminFetch } from "@/lib/adminBrowserAuth";
+import type { IdentityQueueFilterId } from "@/lib/driverIdentityDisplay";
 import { supabase } from "@/lib/supabaseBrowser";
 import type { UserRole } from "@/lib/roles";
 
@@ -15,6 +16,7 @@ export default function AdminDriverIdentityPage() {
   const [checks, setChecks] = useState<IdentityCheckListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
+  const [queueFilter, setQueueFilter] = useState<IdentityQueueFilterId>("");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<IdentityCheckDetail | null>(null);
@@ -43,6 +45,7 @@ export default function AdminDriverIdentityPage() {
     try {
       const qs = new URLSearchParams();
       if (statusFilter) qs.set("status", statusFilter);
+      if (queueFilter) qs.set("queue", queueFilter);
       if (search.trim()) qs.set("q", search.trim());
       const res = await adminFetch(`/api/admin/driver-identity/checks?${qs.toString()}`);
       const body = await res.json();
@@ -50,7 +53,7 @@ export default function AdminDriverIdentityPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [queueFilter, search, statusFilter]);
 
   useEffect(() => {
     if (canRead) void loadChecks();
@@ -80,6 +83,23 @@ export default function AdminDriverIdentityPage() {
       }
     },
     [canManage, loadChecks, loadDetail, reviewNotes, selectedId],
+  );
+
+  const navigateCheck = useCallback(
+    (direction: "prev" | "next") => {
+      if (!selectedId || checks.length === 0) return;
+      const index = checks.findIndex((item) => item.id === selectedId);
+      if (index < 0) return;
+      const nextIndex = direction === "prev" ? index - 1 : index + 1;
+      if (nextIndex < 0 || nextIndex >= checks.length) return;
+      void loadDetail(checks[nextIndex].id);
+    },
+    [checks, loadDetail, selectedId],
+  );
+
+  const selectedIndex = useMemo(
+    () => (selectedId ? checks.findIndex((item) => item.id === selectedId) : -1),
+    [checks, selectedId],
   );
 
   const statuses = useMemo(
@@ -116,17 +136,21 @@ export default function AdminDriverIdentityPage() {
       checks={checks}
       loading={loading}
       selectedId={selectedId}
+      selectedIndex={selectedIndex}
       detail={detail}
       reviewNotes={reviewNotes}
       busy={busy}
       canManage={canManage}
       statusFilter={statusFilter}
+      queueFilter={queueFilter}
       search={search}
       statuses={statuses}
       onStatusFilterChange={setStatusFilter}
+      onQueueFilterChange={setQueueFilter}
       onSearchChange={setSearch}
       onFilter={() => void loadChecks()}
       onSelectCheck={(checkId) => void loadDetail(checkId)}
+      onNavigateCheck={navigateCheck}
       onReviewNotesChange={setReviewNotes}
       onReview={(action) => void review(action)}
     />

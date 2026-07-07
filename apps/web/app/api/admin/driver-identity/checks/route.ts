@@ -6,6 +6,7 @@ import {
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import {
   adminRequestIdentityCheck,
+  createSignedSelfieUrl,
 } from "@/lib/driverIdentityService";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
@@ -33,6 +34,7 @@ export async function GET(req: NextRequest) {
   const admin = buildSupabaseAdminClient();
   const url = new URL(req.url);
   const statusFilter = url.searchParams.get("status");
+  const queueFilter = url.searchParams.get("queue");
   const country = url.searchParams.get("country");
   const city = url.searchParams.get("city");
   const search = url.searchParams.get("q");
@@ -66,15 +68,31 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const enriched = rows.map((row: Record<string, unknown>) => ({
+  const enriched: Record<string, unknown>[] = rows.map((row: Record<string, unknown>) => ({
     ...row,
     driver_profile: profilesById.get(String(row.driver_id)) ?? null,
   }));
 
-  let filtered = enriched;
+  let filtered: Record<string, unknown>[] = enriched;
+
+  if (queueFilter === "high_risk") {
+    filtered = filtered.filter((row) => Number(row.risk_score ?? 0) >= 61);
+  } else if (queueFilter === "waiting") {
+    filtered = filtered.filter((row) =>
+      ["required", "pending", "submitted", "manual_review"].includes(String(row.status)),
+    );
+  } else if (queueFilter === "expired") {
+    filtered = filtered.filter((row) => String(row.status) === "expired");
+  } else if (queueFilter === "manual_review") {
+    filtered = filtered.filter(
+      (row) =>
+        Boolean(row.requires_manual_review) || String(row.status) === "manual_review",
+    );
+  }
+
   if (search?.trim()) {
     const q = search.trim().toLowerCase();
-    filtered = enriched.filter((row: Record<string, unknown>) => {
+    filtered = filtered.filter((row: Record<string, unknown>) => {
       const profile = row.driver_profile as Record<string, unknown> | null;
       const name = String(profile?.full_name ?? "").toLowerCase();
       const phone = String(profile?.phone ?? "").toLowerCase();
@@ -83,7 +101,27 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return adminJson({ ok: true, checks: filtered, total: count ?? filtered.length });
+  const withThumbs = await Promise.all(
+    filtered.map(async (row: Record<string, unknown>) => {
+      const selfiePath = row.selfie_path ? String(row.selfie_path) : "";
+      if (!selfiePath) {
+        return { ...row, selfie_thumb_signed_url: null };
+      }
+
+      try {
+        const selfie_thumb_signed_url = await createSignedSelfieUrl(
+          admin,
+          selfiePath,
+          600,
+        );
+        return { ...row, selfie_thumb_signed_url };
+      } catch {
+        return { ...row, selfie_thumb_signed_url: null };
+      }
+    }),
+  );
+
+  return adminJson({ ok: true, checks: withThumbs, total: count ?? withThumbs.length });
 }
 
 export async function POST(req: NextRequest) {

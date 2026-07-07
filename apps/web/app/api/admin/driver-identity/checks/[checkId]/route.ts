@@ -5,6 +5,7 @@ import {
   adminReviewIdentityCheck,
   createSignedSelfieUrl,
 } from "@/lib/driverIdentityService";
+import { loadDriverProfilePhotoSignedUrl } from "@/lib/driverDocumentSigning";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
@@ -55,6 +56,17 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     }
   }
 
+  let profilePhotoSignedUrl: string | null = null;
+  try {
+    profilePhotoSignedUrl = await loadDriverProfilePhotoSignedUrl(
+      admin,
+      check.driver_id,
+      3600,
+    );
+  } catch {
+    profilePhotoSignedUrl = null;
+  }
+
   const { data: driverProfile } = await admin
     .from("driver_profiles")
     .select("user_id, full_name, phone, city, state, status, is_online")
@@ -66,6 +78,7 @@ export async function GET(_req: NextRequest, context: RouteContext) {
     check: { ...check, driver_profile: driverProfile ?? null },
     events: events ?? [],
     selfie_signed_url: selfieSignedUrl,
+    profile_photo_signed_url: profilePhotoSignedUrl,
   });
 }
 
