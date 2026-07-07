@@ -36,6 +36,11 @@ apps/mobile/.expo/
 apps/mobile/android/
 .eas-tmp/
 
+# Local adb/device debug log captures (never commit)
+android-log.txt
+mmd-log.txt
+logcat*.txt
+
 # Local UI validation captures (never commit)
 docs/screenshots/
 apps/mobile/artifacts/
