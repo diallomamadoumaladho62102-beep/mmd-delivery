@@ -35,6 +35,7 @@ import {
 } from "@/lib/driverIdentityDisplay";
 
 import type { UserRole } from "@/lib/roles";
+import DriverIdentityInvestigationPanel from "@/components/admin/DriverIdentityInvestigationPanel";
 
 export type IdentityMetrics = {
   waiting: number;
@@ -1054,6 +1055,13 @@ export default function DriverIdentityControlCenter(props: Props) {
                   <InfoRow label="Pays" value={check.country ?? "—"} />
                   <InfoRow label="Ville" value={check.city ?? "—"} />
                 </DetailCard>
+
+                {canAssign && check.id ? (
+                  <DriverIdentityInvestigationPanel
+                    checkId={String(check.id)}
+                    enabled={Boolean(canAssign && check.id)}
+                  />
+                ) : null}
 
                 {canManage ? (
                   <DetailCard

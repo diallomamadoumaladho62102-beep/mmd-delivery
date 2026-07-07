@@ -12,7 +12,9 @@ import {
   createSignedSelfieUrl,
 } from "@/lib/driverIdentityService";
 import { loadDriverProfilePhotoSignedUrl } from "@/lib/driverDocumentSigning";
+import { logIdentityViewAudit } from "@/lib/driverIdentityInvestigation";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { isAdmin } from "@/lib/roles";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -99,6 +101,16 @@ export async function GET(req: NextRequest, context: RouteContext) {
     check.locked_by !== staff.userId
   ) {
     lockWarning = `Verrouillé par ${staffNames.get(String(check.locked_by)) ?? "un autre agent"}`;
+  }
+
+  if (isAdmin(staff.role)) {
+    await logIdentityViewAudit(admin, {
+      checkId,
+      driverId: check.driver_id,
+      staffUserId: staff.userId,
+      action: "view_detail",
+      request: req,
+    }).catch(() => undefined);
   }
 
   return adminJson({
