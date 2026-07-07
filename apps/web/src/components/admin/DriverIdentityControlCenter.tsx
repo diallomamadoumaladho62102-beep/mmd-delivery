@@ -1,0 +1,707 @@
+"use client";
+
+import Link from "next/link";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  confidenceScoreBadgeClass,
+  driverProfileStatusBadgeClass,
+  driverProfileStatusLabel,
+  formatIdentityDate,
+  formatIdentityDateTime,
+  formatIdentityTime,
+  identityEventNotes,
+  identityEventToneDotClass,
+  identityStatusBadgeClass,
+  identityStatusLabel,
+  identityTriggerLabel,
+  mapIdentityEvent,
+  riskScoreBadgeClass,
+  sortIdentityEventsChronologically,
+  type IdentityEventRow,
+} from "@/lib/driverIdentityDisplay";
+
+export type IdentityCheckListItem = {
+  id: string;
+  driver_id: string;
+  status: string;
+  trigger_type: string;
+  reason: string | null;
+  city: string | null;
+  country: string | null;
+  risk_score: number;
+  requires_manual_review: boolean;
+  created_at: string;
+  submitted_at: string | null;
+  driver_profile?: {
+    full_name: string | null;
+    phone: string | null;
+    city: string | null;
+    status: string | null;
+    is_online: boolean | null;
+  } | null;
+};
+
+export type IdentityCheckDetail = Record<string, unknown> & {
+  check?: Record<string, unknown> & {
+    id?: string;
+    status?: string;
+    trigger_type?: string;
+    reason?: string | null;
+    city?: string | null;
+    country?: string | null;
+    risk_score?: number;
+    confidence_score?: number | null;
+    provider?: string | null;
+    created_at?: string;
+    submitted_at?: string | null;
+    verified_at?: string | null;
+    expires_at?: string | null;
+    device_id_hash?: string | null;
+    ip_hash?: string | null;
+    review_notes?: string | null;
+    driver_profile?: {
+      full_name?: string | null;
+      phone?: string | null;
+      city?: string | null;
+      state?: string | null;
+      status?: string | null;
+      is_online?: boolean | null;
+    } | null;
+  };
+  events?: IdentityEventRow[];
+  selfie_signed_url?: string | null;
+};
+
+type Props = {
+  checks: IdentityCheckListItem[];
+  loading: boolean;
+  selectedId: string | null;
+  detail: IdentityCheckDetail | null;
+  reviewNotes: string;
+  busy: boolean;
+  canManage: boolean;
+  statusFilter: string;
+  search: string;
+  statuses: string[];
+  onStatusFilterChange: (value: string) => void;
+  onSearchChange: (value: string) => void;
+  onFilter: () => void;
+  onSelectCheck: (checkId: string) => void;
+  onReviewNotesChange: (value: string) => void;
+  onReview: (action: string) => void;
+};
+
+function Badge({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className: string;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${className}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-1 border-b border-slate-100 py-3 last:border-b-0 dark:border-slate-800 sm:grid-cols-[190px_minmax(0,1fr)]">
+      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+        {label}
+      </div>
+      <div className="text-sm text-slate-900 dark:text-slate-100">{value}</div>
+    </div>
+  );
+}
+
+function DetailCard({
+  title,
+  subtitle,
+  children,
+  id,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  id?: string;
+}) {
+  return (
+    <section
+      id={id}
+      className="rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 dark:border-slate-700 dark:bg-slate-900"
+    >
+      <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+          {title}
+        </h3>
+        {subtitle ? (
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {subtitle}
+          </p>
+        ) : null}
+      </div>
+      <div className="px-5 py-1">{children}</div>
+    </section>
+  );
+}
+
+function ActionButton({
+  label,
+  icon,
+  tone,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  icon: ReactNode;
+  tone: "approve" | "reject" | "photo" | "suspend" | "history";
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const toneClass = {
+    approve:
+      "bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-500/40 dark:bg-emerald-600 dark:hover:bg-emerald-500",
+    reject:
+      "bg-red-600 hover:bg-red-700 focus-visible:ring-red-500/40 dark:bg-red-600 dark:hover:bg-red-500",
+    photo:
+      "bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-500/40 dark:bg-amber-500 dark:hover:bg-amber-400",
+    suspend:
+      "bg-red-900 hover:bg-red-950 focus-visible:ring-red-900/40 dark:bg-red-900 dark:hover:bg-red-800",
+    history:
+      "bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500/40 dark:bg-blue-600 dark:hover:bg-blue-500",
+  }[tone];
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex min-h-[44px] min-w-[140px] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+    >
+      {icon}
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function SelfiePanel({ url }: { url: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt="Selfie chauffeur"
+          className="max-h-[420px] w-full object-cover transition-transform duration-300 hover:scale-[1.01]"
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        >
+          Agrandir
+        </button>
+        <a
+          href={url}
+          download
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        >
+          Télécharger
+        </a>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+        >
+          Ouvrir
+        </a>
+      </div>
+
+      {expanded ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={() => setExpanded(false)}
+          role="presentation"
+        >
+          <div className="relative max-h-[92vh] max-w-5xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={url}
+              alt="Selfie chauffeur agrandi"
+              className="max-h-[92vh] w-full rounded-2xl object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-sm font-semibold text-white"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function EventTimeline({ events }: { events: IdentityEventRow[] }) {
+  const sorted = useMemo(
+    () => sortIdentityEventsChronologically(events),
+    [events],
+  );
+
+  if (sorted.length === 0) {
+    return (
+      <p className="py-4 text-sm text-slate-500 dark:text-slate-400">
+        Aucun événement enregistré.
+      </p>
+    );
+  }
+
+  return (
+    <div className="relative space-y-0 py-2">
+      {sorted.map((event, index) => {
+        const display = mapIdentityEvent(event);
+        const notes = identityEventNotes(event);
+        const isLast = index === sorted.length - 1;
+
+        return (
+          <div key={event.id} className="relative flex gap-4 pb-6 last:pb-0">
+            {!isLast ? (
+              <span className="absolute left-[15px] top-8 h-[calc(100%-12px)] w-px bg-slate-200 dark:bg-slate-700" />
+            ) : null}
+            <div
+              className={`relative z-10 mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm ring-4 ${identityEventToneDotClass(display.tone)} bg-white dark:bg-slate-900`}
+            >
+              <span aria-hidden>{display.icon}</span>
+            </div>
+            <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50/80 p-4 transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:border-slate-600">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {display.label}
+                </div>
+                <div className="text-right text-xs text-slate-500 dark:text-slate-400">
+                  <div>{formatIdentityTime(event.created_at)}</div>
+                  <div>{formatIdentityDate(event.created_at)}</div>
+                </div>
+              </div>
+              {notes ? (
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {notes}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export default function DriverIdentityControlCenter(props: Props) {
+  const {
+    checks,
+    loading,
+    selectedId,
+    detail,
+    reviewNotes,
+    busy,
+    canManage,
+    statusFilter,
+    search,
+    statuses,
+    onStatusFilterChange,
+    onSearchChange,
+    onFilter,
+    onSelectCheck,
+    onReviewNotesChange,
+    onReview,
+  } = props;
+
+  const check = detail?.check;
+  const driverProfile = check?.driver_profile;
+  const events = detail?.events ?? [];
+  const selfieUrl =
+    typeof detail?.selfie_signed_url === "string" ? detail.selfie_signed_url : null;
+
+  const scrollToHistory = useCallback(() => {
+    document.getElementById("driver-identity-history")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
+  const handleSuspend = useCallback(() => {
+    const name = driverProfile?.full_name ?? "ce chauffeur";
+    const confirmed = window.confirm(
+      `Confirmer la suspension de ${name} ? Cette action bloque l'accès du chauffeur.`,
+    );
+    if (confirmed) onReview("suspend");
+  }, [driverProfile?.full_name, onReview]);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+      <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+        <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-blue-700 dark:text-blue-400">
+              Control Center
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50 md:text-3xl">
+              Vérification identité chauffeur
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+              Revue manuelle, selfies, historique et audit — interface ops premium
+              pour une décision rapide et traçable.
+            </p>
+          </div>
+          <Link
+            href="/admin/driver-identity/settings"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Paramètres moteur de risque
+          </Link>
+        </header>
+
+        <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900 md:flex-row md:items-center">
+          <select
+            value={statusFilter}
+            onChange={(event) => onStatusFilterChange(event.target.value)}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+          >
+            {statuses.map((status) => (
+              <option key={status || "all"} value={status}>
+                {status ? identityStatusLabel(status) : "Tous les statuts"}
+              </option>
+            ))}
+          </select>
+          <input
+            placeholder="Rechercher chauffeur, ville, ID…"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+          />
+          <button
+            type="button"
+            onClick={onFilter}
+            className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+          >
+            Filtrer
+          </button>
+        </section>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="border-b border-slate-200 px-5 py-4 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                File d&apos;attente
+              </h2>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {loading ? "Chargement…" : `${checks.length} vérification(s)`}
+              </p>
+            </div>
+            <div className="max-h-[72vh] space-y-2 overflow-y-auto p-3">
+              {checks.length === 0 && !loading ? (
+                <p className="px-2 py-6 text-sm text-slate-500 dark:text-slate-400">
+                  Aucune vérification trouvée.
+                </p>
+              ) : null}
+              {checks.map((item) => {
+                const selected = selectedId === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelectCheck(item.id)}
+                    className={`w-full rounded-2xl border p-4 text-left transition-all duration-200 ${
+                      selected
+                        ? "border-blue-500 bg-blue-50/70 shadow-md ring-2 ring-blue-500/20 dark:border-blue-500 dark:bg-blue-950/30"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800/80"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-slate-900 dark:text-slate-100">
+                          {item.driver_profile?.full_name ?? item.driver_id}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {identityTriggerLabel(item.trigger_type)}
+                        </div>
+                      </div>
+                      <Badge className={identityStatusBadgeClass(item.status)}>
+                        {identityStatusLabel(item.status)}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge className={riskScoreBadgeClass(item.risk_score)}>
+                        Risque {item.risk_score}
+                      </Badge>
+                      {item.requires_manual_review ? (
+                        <Badge className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-200">
+                          Revue manuelle
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      {formatIdentityDateTime(item.created_at)}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="space-y-5">
+            {!check ? (
+              <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/70 p-8 text-center dark:border-slate-700 dark:bg-slate-900/50">
+                <div>
+                  <div className="text-4xl">🪪</div>
+                  <p className="mt-3 text-base font-medium text-slate-900 dark:text-slate-100">
+                    Sélectionnez une vérification
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Les détails, le selfie et l&apos;historique s&apos;afficheront ici.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <DetailCard title="Informations du chauffeur">
+                  <InfoRow label="Nom" value={driverProfile?.full_name ?? "—"} />
+                  <InfoRow label="Téléphone" value={driverProfile?.phone ?? "—"} />
+                  <InfoRow
+                    label="Ville"
+                    value={driverProfile?.city ?? check.city ?? "—"}
+                  />
+                  <InfoRow label="État" value={driverProfile?.state ?? "—"} />
+                  <InfoRow
+                    label="Statut"
+                    value={
+                      <Badge
+                        className={driverProfileStatusBadgeClass(
+                          driverProfile?.status ?? null,
+                        )}
+                      >
+                        {driverProfileStatusLabel(driverProfile?.status ?? null)}
+                      </Badge>
+                    }
+                  />
+                  <InfoRow
+                    label="En ligne"
+                    value={
+                      driverProfile?.is_online ? (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          Oui
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 dark:text-slate-400">Non</span>
+                      )
+                    }
+                  />
+                </DetailCard>
+
+                <DetailCard
+                  title="Vérification"
+                  subtitle="Synthèse de la demande et des scores"
+                >
+                  <InfoRow
+                    label="Statut"
+                    value={
+                      <Badge className={identityStatusBadgeClass(String(check.status ?? ""))}>
+                        {identityStatusLabel(String(check.status ?? ""))}
+                      </Badge>
+                    }
+                  />
+                  <InfoRow
+                    label="Déclencheur"
+                    value={identityTriggerLabel(String(check.trigger_type ?? ""))}
+                  />
+                  <InfoRow
+                    label="Niveau de risque"
+                    value={
+                      <Badge className={riskScoreBadgeClass(Number(check.risk_score ?? 0))}>
+                        {check.risk_score ?? 0} / 100
+                      </Badge>
+                    }
+                  />
+                  <InfoRow
+                    label="Score de confiance"
+                    value={
+                      <Badge
+                        className={confidenceScoreBadgeClass(
+                          check.confidence_score == null
+                            ? null
+                            : Number(check.confidence_score),
+                        )}
+                      >
+                        {check.confidence_score == null
+                          ? "Non calculé"
+                          : `${check.confidence_score} / 100`}
+                      </Badge>
+                    }
+                  />
+                  <InfoRow label="Fournisseur" value={check.provider ?? "—"} />
+                  <InfoRow
+                    label="Date de création"
+                    value={formatIdentityDateTime(String(check.created_at ?? ""))}
+                  />
+                  <InfoRow
+                    label="Date d'envoi"
+                    value={formatIdentityDateTime(check.submitted_at ?? null)}
+                  />
+                  <InfoRow
+                    label="Date de validation"
+                    value={formatIdentityDateTime(check.verified_at ?? null)}
+                  />
+                  <InfoRow
+                    label="Expiration"
+                    value={formatIdentityDateTime(check.expires_at ?? null)}
+                  />
+                  {check.reason ? (
+                    <InfoRow label="Motif" value={check.reason} />
+                  ) : null}
+                </DetailCard>
+
+                <DetailCard title="Selfie" subtitle="Preuve d'identité soumise">
+                  {selfieUrl ? (
+                    <SelfiePanel url={selfieUrl} />
+                  ) : (
+                    <p className="py-4 text-sm text-slate-500 dark:text-slate-400">
+                      Aucun selfie disponible pour cette vérification.
+                    </p>
+                  )}
+                </DetailCard>
+
+                <DetailCard
+                  title="Informations techniques"
+                  subtitle="Contexte appareil et réseau"
+                >
+                  <InfoRow
+                    label="Device ID"
+                    value={
+                      <span className="font-mono text-xs break-all">
+                        {check.device_id_hash ?? "—"}
+                      </span>
+                    }
+                  />
+                  <InfoRow
+                    label="IP Hash"
+                    value={
+                      <span className="font-mono text-xs break-all">
+                        {check.ip_hash ?? "—"}
+                      </span>
+                    }
+                  />
+                  <InfoRow label="Pays" value={check.country ?? "—"} />
+                  <InfoRow label="Ville" value={check.city ?? "—"} />
+                </DetailCard>
+
+                {canManage ? (
+                  <DetailCard
+                    title="Actions de revue"
+                    subtitle="Décision ops avec note interne optionnelle"
+                  >
+                    <textarea
+                      placeholder="Note interne (visible dans l'historique)"
+                      value={reviewNotes}
+                      onChange={(event) => onReviewNotesChange(event.target.value)}
+                      rows={3}
+                      disabled={busy}
+                      className="mb-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100"
+                    />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      <ActionButton
+                        label="Approuver"
+                        tone="approve"
+                        disabled={busy}
+                        onClick={() => onReview("approve")}
+                        icon={
+                          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
+                            <path fillRule="evenodd" d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.25 7.25a1 1 0 0 1-1.414 0l-3.25-3.25a1 1 0 1 1 1.414-1.414l2.543 2.543 6.543-6.543a1 1 0 0 1 1.412 0Z" clipRule="evenodd" />
+                          </svg>
+                        }
+                      />
+                      <ActionButton
+                        label="Refuser"
+                        tone="reject"
+                        disabled={busy}
+                        onClick={() => onReview("reject")}
+                        icon={
+                          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 0 1 1.414 0L10 8.586l4.293-4.293a1 1 0 1 1 1.414 1.414L11.414 10l4.293 4.293a1 1 0 0 1-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 0 1-1.414-1.414L8.586 10 4.293 5.707a1 1 0 0 1 0-1.414Z" clipRule="evenodd" />
+                          </svg>
+                        }
+                      />
+                      <ActionButton
+                        label="Nouvelle photo"
+                        tone="photo"
+                        disabled={busy}
+                        onClick={() => onReview("request_new_photo")}
+                        icon={
+                          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
+                            <path d="M4 5a2 2 0 0 1 2-2h1.172a2 2 0 0 0 1.414-.586l.828-.828A2 2 0 0 1 11.172 1H12a2 2 0 0 1 2 2v1h1a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h1V5Z" />
+                            <path d="M10 8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                          </svg>
+                        }
+                      />
+                      <ActionButton
+                        label="Suspendre"
+                        tone="suspend"
+                        disabled={busy}
+                        onClick={handleSuspend}
+                        icon={
+                          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
+                            <path fillRule="evenodd" d="M3 4.25A2.25 2.25 0 0 1 5.25 2h9.5A2.25 2.25 0 0 1 17 4.25v11.5A2.25 2.25 0 0 1 14.75 18h-9.5A2.25 2.25 0 0 1 3 15.75V4.25ZM8 7a1 1 0 0 0-1 1v4a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1Zm5-1a1 1 0 0 0-1 1v4a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1Z" clipRule="evenodd" />
+                          </svg>
+                        }
+                      />
+                      <ActionButton
+                        label="Historique"
+                        tone="history"
+                        disabled={busy}
+                        onClick={scrollToHistory}
+                        icon={
+                          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 1 0-8-8h1.25a.75.75 0 0 1 .53 1.28l-2.5 2.5a.75.75 0 0 1-1.06-1.06l.845-.845A6.5 6.5 0 1 1 10 16.5V14a.75.75 0 0 1 1.5 0v4.25A.75.75 0 0 1 10.75 19H6.5a.75.75 0 0 1 0-1.5H10Z" clipRule="evenodd" />
+                          </svg>
+                        }
+                      />
+                    </div>
+                    {busy ? (
+                      <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                        Traitement en cours…
+                      </p>
+                    ) : null}
+                  </DetailCard>
+                ) : null}
+
+                <DetailCard
+                  id="driver-identity-history"
+                  title="Historique"
+                  subtitle="Chronologie des événements de vérification"
+                >
+                  <EventTimeline events={events} />
+                </DetailCard>
+              </>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
