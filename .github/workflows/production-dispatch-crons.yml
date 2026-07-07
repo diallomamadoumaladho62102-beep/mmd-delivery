@@ -9,39 +9,26 @@ jobs:
   dispatch-crons:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+      SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
     steps:
-      - name: Retry food order dispatch waves
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
-        run: |
-          curl -fsS -X POST "$SITE_URL/api/cron/retry-order-dispatch" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json"
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Retry taxi dispatch waves
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
-        run: |
-          curl -fsS -X POST "$SITE_URL/api/cron/retry-taxi-dispatch" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      - name: Retry delivery request dispatch waves
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
+      - name: Validate cron configuration
         run: |
-          curl -fsS -X POST "$SITE_URL/api/cron/retry-delivery-request-dispatch" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json"
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::Missing GitHub repository secret CRON_SECRET. Sync it from Vercel production (see scripts/sync-github-cron-secret.mjs)."
+            exit 1
+          fi
+          echo "CRON_SECRET is configured (length ${#CRON_SECRET})."
+          echo "SITE_URL=${SITE_URL}"
 
-      - name: Taxi scheduled dispatch
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
-        run: |
-          curl -fsS -X POST "$SITE_URL/api/cron/taxi-scheduled-dispatch" \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json"
+      - name: Run production dispatch crons
+        run: node scripts/run-production-dispatch-crons.mjs
