@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useWindowDimensions } from "react-native";
 import Mapbox from "@rnmapbox/maps";
+import { Platform } from "react-native";
 import type { CoordinatePoint } from "../../lib/coordinates";
 import {
   NAV_ARROW_BEARING_OFFSET,
@@ -63,7 +64,7 @@ export function DriverNavigationVehicleMarker({
         <Mapbox.SymbolLayer
           id="driver-nav-vehicle-layer"
           aboveLayerID="driver-navigation-route-future-line"
-          layerIndex={1100}
+          {...(Platform.OS === "android" ? { layerIndex: 1100 } : {})}
           style={{
             iconImage: "driverNavArrow",
             iconSize,

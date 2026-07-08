@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, useWindowDimensions } from "react-native";
+import { Platform, View, Text, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatTripDistance } from "../../lib/navigationLocale";
 import { computeSpeedClusterLayout } from "../../lib/driverNavigationVisual";
 
@@ -33,6 +34,9 @@ export function DriverNavigationBottomBar({
   isSpeeding,
 }: Props) {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const androidBottomInset =
+    Platform.OS === "android" ? Math.max(insets.bottom, 10) : 0;
   const showSpeedLimit =
     postedSpeed != null &&
     Number.isFinite(postedSpeed) &&
@@ -53,7 +57,7 @@ export function DriverNavigationBottomBar({
           zIndex: 25,
           paddingHorizontal: 18,
           paddingTop: 15,
-          paddingBottom: 13,
+          paddingBottom: 13 + androidBottomInset,
           backgroundColor: "#000000",
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,

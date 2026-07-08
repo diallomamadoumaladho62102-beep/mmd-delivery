@@ -287,6 +287,16 @@ export function splitNavigationRoute(
   };
 }
 
+/** iOS requires >= 2 coordinates; fall back to full route when split future is empty. */
+export function resolveNavigationFutureShape(
+  splitFuture: Feature<LineString>,
+  fullGeometry: Feature<LineString>,
+): Feature<LineString> {
+  if (splitFuture.geometry.coordinates.length >= 2) return splitFuture;
+  if (fullGeometry.geometry.coordinates.length >= 2) return fullGeometry;
+  return splitFuture;
+}
+
 export function routeLineWidths(screenWidth: number) {
   const width = routeLineWidthExpression(screenWidth, ROUTE_LINE_WIDTH_RATIO);
   return {
