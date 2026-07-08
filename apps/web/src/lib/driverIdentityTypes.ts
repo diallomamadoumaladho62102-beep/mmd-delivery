@@ -79,6 +79,7 @@ export type DriverIdentityStateRow = {
   last_online_at: string | null;
   next_random_ride_threshold: number | null;
   pending_post_suspension_check?: boolean;
+  last_verified_phone?: string | null;
 };
 
 export type DriverIdentityCheckRow = {

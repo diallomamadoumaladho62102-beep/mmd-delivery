@@ -52,6 +52,16 @@ export async function getExpoPushToken(): Promise<string | null> {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: "#FF231F7C",
       });
+
+      await Notifications.setNotificationChannelAsync("driver-missions", {
+        name: "Missions chauffeur",
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 400, 200, 400, 200, 400],
+        lightColor: "#2563EB",
+        sound: "mmd_signature_driver_60s.wav",
+        enableVibrate: true,
+        bypassDnd: false,
+      });
     }
 
     const projectId =

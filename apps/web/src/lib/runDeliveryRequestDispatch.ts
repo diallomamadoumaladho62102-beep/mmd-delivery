@@ -1,5 +1,5 @@
 import { createDriverDeliveryRequestOffers } from "@/lib/createDriverDeliveryRequestOffers";
-import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
+import { resolvePushSoundForPlatform, DRIVER_MISSION_PUSH_CHANNEL } from "@/lib/mmdPushSounds";
 import { filterDriverIdsByServicePreference } from "@/lib/driverServiceDispatchFilter";
 
 const MAX_DISPATCH_MILES = 5;
@@ -288,7 +288,7 @@ export async function runDeliveryRequestDispatch(params: {
 
   const { data: tokens, error: tokensError } = await supabase
     .from("user_push_tokens")
-    .select("user_id,expo_push_token,role")
+    .select("user_id,expo_push_token,role,platform")
     .in("user_id", selectedDriverIds)
     .eq("role", "driver");
 
@@ -322,9 +322,10 @@ export async function runDeliveryRequestDispatch(params: {
     toNumber(request.total);
 
   const messages = uniqueTokens.map(
-    (tokenRow: { expo_push_token: string; user_id: string }) => ({
+    (tokenRow: { expo_push_token: string; user_id: string; platform?: string | null }) => ({
       to: tokenRow.expo_push_token,
-      sound: MMD_PUSH_SOUNDS.driverRing,
+      sound: resolvePushSoundForPlatform("delivery_request_dispatch", tokenRow.platform),
+      channelId: DRIVER_MISSION_PUSH_CHANNEL,
       title: "Nouvelle livraison disponible 🚗",
       body: payout
         ? `Demande proche • Gain estimé ${payout.toFixed(2)} USD`

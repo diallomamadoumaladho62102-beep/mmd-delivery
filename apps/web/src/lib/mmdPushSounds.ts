@@ -31,6 +31,8 @@ export function resolvePushSound(dataType?: string | null): string {
     case "driver_offer":
     case "delivery_offer":
     case "taxi_offer":
+    case "taxi_offer_dispatch":
+    case "delivery_request_dispatch":
     case "marketplace_offer":
     case "scheduled_mission":
     case "order_reassigned":
@@ -90,6 +92,40 @@ export function resolvePushSound(dataType?: string | null): string {
       return MMD_PUSH_SOUNDS.system;
   }
 }
+
+/** Platform-aware sound for Expo push (iOS bundles exclude >30s files). */
+export function resolvePushSoundForPlatform(
+  dataType?: string | null,
+  platform?: string | null,
+): string {
+  const type = String(dataType ?? "").trim().toLowerCase();
+  const os = String(platform ?? "").trim().toLowerCase();
+
+  if (os === "ios") {
+    switch (type) {
+      case "driver_offer":
+      case "delivery_offer":
+      case "taxi_offer":
+      case "taxi_offer_dispatch":
+      case "delivery_request_dispatch":
+      case "marketplace_offer":
+      case "scheduled_mission":
+      case "order_reassigned":
+        return MMD_PUSH_SOUNDS.rideAccepted;
+      case "restaurant_order":
+      case "restaurant_order_update":
+      case "restaurant_new_order":
+      case "scheduled_order":
+        return MMD_PUSH_SOUNDS.orderAccepted;
+      default:
+        return resolvePushSound(dataType);
+    }
+  }
+
+  return resolvePushSound(dataType);
+}
+
+export const DRIVER_MISSION_PUSH_CHANNEL = "driver-missions";
 
 /** All custom sounds registered in Expo config. */
 export const MMD_EXPO_SOUND_FILES = Object.values(MMD_PUSH_SOUNDS);

@@ -110,9 +110,12 @@ import TaxiChatScreen from "../screens/taxi/TaxiChatScreen";
 import DriverTaxiChatScreen from "../screens/taxi/DriverTaxiChatScreen";
 import * as Notifications from "expo-notifications";
 import {
-  extractTaxiPushPayload,
-  notifyTaxiOfferPushReceived,
-} from "../lib/taxiPushEvents";
+  extractDriverMissionPushPayload,
+  isDriverMissionPushType,
+  navigateToDriverMission,
+} from "../lib/driverMissionPush";
+import { notifyDriverMissionPushReceived } from "../lib/driverMissionPushEvents";
+import { notifyTaxiOfferPushReceived } from "../lib/taxiPushEvents";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -417,31 +420,37 @@ export function AppNavigator({
   }, []);
 
   React.useEffect(() => {
-    function handleTaxiPush(data: unknown) {
-      const payload = extractTaxiPushPayload(data);
-      if (payload.type !== "taxi_offer_dispatch") return;
+    function handleDriverMissionPush(data: unknown) {
+      const payload = extractDriverMissionPushPayload(data);
+      if (!isDriverMissionPushType(payload.type)) return;
 
-      notifyTaxiOfferPushReceived();
+      notifyDriverMissionPushReceived(payload.type);
+      if (payload.type === "taxi_offer_dispatch") {
+        notifyTaxiOfferPushReceived();
+      }
 
       if (navReady()) {
-        navRef.current?.navigate("DriverTabs");
+        navigateToDriverMission(navRef.current, payload);
       }
     }
 
-    const sub = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        handleTaxiPush(response.notification.request.content.data);
-      }
-    );
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      handleDriverMissionPush(notification.request.content.data);
+    });
+
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      handleDriverMissionPush(response.notification.request.content.data);
+    });
 
     void Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) {
-        handleTaxiPush(response.notification.request.content.data);
+        handleDriverMissionPush(response.notification.request.content.data);
       }
     });
 
     return () => {
-      sub.remove();
+      receivedSub.remove();
+      responseSub.remove();
     };
   }, [navReady]);
 

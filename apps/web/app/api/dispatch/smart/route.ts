@@ -9,7 +9,7 @@ import {
 } from "@/lib/dispatchInternalAuth";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
-import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
+import { resolvePushSoundForPlatform, DRIVER_MISSION_PUSH_CHANNEL } from "@/lib/mmdPushSounds";
 import { filterDriverIdsByServicePreference } from "@/lib/driverServiceDispatchFilter";
 
 export const runtime = "nodejs";
@@ -475,7 +475,7 @@ export async function POST(req: NextRequest) {
 
     const { data: tokens, error: tokensError } = await supabase
       .from("user_push_tokens")
-      .select("user_id,expo_push_token,role")
+      .select("user_id,expo_push_token,role,platform")
       .in("user_id", selectedDriverIds)
       .eq("role", "driver");
 
@@ -496,7 +496,8 @@ export async function POST(req: NextRequest) {
 
     const messages = uniqueTokens.map((tokenRow: any) => ({
       to: tokenRow.expo_push_token,
-      sound: MMD_PUSH_SOUNDS.driverRing,
+      sound: resolvePushSoundForPlatform("driver_offer", tokenRow.platform),
+      channelId: DRIVER_MISSION_PUSH_CHANNEL,
       title: "Nouvelle course disponible 🚗",
       body: payout
         ? `Course proche • Gain estimé ${payout.toFixed(2)} USD`

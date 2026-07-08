@@ -1,7 +1,7 @@
 import { createTaxiOffers, sortCandidatesForElectricPreference } from "@/lib/createTaxiOffers";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { TAXI_FAVORITE_DISPATCH_TIMEOUT_SECONDS } from "@/lib/taxiPremiumDispatch";
-import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
+import { resolvePushSoundForPlatform, DRIVER_MISSION_PUSH_CHANNEL } from "@/lib/mmdPushSounds";
 import { isElectricSearchActive } from "@/lib/taxiCategoryMatching";
 import { maybeAdvanceTaxiPreferenceStage, initializeTaxiRidePreferenceDispatch } from "@/lib/taxiPreferenceDispatch";
 
@@ -284,7 +284,7 @@ export async function runTaxiRideDispatch(params: {
 
     const { data: tokens, error: tokensError } = await supabase
       .from("user_push_tokens")
-      .select("user_id,expo_push_token,role")
+      .select("user_id,expo_push_token,role,platform")
       .eq("user_id", preferredDriverId)
       .eq("role", "driver");
 
@@ -307,9 +307,10 @@ export async function runTaxiRideDispatch(params: {
       .filter((t: { expo_push_token?: string }) =>
         String(t.expo_push_token ?? "").startsWith("ExponentPushToken[")
       )
-      .map((tokenRow: { expo_push_token: string }) => ({
+      .map((tokenRow: { expo_push_token: string; platform?: string | null }) => ({
         to: tokenRow.expo_push_token,
-        sound: MMD_PUSH_SOUNDS.driverRing,
+        sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
+        channelId: DRIVER_MISSION_PUSH_CHANNEL,
         title: "Course favori client ⭐",
         body: payoutDollars
           ? `Un client vous a choisi • Gain estimé ${payoutDollars} USD`
@@ -667,9 +668,10 @@ export async function runTaxiRideDispatch(params: {
     payoutCents != null ? (payoutCents / 100).toFixed(2) : null;
 
   const messages = uniqueTokens.map(
-    (tokenRow: { expo_push_token: string; user_id: string }) => ({
+    (tokenRow: { expo_push_token: string; user_id: string; platform?: string | null }) => ({
       to: tokenRow.expo_push_token,
-      sound: MMD_PUSH_SOUNDS.driverRing,
+      sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
+      channelId: DRIVER_MISSION_PUSH_CHANNEL,
       title: "Nouvelle course taxi disponible 🚕",
       body: payoutDollars
         ? `Course proche • Gain estimé ${payoutDollars} USD`

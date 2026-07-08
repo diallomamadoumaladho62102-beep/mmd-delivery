@@ -53,6 +53,15 @@ import {
   identityBlocksDriverOnline,
 } from "../lib/driverIdentityApi";
 import { getStableDriverDeviceId } from "../lib/driverDeviceId";
+import {
+  startDriverLocationTracking,
+  stopDriverLocationTracking,
+} from "../lib/location";
+import {
+  DRIVER_ONLINE_GRACE_MS,
+  DRIVER_PRESENCE_HEARTBEAT_MS,
+} from "../lib/driverPresenceConfig";
+import { subscribeDriverMissionPushRefresh } from "../lib/driverMissionPushEvents";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -678,7 +687,9 @@ export function DriverHomeScreen() {
   );
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
-  const gpsDbIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const presenceTrackingRef = useRef(false);
+  const onlineRestoreFailuresRef = useRef(0);
+  const onlineRestoreStartedAtRef = useRef<number | null>(null);
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeqRef = useRef(0);
   const mountedRef = useRef(true);
@@ -877,7 +888,7 @@ export function DriverHomeScreen() {
   }, []);
 
   const ensureDriverCanGoOnline = useCallback(
-    async (userId: string): Promise<boolean> => {
+    async (userId: string, options?: { softGate?: boolean }): Promise<boolean> => {
       const { data: profile, error } = await supabase
         .from("driver_profiles")
         .select("status")
@@ -944,7 +955,9 @@ export function DriverHomeScreen() {
         }
       } catch (identityError) {
         console.log("identity gate error:", identityError);
-        await setDriverOnlineStatus(false);
+        if (!options?.softGate) {
+          await setDriverOnlineStatus(false);
+        }
         Alert.alert(
           t("shared.orderChat.alerts.errorTitle", "Erreur"),
           "Impossible de vérifier votre identité. Réessayez dans un instant.",
@@ -971,7 +984,6 @@ export function DriverHomeScreen() {
         .from("driver_profiles")
         .update({
           is_online: nextOnline,
-          updated_at: new Date().toISOString(),
         })
         .eq("user_id", userId)
         .select("user_id,is_online")
@@ -1027,8 +1039,8 @@ export function DriverHomeScreen() {
   }, []);
 
   const startDbGpsTracking = useCallback(
-    async (driverId: string) => {
-      if (!driverId || gpsDbIntervalRef.current) return;
+    async (_driverId: string) => {
+      if (presenceTrackingRef.current) return;
       const ok = await ensureGpsPermission();
       if (!ok) {
         if (!locationPermissionDeniedAlertShownRef.current) {
@@ -1041,31 +1053,16 @@ export function DriverHomeScreen() {
         return;
       }
 
-      const pushLocationOnce = async () => {
-        try {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          const lat = loc.coords.latitude;
-          const lng = loc.coords.longitude;
-          applyDriverCoordinates(lat, lng);
-          const { error: upErr } = await supabase.from("driver_locations").upsert(
-            { driver_id: driverId, lat, lng, updated_at: new Date().toISOString() },
-            { onConflict: "driver_id" },
-          );
-          if (upErr) console.log("driver_locations upsert error:", upErr);
-        } catch (e) {
-          console.log("GPS push error:", e);
-        }
-      };
-
-      await pushLocationOnce();
-      gpsDbIntervalRef.current = setInterval(() => void pushLocationOnce(), 10000);
+      await startDriverLocationTracking({ intervalMs: DRIVER_PRESENCE_HEARTBEAT_MS });
+      presenceTrackingRef.current = true;
     },
-    [applyDriverCoordinates, ensureGpsPermission, t],
+    [ensureGpsPermission, t],
   );
 
   const stopDbGpsTracking = useCallback(async () => {
-    if (gpsDbIntervalRef.current) clearInterval(gpsDbIntervalRef.current);
-    gpsDbIntervalRef.current = null;
+    if (!presenceTrackingRef.current) return;
+    await stopDriverLocationTracking({ setOffline: false });
+    presenceTrackingRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -1534,6 +1531,117 @@ export function DriverHomeScreen() {
     [fetchDriverOrders, isOnline],
   );
 
+  const resumeOnlineSession = useCallback(
+    async (options?: { softGate?: boolean }) => {
+      const savedOnline = await getDriverOnlineStatus();
+      if (!mountedRef.current) return;
+
+      if (!savedOnline) {
+        if (isOnline) {
+          setIsOnline(false);
+          await stopDbGpsTracking();
+          await stopSound();
+          setActiveOffer(null);
+          setAvailableOrders([]);
+          setMyOrders([]);
+          setCountdown(60);
+          lastOfferIdRef.current = null;
+        }
+        onlineRestoreFailuresRef.current = 0;
+        onlineRestoreStartedAtRef.current = null;
+        return;
+      }
+
+      if (onlineRestoreStartedAtRef.current == null) {
+        onlineRestoreStartedAtRef.current = Date.now();
+      }
+
+      try {
+        const userId = await getUserIdOrThrow();
+        const canGoOnline = await ensureDriverCanGoOnline(userId, {
+          softGate: options?.softGate ?? true,
+        });
+
+        if (!canGoOnline) {
+          const stillSaved = await getDriverOnlineStatus();
+          if (!stillSaved && mountedRef.current) {
+            setIsOnline(false);
+          }
+          return;
+        }
+
+        await setDriverProfileOnline(userId, true);
+        await setDriverOnlineStatus(true);
+
+        if (mountedRef.current) setIsOnline(true);
+
+        await startDbGpsTracking(userId);
+        await fetchDriverOrders(true);
+
+        onlineRestoreFailuresRef.current = 0;
+        onlineRestoreStartedAtRef.current = null;
+      } catch (error) {
+        console.log("resumeOnlineSession error:", error);
+        onlineRestoreFailuresRef.current += 1;
+        const startedAt = onlineRestoreStartedAtRef.current ?? Date.now();
+        const elapsed = Date.now() - startedAt;
+
+        if (elapsed >= DRIVER_ONLINE_GRACE_MS) {
+          await setDriverOnlineStatus(false).catch(() => {});
+          if (mountedRef.current) setIsOnline(false);
+          onlineRestoreFailuresRef.current = 0;
+          onlineRestoreStartedAtRef.current = null;
+        }
+      }
+    },
+    [
+      ensureDriverCanGoOnline,
+      fetchDriverOrders,
+      getUserIdOrThrow,
+      isOnline,
+      setDriverProfileOnline,
+      startDbGpsTracking,
+      stopDbGpsTracking,
+      stopSound,
+    ],
+  );
+
+  useEffect(() => {
+    if (!isOnline) return undefined;
+
+    return subscribeDriverMissionPushRefresh(() => {
+      void fetchDriverOrders(true);
+      void mmdAudio.startLongRing("driver").catch(() => {});
+    });
+  }, [fetchDriverOrders, isOnline]);
+
+  useEffect(() => {
+    if (restoredOnlineStatusRef.current) return;
+    restoredOnlineStatusRef.current = true;
+
+    let cancelled = false;
+
+    const restoreSavedOnlineStatus = async () => {
+      if (cancelled) return;
+      await resumeOnlineSession({ softGate: true });
+    };
+
+    void restoreSavedOnlineStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeOnlineSession]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state !== "active") return;
+      void resumeOnlineSession({ softGate: true });
+    });
+
+    return () => sub.remove();
+  }, [resumeOnlineSession]);
+
   useFocusEffect(
     useCallback(() => {
       void fetchDriverPerformance();
@@ -1631,109 +1739,6 @@ export function DriverHomeScreen() {
       }
     };
   }, [getUserIdOrThrow, isOnline, scheduleDriverOrdersRefresh]);
-
-  useEffect(() => {
-    if (restoredOnlineStatusRef.current) return;
-    restoredOnlineStatusRef.current = true;
-
-    let cancelled = false;
-
-    const restoreSavedOnlineStatus = async () => {
-      try {
-        const savedOnline = await getDriverOnlineStatus();
-        if (cancelled || !mountedRef.current) return;
-
-        if (!savedOnline) {
-          setIsOnline(false);
-          return;
-        }
-
-        const userId = await getUserIdOrThrow();
-        const canGoOnline = await ensureDriverCanGoOnline(userId);
-        if (!canGoOnline) {
-          setIsOnline(false);
-          return;
-        }
-
-        await setDriverProfileOnline(userId, true);
-        await setDriverOnlineStatus(true);
-
-        if (cancelled || !mountedRef.current) return;
-        setIsOnline(true);
-
-        await startDbGpsTracking(userId);
-        await fetchDriverOrders(true);
-      } catch (e) {
-        console.log("restoreSavedOnlineStatus error:", e);
-        await setDriverOnlineStatus(false).catch(() => {});
-        if (!cancelled && mountedRef.current) setIsOnline(false);
-      }
-    };
-
-    void restoreSavedOnlineStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ensureDriverCanGoOnline, fetchDriverOrders, getUserIdOrThrow, setDriverProfileOnline, startDbGpsTracking]);
-
-  useEffect(() => {
-    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
-      if (state !== "active") return;
-
-      void (async () => {
-        try {
-          const savedOnline = await getDriverOnlineStatus();
-          if (!mountedRef.current) return;
-
-          if (!savedOnline) {
-            if (isOnline) {
-              setIsOnline(false);
-              await stopDbGpsTracking();
-              await stopSound();
-              setActiveOffer(null);
-              setAvailableOrders([]);
-              setMyOrders([]);
-              setCountdown(60);
-              lastOfferIdRef.current = null;
-            }
-            return;
-          }
-
-          const userId = await getUserIdOrThrow();
-          const canGoOnline = await ensureDriverCanGoOnline(userId);
-          if (!canGoOnline) {
-            setIsOnline(false);
-            return;
-          }
-
-          await setDriverProfileOnline(userId, true);
-          await setDriverOnlineStatus(true);
-
-          if (!mountedRef.current) return;
-          if (!isOnline) setIsOnline(true);
-
-          await startDbGpsTracking(userId);
-          await fetchDriverOrders(true);
-        } catch (e) {
-          console.log("AppState online restore error:", e);
-          await setDriverOnlineStatus(false).catch(() => {});
-          if (mountedRef.current) setIsOnline(false);
-        }
-      })();
-    });
-
-    return () => sub.remove();
-  }, [
-    ensureDriverCanGoOnline,
-    fetchDriverOrders,
-    getUserIdOrThrow,
-    isOnline,
-    setDriverProfileOnline,
-    startDbGpsTracking,
-    stopDbGpsTracking,
-    stopSound,
-  ]);
 
   const formatStatus = useCallback(
     (status: OrderStatus) => {
@@ -2122,10 +2127,9 @@ export function DriverHomeScreen() {
 
   useEffect(() => {
     return () => {
-      void stopDbGpsTracking();
       void stopSound();
     };
-  }, [stopDbGpsTracking, stopSound]);
+  }, [stopSound]);
 
   const onlineLabel = isOnline ? t("driver.home.online", "ONLINE") : t("driver.home.offline", "OFFLINE");
   const onlineColorBg = isOnline ? GREEN : "#EF4444";

@@ -62,6 +62,8 @@ export function resolvePushSound(dataType?: string | null): string {
     case "driver_offer":
     case "delivery_offer":
     case "taxi_offer":
+    case "taxi_offer_dispatch":
+    case "delivery_request_dispatch":
     case "marketplace_offer":
     case "scheduled_mission":
     case "order_reassigned":

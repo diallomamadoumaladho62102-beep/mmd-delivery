@@ -372,7 +372,9 @@ export async function startDriverLocationTracking(
   }
 }
 
-export async function stopDriverLocationTracking() {
+export async function stopDriverLocationTracking(options?: { setOffline?: boolean }) {
+  const setOffline = options?.setOffline === true;
+
   try {
     if (locationSubscription) {
       locationSubscription.remove();
@@ -386,6 +388,10 @@ export async function stopDriverLocationTracking() {
     isTrackingStarted = false;
 
     logSuccess("Tracking GPS arrêté.");
+
+    if (!setOffline) {
+      return;
+    }
 
     const user = await getAuthenticatedDriverUser();
 

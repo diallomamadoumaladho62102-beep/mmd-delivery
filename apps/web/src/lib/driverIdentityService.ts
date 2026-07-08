@@ -233,10 +233,11 @@ async function loadDriverProfileFlags(admin: SupabaseClient, driverId: string) {
     Boolean(photoUpdatedAt && state.last_verified_at) &&
     new Date(photoUpdatedAt).getTime() > new Date(state.last_verified_at!).getTime();
 
-  const phoneChangedRecently =
-    Boolean(profile?.phone && state.last_verified_at) &&
-    Boolean(profile?.updated_at) &&
-    new Date(profile!.updated_at!).getTime() > new Date(state.last_verified_at!).getTime();
+  const phoneChangedRecently = hasPhoneChangedSinceVerification(
+    profile?.phone ?? null,
+    state.last_verified_phone ?? null,
+    state.last_verified_at,
+  );
 
   return {
     profileWasSuspended: profile?.status === "suspended",
@@ -245,6 +246,25 @@ async function loadDriverProfileFlags(admin: SupabaseClient, driverId: string) {
     profileCity: profile?.city ?? null,
     profileCountry: profile?.state ?? null,
   };
+}
+
+export function normalizeIdentityPhone(phone: string | null | undefined): string {
+  return String(phone ?? "").replace(/\D/g, "");
+}
+
+export function hasPhoneChangedSinceVerification(
+  currentPhone: string | null | undefined,
+  verifiedPhone: string | null | undefined,
+  lastVerifiedAt: string | null | undefined,
+): boolean {
+  if (!lastVerifiedAt) return false;
+
+  const normalizedCurrent = normalizeIdentityPhone(currentPhone);
+  const normalizedVerified = normalizeIdentityPhone(verifiedPhone);
+
+  if (!normalizedCurrent || !normalizedVerified) return false;
+
+  return normalizedCurrent !== normalizedVerified;
 }
 
 async function createIdentityCheck(
@@ -373,6 +393,44 @@ export async function evaluateDriverIdentity(
       message: null,
       reason: null,
     };
+  }
+
+  if (
+    context.intent === "go_online" &&
+    state.gate_status === "verified" &&
+    !verificationExpired(settings, state)
+  ) {
+    const flags = await loadDriverProfileFlags(admin, context.driverId);
+    const knownDevice = await isKnownDevice(admin, context.driverId, deviceHash);
+    const openReport = await hasOpenReport(admin, context.driverId);
+
+    const quickDecision = evaluateIdentityTriggers({
+      settings,
+      state,
+      context: {
+        ...context,
+        city: context.city ?? flags.profileCity,
+        country: context.country ?? flags.profileCountry,
+        ipHash: context.ipHash ?? hashIp(null),
+      },
+      hasOpenReport: openReport,
+      isKnownDevice: knownDevice,
+      profileWasSuspended: flags.profileWasSuspended,
+      profilePhotoChangedRecently: flags.profilePhotoChangedRecently,
+      phoneChangedRecently: flags.phoneChangedRecently,
+      pendingPostSuspensionCheck: Boolean(state.pending_post_suspension_check),
+    });
+
+    if (!quickDecision) {
+      return {
+        ok: true,
+        gateStatus: "verified",
+        canGoOnline: true,
+        activeCheck: null,
+        message: null,
+        reason: null,
+      };
+    }
   }
 
   const flags = await loadDriverProfileFlags(admin, context.driverId);
@@ -598,8 +656,15 @@ export async function adminReviewIdentityCheck(
           Math.random() * (settings.random_max_rides - settings.random_min_rides + 1),
       );
 
+    const { data: profile } = await admin
+      .from("driver_profiles")
+      .select("phone")
+      .eq("user_id", driverId)
+      .maybeSingle();
+
     await syncStateGate(admin, driverId, "verified", null, {
       last_verified_at: now,
+      last_verified_phone: profile?.phone ?? null,
       rides_since_verification: 0,
       next_random_ride_threshold: threshold,
       last_device_id_hash: check.device_id_hash,
