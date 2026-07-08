@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Invoke production dispatch cron routes (used by GitHub Actions workflow).
+ * Invoke production safety recording retention cron (GitHub Actions, every 6 h).
  */
 const siteUrl = String(
   process.env.SITE_URL || process.env.PRODUCTION_SITE_URL || "https://www.mmddelivery.com",
@@ -8,14 +8,7 @@ const siteUrl = String(
   .trim()
   .replace(/\/$/, "");
 const cronSecret = String(process.env.CRON_SECRET ?? "").trim();
-
-const cronPaths = [
-  "/api/cron/retry-order-dispatch",
-  "/api/cron/retry-taxi-dispatch",
-  "/api/cron/retry-delivery-request-dispatch",
-  "/api/cron/taxi-scheduled-dispatch",
-  "/api/cron/taxi-active-ride-compliance",
-];
+const cronPath = "/api/cron/ride-safety-recording-retention";
 
 function fail(message) {
   console.error(message);
@@ -28,8 +21,8 @@ if (!cronSecret) {
   );
 }
 
-async function invokeCron(path) {
-  const url = `${siteUrl}${path}`;
+async function main() {
+  const url = `${siteUrl}${cronPath}`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -44,33 +37,27 @@ async function invokeCron(path) {
     bodyPreview = `${bodyPreview.slice(0, 300)}...`;
   }
 
-  console.log(`${path} -> HTTP ${response.status}${bodyPreview ? ` ${bodyPreview}` : ""}`);
+  console.log(`${cronPath} -> HTTP ${response.status}${bodyPreview ? ` ${bodyPreview}` : ""}`);
 
   if (response.status === 401) {
     fail(
-      `${path} returned 401 Unauthorized. CRON_SECRET in GitHub Actions does not match Vercel production.`,
+      `${cronPath} returned 401 Unauthorized. CRON_SECRET in GitHub Actions does not match Vercel production.`,
     );
   }
 
   if (response.status === 404) {
-    fail(`${path} returned 404. Check SITE_URL (${siteUrl}) and Vercel deployment.`);
+    fail(`${cronPath} returned 404. Check SITE_URL (${siteUrl}) and Vercel deployment.`);
   }
 
   if (response.status >= 500) {
-    fail(`${path} returned HTTP ${response.status}. Inspect Vercel production logs.`);
+    fail(`${cronPath} returned HTTP ${response.status}. Inspect Vercel production logs.`);
   }
 
   if (!response.ok) {
-    fail(`${path} returned HTTP ${response.status}.`);
+    fail(`${cronPath} returned HTTP ${response.status}.`);
   }
-}
 
-async function main() {
-  console.log(`Production dispatch crons — ${siteUrl}`);
-  for (const path of cronPaths) {
-    await invokeCron(path);
-  }
-  console.log("All production dispatch crons succeeded.");
+  console.log("Safety recording retention cron succeeded.");
 }
 
 main().catch((error) => {

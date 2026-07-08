@@ -11,8 +11,6 @@ const vercelCrons = [
   { name: "expire-unpaid", path: "/api/orders/expire-unpaid", schedule: "Daily 05:00 UTC" },
   { name: "taxi-monitoring-snapshot", path: "/api/cron/taxi-monitoring-snapshot", schedule: "Daily 06:00 UTC" },
   { name: "vehicle-eligibility-refresh", path: "/api/cron/vehicle-eligibility-refresh", schedule: "Daily 00:05 UTC" },
-  { name: "taxi-active-ride-compliance", path: "/api/cron/taxi-active-ride-compliance", schedule: "Every 15 min" },
-  { name: "ride-safety-recording-retention", path: "/api/cron/ride-safety-recording-retention", schedule: "Every 6 h" },
 ];
 
 const externalCrons = [
@@ -20,6 +18,8 @@ const externalCrons = [
   { name: "retry-taxi-dispatch", path: "/api/cron/retry-taxi-dispatch" },
   { name: "retry-delivery-request-dispatch", path: "/api/cron/retry-delivery-request-dispatch" },
   { name: "taxi-scheduled-dispatch", path: "/api/cron/taxi-scheduled-dispatch" },
+  { name: "taxi-active-ride-compliance", path: "/api/cron/taxi-active-ride-compliance", schedule: "GitHub Actions every 3 min" },
+  { name: "ride-safety-recording-retention", path: "/api/cron/ride-safety-recording-retention", schedule: "GitHub Actions every 6 h" },
 ];
 
 async function probe(path, authorized = false) {
@@ -46,9 +46,10 @@ console.log("");
 
 for (const cron of externalCrons) {
   try {
+    const schedule = "schedule" in cron ? ` (${cron.schedule})` : "";
     const unauth = await probe(cron.path, false);
     const passUnauth = unauth === 401 || unauth === 405;
-    console.log(`${passUnauth ? "PASS" : "WARN"} [external] ${cron.name} unauth=${unauth}`);
+    console.log(`${passUnauth ? "PASS" : "WARN"} [external] ${cron.name}${schedule} unauth=${unauth}`);
 
     if (cronSecret) {
       const auth = await probe(cron.path, true);

@@ -2,7 +2,7 @@
 
 MMD Delivery uses **Vercel cron** for low-frequency jobs and **GitHub Actions** (or cron-job.org / Vercel Pro) for high-frequency dispatch retries.
 
-## Scheduled in `vercel.json` (Hobby-safe)
+## Scheduled in `vercel.json` (Hobby-safe — daily/weekly only)
 
 | Schedule (UTC) | Path | Purpose |
 |----------------|------|---------|
@@ -10,8 +10,6 @@ MMD Delivery uses **Vercel cron** for low-frequency jobs and **GitHub Actions** 
 | Daily 05:00 | `/api/orders/expire-unpaid` | Expire stale unpaid orders |
 | Daily 06:00 | `/api/cron/taxi-monitoring-snapshot` | Taxi ops monitoring |
 | Daily 00:05 | `/api/cron/vehicle-eligibility-refresh` | Driver vehicle category eligibility |
-| Every 15 min | `/api/cron/taxi-active-ride-compliance` | Active taxi ride compliance |
-| Every 6 h | `/api/cron/ride-safety-recording-retention` | Safety recording retention |
 
 These routes accept `CRON_SECRET`, `x-cron-secret`, or Vercel cron headers.
 
@@ -25,6 +23,15 @@ Runs every **3 minutes** with `Authorization: Bearer $CRON_SECRET`:
 | `/api/cron/retry-taxi-dispatch` | Taxi orphan + favorite fallback retries |
 | `/api/cron/retry-delivery-request-dispatch` | Package dispatch waves 2–3 |
 | `/api/cron/taxi-scheduled-dispatch` | Scheduled taxi rides |
+| `/api/cron/taxi-active-ride-compliance` | Active taxi ride compliance |
+
+## External cron (GitHub Actions — `.github/workflows/production-safety-retention-cron.yml`)
+
+Runs every **6 hours** with `Authorization: Bearer $CRON_SECRET`:
+
+| Path | Purpose |
+|------|---------|
+| `/api/cron/ride-safety-recording-retention` | Safety recording retention |
 
 ### GitHub setup
 
