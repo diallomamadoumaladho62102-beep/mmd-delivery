@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -37,7 +38,7 @@ export default function TaxiScheduledScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.scheduled.title", "Scheduled rides"),
-        e instanceof Error ? e.message : t("taxi.scheduled.loadFailed", "Load failed")
+        toUserFacingError(e, t("taxi.scheduled.loadFailed", "Load failed"))
       );
     } finally {
       setLoading(false);

@@ -1,3 +1,4 @@
+import { toUserFacingError } from "../lib/userFacingError";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
@@ -79,7 +80,7 @@ export function DriverSecurityScreen() {
 
       const { error } = await supabase.auth.updateUser({ password: p1 });
       if (error) {
-        Alert.alert(t("driver.security.errorTitle"), error.message);
+        Alert.alert(t("driver.security.errorTitle"), toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
         return;
       }
 
@@ -94,8 +95,7 @@ export function DriverSecurityScreen() {
     } catch (e: any) {
       console.log("updateUser password error:", e);
       Alert.alert(
-        t("driver.security.errorTitle"),
-        e?.message ?? t("driver.security.genericError")
+        t("driver.security.errorTitle"), toUserFacingError(e, t("driver.security.genericError"))
       );
     } finally {
       setSaving(false);

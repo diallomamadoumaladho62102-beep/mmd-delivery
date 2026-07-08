@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   Text,
   ScrollView,
@@ -34,7 +35,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
       setError(null);
       setProducts(await fetchMarketplaceProducts(sellerId, scope));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load products");
+      setError(toUserFacingError(e, "Unable to load products"));
     } finally {
       setLoading(false);
       setRefreshing(false);

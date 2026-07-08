@@ -13,6 +13,7 @@ import {
   startClientAudioCapture,
   stopClientAudioCapture,
 } from "../../lib/taxiSafetyRecordingCapture";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   fetchSafetyRecordingStatus,
   getSafetyRecordingDownloadUrl,
@@ -97,7 +98,7 @@ export function TaxiSafetyRecordingPanel({ rideId, role, rideActive }: Props) {
       );
       await refresh();
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Démarrage impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Démarrage impossible"));
     } finally {
       setBusy(false);
     }
@@ -144,7 +145,7 @@ export function TaxiSafetyRecordingPanel({ rideId, role, rideActive }: Props) {
       Alert.alert("Enregistrement", "Enregistrement arrêté et enregistré de façon sécurisée.");
       await refresh();
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Arrêt impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Arrêt impossible"));
     } finally {
       setBusy(false);
     }
@@ -155,7 +156,7 @@ export function TaxiSafetyRecordingPanel({ rideId, role, rideActive }: Props) {
       const { download_url: downloadUrl } = await getSafetyRecordingDownloadUrl(recordingId);
       await Linking.openURL(downloadUrl);
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Téléchargement impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Téléchargement impossible"));
     }
   };
 

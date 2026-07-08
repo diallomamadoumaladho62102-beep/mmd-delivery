@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -72,7 +73,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
     } catch (e) {
       Alert.alert(
         t("marketplace.details.errorTitle", "Unable to update draft"),
-        e instanceof Error ? e.message : "Unknown error"
+        toUserFacingError(e, "Unknown error")
       );
     } finally {
       setSaving(false);

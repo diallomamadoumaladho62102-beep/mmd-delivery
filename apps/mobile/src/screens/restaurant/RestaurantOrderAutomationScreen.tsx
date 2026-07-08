@@ -19,6 +19,7 @@ import {
   type RestaurantAutomationSettings,
 } from "../../lib/restaurantOrderAutomationApi";
 import { useRestaurantAutoPrint } from "../../hooks/useRestaurantAutoPrint";
+import { toUserFacingError } from "../../lib/userFacingError";
 
 function ToggleRow(props: {
   label: string;
@@ -48,7 +49,7 @@ export function RestaurantOrderAutomationScreen() {
       const result = await fetchRestaurantAutomationSettings();
       setSettings(result.settings);
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Chargement impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Chargement impossible"));
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,7 @@ export function RestaurantOrderAutomationScreen() {
         const saved = await updateRestaurantAutomationSettings(next);
         setSettings(saved);
       } catch (error) {
-        Alert.alert("Erreur", error instanceof Error ? error.message : "Enregistrement impossible");
+        Alert.alert("Erreur", toUserFacingError(error, "Enregistrement impossible"));
         await load();
       } finally {
         setSaving(false);
@@ -84,7 +85,7 @@ export function RestaurantOrderAutomationScreen() {
       await requestRestaurantTestPrint();
       Alert.alert("Test impression", "Ticket de test ajouté à la file d'impression.");
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Test impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Test impossible"));
     }
   }, []);
 

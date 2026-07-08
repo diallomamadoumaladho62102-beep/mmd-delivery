@@ -13,6 +13,7 @@ import {
   orderVerticalForPlatformGate,
 } from "@/lib/platformRouteGuards";
 import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
+import { bridgeStripeWalletFromPaidOrder } from "@/lib/stripeInboundWalletBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +35,7 @@ type OrderRow = {
   total: number | null;
   grand_total: number | null;
   currency: string | null;
+  country_code?: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
   dropoff_lat: number | null;
@@ -342,7 +344,7 @@ export async function POST(req: NextRequest) {
     const { data: order, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, kind, total_cents, total, grand_total, currency, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng"
+        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, kind, total_cents, total, grand_total, currency, country_code, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng"
       )
       .eq("id", orderId)
       .single<OrderRow>();
@@ -441,6 +443,18 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const walletBridge = await bridgeStripeWalletFromPaidOrder(supabaseAdmin, {
+        paymentIntentId: paymentIntentIdOnOrder,
+        order,
+        source: "confirm-paid:payment_intent",
+      });
+      if (walletBridge.ok === false) {
+        logTechnicalError("[confirm-paid] wallet bridge failed (PI)", walletBridge.error, {
+          order_id: orderId,
+        });
+        return json({ error: "wallet_ledger_bridge_failed" }, 500);
+      }
+
       const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
         "mark_order_paid",
         {
@@ -459,8 +473,10 @@ export async function POST(req: NextRequest) {
 
         return json(
           {
-            error: "Failed to confirm paid status",
-            details: rpcErr.message,
+            error: toUserFacingError(
+              rpcErr,
+              "Le paiement n'a pas pu être confirmé. Réessayez dans quelques instants.",
+            ),
           },
           500
         );
@@ -585,6 +601,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (paymentIntentId) {
+      const walletBridge = await bridgeStripeWalletFromPaidOrder(supabaseAdmin, {
+        paymentIntentId,
+        order,
+        source: "confirm-paid:checkout_session",
+      });
+      if (walletBridge.ok === false) {
+        logTechnicalError("[confirm-paid] wallet bridge failed (checkout)", walletBridge.error, {
+          order_id: orderId,
+        });
+        return json({ error: "wallet_ledger_bridge_failed" }, 500);
+      }
+    }
+
     const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
       "mark_order_paid",
       {
@@ -604,8 +634,10 @@ export async function POST(req: NextRequest) {
 
       return json(
         {
-          error: "Failed to confirm paid status",
-          details: rpcErr.message,
+          error: toUserFacingError(
+            rpcErr,
+            "Le paiement n'a pas pu être confirmé. Réessayez dans quelques instants.",
+          ),
         },
         500
       );

@@ -174,6 +174,28 @@ export async function handleTaxiStripePayment(params: {
     return { ok: false, error: "currency_mismatch" };
   }
 
+  const paymentAlreadyRecorded =
+    String(row.payment_status ?? "").trim().toLowerCase() === "paid";
+
+  if (paymentIntentId) {
+    const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
+      paymentIntentId,
+      taxiRide: row,
+      source: paymentAlreadyRecorded ? `${source}:already_paid` : source,
+    });
+    if (walletBridge.ok === false) {
+      return { ok: false, error: walletBridge.error };
+    }
+  }
+
+  if (paymentAlreadyRecorded) {
+    console.log("[handleTaxiStripePayment] idempotent skip", {
+      taxiRideId,
+      source,
+    });
+    return { ok: true, already_paid: true };
+  }
+
   const markResult = await markTaxiRidePaidRobustly(supabaseAdmin, {
     taxiRideId,
     sessionId,
@@ -185,17 +207,10 @@ export async function handleTaxiStripePayment(params: {
   }
 
   if (markResult.already_paid) {
-    console.log("[handleTaxiStripePayment] idempotent skip", {
+    console.log("[handleTaxiStripePayment] idempotent skip after rpc", {
       taxiRideId,
       source,
     });
-    if (paymentIntentId) {
-      await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
-        paymentIntentId,
-        taxiRide: row,
-        source: `${source}:already_paid`,
-      });
-    }
     return { ok: true, already_paid: true };
   }
 
@@ -225,20 +240,6 @@ export async function handleTaxiStripePayment(params: {
       taxiRideId,
       rideForWave: row,
     });
-  }
-
-  if (paymentIntentId) {
-    const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
-      paymentIntentId,
-      taxiRide: row,
-      source,
-    });
-    if (walletBridge.ok === false) {
-      console.error("[handleTaxiStripePayment] wallet bridge failed", {
-        taxi_ride_id: taxiRideId,
-        error: walletBridge.error,
-      });
-    }
   }
 
   return { ok: true, already_paid: false };

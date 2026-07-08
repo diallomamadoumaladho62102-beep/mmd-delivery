@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   Text,
   TextInput,
@@ -82,7 +83,7 @@ export default function TaxiScheduledBookScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.scheduledBook.title", "Schedule a ride"),
-        e instanceof Error ? e.message : t("taxi.scheduledBook.bookingFailed", "Booking failed")
+        toUserFacingError(e, t("taxi.scheduledBook.bookingFailed", "Booking failed"))
       );
     } finally {
       setLoading(false);

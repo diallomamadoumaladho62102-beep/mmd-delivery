@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   ActivityIndicator,
   Image,
@@ -46,7 +47,7 @@ export function DriverTripLocationCard({
       .catch((e: unknown) => {
         if (cancelled) return;
         setLocation(null);
-        setError(e instanceof Error ? e.message : "Unable to load location");
+        setError(toUserFacingError(e, "Unable to load location"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

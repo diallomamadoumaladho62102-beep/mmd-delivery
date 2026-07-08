@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -229,7 +230,7 @@ export default function TaxiQuoteScreen() {
       setPromoDiscountCents(0);
       Alert.alert(
         t("taxi.quote.promoCode", "Promo code"),
-        e instanceof Error ? e.message : t("taxi.quote.invalidPromo", "Invalid promo code")
+        toUserFacingError(e, t("taxi.quote.invalidPromo", "Invalid promo code"))
       );
     }
   }
@@ -260,7 +261,7 @@ export default function TaxiQuoteScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.quote.payment", "Payment"),
-        e instanceof Error ? e.message : t("taxi.quote.paymentFailed", "Unable to start payment")
+        toUserFacingError(e, t("taxi.quote.paymentFailed", "Unable to start payment"))
       );
     } finally {
       setPaying(false);
@@ -345,7 +346,7 @@ export default function TaxiQuoteScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.quote.payment", "Payment"),
-        e instanceof Error ? e.message : t("taxi.quote.paymentFailed", "Unable to start payment")
+        toUserFacingError(e, t("taxi.quote.paymentFailed", "Unable to start payment"))
       );
     } finally {
       setPaying(false);

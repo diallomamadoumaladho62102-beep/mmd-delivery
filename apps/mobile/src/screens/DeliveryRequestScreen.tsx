@@ -1,3 +1,4 @@
+import { toUserFacingError } from "../lib/userFacingError";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -642,7 +643,7 @@ export function DeliveryRequestScreen() {
         }
 
         const friendly = getFriendlyEstimateError(
-          e instanceof Error ? e.message : tr("deliveryRequest.errors.estimateGeneric", "Impossible de calculer l’estimation."),
+          toUserFacingError(e, tr("deliveryRequest.errors.estimateGeneric", "Impossible de calculer l'estimation.")),
           tr
         );
 
@@ -826,7 +827,7 @@ export function DeliveryRequestScreen() {
       console.log("delivery_requests created:", deliveryRequestId);
     } catch (e: unknown) {
       console.error("❌ create request error:", e);
-      Alert.alert(tr("common.error", "Erreur"), e instanceof Error ? e.message : tr("deliveryRequest.errors.createFailed", "Impossible de créer la demande."));
+      Alert.alert(tr("common.error", "Erreur"), toUserFacingError(e, tr("deliveryRequest.errors.createFailed", "Impossible de créer la demande.")));
     } finally {
       setSubmitting(false);
     }
@@ -916,7 +917,7 @@ export function DeliveryRequestScreen() {
       );
     } catch (e: unknown) {
       const message =
-        e instanceof Error ? e.message : tr("deliveryRequest.payment.unableToStart", "Impossible de démarrer le paiement pour le moment.");
+        toUserFacingError(e, tr("deliveryRequest.payment.unableToStart", "Impossible de démarrer le paiement pour le moment."));
       Alert.alert(tr("deliveryRequest.payment.errorTitle", "Erreur de paiement"), message);
     } finally {
       setPaying(false);

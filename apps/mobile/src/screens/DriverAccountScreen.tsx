@@ -16,6 +16,7 @@ import { clearSelectedRole } from "../lib/authRole";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DriverAccountCard } from "../components/DriverAccountCard";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { toUserFacingError } from "../lib/userFacingError";
 
 const LOCALE_KEY = "mmd_locale_driver";
 
@@ -213,7 +214,7 @@ export function DriverAccountScreen() {
 
       const { data: authRes, error: authErr } = await supabase.auth.getUser();
       if (authErr) {
-        Alert.alert(t("common.errorTitle", "Error"), authErr.message);
+        Alert.alert(t("common.errorTitle", "Error"), toUserFacingError(authErr, t("common.errorTitle", "Error")));
         return;
       }
 
@@ -344,7 +345,7 @@ export function DriverAccountScreen() {
             .eq("user_id", uid);
 
           if (second.error) {
-            Alert.alert("driver_documents", second.error.message);
+            Alert.alert("driver_documents", toUserFacingError(second.error, "Impossible d'envoyer les documents pour le moment."));
           } else {
             docs = second.data ?? [];
           }
@@ -396,7 +397,7 @@ export function DriverAccountScreen() {
 
       const { error } = await supabase.auth.signOut();
       if (error) {
-        Alert.alert(t("common.errorTitle", "Error"), error.message);
+        Alert.alert(t("common.errorTitle", "Error"), toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
         return;
       }
 

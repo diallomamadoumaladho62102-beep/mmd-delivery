@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -153,7 +154,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
       await acceptTaxiOffer(offer.id);
       await refresh();
     } catch (e: unknown) {
-      Alert.alert("Taxi", e instanceof Error ? e.message : "Accept failed");
+      Alert.alert("Taxi", toUserFacingError(e, "Accept failed"));
     } finally {
       setActionId(null);
     }
@@ -165,7 +166,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
       await rejectTaxiOffer(offer.id);
       await refresh();
     } catch (e: unknown) {
-      Alert.alert("Taxi", e instanceof Error ? e.message : "Reject failed");
+      Alert.alert("Taxi", toUserFacingError(e, "Reject failed"));
     } finally {
       setActionId(null);
     }
@@ -182,7 +183,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
       if (action === "complete") await completeTaxiRide(rideId);
       await refresh();
     } catch (e: unknown) {
-      Alert.alert("Taxi", e instanceof Error ? e.message : "Action failed");
+      Alert.alert("Taxi", toUserFacingError(e, "Action failed"));
     } finally {
       setActionId(null);
     }
@@ -229,7 +230,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                           arriveTaxiStop(rideId, stop.stop_order)
                             .then(refresh)
                             .catch((e: unknown) =>
-                              Alert.alert("Taxi", e instanceof Error ? e.message : "Failed")
+                              Alert.alert("Taxi", toUserFacingError(e, "Failed"))
                             )
                         }
                       >
@@ -241,7 +242,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                           completeTaxiStop(rideId, stop.stop_order)
                             .then(refresh)
                             .catch((e: unknown) =>
-                              Alert.alert("Taxi", e instanceof Error ? e.message : "Failed")
+                              Alert.alert("Taxi", toUserFacingError(e, "Failed"))
                             )
                         }
                       >

@@ -14,6 +14,8 @@ import {
   verifyStripePaidMatchesDeliveryRequest,
 } from "@/lib/verifyStripePaidAmount";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
+import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWalletBridge";
+import { toUserFacingError } from "@/lib/userFacingError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,6 +36,7 @@ type DeliveryRequestRow = {
   total_cents: number | null;
   total: number | null;
   currency: string | null;
+  country_code?: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
 };
@@ -370,7 +373,7 @@ export async function POST(req: NextRequest) {
     const { data, error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
       .select(
-        "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, total_cents, total, currency, pickup_lat, pickup_lng"
+        "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, total_cents, total, currency, country_code, pickup_lat, pickup_lng"
       )
       .eq("id", requestedId)
       .single();
@@ -419,6 +422,23 @@ export async function POST(req: NextRequest) {
     }
 
     if (isPaidStatus(deliveryRequest.payment_status)) {
+      const paymentIntentIdForBridge =
+        deliveryRequest.stripe_payment_intent_id ??
+        (await stripePaymentLooksPaid(deliveryRequest)).payment_intent_id;
+      if (paymentIntentIdForBridge) {
+        const walletBridge = await bridgeStripeWalletFromPaidDeliveryRequest(
+          supabaseAdmin,
+          {
+            paymentIntentId: paymentIntentIdForBridge,
+            deliveryRequest,
+            source: "confirm-delivery-request-paid:already_paid",
+          },
+        );
+        if (walletBridge.ok === false) {
+          return json({ error: "wallet_ledger_bridge_failed" }, 500);
+        }
+      }
+
       return json({
         ok: true,
         already: true,
@@ -474,6 +494,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const paymentIntentIdForBridge =
+      amountCheck.payment_intent_id ??
+      stripeCheck.payment_intent_id ??
+      deliveryRequest.stripe_payment_intent_id;
+
+    if (paymentIntentIdForBridge) {
+      const walletBridge = await bridgeStripeWalletFromPaidDeliveryRequest(
+        supabaseAdmin,
+        {
+          paymentIntentId: paymentIntentIdForBridge,
+          deliveryRequest,
+          source: "confirm-delivery-request-paid",
+        },
+      );
+      if (walletBridge.ok === false) {
+        return json({ error: "wallet_ledger_bridge_failed" }, 500);
+      }
+    }
+
     const nowIso = new Date().toISOString();
 
     const { data: updatedRow, error: updErr } = await supabaseAdmin
@@ -507,7 +546,15 @@ export async function POST(req: NextRequest) {
         }
       );
 
-      return json({ error: "Failed to mark delivery request paid" }, 500);
+      return json(
+        {
+          error: toUserFacingError(
+            updErr,
+            "Le paiement n'a pas pu être confirmé. Réessayez dans quelques instants.",
+          ),
+        },
+        500,
+      );
     }
 
     if (!updatedRow || !isPaidStatus((updatedRow as { payment_status?: unknown }).payment_status)) {

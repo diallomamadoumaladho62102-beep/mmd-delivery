@@ -58,6 +58,10 @@ type OrderRow = {
   currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  client_user_id?: string | null;
+  created_by?: string | null;
+  country_code?: string | null;
+  kind?: string | null;
 };
 
 type DeliveryRequestRow = {
@@ -397,6 +401,68 @@ function normalizeCurrency(value: unknown): string | null {
   return raw ? raw : null;
 }
 
+async function requireOrderWalletBridge(params: {
+  supabaseAdmin: SupabaseClient;
+  paymentIntentId: string | null;
+  order: OrderRow;
+  source: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!params.paymentIntentId) return { ok: true };
+
+  const bridge = await bridgeStripeWalletFromPaidOrder(params.supabaseAdmin, {
+    paymentIntentId: params.paymentIntentId,
+    order: params.order,
+    source: params.source,
+  });
+
+  if (bridge.ok === false) {
+    return { ok: false, error: bridge.error };
+  }
+
+  return { ok: true };
+}
+
+async function requireDeliveryRequestWalletBridge(params: {
+  supabaseAdmin: SupabaseClient;
+  paymentIntentId: string | null;
+  deliveryRequest: DeliveryRequestRow;
+  source: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!params.paymentIntentId) return { ok: true };
+
+  const bridge = await bridgeStripeWalletFromPaidDeliveryRequest(
+    params.supabaseAdmin,
+    {
+      paymentIntentId: params.paymentIntentId,
+      deliveryRequest: params.deliveryRequest,
+      source: params.source,
+    },
+  );
+
+  if (bridge.ok === false) {
+    return { ok: false, error: bridge.error };
+  }
+
+  return { ok: true };
+}
+
+function walletBridgeFailureResponse(
+  context: Record<string, unknown>,
+  error: string,
+) {
+  console.error("[webhook] wallet bridge failed", { ...context, error });
+  return json(
+    {
+      received: true,
+      ok: false,
+      error: "wallet_ledger_bridge_failed",
+      details: error,
+      ...context,
+    },
+    500,
+  );
+}
+
 async function loadOrderForPaymentCheck(
   supabaseAdmin: SupabaseClient,
   orderId: string
@@ -404,7 +470,7 @@ async function loadOrderForPaymentCheck(
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "id, payment_status, total, grand_total, total_cents, currency, stripe_session_id, stripe_payment_intent_id"
+      "id, payment_status, total, grand_total, total_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, country_code, kind"
     )
     .eq("id", orderId)
     .maybeSingle<OrderRow>();
@@ -1488,6 +1554,15 @@ async function handleCheckoutCompletedLikeEvent(
 
     if (isPaidStatus(order.payment_status)) {
       console.log("ℹ️ WEBHOOK: order already paid", { orderId });
+      const walletGate = await requireOrderWalletBridge({
+        supabaseAdmin,
+        paymentIntentId,
+        order,
+        source: "webhook:checkout_session:already_paid",
+      });
+      if (walletGate.ok === false) {
+        return walletBridgeFailureResponse({ order_id: orderId }, walletGate.error);
+      }
       return json({
         received: true,
         ok: true,
@@ -1495,6 +1570,16 @@ async function handleCheckoutCompletedLikeEvent(
         via: "already_paid",
         type: event.type,
       });
+    }
+
+    const walletGate = await requireOrderWalletBridge({
+      supabaseAdmin,
+      paymentIntentId,
+      order,
+      source: "webhook:checkout_session",
+    });
+    if (walletGate.ok === false) {
+      return walletBridgeFailureResponse({ order_id: orderId }, walletGate.error);
     }
 
     const result = await markOrderPaidRobustly({
@@ -1576,20 +1661,6 @@ async function handleCheckoutCompletedLikeEvent(
         kind: paidOrder.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
-    }
-
-    if (paidOrder && paymentIntentId) {
-      const walletBridge = await bridgeStripeWalletFromPaidOrder(supabaseAdmin, {
-        paymentIntentId,
-        order: paidOrder,
-        source: "webhook:checkout_session",
-      });
-      if (walletBridge.ok === false) {
-        console.error("[webhook] wallet bridge failed (checkout order)", {
-          order_id: orderId,
-          error: walletBridge.error,
-        });
-      }
     }
 
     return json({
@@ -1738,6 +1809,18 @@ async function handleCheckoutCompletedLikeEvent(
     console.log("ℹ️ WEBHOOK: delivery_request already paid", {
       deliveryRequestId,
     });
+    const walletGate = await requireDeliveryRequestWalletBridge({
+      supabaseAdmin,
+      paymentIntentId,
+      deliveryRequest,
+      source: "webhook:checkout_session:already_paid",
+    });
+    if (walletGate.ok === false) {
+      return walletBridgeFailureResponse(
+        { delivery_request_id: deliveryRequestId },
+        walletGate.error,
+      );
+    }
     return json({
       received: true,
       ok: true,
@@ -1745,6 +1828,19 @@ async function handleCheckoutCompletedLikeEvent(
       via: "already_paid",
       type: event.type,
     });
+  }
+
+  const walletGateDr = await requireDeliveryRequestWalletBridge({
+    supabaseAdmin,
+    paymentIntentId,
+    deliveryRequest,
+    source: "webhook:checkout_session",
+  });
+  if (walletGateDr.ok === false) {
+    return walletBridgeFailureResponse(
+      { delivery_request_id: deliveryRequestId },
+      walletGateDr.error,
+    );
   }
 
   const result = await markDeliveryRequestPaidRobustly({
@@ -1810,23 +1906,6 @@ console.log("✅ WEBHOOK PI: order released to drivers", {
 });
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
-
-  if (paymentIntentId && deliveryRequest) {
-    const walletBridge = await bridgeStripeWalletFromPaidDeliveryRequest(
-      supabaseAdmin,
-      {
-        paymentIntentId,
-        deliveryRequest,
-        source: "webhook:checkout_session",
-      }
-    );
-    if (walletBridge.ok === false) {
-      console.error("[webhook] wallet bridge failed (checkout DR)", {
-        delivery_request_id: deliveryRequestId,
-        error: walletBridge.error,
-      });
-    }
-  }
 
   const dispatchOriginCheckout = getDispatchSiteOrigin();
   if (dispatchOriginCheckout) {
@@ -2087,6 +2166,16 @@ async function handlePaymentIntentSucceeded(
         orderId,
       });
 
+      const walletGate = await requireOrderWalletBridge({
+        supabaseAdmin,
+        paymentIntentId,
+        order,
+        source: "webhook:payment_intent.succeeded:already_paid",
+      });
+      if (walletGate.ok === false) {
+        return walletBridgeFailureResponse({ order_id: orderId }, walletGate.error);
+      }
+
       return json({
         received: true,
         ok: true,
@@ -2094,6 +2183,16 @@ async function handlePaymentIntentSucceeded(
         via: "already_paid",
         type: event.type,
       });
+    }
+
+    const walletGatePi = await requireOrderWalletBridge({
+      supabaseAdmin,
+      paymentIntentId,
+      order,
+      source: "webhook:payment_intent.succeeded",
+    });
+    if (walletGatePi.ok === false) {
+      return walletBridgeFailureResponse({ order_id: orderId }, walletGatePi.error);
     }
 
     const result = await markOrderPaidRobustly({
@@ -2181,20 +2280,6 @@ async function handlePaymentIntentSucceeded(
         kind: paidOrderPi.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
-    }
-
-    if (paidOrderPi && paymentIntentId) {
-      const walletBridge = await bridgeStripeWalletFromPaidOrder(supabaseAdmin, {
-        paymentIntentId,
-        order: paidOrderPi,
-        source: "webhook:payment_intent.succeeded",
-      });
-      if (walletBridge.ok === false) {
-        console.error("[webhook] wallet bridge failed (PI order)", {
-          order_id: orderId,
-          error: walletBridge.error,
-        });
-      }
     }
 
     return json({
@@ -2355,6 +2440,19 @@ async function handlePaymentIntentSucceeded(
       deliveryRequestId,
     });
 
+    const walletGate = await requireDeliveryRequestWalletBridge({
+      supabaseAdmin,
+      paymentIntentId,
+      deliveryRequest,
+      source: "webhook:payment_intent.succeeded:already_paid",
+    });
+    if (walletGate.ok === false) {
+      return walletBridgeFailureResponse(
+        { delivery_request_id: deliveryRequestId },
+        walletGate.error,
+      );
+    }
+
     return json({
       received: true,
       ok: true,
@@ -2362,6 +2460,19 @@ async function handlePaymentIntentSucceeded(
       via: "already_paid",
       type: event.type,
     });
+  }
+
+  const walletGateDrPi = await requireDeliveryRequestWalletBridge({
+    supabaseAdmin,
+    paymentIntentId,
+    deliveryRequest,
+    source: "webhook:payment_intent.succeeded",
+  });
+  if (walletGateDrPi.ok === false) {
+    return walletBridgeFailureResponse(
+      { delivery_request_id: deliveryRequestId },
+      walletGateDrPi.error,
+    );
   }
 
   const result = await markDeliveryRequestPaidRobustly({

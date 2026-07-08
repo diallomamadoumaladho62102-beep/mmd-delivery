@@ -1,3 +1,4 @@
+import { toUserFacingError } from "../lib/userFacingError";
 // apps/mobile/src/screens/ClientOrderDetailsScreen.tsx
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
@@ -842,8 +843,7 @@ export function ClientOrderDetailsScreen() {
       Alert.alert(paymentTitle, result.error ?? ts("client.orderDetails.paymentError", "Payment error."));
     } catch (e: unknown) {
       Alert.alert(
-        paymentTitle,
-        e instanceof Error ? e.message : ts("client.orderDetails.paymentError", "Payment error.")
+        paymentTitle, toUserFacingError(e, ts("client.orderDetails.paymentError", "Payment error."))
       );
     } finally {
       if (isMountedRef.current) setPaying(false);
@@ -1030,7 +1030,7 @@ export function ClientOrderDetailsScreen() {
       );
     } catch (e: any) {
       if (isMountedRef.current) setPaymentPending(false);
-      Alert.alert(paymentTitle, e?.message ?? ts("client.orderDetails.paymentError", "Payment error."));
+      Alert.alert(paymentTitle, toUserFacingError(e, ts("client.orderDetails.paymentError", "Payment error.")));
     } finally {
       if (isMountedRef.current) setPaying(false);
     }

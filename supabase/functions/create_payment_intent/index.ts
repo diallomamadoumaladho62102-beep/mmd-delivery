@@ -41,6 +41,32 @@ function resolveOrderAmountCents(order: {
   return null;
 }
 
+function buildPaymentIntentIdempotencyKey(
+  orderId: string,
+  amount: number,
+  currency: string,
+): string {
+  return `mmd-order-pi-${orderId}-${amount}-${currency}`.slice(0, 255);
+}
+
+async function createOrderPaymentIntent(
+  orderId: string,
+  userId: string,
+  amount: number,
+  currency: string,
+): Promise<Stripe.PaymentIntent> {
+  const params: Stripe.PaymentIntentCreateParams = {
+    amount,
+    currency,
+    automatic_payment_methods: { enabled: true },
+    metadata: { order_id: orderId, user_id: userId },
+  };
+
+  return stripe.paymentIntents.create(params, {
+    idempotencyKey: buildPaymentIntentIdempotencyKey(orderId, amount, currency),
+  });
+}
+
 Deno.serve(async (req) => {
   try {
     if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -98,30 +124,30 @@ Deno.serve(async (req) => {
 
       const finalStates = ["canceled"] as const;
       if (finalStates.includes(paymentIntent.status as "canceled")) {
-        paymentIntent = await stripe.paymentIntents.create({
+        paymentIntent = await createOrderPaymentIntent(
+          order.id,
+          userData.user.id,
           amount,
           currency,
-          automatic_payment_methods: { enabled: true },
-          metadata: { order_id: order.id, user_id: userData.user.id },
-        });
+        );
       } else if (
         paymentIntent.amount !== amount ||
         paymentIntent.currency !== currency
       ) {
-        paymentIntent = await stripe.paymentIntents.create({
+        paymentIntent = await createOrderPaymentIntent(
+          order.id,
+          userData.user.id,
           amount,
           currency,
-          automatic_payment_methods: { enabled: true },
-          metadata: { order_id: order.id, user_id: userData.user.id },
-        });
+        );
       }
     } else {
-      paymentIntent = await stripe.paymentIntents.create({
+      paymentIntent = await createOrderPaymentIntent(
+        order.id,
+        userData.user.id,
         amount,
         currency,
-        automatic_payment_methods: { enabled: true },
-        metadata: { order_id: order.id, user_id: userData.user.id },
-      });
+      );
     }
 
     const { error: updErr } = await supabase
@@ -142,6 +168,6 @@ Deno.serve(async (req) => {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     console.log("create_payment_intent error:", message);
-    return json({ error: message || "Server error" }, 500);
+    return json({ error: "payment_setup_failed" }, 500);
   }
 });

@@ -49,25 +49,10 @@ function mapStripePaymentError(error: { code?: string; message?: string }): stri
 }
 
 function extractSupabaseFunctionError(error: unknown): string {
-  try {
-    const e = error as {
-      message?: string;
-      context?: { body?: unknown } | unknown;
-    };
-
-    const body =
-      e?.context && typeof e.context === "object"
-        ? (e.context as { body?: unknown })?.body ?? e.context
-        : null;
-
-    if (typeof body === "string" && body.trim()) return body.trim();
-    if (body && typeof body === "object") return JSON.stringify(body);
-    if (typeof e?.message === "string" && e.message.trim()) return e.message.trim();
-
-    return "Erreur inconnue";
-  } catch {
-    return "Erreur inconnue";
-  }
+  return toUserFacingError(
+    error,
+    "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+  );
 }
 
 function isExpoGo(): boolean {
@@ -533,7 +518,12 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
 
   if (!clientSecret) {
     if (d?.alreadyPaid) return true;
-    throw new Error("clientSecret manquant depuis create_payment_intent.");
+    throw new Error(
+      toUserFacingError(
+        null,
+        "Le paiement n'a pas pu être initialisé. Réessayez dans quelques instants.",
+      ),
+    );
   }
 
   const stripeNative = await import("@stripe/stripe-react-native");
@@ -544,6 +534,13 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
     merchantDisplayName: "MMD Delivery",
     paymentIntentClientSecret: clientSecret,
     allowsDelayedPaymentMethods: true,
+    applePay: {
+      merchantCountryCode: "US",
+    },
+    googlePay: {
+      merchantCountryCode: "US",
+      testEnv: String(process.env.EXPO_PUBLIC_STRIPE_PK ?? "").startsWith("pk_test_"),
+    },
   });
 
   if (init.error) {

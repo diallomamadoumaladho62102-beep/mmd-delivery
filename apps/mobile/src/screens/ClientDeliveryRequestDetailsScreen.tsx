@@ -1,3 +1,4 @@
+import { toUserFacingError } from "../lib/userFacingError";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
@@ -875,8 +876,7 @@ export function ClientDeliveryRequestDetailsScreen() {
             );
           } catch (e: any) {
             Alert.alert(
-              cancelTitle,
-              e?.message ?? t("client.deliveryRequest.cancelFailed", "Unable to cancel this trip.")
+              cancelTitle, toUserFacingError(e, t("client.deliveryRequest.cancelFailed", "Unable to cancel this trip."))
             );
           } finally {
             setCanceling(false);

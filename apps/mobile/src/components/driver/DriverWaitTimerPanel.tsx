@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -103,7 +104,7 @@ export function DriverWaitTimerPanel({
         setRefreshError(null);
       } catch (e) {
         if (!mountedRef.current) return;
-        const message = e instanceof Error ? e.message : String(e);
+        const message = toUserFacingError(e, String(e));
         setRefreshError(
           isNetworkErrorMessage(message)
             ? tr("driver.waitTimer.networkError", "Connexion instable. Réessaie.")
@@ -177,7 +178,7 @@ export function DriverWaitTimerPanel({
       setStatus(result);
       setRefreshError(null);
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = toUserFacingError(e, String(e));
       Alert.alert(
         tr("driver.waitTimer.arrivalBlockedTitle", "Arrivée refusée"),
         isNetworkErrorMessage(message)
@@ -273,7 +274,7 @@ export function DriverWaitTimerPanel({
                 if (!result.ok) throw new Error(result.error ?? "cancel_failed");
                 onTaxiNoShowCanceled?.();
               } catch (e) {
-                const message = e instanceof Error ? e.message : String(e);
+                const message = toUserFacingError(e, String(e));
                 Alert.alert(
                   tr("common.error.title", "Erreur"),
                   isNetworkErrorMessage(message)

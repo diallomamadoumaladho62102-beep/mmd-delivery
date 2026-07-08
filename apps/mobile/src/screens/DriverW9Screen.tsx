@@ -1,3 +1,4 @@
+import { toUserFacingError } from "../lib/userFacingError";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
@@ -175,7 +176,7 @@ export default function DriverW9Screen() {
 
       setTin("");
     } catch (e: any) {
-      Alert.alert(alertTitle, e?.message ?? t("driver.w9.loadFailed", "Failed to load"));
+      Alert.alert(alertTitle, toUserFacingError(e, t("driver.w9.loadFailed", "Failed to load")));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -194,7 +195,7 @@ export default function DriverW9Screen() {
       }
       await openW9Pdf(downloadUrl);
     } catch (e: any) {
-      Alert.alert(alertTitle, e?.message ?? t("driver.w9.openPdfFailed", "Unable to open PDF"));
+      Alert.alert(alertTitle, toUserFacingError(e, t("driver.w9.openPdfFailed", "Unable to open PDF")));
     }
   }, [alertTitle, downloadUrl, t]);
 
@@ -223,7 +224,7 @@ export default function DriverW9Screen() {
       setTin("");
       await load("refresh");
     } catch (e: any) {
-      Alert.alert(alertTitle, e?.message ?? t("driver.w9.submitFailed", "Submit failed"));
+      Alert.alert(alertTitle, toUserFacingError(e, t("driver.w9.submitFailed", "Submit failed")));
     } finally {
       setSubmitting(false);
     }

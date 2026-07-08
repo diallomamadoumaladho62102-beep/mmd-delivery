@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   ActivityIndicator,
   Alert,
@@ -199,7 +200,7 @@ export default function MMDLocationPicker({
       setAccuracyM(pos.coords.accuracy ?? null);
       setLocationSource("gps");
     } catch (e: unknown) {
-      Alert.alert("GPS error", e instanceof Error ? e.message : "Unable to read GPS");
+      Alert.alert("GPS error", toUserFacingError(e, "Unable to read GPS"));
     } finally {
       setLoadingGps(false);
     }
@@ -300,7 +301,7 @@ export default function MMDLocationPicker({
 
       await onSave({ location });
     } catch (e: unknown) {
-      Alert.alert("Save failed", e instanceof Error ? e.message : "Unable to save location");
+      Alert.alert("Save failed", toUserFacingError(e, "Unable to save location"));
     } finally {
       setSaving(false);
     }

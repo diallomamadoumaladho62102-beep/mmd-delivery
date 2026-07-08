@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -124,7 +125,7 @@ export default function TaxiChatScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.chat.sendFailed", "Send failed"),
-        e instanceof Error ? e.message : t("taxi.chat.send", "Error")
+        toUserFacingError(e, t("taxi.chat.send", "Error"))
       );
     } finally {
       setSending(false);
@@ -172,7 +173,7 @@ export default function TaxiChatScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.chat.imageFailed", "Image failed"),
-        e instanceof Error ? e.message : t("taxi.chat.send", "Error")
+        toUserFacingError(e, t("taxi.chat.send", "Error"))
       );
     } finally {
       setSending(false);

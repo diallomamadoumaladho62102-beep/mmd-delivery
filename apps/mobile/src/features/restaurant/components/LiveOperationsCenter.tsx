@@ -1,4 +1,5 @@
 import React, { memo, useCallback, useState } from "react";
+import { toUserFacingError } from "../../../lib/userFacingError";
 import {
   Alert,
   FlatList,
@@ -168,8 +169,7 @@ function LiveOperationsCenterComponent({
         onRefresh();
       } catch (e: unknown) {
         Alert.alert(
-          t("common.errorTitle"),
-          e instanceof Error ? e.message : t("restaurant.commandCenter.actionFailed")
+          t("common.errorTitle"), toUserFacingError(e, t("restaurant.commandCenter.actionFailed"))
         );
       } finally {
         setActionLoadingId(null);
@@ -196,8 +196,7 @@ function LiveOperationsCenterComponent({
                   onRefresh();
                 } catch (e: unknown) {
                   Alert.alert(
-                    t("common.errorTitle"),
-                    e instanceof Error ? e.message : t("restaurant.commandCenter.actionFailed")
+                    t("common.errorTitle"), toUserFacingError(e, t("restaurant.commandCenter.actionFailed"))
                   );
                 } finally {
                   setActionLoadingId(null);

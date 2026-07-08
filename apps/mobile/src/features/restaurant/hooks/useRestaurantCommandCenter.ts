@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toUserFacingError } from "../../../lib/userFacingError";
 import { AppState, type AppStateStatus } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { supabase } from "../../../lib/supabase";
@@ -69,7 +70,7 @@ export function useRestaurantCommandCenter(): UseRestaurantCommandCenterResult {
       setData(commandCenter);
       setAiGrowth(growth);
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "LOAD_FAILED";
+      const message = toUserFacingError(e, "LOAD_FAILED");
       setError(message);
     } finally {
       if (opts?.pull) setRefreshing(false);

@@ -245,13 +245,7 @@ export type TaxiCategoryAvailability = {
 };
 
 export async function fetchTaxiCategoryAvailability(): Promise<TaxiCategoryAvailability[]> {
-  const res = await fetch(`${getApiBaseUrl()}/api/taxi/categories/available`, {
-    headers: { Accept: "application/json" },
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok || body.ok === false) {
-    throw new Error(String(body.error ?? "Failed to load taxi categories"));
-  }
+  const body = await authFetch("/api/taxi/categories/available");
   return body.categories ?? [];
 }
 

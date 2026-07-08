@@ -47,14 +47,13 @@ export async function recordStripeInboundWalletBridge(
   );
 
   if (existing && existing.status === "paid") {
-    try {
-      await recordInboundPaymentWalletEntries(supabaseAdmin, existing);
-    } catch (walletErr) {
-      console.error("[stripeInboundWalletBridge] ledger replay failed", {
-        payment_intent_id: paymentIntentId,
-        transaction_id: existing.id,
-        error: walletErr,
-      });
+    const ledgerReplay = await recordInboundPaymentWalletEntriesSafe(
+      supabaseAdmin,
+      existing,
+      paymentIntentId,
+    );
+    if (ledgerReplay.ok === false) {
+      return { ok: false, error: ledgerReplay.error };
     }
     return { ok: true, transactionId: existing.id, created: false };
   }
@@ -99,17 +98,34 @@ export async function recordStripeInboundWalletBridge(
 
   const transaction = data as PaymentTransactionRow;
 
+  const ledgerWrite = await recordInboundPaymentWalletEntriesSafe(
+    supabaseAdmin,
+    transaction,
+    paymentIntentId,
+  );
+  if (ledgerWrite.ok === false) {
+    return { ok: false, error: ledgerWrite.error };
+  }
+
+  return { ok: true, transactionId: transaction.id, created: true };
+}
+
+async function recordInboundPaymentWalletEntriesSafe(
+  supabaseAdmin: SupabaseClient,
+  transaction: PaymentTransactionRow,
+  paymentIntentId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     await recordInboundPaymentWalletEntries(supabaseAdmin, transaction);
+    return { ok: true };
   } catch (walletErr) {
     console.error("[stripeInboundWalletBridge] ledger write failed", {
       payment_intent_id: paymentIntentId,
       transaction_id: transaction.id,
       error: walletErr,
     });
+    return { ok: false, error: "wallet_ledger_write_failed" };
   }
-
-  return { ok: true, transactionId: transaction.id, created: true };
 }
 
 function resolveAmountCentsFromTotals(input: {

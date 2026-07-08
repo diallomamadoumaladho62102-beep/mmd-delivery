@@ -2,6 +2,7 @@ const TECHNICAL_PATTERNS: RegExp[] = [
   /unrecognized format\(\)/i,
   /postgres/i,
   /supabase/i,
+  /pgrst/i,
   /rpc/i,
   /mapbox directions failed/i,
   /mapbox geocoding failed/i,
@@ -14,6 +15,15 @@ const TECHNICAL_PATTERNS: RegExp[] = [
   /violates row-level security/i,
   /permission denied/i,
   /Request failed/i,
+  /payment_intent/i,
+  /clientSecret manquant/i,
+  /wallet_ledger/i,
+  /JWT expired/i,
+  /invalid jwt/i,
+  /network request failed/i,
+  /fetch failed/i,
+  /edge function/i,
+  /functions\.invoke/i,
 ];
 
 export function isTechnicalErrorMessage(message: string): boolean {
@@ -64,8 +74,32 @@ function mapKnownErrorCode(code: string, message: string): string | null {
       return "L'authentification du paiement a échoué. Réessayez ou utilisez une autre carte.";
     case "processing_error":
       return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
+    case "invalid_credentials":
+    case "invalid_grant":
+      return "Identifiants incorrects. Vérifiez votre email et mot de passe.";
+    case "email_not_confirmed":
+      return "Confirmez votre adresse email avant de vous connecter.";
+    case "user_already_registered":
+      return "Un compte existe déjà avec cette adresse email.";
+    case "weak_password":
+      return "Mot de passe trop faible. Utilisez au moins 8 caractères.";
+    case "wallet_ledger_bridge_failed":
+    case "payment_setup_failed":
+      return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
     default:
       break;
+  }
+
+  if (/invalid login credentials/i.test(message)) {
+    return "Identifiants incorrects. Vérifiez votre email et mot de passe.";
+  }
+
+  if (/email not confirmed/i.test(message)) {
+    return "Confirmez votre adresse email avant de vous connecter.";
+  }
+
+  if (/user already registered/i.test(message)) {
+    return "Un compte existe déjà avec cette adresse email.";
   }
 
   if (/Canc/i.test(message) || code === "Canceled") {

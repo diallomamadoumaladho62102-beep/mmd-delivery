@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -68,7 +69,7 @@ export default function MarketplaceHomeScreen() {
         : items;
       setSellers(sortSellers(scoped));
     } catch (e) {
-      const message = e instanceof Error ? e.message : t("marketplace.home.loadError", "Unable to load marketplace");
+      const message = toUserFacingError(e, t("marketplace.home.loadError", "Unable to load marketplace"));
       if (message.includes("marketplace_unavailable")) {
         setError(
           t(

@@ -24,6 +24,7 @@ import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
+import { toUserFacingError } from "../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientAuth">;
 
@@ -306,7 +307,7 @@ export function ClientAuthScreen() {
 
       if (error) {
         console.error(error);
-        throw new Error(error.message || t("client.auth.loginFailed"));
+        throw new Error(toUserFacingError(error, t("client.auth.loginFailed")));
       }
 
       if (!data.session) {
@@ -333,7 +334,7 @@ export function ClientAuthScreen() {
       console.error(e);
       Alert.alert(
         t("client.auth.errorTitle"),
-        e instanceof Error ? e.message : t("client.auth.cannotLogin")
+        toUserFacingError(e, t("client.auth.cannotLogin"))
       );
     } finally {
       setLoading(false);
@@ -358,7 +359,7 @@ export function ClientAuthScreen() {
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error(toUserFacingError(error, "Impossible d'envoyer l'email."));
       }
 
       Alert.alert(
@@ -368,7 +369,7 @@ export function ClientAuthScreen() {
     } catch (err: unknown) {
       Alert.alert(
         t("client.auth.errorTitle"),
-        err instanceof Error ? err.message : "Impossible d’envoyer l’email."
+        toUserFacingError(err, "Impossible d'envoyer l'email.")
       );
     } finally {
       setLoading(false);
@@ -561,7 +562,7 @@ export function ClientAuthScreen() {
 
       if (error) {
         console.error(error);
-        throw new Error(error.message || t("client.auth.signupFailed"));
+        throw new Error(toUserFacingError(error, t("client.auth.signupFailed")));
       }
 
       const userId = data.user?.id;
@@ -613,7 +614,7 @@ export function ClientAuthScreen() {
       console.error(e);
       Alert.alert(
         t("client.auth.errorTitle"),
-        e instanceof Error ? e.message : t("client.auth.cannotSignup")
+        toUserFacingError(e, t("client.auth.cannotSignup"))
       );
     } finally {
       setLoading(false);
@@ -632,8 +633,7 @@ export function ClientAuthScreen() {
       setAvatar(picked);
     } catch (e: unknown) {
       Alert.alert(
-        t("client.auth.photoTitle"),
-        e instanceof Error ? e.message : t("client.auth.cannotPickPhoto")
+        t("client.auth.photoTitle"), toUserFacingError(e, t("client.auth.cannotPickPhoto"))
       );
     }
   };

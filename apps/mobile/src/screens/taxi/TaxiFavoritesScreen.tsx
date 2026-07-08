@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -46,7 +47,7 @@ export default function TaxiFavoritesScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.favorites.title", "Favorite drivers"),
-        e instanceof Error ? e.message : t("taxi.favorites.loadFailed", "Load failed")
+        toUserFacingError(e, t("taxi.favorites.loadFailed", "Load failed"))
       );
     } finally {
       setLoading(false);
@@ -68,7 +69,7 @@ export default function TaxiFavoritesScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.favorites.title", "Favorite drivers"),
-        e instanceof Error ? e.message : t("taxi.favorites.addFailed", "Add failed")
+        toUserFacingError(e, t("taxi.favorites.addFailed", "Add failed"))
       );
     } finally {
       setSaving(false);
@@ -83,7 +84,7 @@ export default function TaxiFavoritesScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.favorites.title", "Favorite drivers"),
-        e instanceof Error ? e.message : t("taxi.favorites.removeFailed", "Remove failed")
+        toUserFacingError(e, t("taxi.favorites.removeFailed", "Remove failed"))
       );
     } finally {
       setSaving(false);

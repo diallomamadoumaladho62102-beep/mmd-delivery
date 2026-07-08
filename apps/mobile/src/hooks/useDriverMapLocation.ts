@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toUserFacingError } from "../lib/userFacingError";
 import * as Location from "expo-location";
 import { calculateHeading } from "../lib/navigationService";
 import type { CoordinatePoint } from "../lib/coordinates";
@@ -136,7 +137,7 @@ export function useDriverMapLocation(enabled = true): DriverMapLocationState {
       } catch (error) {
         if (!mountedRef.current) return;
         setErrorMessage(
-          error instanceof Error ? error.message : "Impossible d'activer le GPS.",
+          toUserFacingError(error, "Impossible d'activer le GPS."),
         );
         setGpsStatus("lost");
       }

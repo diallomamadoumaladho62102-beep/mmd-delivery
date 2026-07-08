@@ -23,6 +23,7 @@ import { validatePassword } from "../lib/authValidation";
 import { clearSelectedRole } from "../lib/authRole";
 import { getResetPasswordRedirectUrl } from "../lib/productionSite";
 import LegalSignupLinks from "../components/LegalSignupLinks";
+import { toUserFacingError } from "../lib/userFacingError";
 
 type TransportMode = "bike" | "moto" | "car";
 type DriverStatus =
@@ -542,7 +543,7 @@ export function DriverAuthScreen() {
       });
 
       if (error) {
-        Alert.alert(t("driver.auth.alert.loginFailedTitle"), error.message);
+        Alert.alert(t("driver.auth.alert.loginFailedTitle"), toUserFacingError(error, t("driver.auth.alert.loginFailedTitle")));
         return;
       }
 
@@ -589,7 +590,7 @@ export function DriverAuthScreen() {
       });
 
       if (error) {
-        Alert.alert("Erreur", error.message);
+        Alert.alert("Erreur", toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
         return;
       }
 
@@ -814,7 +815,7 @@ export function DriverAuthScreen() {
       });
 
       if (error) {
-        Alert.alert(t("driver.auth.alert.signupFailedTitle"), error.message);
+        Alert.alert(t("driver.auth.alert.signupFailedTitle"), toUserFacingError(error, t("driver.auth.alert.signupFailedTitle")));
         return;
       }
 

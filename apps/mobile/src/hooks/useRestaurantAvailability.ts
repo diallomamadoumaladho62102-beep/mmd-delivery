@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { toUserFacingError } from "../lib/userFacingError";
 import { Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -37,7 +38,7 @@ export function useRestaurantAvailability() {
         .eq("user_id", restaurantUserId);
 
       if (error) {
-        throw new Error(error.message || "Unable to change restaurant status.");
+        throw new Error(toUserFacingError(error, "Unable to change restaurant status."));
       }
 
       return nextValue;

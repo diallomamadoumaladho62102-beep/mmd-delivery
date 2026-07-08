@@ -1,3 +1,4 @@
+import { toUserFacingError } from "../../lib/userFacingError";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
@@ -239,7 +240,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        err instanceof Error ? err.message : "Impossible de choisir le logo."
+        toUserFacingError(err, "Impossible de choisir le logo.")
       );
     }
   }
@@ -263,7 +264,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         cacheControl: "3600",
       });
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer."));
 
     return filePath;
   }
@@ -292,7 +293,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        err instanceof Error ? err.message : "Impossible de choisir le document."
+        toUserFacingError(err, "Impossible de choisir le document.")
       );
     }
   }
@@ -475,7 +476,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        err instanceof Error ? err.message : "Erreur inconnue"
+        toUserFacingError(err, "Erreur inconnue")
       );
     } finally {
       setLoading(false);

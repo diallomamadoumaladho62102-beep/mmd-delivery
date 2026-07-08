@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
   Text,
@@ -85,7 +86,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        e instanceof Error ? e.message : "Unknown error"
+        toUserFacingError(e, "Unknown error")
       );
     } finally {
       setLoading(false);
@@ -158,7 +159,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        e instanceof Error ? e.message : "Unknown error"
+        toUserFacingError(e, "Unknown error")
       );
     }
   }
@@ -188,7 +189,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        e instanceof Error ? e.message : "Unknown error"
+        toUserFacingError(e, "Unknown error")
       );
     } finally {
       setCheckingOut(false);
@@ -214,7 +215,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
-        e instanceof Error ? e.message : "Unknown error"
+        toUserFacingError(e, "Unknown error")
       );
     } finally {
       setCheckingOut(false);

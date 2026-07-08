@@ -19,6 +19,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { toUserFacingError } from "../../lib/userFacingError";
 
 type Category = {
   id: string;
@@ -581,7 +582,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     if (error) {
       console.log("❌ toggle available:", error);
-      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), error.message);
+      return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(error, "Action impossible pour le moment."));
     }
     if (restaurantUserId) await refreshAll(restaurantUserId);
   };
@@ -717,7 +718,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
       if (error) {
         console.log("❌ edit item:", error);
-        return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), error.message);
+        return Alert.alert(t("restaurant.menu.alerts.errorTitle", "Erreur"), toUserFacingError(error, "Action impossible pour le moment."));
       }
 
       await refreshAll(restaurantUserId);

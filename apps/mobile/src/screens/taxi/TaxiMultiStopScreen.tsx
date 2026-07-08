@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   Text,
   TextInput,
@@ -87,7 +88,7 @@ export default function TaxiMultiStopScreen() {
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.multiStop.title", "Multi-stop ride"),
-        e instanceof Error ? e.message : t("taxi.quote.paymentFailed", "Failed")
+        toUserFacingError(e, t("taxi.quote.paymentFailed", "Failed"))
       );
     } finally {
       setLoading(false);
