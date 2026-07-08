@@ -19,6 +19,7 @@ import {
   setDriverActiveVehicle,
   type DriverVehicleListItem,
 } from "../../lib/driverServicePreferencesApi";
+import { toUserFacingError } from "../../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverVehicles">;
 
@@ -104,7 +105,7 @@ export function DriverVehiclesScreen() {
       setIsOnline(data.is_online);
       setHistory(data.history.slice(0, 10));
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Chargement impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Impossible de charger vos véhicules pour le moment."));
     } finally {
       setLoading(false);
     }
@@ -119,7 +120,7 @@ export function DriverVehiclesScreen() {
       await setDriverActiveVehicle(vehicleId);
       await load();
     } catch (error) {
-      Alert.alert("Véhicule actif", error instanceof Error ? error.message : "Changement impossible");
+      Alert.alert("Véhicule actif", toUserFacingError(error, "Impossible de changer le véhicule actif pour le moment."));
     }
   };
 
@@ -135,7 +136,7 @@ export function DriverVehiclesScreen() {
               await deleteDriverVehicle(vehicleId);
               await load();
             } catch (error) {
-              Alert.alert("Erreur", error instanceof Error ? error.message : "Suppression impossible");
+              Alert.alert("Erreur", toUserFacingError(error, "Impossible de supprimer ce véhicule pour le moment."));
             }
           })();
         },

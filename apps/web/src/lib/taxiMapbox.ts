@@ -1,6 +1,9 @@
 const MAPBOX_TOKEN =
   process.env.MAPBOX_ACCESS_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
+const EARTH_RADIUS_MILES = 3958.8;
+export const ROUTE_UNAVAILABLE = "route_unavailable";
+
 export type TaxiRouteInput = {
   pickupAddress?: string;
   dropoffAddress?: string;
@@ -42,12 +45,63 @@ export type TaxiRouteResult = {
   durationMinutes: number;
 };
 
+export function isValidCoordinate(lat: unknown, lng: unknown): boolean {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+  if (latitude < -90 || latitude > 90) return false;
+  if (longitude < -180 || longitude > 180) return false;
+  if (Math.abs(latitude) < 0.000001 && Math.abs(longitude) < 0.000001) return false;
+  return true;
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function estimateHaversineRoute(
+  pickupLat: number,
+  pickupLng: number,
+  dropoffLat: number,
+  dropoffLng: number,
+) {
+  const dLat = toRadians(dropoffLat - pickupLat);
+  const dLng = toRadians(dropoffLng - pickupLng);
+  const lat1 = toRadians(pickupLat);
+  const lat2 = toRadians(dropoffLat);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const distanceMiles = EARTH_RADIUS_MILES * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const durationMinutes = Math.max(5, (distanceMiles / 25) * 60);
+
+  return { distanceMiles, durationMinutes, fallback: true as const };
+}
+
+function buildCoordinatePath(coordinates: Array<{ lat: number; lng: number }>) {
+  if (coordinates.length < 2) {
+    throw new Error(ROUTE_UNAVAILABLE);
+  }
+
+  for (const point of coordinates) {
+    if (!isValidCoordinate(point.lat, point.lng)) {
+      throw new Error(ROUTE_UNAVAILABLE);
+    }
+  }
+
+  return coordinates.map((point) => `${point.lng},${point.lat}`).join(";");
+}
+
 async function geocodeAddress(address: string) {
-  if (!MAPBOX_TOKEN) throw new Error("Mapbox token missing");
+  if (!MAPBOX_TOKEN) throw new Error(ROUTE_UNAVAILABLE);
+
+  const trimmed = String(address ?? "").trim();
+  if (trimmed.length < 3) throw new Error(ROUTE_UNAVAILABLE);
 
   const url =
     "https://api.mapbox.com/geocoding/v5/mapbox.places/" +
-    encodeURIComponent(address) +
+    encodeURIComponent(trimmed) +
     `.json?access_token=${encodeURIComponent(MAPBOX_TOKEN)}&limit=1`;
 
   const res = await fetch(url, {
@@ -55,33 +109,32 @@ async function geocodeAddress(address: string) {
   });
 
   if (!res.ok) {
-    throw new Error(`Mapbox geocoding failed (${res.status})`);
+    console.error("[taxiMapbox] geocoding failed", { status: res.status, address: trimmed });
+    throw new Error(ROUTE_UNAVAILABLE);
   }
 
   const json = await res.json();
   const feature = json.features?.[0];
   if (!feature?.center) {
-    throw new Error(`No geocoding result for: ${address}`);
+    console.error("[taxiMapbox] geocoding empty result", { address: trimmed });
+    throw new Error(ROUTE_UNAVAILABLE);
   }
 
   const [lng, lat] = feature.center as [number, number];
+  if (!isValidCoordinate(lat, lng)) throw new Error(ROUTE_UNAVAILABLE);
+
   return { lat, lng };
 }
 
 async function getMultiLegDistanceAndDuration(
-  coordinates: { lat: number; lng: number }[]
+  coordinates: { lat: number; lng: number }[],
 ) {
-  if (!MAPBOX_TOKEN) throw new Error("Mapbox token missing");
-  if (coordinates.length < 2) {
-    throw new Error("At least pickup and dropoff are required");
-  }
+  if (!MAPBOX_TOKEN) throw new Error(ROUTE_UNAVAILABLE);
+  if (coordinates.length < 2) throw new Error(ROUTE_UNAVAILABLE);
 
-  const coordPath = coordinates
-    .map((point) => `${point.lng},${point.lat}`)
-    .join(";");
-
+  const coordPath = buildCoordinatePath(coordinates);
   const url = new URL(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordPath}`
+    `https://api.mapbox.com/directions/v5/mapbox/driving/${coordPath}`,
   );
   url.searchParams.set("overview", "false");
   url.searchParams.set("access_token", MAPBOX_TOKEN);
@@ -91,13 +144,28 @@ async function getMultiLegDistanceAndDuration(
   });
 
   if (!res.ok) {
-    throw new Error(`Mapbox directions failed (${res.status})`);
+    console.error("[taxiMapbox] directions failed", {
+      status: res.status,
+      coordinates: coordinates.length,
+    });
+    return estimateHaversineRoute(
+      coordinates[0].lat,
+      coordinates[0].lng,
+      coordinates[coordinates.length - 1].lat,
+      coordinates[coordinates.length - 1].lng,
+    );
   }
 
   const json = await res.json();
   const route = json.routes?.[0];
   if (!route) {
-    throw new Error("No route found for multi-stop taxi ride");
+    console.error("[taxiMapbox] directions empty route", { coordinates: coordinates.length });
+    return estimateHaversineRoute(
+      coordinates[0].lat,
+      coordinates[0].lng,
+      coordinates[coordinates.length - 1].lat,
+      coordinates[coordinates.length - 1].lng,
+    );
   }
 
   const distanceMeters = Number(route.distance ?? 0);
@@ -106,6 +174,7 @@ async function getMultiLegDistanceAndDuration(
   return {
     distanceMiles: distanceMeters / 1609.34,
     durationMinutes: durationSeconds / 60,
+    fallback: false as const,
   };
 }
 
@@ -113,37 +182,12 @@ async function getDistanceAndDuration(
   pickupLat: number,
   pickupLng: number,
   dropoffLat: number,
-  dropoffLng: number
+  dropoffLng: number,
 ) {
-  if (!MAPBOX_TOKEN) throw new Error("Mapbox token missing");
-
-  const url = new URL(
-    `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupLng},${pickupLat};${dropoffLng},${dropoffLat}`
-  );
-  url.searchParams.set("overview", "false");
-  url.searchParams.set("access_token", MAPBOX_TOKEN);
-
-  const res = await fetch(url.toString(), {
-    headers: { "Content-Type": "application/json" },
-  });
-
-  if (!res.ok) {
-    throw new Error(`Mapbox directions failed (${res.status})`);
-  }
-
-  const json = await res.json();
-  const route = json.routes?.[0];
-  if (!route) {
-    throw new Error("No route found between pickup and dropoff");
-  }
-
-  const distanceMeters = Number(route.distance ?? 0);
-  const durationSeconds = Number(route.duration ?? 0);
-
-  return {
-    distanceMiles: distanceMeters / 1609.34,
-    durationMinutes: durationSeconds / 60,
-  };
+  return getMultiLegDistanceAndDuration([
+    { lat: pickupLat, lng: pickupLng },
+    { lat: dropoffLat, lng: dropoffLng },
+  ]);
 }
 
 export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRouteResult> {
@@ -154,13 +198,8 @@ export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRoute
   let pickupAddress = input.pickupAddress?.trim() || null;
   let dropoffAddress = input.dropoffAddress?.trim() || null;
 
-  if (
-    pickupLat != null &&
-    pickupLng != null &&
-    dropoffLat != null &&
-    dropoffLng != null
-  ) {
-    // Prefer explicit coordinates (e.g. location_point pin snapshot).
+  if (isValidCoordinate(pickupLat, pickupLng) && isValidCoordinate(dropoffLat, dropoffLng)) {
+    // Prefer explicit coordinates.
   } else if (pickupAddress && dropoffAddress) {
     const pickupGeo = await geocodeAddress(pickupAddress);
     const dropoffGeo = await geocodeAddress(dropoffAddress);
@@ -169,16 +208,14 @@ export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRoute
     dropoffLat = dropoffGeo.lat;
     dropoffLng = dropoffGeo.lng;
   } else {
-    throw new Error(
-      "Missing pickup/dropoff coordinates or addresses"
-    );
+    throw new Error(ROUTE_UNAVAILABLE);
   }
 
   const { distanceMiles, durationMinutes } = await getDistanceAndDuration(
     pickupLat!,
     pickupLng!,
     dropoffLat!,
-    dropoffLng!
+    dropoffLng!,
   );
 
   const BLOCK_MILES = 50;
@@ -199,17 +236,17 @@ export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRoute
 }
 
 async function resolveStop(input: TaxiStopInput, fallbackLabel: string) {
-  if (input.lat != null && input.lng != null) {
+  if (isValidCoordinate(input.lat, input.lng)) {
     return {
       address: input.address?.trim() || fallbackLabel,
-      lat: input.lat,
-      lng: input.lng,
+      lat: Number(input.lat),
+      lng: Number(input.lng),
     };
   }
 
   const address = input.address?.trim();
   if (!address) {
-    throw new Error(`Missing ${fallbackLabel} coordinates or address`);
+    throw new Error(ROUTE_UNAVAILABLE);
   }
 
   const geo = await geocodeAddress(address);
@@ -217,7 +254,7 @@ async function resolveStop(input: TaxiStopInput, fallbackLabel: string) {
 }
 
 export async function resolveTaxiMultiStopRoute(
-  input: TaxiMultiStopRouteInput
+  input: TaxiMultiStopRouteInput,
 ): Promise<TaxiMultiStopRouteResult> {
   const baseRoute = await resolveTaxiRoute(input);
   const rawStops = Array.isArray(input.stops) ? input.stops.slice(0, 3) : [];

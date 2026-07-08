@@ -22,6 +22,8 @@ import { supabase } from "../lib/supabase";
 import { startStripeOnboarding } from "../utils/stripe";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { changeDriverTransportMode } from "../lib/driverServicePreferencesApi";
+import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 
 const AVATARS_BUCKET = "avatars";
 const DRIVER_DOCS_BUCKET = "driver-docs";
@@ -1055,14 +1057,37 @@ export function DriverProfileScreen() {
         .upsert(profilePayload, { onConflict: "id" });
 
       if (pErr) {
-        console.log("profiles upsert error", pErr);
+        logTechnicalError("driver.profile.profiles", pErr);
         Alert.alert(
           t("client.auth.errorTitle", { defaultValue: "Erreur" }),
-          t("common.profile.saveProfilesFailed", {
-            defaultValue: "Impossible de sauvegarder le compte (profiles).",
-          }),
+          toUserFacingError(
+            pErr,
+            t("common.profile.saveProfilesFailed", {
+              defaultValue: "Impossible d'enregistrer votre profil pour le moment. Réessayez.",
+            }),
+          ),
         );
         return;
+      }
+
+      const currentTransportMode =
+        (driver?.transport_mode?.toLowerCase() as TransportMode | undefined) ?? "bike";
+      const transportModeChanged = currentTransportMode !== editTransportMode;
+
+      if (transportModeChanged) {
+        try {
+          await changeDriverTransportMode(editTransportMode);
+        } catch (transportError) {
+          logTechnicalError("driver.profile.transport_mode", transportError);
+          Alert.alert(
+            t("client.auth.errorTitle", { defaultValue: "Erreur" }),
+            toUserFacingError(
+              transportError,
+              "Ce mode de transport nécessite une validation de vos documents avant d'être activé.",
+            ),
+          );
+          return;
+        }
       }
 
       const driverPayload: Partial<DriverProfileRow> = {
@@ -1074,18 +1099,24 @@ export function DriverProfileScreen() {
         state: trimOrNull(editState),
         zip_code: trimOrNull(normalizeZip(editZipCode)),
         date_of_birth: trimOrNull(editDateOfBirth),
-        transport_mode: editTransportMode,
-        vehicle_type: editTransportMode,
-        vehicle_brand: requiresMotorDocs ? trimOrNull(editVehicleBrand) : null,
-        vehicle_model: requiresMotorDocs ? trimOrNull(editVehicleModel) : null,
-        vehicle_year: requiresMotorDocs ? (safeYear as number | null) : null,
-        vehicle_color: requiresMotorDocs ? trimOrNull(editVehicleColor) : null,
-        plate_number: requiresMotorDocs ? trimOrNull(editPlateNumber) : null,
-        license_number: requiresMotorDocs ? trimOrNull(editLicenseNumber) : null,
-        license_expiry: requiresMotorDocs ? trimOrNull(editLicenseExpiry) : null,
         documents_required: !isProfileComplete,
         updated_at: new Date().toISOString(),
       };
+
+      if (!transportModeChanged) {
+        driverPayload.transport_mode = editTransportMode;
+        driverPayload.vehicle_type = editTransportMode;
+      }
+
+      if (requiresMotorDocs) {
+        driverPayload.vehicle_brand = trimOrNull(editVehicleBrand);
+        driverPayload.vehicle_model = trimOrNull(editVehicleModel);
+        driverPayload.vehicle_year = safeYear as number | null;
+        driverPayload.vehicle_color = trimOrNull(editVehicleColor);
+        driverPayload.plate_number = trimOrNull(editPlateNumber);
+        driverPayload.license_number = trimOrNull(editLicenseNumber);
+        driverPayload.license_expiry = trimOrNull(editLicenseExpiry);
+      }
 
       const { error: dErr } = await supabase
         .from("driver_profiles")
@@ -1093,12 +1124,15 @@ export function DriverProfileScreen() {
         .eq("user_id", uid);
 
       if (dErr) {
-        console.log("driver_profiles update error", dErr);
+        logTechnicalError("driver.profile.driver_profiles", dErr);
         Alert.alert(
           t("client.auth.errorTitle", { defaultValue: "Erreur" }),
-          t("common.profile.saveDriverProfilesFailed", {
-            defaultValue: "Impossible de sauvegarder (driver_profiles).",
-          }),
+          toUserFacingError(
+            dErr,
+            t("common.profile.saveDriverProfilesFailed", {
+              defaultValue: "Impossible d'enregistrer votre profil chauffeur pour le moment. Réessayez.",
+            }),
+          ),
         );
         return;
       }

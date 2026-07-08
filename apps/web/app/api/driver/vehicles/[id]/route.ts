@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireDriver } from "@/lib/driverServicePreferencesAuth";
+import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 import {
   TAXI_CATEGORY_LABELS,
   type TaxiCategory,
@@ -67,7 +68,17 @@ export async function PATCH(
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (existingError) return json({ ok: false, error: existingError.message }, 500);
+  if (existingError) {
+    logTechnicalError("driver.vehicles.get", existingError, { userId: auth.userId, vehicleId });
+    return json(
+      {
+        ok: false,
+        error: "vehicle_load_failed",
+        message: toUserFacingError(existingError, "Impossible de charger le véhicule pour le moment."),
+      },
+      500,
+    );
+  }
   if (!existing) return json({ ok: false, error: "vehicle_not_found" }, 404);
 
   let body: Record<string, unknown>;
@@ -92,7 +103,17 @@ export async function PATCH(
     .update(patch)
     .eq("id", vehicleId);
 
-  if (error) return json({ ok: false, error: error.message }, 500);
+  if (error) {
+    logTechnicalError("driver.vehicles.update", error, { userId: auth.userId, vehicleId });
+    return json(
+      {
+        ok: false,
+        error: "vehicle_update_failed",
+        message: toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."),
+      },
+      500,
+    );
+  }
 
   await auth.supabaseAdmin.rpc("recalculate_vehicle_category_eligibility", {
     p_vehicle_id: vehicleId,
@@ -146,7 +167,17 @@ export async function DELETE(
     .eq("id", vehicleId)
     .eq("driver_user_id", auth.userId);
 
-  if (error) return json({ ok: false, error: error.message }, 500);
+  if (error) {
+    logTechnicalError("driver.vehicles.update", error, { userId: auth.userId, vehicleId });
+    return json(
+      {
+        ok: false,
+        error: "vehicle_update_failed",
+        message: toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."),
+      },
+      500,
+    );
+  }
 
   await auth.supabaseAdmin.rpc("log_driver_vehicle_history", {
     p_driver_user_id: auth.userId,
@@ -176,7 +207,17 @@ export async function GET(
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (error) return json({ ok: false, error: error.message }, 500);
+  if (error) {
+    logTechnicalError("driver.vehicles.update", error, { userId: auth.userId, vehicleId });
+    return json(
+      {
+        ok: false,
+        error: "vehicle_update_failed",
+        message: toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."),
+      },
+      500,
+    );
+  }
   if (!vehicle) return json({ ok: false, error: "vehicle_not_found" }, 404);
 
   const { data: eligibility } = await auth.supabaseAdmin

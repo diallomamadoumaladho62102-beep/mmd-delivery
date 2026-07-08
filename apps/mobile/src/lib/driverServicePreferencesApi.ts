@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApiBaseUrl } from "./apiBase";
 import { supabase } from "./supabase";
+import { logTechnicalError, toUserFacingError } from "./userFacingError";
 
 const PREFS_CACHE_KEY = "mmd.driver.service_preferences.v1";
 const VEHICLE_CACHE_KEY = "mmd.driver.vehicle_snapshot.v1";
@@ -45,11 +46,28 @@ async function authFetch(path: string, init?: RequestInit) {
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.ok === false) {
-    const err = new Error(String(body.message ?? body.error ?? `Request failed (${res.status})`));
+    logTechnicalError(`driver.api${path}`, body, { status: res.status });
+    const err = new Error(
+      toUserFacingError(body, "Une action temporairement impossible s'est produite. Veuillez réessayer."),
+    );
     (err as Error & { code?: string }).code = String(body.error ?? "");
     throw err;
   }
   return body;
+}
+
+export async function changeDriverTransportMode(transportMode: "bike" | "moto" | "car"): Promise<{
+  transport_mode: string;
+  taxi_auto_disabled: boolean;
+}> {
+  const body = await authFetch("/api/driver/transport-mode", {
+    method: "PATCH",
+    body: JSON.stringify({ transport_mode: transportMode }),
+  });
+  return {
+    transport_mode: String(body.transport_mode ?? transportMode),
+    taxi_auto_disabled: body.taxi_auto_disabled === true,
+  };
 }
 
 export async function fetchDriverServicePreferences(): Promise<{

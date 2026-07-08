@@ -12,6 +12,7 @@ import {
   gateOrderPlatformFeature,
   orderVerticalForPlatformGate,
 } from "@/lib/platformRouteGuards";
+import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -667,6 +668,13 @@ export async function POST(req: NextRequest) {
       rpcData,
     });
   } catch (e: unknown) {
-    return json({ error: getErrorMessage(e) }, 500);
+    logTechnicalError("confirm-paid", e);
+    return json(
+      {
+        error: "confirm_paid_failed",
+        message: toUserFacingError(e, "Le paiement n'a pas pu être confirmé pour le moment. Réessayez."),
+      },
+      500,
+    );
   }
 }

@@ -15,6 +15,7 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import { toUserFacingError } from "../../lib/userFacingError";
 import {
   quoteTaxiRide,
   type TaxiVehicleClass,
@@ -224,12 +225,15 @@ export default function TaxiHomeScreen() {
         route: result.route,
       });
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : t("taxi.home.quoteFailed", "Unable to get estimate");
+      const message = toUserFacingError(
+        e,
+        t("taxi.home.quoteFailed", "Nous n'avons pas pu calculer l'itinéraire exact pour le moment. Veuillez vérifier les adresses ou réessayer."),
+      );
       Alert.alert(
-        t("taxi.home.estimateFailed", "Estimate failed"),
-        message === "country_mismatch" || message.includes("country")
-          ? t("taxi.home.countryMismatch", "Pickup location does not match selected country.")
-          : message
+        t("taxi.home.estimateFailed", "Estimation indisponible"),
+        message.includes("country") || message.includes("pays")
+          ? t("taxi.home.countryMismatch", "Le lieu de prise en charge ne correspond pas au pays sélectionné.")
+          : message,
       );
     } finally {
       setLoading(false);

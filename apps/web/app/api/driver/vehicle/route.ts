@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireDriver } from "@/lib/driverServicePreferencesAuth";
+import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 import {
   TAXI_CATEGORY_LABELS,
   type TaxiCategory,
@@ -55,7 +56,17 @@ export async function GET(req: NextRequest) {
     .eq("is_primary", true)
     .maybeSingle();
 
-  if (vehicleError) return json({ ok: false, error: vehicleError.message }, 500);
+  if (vehicleError) {
+    logTechnicalError("driver.vehicle.get", vehicleError, { userId: auth.userId });
+    return json(
+      {
+        ok: false,
+        error: "vehicle_load_failed",
+        message: toUserFacingError(vehicleError, "Impossible de charger le véhicule pour le moment."),
+      },
+      500,
+    );
+  }
 
   const { data: eligibility, error: eligibilityError } = await auth.supabaseAdmin
     .from("vehicle_category_eligibility")
@@ -63,7 +74,17 @@ export async function GET(req: NextRequest) {
     .eq("driver_user_id", auth.userId)
     .order("category");
 
-  if (eligibilityError) return json({ ok: false, error: eligibilityError.message }, 500);
+  if (eligibilityError) {
+    logTechnicalError("driver.vehicle.eligibility", eligibilityError, { userId: auth.userId });
+    return json(
+      {
+        ok: false,
+        error: "eligibility_load_failed",
+        message: toUserFacingError(eligibilityError, "Impossible de charger l'éligibilité pour le moment."),
+      },
+      500,
+    );
+  }
 
   const categories = (eligibility ?? []).map((row) => ({
     category: row.category,
@@ -125,7 +146,17 @@ export async function PATCH(req: NextRequest) {
       .from("driver_vehicles")
       .update(patch)
       .eq("id", vehicleId);
-    if (error) return json({ ok: false, error: error.message }, 500);
+    if (error) {
+      logTechnicalError("driver.vehicle.update", error, { userId: auth.userId, vehicleId });
+      return json(
+        {
+          ok: false,
+          error: "vehicle_update_failed",
+          message: toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."),
+        },
+        500,
+      );
+    }
   } else {
     const { data, error } = await auth.supabaseAdmin
       .from("driver_vehicles")
@@ -136,7 +167,17 @@ export async function PATCH(req: NextRequest) {
       })
       .select("id")
       .single();
-    if (error) return json({ ok: false, error: error.message }, 500);
+    if (error) {
+      logTechnicalError("driver.vehicle.update", error, { userId: auth.userId, vehicleId });
+      return json(
+        {
+          ok: false,
+          error: "vehicle_update_failed",
+          message: toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."),
+        },
+        500,
+      );
+    }
     vehicleId = data.id;
   }
 
@@ -173,7 +214,17 @@ export async function POST(req: NextRequest) {
     })
     .eq("id", vehicle.id);
 
-  if (error) return json({ ok: false, error: error.message }, 500);
+  if (error) {
+    logTechnicalError("driver.vehicle.review", error, { userId: auth.userId });
+    return json(
+      {
+        ok: false,
+        error: "vehicle_review_failed",
+        message: toUserFacingError(error, "Impossible d'envoyer la demande pour le moment."),
+      },
+      500,
+    );
+  }
 
   await auth.supabaseAdmin.rpc("recalculate_vehicle_category_eligibility", {
     p_vehicle_id: vehicle.id,

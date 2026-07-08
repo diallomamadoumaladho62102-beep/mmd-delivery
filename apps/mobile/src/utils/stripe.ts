@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
+import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -39,6 +40,13 @@ const CHECKOUT_POLL_ATTEMPTS = 20;
 const CHECKOUT_POLL_INTERVAL_MS = 2000;
 const CONFIRM_PAYMENT_ATTEMPTS = 3;
 const CONFIRM_PAYMENT_RETRY_DELAY_MS = 1500;
+
+function mapStripePaymentError(error: { code?: string; message?: string }): string {
+  return toUserFacingError(
+    { code: error.code, message: error.message },
+    "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.",
+  );
+}
 
 function extractSupabaseFunctionError(error: unknown): string {
   try {
@@ -474,10 +482,10 @@ export async function startStripeOnboarding(
     await openExternalUrl(url);
     return true;
   } catch (error) {
-    console.log("[stripe-onboarding] catch:", error);
+    logTechnicalError("stripe-onboarding", error);
     Alert.alert(
       "Erreur",
-      error instanceof Error ? error.message : "Erreur Stripe."
+      toUserFacingError(error, "Impossible d'ouvrir la configuration Stripe pour le moment."),
     );
     return false;
   }
@@ -506,11 +514,10 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
   });
 
   if (error) {
-    console.log(
-      "[payments] create_payment_intent error:",
-      JSON.stringify(error, null, 2)
+    logTechnicalError("payments.create_payment_intent", error, { orderId: normalizedOrderId });
+    throw new Error(
+      toUserFacingError(error, "Le paiement n'a pas pu être initialisé. Réessayez dans quelques instants."),
     );
-    throw new Error(extractSupabaseFunctionError(error));
   }
 
   const d = (data ?? {}) as any;
@@ -540,7 +547,8 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
   });
 
   if (init.error) {
-    throw new Error(init.error.message);
+    logTechnicalError("payments.initPaymentSheet", init.error, { orderId: normalizedOrderId });
+    throw new Error(mapStripePaymentError(init.error));
   }
 
   const present = await presentPaymentSheet();
@@ -549,7 +557,8 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
     if (present.error.code === "Canceled") {
       throw new Error("Paiement annulé.");
     }
-    throw new Error(present.error.message);
+    logTechnicalError("payments.presentPaymentSheet", present.error, { orderId: normalizedOrderId });
+    throw new Error(mapStripePaymentError(present.error));
   }
 
   return true;

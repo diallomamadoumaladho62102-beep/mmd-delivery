@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { applyOwnedLocationIdsToTaxiInput } from "@/lib/mmdLocationSnapshot";
-import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
+import { resolveTaxiMultiStopRoute, ROUTE_UNAVAILABLE } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { applyTaxiServiceFeeToQuote, mergeTaxiServiceFeeIntoQuote } from "@/lib/taxiServiceFee";
@@ -79,11 +80,29 @@ export async function POST(req: NextRequest) {
         stops: body.stops,
       });
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Route resolution failed";
+      const message = e instanceof Error ? e.message : ROUTE_UNAVAILABLE;
       if (message === "distance_too_far") {
-        return taxiJson({ ok: false, error: "distance_too_far" }, 400);
+        return taxiJson(
+          {
+            ok: false,
+            error: "distance_too_far",
+            message: toUserFacingError({ error: "distance_too_far" }, "La distance est trop importante pour cette course."),
+          },
+          400,
+        );
       }
-      return taxiJson({ ok: false, error: message }, 400);
+      logTechnicalError("taxi.quote.route", e, { userId: auth.user.id });
+      return taxiJson(
+        {
+          ok: false,
+          error: ROUTE_UNAVAILABLE,
+          message: toUserFacingError(
+            { error: ROUTE_UNAVAILABLE },
+            "Nous n'avons pas pu calculer l'itinéraire exact pour le moment. Veuillez vérifier les adresses ou réessayer.",
+          ),
+        },
+        400,
+      );
     }
 
     const countryResult = await resolveTaxiCountryWithDetection({
@@ -120,7 +139,15 @@ export async function POST(req: NextRequest) {
     );
 
     if (quoteError) {
-      return taxiJson({ ok: false, error: quoteError.message }, 500);
+      logTechnicalError("taxi.quote.rpc", quoteError, { userId: auth.user.id });
+      return taxiJson(
+        {
+          ok: false,
+          error: "quote_failed",
+          message: toUserFacingError(quoteError, "Impossible d'estimer le tarif pour le moment. Réessayez dans quelques instants."),
+        },
+        500,
+      );
     }
 
     const quoteObj = (quote ?? {}) as Record<string, unknown>;
@@ -167,8 +194,15 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Server error";
-    return taxiJson({ ok: false, error: message }, 500);
+    logTechnicalError("taxi.quote", e);
+    return taxiJson(
+      {
+        ok: false,
+        error: "quote_failed",
+        message: toUserFacingError(e, "Impossible d'estimer le tarif pour le moment. Réessayez dans quelques instants."),
+      },
+      500,
+    );
   }
 }
 

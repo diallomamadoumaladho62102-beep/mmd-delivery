@@ -20,6 +20,7 @@ import {
   updateDriverVehicle,
   type VehicleCategoryStatus,
 } from "../../lib/driverServicePreferencesApi";
+import { toUserFacingError } from "../../lib/userFacingError";
 
 function statusColor(status: string) {
   if (status === "eligible") return "#15803d";
@@ -85,7 +86,7 @@ export function DriverVehicleScreen() {
         setForm((prev) => ({ ...prev, non_smoking: capabilities.non_smoking }));
       }
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Chargement impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Impossible de charger les informations du véhicule."));
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,7 @@ export function DriverVehicleScreen() {
       setCategories(data.categories);
       Alert.alert("Véhicule", "Informations enregistrées. L'éligibilité a été recalculée.");
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Enregistrement impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."));
     } finally {
       setSaving(false);
     }
@@ -134,7 +135,7 @@ export function DriverVehicleScreen() {
       Alert.alert("Revue admin", "Votre demande a été envoyée à l'équipe MMD.");
       await load();
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Demande impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Impossible d'envoyer la demande pour le moment."));
     }
   };
 

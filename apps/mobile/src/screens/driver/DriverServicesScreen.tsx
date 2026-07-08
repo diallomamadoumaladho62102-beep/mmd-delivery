@@ -16,6 +16,7 @@ import {
   updateDriverServicePreferences,
   type DriverServicePreferences,
 } from "../../lib/driverServicePreferencesApi";
+import { toUserFacingError } from "../../lib/userFacingError";
 
 function ToggleRow(props: {
   label: string;
@@ -50,7 +51,7 @@ export function DriverServicesScreen() {
       const data = await fetchDriverServicePreferences();
       setPrefs(data.preferences);
     } catch (error) {
-      Alert.alert("Erreur", error instanceof Error ? error.message : "Chargement impossible");
+      Alert.alert("Erreur", toUserFacingError(error, "Impossible de charger vos services pour le moment."));
     } finally {
       setLoading(false);
     }
@@ -69,7 +70,7 @@ export function DriverServicesScreen() {
       } catch (error) {
         Alert.alert(
           "Services",
-          error instanceof Error ? error.message : "Enregistrement impossible",
+          toUserFacingError(error, "Impossible d'enregistrer vos préférences pour le moment."),
         );
         await load();
       } finally {

@@ -58,7 +58,7 @@ import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
 import { mmdAudio } from "../lib/mmdAudio";
 import { useTranslation } from "react-i18next";
-import { useKeepAwake } from "expo-keep-awake";
+import { useDriverKeepAwake } from "../hooks/useDriverKeepAwake";
 import { DriverTaxiPanel } from "../components/driver/DriverTaxiPanel";
 import {
   acceptDriverMarketplaceJob,
@@ -631,7 +631,6 @@ export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
   const navAny = navigation as unknown as AnyNav;
   const { t } = useTranslation();
-  useKeepAwake();
   const { features: platformFeatures, refresh: refreshDriverPlatformFeatures } =
     useDriverPlatformFeatures();
   const driverMarket = useMemo(
@@ -784,6 +783,8 @@ export function DriverHomeScreen() {
   const todayEarnings = driverStats.todayEarnings;
 
   const activeRideCount = useMemo(() => myOrders.length, [myOrders.length]);
+
+  useDriverKeepAwake(isOnline || activeOffer != null || activeRideCount > 0);
 
   const nearestPickupMiles = useMemo(
     () => getNearestPickupMiles(availableOrders, driverLocation),

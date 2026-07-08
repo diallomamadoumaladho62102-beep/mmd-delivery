@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./apiBase";
 import { supabase } from "./supabase";
+import { logTechnicalError, toUserFacingError } from "./userFacingError";
 
 async function getAuthHeaders() {
   const { data, error } = await supabase.auth.getSession();
@@ -36,7 +37,15 @@ async function taxiGet(path: string) {
     headers: await getAuthHeaders(),
   });
   const out = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(out?.error ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    logTechnicalError(`taxi.get${path}`, out, { status: res.status });
+    throw new Error(
+      toUserFacingError(
+        out,
+        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+      ),
+    );
+  }
   return out;
 }
 
@@ -47,7 +56,15 @@ async function taxiPost(path: string, body: Record<string, unknown>) {
     body: JSON.stringify(body),
   });
   const out = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(out?.error ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    logTechnicalError(`taxi.post${path}`, out, { status: res.status });
+    throw new Error(
+      toUserFacingError(
+        out,
+        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+      ),
+    );
+  }
   return out;
 }
 
@@ -185,7 +202,15 @@ export async function removeTaxiFavoriteDriver(driverUserId: string) {
     body: JSON.stringify({ driver_user_id: driverUserId }),
   });
   const out = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(out?.error ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    logTechnicalError("taxi.deleteFavoriteDriver", out, { status: res.status });
+    throw new Error(
+      toUserFacingError(
+        out,
+        "Une action temporairement impossible s'est produite. Veuillez réessayer.",
+      ),
+    );
+  }
   return out;
 }
 
