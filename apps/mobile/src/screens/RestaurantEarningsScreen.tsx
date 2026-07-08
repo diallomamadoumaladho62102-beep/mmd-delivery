@@ -2,7 +2,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -11,12 +10,14 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type OrderStatus =
   | "pending"
@@ -721,35 +722,15 @@ export function RestaurantEarningsScreen() {
   }, [monthBounds]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
-      <View style={{ padding: 16, paddingBottom: 10 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={{ paddingVertical: 8, paddingRight: 10 }}
-          >
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-              {t("common.backArrow", "←")}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>
-              {t("restaurant.earnings.header.title", "Earnings")}
-            </Text>
-            <Text style={{ color: "#9CA3AF", fontWeight: "800", fontSize: 12 }}>
-              {t("restaurant.earnings.header.subtitle", "Restaurant")}
-            </Text>
-          </View>
-
+      <ScreenHeader
+        title={t("restaurant.earnings.header.title", "Earnings")}
+        subtitle={t("restaurant.earnings.header.subtitle", "Restaurant")}
+        fallbackRoute="RestaurantCommandCenter"
+        variant="dark"
+        rightSlot={
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <TouchableOpacity
               onPress={() => {
@@ -777,24 +758,26 @@ export function RestaurantEarningsScreen() {
                 paddingVertical: 8,
                 paddingHorizontal: 12,
                 borderRadius: 999,
-                backgroundColor: "rgba(239,68,68,0.12)",
+                backgroundColor: "rgba(15,23,42,0.7)",
                 borderWidth: 1,
-                borderColor: "#7F1D1D",
+                borderColor: "#1F2937",
               }}
             >
-              <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
-                {t("common.logout", "Déconnexion")}
+              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
+                {t("auth.logoutShort", "Log out")}
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        }
+      />
 
-        {error ? (
+      {error ? (
+        <View style={{ paddingHorizontal: 16 }}>
           <Text style={{ color: "#F97373", marginTop: 10, fontWeight: "800" }}>
             {error}
           </Text>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {loading || payoutLoading ? (

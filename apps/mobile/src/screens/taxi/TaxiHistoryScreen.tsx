@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -8,12 +7,14 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { fetchMyTaxiRides, formatTaxiCents } from "../../lib/taxiClientApi";
 import { textAlignStart } from "../../i18n/rtl";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHistory">;
 
@@ -41,18 +42,14 @@ export default function TaxiHistoryScreen() {
   }, [load]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+      <ScreenHeader
+        title={t("taxi.history.title", "Taxi history")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <View style={{ padding: 16, flex: 1 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", marginBottom: 12 }}>
-            {t("taxi.common.back", "← Back")}
-          </Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 24, fontWeight: "800", textAlign: textAlignStart() }}>
-          {t("taxi.history.title", "Taxi history")}
-        </Text>
-
         {loading ? (
           <ActivityIndicator color="#F59E0B" style={{ marginTop: 24 }} />
         ) : (

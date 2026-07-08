@@ -18,6 +18,10 @@ import { mmdAudio } from "../lib/mmdAudio";
 import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
 import { supabase } from "../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
@@ -1218,18 +1222,13 @@ export function RestaurantHomeScreen({ navigation }: any) {
   useEffect(() => {
     if (checkingAuth || !activeRestaurantId) return;
 
-    const channel = supabase
-      .channel(`restaurant-global-${activeRestaurantId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "orders",
-          filter: `restaurant_id=eq.${activeRestaurantId}`,
-        },
-        async (payload) => {
-          const row: any = payload.new;
+    const channel = subscribePostgresChannel(`restaurant-global-${activeRestaurantId}`, [
+      {
+        event: "INSERT",
+        table: "orders",
+        filter: `restaurant_id=eq.${activeRestaurantId}`,
+        callback: async (payload) => {
+          const row = (payload as { new?: Record<string, unknown> }).new ?? {};
 
           const isFoodOrder = String(row?.kind ?? "food").toLowerCase() === "food";
           const isPaid =
@@ -1245,30 +1244,26 @@ export function RestaurantHomeScreen({ navigation }: any) {
             setLiveOrder({
               id: String(row.id),
               kind: "food",
-              status: row.status ?? "pending",
-              pickup_lat: row.pickup_lat ?? null,
-              pickup_lng: row.pickup_lng ?? null,
-              dropoff_lat: row.dropoff_lat ?? null,
-              dropoff_lng: row.dropoff_lng ?? null,
-              created_at: row.created_at ?? null,
+              status: (row.status as string) ?? "pending",
+              pickup_lat: (row.pickup_lat as number | null) ?? null,
+              pickup_lng: (row.pickup_lng as number | null) ?? null,
+              dropoff_lat: (row.dropoff_lat as number | null) ?? null,
+              dropoff_lng: (row.dropoff_lng as number | null) ?? null,
+              created_at: (row.created_at as string | null) ?? null,
               total: Number.isFinite(Number(row.total)) ? Number(row.total) : null,
             });
             await startRestaurantRing();
           }
 
           refreshLiveMap();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `restaurant_id=eq.${activeRestaurantId}`,
         },
-        async (payload) => {
-          const row: any = payload.new;
+      },
+      {
+        event: "UPDATE",
+        table: "orders",
+        filter: `restaurant_id=eq.${activeRestaurantId}`,
+        callback: async (payload) => {
+          const row = (payload as { new?: Record<string, unknown> }).new ?? {};
           const isFoodOrder = String(row?.kind ?? "food").toLowerCase() === "food";
           const isPaid =
             String(row?.payment_status ?? "").trim().toLowerCase() === "paid";
@@ -1286,11 +1281,11 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
             return {
               ...current,
-              status: row.status ?? current.status,
-              pickup_lat: row.pickup_lat ?? current.pickup_lat,
-              pickup_lng: row.pickup_lng ?? current.pickup_lng,
-              dropoff_lat: row.dropoff_lat ?? current.dropoff_lat,
-              dropoff_lng: row.dropoff_lng ?? current.dropoff_lng,
+              status: (row.status as string) ?? current.status,
+              pickup_lat: (row.pickup_lat as number | null) ?? current.pickup_lat,
+              pickup_lng: (row.pickup_lng as number | null) ?? current.pickup_lng,
+              dropoff_lat: (row.dropoff_lat as number | null) ?? current.dropoff_lat,
+              dropoff_lng: (row.dropoff_lng as number | null) ?? current.dropoff_lng,
               total: Number.isFinite(Number(row.total))
                 ? Number(row.total)
                 : current.total,
@@ -1298,12 +1293,12 @@ export function RestaurantHomeScreen({ navigation }: any) {
           });
 
           refreshLiveMap();
-        }
-      )
-      .subscribe();
+        },
+      },
+    ]);
 
     return () => {
-      supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [
     isFocused,

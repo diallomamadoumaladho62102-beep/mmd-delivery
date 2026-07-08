@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,9 +8,11 @@ import {
   Alert,
   TextInput,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type OrderRow = {
   id: string;
@@ -273,22 +274,13 @@ export function ClientInboxScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingVertical: 8, paddingRight: 10 }}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>←</Text>
-          </TouchableOpacity>
-
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-              {t("client.inbox.title", "Boîte")}
-            </Text>
-            <Text style={{ color: "#9CA3AF", marginTop: 2, fontWeight: "800", fontSize: 12 }}>
-              {t("client.inbox.subtitle", "En cours + livrées (7 jours)")}
-            </Text>
-          </View>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("client.inbox.title", "Boîte")}
+        subtitle={t("client.inbox.subtitle", "En cours + livrées (7 jours)")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+        rightSlot={
           <TouchableOpacity
             onPress={() => void fetchInbox()}
             style={{
@@ -305,8 +297,10 @@ export function ClientInboxScreen() {
               {loading ? "..." : t("common.refresh", "Rafraîchir")}
             </Text>
           </TouchableOpacity>
-        </View>
+        }
+      />
 
+      <View style={{ paddingHorizontal: 16 }}>
         <View style={{ marginTop: 10 }}>
           <TextInput
             value={q}

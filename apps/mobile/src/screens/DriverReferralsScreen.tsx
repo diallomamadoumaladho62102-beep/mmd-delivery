@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/DriverReferralsScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -13,9 +12,11 @@ import {
   Platform,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 const BG = "#020617";
 const CARD = "rgba(15,23,42,0.78)";
@@ -432,41 +433,30 @@ export function DriverReferralsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.roundButton}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.backText}>‹</Text>
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>
-            {t("driver.referrals.header.title", "Refer friends")}
-          </Text>
-          <Text style={styles.headerSub}>
-            {t("driver.referrals.header.subtitle", "Invite drivers and earn")}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={() =>
-            Alert.alert(
-              t("driver.referrals.header.infoTitle", "Info"),
-              t(
-                "driver.referrals.header.info",
-                "Invite friends with your MMD link. When they sign up and complete the program goals, eligible rewards appear in your referral balance."
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.referrals.header.title", "Refer friends")}
+        subtitle={t("driver.referrals.header.subtitle", "Invite drivers and earn")}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+        rightSlot={
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert(
+                t("driver.referrals.header.infoTitle", "Info"),
+                t(
+                  "driver.referrals.header.info",
+                  "Invite friends with your MMD link. When they sign up and complete the program goals, eligible rewards appear in your referral balance."
+                )
               )
-            )
-          }
-          style={styles.roundButton}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.helpText}>?</Text>
-        </TouchableOpacity>
-      </View>
+            }
+            style={styles.roundButton}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.helpText}>?</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {loading ? (
         <View style={styles.loadingFull}>

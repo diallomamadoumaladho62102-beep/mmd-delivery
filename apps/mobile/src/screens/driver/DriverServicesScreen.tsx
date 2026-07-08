@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -10,6 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchDriverServicePreferences,
   updateDriverServicePreferences,
@@ -100,20 +101,26 @@ export function DriverServicesScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title="Mes services"
+          variant="light"
+          fallbackRoute="DriverTabs"
+        />
         <ActivityIndicator style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title="Mes services"
+        subtitle="Choisissez les types de missions que vous souhaitez recevoir. Le dispatch respecte uniquement vos préférences enregistrées."
+        variant="light"
+        fallbackRoute="DriverTabs"
+      />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Mes services</Text>
-        <Text style={styles.subtitle}>
-          Choisissez les types de missions que vous souhaitez recevoir. Le dispatch respecte
-          uniquement vos préférences enregistrées.
-        </Text>
 
         <ToggleRow
           label="Food delivery"
@@ -154,9 +161,7 @@ export function DriverServicesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  content: { padding: 20, gap: 12 },
-  title: { fontSize: 24, fontWeight: "700", color: "#0f172a" },
-  subtitle: { fontSize: 14, color: "#64748b", marginBottom: 8 },
+  content: { padding: 20, paddingTop: 8, gap: 12 },
   row: {
     flexDirection: "row",
     alignItems: "center",

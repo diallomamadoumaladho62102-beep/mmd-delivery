@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -8,8 +7,10 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
 
@@ -433,30 +434,20 @@ export default function RestaurantTaxScreen({
   const commissionText = formatCommissionRate(summary?.totals?.commissionRate);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingVertical: 8, paddingHorizontal: 10 }}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900", fontSize: 16 }}>←</Text>
-          </TouchableOpacity>
-
-          <View style={{ flex: 1, paddingHorizontal: 10 }}>
-            <Text style={{ color: "white", fontSize: 20, fontWeight: "900", textAlign: "center" }}>
-              {t("restaurant.tax.title", "Restaurant Tax Center")}
-            </Text>
-
-            <Text style={{ color: "#94A3B8", fontSize: 12, textAlign: "center", marginTop: 4 }}>
-              {t(
-                "restaurant.tax.subtitle",
-                "Review weekly, monthly and yearly restaurant earnings, commissions and tax documents.",
-              )}
-            </Text>
-          </View>
-
-          <View style={{ width: 28 }} />
-        </View>
+        <ScreenHeader
+          title={t("restaurant.tax.title", "Restaurant Tax Center")}
+          subtitle={t(
+            "restaurant.tax.subtitle",
+            "Review weekly, monthly and yearly restaurant earnings, commissions and tax documents.",
+          )}
+          fallbackRoute="RestaurantCommandCenter"
+          variant="dark"
+          style={{ paddingHorizontal: 0, paddingTop: 0 }}
+        />
 
         <View style={{ backgroundColor: "#020617", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#1F2937", marginBottom: 14 }}>
           <Text style={{ color: "#94A3B8", fontWeight: "800" }}>

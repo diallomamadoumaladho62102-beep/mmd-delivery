@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -13,6 +12,7 @@ import {
   ScrollView,
   Switch,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -41,6 +41,8 @@ import {
   syncPaidDeliveryRequestOrder,
   type DeliveryRequestPricingPayload,
 } from "../lib/deliveryRequestApi";
+import ScreenHeader from "../components/navigation/ScreenHeader";
+import { useSafeBackNavigation } from "../navigation/navigationBack";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type DeliveryRequestRoute = RouteProp<RootStackParamList, "DeliveryRequest">;
@@ -216,6 +218,7 @@ function sleep(ms: number) {
 export function DeliveryRequestScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DeliveryRequestRoute>();
+  const safeBack = useSafeBackNavigation("ClientHome");
   const { t } = useTranslation();
 
   const tr = useCallback(
@@ -987,8 +990,18 @@ export function DeliveryRequestScreen() {
 
   return (
     <>
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+
+      <ScreenHeader
+        title={tr("deliveryRequest.header.title", "Demander une livraison")}
+        subtitle={tr(
+          "deliveryRequest.header.subtitle",
+          "Crée une livraison de colis ou une course privée sans passer par le restaurant."
+        )}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -1006,30 +1019,6 @@ export function DeliveryRequestScreen() {
         >
           <View style={{ marginBottom: 26 }}>
             <Text style={{ fontSize: 40, marginBottom: 10 }}>🚀</Text>
-
-            <Text
-              style={{
-                color: "white",
-                fontSize: 30,
-                fontWeight: "900",
-                marginBottom: 6,
-              }}
-            >
-                {tr("deliveryRequest.header.title", "Demander une livraison")}
-              </Text>
-
-            <Text
-              style={{
-                color: "#CBD5E1",
-                fontSize: 16,
-                lineHeight: 22,
-              }}
-            >
-              {tr(
-                "deliveryRequest.header.subtitle",
-                "Crée une livraison de colis ou une course privée sans passer par le restaurant."
-              )}
-            </Text>
           </View>
 
           {deliveryBlocked ? (
@@ -1527,7 +1516,7 @@ export function DeliveryRequestScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={safeBack}
             activeOpacity={0.85}
             disabled={submitting || estimating || paying}
             style={{

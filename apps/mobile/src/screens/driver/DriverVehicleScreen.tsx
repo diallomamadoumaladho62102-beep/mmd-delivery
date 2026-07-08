@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,6 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchDriverVehicleSnapshot,
   fetchDriverCapabilities,
@@ -139,20 +140,22 @@ export function DriverVehicleScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <ScreenHeader title="Véhicule" variant="light" fallbackRoute="DriverTabs" />
         <ActivityIndicator style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title="Véhicule"
+        subtitle="Les catégories taxi sont calculées par le serveur. Vous ne pouvez pas vous auto-attribuer Comfort, XL ou Wheelchair."
+        variant="light"
+        fallbackRoute="DriverTabs"
+      />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Mon véhicule</Text>
-        <Text style={styles.subtitle}>
-          Les catégories taxi sont calculées par le serveur. Vous ne pouvez pas vous auto-attribuer
-          Comfort, XL ou Wheelchair.
-        </Text>
 
         {[
           ["vehicle_make", "Marque"],
@@ -190,7 +193,7 @@ export function DriverVehicleScreen() {
           />
         </View>
 
-        <Text style={[styles.title, { marginTop: 16, fontSize: 18 }]}>Capacités & préférences client</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 16, fontSize: 18 }]}>Capacités & préférences client</Text>
         <View style={styles.row}>
           <Text style={styles.fieldLabel}>Chauffeur non-fumeur</Text>
           <Switch
@@ -220,7 +223,7 @@ export function DriverVehicleScreen() {
           <Text style={styles.primaryBtnText}>{saving ? "Enregistrement…" : "Enregistrer"}</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.title, { marginTop: 24 }]}>Catégories autorisées</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Catégories autorisées</Text>
         {categories.map((cat) => (
           <View key={cat.category} style={styles.categoryCard}>
             <Text style={styles.categoryTitle}>{cat.label}</Text>
@@ -243,9 +246,8 @@ export function DriverVehicleScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  content: { padding: 20, gap: 10 },
-  title: { fontSize: 22, fontWeight: "700", color: "#0f172a" },
-  subtitle: { fontSize: 14, color: "#64748b", marginBottom: 8 },
+  content: { padding: 20, paddingTop: 8, gap: 10 },
+  sectionTitle: { fontSize: 22, fontWeight: "700", color: "#0f172a" },
   fieldLabel: { fontSize: 14, fontWeight: "600", color: "#334155" },
   input: {
     borderWidth: 1,

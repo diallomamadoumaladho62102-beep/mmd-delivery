@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  SafeAreaView,
   ScrollView,
   View,
   Text,
@@ -9,11 +8,13 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { upsertSellerOnboarding, requireSellerPlatformEnabled } from "../../lib/sellerApi";
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Props = { navigation: any };
 
@@ -78,17 +79,17 @@ export default function SellerOnboardingScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-        <Text style={{ color: "#F8FAFC", fontSize: 24, fontWeight: "800" }}>
-          {t("seller.onboarding.title", "Become a Seller")}
-        </Text>
-        <Text style={{ color: "#94A3B8", marginBottom: 8 }}>
-          {t(
-            "seller.onboarding.subtitle",
-            "Register your business to sell on MMD Marketplace."
-          )}
-        </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("seller.onboarding.title", "Become a Seller")}
+        subtitle={t(
+          "seller.onboarding.subtitle",
+          "Register your business to sell on MMD Marketplace."
+        )}
+        fallbackRoute="SellerDashboard"
+        variant="dark"
+      />
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }}>
 
         <MarketScopeCard
           market={market}

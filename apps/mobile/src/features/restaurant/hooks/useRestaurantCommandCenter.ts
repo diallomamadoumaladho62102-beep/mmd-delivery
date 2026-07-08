@@ -3,6 +3,10 @@ import { AppState, type AppStateStatus } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import { supabase } from "../../../lib/supabase";
 import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../../../lib/supabaseRealtime";
+import {
   fetchRestaurantAiGrowth,
   fetchRestaurantCommandCenter,
   type RestaurantAiGrowthData,
@@ -90,47 +94,37 @@ export function useRestaurantCommandCenter(): UseRestaurantCommandCenterResult {
   useEffect(() => {
     if (!restaurantUserId || !isFocused) return;
 
-    const channel = supabase
-      .channel(`restaurant-command-center:${restaurantUserId}`)
-      .on(
-        "postgres_changes",
+    const channel = subscribePostgresChannel(
+      `restaurant-command-center:${restaurantUserId}`,
+      [
         {
           event: "*",
-          schema: "public",
           table: "orders",
           filter: `restaurant_id=eq.${restaurantUserId}`,
+          callback: () => {
+            void silentRefresh();
+          },
         },
-        () => {
-          void silentRefresh();
-        }
-      )
-      .on(
-        "postgres_changes",
         {
           event: "*",
-          schema: "public",
           table: "driver_locations",
+          callback: () => {
+            void silentRefresh();
+          },
         },
-        () => {
-          void silentRefresh();
-        }
-      )
-      .on(
-        "postgres_changes",
         {
           event: "*",
-          schema: "public",
           table: "restaurant_profiles",
           filter: `user_id=eq.${restaurantUserId}`,
+          callback: () => {
+            void silentRefresh();
+          },
         },
-        () => {
-          void silentRefresh();
-        }
-      )
-      .subscribe();
+      ],
+    );
 
     return () => {
-      void supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [restaurantUserId, isFocused, silentRefresh]);
 

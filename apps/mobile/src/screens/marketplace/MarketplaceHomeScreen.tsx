@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -9,9 +8,11 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchMarketplaceSellers,
   type MarketplaceSeller,
@@ -92,20 +93,20 @@ export default function MarketplaceHomeScreen() {
   const openCount = sellers.filter((s) => s.is_accepting_orders).length;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+      <ScreenHeader
+        title={t("marketplace.home.title", "Marketplace")}
+        subtitle={t("marketplace.home.subtitle", "Shop approved local sellers on MMD.")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(true); }} />
         }
-        contentContainerStyle={{ padding: 20, gap: 12 }}
+        contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 12 }}
       >
-        <Text style={{ color: "#F8FAFC", fontSize: 28, fontWeight: "700" }}>
-          {t("marketplace.home.title", "Marketplace")}
-        </Text>
-        <Text style={{ color: "#94A3B8", marginBottom: 8 }}>
-          {t("marketplace.home.subtitle", "Shop approved local sellers on MMD.")}
-        </Text>
 
         <MarketScopeCard
           market={market}

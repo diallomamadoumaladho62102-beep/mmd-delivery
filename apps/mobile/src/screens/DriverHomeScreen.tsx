@@ -28,6 +28,10 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
+import {
   getDriverOnlineStatus,
   setDriverOnlineStatus,
 } from "../lib/driverStatus";
@@ -1547,110 +1551,69 @@ export function DriverHomeScreen() {
         const driverId = await getUserIdOrThrow();
         if (cancelled || !mountedRef.current) return;
 
-        channel = supabase
-          .channel(`driver-dispatch-live-${driverId}-${Date.now()}`)
-
-          // Live order changes: when another driver accepts, this screen refreshes and removes stale offers.
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "orders" },
-            () => scheduleDriverOrdersRefresh(150),
-          )
-          .on(
-            "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "orders" },
-            () => scheduleDriverOrdersRefresh(150),
-          )
-          .on(
-            "postgres_changes",
-            { event: "DELETE", schema: "public", table: "orders" },
-            () => scheduleDriverOrdersRefresh(150),
-          )
-
-          // Live delivery request changes.
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "delivery_requests" },
-            () => scheduleDriverOrdersRefresh(150),
-          )
-          .on(
-            "postgres_changes",
-            { event: "UPDATE", schema: "public", table: "delivery_requests" },
-            () => scheduleDriverOrdersRefresh(150),
-          )
-          .on(
-            "postgres_changes",
-            { event: "DELETE", schema: "public", table: "delivery_requests" },
-            () => scheduleDriverOrdersRefresh(150),
-          )
-
-          // Personalized restaurant order offers for this driver only.
-          .on(
-            "postgres_changes",
+        channel = subscribePostgresChannel(
+          `driver-dispatch-live-${driverId}`,
+          [
+            { event: "INSERT", table: "orders", callback: () => scheduleDriverOrdersRefresh(150) },
+            { event: "UPDATE", table: "orders", callback: () => scheduleDriverOrdersRefresh(150) },
+            { event: "DELETE", table: "orders", callback: () => scheduleDriverOrdersRefresh(150) },
             {
               event: "INSERT",
-              schema: "public",
-              table: "driver_order_offers",
-              filter: `driver_id=eq.${driverId}`,
+              table: "delivery_requests",
+              callback: () => scheduleDriverOrdersRefresh(150),
             },
-            () => scheduleDriverOrdersRefresh(0),
-          )
-          .on(
-            "postgres_changes",
             {
               event: "UPDATE",
-              schema: "public",
-              table: "driver_order_offers",
-              filter: `driver_id=eq.${driverId}`,
+              table: "delivery_requests",
+              callback: () => scheduleDriverOrdersRefresh(150),
             },
-            () => scheduleDriverOrdersRefresh(0),
-          )
-          .on(
-            "postgres_changes",
             {
               event: "DELETE",
-              schema: "public",
-              table: "driver_order_offers",
-              filter: `driver_id=eq.${driverId}`,
+              table: "delivery_requests",
+              callback: () => scheduleDriverOrdersRefresh(150),
             },
-            () => scheduleDriverOrdersRefresh(0),
-          )
-
-          // Personalized MMD delivery request offers for this driver only.
-          .on(
-            "postgres_changes",
             {
               event: "INSERT",
-              schema: "public",
-              table: "delivery_request_driver_offers",
+              table: "driver_order_offers",
               filter: `driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(0),
             },
-            () => scheduleDriverOrdersRefresh(0),
-          )
-          .on(
-            "postgres_changes",
             {
               event: "UPDATE",
-              schema: "public",
-              table: "delivery_request_driver_offers",
+              table: "driver_order_offers",
               filter: `driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(0),
             },
-            () => scheduleDriverOrdersRefresh(0),
-          )
-          .on(
-            "postgres_changes",
             {
               event: "DELETE",
-              schema: "public",
+              table: "driver_order_offers",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(0),
+            },
+            {
+              event: "INSERT",
               table: "delivery_request_driver_offers",
               filter: `driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(0),
             },
-            () => scheduleDriverOrdersRefresh(0),
-          )
-          .subscribe((status) => {
+            {
+              event: "UPDATE",
+              table: "delivery_request_driver_offers",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(0),
+            },
+            {
+              event: "DELETE",
+              table: "delivery_request_driver_offers",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => scheduleDriverOrdersRefresh(0),
+            },
+          ],
+          (status) => {
             console.log("DRIVER_HOME_REALTIME_STATUS", status);
             if (status === "SUBSCRIBED") scheduleDriverOrdersRefresh(0);
-          });
+          },
+        );
       } catch (e) {
         console.log("driver realtime subscribe error:", e);
       }
@@ -1663,7 +1626,7 @@ export function DriverHomeScreen() {
       if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
       refreshDebounceRef.current = null;
       if (channel) {
-        void supabase.removeChannel(channel);
+        void unsubscribeSupabaseChannel(channel);
       }
     };
   }, [getUserIdOrThrow, isOnline, scheduleDriverOrdersRefresh]);

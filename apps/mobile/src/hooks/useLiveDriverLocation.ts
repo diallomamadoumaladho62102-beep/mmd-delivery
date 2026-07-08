@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 
 type DriverLocation = {
   driver_id: string;
@@ -28,26 +32,21 @@ export function useLiveDriverLocation(driverId?: string | null) {
       });
 
     // realtime updates
-    const channel = supabase
-      .channel(`driver_locations:${driverId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "driver_locations",
-          filter: `driver_id=eq.${driverId}`,
+    const channel = subscribePostgresChannel(`driver_locations:${driverId}`, [
+      {
+        event: "*",
+        table: "driver_locations",
+        filter: `driver_id=eq.${driverId}`,
+        callback: (payload) => {
+          const next = (payload as { new?: Record<string, unknown> }).new;
+          if (next?.lat != null && next?.lng != null) setLocation(next as DriverLocation);
         },
-        (payload) => {
-          const next = payload.new as any;
-          if (next?.lat != null && next?.lng != null) setLocation(next);
-        }
-      )
-      .subscribe();
+      },
+    ]);
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [driverId]);
 

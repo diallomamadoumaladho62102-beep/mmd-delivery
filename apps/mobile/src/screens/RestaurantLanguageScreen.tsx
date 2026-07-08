@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/RestaurantLanguageScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,9 +8,11 @@ import {
   TextInput,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { setLocaleForRoleAndApply } from "../i18n";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 const ROLE = "restaurant" as const;
 
@@ -191,21 +192,13 @@ export function RestaurantLanguageScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View style={{ padding: 16, flex: 1 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.85}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-              {t("common.back", "Back")}
-            </Text>
-          </TouchableOpacity>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("common.language", "Language")}
+        subtitle={`${current.nativeLabel} (${current.code})`}
+        fallbackRoute="RestaurantCommandCenter"
+        variant="dark"
+        rightSlot={
           <View
             style={{
               paddingHorizontal: 10,
@@ -224,16 +217,10 @@ export function RestaurantLanguageScreen() {
               {current.code.toUpperCase()}
             </Text>
           </View>
-        </View>
+        }
+      />
 
-        <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginTop: 14 }}>
-          {t("common.language", "Language")}
-        </Text>
-
-        <Text style={{ color: "#94A3B8", fontWeight: "800", marginTop: 6 }}>
-          {t("common.language", "Language")}: {current.nativeLabel} ({current.code})
-        </Text>
-
+      <View style={{ padding: 16, flex: 1 }}>
         <View
           style={{
             marginTop: 14,

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -11,8 +10,10 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 import { TinType, W9GetResponse, W9Payload, openW9Pdf, w9Get, w9Submit } from "../../lib/taxW9";
 import { rowDirection, textAlignStart, mirrorChevron } from "../i18n/rtl";
@@ -257,17 +258,12 @@ export default function DriverW9Screen() {
     : dash;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={[styles.header, { flexDirection: rowDirection() }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.85}>
-          <Text style={styles.backText}>
-            {mirrorChevron("back")} {t("common.back", "Back")}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>{alertTitle}</Text>
-        <View style={{ width: 68 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={alertTitle}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+      />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>

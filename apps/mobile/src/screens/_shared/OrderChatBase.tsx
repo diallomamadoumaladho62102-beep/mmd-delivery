@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/_shared/OrderChatBase.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -12,6 +11,8 @@ import {
   Image,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
@@ -19,6 +20,10 @@ import { decode } from "base64-arraybuffer";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { supabase } from "../../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../../lib/supabaseRealtime";
 import { mmdAudio } from "../../lib/mmdAudio";
 
 type ChatTargetRole = "client" | "driver" | "restaurant" | "admin" | "";
@@ -625,51 +630,35 @@ export function OrderChatBaseScreen(props: {
 
     if (!orderId || !isValidOrderId) return;
 
-    const channel = supabase
-      .channel(`order_messages:${orderId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "order_messages",
-          filter: `order_id=eq.${orderId}`,
-        },
-        (payload) => {
-          const row = payload.new as { user_id?: string | null };
-          if (
-            row?.user_id &&
-            row.user_id !== currentUserIdRef.current
-          ) {
+    const channel = subscribePostgresChannel(`order_messages:${orderId}`, [
+      {
+        event: "INSERT",
+        table: "order_messages",
+        filter: `order_id=eq.${orderId}`,
+        callback: (payload) => {
+          const row = (payload as { new?: { user_id?: string | null } }).new;
+          if (row?.user_id && row.user_id !== currentUserIdRef.current) {
             void mmdAudio.play("chat");
           }
           void load();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "order_messages",
-          filter: `order_id=eq.${orderId}`,
         },
-        () => void load()
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "order_messages",
-          filter: `order_id=eq.${orderId}`,
-        },
-        () => void load()
-      )
-      .subscribe();
+      },
+      {
+        event: "UPDATE",
+        table: "order_messages",
+        filter: `order_id=eq.${orderId}`,
+        callback: () => void load(),
+      },
+      {
+        event: "DELETE",
+        table: "order_messages",
+        filter: `order_id=eq.${orderId}`,
+        callback: () => void load(),
+      },
+    ]);
 
     return () => {
-      void supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [orderId, isValidOrderId, load]);
 
@@ -1025,13 +1014,10 @@ export function OrderChatBaseScreen(props: {
 
   if (!orderId || !isValidOrderId) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617", padding: 16 }}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-            {t("shared.common.backWithArrow", "← Retour")}
-          </Text>
-        </TouchableOpacity>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+        <ScreenHeader title={title} onBack={onBack} variant="dark" />
 
+        <View style={{ paddingHorizontal: 16 }}>
         <Text style={{ color: "white", marginTop: 16, fontWeight: "900" }}>
           {t("shared.orderChat.errors.invalidOrderIdTitle", "Discussion indisponible")}
         </Text>
@@ -1042,6 +1028,7 @@ export function OrderChatBaseScreen(props: {
             "Cette discussion doit être ouverte depuis une vraie commande. Le support général sera corrigé séparément pour ne plus envoyer orderId = support."
           )}
         </Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -1049,13 +1036,10 @@ export function OrderChatBaseScreen(props: {
 
   if (accessDenied) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617", padding: 16 }}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-            {t("shared.common.backWithArrow", "← Retour")}
-          </Text>
-        </TouchableOpacity>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+        <ScreenHeader title={title} onBack={onBack} variant="dark" />
 
+        <View style={{ paddingHorizontal: 16 }}>
         <Text style={{ color: "#FCA5A5", marginTop: 16, fontWeight: "900" }}>
           {t("shared.orderChat.errors.accessDeniedTitle", "Accès refusé")}
         </Text>
@@ -1066,47 +1050,19 @@ export function OrderChatBaseScreen(props: {
             "Tu ne peux pas ouvrir cette discussion avec ce compte ou cette commande est déjà terminée."
           )}
         </Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <TouchableOpacity onPress={onBack} style={{ paddingVertical: 8, paddingRight: 10 }}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-              {t("shared.common.backArrowOnly", "←")}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={{ alignItems: "center", flex: 1 }}>
-            <Text style={{ color: "#E5E7EB", fontWeight: "900", textAlign: "center" }}>
-              {title}
-            </Text>
-
-            <Text style={{ color: "#9CA3AF", marginTop: 2, fontWeight: "800", fontSize: 12 }}>
-              {t("shared.orderChat.header.subtitle", "Messages & pièces jointes")}
-            </Text>
-
-            {targetRole ? (
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={{ color: "#64748B", marginTop: 2, fontWeight: "800", fontSize: 11 }}
-              >
-                {t("shared.orderChat.header.privateWith", "Conversation avec")}{" "}
-                {targetRoleLabel(targetRole, t)}
-              </Text>
-            ) : null}
-          </View>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={title}
+        subtitle={t("shared.orderChat.header.subtitle", "Messages & pièces jointes")}
+        onBack={onBack}
+        variant="dark"
+        rightSlot={
           <TouchableOpacity
             onPress={() => void load()}
             disabled={loading}
@@ -1126,8 +1082,21 @@ export function OrderChatBaseScreen(props: {
                 : t("shared.common.refresh", "Rafraîchir")}
             </Text>
           </TouchableOpacity>
+        }
+      />
+
+      {targetRole ? (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 6 }}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ color: "#64748B", fontWeight: "800", fontSize: 11 }}
+          >
+            {t("shared.orderChat.header.privateWith", "Conversation avec")}{" "}
+            {targetRoleLabel(targetRole, t)}
+          </Text>
         </View>
-      </View>
+      ) : null}
 
       <View style={{ flex: 1, paddingHorizontal: 16 }}>
         {loading ? (

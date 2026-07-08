@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useCallback } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -10,8 +9,10 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import {
   openMonthlyTaxPdf,
   openWeeklyTaxPdf,
@@ -194,22 +195,12 @@ export default function DriverTaxScreen() {
   }, [isDownloading, selectedWeek, selectedYear]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.backText}>{t("common.back", "‹ Back")}</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.title}>
-          {t("driver.tax.title", "Tax information")}
-        </Text>
-
-        <View style={{ width: 68 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.tax.title", "Tax information")}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+      />
 
       <ScrollView
         contentContainerStyle={styles.content}

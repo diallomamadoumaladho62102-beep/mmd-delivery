@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -8,10 +7,12 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type BoostKind = "boost" | "bonus" | "challenge";
 
@@ -435,23 +436,13 @@ export function DriverBenefitsScreen() {
   const safePayoutEstimated = Number.isFinite(payoutEstimated) ? payoutEstimated : 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingVertical: 8, paddingRight: 10 }}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>←</Text>
-          </TouchableOpacity>
-
-          <View style={{ alignItems: "center" }}>
-            <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>
-              {t("driver.benefits.header.title", "Avantages")}
-            </Text>
-            <Text style={{ color: "#9CA3AF", marginTop: 2, fontWeight: "800", fontSize: 12 }}>
-              {t("driver.benefits.header.subtitle", "Bonus & boosts")} • {daysLabel}
-            </Text>
-          </View>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.benefits.header.title", "Avantages")}
+        subtitle={`${t("driver.benefits.header.subtitle", "Bonus & boosts")} • ${daysLabel}`}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+        rightSlot={
           <TouchableOpacity
             onPress={() => {
               Alert.alert(
@@ -475,8 +466,8 @@ export function DriverBenefitsScreen() {
               {t("driver.benefits.actions.help", "Aide")}
             </Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30, gap: 12 }}>
         {/* Résumé bonus/payout */}

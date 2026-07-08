@@ -13,10 +13,12 @@ import {
   Modal,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { supabase } from "../../lib/supabase";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Category = {
   id: string;
@@ -732,19 +734,33 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <Text>{t("restaurant.menu.loading", "Chargement…")}</Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("restaurant.menu.header.title", "Menu / Produits")}
+          variant="light"
+          fallbackRoute="RestaurantCommandCenter"
+        />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <Text>{t("restaurant.menu.loading", "Chargement…")}</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!restaurantUserId) {
     return (
-      <View style={{ flex: 1, padding: 16 }}>
-        <Text style={{ fontSize: 16 }}>
-          {t("restaurant.menu.errors.accountRequired", "❌ Compte restaurant requis")}
-        </Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("restaurant.menu.header.title", "Menu / Produits")}
+          variant="light"
+          fallbackRoute="RestaurantCommandCenter"
+        />
+        <View style={{ flex: 1, padding: 16 }}>
+          <Text style={{ fontSize: 16 }}>
+            {t("restaurant.menu.errors.accountRequired", "❌ Compte restaurant requis")}
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -844,26 +860,28 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 50 }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-        <Text style={{ fontSize: 22, fontWeight: "800" }}>
-          {t("restaurant.menu.header.title", "Menu / Produits")}
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => navigation?.navigate("RestaurantEarnings")}
-          style={{
-            backgroundColor: "#22C55E",
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            borderRadius: 12,
-          }}
-        >
-          <Text style={{ color: "white", fontWeight: "800" }}>
-            {t("restaurant.menu.header.earnings", "Earnings")}
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("restaurant.menu.header.title", "Menu / Produits")}
+        variant="light"
+        fallbackRoute="RestaurantCommandCenter"
+        rightSlot={
+          <TouchableOpacity
+            onPress={() => navigation?.navigate("RestaurantEarnings")}
+            style={{
+              backgroundColor: "#22C55E",
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ color: "white", fontWeight: "800" }}>
+              {t("restaurant.menu.header.earnings", "Earnings")}
+            </Text>
+          </TouchableOpacity>
+        }
+      />
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 50 }}>
 
       <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 14 }}>
         <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 10 }}>
@@ -1289,6 +1307,7 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }

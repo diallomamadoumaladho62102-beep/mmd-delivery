@@ -2,14 +2,15 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import {
@@ -144,19 +145,26 @@ export function DriverVehiclesScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title="Mes véhicules"
+          variant="light"
+          fallbackRoute="DriverTabs"
+        />
         <ActivityIndicator style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title="Mes véhicules"
+        subtitle="Un seul véhicule actif à la fois. Changez de véhicule uniquement lorsque vous êtes hors ligne."
+        variant="light"
+        fallbackRoute="DriverTabs"
+      />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Mes véhicules</Text>
-        <Text style={styles.subtitle}>
-          Un seul véhicule actif à la fois. Changez de véhicule uniquement lorsque vous êtes hors ligne.
-        </Text>
 
         {vehicles.map((vehicle) => (
           <VehicleCard
@@ -193,9 +201,7 @@ export function DriverVehiclesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
-  content: { padding: 20, gap: 12 },
-  title: { fontSize: 24, fontWeight: "700", color: "#0f172a" },
-  subtitle: { fontSize: 14, color: "#64748b", marginBottom: 8 },
+  content: { padding: 20, paddingTop: 8, gap: 12 },
   card: {
     borderWidth: 1,
     borderColor: "#e2e8f0",

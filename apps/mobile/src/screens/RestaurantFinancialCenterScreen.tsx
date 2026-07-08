@@ -16,7 +16,8 @@ import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { formatMoney, formatDateTime } from "../i18n/formatters";
-import { rowDirection, textAlignStart, mirrorChevron } from "../i18n/rtl";
+import { rowDirection, textAlignStart } from "../i18n/rtl";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type ChartPoint = {
   label: string;
@@ -199,7 +200,12 @@ export default function RestaurantFinancialCenterScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("restaurant.financial.title", "Financial Center")}
+          fallbackRoute="RestaurantCommandCenter"
+          variant="light"
+        />
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
           <Text style={styles.loadingText}>
@@ -212,14 +218,12 @@ export default function RestaurantFinancialCenterScreen() {
 
   if (error || !overview) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>
-              {mirrorChevron("back")} {t("common.back", "Back")}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title={t("restaurant.financial.title", "Financial Center")}
+          fallbackRoute="RestaurantCommandCenter"
+          variant="light"
+        />
         <View style={styles.centered}>
           <Text style={styles.errorText}>
             {error ||
@@ -237,7 +241,7 @@ export default function RestaurantFinancialCenterScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
@@ -245,22 +249,16 @@ export default function RestaurantFinancialCenterScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>
-            {mirrorChevron("back")} {t("common.back", "Back")}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={[styles.headerTitle, { textAlign: textAlignStart() }]}>
-        {t("restaurant.financial.title", "Financial Center")}
-      </Text>
-      <Text style={[styles.headerSubtitle, { textAlign: textAlignStart() }]}>
-        {t(
+      <ScreenHeader
+        title={t("restaurant.financial.title", "Financial Center")}
+        subtitle={t(
           "restaurant.financial.subtitle",
           "Restaurant revenue, payouts, statements, and taxes"
         )}
-      </Text>
+        fallbackRoute="RestaurantCommandCenter"
+        variant="light"
+        style={{ paddingHorizontal: 0 }}
+      />
 
       {!overview.profileComplete && overview.missingFields.length > 0 ? (
         <View style={styles.alertBox}>

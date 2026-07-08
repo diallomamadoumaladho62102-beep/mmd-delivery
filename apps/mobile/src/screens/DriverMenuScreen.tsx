@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/DriverMenuScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -11,10 +10,12 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { startStripeOnboarding } from "../utils/stripe";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type MenuIconName =
   | "gift"
@@ -439,15 +440,13 @@ export function DriverMenuScreen() {
   }, [t]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton} activeOpacity={0.85}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.screenTitle}>{t("driver.menu.title", "Menu")}</Text>
-
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.menu.title", "Menu")}
+        fallbackRoute="DriverTabs"
+        showBack={navigation.canGoBack()}
+        variant="dark"
+        rightSlot={
           <TouchableOpacity
             onPress={() => navigation.navigate("DriverAccount")}
             style={styles.roundButton}
@@ -455,7 +454,9 @@ export function DriverMenuScreen() {
           >
             <Text style={styles.settingsIcon}>⚙</Text>
           </TouchableOpacity>
-        </View>
+        }
+      />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         <TouchableOpacity
           style={styles.profileCard}

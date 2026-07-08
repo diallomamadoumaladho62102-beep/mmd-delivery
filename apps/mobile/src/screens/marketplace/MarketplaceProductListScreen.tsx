@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  SafeAreaView,
   Text,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchMarketplaceProducts,
   formatMarketplaceMoney,
@@ -45,22 +46,24 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
   }, [load]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={sellerName}
+        subtitle={t("marketplace.products.subtitle", "Browse active products")}
+        fallbackRoute="MarketplaceHome"
+        variant="dark"
+      />
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(true); }} />
         }
-        contentContainerStyle={{ padding: 20, gap: 12 }}
+        contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 12 }}
       >
-        <Text style={{ color: "#F8FAFC", fontSize: 24, fontWeight: "700" }}>{sellerName}</Text>
         {!sellerIsOpen ? (
           <Text style={{ color: "#FCA5A5", marginBottom: 8 }}>
             {t("marketplace.products.shopClosed", "This shop is currently closed.")}
           </Text>
         ) : null}
-        <Text style={{ color: "#94A3B8", marginBottom: 8 }}>
-          {t("marketplace.products.subtitle", "Browse active products")}
-        </Text>
 
         <TouchableOpacity
           disabled={!sellerIsOpen}

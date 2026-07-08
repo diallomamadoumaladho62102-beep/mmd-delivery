@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { V4, V4_RADIUS, V4_SHADOW } from "../components/client/home/clientHomeTheme";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import {
   type AiAction,
   MmdAiApiError,
@@ -302,21 +303,18 @@ export default function MmdAiScreen() {
   }, [ts]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]} testID="mmd-ai-screen">
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton} hitSlop={10}>
-          <Text style={styles.backGlyph}>←</Text>
-        </Pressable>
-        <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>{tsFallback(ts, "mmd.ai.title", "Ask MMD AI")}</Text>
-          <Text style={styles.headerSub}>
-            {tsFallback(ts, "mmd.ai.subtitle", "Your MMD assistant")}
-          </Text>
-        </View>
-        <Pressable onPress={handleClear} style={styles.clearButton} hitSlop={8}>
-          <Text style={styles.clearText}>{tsFallback(ts, "mmd.ai.clear.short", "Clear")}</Text>
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]} testID="mmd-ai-screen">
+      <ScreenHeader
+        title={tsFallback(ts, "mmd.ai.title", "Ask MMD AI")}
+        subtitle={tsFallback(ts, "mmd.ai.subtitle", "Your MMD assistant")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+        rightSlot={
+          <Pressable onPress={handleClear} style={styles.clearButton} hitSlop={8}>
+            <Text style={styles.clearText}>{tsFallback(ts, "mmd.ai.clear.short", "Clear")}</Text>
+          </Pressable>
+        }
+      />
 
       {market.scopeResolved ? (
         <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>

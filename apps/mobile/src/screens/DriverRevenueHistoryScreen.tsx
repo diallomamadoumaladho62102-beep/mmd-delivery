@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,9 +8,11 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type RangeKey = "today" | "week" | "month";
 
@@ -251,24 +252,13 @@ export function DriverRevenueHistoryScreen() {
   }, [orders]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.headerWrap}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.roundButton}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.backText}>‹</Text>
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              {t("driver.revenue.history.title", "History")}
-            </Text>
-            <Text style={styles.headerSubtitle}>{label}</Text>
-          </View>
-
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.revenue.history.title", "History")}
+        subtitle={label}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+        rightSlot={
           <TouchableOpacity
             onPress={() => void fetchOrders()}
             style={[styles.refreshButton, loading && styles.disabled]}
@@ -281,8 +271,8 @@ export function DriverRevenueHistoryScreen() {
                 : t("common.refresh", "Refresh")}
             </Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={styles.content}

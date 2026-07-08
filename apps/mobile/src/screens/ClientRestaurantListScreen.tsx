@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -10,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -20,6 +20,7 @@ import {
   coordinatesMatchMarketCountry,
   resolveMarketScopeFromFeatures,
 } from "../lib/marketScope";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientRestaurantList">;
 
@@ -182,25 +183,19 @@ export function ClientRestaurantListScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+      <ScreenHeader
+        title={t("client.restaurants.header.title", "Restaurants partenaires")}
+        subtitle={t(
+          "client.restaurants.header.subtitle",
+          "Choisis un restaurant par catégorie ou recherche ton plat préféré."
+        )}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
 
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 }}>
-        <Text style={{ color: "#22C55E", fontSize: 14, fontWeight: "600", marginBottom: 4 }}>
-          {t("client.restaurants.header.spaceClient", "Espace client")}
-        </Text>
-
-        <Text style={{ color: "white", fontSize: 24, fontWeight: "800", marginBottom: 4 }}>
-          {t("client.restaurants.header.title", "Restaurants partenaires")}
-        </Text>
-
-        <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-          {t(
-            "client.restaurants.header.subtitle",
-            "Choisis un restaurant par catégorie ou recherche ton plat préféré."
-          )}
-        </Text>
-
+      <View style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 }}>
         <TextInput
           value={searchText}
           onChangeText={setSearchText}
@@ -373,24 +368,6 @@ export function ClientRestaurantListScreen() {
           ))}
         </ScrollView>
       )}
-
-      <View style={{ paddingHorizontal: 20, paddingBottom: 16, paddingTop: 8 }}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate("ClientHome")}
-          style={{
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: "#4B5563",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "500" }}>
-            ← {t("client.restaurants.backToClient", "Retour à l’espace client")}
-          </Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }

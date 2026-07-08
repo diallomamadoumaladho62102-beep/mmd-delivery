@@ -11,6 +11,10 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 import { setLocaleForRoleAndApply } from "../i18n";
@@ -408,6 +412,7 @@ export function ClientHomeScreen() {
   const [recentActivityUnavailable, setRecentActivityUnavailable] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("");
+  const [clientUserId, setClientUserId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const { features: platformFeatures, refresh: refreshPlatformFeatures, refreshWithCurrentLocation } =
     useClientPlatformFeatures();
@@ -461,7 +466,7 @@ export function ClientHomeScreen() {
     return () => {
       isMountedRef.current = false;
       if (realtimeChannelRef.current) {
-        supabase.removeChannel(realtimeChannelRef.current);
+        void unsubscribeSupabaseChannel(realtimeChannelRef.current);
         realtimeChannelRef.current = null;
       }
     };
@@ -671,8 +676,7 @@ export function ClientHomeScreen() {
         setAvatarUrl(isValidImageUri(nextAvatar) ? nextAvatar : null);
         setItems(mergedItems);
         setRecentActivityUnavailable(hadFetchIssue && mergedItems.length === 0);
-
-        subscribeRealtime(user.id);
+        setClientUserId(user.id);
       } catch (e: unknown) {
         if (!isMountedRef.current) return;
 
@@ -700,57 +704,45 @@ export function ClientHomeScreen() {
     [fetchAllForUser, ts]
   );
 
-  const subscribeRealtime = useCallback(
-    (userId: string) => {
-      if (realtimeChannelRef.current) {
-        supabase.removeChannel(realtimeChannelRef.current);
+  useEffect(() => {
+    if (!clientUserId) return;
+
+    const channel = subscribePostgresChannel(`client-home-${clientUserId}`, [
+      {
+        event: "*",
+        table: "orders",
+        filter: `client_user_id=eq.${clientUserId}`,
+        callback: () => {
+          void fetchOrders("load", true);
+        },
+      },
+      {
+        event: "*",
+        table: "delivery_requests",
+        filter: `client_user_id=eq.${clientUserId}`,
+        callback: () => {
+          void fetchOrders("load", true);
+        },
+      },
+      {
+        event: "*",
+        table: "delivery_requests",
+        filter: `created_by=eq.${clientUserId}`,
+        callback: () => {
+          void fetchOrders("load", true);
+        },
+      },
+    ]);
+
+    realtimeChannelRef.current = channel;
+
+    return () => {
+      void unsubscribeSupabaseChannel(channel);
+      if (realtimeChannelRef.current === channel) {
         realtimeChannelRef.current = null;
       }
-
-      const channel = supabase
-        .channel(`client-home-${userId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "orders",
-            filter: `client_user_id=eq.${userId}`,
-          },
-          () => {
-            void fetchOrders("load", true);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "delivery_requests",
-            filter: `client_user_id=eq.${userId}`,
-          },
-          () => {
-            void fetchOrders("load", true);
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "delivery_requests",
-            filter: `created_by=eq.${userId}`,
-          },
-          () => {
-            void fetchOrders("load", true);
-          }
-        )
-        .subscribe();
-
-      realtimeChannelRef.current = channel;
-    },
-    [fetchOrders]
-  );
+    };
+  }, [clientUserId, fetchOrders]);
 
   useFocusEffect(
     useCallback(() => {
@@ -857,7 +849,7 @@ export function ClientHomeScreen() {
       await clearSelectedRole();
 
       if (realtimeChannelRef.current) {
-        supabase.removeChannel(realtimeChannelRef.current);
+        void unsubscribeSupabaseChannel(realtimeChannelRef.current);
         realtimeChannelRef.current = null;
       }
 

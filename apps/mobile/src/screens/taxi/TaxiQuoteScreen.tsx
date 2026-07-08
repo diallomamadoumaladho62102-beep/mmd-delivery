@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TextInput,
@@ -10,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -37,6 +37,7 @@ import {
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import { supabase } from "../../lib/supabase";
@@ -353,17 +354,14 @@ export default function TaxiQuoteScreen() {
 
   return (
     <>
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+      <ScreenHeader
+        title={getTaxiUiString("estimate", countryCode)}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
-        </TouchableOpacity>
-
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
-          {getTaxiUiString("estimate", countryCode)}
-        </Text>
-
         <Card label={t("taxi.quote.vehicle", "Vehicle")} value={String(vehicleClass).toUpperCase()} />
         <Card
           label={getTaxiUiString("country", countryCode)}

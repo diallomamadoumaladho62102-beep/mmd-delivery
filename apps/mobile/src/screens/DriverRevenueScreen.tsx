@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,8 +8,10 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import { supabase } from "../lib/supabase";
 import {
   loadTaxiDriverEarnings,
@@ -354,23 +355,21 @@ export function DriverRevenueScreen() {
   const openHelp = useCallback(() => safeNavigate("DriverHelp"), [safeNavigate]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <View style={styles.root}>
         <View style={styles.headerWrap}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton} activeOpacity={0.85}>
-              <Text style={styles.backIcon}>‹</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.headerCenter}>{t("driver.revenue.header.title", "Earnings")}</Text>
-
-            <TouchableOpacity onPress={openHelp} style={styles.helpButton} activeOpacity={0.85}>
-              <Text style={styles.helpText}>{t("driver.revenue.help_btn", "Help")}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.title}>{t("driver.revenue.title", "Earnings")}</Text>
-          <Text style={styles.subtitle}>{titleLabel}</Text>
+          <ScreenHeader
+            title={t("driver.revenue.title", "Earnings")}
+            subtitle={titleLabel}
+            fallbackRoute="DriverTabs"
+            showBack={navigation.canGoBack()}
+            variant="dark"
+            rightSlot={
+              <TouchableOpacity onPress={openHelp} style={styles.helpButton} activeOpacity={0.85}>
+                <Text style={styles.helpText}>{t("driver.revenue.help_btn", "Help")}</Text>
+              </TouchableOpacity>
+            }
+          />
 
           <View style={styles.tabsRow}>
             {[

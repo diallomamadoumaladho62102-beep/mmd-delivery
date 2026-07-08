@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -14,6 +13,7 @@ import {
   Linking,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -32,6 +32,8 @@ import {
   stopDriverLocationTracking,
 } from "../lib/driverLocationTracker";
 import { DriverTripLocationCard } from "../components/location/DriverTripLocationCard";
+import ScreenHeader from "../components/navigation/ScreenHeader";
+import { useSafeBackNavigation } from "../navigation/navigationBack";
 import {
   ensureMapboxTokenApplied,
   getMapStyleStreets,
@@ -749,6 +751,7 @@ export function DriverOrderDetailsScreen() {
   const sourceTable = normalizeSourceTable(routeParams?.sourceTable ?? routeParams?.source_table);
 
   const { t } = useTranslation();
+  const safeBack = useSafeBackNavigation("DriverTabs");
 
   useEffect(() => {
     ensureMapboxTokenApplied();
@@ -2344,8 +2347,13 @@ export function DriverOrderDetailsScreen() {
 
   if (!order) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" />
+        <ScreenHeader
+          title={t("driver.orderDetails.header.title", "Course")}
+          fallbackRoute="DriverTabs"
+          variant="dark"
+        />
         <View
           style={{
             flex: 1,
@@ -2358,7 +2366,7 @@ export function DriverOrderDetailsScreen() {
             {t("driver.orderDetails.notFoundShort", "Course introuvable.")}
           </Text>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
+            onPress={safeBack}
             style={{
               borderRadius: 999,
               borderWidth: 1,
@@ -2475,9 +2483,26 @@ export function DriverOrderDetailsScreen() {
     </View>
   );
 
+  const headerTitle = isPickupDropoff
+    ? t("driver.orderDetails.header.tripTitle", "Trip #{{id}}", {
+        id: order.id.slice(0, 8),
+      })
+    : t("driver.orderDetails.header.title", "Course #{{id}}", {
+        id: order.id.slice(0, 8),
+      });
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+
+      <ScreenHeader
+        title={headerTitle}
+        subtitle={t("driver.orderDetails.header.createdAt", "Créée le : {{date}}", {
+          date: formatDate(order.created_at),
+        })}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+      />
 
       <View style={{ height: 265, width: "100%" }}>
         <Mapbox.MapView style={{ flex: 1 }} styleURL={getMapStyleStreets()}
@@ -2590,39 +2615,15 @@ export function DriverOrderDetailsScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
       >
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={{ marginTop: 12, marginBottom: 8 }}
-        >
-          <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-            {t("common.back", "← Retour")}
-          </Text>
-        </TouchableOpacity>
-
         <View
           style={{
             flexDirection: "row",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             alignItems: "flex-start",
+            marginTop: 12,
+            marginBottom: 8,
           }}
         >
-          <View style={{ flex: 1, paddingRight: 10 }}>
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "800", marginBottom: 4 }}>
-              {isPickupDropoff
-                ? t("driver.orderDetails.header.tripTitle", "Trip #{{id}}", {
-                    id: order.id.slice(0, 8),
-                  })
-                : t("driver.orderDetails.header.title", "Course #{{id}}", {
-                    id: order.id.slice(0, 8),
-                  })}
-            </Text>
-            <Text style={{ color: "#9CA3AF", fontSize: 12 }}>
-              {t("driver.orderDetails.header.createdAt", "Créée le : {{date}}", {
-                date: formatDate(order.created_at),
-              })}
-            </Text>
-          </View>
-
           <View
             style={{
               alignSelf: "flex-start",

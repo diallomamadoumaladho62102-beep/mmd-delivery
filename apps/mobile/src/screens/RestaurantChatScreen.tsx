@@ -1,9 +1,12 @@
 // apps/mobile/src/screens/RestaurantChatScreen.tsx
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { OrderChatBaseScreen } from "./_shared/OrderChatBase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
+import { useSafeBackNavigation } from "../navigation/navigationBack";
 
 type ChatTargetRole = "client" | "driver" | "admin";
 
@@ -12,9 +15,9 @@ function isValidTargetRole(value: unknown): value is ChatTargetRole {
 }
 
 export function RestaurantChatScreen() {
-  const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { t } = useTranslation();
+  const safeBack = useSafeBackNavigation("RestaurantCommandCenter");
 
   const orderId = String(route?.params?.orderId ?? "").trim();
   const rawTargetRole = route?.params?.targetRole;
@@ -28,7 +31,7 @@ export function RestaurantChatScreen() {
 
   if (!orderId) {
     return (
-      <View
+      <SafeAreaView
         style={{
           flex: 1,
           backgroundColor: "#020617",
@@ -36,13 +39,19 @@ export function RestaurantChatScreen() {
           justifyContent: "center",
           padding: 20,
         }}
+        edges={["bottom", "left", "right"]}
       >
-        <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 16 }}>
+        <ScreenHeader
+          title={t("restaurants.chat.titlePrefix", "Restaurant")}
+          fallbackRoute="RestaurantCommandCenter"
+          variant="dark"
+        />
+        <Text style={{ color: "#FCA5A5", fontWeight: "900", fontSize: 16, marginTop: 24 }}>
           {t("restaurants.chat.errors.missingOrder", "Commande introuvable.")}
         </Text>
 
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={safeBack}
           style={{
             marginTop: 16,
             paddingHorizontal: 16,
@@ -55,7 +64,7 @@ export function RestaurantChatScreen() {
             {t("common.back", "Retour")}
           </Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -63,7 +72,7 @@ export function RestaurantChatScreen() {
     <OrderChatBaseScreen
       orderId={orderId}
       targetRole={targetRole}
-      onBack={() => navigation.goBack()}
+      onBack={safeBack}
       titlePrefix={titlePrefix}
     />
   );

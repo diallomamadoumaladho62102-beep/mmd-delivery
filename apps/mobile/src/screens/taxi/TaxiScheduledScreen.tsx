@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -8,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -19,6 +19,7 @@ import {
   fetchScheduledTaxiRides,
   formatTaxiCents,
 } from "../../lib/taxiClientApi";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiScheduled">;
 
@@ -48,14 +49,13 @@ export default function TaxiScheduledScreen() {
   }, [load]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("taxi.scheduled.title", "Scheduled rides")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
-          {t("taxi.scheduled.title", "Scheduled rides")}
-        </Text>
         <TouchableOpacity
           onPress={() => navigation.navigate("TaxiScheduledBook")}
           style={{

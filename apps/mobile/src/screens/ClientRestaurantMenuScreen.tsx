@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import { API_BASE_URL } from "../lib/apiBase";
 import { startCheckoutForOrder } from "../../lib/payments";
 import { createFoodOrder, quoteFoodOrder, type FoodOrderPricingPayload } from "../lib/foodOrderApi";
@@ -1033,34 +1034,27 @@ export function ClientRestaurantMenuScreen() {
     !!dropoffCoords;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+      <ScreenHeader
+        title={restaurantProfile?.restaurant_name || restaurantName}
+        subtitle={tr(
+          "clientRestaurantMenu.header.subtitle",
+          "Parcours le menu et ajoute des plats à ta commande MMD."
+        )}
+        fallbackRoute="ClientRestaurantList"
+        variant="dark"
+      />
 
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingTop: 8,
           paddingBottom: 24,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ marginBottom: 16 }}>
-          <Text style={{ color: "#22C55E", fontSize: 14, fontWeight: "600", marginBottom: 4 }}>
-            {tr("clientRestaurantMenu.header.space", "Espace client")}
-          </Text>
-
-          <Text style={{ color: "white", fontSize: 24, fontWeight: "800", marginBottom: 4 }}>
-            {restaurantProfile?.restaurant_name || restaurantName}
-          </Text>
-
-          <Text style={{ color: "#9CA3AF", fontSize: 13 }}>
-            {tr(
-              "clientRestaurantMenu.header.subtitle",
-              "Parcours le menu et ajoute des plats à ta commande MMD."
-            )}
-          </Text>
-        </View>
 
         <View
           style={{
@@ -1586,22 +1580,6 @@ export function ClientRestaurantMenuScreen() {
             {creating
               ? tr("clientRestaurantMenu.create.creating", "Création de la commande…")
               : tr("clientRestaurantMenu.create.confirm", "Confirmer et créer la commande MMD")}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate("ClientRestaurantList")}
-          style={{
-            paddingVertical: 10,
-            paddingHorizontal: 16,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: "#4B5563",
-            alignItems: "center",
-          }}
-        >
-          <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "600" }}>
-            {tr("common.backToRestaurants", "← Retour aux restaurants")}
           </Text>
         </TouchableOpacity>
       </ScrollView>

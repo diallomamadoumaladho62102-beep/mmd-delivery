@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   ScrollView,
@@ -9,9 +8,11 @@ import {
   Alert,
   Linking,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchMarketplaceDraft,
   fetchMarketplaceLiveCheckoutCapabilities,
@@ -223,12 +224,14 @@ export default function MarketplaceCartScreen({ route }: Props) {
   const checkoutEnabled = Boolean(draft?.checkout_shadow?.checkout_enabled);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 14 }}>
-        <Text style={{ color: "#F8FAFC", fontSize: 24, fontWeight: "700" }}>
-          {t("marketplace.cart.title", "Marketplace draft")}
-        </Text>
-        <Text style={{ color: "#94A3B8" }}>{sellerName}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("marketplace.cart.title", "Marketplace draft")}
+        subtitle={sellerName}
+        fallbackRoute="MarketplaceHome"
+        variant="dark"
+      />
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }}>
 
         {loading ? (
           <ActivityIndicator color="#A78BFA" />

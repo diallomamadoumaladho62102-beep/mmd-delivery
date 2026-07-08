@@ -21,6 +21,8 @@ import { supabase } from "../lib/supabase";
 import { confirmOrderPaid } from "../../lib/payments";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { payOrderWithPaymentSheet } from "../utils/stripe";
+import ScreenHeader from "../components/navigation/ScreenHeader";
+import { useSafeBackNavigation } from "../navigation/navigationBack";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientNewOrder">;
 
@@ -213,6 +215,7 @@ export function ClientNewOrderScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<any>();
   const { t } = useTranslation();
+  const safeBack = useSafeBackNavigation("ClientHome");
 
   const restaurantIdFromParams: string | null =
     route?.params?.restaurantId ?? null;
@@ -1066,8 +1069,18 @@ export function ClientNewOrderScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+
+      <ScreenHeader
+        title={t("client.newOrder.title", "Nouvelle commande")}
+        subtitle={t(
+          "client.newOrder.subtitle",
+          "Saisie des adresses pickup / dropoff (mobile MMD Delivery) avec la même formule que sur le site web."
+        )}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -1107,31 +1120,6 @@ export function ClientNewOrderScreen() {
                 }}
               >
                 MMD DELIVERY
-              </Text>
-
-              <Text
-                style={{
-                  color: "white",
-                  fontSize: 26,
-                  fontWeight: "900",
-                  lineHeight: 32,
-                }}
-              >
-                {t("client.newOrder.title", "Nouvelle commande")}
-              </Text>
-
-              <Text
-                style={{
-                  color: "#9CA3AF",
-                  fontSize: 14,
-                  lineHeight: 20,
-                  marginTop: 8,
-                }}
-              >
-                {t(
-                  "client.newOrder.subtitle",
-                  "Saisie des adresses pickup / dropoff (mobile MMD Delivery) avec la même formule que sur le site web."
-                )}
               </Text>
             </View>
 
@@ -1571,25 +1559,6 @@ export function ClientNewOrderScreen() {
                 "1) Estime → 2) Crée la commande → 3) Paye avec Stripe PaymentSheet."
               )}
             </Text>
-          </View>
-
-          <View style={{ marginTop: 16 }}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={{
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: "#4B5563",
-                alignItems: "center",
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "600" }}>
-                ← {t("client.newOrder.actions.backToClient", "Retour à l’espace client")}
-              </Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

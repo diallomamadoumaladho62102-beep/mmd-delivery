@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,8 +8,10 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import { supabase } from "../lib/supabase";
 import {
   fetchDriverWalletSnapshot,
@@ -323,26 +324,25 @@ export function DriverWalletScreen() {
   const availableMethods = payoutMethods.filter((method) => method.available);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <View style={styles.root}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton} activeOpacity={0.85}>
-            <Text style={styles.backIcon}>‹</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>{t("driver.wallet.header.title", "Wallet")}</Text>
-
-          <TouchableOpacity
-            onPress={() => fetchWallet()}
-            style={[styles.refreshButton, loading && { opacity: 0.65 }]}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.refreshText}>
-              {loading ? t("shared.common.loadingEllipsis", "…") : t("shared.common.refresh", "Refresh")}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader
+          title={t("driver.wallet.header.title", "Wallet")}
+          fallbackRoute="DriverTabs"
+          variant="dark"
+          rightSlot={
+            <TouchableOpacity
+              onPress={() => fetchWallet()}
+              style={[styles.refreshButton, loading && { opacity: 0.65 }]}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.refreshText}>
+                {loading ? t("shared.common.loadingEllipsis", "…") : t("shared.common.refresh", "Refresh")}
+              </Text>
+            </TouchableOpacity>
+          }
+        />
 
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.heroCard}>

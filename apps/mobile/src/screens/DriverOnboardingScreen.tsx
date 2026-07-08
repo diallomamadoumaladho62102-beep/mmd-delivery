@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/DriverOnboardingScreen.tsx
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -10,9 +9,11 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type TransportMode = "bike" | "car" | "moto";
 
@@ -360,27 +361,12 @@ export function DriverOnboardingScreen() {
         : t("driver.auth.transport.car", "Car");
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View
-        style={{
-          padding: 16,
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-            {t("common.back", "← Back")}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
-          {t("driver.account.title", "Driver account")}
-        </Text>
-
-        <View style={{ width: 60 }} />
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.account.title", "Driver account")}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+      />
 
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 24 }}

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -8,11 +7,13 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { textAlignStart } from "../../i18n/rtl";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchTaxiLoyaltyBalance,
   fetchTaxiLoyaltyRewards,
@@ -60,17 +61,14 @@ export default function TaxiLoyaltyRewardsScreen() {
   }, [load]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("taxi.loyaltyRewards.title", "Loyalty rewards")}
+        subtitle={t("taxi.loyaltyRewards.balancePts", "Balance: {{count}} pts", { count: balance })}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
-          {t("taxi.loyaltyRewards.title", "Loyalty rewards")}
-        </Text>
-        <Text style={{ color: "#CBD5E1" }}>
-          {t("taxi.loyaltyRewards.balancePts", "Balance: {{count}} pts", { count: balance })}
-        </Text>
         {loading ? <ActivityIndicator color="#F59E0B" /> : null}
         {rewards.map((reward) => (
           <View

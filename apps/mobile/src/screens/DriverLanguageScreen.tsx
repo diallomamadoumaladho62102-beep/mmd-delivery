@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/DriverLanguageScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,8 +8,10 @@ import {
   TextInput,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 // ✅ i18n helper (changeLanguage + RTL + save par rôle)
 import { setLocaleForRoleAndApply } from "../i18n";
@@ -186,14 +187,13 @@ export function DriverLanguageScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View style={{ padding: 16, flex: 1 }}>
-        {/* Header */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.85}>
-            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>{t("common.back")}</Text>
-          </TouchableOpacity>
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("common.language")}
+        subtitle={`${current.nativeLabel} (${current.code})`}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+        rightSlot={
           <View
             style={{
               paddingHorizontal: 10,
@@ -212,16 +212,10 @@ export function DriverLanguageScreen() {
               {current.code.toUpperCase()}
             </Text>
           </View>
-        </View>
+        }
+      />
 
-        <Text style={{ color: "white", fontSize: 22, fontWeight: "900", marginTop: 14 }}>
-          {t("common.language")}
-        </Text>
-
-        <Text style={{ color: "#94A3B8", fontWeight: "800", marginTop: 6 }}>
-          {t("common.language")}: {current.nativeLabel} ({current.code})
-        </Text>
-
+      <View style={{ padding: 16, flex: 1 }}>
         {/* Card */}
         <View
           style={{

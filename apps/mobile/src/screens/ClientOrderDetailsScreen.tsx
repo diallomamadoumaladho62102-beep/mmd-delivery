@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/ClientOrderDetailsScreen.tsx
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -14,11 +13,17 @@ import {
   TextInput,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import { supabase } from "../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 import { mmdAudio } from "../lib/mmdAudio";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
@@ -691,24 +696,19 @@ export function ClientOrderDetailsScreen() {
   useEffect(() => {
     if (!orderId) return;
 
-    const channel = supabase
-      .channel(`client-order-detail:${orderId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `id=eq.${orderId}`,
-        },
-        () => {
+    const channel = subscribePostgresChannel(`client-order-detail:${orderId}`, [
+      {
+        event: "*",
+        table: "orders",
+        filter: `id=eq.${orderId}`,
+        callback: () => {
           void fetchOrder();
         },
-      )
-      .subscribe();
+      },
+    ]);
 
     return () => {
-      supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [orderId, fetchOrder]);
 
@@ -1574,39 +1574,32 @@ export function ClientOrderDetailsScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <View style={{ flex: 1 }}>
-        <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
-          <TouchableOpacity onPress={() => navigation.navigate("ClientHome")}>
-            <Text style={{ color: "#60A5FA", fontSize: 13, fontWeight: "800" }}>
-              ← {ts("client.orderDetails.backToClient", "Back to dashboard")}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={{ marginTop: 12 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>
-                {order ? meta.title : ts("client.orderDetails.loadingTitle", "Order")}
-              </Text>
-
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: meta.pillBorder,
-                  backgroundColor: meta.pillBg,
-                }}
-              >
-                <Text style={{ color: meta.pillText, fontWeight: "900", fontSize: 12 }}>#{orderShort}</Text>
-              </View>
+        <ScreenHeader
+          title={order ? meta.title : ts("client.orderDetails.loadingTitle", "Order")}
+          subtitle={`🕒 ${createdCompact}`}
+          fallbackRoute="ClientHome"
+          variant="dark"
+          rightSlot={
+            <View
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: meta.pillBorder,
+                backgroundColor: meta.pillBg,
+              }}
+            >
+              <Text style={{ color: meta.pillText, fontWeight: "900", fontSize: 12 }}>#{orderShort}</Text>
             </View>
+          }
+        />
 
-            <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 6 }}>🕒 {createdCompact}</Text>
-
+        <View style={{ paddingHorizontal: 20, paddingTop: 4 }}>
             <View
               style={{
                 height: 6,
@@ -1638,7 +1631,6 @@ export function ClientOrderDetailsScreen() {
                 ⏳ {ts("client.orderDetails.verifyingPayment", "Verifying payment…")}
               </Text>
             )}
-          </View>
         </View>
 
         {!loading && !errorMsg && order && (pickupCoord || dropoffCoord) && (

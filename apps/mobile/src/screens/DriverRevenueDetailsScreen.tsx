@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -8,9 +7,11 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type RangeKey = "week" | "today" | "month";
 
@@ -437,38 +438,14 @@ export function DriverRevenueDetailsScreen() {
   }, [fetchDetails, fetchStats]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <View style={{ flex: 1 }}>
-        {/* Header top bar */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={{ paddingVertical: 8, paddingRight: 10 }}
-            >
-              <Text style={{ color: "#93C5FD", fontWeight: "900" }}>←</Text>
-            </TouchableOpacity>
-
-            <View style={{ alignItems: "center" }}>
-              <Text style={{ color: "#E5E7EB", fontWeight: "900" }}>{titleLabel}</Text>
-              <Text
-                style={{
-                  color: "#9CA3AF",
-                  marginTop: 2,
-                  fontWeight: "800",
-                  fontSize: 12,
-                }}
-              >
-                {daysLabel}
-              </Text>
-            </View>
-
+        <ScreenHeader
+          title={titleLabel}
+          subtitle={daysLabel}
+          fallbackRoute="DriverTabs"
+          variant="dark"
+          rightSlot={
             <TouchableOpacity
               onPress={onRefresh}
               disabled={loading}
@@ -488,8 +465,8 @@ export function DriverRevenueDetailsScreen() {
                   : t("common.refresh", "Refresh")}
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          }
+        />
 
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
           {/* Graph (Uber-style top) */}

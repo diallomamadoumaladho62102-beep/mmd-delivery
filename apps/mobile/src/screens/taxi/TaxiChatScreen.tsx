@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -11,6 +10,7 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
@@ -19,8 +19,13 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { supabase } from "../../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../../lib/supabaseRealtime";
 import { formatDateTime } from "../../i18n/formatters";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiChat">;
 type ChatRoute = RouteProp<RootStackParamList, "TaxiChat">;
@@ -85,22 +90,17 @@ export default function TaxiChatScreen() {
   useEffect(() => {
     void load().finally(() => setLoading(false));
 
-    const channel = supabase
-      .channel(`taxi_messages:${rideId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "taxi_messages",
-          filter: `taxi_ride_id=eq.${rideId}`,
-        },
-        () => void load()
-      )
-      .subscribe();
+    const channel = subscribePostgresChannel(`taxi_messages:${rideId}`, [
+      {
+        event: "*",
+        table: "taxi_messages",
+        filter: `taxi_ride_id=eq.${rideId}`,
+        callback: () => void load(),
+      },
+    ]);
 
     return () => {
-      void supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [load, rideId]);
 
@@ -180,16 +180,13 @@ export default function TaxiChatScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
-      <View style={{ padding: 12, flexDirection: rowDirection(), alignItems: "center" }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#fff", fontWeight: "800", marginLeft: 12, textAlign: textAlignStart() }}>
-          {t("taxi.chat.title", "Taxi chat")}
-        </Text>
-      </View>
+      <ScreenHeader
+        title={t("taxi.chat.title", "Taxi chat")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
 
       {loading ? (
         <ActivityIndicator color="#F59E0B" style={{ marginTop: 20 }} />

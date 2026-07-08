@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   FlatList,
@@ -11,6 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import {
   loadOwnSeller,
@@ -21,6 +21,7 @@ import {
 import { formatMoney, type SellerProductRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Props = { navigation: any };
 
@@ -144,18 +145,17 @@ export default function SellerProductsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }}>
-      <View style={{ padding: 16, flexDirection: rowDirection(), justifyContent: "space-between", alignItems: "center" }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#A78BFA" }}>{t("common.back", "Back")}</Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
-          {t("seller.products.title", "Products")}
-        </Text>
-        <TouchableOpacity onPress={openCreate}>
-          <Text style={{ color: "#A78BFA" }}>+</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("seller.products.title", "Products")}
+        fallbackRoute="SellerDashboard"
+        variant="dark"
+        rightSlot={
+          <TouchableOpacity onPress={openCreate}>
+            <Text style={{ color: "#A78BFA", fontSize: 24, fontWeight: "700" }}>+</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {loading ? (
         <ActivityIndicator color="#A78BFA" style={{ marginTop: 24 }} />

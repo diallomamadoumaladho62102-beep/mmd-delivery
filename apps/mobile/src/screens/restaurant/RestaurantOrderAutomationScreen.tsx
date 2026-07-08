@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,6 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchRestaurantAutomationSettings,
   requestRestaurantTestPrint,
@@ -89,7 +90,12 @@ export function RestaurantOrderAutomationScreen() {
 
   if (loading || !settings) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title="Commandes & impression"
+          variant="light"
+          fallbackRoute="RestaurantCommandCenter"
+        />
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#EA580C" />
         </View>
@@ -98,12 +104,14 @@ export function RestaurantOrderAutomationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title="Commandes & impression"
+        subtitle="Acceptation automatique, temps de préparation et tickets thermiques 58/80 mm."
+        variant="light"
+        fallbackRoute="RestaurantCommandCenter"
+      />
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Commandes & impression</Text>
-        <Text style={styles.subtitle}>
-          Acceptation automatique, temps de préparation et tickets thermiques 58/80 mm.
-        </Text>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Acceptation automatique</Text>
@@ -223,10 +231,8 @@ export function RestaurantOrderAutomationScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#FFF7ED" },
-  container: { padding: 20, gap: 16 },
+  container: { padding: 20, paddingTop: 8, gap: 16 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 26, fontWeight: "800", color: "#9A3412" },
-  subtitle: { color: "#7C2D12", lineHeight: 20 },
   card: {
     backgroundColor: "#fff",
     borderRadius: 18,

@@ -1,6 +1,5 @@
 import React, { useCallback, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,7 +8,9 @@ import {
   Switch,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   loadOwnSeller,
   loadSellerDashboardCounts,
@@ -101,11 +102,13 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-        <Text style={{ color: "#F8FAFC", fontSize: 24, fontWeight: "800" }}>
-          {t("seller.dashboard.title", "Seller Dashboard")}
-        </Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("seller.dashboard.title", "Seller Dashboard")}
+        fallbackRoute="SellerDashboard"
+        variant="dark"
+      />
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16 }}>
 
         {loading ? (
           <ActivityIndicator color="#A78BFA" />

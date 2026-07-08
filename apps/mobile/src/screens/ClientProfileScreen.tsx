@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -13,6 +12,7 @@ import {
   Image,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../lib/supabase";
 import { uploadFile } from "../lib/uploadFile";
@@ -21,6 +21,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientProfile">;
 
@@ -488,8 +489,14 @@ export function ClientProfileScreen() {
           justifyContent: "center",
           alignItems: "center",
         }}
+        edges={["bottom", "left", "right"]}
       >
         <StatusBar barStyle="light-content" />
+        <ScreenHeader
+          title={t("client.profile.title", "Profil client")}
+          fallbackRoute="ClientHome"
+          variant="dark"
+        />
         <ActivityIndicator color="#fff" />
         <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
           {t("client.profile.loading", "Chargement du profil...")}
@@ -502,8 +509,17 @@ export function ClientProfileScreen() {
   const displayInitials = initials(fullName);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+      <ScreenHeader
+        title={t("client.profile.title", "Profil client")}
+        subtitle={t(
+          "client.profile.subtitle",
+          "Complète ton profil (photo, adresse, téléphone) pour passer des commandes."
+        )}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -511,27 +527,8 @@ export function ClientProfileScreen() {
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 40 }}
         >
-        <Text
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          style={{
-            fontSize: 24,
-            fontWeight: "800",
-            color: "white",
-            marginBottom: 8,
-          }}
-        >
-          {t("client.profile.title", "Profil client")}
-        </Text>
-
-        <Text style={{ color: "#9CA3AF", marginBottom: 18, lineHeight: 20 }}>
-          {t(
-            "client.profile.subtitle",
-            "Complète ton profil (photo, adresse, téléphone) pour passer des commandes."
-          )}
-        </Text>
 
         {/* Avatar */}
         <View

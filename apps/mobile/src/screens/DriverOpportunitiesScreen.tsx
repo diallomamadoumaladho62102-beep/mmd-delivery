@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/DriverOpportunitiesScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -10,12 +9,14 @@ import {
   Alert,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -808,25 +809,12 @@ export function DriverOpportunitiesScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 8,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>{t("common.back", "← Retour")}</Text>
-        </TouchableOpacity>
-
-        <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>{t("driver.opps.title", "Opportunités")}</Text>
-
-        <View style={{ width: 60 }} />
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.opps.title", "Opportunités")}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+      />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

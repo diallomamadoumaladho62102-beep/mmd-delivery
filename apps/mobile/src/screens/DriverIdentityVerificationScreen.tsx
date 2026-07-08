@@ -4,15 +4,16 @@ import {
   Alert,
   Image,
   Linking,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 import {
   fetchDriverIdentityStatus,
   identityBlocksDriverOnline,
@@ -163,13 +164,20 @@ export function DriverIdentityVerificationScreen() {
   }, [gateStatus, navigation, refreshStatus]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.container}>
+        <ScreenHeader
+          title="Vérification d'identité"
+          subtitle={statusTitle}
+          fallbackRoute="DriverTabs"
+          variant="dark"
+          style={{ paddingHorizontal: 0, marginHorizontal: -4 }}
+        />
+
         <View style={styles.hero}>
           <View style={styles.iconCircle}>
             <Ionicons name="shield-checkmark" size={34} color="#fff" />
           </View>
-          <Text style={styles.title}>{statusTitle}</Text>
           <Text style={styles.subtitle}>{IDENTITY_MESSAGE}</Text>
           {reason ? <Text style={styles.reason}>{reason}</Text> : null}
         </View>
@@ -273,7 +281,7 @@ export function DriverIdentityVerificationScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#0b1020" },
   container: { padding: 20, paddingBottom: 40 },
-  hero: { alignItems: "center", marginBottom: 20 },
+  hero: { alignItems: "center", marginBottom: 20, marginTop: 4 },
   iconCircle: {
     width: 72,
     height: 72,

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   ScrollView,
@@ -8,8 +7,10 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchMarketplaceProducts,
   formatMarketplaceMoney,
@@ -79,8 +80,13 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={product?.title ?? t("marketplace.details.title", "Product")}
+        fallbackRoute="MarketplaceHome"
+        variant="dark"
+      />
+      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16 }}>
         {loading ? (
           <ActivityIndicator color="#A78BFA" />
         ) : !product ? (
@@ -89,9 +95,6 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
           </Text>
         ) : (
           <>
-            <Text style={{ color: "#F8FAFC", fontSize: 26, fontWeight: "700" }}>
-              {product.title}
-            </Text>
             <Text style={{ color: "#CBD5E1" }}>{product.description}</Text>
             <Text style={{ color: "#C4B5FD", fontSize: 18 }}>
               {formatMarketplaceMoney(product.price_cents, product.currency)}

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -9,11 +8,13 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { rowDirection, textAlignStart } from "../../i18n/rtl";
 import {
   cancelTaxiRide,
@@ -22,6 +23,10 @@ import {
   formatTaxiCents,
 } from "../../lib/taxiClientApi";
 import { supabase } from "../../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../../lib/supabaseRealtime";
 import { TaxiSafetyRecordingPanel } from "../../components/taxi/TaxiSafetyRecordingPanel";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiRideTracking">;
@@ -119,24 +124,19 @@ export default function TaxiRideTrackingScreen() {
   useEffect(() => {
     if (!rideId) return;
 
-    const channel = supabase
-      .channel(`taxi-ride-tracking:${rideId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "taxi_rides",
-          filter: `id=eq.${rideId}`,
-        },
-        () => {
+    const channel = subscribePostgresChannel(`taxi-ride-tracking:${rideId}`, [
+      {
+        event: "*",
+        table: "taxi_rides",
+        filter: `id=eq.${rideId}`,
+        callback: () => {
           void load();
         },
-      )
-      .subscribe();
+      },
+    ]);
 
     return () => {
-      supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [rideId, load]);
 
@@ -194,14 +194,20 @@ export default function TaxiRideTrackingScreen() {
           alignItems: "center",
           justifyContent: "center",
         }}
+        edges={["bottom", "left", "right"]}
       >
+        <ScreenHeader
+          title={t("taxi.ride.defaultTitle", "Ride")}
+          fallbackRoute="ClientHome"
+          variant="dark"
+        />
         <ActivityIndicator color="#F59E0B" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <View style={{ flex: 1 }}>
         {Number.isFinite(pickupLat) && Number.isFinite(pickupLng) ? (
@@ -246,6 +252,14 @@ export default function TaxiRideTrackingScreen() {
           </View>
         )}
 
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2 }}>
+          <ScreenHeader
+            title={formatStatus(status, t("taxi.ride.defaultTitle", "Ride"))}
+            fallbackRoute="ClientHome"
+            variant="dark"
+          />
+        </View>
+
         <ScrollView
           style={{
             maxHeight: 360,
@@ -255,9 +269,6 @@ export default function TaxiRideTrackingScreen() {
             padding: 18,
           }}
         >
-          <Text style={{ color: "#F8FAFC", fontSize: 22, fontWeight: "800", textAlign: textAlignStart() }}>
-            {formatStatus(status, t("taxi.ride.defaultTitle", "Ride"))}
-          </Text>
           <Text style={{ color: "#94A3B8", marginTop: 4 }}>
             {formatTaxiCents(ride?.total_cents, String(ride?.currency ?? "USD"))}
           </Text>

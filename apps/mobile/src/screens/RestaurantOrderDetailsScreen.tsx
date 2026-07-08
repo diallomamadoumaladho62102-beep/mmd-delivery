@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/RestaurantOrderDetailsScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -15,9 +14,16 @@ import {
   Image,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
+import { useSafeBackNavigation } from "../navigation/navigationBack";
 import { API_BASE_URL } from "../lib/apiBase";
 import { supabase } from "../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 import { startMaskedCall } from "../lib/maskedCall";
 import { requestOrderPrint } from "../lib/restaurantOrderAutomationApi";
 
@@ -178,6 +184,7 @@ function withOptionalOrderTimestamps(next: OrderStatus) {
 
 export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const { t, i18n } = useTranslation();
+  const safeBack = useSafeBackNavigation("RestaurantCommandCenter");
   const { orderId } = route.params as { orderId: string };
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -455,24 +462,19 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   }, [fetchOrder]);
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`restaurant-order:${orderId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `id=eq.${orderId}`,
-        },
-        () => {
+    const channel = subscribePostgresChannel(`restaurant-order:${orderId}`, [
+      {
+        event: "*",
+        table: "orders",
+        filter: `id=eq.${orderId}`,
+        callback: () => {
           void refetchOrderSilent().catch(() => {});
-        }
-      )
-      .subscribe();
+        },
+      },
+    ]);
 
     return () => {
-      void supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [orderId, refetchOrderSilent]);
 
@@ -839,13 +841,18 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <SafeAreaView style={styles.screen} edges={["bottom", "left", "right"]}>
         <StatusBar barStyle="light-content" />
+        <ScreenHeader
+          title={t("order.details.title", "Order details")}
+          fallbackRoute="RestaurantCommandCenter"
+          variant="dark"
+        />
         <View style={styles.emptyState}>
           <Text style={styles.textWhite}>
             {t("order.errors.notFound", "Commande introuvable.")}
           </Text>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={safeBack} style={styles.backButton}>
             <Text style={styles.linkText}>{t("common.back", "← Retour")}</Text>
           </TouchableOpacity>
         </View>
@@ -882,28 +889,24 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const driverAvatarUrl = resolveAvatarUrl(driver?.avatar_url);
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={styles.screen} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+
+      <ScreenHeader
+        title={t("order.details.title", {
+          defaultValue: "Commande #{{id}}",
+          id: order.id.slice(0, 8),
+        })}
+        fallbackRoute="RestaurantCommandCenter"
+        variant="dark"
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.linkText}>
-              {t("order.details.backToOrders", "← Retour aux commandes")}
-            </Text>
-          </TouchableOpacity>
-
           <View style={styles.card}>
-            <Text style={styles.title}>
-              {t("order.details.title", {
-                defaultValue: "Commande #{{id}}",
-                id: order.id.slice(0, 8),
-              })}
-            </Text>
-
             <InfoLine
               label={t("order.details.statusLabel", "Statut")}
               value={restaurantStatusLabel(order.status, order.driver_id)}

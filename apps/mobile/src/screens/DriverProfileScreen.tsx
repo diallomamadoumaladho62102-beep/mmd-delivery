@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { decode } from "base64-arraybuffer";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -14,6 +13,7 @@ import {
   Platform,
   ActionSheetIOS,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -21,6 +21,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
 import { startStripeOnboarding } from "../utils/stripe";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 const AVATARS_BUCKET = "avatars";
 const DRIVER_DOCS_BUCKET = "driver-docs";
@@ -1545,33 +1546,19 @@ export function DriverProfileScreen() {
   }, [t]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 8,
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-            {t("common.back", { defaultValue: "← Retour" })}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={{ color: "white", fontSize: 16, fontWeight: "900" }}>
-          {t("common.profile.title", { defaultValue: "Profil" })}
-        </Text>
-
-        <TouchableOpacity onPress={openEdit}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-            {t("driver.profile.editShort", { defaultValue: "Modifier" })}
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("common.profile.title", { defaultValue: "Profil" })}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+        rightSlot={
+          <TouchableOpacity onPress={openEdit}>
+            <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
+              {t("driver.profile.editShort", { defaultValue: "Modifier" })}
+            </Text>
+          </TouchableOpacity>
+        }
+      />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>

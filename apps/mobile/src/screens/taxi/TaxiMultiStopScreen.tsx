@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  SafeAreaView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -8,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -21,6 +21,7 @@ import {
 import MarketScopeCard from "../../components/market/MarketScopeCard";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
 
@@ -94,14 +95,13 @@ export default function TaxiMultiStopScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("taxi.multiStop.title", "Multi-stop ride")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD" }}>{t("taxi.common.back", "← Back")}</Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#fff", fontSize: 26, fontWeight: "800", textAlign: textAlignStart() }}>
-          {t("taxi.multiStop.title", "Multi-stop ride")}
-        </Text>
         <MarketScopeCard
           market={market}
           areaLabel={t("taxi.home.yourArea", "Your area")}

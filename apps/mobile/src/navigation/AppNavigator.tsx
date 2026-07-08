@@ -651,7 +651,10 @@ export function AppNavigator({
       r === "DriverRevenueDetails" ||
       r === "DriverRevenueHistory" ||
       r === "DriverWallet" ||
-      r === "DriverBenefits"
+      r === "DriverBenefits" ||
+      r === "DriverServices" ||
+      r === "DriverVehicles" ||
+      r === "DriverVehicle"
     );
   }, []);
 

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -10,9 +9,11 @@ import {
   TextInput,
   StyleSheet,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type OrderRow = {
   id: string;
@@ -371,29 +372,27 @@ export function DriverInboxScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
       <View style={styles.headerWrap}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton} activeOpacity={0.85}>
-            <Text style={styles.backText}>{t("shared.common.backArrowOnly", "←")}</Text>
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{t("driver.inbox.title", "Inbox")}</Text>
-            <Text style={styles.headerSub} numberOfLines={1}>{headerSub}</Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={() => void fetchInbox()}
-            style={[styles.refreshButton, loading && { opacity: 0.65 }]}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.refreshText}>
-              {loading ? t("shared.common.loadingEllipsis", "…") : t("shared.common.refresh", "Refresh")}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader
+          title={t("driver.inbox.title", "Inbox")}
+          subtitle={headerSub}
+          fallbackRoute="DriverTabs"
+          showBack={navigation.canGoBack()}
+          variant="dark"
+          rightSlot={
+            <TouchableOpacity
+              onPress={() => void fetchInbox()}
+              style={[styles.refreshButton, loading && { opacity: 0.65 }]}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.refreshText}>
+                {loading ? t("shared.common.loadingEllipsis", "…") : t("shared.common.refresh", "Refresh")}
+              </Text>
+            </TouchableOpacity>
+          }
+        />
 
         <View style={styles.heroCard}>
           <View>

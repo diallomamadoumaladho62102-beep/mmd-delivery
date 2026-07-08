@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -10,11 +9,18 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 import { formatMoney, formatDateTime as formatLocalizedDateTime } from "../i18n/formatters";
-import { rowDirection, textAlignStart, mirrorChevron } from "../i18n/rtl";
+import { rowDirection, textAlignStart } from "../i18n/rtl";
+import ScreenHeader from "../components/navigation/ScreenHeader";
+import { useSafeBackNavigation } from "../navigation/navigationBack";
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
 import { getApiBaseUrl } from "../lib/apiBase";
 
@@ -357,6 +363,7 @@ export function ClientDeliveryRequestDetailsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { t, i18n } = useTranslation();
+  const safeBack = useSafeBackNavigation("ClientHome");
   const requestId = route?.params?.requestId as string | undefined;
 
   const dash = t("common.dash", "—");
@@ -660,42 +667,29 @@ export function ClientDeliveryRequestDetailsScreen() {
       void loadDetails({ silent: true });
     };
 
-    const channel = supabase
-      .channel(`client-dr-detail:${requestId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "delivery_requests",
-          filter: `id=eq.${requestId}`,
-        },
-        reload,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `id=eq.${requestId}`,
-        },
-        reload,
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `external_ref_id=eq.${requestId}`,
-        },
-        reload,
-      )
-      .subscribe();
+    const channel = subscribePostgresChannel(`client-dr-detail:${requestId}`, [
+      {
+        event: "*",
+        table: "delivery_requests",
+        filter: `id=eq.${requestId}`,
+        callback: reload,
+      },
+      {
+        event: "*",
+        table: "orders",
+        filter: `id=eq.${requestId}`,
+        callback: reload,
+      },
+      {
+        event: "*",
+        table: "orders",
+        filter: `external_ref_id=eq.${requestId}`,
+        callback: reload,
+      },
+    ]);
 
     return () => {
-      supabase.removeChannel(channel);
+      void unsubscribeSupabaseChannel(channel);
     };
   }, [requestId, loadDetails]);
 
@@ -893,55 +887,18 @@ export function ClientDeliveryRequestDetailsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#030617" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
-      <View
-        style={{
-          paddingHorizontal: 18,
-          paddingTop: 16,
-          paddingBottom: 10,
-          borderBottomWidth: 1,
-          borderBottomColor: "rgba(255,255,255,0.06)",
-          backgroundColor: "#030617",
-        }}
-      >
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Text
-            style={{
-              color: "#93C5FD",
-              fontSize: 14,
-              fontWeight: "800",
-              marginBottom: 10,
-            }}
-          >
-            {mirrorChevron("back")} {t("common.back", "Back")}
-          </Text>
-        </TouchableOpacity>
-
-        <Text
-          style={{
-            color: "white",
-            fontSize: 22,
-            fontWeight: "900",
-          }}
-        >
-          {title}
-        </Text>
-
-        <Text
-          style={{
-            color: "#94A3B8",
-            marginTop: 6,
-            fontSize: 13,
-          }}
-        >
-          {t(
-            "client.deliveryRequest.subtitle",
-            "Delivery request details, codes and tracking status"
-          )}
-        </Text>
-      </View>
+      <ScreenHeader
+        title={title}
+        subtitle={t(
+          "client.deliveryRequest.subtitle",
+          "Delivery request details, codes and tracking status"
+        )}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
 
       {loading ? (
         <View

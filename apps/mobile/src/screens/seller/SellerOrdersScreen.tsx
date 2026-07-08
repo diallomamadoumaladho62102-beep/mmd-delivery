@@ -1,16 +1,17 @@
 import React, { useCallback, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { loadOwnSeller, loadSellerOrders } from "../../lib/sellerApi";
 import { formatMoney, type SellerOrderRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 
 type Props = { navigation: any };
 
@@ -42,18 +43,13 @@ export default function SellerOrdersScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }}>
-      <View style={{ padding: 16 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#A78BFA" }}>{t("common.back", "Back")}</Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#F8FAFC", fontSize: 22, fontWeight: "800", marginTop: 8 }}>
-          {t("seller.orders.title", "Marketplace Orders")}
-        </Text>
-        <Text style={{ color: "#94A3B8", marginTop: 4 }}>
-          {t("seller.orders.readOnly", "Read-only preview — checkout not live yet.")}
-        </Text>
-      </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("seller.orders.title", "Marketplace Orders")}
+        subtitle={t("seller.orders.readOnly", "Read-only preview — checkout not live yet.")}
+        fallbackRoute="SellerDashboard"
+        variant="dark"
+      />
 
       {loading ? (
         <ActivityIndicator color="#A78BFA" />

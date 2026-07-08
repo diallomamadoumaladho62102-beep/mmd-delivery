@@ -1,9 +1,12 @@
 // apps/mobile/src/screens/DriverChatScreen.tsx
 import React, { useMemo } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { Text, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { OrderChatBaseScreen } from "./_shared/OrderChatBase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
+import { useSafeBackNavigation } from "../navigation/navigationBack";
 
 type ChatTargetRole = "client" | "restaurant" | "admin";
 
@@ -13,8 +16,8 @@ function isValidTargetRole(value: unknown): value is ChatTargetRole {
 
 export function DriverChatScreen() {
   const { t } = useTranslation();
-  const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const safeBack = useSafeBackNavigation("DriverTabs");
 
   const orderId = String(route?.params?.orderId ?? "").trim();
   const rawTargetRole = route?.params?.targetRole;
@@ -29,7 +32,7 @@ export function DriverChatScreen() {
 
   if (!orderId) {
     return (
-      <View
+      <SafeAreaView
         style={{
           flex: 1,
           backgroundColor: "#020617",
@@ -37,19 +40,26 @@ export function DriverChatScreen() {
           justifyContent: "center",
           padding: 20,
         }}
+        edges={["bottom", "left", "right"]}
       >
+        <ScreenHeader
+          title={t("driver.chat.titlePrefix", "Driver")}
+          fallbackRoute="DriverTabs"
+          variant="dark"
+        />
         <Text
           style={{
             color: "#FCA5A5",
             fontWeight: "900",
             fontSize: 16,
+            marginTop: 24,
           }}
         >
           {t("driver.chat.errors.missingOrder", "Commande introuvable.")}
         </Text>
 
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={safeBack}
           style={{
             marginTop: 16,
             paddingHorizontal: 16,
@@ -62,7 +72,7 @@ export function DriverChatScreen() {
             {t("common.back", "Retour")}
           </Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -70,7 +80,7 @@ export function DriverChatScreen() {
     <OrderChatBaseScreen
       orderId={orderId}
       targetRole={targetRole}
-      onBack={() => navigation.goBack()}
+      onBack={safeBack}
       titlePrefix={titlePrefix}
     />
   );

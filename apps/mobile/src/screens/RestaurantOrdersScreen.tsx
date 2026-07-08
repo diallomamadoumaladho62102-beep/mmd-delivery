@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/RestaurantOrdersScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -12,12 +11,18 @@ import {
   AppStateStatus,
   Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { mmdAudio } from "../lib/mmdAudio";
 import { supabase } from "../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 import { clearSelectedRole } from "../lib/authRole";
 import { useTranslation } from "react-i18next";
 import { useRestaurantAutoPrint } from "../hooks/useRestaurantAutoPrint";
 import { fetchRestaurantAutomationSettings } from "../lib/restaurantOrderAutomationApi";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 const ACCEPT_WINDOW_SECONDS = 180;
 
@@ -722,24 +727,19 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   useEffect(() => {
     if (!restaurantUserId) return;
 
-    const ch = supabase
-      .channel(`restaurant-orders-${restaurantUserId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-          filter: `restaurant_user_id=eq.${restaurantUserId}`,
-        },
-        () => {
+    const ch = subscribePostgresChannel(`restaurant-orders-${restaurantUserId}`, [
+      {
+        event: "*",
+        table: "orders",
+        filter: `restaurant_user_id=eq.${restaurantUserId}`,
+        callback: () => {
           void fetchOrders({ silent: true });
-        }
-      )
-      .subscribe();
+        },
+      },
+    ]);
 
     return () => {
-      supabase.removeChannel(ch);
+      void unsubscribeSupabaseChannel(ch);
     };
   }, [restaurantUserId, fetchOrders]);
 
@@ -1086,81 +1086,25 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#111827" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
-      <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 12 }}>
+      <View style={{ flex: 1, paddingHorizontal: 16 }}>
+        <ScreenHeader
+          title={headerTitle}
+          subtitle={t("restaurant.orders.subtitle", "Manage live incoming orders")}
+          fallbackRoute="RestaurantCommandCenter"
+          variant="dark"
+        />
+
         <View
           style={{
-            marginBottom: 16,
-            paddingBottom: 12,
-            borderBottomWidth: 1,
-            borderBottomColor: "rgba(31,41,55,0.55)",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 10,
+            marginTop: 14,
           }}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "flex-start",
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.85}
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 21,
-                alignItems: "center",
-                justifyContent: "center",
-                marginRight: 12,
-                backgroundColor: "#0B1426",
-                borderWidth: 1,
-                borderColor: "#1F2937",
-              }}
-            >
-              <Text style={{ color: "#93C5FD", fontWeight: "900", fontSize: 20 }}>
-                ←
-              </Text>
-            </TouchableOpacity>
-
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                style={{
-                  color: "white",
-                  fontSize: 28,
-                  fontWeight: "900",
-                  lineHeight: 34,
-                  flexShrink: 1,
-                }}
-              >
-                {headerTitle}
-              </Text>
-
-              <Text
-                style={{
-                  color: "#6B7280",
-                  fontWeight: "800",
-                  marginTop: 4,
-                  fontSize: 15,
-                }}
-              >
-                {t("restaurant.orders.subtitle", "Manage live incoming orders")}
-              </Text>
-            </View>
-          </View>
-
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 10,
-              marginTop: 14,
-              paddingLeft: 54,
-            }}
-          >
             <HeaderAction
               label={t("restaurant.orders.earningsBtn", "Earnings")}
               onPress={() => navigation.navigate("RestaurantEarnings")}
@@ -1185,7 +1129,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
               textColor="#E5E7EB"
             />
           </View>
-        </View>
 
         <View
           style={{

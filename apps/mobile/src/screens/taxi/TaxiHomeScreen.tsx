@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TextInput,
@@ -11,6 +10,7 @@ import {
   Alert,
   Switch,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -32,6 +32,7 @@ import {
   useMmdLocationPickerResult,
 } from "../../lib/useMmdLocationPickerResult";
 import { rowDirection } from "../../i18n/rtl";
+import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   fetchTaxiCategoryAvailability,
   type TaxiCategoryAvailability,
@@ -236,22 +237,15 @@ export default function TaxiHomeScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
+      <ScreenHeader
+        title={ts("taxi.home.title", "MMD Taxi")}
+        subtitle={ts("taxi.home.subtitle", "Book a ride — separate from delivery packages.")}
+        fallbackRoute="ClientHome"
+        variant="dark"
+      />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#93C5FD", fontSize: 16 }}>
-            {t("taxi.common.back", "← Back")}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={{ color: "#fff", fontSize: 28, fontWeight: "800" }}>
-          {ts("taxi.home.title", "MMD Taxi")}
-        </Text>
-        <Text style={{ color: "#94A3B8", fontSize: 15 }}>
-          {ts("taxi.home.subtitle", "Book a ride — separate from delivery packages.")}
-        </Text>
-
         {scopeLoading ? (
           <ActivityIndicator color="#93C5FD" />
         ) : !market.taxiAvailable ? (

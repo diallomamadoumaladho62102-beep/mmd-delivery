@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -8,9 +7,11 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 export function DriverSecurityScreen() {
   const navigation = useNavigation<any>();
@@ -102,18 +103,14 @@ export function DriverSecurityScreen() {
   }, [saving, hasUser, newPassword, confirm, navigation, t]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.security.title")}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+      />
+
       <View style={{ padding: 16 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.85}>
-          <Text style={{ color: "#93C5FD", fontWeight: "900" }}>
-            {t("common.back")}
-          </Text>
-        </TouchableOpacity>
-
-        <Text style={{ color: "white", fontSize: 20, fontWeight: "900", marginTop: 14 }}>
-          {t("driver.security.title")}
-        </Text>
-
         <View
           style={{
             marginTop: 14,

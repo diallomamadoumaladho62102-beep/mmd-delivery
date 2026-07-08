@@ -1,7 +1,6 @@
 // apps/mobile/src/screens/DriverHelpScreen.tsx
 import React, { useCallback, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -11,8 +10,10 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import ScreenHeader from "../components/navigation/ScreenHeader";
 
 const BG = "#020617";
 const CARD = "rgba(15,23,42,0.82)";
@@ -240,32 +241,13 @@ export function DriverHelpScreen() {
   const busy = busyAction !== null;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.headerWrap}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            disabled={busy}
-            style={[styles.roundButton, busy && styles.disabledItem]}
-            activeOpacity={0.85}
-            accessible
-            accessibilityRole="button"
-            accessibilityLabel={t("common.back", "Back")}
-            accessibilityState={{ disabled: busy }}
-          >
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{t("driver.help.title", "Help")}</Text>
-            <Text style={styles.headerSub}>
-              {t("driver.help.subtitle", "Support, FAQ, emergency help and reports.")}
-            </Text>
-          </View>
-
-          <View style={styles.roundButtonGhost} />
-        </View>
-      </View>
+    <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
+      <ScreenHeader
+        title={t("driver.help.title", "Help")}
+        subtitle={t("driver.help.subtitle", "Support, FAQ, emergency help and reports.")}
+        fallbackRoute="DriverTabs"
+        variant="dark"
+      />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
