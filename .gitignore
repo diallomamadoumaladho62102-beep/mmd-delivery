@@ -18,6 +18,11 @@ pnpm-debug.log*
 .DS_Store
 .vercel
 
+# Local certification / audit artifacts (never commit)
+artifacts-proof-*.log
+artifacts-proof-*.patch
+docs/production/docs/
+
 # Production certification (local secrets + generated reports + local tooling)
 docs/production/final-certification.env
 docs/production/store-submission.env
