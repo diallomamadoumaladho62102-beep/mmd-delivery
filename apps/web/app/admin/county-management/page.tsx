@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import { canManagePlatformLaunch } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -34,19 +34,21 @@ type CountyRow = {
   launch_status: "enabled" | "disabled" | "maintenance";
 };
 
-type ToggleKey =
-  | "platform_enabled"
-  | "taxi_enabled"
-  | "delivery_enabled"
-  | "restaurant_enabled"
-  | "marketplace_enabled"
-  | "seller_enabled"
-  | "checkout_enabled"
-  | "payout_enabled"
-  | "maintenance_mode";
+type CountyDraft = {
+  platform_enabled: boolean;
+  taxi_enabled: boolean;
+  delivery_enabled: boolean;
+  restaurant_enabled: boolean;
+  marketplace_enabled: boolean;
+  seller_enabled: boolean;
+  checkout_enabled: boolean;
+  payout_enabled: boolean;
+  maintenance_mode: boolean;
+};
 
-const TOGGLE_LABELS: Record<ToggleKey, string> = {
-  platform_enabled: "County",
+type ServiceToggleKey = Exclude<keyof CountyDraft, "platform_enabled" | "maintenance_mode">;
+
+const SERVICE_TOGGLE_LABELS: Record<ServiceToggleKey, string> = {
   taxi_enabled: "Taxi",
   delivery_enabled: "Delivery",
   restaurant_enabled: "Food",
@@ -54,8 +56,25 @@ const TOGGLE_LABELS: Record<ToggleKey, string> = {
   seller_enabled: "Seller",
   checkout_enabled: "Paiement",
   payout_enabled: "Payout",
-  maintenance_mode: "Maintenance",
 };
+
+function countyKey(row: Pick<CountyRow, "country_code" | "region_code" | "county_code">) {
+  return `${row.country_code}/${row.region_code}/${row.county_code}`;
+}
+
+function rowToDraft(row: CountyRow): CountyDraft {
+  return {
+    platform_enabled: Boolean(row.platform_enabled),
+    taxi_enabled: Boolean(row.taxi_enabled),
+    delivery_enabled: Boolean(row.delivery_enabled),
+    restaurant_enabled: Boolean(row.restaurant_enabled),
+    marketplace_enabled: Boolean(row.marketplace_enabled),
+    seller_enabled: Boolean(row.seller_enabled),
+    checkout_enabled: Boolean(row.checkout_enabled),
+    payout_enabled: Boolean(row.payout_enabled),
+    maintenance_mode: Boolean(row.maintenance_mode),
+  };
+}
 
 function statusBadge(row: Pick<CountyRow, "platform_enabled" | "launch_status" | "maintenance_mode">) {
   if (row.maintenance_mode || row.launch_status === "maintenance") {
@@ -82,14 +101,17 @@ function statusBadge(row: Pick<CountyRow, "platform_enabled" | "launch_status" |
 export default function AdminCountyManagementPage() {
   const [regions, setRegions] = useState<RegionRow[]>([]);
   const [counties, setCounties] = useState<CountyRow[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, CountyDraft>>({});
   const [loading, setLoading] = useState(true);
   const [canEdit, setCanEdit] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [countryFilter, setCountryFilter] = useState("US");
   const [regionFilter, setRegionFilter] = useState("ny");
 
   const load = useCallback(async () => {
     setLoading(true);
+    setErrorMsg(null);
     const session = await resolveBrowserStaffSession();
     setCanEdit(canManagePlatformLaunch(session?.role ?? null));
 
@@ -101,8 +123,20 @@ export default function AdminCountyManagementPage() {
     ]);
     const regionsBody = await regionsRes.json().catch(() => ({}));
     const countiesBody = await countiesRes.json().catch(() => ({}));
+
+    if (!regionsRes.ok || regionsBody.ok === false) {
+      setErrorMsg(regionsBody.error ?? `Regions load failed (${regionsRes.status})`);
+    }
+    if (!countiesRes.ok || countiesBody.ok === false) {
+      setErrorMsg(countiesBody.error ?? `Counties load failed (${countiesRes.status})`);
+    }
+
+    const nextCounties = (countiesBody.items ?? []) as CountyRow[];
     setRegions(regionsBody.items ?? []);
-    setCounties(countiesBody.items ?? []);
+    setCounties(nextCounties);
+    setDrafts(
+      Object.fromEntries(nextCounties.map((row) => [countyKey(row), rowToDraft(row)]))
+    );
     setLoading(false);
   }, [countryFilter, regionFilter]);
 
@@ -115,19 +149,55 @@ export default function AdminCountyManagementPage() {
     [regions, regionFilter]
   );
 
+  const stateOn = Boolean(selectedRegion?.platform_enabled);
   const stateOff = selectedRegion ? !selectedRegion.platform_enabled : false;
+  const stateName = selectedRegion?.region_name ?? "New York";
 
-  async function saveCounty(e: FormEvent<HTMLFormElement>, row: CountyRow) {
-    e.preventDefault();
-    if (!canEdit) return;
-    const form = new FormData(e.currentTarget);
-    const key = `${row.country_code}/${row.region_code}/${row.county_code}`;
-    setSavingKey(key);
-    try {
-      const payload: Record<string, boolean | string> = {};
-      for (const toggleKey of Object.keys(TOGGLE_LABELS) as ToggleKey[]) {
-        payload[toggleKey] = form.get(toggleKey) === "on";
+  function updateDraft(key: string, patch: Partial<CountyDraft>) {
+    setDrafts((prev) => {
+      const current = prev[key];
+      if (!current) return prev;
+      const next = { ...current, ...patch };
+
+      // County OFF → force all services OFF in the draft.
+      if (patch.platform_enabled === false) {
+        next.taxi_enabled = false;
+        next.delivery_enabled = false;
+        next.restaurant_enabled = false;
+        next.marketplace_enabled = false;
+        next.seller_enabled = false;
+        next.checkout_enabled = false;
+        next.payout_enabled = false;
       }
+
+      return { ...prev, [key]: next };
+    });
+  }
+
+  async function saveCounty(row: CountyRow) {
+    if (!canEdit) return;
+    if (!stateOn) {
+      setErrorMsg(`State is OFF — enable ${stateName} first`);
+      return;
+    }
+
+    const key = countyKey(row);
+    const draft = drafts[key] ?? rowToDraft(row);
+    setSavingKey(key);
+    setErrorMsg(null);
+
+    try {
+      const payload: Record<string, boolean | string> = {
+        platform_enabled: draft.platform_enabled,
+        taxi_enabled: draft.platform_enabled ? draft.taxi_enabled : false,
+        delivery_enabled: draft.platform_enabled ? draft.delivery_enabled : false,
+        restaurant_enabled: draft.platform_enabled ? draft.restaurant_enabled : false,
+        marketplace_enabled: draft.platform_enabled ? draft.marketplace_enabled : false,
+        seller_enabled: draft.platform_enabled ? draft.seller_enabled : false,
+        checkout_enabled: draft.platform_enabled ? draft.checkout_enabled : false,
+        payout_enabled: draft.platform_enabled ? draft.payout_enabled : false,
+        maintenance_mode: draft.maintenance_mode,
+      };
 
       if (payload.maintenance_mode) {
         payload.launch_status = "maintenance";
@@ -145,9 +215,26 @@ export default function AdminCountyManagementPage() {
           body: JSON.stringify(payload),
         }
       );
-      const json = await res.json();
-      if (!res.ok || !json.ok) alert(json.error ?? "Échec");
-      else await load();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        const msg =
+          typeof json.error === "string"
+            ? json.error
+            : `Save failed (${res.status})`;
+        setErrorMsg(msg);
+        alert(msg);
+        return;
+      }
+
+      const updated = json.item as CountyRow | undefined;
+      if (updated) {
+        setCounties((prev) =>
+          prev.map((c) => (countyKey(c) === key ? { ...c, ...updated } : c))
+        );
+        setDrafts((prev) => ({ ...prev, [key]: rowToDraft({ ...row, ...updated }) }));
+      } else {
+        await load();
+      }
     } finally {
       setSavingKey(null);
     }
@@ -162,8 +249,7 @@ export default function AdminCountyManagementPage() {
               <h1 className="text-2xl font-bold text-slate-900">County Management</h1>
               <p className="mt-1 text-sm text-slate-600">
                 Activation par county sous chaque State existant — Taxi, Delivery, Food,
-                Marketplace. Si le State est OFF, tous les counties restent inactifs côté
-                clients/drivers/restaurants.
+                Marketplace. Activez d&apos;abord le State, puis le County, puis les services.
               </p>
             </div>
             <div className="flex gap-2">
@@ -200,7 +286,7 @@ export default function AdminCountyManagementPage() {
                 {regions.map((r) => (
                   <option key={r.region_code} value={r.region_code}>
                     {r.region_name} ({r.region_code.toUpperCase()})
-                    {!r.platform_enabled ? " — OFF" : ""}
+                    {!r.platform_enabled ? " — OFF" : " — ON"}
                   </option>
                 ))}
               </select>
@@ -210,11 +296,26 @@ export default function AdminCountyManagementPage() {
             </div>
           </div>
 
+          {errorMsg ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+              {errorMsg}
+            </div>
+          ) : null}
+
           {stateOff ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Le State <strong>{selectedRegion?.region_name ?? regionFilter}</strong> est OFF.
-              Les switches county ci-dessous n&apos;auront aucun effet tant que le State
-              n&apos;est pas activé dans Platform Launch.
+              State is OFF — enable <strong>{stateName}</strong> first in{" "}
+              <a href="/admin/platform-launch" className="underline font-medium">
+                Platform Launch
+              </a>
+              . Service switches stay disabled until the State is ON.
+            </div>
+          ) : null}
+
+          {!canEdit ? (
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              Lecture seule — permission <code>platform_launch.manage</code> requise pour
+              modifier les counties.
             </div>
           ) : null}
 
@@ -228,13 +329,21 @@ export default function AdminCountyManagementPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {counties.map((row) => {
-                const key = `${row.country_code}/${row.region_code}/${row.county_code}`;
+                const key = countyKey(row);
+                const draft = drafts[key] ?? rowToDraft(row);
+                const countyOn = draft.platform_enabled;
+                const servicesEnabled = canEdit && stateOn && countyOn;
                 const taxiLabel =
-                  row.county_code === "nyc" ? "Taxi / TLC" : TOGGLE_LABELS.taxi_enabled;
+                  row.county_code === "nyc" ? "Taxi / TLC" : SERVICE_TOGGLE_LABELS.taxi_enabled;
+                const serviceTitle = !stateOn
+                  ? `State is OFF — enable ${stateName} first`
+                  : !countyOn
+                    ? "Enable county first"
+                    : undefined;
+
                 return (
-                  <form
+                  <div
                     key={key}
-                    onSubmit={(e) => void saveCounty(e, row)}
                     className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                   >
                     <div className="mb-3 flex items-start justify-between gap-3">
@@ -244,36 +353,107 @@ export default function AdminCountyManagementPage() {
                           {row.country_code}/{row.region_code.toUpperCase()}/{row.county_code}
                         </p>
                       </div>
-                      {statusBadge(row)}
+                      {statusBadge({
+                        platform_enabled: draft.platform_enabled,
+                        launch_status: draft.platform_enabled
+                          ? draft.maintenance_mode
+                            ? "maintenance"
+                            : "enabled"
+                          : "disabled",
+                        maintenance_mode: draft.maintenance_mode,
+                      })}
                     </div>
 
+                    <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
+                      <label
+                        className={`flex items-center gap-2 rounded-lg border px-2 py-2 ${
+                          !stateOn || !canEdit
+                            ? "border-slate-100 bg-slate-50 text-slate-400"
+                            : "border-slate-200 bg-white"
+                        }`}
+                        title={
+                          !stateOn
+                            ? `State is OFF — enable ${stateName} first`
+                            : undefined
+                        }
+                      >
+                        <input
+                          type="checkbox"
+                          checked={draft.platform_enabled}
+                          disabled={!canEdit || !stateOn}
+                          onChange={(e) =>
+                            updateDraft(key, { platform_enabled: e.target.checked })
+                          }
+                        />
+                        County
+                      </label>
+                      <label
+                        className={`flex items-center gap-2 rounded-lg border px-2 py-2 ${
+                          !canEdit
+                            ? "border-slate-100 bg-slate-50 text-slate-400"
+                            : "border-slate-200 bg-white"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={draft.maintenance_mode}
+                          disabled={!canEdit || !stateOn}
+                          onChange={(e) =>
+                            updateDraft(key, { maintenance_mode: e.target.checked })
+                          }
+                        />
+                        Maintenance
+                      </label>
+                    </div>
+
+                    {!countyOn && stateOn ? (
+                      <p className="mb-2 text-xs text-slate-500">Enable county first</p>
+                    ) : null}
+
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      {(Object.keys(TOGGLE_LABELS) as ToggleKey[]).map((toggleKey) => (
-                        <label
-                          key={toggleKey}
-                          className="flex items-center gap-2 rounded-lg border border-slate-100 px-2 py-2"
-                        >
-                          <input
-                            type="checkbox"
-                            name={toggleKey}
-                            defaultChecked={Boolean(row[toggleKey])}
-                            disabled={!canEdit}
-                          />
-                          {toggleKey === "taxi_enabled" ? taxiLabel : TOGGLE_LABELS[toggleKey]}
-                        </label>
-                      ))}
+                      {(Object.keys(SERVICE_TOGGLE_LABELS) as ServiceToggleKey[]).map(
+                        (toggleKey) => (
+                          <label
+                            key={toggleKey}
+                            title={serviceTitle}
+                            className={`flex items-center gap-2 rounded-lg border px-2 py-2 ${
+                              servicesEnabled
+                                ? "border-slate-200 bg-white"
+                                : "border-slate-100 bg-slate-50 text-slate-400"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={Boolean(draft[toggleKey])}
+                              disabled={!servicesEnabled}
+                              onChange={(e) =>
+                                updateDraft(key, { [toggleKey]: e.target.checked })
+                              }
+                            />
+                            {toggleKey === "taxi_enabled"
+                              ? taxiLabel
+                              : SERVICE_TOGGLE_LABELS[toggleKey]}
+                          </label>
+                        )
+                      )}
                     </div>
 
                     {canEdit ? (
                       <button
-                        type="submit"
-                        disabled={savingKey === key}
+                        type="button"
+                        disabled={savingKey === key || !stateOn}
+                        title={
+                          !stateOn
+                            ? `State is OFF — enable ${stateName} first`
+                            : undefined
+                        }
+                        onClick={() => void saveCounty(row)}
                         className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                       >
                         {savingKey === key ? "Saving…" : "Save county"}
                       </button>
                     ) : null}
-                  </form>
+                  </div>
                 );
               })}
             </div>

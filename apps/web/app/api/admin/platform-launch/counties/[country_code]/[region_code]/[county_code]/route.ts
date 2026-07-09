@@ -6,7 +6,10 @@ import {
 } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { buildPlatformLaunchPatchUpdate } from "@/lib/adminPlatformLaunchPatch";
+import {
+  buildPlatformLaunchPatchUpdate,
+  normalizePlatformLaunchPatchBody,
+} from "@/lib/adminPlatformLaunchPatch";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +81,8 @@ export async function PATCH(
     const countyCode = normalizeCountyCode(county_code);
 
     const supabase = buildSupabaseAdminClient();
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const rawBody = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const body = normalizePlatformLaunchPatchBody(rawBody);
 
     const { data: existing, error: readErr } = await supabase
       .from("platform_counties")
