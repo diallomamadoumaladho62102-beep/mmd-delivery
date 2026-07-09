@@ -303,9 +303,15 @@ export const cinetpayAdapter: PaymentProviderAdapter = {
     if (!env("CINETPAY_API_KEY") || !env("CINETPAY_SITE_ID")) {
       return { ok: false, error: "webhook_secret_not_configured" };
     }
-    // Optional shared notify secret (set CINETPAY_WEBHOOK_SECRET in production).
+    // Production requires CINETPAY_WEBHOOK_SECRET (fail-closed).
     const expectedSecret = env("CINETPAY_WEBHOOK_SECRET");
-    if (expectedSecret) {
+    const isProd =
+      process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+    if (!expectedSecret) {
+      if (isProd) {
+        return { ok: false, error: "webhook_secret_not_configured" };
+      }
+    } else {
       const provided = String(
         headers.get("x-token") ??
           headers.get("x-cinetpay-signature") ??

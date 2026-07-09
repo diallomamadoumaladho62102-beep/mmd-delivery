@@ -23,11 +23,13 @@ export function getProviderSecretStatus(provider: PaymentProvider): ProviderSecr
         "ORANGE_MONEY_GN_MERCHANT_KEY",
         "ORANGE_MONEY_GN_CLIENT_ID",
         "ORANGE_MONEY_GN_CLIENT_SECRET",
+        "ORANGE_MONEY_GN_ACCESS_TOKEN",
+        "ORANGE_MONEY_GN_WEBHOOK_SECRET",
       ]);
     case "paydunya":
       return hasAll(["PAYDUNYA_MASTER_KEY", "PAYDUNYA_PRIVATE_KEY", "PAYDUNYA_TOKEN"]);
     case "cinetpay":
-      return hasAll(["CINETPAY_API_KEY", "CINETPAY_SITE_ID"]);
+      return hasAll(["CINETPAY_API_KEY", "CINETPAY_SITE_ID", "CINETPAY_WEBHOOK_SECRET"]);
     default:
       return { configured: false, missing: ["unknown_provider"] };
   }

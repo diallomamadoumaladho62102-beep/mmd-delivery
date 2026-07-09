@@ -474,7 +474,7 @@ export function ClientNewOrderScreen() {
           t("client.newOrder.alerts.missingConfigTitle", "Configuration manquante"),
           t(
             "client.newOrder.alerts.missingConfigBody",
-            "API_BASE_URL n’est pas configurée. Ajoute EXPO_PUBLIC_WEB_BASE_URL dans app.json."
+            "API_BASE_URL n’est pas configurée. Configure EXPO_PUBLIC_API_URL_PROD (via getApiBaseUrl)."
           )
         );
       }
@@ -1007,7 +1007,7 @@ export function ClientNewOrderScreen() {
         t("client.newOrder.alerts.missingConfigTitle", "Configuration manquante"),
         t(
           "client.newOrder.alerts.missingConfigBody",
-          "API_BASE_URL n’est pas configurée. Ajoute EXPO_PUBLIC_WEB_BASE_URL dans app.json."
+          "API_BASE_URL n’est pas configurée. Configure EXPO_PUBLIC_API_URL_PROD (via getApiBaseUrl)."
         )
       );
       return;

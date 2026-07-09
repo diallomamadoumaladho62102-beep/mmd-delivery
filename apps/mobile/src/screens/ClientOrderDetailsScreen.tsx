@@ -27,7 +27,6 @@ import {
 } from "../lib/supabaseRealtime";
 import { mmdAudio } from "../lib/mmdAudio";
 import * as WebBrowser from "expo-web-browser";
-import Constants from "expo-constants";
 import { openStripeCheckout } from "../lib/stripe";
 import { payOrderWithPaymentSheet } from "../utils/stripe";
 import { confirmOrderPaid } from "../../lib/payments";
@@ -52,19 +51,6 @@ import Mapbox from "@rnmapbox/maps";
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
 import { startMaskedCall } from "../lib/maskedCall";
-
-// ✅ API URL: fallback robuste via expoConfig.extra
-const API_URL =
-  process.env.EXPO_PUBLIC_API_URL ||
-  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_API_URL ||
-  (Constants.expoConfig?.extra as any)?.EXPO_PUBLIC_WEB_BASE_URL;
-
-
-function cleanApiUrl() {
-  const raw = String(API_URL || "").trim().replace(/\/+$/, "");
-  if (!raw) return "";
-  return /^https?:\/\//i.test(raw) ? raw : "";
-}
 
 function isValidCoordinate(latValue: unknown, lngValue: unknown) {
   const lat = Number(latValue);
@@ -433,7 +419,7 @@ export function ClientOrderDetailsScreen() {
   }, []);
 
   useEffect(() => {
-    if (!API_URL) {
+    if (!getApiBaseUrl()) {
       console.warn("EXPO_PUBLIC_API_URL is missing.");
     }
   }, []);
@@ -871,7 +857,7 @@ export function ClientOrderDetailsScreen() {
       setPaying(true);
       setPaymentPending(false);
 
-      const apiUrl = cleanApiUrl() || getApiBaseUrl();
+      const apiUrl = getApiBaseUrl();
 
       if (!apiUrl) throw new Error("EXPO_PUBLIC_API_URL is missing");
 
@@ -1039,7 +1025,7 @@ export function ClientOrderDetailsScreen() {
   async function handleCancelOrder() {
     if (!order?.id || canceling || paying || verifyingPay || paymentPending) return;
 
-    const apiUrl = cleanApiUrl();
+    const apiUrl = getApiBaseUrl();
 
     if (!apiUrl) {
       Alert.alert(

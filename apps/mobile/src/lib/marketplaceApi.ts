@@ -111,7 +111,7 @@ async function buildMarketplacePath(
 async function marketplaceFetch(
   path: string,
   init?: RequestInit,
-  scope?: MarketplaceScopeInput
+  _scope?: MarketplaceScopeInput
 ) {
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");

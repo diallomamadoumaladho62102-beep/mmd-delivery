@@ -48,7 +48,14 @@ export function PaymentMethodPicker({
                 disabled={!method.available}
                 onPress={() => onSelect(method)}
               >
-                <Text style={styles.optionTitle}>{method.display_name}</Text>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>{method.display_name}</Text>
+                  {method.test_mode ? (
+                    <View style={styles.testBadge}>
+                      <Text style={styles.testBadgeText}>Test</Text>
+                    </View>
+                  ) : null}
+                </View>
                 {method.description ? (
                   <Text style={styles.optionDescription}>{method.description}</Text>
                 ) : null}
@@ -109,10 +116,27 @@ const styles = StyleSheet.create({
     opacity: 0.75,
     backgroundColor: "#F3F4F6",
   },
+  optionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   optionTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#111827",
+    flexShrink: 1,
+  },
+  testBadge: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  testBadgeText: {
+    color: "#92400E",
+    fontSize: 11,
+    fontWeight: "700",
   },
   optionDescription: {
     marginTop: 4,

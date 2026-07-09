@@ -116,6 +116,17 @@ export async function dispatchPayoutToProvider(
 ): Promise<PayoutDispatchResult> {
   const capabilities = describePayoutProviderCapabilities(input.provider);
 
+  const isProd =
+    process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+  if (isProd && input.testMode === true) {
+    return {
+      ok: false,
+      error: "payout_method_test_mode_blocked",
+      message:
+        "Payout method is still in test_mode. Flip test_mode=false in admin before production disbursement.",
+    };
+  }
+
   if (input.provider === "stripe_connect") {
     if (!capabilities.configured) {
       return { ok: false, error: "stripe_not_configured" };

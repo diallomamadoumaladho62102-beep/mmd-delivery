@@ -485,7 +485,7 @@ export function DeliveryRequestScreen() {
         if (!silent) {
           Alert.alert(
             tr("deliveryRequest.alerts.missingConfigTitle", "Configuration manquante"),
-            tr("deliveryRequest.alerts.missingConfigBody", "API_BASE_URL n’est pas configurée. Ajoute EXPO_PUBLIC_WEB_BASE_URL ou EXPO_PUBLIC_API_URL.")
+            tr("deliveryRequest.alerts.missingConfigBody", "API_BASE_URL n’est pas configurée. Configure EXPO_PUBLIC_API_URL_PROD (via getApiBaseUrl).")
           );
         }
         return false;

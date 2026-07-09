@@ -33,6 +33,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck web
+        run: pnpm --dir apps/web exec tsc --noEmit
+
+      - name: Typecheck mobile
+        run: pnpm --dir apps/mobile exec tsc --noEmit
+
       - name: Verify migration files
         run: node scripts/verify-migration-files.mjs
 

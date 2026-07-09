@@ -7,6 +7,7 @@ import {
   logStartupProbe,
   reportBootError,
 } from "../lib/startupProbe";
+import { NetworkBanner } from "./NetworkBanner";
 
 type StripeGateComponent = React.ComponentType<{
   initialRouteName?: string;
@@ -130,6 +131,7 @@ export function AppRootShell({
 
   return (
     <View style={{ flex: 1 }}>
+      <NetworkBanner />
       <boot.StripeGate key={navKey} initialRouteName={initialRouteName} />
     </View>
   );

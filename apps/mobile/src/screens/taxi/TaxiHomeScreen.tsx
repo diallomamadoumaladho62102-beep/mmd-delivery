@@ -177,8 +177,8 @@ export default function TaxiHomeScreen() {
     if (!market.scopeResolved && !showDevCountryPicker) {
       Alert.alert(
         t("taxi.home.unavailableTitle", "Service not available yet"),
-        platformFeatures.service_messages?.taxi ??
-          platformFeatures.message ??
+        features.service_messages?.taxi ??
+          features.message ??
           t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
       );
       return;
@@ -188,8 +188,8 @@ export default function TaxiHomeScreen() {
     if (!activeCountryCode || !market.taxiAvailable) {
       Alert.alert(
         t("taxi.home.unavailableTitle", "Service not available yet"),
-        platformFeatures.service_messages?.taxi ??
-          platformFeatures.message ??
+        features.service_messages?.taxi ??
+          features.message ??
           t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
       );
       return;

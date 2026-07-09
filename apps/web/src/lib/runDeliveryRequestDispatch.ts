@@ -83,7 +83,7 @@ export type RunDeliveryRequestDispatchResult = {
 };
 
 export async function runDeliveryRequestDispatch(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   deliveryRequestId: string;
   wave?: number;
@@ -340,7 +340,7 @@ export async function runDeliveryRequestDispatch(params: {
     })
   );
 
-  const pushResult = await sendExpoPush(messages);
+  void (await sendExpoPush(messages));
 
   const offerStats = await createDriverDeliveryRequestOffers({
     supabase,

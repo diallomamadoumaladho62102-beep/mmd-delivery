@@ -41,6 +41,10 @@ async function main() {
     env.CINETPAY_API_KEY = "ck";
     env.CINETPAY_SITE_ID = "site";
     delete env.CINETPAY_WEBHOOK_SECRET;
+    const prevNodeEnv = env.NODE_ENV;
+    const prevVercelEnv = env.VERCEL_ENV;
+    env.NODE_ENV = "test";
+    delete env.VERCEL_ENV;
     const cinet = await cinetpayAdapter.parseWebhook(
       { data: { transaction_id: "tx1", status: "accepted" } },
       new Headers()
@@ -49,6 +53,21 @@ async function main() {
     if (cinet.ok) {
       assert.equal(cinet.status, "processing");
     }
+
+    env.NODE_ENV = "production";
+    env.VERCEL_ENV = "production";
+    const cinetProdNoSecret = await cinetpayAdapter.parseWebhook(
+      { data: { transaction_id: "tx1", status: "accepted" } },
+      new Headers()
+    );
+    assert.equal(cinetProdNoSecret.ok, false);
+    if (cinetProdNoSecret.ok === false) {
+      assert.equal(cinetProdNoSecret.error, "webhook_secret_not_configured");
+    }
+    if (prevNodeEnv == null) delete env.NODE_ENV;
+    else env.NODE_ENV = prevNodeEnv;
+    if (prevVercelEnv == null) delete env.VERCEL_ENV;
+    else env.VERCEL_ENV = prevVercelEnv;
 
     env.CINETPAY_WEBHOOK_SECRET = "cinet-secret";
     const cinetBad = await cinetpayAdapter.parseWebhook(

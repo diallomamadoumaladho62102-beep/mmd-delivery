@@ -90,6 +90,15 @@ export async function recordStripeInboundWalletBridge(
         paymentIntentId
       );
       if (replay?.status === "paid") {
+        // Race: another writer inserted first — still ensure ledger rows exist.
+        const ledgerReplay = await recordInboundPaymentWalletEntriesSafe(
+          supabaseAdmin,
+          replay,
+          paymentIntentId,
+        );
+        if (ledgerReplay.ok === false) {
+          return { ok: false, error: ledgerReplay.error };
+        }
         return { ok: true, transactionId: replay.id, created: false };
       }
     }

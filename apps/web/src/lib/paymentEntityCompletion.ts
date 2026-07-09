@@ -212,10 +212,16 @@ export async function applyTransactionStatusUpdate(
   const updated = data as PaymentTransactionRow;
   if (status === "paid") {
     await completePaidEntityFromTransaction(supabaseAdmin, updated);
+    // Fail-closed: paid local-money settlement must write wallet ledger (same as Stripe).
     try {
       await recordInboundPaymentWalletEntries(supabaseAdmin, updated);
     } catch (walletErr) {
       console.error("[paymentEntityCompletion] inbound wallet bridge failed", walletErr);
+      throw new Error(
+        walletErr instanceof Error
+          ? `wallet_ledger_bridge_failed: ${walletErr.message}`
+          : "wallet_ledger_bridge_failed"
+      );
     }
   }
   return updated;

@@ -41,8 +41,5 @@ export function isInternalHealthAuthorized(req: NextRequest | Request): boolean 
   const bearer = bearerMatch?.[1]?.trim() ?? "";
   if (bearer && timingSafeEqual(bearer, expected)) return true;
 
-  const vercelCron = String(req.headers.get("x-vercel-cron") ?? "").trim();
-  if (vercelCron === "1" || vercelCron.toLowerCase() === "true") return true;
-
   return false;
 }

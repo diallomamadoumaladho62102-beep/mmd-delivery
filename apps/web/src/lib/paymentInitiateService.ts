@@ -57,6 +57,17 @@ export async function initiateLocalPayment(
     };
   }
 
+  const isProd =
+    process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+  if (isProd && method.test_mode === true) {
+    return {
+      ok: false as const,
+      error: "payment_method_test_mode_blocked",
+      message:
+        "This payment method is still in test_mode. Flip test_mode=false in admin before production use.",
+    };
+  }
+
   const provider = method.provider as PaymentProvider;
   if (provider === "stripe") {
     return { ok: false as const, error: "use_stripe_checkout_flow" };

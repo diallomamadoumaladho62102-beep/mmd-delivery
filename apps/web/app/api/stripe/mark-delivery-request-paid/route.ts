@@ -10,6 +10,11 @@ import {
   verifyStripePaidMatchesDeliveryRequest,
 } from "@/lib/verifyStripePaidAmount";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
+import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWalletBridge";
+import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
+import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
+import { scheduleDeliveryRequestDispatch } from "@/lib/scheduleDeliveryRequestDispatch";
+import { notifyClientDeliveryRequestPaid } from "@/lib/clientPushNotifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -451,6 +456,28 @@ export async function POST(req: NextRequest) {
     }
 
     if (isPaidStatus(deliveryRequest.payment_status)) {
+      const paymentIntentIdForBridge =
+        deliveryRequest.stripe_payment_intent_id ??
+        (
+          await stripePaymentLooksPaid({
+            deliveryRequest,
+            requestedSessionId: requestedSessionId || null,
+          })
+        ).payment_intent_id;
+      if (paymentIntentIdForBridge) {
+        const walletBridge = await bridgeStripeWalletFromPaidDeliveryRequest(
+          supabaseAdmin,
+          {
+            paymentIntentId: paymentIntentIdForBridge,
+            deliveryRequest,
+            source: "mark-delivery-request-paid:already_paid",
+          }
+        );
+        if (walletBridge.ok === false) {
+          return json({ error: "wallet_ledger_bridge_failed" }, 500);
+        }
+      }
+
       return json({
         ok: true,
         already: true,
@@ -514,34 +541,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const paymentIntentIdForBridge =
+      amountCheck.payment_intent_id ??
+      stripeCheck.payment_intent_id ??
+      deliveryRequest.stripe_payment_intent_id;
+
+    if (paymentIntentIdForBridge) {
+      const walletBridge = await bridgeStripeWalletFromPaidDeliveryRequest(
+        supabaseAdmin,
+        {
+          paymentIntentId: paymentIntentIdForBridge,
+          deliveryRequest,
+          source: "mark-delivery-request-paid",
+        }
+      );
+      if (walletBridge.ok === false) {
+        return json({ error: "wallet_ledger_bridge_failed" }, 500);
+      }
+    }
+
     const nowIso = new Date().toISOString();
 
     const updatePayload: Record<string, unknown> = {
       payment_status: "paid",
       paid_at: deliveryRequest.paid_at ?? nowIso,
       updated_at: nowIso,
+      stripe_payment_intent_id:
+        amountCheck.payment_intent_id ??
+        stripeCheck.payment_intent_id ??
+        deliveryRequest.stripe_payment_intent_id ??
+        null,
+      stripe_session_id:
+        amountCheck.session_id ??
+        stripeCheck.session_id ??
+        requestedSessionId ??
+        deliveryRequest.stripe_session_id ??
+        null,
     };
 
-    if (stripeCheck.payment_intent_id) {
-      updatePayload.stripe_payment_intent_id = stripeCheck.payment_intent_id;
-    } else if (deliveryRequest.stripe_payment_intent_id) {
-      updatePayload.stripe_payment_intent_id =
-        deliveryRequest.stripe_payment_intent_id;
-    }
-
-    if (stripeCheck.session_id) {
-      updatePayload.stripe_session_id = stripeCheck.session_id;
-    } else if (requestedSessionId) {
-      updatePayload.stripe_session_id = requestedSessionId;
-    } else if (deliveryRequest.stripe_session_id) {
-      updatePayload.stripe_session_id = deliveryRequest.stripe_session_id;
-    }
-
-    const { error: updErr } = await supabaseAdmin
+    const { data: updatedRow, error: updErr } = await supabaseAdmin
       .from("delivery_requests")
       .update(updatePayload)
       .eq("id", deliveryRequest.id)
-      .neq("payment_status", "paid");
+      .select(
+        "id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at"
+      )
+      .single();
 
     if (updErr) {
       logSupabaseError(
@@ -556,54 +601,75 @@ export async function POST(req: NextRequest) {
       return json({ error: "Failed to mark delivery request paid" }, 500);
     }
 
-    const { data: freshRow, error: freshErr } = await getDeliveryRequestById(
-      supabaseAdmin,
-      deliveryRequest.id
-    );
-
-    if (freshErr) {
-      logSupabaseError(
-        "[mark-delivery-request-paid] refetch after update failed",
-        freshErr,
-        {
-          delivery_request_id: deliveryRequest.id,
-        }
-      );
-
-      return json({
-        ok: true,
-        stripe_paid: true,
-        already: false,
-        delivery_request_id: deliveryRequest.id,
-        stripe_payment_intent_id:
-          stripeCheck.payment_intent_id ??
-          deliveryRequest.stripe_payment_intent_id ??
-          null,
-        stripe_session_id:
-          stripeCheck.session_id ??
-          requestedSessionId ??
-          deliveryRequest.stripe_session_id ??
-          null,
-        payment_status: "paid",
-      });
+    if (!updatedRow || !isPaidStatus((updatedRow as DeliveryRequestRow).payment_status)) {
+      return json({ error: "Payment update could not be verified after write" }, 500);
     }
+
+    const clientId = String(
+      deliveryRequest.client_user_id ?? deliveryRequest.created_by ?? user.id
+    ).trim();
+
+    const syncResult = await syncPaidDeliveryRequestOrder(
+      supabaseAdmin,
+      deliveryRequest.id,
+      clientId
+    );
+    if (syncResult.ok === false) {
+      console.error("[mark-delivery-request-paid] sync order failed", {
+        delivery_request_id: deliveryRequest.id,
+        error: syncResult.error,
+      });
+      return json({ error: syncResult.error }, 500);
+    }
+
+    const commissions = await ensureOrderCommissionsReady(
+      supabaseAdmin,
+      syncResult.orderId,
+      "mark-delivery-request-paid"
+    );
+    if (commissions.ok === false) {
+      console.error("[mark-delivery-request-paid] commissions failed", {
+        delivery_request_id: deliveryRequest.id,
+        order_id: syncResult.orderId,
+        error: commissions.error,
+      });
+      return json({ error: commissions.error }, 500);
+    }
+
+    scheduleDeliveryRequestDispatch({
+      origin: req.nextUrl.origin,
+      deliveryRequestId: deliveryRequest.id,
+    });
+
+    await notifyClientDeliveryRequestPaid({
+      supabaseAdmin,
+      userIds: [
+        deliveryRequest.client_user_id,
+        deliveryRequest.created_by,
+        user.id,
+      ],
+      deliveryRequestId: deliveryRequest.id,
+    });
 
     return json({
       ok: true,
       stripe_paid: true,
       already: false,
-      delivery_request_id: freshRow?.id ?? deliveryRequest.id,
+      delivery_request_id: deliveryRequest.id,
       stripe_payment_intent_id:
-        freshRow?.stripe_payment_intent_id ??
+        (updatedRow as DeliveryRequestRow).stripe_payment_intent_id ??
         stripeCheck.payment_intent_id ??
         null,
       stripe_session_id:
-        freshRow?.stripe_session_id ??
+        (updatedRow as DeliveryRequestRow).stripe_session_id ??
         stripeCheck.session_id ??
         requestedSessionId ??
         null,
-      payment_status: freshRow?.payment_status ?? "paid",
-      paid_at: freshRow?.paid_at ?? deliveryRequest.paid_at ?? nowIso,
+      payment_status: (updatedRow as DeliveryRequestRow).payment_status ?? "paid",
+      paid_at:
+        (updatedRow as DeliveryRequestRow).paid_at ??
+        deliveryRequest.paid_at ??
+        nowIso,
     });
   } catch (e: unknown) {
     const message = getErrorMessage(e);
