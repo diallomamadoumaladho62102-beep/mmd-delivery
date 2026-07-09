@@ -14,6 +14,10 @@ assert.equal(classifyApiPath("/api/cron/retry-order-dispatch"), "exempt");
 assert.equal(limitsForTier("exempt"), null);
 assert.ok((limitsForTier("money")?.limit ?? 0) > 0);
 
+// Proxy must still classify the same money/webhook paths used by apps/web/proxy.ts
+assert.equal(classifyApiPath("/api/stripe/client/create-taxi-checkout-session"), "money");
+assert.equal(classifyApiPath("/api/payments/webhook/cinetpay"), "webhook");
+
 const key = `test-${Date.now()}`;
 for (let i = 0; i < 3; i += 1) {
   const r = checkRateLimit({ namespace: "unit", key, limit: 3, windowMs: 60_000 });

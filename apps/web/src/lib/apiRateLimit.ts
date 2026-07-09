@@ -63,7 +63,7 @@ export function getRequestClientIp(headers: Headers): string {
   return headers.get("x-real-ip")?.trim() || "unknown";
 }
 
-/** Path classification for middleware rate tiers. */
+/** Path classification for proxy rate tiers. */
 export type ApiRateTier =
   | "webhook"
   | "money"

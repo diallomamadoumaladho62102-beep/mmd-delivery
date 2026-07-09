@@ -1,15 +1,65 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import {
+  checkRateLimit,
+  classifyApiPath,
+  getRequestClientIp,
+  limitsForTier,
+} from "@/lib/apiRateLimit";
 
+/**
+ * Next.js 16 proxy (replaces middleware.ts).
+ * - API rate limiting for money / webhook / location / auth-sensitive paths
+ * - Restaurant web session gate (existing behavior)
+ */
 export async function proxy(req: NextRequest) {
-  const res = NextResponse.next();
   const pathname = req.nextUrl.pathname;
 
+  // --- API rate limiting (formerly middleware.ts) ---
+  if (pathname.startsWith("/api/")) {
+    const tier = classifyApiPath(pathname);
+    const limits = limitsForTier(tier);
+    if (!limits) {
+      return NextResponse.next();
+    }
+
+    const ip = getRequestClientIp(req.headers);
+    const result = checkRateLimit({
+      namespace: `proxy:${tier}`,
+      key: ip,
+      limit: limits.limit,
+      windowMs: limits.windowMs,
+    });
+
+    if (result.limited) {
+      return NextResponse.json(
+        { ok: false, error: "rate_limited", message: "Too many requests" },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(result.retryAfterSec || 60),
+            "Cache-Control": "no-store",
+          },
+        }
+      );
+    }
+
+    const res = NextResponse.next();
+    res.headers.set("X-RateLimit-Remaining", String(result.remaining));
+    return res;
+  }
+
+  // --- Restaurant web auth gate (existing proxy behavior) ---
   const protect =
     pathname.startsWith("/restaurant") ||
-    pathname.startsWith("/orders/restaurant");
+    pathname.startsWith("/orders/restaurant") ||
+    /\/orders\/[^/]+\/restaurant(?:\/|$)/.test(pathname);
 
-  if (!protect) return res;
+  if (!protect) {
+    return NextResponse.next();
+  }
+
+  const res = NextResponse.next();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,10 +69,10 @@ export async function proxy(req: NextRequest) {
         get(name: string) {
           return req.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: Record<string, unknown>) {
           res.cookies.set({ name, value, ...options });
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: Record<string, unknown>) {
           res.cookies.set({ name, value: "", ...options });
         },
       },
@@ -31,7 +81,6 @@ export async function proxy(req: NextRequest) {
 
   const { data: auth } = await supabase.auth.getUser();
 
-  // Pas connecté => dehors direct (0 flash)
   if (!auth.user) {
     const url = req.nextUrl.clone();
     url.pathname = "/signup/restaurant";
@@ -39,7 +88,6 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Connecté mais pas restaurant => dehors
   const { data: prof } = await supabase
     .from("profiles")
     .select("role")
@@ -58,6 +106,7 @@ export async function proxy(req: NextRequest) {
 
 export const config = {
   matcher: [
+    "/api/:path*",
     "/restaurant/:path*",
     "/orders/restaurant/:path*",
     "/orders/:orderId/restaurant",
