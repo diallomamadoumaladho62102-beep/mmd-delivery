@@ -116,6 +116,7 @@ test("buildFeatureAvailability exposes coming soon marketplace", () => {
     country_code: "US",
     region_code: null,
     state_code: null,
+    county_code: null,
     mmd_zone_id: null,
     zone_code: null,
     scope_level: "country" as const,
@@ -134,6 +135,7 @@ test("buildScopeLabel formats US state scope", () => {
       state_code: "NY",
       region_code: "ny",
       zone_code: null,
+      county_code: null,
     }),
     "US / NY"
   );
@@ -143,6 +145,7 @@ test("buildScopeLabel formats US state scope", () => {
       state_code: null,
       region_code: "gn_conakry",
       zone_code: "gn_conakry",
+      county_code: null,
     }),
     "GN / Conakry"
   );
@@ -154,6 +157,7 @@ test("marketplace_available follows marketplace_enabled when platform ON", () =>
     country_code: "US",
     region_code: null,
     state_code: null,
+    county_code: null,
     mmd_zone_id: null,
     zone_code: null,
     scope_level: "country" as const,
@@ -177,6 +181,7 @@ test("marketplace live flags stay OFF without env certification", () => {
     country_code: "US",
     region_code: null,
     state_code: null,
+    county_code: null,
     mmd_zone_id: null,
     zone_code: null,
     scope_level: "country" as const,

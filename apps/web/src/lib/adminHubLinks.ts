@@ -273,6 +273,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "platform_launch.read",
   },
   {
+    href: "/admin/county-management",
+    title: "County Management",
+    description: "Activation counties US sous chaque State — Taxi, Delivery, Food, Marketplace",
+    permission: "platform_launch.read",
+  },
+  {
     href: "/admin/mmd-ai",
     title: "MMD AI",
     description: "AI usage, costs, safety and monitoring",

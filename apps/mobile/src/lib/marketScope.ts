@@ -19,6 +19,7 @@ export type UnifiedMarketScope = {
   countryCode: string;
   stateCode: string | null;
   regionCode: string | null;
+  countyCode: string | null;
   currencyCode: string;
   displayLabel: string;
   scopeSource: string | null;
@@ -68,6 +69,8 @@ export function resolveMarketScopeFromFeatures(
     scopedFeatures.state_code ?? scopedFeatures.scope?.state_code ?? null;
   const regionCode =
     scopedFeatures.region_code ?? scopedFeatures.scope?.region_code ?? null;
+  const countyCode =
+    scopedFeatures.county_code ?? scopedFeatures.scope?.county_code ?? null;
   const scopeLabel =
     scopedFeatures.scope_label ?? scopedFeatures.scope?.scope_label ?? null;
   const scopeSource =
@@ -83,6 +86,7 @@ export function resolveMarketScopeFromFeatures(
     countryCode,
     stateCode,
     regionCode,
+    countyCode,
     currencyCode: currencyForMarketCountry(countryCode),
     displayLabel: displayLabel || countryName || countryCode || "",
     scopeSource,

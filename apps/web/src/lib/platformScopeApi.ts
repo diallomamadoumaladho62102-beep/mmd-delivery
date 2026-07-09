@@ -56,10 +56,13 @@ export function readClientScopeQuery(req: NextRequest) {
   return {
     pickupCountry: url.searchParams.get("pickup_country"),
     pickupState: url.searchParams.get("pickup_state"),
+    pickupCounty:
+      url.searchParams.get("pickup_county") ?? url.searchParams.get("pickup_county_code"),
     pickupLat: parseOptionalNumber(url.searchParams.get("pickup_lat")),
     pickupLng: parseOptionalNumber(url.searchParams.get("pickup_lng")),
     manualCountry: url.searchParams.get("country"),
     manualState: url.searchParams.get("state") ?? url.searchParams.get("state_code"),
+    manualCounty: url.searchParams.get("county") ?? url.searchParams.get("county_code"),
     manualRegionCode: url.searchParams.get("region_code"),
     lat: parseOptionalNumber(url.searchParams.get("lat")),
     lng: parseOptionalNumber(url.searchParams.get("lng")),
@@ -73,6 +76,8 @@ export function readDriverScopeQuery(req: NextRequest) {
     lng: parseOptionalNumber(url.searchParams.get("lng")),
     missionCountry: url.searchParams.get("mission_country"),
     missionRegionCode: url.searchParams.get("mission_region_code"),
+    missionCountyCode:
+      url.searchParams.get("mission_county") ?? url.searchParams.get("mission_county_code"),
     missionMmdZoneId: url.searchParams.get("mission_mmd_zone_id"),
   };
 }

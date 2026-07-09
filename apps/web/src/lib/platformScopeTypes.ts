@@ -1,6 +1,6 @@
 import type { PlatformLaunchStatus } from "@/lib/platformLaunchControl";
 
-export type PlatformScopeLevel = "country" | "region" | "zone";
+export type PlatformScopeLevel = "country" | "region" | "zone" | "county";
 
 export type PlatformScopeSource =
   | "order_pickup"
@@ -17,6 +17,7 @@ export type PlatformScopeKey = {
   country_code: string;
   region_code: string | null;
   state_code: string | null;
+  county_code: string | null;
   mmd_zone_id: string | null;
   zone_code: string | null;
   scope_level: PlatformScopeLevel;
@@ -26,6 +27,7 @@ export type PlatformScopeKey = {
 export type PlatformToggleConfig = {
   country_code: string;
   region_code: string | null;
+  county_code: string | null;
   scope_level: PlatformScopeLevel;
   platform_enabled: boolean;
   taxi_enabled: boolean;
@@ -47,6 +49,7 @@ export type PlatformFeatureAvailability = {
   country_code: string;
   region_code: string | null;
   state_code: string | null;
+  county_code: string | null;
   mmd_zone_id: string | null;
   zone_code: string | null;
   scope_level: PlatformScopeLevel;
@@ -95,4 +98,22 @@ export type PlatformRegionRow = {
   ai_enabled: boolean;
   ai_enabled_updated_at?: string | null;
   ai_enabled_updated_by?: string | null;
+};
+
+export type PlatformCountyRow = {
+  id: string;
+  country_code: string;
+  region_code: string;
+  county_code: string;
+  county_name: string;
+  platform_enabled: boolean;
+  taxi_enabled: boolean;
+  delivery_enabled: boolean;
+  restaurant_enabled: boolean;
+  marketplace_enabled: boolean;
+  seller_enabled: boolean;
+  checkout_enabled: boolean;
+  payout_enabled: boolean;
+  maintenance_mode: boolean;
+  launch_status: PlatformLaunchStatus;
 };

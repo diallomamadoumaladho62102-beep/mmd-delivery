@@ -1,4 +1,4 @@
-/** Feature flags for country + region experience control (rollback-safe). */
+/** Feature flags for country + region + county experience control (rollback-safe). */
 
 export function isPlatformScopeGatesEnabled(): boolean {
   return String(process.env.PLATFORM_SCOPE_GATES_ENABLED ?? "")
@@ -13,6 +13,15 @@ export function isPlatformUsStateGatesEnabled(): boolean {
   if (explicit === "true") return true;
   if (explicit === "false") return false;
   return isPlatformScopeGatesEnabled();
+}
+
+export function isPlatformUsCountyGatesEnabled(): boolean {
+  const explicit = String(process.env.PLATFORM_US_COUNTY_GATES ?? "")
+    .trim()
+    .toLowerCase();
+  if (explicit === "true") return true;
+  if (explicit === "false") return false;
+  return isPlatformUsStateGatesEnabled();
 }
 
 export function isPlatformGnZoneGatesEnabled(): boolean {
@@ -36,4 +45,10 @@ export function shouldApplyRegionCommercialOverride(countryCode: string): boolea
   if (code === "US") return isPlatformUsStateGatesEnabled();
   if (code === "GN") return isPlatformGnZoneGatesEnabled();
   return isPlatformScopeGatesEnabled();
+}
+
+export function shouldApplyCountyCommercialOverride(countryCode: string): boolean {
+  const code = countryCode.trim().toUpperCase();
+  if (code === "US") return isPlatformUsCountyGatesEnabled();
+  return false;
 }

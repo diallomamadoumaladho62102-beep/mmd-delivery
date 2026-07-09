@@ -244,6 +244,12 @@ export default function AdminPlatformLaunchPage() {
             </div>
             <div className="flex gap-2">
               <a
+                href="/admin/county-management"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+              >
+                County Management →
+              </a>
+              <a
                 href="/admin/taxi-launch"
                 className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
               >

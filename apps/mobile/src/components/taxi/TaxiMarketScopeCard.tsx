@@ -20,6 +20,7 @@ export default function TaxiMarketScopeCard({
       market={{
         ...market,
         regionCode: null,
+        countyCode: null,
         scopeSource: null,
         deliveryAvailable: false,
         restaurantAvailable: false,

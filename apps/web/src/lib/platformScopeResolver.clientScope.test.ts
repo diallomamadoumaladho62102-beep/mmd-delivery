@@ -95,6 +95,8 @@ async function run() {
     assert.equal(scope.country_code, "US");
     assert.equal(scope.state_code, "NY");
     assert.equal(scope.region_code, "ny");
+    assert.equal(scope.county_code, "nyc");
+    assert.equal(scope.scope_level, "county");
     assert.equal(scope.scope_source, "gps");
   });
 

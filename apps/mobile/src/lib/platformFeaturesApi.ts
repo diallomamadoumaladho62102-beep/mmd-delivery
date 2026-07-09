@@ -1,7 +1,7 @@
 import { getApiBaseUrl } from "../../lib/apiBase";
 import { supabase } from "./supabase";
 
-export type PlatformScopeLevel = "country" | "region" | "zone";
+export type PlatformScopeLevel = "country" | "region" | "zone" | "county";
 
 export type PlatformFeaturesResponse = {
   ok: boolean;
@@ -9,6 +9,7 @@ export type PlatformFeaturesResponse = {
   country_code?: string;
   region_code?: string | null;
   state_code?: string | null;
+  county_code?: string | null;
   mmd_zone_id?: string | null;
   zone_code?: string | null;
   scope_level?: PlatformScopeLevel;
@@ -33,6 +34,7 @@ export type PlatformFeaturesResponse = {
     country_code: string;
     region_code: string | null;
     state_code: string | null;
+    county_code: string | null;
     mmd_zone_id: string | null;
     zone_code: string | null;
     scope_level: PlatformScopeLevel;
@@ -90,8 +92,10 @@ export async function fetchClientPlatformFeatures(input?: {
   lng?: number;
   pickupCountry?: string;
   pickupState?: string;
+  pickupCounty?: string;
   manualCountry?: string;
   manualState?: string;
+  manualCounty?: string;
 }): Promise<PlatformFeaturesResponse> {
   const token = await getAccessToken();
   if (!token) return { ok: false, error: "not_authenticated" };
@@ -101,8 +105,10 @@ export async function fetchClientPlatformFeatures(input?: {
     lng: input?.lng,
     pickup_country: input?.pickupCountry,
     pickup_state: input?.pickupState,
+    pickup_county: input?.pickupCounty,
     country: input?.manualCountry,
     state: input?.manualState,
+    county: input?.manualCounty,
   });
 
   const res = await fetch(`${getApiBaseUrl()}/api/platform/client-features${query}`, {
@@ -120,6 +126,7 @@ export async function fetchDriverPlatformFeatures(input?: {
   lng?: number;
   missionCountry?: string;
   missionRegionCode?: string;
+  missionCountyCode?: string;
 }): Promise<PlatformFeaturesResponse> {
   const token = await getAccessToken();
   if (!token) return { ok: false, error: "not_authenticated" };
@@ -129,6 +136,7 @@ export async function fetchDriverPlatformFeatures(input?: {
     lng: input?.lng,
     mission_country: input?.missionCountry,
     mission_region_code: input?.missionRegionCode,
+    mission_county: input?.missionCountyCode,
   });
 
   const res = await fetch(`${getApiBaseUrl()}/api/platform/driver-features${query}`, {
