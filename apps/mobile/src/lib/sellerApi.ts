@@ -2,9 +2,20 @@ import { supabase } from "./supabase";
 import type { SellerOrderRow, SellerProductRow, SellerRow } from "./sellerTypes";
 import { fetchClientPlatformFeatures } from "./platformFeaturesApi";
 
-export async function requireSellerPlatformEnabled(): Promise<boolean> {
+export async function requireSellerPlatformEnabled(): Promise<{
+  enabled: boolean;
+  message: string | null;
+}> {
   const features = await fetchClientPlatformFeatures();
-  return Boolean(features.ok !== false && features.seller_available);
+  const enabled = Boolean(features.ok !== false && features.seller_available);
+  return {
+    enabled,
+    message: enabled
+      ? null
+      : features.service_messages?.marketplace ??
+        features.message ??
+        "Marketplace disabled in this county.\n\nYour products remain saved, but customers cannot place new orders until Marketplace is activated.",
+  };
 }
 
 const SELLER_SELECT =

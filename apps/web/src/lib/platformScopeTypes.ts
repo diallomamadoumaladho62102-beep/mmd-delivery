@@ -70,9 +70,20 @@ export type PlatformFeatureAvailability = {
   message: string | null;
   coming_soon_services: string[];
   can_go_online?: boolean;
+  can_receive_requests?: boolean;
+  out_of_service_area?: boolean;
+  driver_status_label?: string | null;
+  unavailable_title?: string | null;
   can_accept_orders?: boolean;
   ai_assistant_available?: boolean;
   refresh_after_ms: number;
+  /** Per-service client denial copy when that vertical is OFF at origin scope. */
+  service_messages?: {
+    taxi?: string | null;
+    delivery?: string | null;
+    food?: string | null;
+    marketplace?: string | null;
+  };
 };
 
 export type PlatformRegionRow = {

@@ -176,17 +176,21 @@ export default function TaxiHomeScreen() {
 
     if (!market.scopeResolved && !showDevCountryPicker) {
       Alert.alert(
-        t("taxi.home.unavailableTitle", "Taxi unavailable"),
-        t("taxi.home.unavailable", "Taxi is not available in your area yet")
+        t("taxi.home.unavailableTitle", "Service not available yet"),
+        platformFeatures.service_messages?.taxi ??
+          platformFeatures.message ??
+          t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
       );
       return;
     }
 
     const activeCountryCode = showDevCountryPicker ? countryCode : market.countryCode;
-    if (!activeCountryCode) {
+    if (!activeCountryCode || !market.taxiAvailable) {
       Alert.alert(
-        t("taxi.home.unavailableTitle", "Taxi unavailable"),
-        t("taxi.home.unavailable", "Taxi is not available in your area yet")
+        t("taxi.home.unavailableTitle", "Service not available yet"),
+        platformFeatures.service_messages?.taxi ??
+          platformFeatures.message ??
+          t("taxi.home.unavailable", "Taxi service is not available in this county yet.")
       );
       return;
     }

@@ -60,8 +60,8 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const enabled = await requireSellerPlatformEnabled();
-      setPlatformOk(enabled);
+      const gate = await requireSellerPlatformEnabled();
+      setPlatformOk(gate.enabled);
       const row = await loadOwnSeller();
       setSeller(row);
       if (row) {

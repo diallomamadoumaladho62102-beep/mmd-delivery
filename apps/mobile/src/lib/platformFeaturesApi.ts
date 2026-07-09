@@ -25,11 +25,21 @@ export type PlatformFeaturesResponse = {
   checkout_enabled?: boolean;
   payout_enabled?: boolean;
   message?: string | null;
+  unavailable_title?: string | null;
   coming_soon_services?: string[];
   can_go_online?: boolean;
+  can_receive_requests?: boolean;
+  out_of_service_area?: boolean;
+  driver_status_label?: string | null;
   can_accept_orders?: boolean;
   ai_assistant_available?: boolean;
   refresh_after_ms?: number;
+  service_messages?: {
+    taxi?: string | null;
+    delivery?: string | null;
+    food?: string | null;
+    marketplace?: string | null;
+  };
   scope?: {
     country_code: string;
     region_code: string | null;

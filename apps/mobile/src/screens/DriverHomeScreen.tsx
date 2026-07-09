@@ -646,6 +646,7 @@ export function DriverHomeScreen() {
     () => resolveMarketScopeFromFeatures(platformFeatures),
     [platformFeatures]
   );
+  const wasOutOfServiceRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     ensureMapboxTokenApplied();
@@ -659,6 +660,42 @@ export function DriverHomeScreen() {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [activeOffer, setActiveOffer] = useState<DriverOrder | null>(null);
+
+  useEffect(() => {
+    const out = Boolean(platformFeatures.out_of_service_area);
+    if (wasOutOfServiceRef.current === null) {
+      wasOutOfServiceRef.current = out;
+      return;
+    }
+    if (wasOutOfServiceRef.current === true && out === false) {
+      Alert.alert(
+        t("driver.home.welcomeBackTitle", "Welcome back"),
+        t(
+          "driver.home.welcomeBackMessage",
+          "Welcome back.\nYou are now available to receive new requests."
+        )
+      );
+    }
+    if (wasOutOfServiceRef.current === false && out === true && isOnline) {
+      void setDriverOnlineStatus(false).then(() => setIsOnline(false));
+      Alert.alert(
+        platformFeatures.unavailable_title ??
+          t("driver.home.outOfServiceTitle", "Out of Service Area"),
+        platformFeatures.message ??
+          t(
+            "driver.home.outOfServiceMessage",
+            "You have entered an area where MMD Delivery is not operating yet.\nYou can finish your current trip, but you will not receive new requests until you return to an active county."
+          )
+      );
+    }
+    wasOutOfServiceRef.current = out;
+  }, [
+    platformFeatures.out_of_service_area,
+    platformFeatures.message,
+    platformFeatures.unavailable_title,
+    isOnline,
+    t,
+  ]);
   const [countdown, setCountdown] = useState(60);
   const [region, setRegion] = useState({
     latitude: 40.650002,
@@ -917,14 +954,15 @@ export function DriverHomeScreen() {
           : undefined
       );
 
-      if (!scopeFeatures.can_go_online) {
+      if (!scopeFeatures.can_go_online || scopeFeatures.out_of_service_area) {
         await setDriverOnlineStatus(false);
         Alert.alert(
-          t("shared.orderChat.alerts.errorTitle", "Erreur"),
+          scopeFeatures.unavailable_title ??
+            t("driver.home.outOfServiceTitle", "Out of Service Area"),
           scopeFeatures.message ??
             t(
-              "driver.home.platformUnavailable",
-              "MMD is not available for drivers in your current area."
+              "driver.home.outOfServiceMessage",
+              "You have entered an area where MMD Delivery is not operating yet.\nYou can finish your current trip, but you will not receive new requests until you return to an active county."
             ),
         );
         return false;

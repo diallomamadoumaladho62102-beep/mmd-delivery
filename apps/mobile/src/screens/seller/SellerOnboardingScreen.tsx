@@ -29,11 +29,15 @@ export default function SellerOnboardingScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    const sellerEnabled = await requireSellerPlatformEnabled();
-    if (!sellerEnabled) {
+    const gate = await requireSellerPlatformEnabled();
+    if (!gate.enabled) {
       Alert.alert(
         t("common.errorTitle", "Error"),
-        t("seller.gate.unavailable", "Seller services are not available in your area yet.")
+        gate.message ??
+          t(
+            "seller.gate.unavailable",
+            "Marketplace disabled in this county.\n\nYour products remain saved, but customers cannot place new orders until Marketplace is activated."
+          )
       );
       return;
     }

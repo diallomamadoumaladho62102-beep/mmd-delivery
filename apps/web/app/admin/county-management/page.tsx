@@ -410,6 +410,45 @@ export default function AdminCountyManagementPage() {
                       <p className="mb-2 text-xs text-slate-500">Enable county first</p>
                     ) : null}
 
+                    <div className="mb-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      <p className="font-semibold text-slate-800">
+                        County Status · {countyOn && stateOn ? "ON" : "OFF"}
+                      </p>
+                      <p className="mt-1">
+                        {countyOn && stateOn
+                          ? "County is active. Service availability follows the toggles below."
+                          : "Services are unavailable for customers, drivers, restaurants and marketplace."}
+                      </p>
+                      {countyOn && stateOn ? (
+                        <ul className="mt-2 space-y-1">
+                          {!draft.taxi_enabled ? (
+                            <li>
+                              <strong>Taxi Disabled</strong> — Customers cannot request taxi
+                              rides. Drivers cannot receive taxi trips.
+                            </li>
+                          ) : null}
+                          {!draft.delivery_enabled ? (
+                            <li>
+                              <strong>Delivery Disabled</strong> — Parcel and courier requests
+                              are unavailable.
+                            </li>
+                          ) : null}
+                          {!draft.restaurant_enabled ? (
+                            <li>
+                              <strong>Food Disabled</strong> — Restaurants are hidden. Customers
+                              cannot order food.
+                            </li>
+                          ) : null}
+                          {!draft.marketplace_enabled ? (
+                            <li>
+                              <strong>Marketplace Disabled</strong> — Stores are hidden.
+                              Customers cannot purchase products.
+                            </li>
+                          ) : null}
+                        </ul>
+                      ) : null}
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {(Object.keys(SERVICE_TOGGLE_LABELS) as ServiceToggleKey[]).map(
                         (toggleKey) => (

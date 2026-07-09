@@ -20,6 +20,8 @@ import {
   fetchTaxiCountryLaunchConfig,
 } from "@/lib/taxiLaunchControl";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
+import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
 
 export const runtime = "nodejs";
@@ -213,6 +215,35 @@ export async function POST(req: NextRequest) {
     );
     if (platformCheck.ok === false) {
       return taxiJson({ ok: false, ...platformCheck }, 403);
+    }
+
+    if (shouldApplyCountyCommercialOverride(countryCode)) {
+      const originGate = await assertCanStartServiceFromOrigin(auth.supabaseAdmin, {
+        service: "taxi",
+        origin: {
+          countryCode,
+          lat: route.pickupLat,
+          lng: route.pickupLng,
+        },
+        destination: {
+          countryCode,
+          lat: route.dropoffLat,
+          lng: route.dropoffLng,
+        },
+      });
+      if (!originGate.allowed) {
+        return taxiJson(
+          {
+            ok: false,
+            error: "taxi_unavailable",
+            code: originGate.code,
+            title: originGate.title,
+            message: originGate.message,
+            actions: originGate.actions,
+          },
+          403
+        );
+      }
     }
 
     const launchConfig = await fetchTaxiCountryLaunchConfig(

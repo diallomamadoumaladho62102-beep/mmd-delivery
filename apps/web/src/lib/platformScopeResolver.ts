@@ -441,18 +441,15 @@ export function buildScopeMessage(
     config.maintenance_mode || config.launch_status === "maintenance";
 
   if (maintenance) {
-    return `MMD is under maintenance in ${scopeLabel(scope)}.`;
+    return `MMD Delivery is under maintenance in your pickup area.`;
   }
 
   if (!config.platform_enabled) {
-    return `MMD is not available yet in ${scopeLabel(scope)}.`;
+    return `MMD Delivery is not available in your pickup area yet.\nWe are expanding and hope to launch here soon.`;
   }
 
+  void scope;
   return null;
-}
-
-function scopeLabel(scope: PlatformScopeKey): string {
-  return buildScopeLabel(scope);
 }
 
 const GN_ZONE_LABELS: Record<string, string> = {
@@ -537,6 +534,7 @@ export function buildFeatureAvailability(
   const platformOn = config.platform_enabled && !maintenance;
 
   const message = buildScopeMessage(config, scope);
+  const outOfService = !platformOn;
 
   return {
     country_code: scope.country_code,
@@ -561,12 +559,34 @@ export function buildFeatureAvailability(
     marketplace_dispatch_live_enabled: isMarketplaceDispatchLiveEnabledForConfig(config),
     marketplace_payouts_live_enabled: isMarketplacePayoutsLiveEnabledForConfig(config),
     message,
+    unavailable_title: outOfService ? "Service not available yet" : null,
     coming_soon_services: buildComingSoonServices(config),
     can_go_online: platformOn,
+    can_receive_requests: platformOn,
+    out_of_service_area: outOfService,
+    driver_status_label: outOfService ? "Out of Service Area" : null,
     can_accept_orders:
       platformOn && config.restaurant_enabled && config.checkout_enabled,
     ai_assistant_available: isAiAssistantEnabled() && platformOn && config.ai_enabled,
     refresh_after_ms: 300_000,
+    service_messages: {
+      taxi:
+        platformOn && !config.taxi_enabled
+          ? "Taxi service is not available in this county yet."
+          : null,
+      delivery:
+        platformOn && !config.delivery_enabled
+          ? "Delivery service is not available in this county yet."
+          : null,
+      food:
+        platformOn && !config.restaurant_enabled
+          ? "Food delivery is not available in this county yet."
+          : null,
+      marketplace:
+        platformOn && !config.marketplace_enabled
+          ? "Marketplace is not available in this county yet."
+          : null,
+    },
   };
 }
 

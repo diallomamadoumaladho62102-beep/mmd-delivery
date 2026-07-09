@@ -27,13 +27,14 @@ export default function SellerGateScreen({ navigation }: Props) {
           return;
         }
 
-        const enabled = await requireSellerPlatformEnabled();
-        if (!enabled) {
+        const gate = await requireSellerPlatformEnabled();
+        if (!gate.enabled) {
           setMessage(
-            t(
-              "seller.gate.unavailable",
-              "Seller services are not available in your area yet."
-            )
+            gate.message ??
+              t(
+                "seller.gate.unavailable",
+                "Marketplace disabled in this county.\n\nYour products remain saved, but customers cannot place new orders until Marketplace is activated."
+              )
           );
           return;
         }

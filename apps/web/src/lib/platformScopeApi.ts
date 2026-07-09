@@ -6,7 +6,6 @@ import {
   getSupabaseUserClient,
   mmdLocationJson,
 } from "@/lib/mmdLocationCore";
-import type { PlatformFeatureAvailability } from "@/lib/platformScopeTypes";
 import {
   resolveClientPlatformScope,
   resolveDriverPlatformScope,
@@ -117,10 +116,19 @@ export async function buildDriverFeaturesResponse(
     );
   }
 
-  const payload: PlatformFeatureAvailability & { ok: true; scope: typeof scope } = {
-    ok: true,
+  const outOfService = Boolean(features.out_of_service_area);
+  const payload = {
+    ok: true as const,
     scope,
     ...features,
+    can_go_online: !outOfService && features.platform_enabled,
+    can_receive_requests: !outOfService && features.platform_enabled,
+    out_of_service_area: outOfService,
+    driver_status_label: outOfService ? "Out of Service Area" : null,
+    unavailable_title: outOfService ? "Out of Service Area" : features.unavailable_title,
+    message: outOfService
+      ? "You have entered an area where MMD Delivery is not operating yet.\nYou can finish your current trip, but you will not receive new requests until you return to an active county."
+      : features.message,
   };
 
   return mmdLocationJson(payload);
@@ -140,5 +148,14 @@ export async function buildRestaurantFeaturesResponse(
     );
   }
 
-  return mmdLocationJson({ ok: true, scope, ...features });
+  const foodOff = !features.restaurant_available;
+  return mmdLocationJson({
+    ok: true,
+    scope,
+    ...features,
+    unavailable_title: foodOff ? "Restaurant Dashboard" : features.unavailable_title,
+    message: foodOff
+      ? "Food delivery is currently disabled in your county.\n\nOrders cannot be received until this county is activated."
+      : features.message,
+  });
 }

@@ -23,7 +23,7 @@ export function useRestaurantAvailability() {
             scopeFeatures.message ??
               t(
                 "restaurant.platformUnavailable",
-                "New orders are not available in your restaurant area right now."
+                "Food delivery is currently disabled in your county.\n\nOrders cannot be received until this county is activated."
               )
           );
         }

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint src/lib app/api",
     "test:rbac": "tsx src/lib/adminRbac.test.ts && tsx src/lib/adminOutbound.test.ts",
-    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && tsx src/lib/platformLaunchControl.test.ts && tsx src/lib/platformCountryInference.test.ts && tsx src/lib/platformScopeResolver.test.ts && tsx src/lib/platformCountyScope.test.ts && tsx src/lib/platformScopeResolver.clientScope.test.ts && tsx src/lib/platformRouteGuards.test.ts && tsx src/lib/marketplaceLaunchControl.test.ts && tsx src/lib/adminPlatformLaunchPatch.test.ts",
+    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && tsx src/lib/platformLaunchControl.test.ts && tsx src/lib/platformCountryInference.test.ts && tsx src/lib/platformScopeResolver.test.ts && tsx src/lib/platformCountyScope.test.ts && tsx src/lib/canStartServiceInCounty.test.ts && tsx src/lib/platformScopeResolver.clientScope.test.ts && tsx src/lib/platformRouteGuards.test.ts && tsx src/lib/marketplaceLaunchControl.test.ts && tsx src/lib/adminPlatformLaunchPatch.test.ts",
     "test:delivery-pricing-v2": "tsx src/lib/deliveryPricingEngine/deliveryPricingEngine.test.ts",
     "test:marketplace-checkout": "tsx src/lib/marketplaceCheckout.test.ts",
     "test:service-fee": "tsx src/lib/clientServiceFee.test.ts",

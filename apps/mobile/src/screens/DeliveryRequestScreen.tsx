@@ -285,10 +285,11 @@ export function DeliveryRequestScreen() {
 
   const deliveryBlocked = market.scopeResolved && !market.deliveryAvailable;
   const deliveryBlockedMessage =
+    platformFeatures.service_messages?.delivery ??
     platformFeatures.message ??
     tr(
       "deliveryRequest.errors.unavailableInArea",
-      "MMD delivery is not available in your current area."
+      "Delivery service is not available in this county yet."
     );
 
   const total = useMemo(() => displayGrandTotal, [displayGrandTotal]);
