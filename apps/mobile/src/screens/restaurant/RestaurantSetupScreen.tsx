@@ -29,8 +29,6 @@ type GeocodedAddress = {
 
 const BUCKET = "restaurant-docs";
 const AVATARS_BUCKET = "avatars";
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
-
 function cleanText(v: string) {
   return (v || "").trim();
 }

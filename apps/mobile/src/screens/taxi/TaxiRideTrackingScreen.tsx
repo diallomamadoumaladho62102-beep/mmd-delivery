@@ -9,7 +9,6 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
@@ -28,6 +27,11 @@ import {
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
 import { TaxiSafetyRecordingPanel } from "../../components/taxi/TaxiSafetyRecordingPanel";
+import {
+  ensureMapboxTokenApplied,
+  getMapboxModule,
+  getMapStyleStreets,
+} from "../../lib/mapboxConfig";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiRideTracking">;
 type TrackingRoute = RouteProp<RootStackParamList, "TaxiRideTracking">;
@@ -206,14 +210,21 @@ export default function TaxiRideTrackingScreen() {
     );
   }
 
+  const Mapbox = getMapboxModule();
+  const mapReady =
+    Boolean(Mapbox) &&
+    ensureMapboxTokenApplied() &&
+    Number.isFinite(pickupLat) &&
+    Number.isFinite(pickupLng);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <View style={{ flex: 1 }}>
-        {Number.isFinite(pickupLat) && Number.isFinite(pickupLng) ? (
+        {mapReady && Mapbox ? (
           <Mapbox.MapView
             style={{ flex: 1 }}
-            styleURL="mapbox://styles/mapbox/streets-v12"
+            styleURL={getMapStyleStreets()}
             logoEnabled={false}
             attributionEnabled={false}
           >

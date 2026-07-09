@@ -21,8 +21,6 @@ import LegalSignupLinks from "../components/LegalSignupLinks";
 
 const RESET_PASSWORD_URL = getResetPasswordRedirectUrl();
 
-const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || "";
-
 type GeocodedAddress = {
   latitude: number;
   longitude: number;

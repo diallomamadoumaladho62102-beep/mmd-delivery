@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint src/lib app/api",
     "test:rbac": "tsx src/lib/adminRbac.test.ts && tsx src/lib/adminOutbound.test.ts",
-    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && tsx src/lib/platformLaunchControl.test.ts && tsx src/lib/platformCountryInference.test.ts && tsx src/lib/platformScopeResolver.test.ts && tsx src/lib/platformCountyScope.test.ts && tsx src/lib/canStartServiceInCounty.test.ts && tsx src/lib/cronAuth.test.ts && tsx src/lib/apiRateLimit.test.ts && tsx src/lib/mapboxToken.test.ts && tsx src/lib/paymentProviders.webhook.test.ts && tsx src/lib/sentryProbe.test.ts && tsx src/lib/platformScopeResolver.clientScope.test.ts && tsx src/lib/platformRouteGuards.test.ts && tsx src/lib/marketplaceLaunchControl.test.ts && tsx src/lib/adminPlatformLaunchPatch.test.ts",
+    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && tsx src/lib/platformLaunchControl.test.ts && tsx src/lib/platformCountryInference.test.ts && tsx src/lib/platformScopeResolver.test.ts && tsx src/lib/platformCountyScope.test.ts && tsx src/lib/canStartServiceInCounty.test.ts && tsx src/lib/cronAuth.test.ts && tsx src/lib/apiRateLimit.test.ts && tsx src/lib/mapboxToken.test.ts && tsx src/lib/mapboxRoute.test.ts && tsx src/lib/paymentProviders.webhook.test.ts && tsx src/lib/sentryProbe.test.ts && tsx src/lib/platformScopeResolver.clientScope.test.ts && tsx src/lib/platformRouteGuards.test.ts && tsx src/lib/marketplaceLaunchControl.test.ts && tsx src/lib/adminPlatformLaunchPatch.test.ts",
     "sentry:probe": "tsx scripts/sentry-probe.ts",
     "test:delivery-pricing-v2": "tsx src/lib/deliveryPricingEngine/deliveryPricingEngine.test.ts",
     "test:marketplace-checkout": "tsx src/lib/marketplaceCheckout.test.ts",

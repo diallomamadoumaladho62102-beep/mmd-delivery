@@ -184,7 +184,7 @@ async function main() {
   }
   if (easVars.has("MAPBOX_DOWNLOADS_TOKEN")) {
     report.risks.push(
-      "Legacy duplicate MAPBOX_DOWNLOADS_TOKEN also set (harmless if same as RNMAPBOX_MAPS_DOWNLOAD_TOKEN)"
+      "Remove legacy MAPBOX_DOWNLOADS_TOKEN from EAS — use RNMAPBOX_MAPS_DOWNLOAD_TOKEN only (see docs/production/MAPBOX.md)"
     );
   }
 

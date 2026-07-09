@@ -1,3 +1,5 @@
+import { getServerMapboxToken } from "@/lib/mapboxToken";
+
 const MAPBOX_DIRECTIONS_URL =
   "https://api.mapbox.com/directions/v5/mapbox/driving";
 
@@ -6,37 +8,41 @@ type LatLng = {
   lng: number;
 };
 
+/**
+ * Server-only Mapbox Directions for paid food/errand quotes.
+ * Uses MAPBOX_ACCESS_TOKEN only — never the public client token.
+ * Fail-closed: throws when token missing or Directions fails (no Haversine).
+ */
 export async function getDistanceAndEta(
   pickup: LatLng,
   dropoff: LatLng
 ): Promise<{ distanceMiles: number; etaMinutes: number }> {
-  const accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-  if (!accessToken) {
-    throw new Error("NEXT_PUBLIC_MAPBOX_TOKEN manquant");
+  let accessToken: string;
+  try {
+    accessToken = getServerMapboxToken();
+  } catch {
+    throw new Error("MAPBOX_ACCESS_TOKEN missing");
   }
 
-  // Format : lng,lat;lng,lat (ordre important !)
   const coords = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
-
-  const url = `${MAPBOX_DIRECTIONS_URL}/${coords}?alternatives=false&geometries=geojson&overview=simplified&access_token=${accessToken}`;
+  const url = `${MAPBOX_DIRECTIONS_URL}/${coords}?alternatives=false&geometries=geojson&overview=simplified&access_token=${encodeURIComponent(accessToken)}`;
 
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`Mapbox error: ${res.status}`);
+    throw new Error(`Mapbox Directions unavailable (${res.status})`);
   }
 
-  const json = await res.json();
+  const json = (await res.json()) as {
+    routes?: Array<{ distance?: number; duration?: number }>;
+  };
 
   const route = json.routes?.[0];
-  if (!route) {
-    throw new Error("Aucun itinéraire trouvé par Mapbox");
+  if (!route || !Number.isFinite(route.distance) || !Number.isFinite(route.duration)) {
+    throw new Error("Mapbox Directions returned no usable route");
   }
 
-  const distanceMeters = route.distance as number; // en mètres
-  const durationSeconds = route.duration as number; // en secondes
-
-  const distanceMiles = Number((distanceMeters / 1609.34).toFixed(2));
-  const etaMinutes = Math.round(durationSeconds / 60);
+  const distanceMiles = Number((Number(route.distance) / 1609.34).toFixed(2));
+  const etaMinutes = Math.round(Number(route.duration) / 60);
 
   return { distanceMiles, etaMinutes };
 }

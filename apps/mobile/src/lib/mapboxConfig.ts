@@ -1,9 +1,9 @@
 import type MapboxGL from "@rnmapbox/maps";
 import Constants from "expo-constants";
 
+/** Canonical runtime token: EXPO_PUBLIC_MAPBOX_TOKEN (env or app.config extra). */
 const MAPBOX_TOKEN =
-  process.env.EXPO_PUBLIC_MAPBOX_TOKEN ||
-  process.env.MAPBOX_TOKEN ||
+  String(process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "").trim() ||
   String(
     (Constants.expoConfig?.extra as Record<string, unknown> | undefined)
       ?.EXPO_PUBLIC_MAPBOX_TOKEN ?? "",

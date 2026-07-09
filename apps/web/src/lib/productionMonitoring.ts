@@ -168,7 +168,7 @@ export async function runProductionMonitoringChecks(
   const mapboxPublic = Boolean(
     String(process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "").trim() ||
       String(process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "").trim()
-  );
+  ); // public maps only — paid routing uses MAPBOX_ACCESS_TOKEN
   checks.push({
     name: "mapbox_tokens",
     ok: mapboxServer && mapboxPublic,

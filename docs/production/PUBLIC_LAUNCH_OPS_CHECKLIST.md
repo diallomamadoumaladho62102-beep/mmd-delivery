@@ -49,7 +49,7 @@ Legend: **CODE** = verified in repo/CI · **OPS** = manual external action requi
 | C7 | `STRIPE_TRANSFERS_ADMIN_SECRET` | Required for payouts |
 | C8 | Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM` |
 | C9 | Push | `PUSH_API_KEY` |
-| C10 | Mapbox | `NEXT_PUBLIC_MAPBOX_TOKEN`, `MAPBOX_ACCESS_TOKEN` |
+| C10 | Mapbox | `MAPBOX_ACCESS_TOKEN` (server), `NEXT_PUBLIC_MAPBOX_TOKEN` (web maps). See `docs/production/MAPBOX.md` |
 | C11 | Health check | `GET /api/health` → 200 |
 | C12 | Stripe webhook health | `GET /api/health/stripe-webhook` with `Authorization: Bearer $CRON_SECRET` |
 | C13 | Auth policy (optional) | `REQUIRE_EMAIL_VERIFICATION=true` after Supabase email confirm enabled |

@@ -38,8 +38,6 @@ type CartItem = {
   quantity: number;
 };
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-
 function round2(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -57,73 +55,69 @@ function getItemPrice(item: RestaurantItem): number {
   return item.price_cents != null ? item.price_cents / 100 : 0;
 }
 
-async function geocodeAddress(address: string) {
-  if (!MAPBOX_TOKEN) {
-    throw new Error("Token Mapbox manquant (NEXT_PUBLIC_MAPBOX_TOKEN).");
-  }
-
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-    address
-  )}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
-
-  const res = await fetch(url);
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Mapbox geocoding HTTP ${res.status}. ${text || "Vérifie le token ou les restrictions."}`
-    );
-  }
-
-  const json = await res.json();
-  const feature = json.features?.[0];
-
-  if (!feature || !Array.isArray(feature.center) || feature.center.length < 2) {
-    throw new Error("Adresse introuvable.");
-  }
-
-  const [lon, lat] = feature.center;
-
-  if (!isFiniteNumber(lat) || !isFiniteNumber(lon)) {
-    throw new Error("Coordonnées Mapbox invalides.");
-  }
-
-  return { lat, lon };
-}
-
+/**
+ * Preview distance/ETA via authenticated server Mapbox Directions.
+ * Fail-closed: no Haversine / client-side Mapbox token for pricing preview.
+ */
 async function getDistanceAndDuration(
   pickupAddress: string,
   dropoffAddress: string
 ) {
-  const pickupPoint = await geocodeAddress(pickupAddress);
-  const dropoffPoint = await geocodeAddress(dropoffAddress);
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.access_token) {
+    throw new Error("Session requise pour calculer la livraison.");
+  }
 
-  const R = 3958.8;
-  const toRad = (x: number) => (x * Math.PI) / 180;
+  const res = await fetch("/api/mapbox/compute-distance", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${data.session.access_token}`,
+    },
+    body: JSON.stringify({
+      pickupAddress,
+      dropoffAddress,
+    }),
+  });
 
-  const dLat = toRad(dropoffPoint.lat - pickupPoint.lat);
-  const dLon = toRad(dropoffPoint.lon - pickupPoint.lon);
+  const json = (await res.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    message?: string;
+    distanceMiles?: number;
+    etaMinutes?: number;
+    pickupLat?: number;
+    pickupLng?: number;
+    dropoffLat?: number;
+    dropoffLng?: number;
+  };
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(pickupPoint.lat)) *
-      Math.cos(toRad(dropoffPoint.lat)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+  if (!res.ok || json.ok !== true) {
+    throw new Error(
+      json.message ||
+        json.error ||
+        `Impossible de calculer l'itinéraire (HTTP ${res.status}).`
+    );
+  }
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distanceMiles = R * c;
-
-  const avgSpeedMph = 18;
-  const durationMinutes = (distanceMiles / avgSpeedMph) * 60;
+  if (
+    !isFiniteNumber(json.distanceMiles) ||
+    !isFiniteNumber(json.etaMinutes) ||
+    !isFiniteNumber(json.pickupLat) ||
+    !isFiniteNumber(json.pickupLng) ||
+    !isFiniteNumber(json.dropoffLat) ||
+    !isFiniteNumber(json.dropoffLng)
+  ) {
+    throw new Error("Réponse Mapbox serveur incomplète.");
+  }
 
   return {
-    distanceMiles,
-    durationMinutes,
-    pickupLat: pickupPoint.lat,
-    pickupLon: pickupPoint.lon,
-    dropoffLat: dropoffPoint.lat,
-    dropoffLon: dropoffPoint.lon,
+    distanceMiles: json.distanceMiles,
+    durationMinutes: json.etaMinutes,
+    pickupLat: json.pickupLat,
+    pickupLon: json.pickupLng,
+    dropoffLat: json.dropoffLat,
+    dropoffLon: json.dropoffLng,
   };
 }
 

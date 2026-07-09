@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useDriverLocation } from "@/hooks/useDriverLocation";
+import { getPublicMapboxToken } from "@/lib/mapboxToken";
 
 // Import dynamique de react-map-gl (sinon problème SSR avec Next)
 const Map = dynamic(
@@ -22,8 +23,7 @@ type Props = {
 export function DriverLiveMap({ driverId }: Props) {
   const { location, loading, error } = useDriverLocation(driverId);
 
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim()
-    || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim();
+  const token = getPublicMapboxToken() ?? "";
 
   // 🗺️ état de la vue de la carte (centrage + zoom)
   const [viewState, setViewState] = useState({

@@ -3,6 +3,7 @@
 import Map, { Marker } from 'react-map-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useEffect, useState } from 'react';
+import { getPublicMapboxToken } from '@/lib/mapboxToken';
 
 type Props = { lat: number; lng: number };
 
@@ -21,9 +22,9 @@ export default function LiveMap({ lat, lng }: Props) {
     <div className="h-64 w-full rounded-xl overflow-hidden border">
       <Map
         {...viewState}
-        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+        mapboxAccessToken={getPublicMapboxToken() ?? undefined}
         onMove={(e) => setViewState(e.viewState)}
-        mapStyle="mapbox://styles/mapbox/streets-v11"
+        mapStyle="mapbox://styles/mapbox/streets-v12"
       >
         <Marker latitude={lat} longitude={lng} color="red" />
       </Map>
