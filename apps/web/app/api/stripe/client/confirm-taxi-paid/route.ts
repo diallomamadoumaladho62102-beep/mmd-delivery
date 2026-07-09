@@ -14,6 +14,7 @@ import {
   verifyStripePaidMatchesTaxiRide,
 } from "@/lib/verifyStripePaidTaxi";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -145,6 +146,23 @@ export async function POST(req: NextRequest) {
     }
 
     if (normalizeStatus(ride.payment_status) === "paid") {
+      const paymentIntentIdForBridge =
+        String(ride.stripe_payment_intent_id ?? "").trim() ||
+        (await stripePaymentLooksPaid(ride)).payment_intent_id;
+      if (paymentIntentIdForBridge) {
+        const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(
+          supabaseAdmin,
+          {
+            paymentIntentId: paymentIntentIdForBridge,
+            taxiRide: ride,
+            source: "confirm-taxi-paid:already_paid",
+          }
+        );
+        if (walletBridge.ok === false) {
+          return taxiJson({ error: "wallet_ledger_bridge_failed" }, 500);
+        }
+      }
+
       return taxiJson({
         ok: true,
         already: true,
@@ -185,6 +203,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const paymentIntentIdForBridge =
+      amountCheck.payment_intent_id ??
+      stripeCheck.payment_intent_id ??
+      ride.stripe_payment_intent_id;
+
+    if (paymentIntentIdForBridge) {
+      const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(
+        supabaseAdmin,
+        {
+          paymentIntentId: paymentIntentIdForBridge,
+          taxiRide: ride,
+          source: "confirm-taxi-paid",
+        }
+      );
+      if (walletBridge.ok === false) {
+        return taxiJson({ error: "wallet_ledger_bridge_failed" }, 500);
+      }
+    }
+
     const oldStatus = String(ride.status ?? "");
 
     const { data: markResult, error: markError } = await supabaseAdmin.rpc(
@@ -192,10 +229,7 @@ export async function POST(req: NextRequest) {
       {
         p_ride_id: taxiRideId,
         p_session_id: amountCheck.session_id ?? ride.stripe_session_id,
-        p_payment_intent_id:
-          amountCheck.payment_intent_id ??
-          stripeCheck.payment_intent_id ??
-          ride.stripe_payment_intent_id,
+        p_payment_intent_id: paymentIntentIdForBridge,
       }
     );
 

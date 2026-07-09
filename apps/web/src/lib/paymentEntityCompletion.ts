@@ -97,11 +97,24 @@ async function completeDeliveryRequestPayment(
     if (error) return { ok: false, error: error.message };
   }
 
-  await syncPaidDeliveryRequestOrder(
+  const syncResult = await syncPaidDeliveryRequestOrder(
     supabaseAdmin,
     deliveryRequestId,
     transaction.user_id
   );
+  if (syncResult.ok === false) {
+    return { ok: false, error: syncResult.error };
+  }
+
+  const commissions = await ensureOrderCommissionsReady(
+    supabaseAdmin,
+    syncResult.orderId,
+    `local-payment:${transaction.provider}:delivery_request`
+  );
+  if (commissions.ok === false) {
+    return { ok: false, error: commissions.error };
+  }
+
   const origin = getDispatchSiteOrigin();
   if (origin) {
     scheduleDeliveryRequestDispatch({ origin, deliveryRequestId });
