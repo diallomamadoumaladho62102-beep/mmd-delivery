@@ -79,7 +79,8 @@ export function classifyApiPath(pathname: string): ApiRateTier {
     p.startsWith("/api/cron/") ||
     p === "/api/admin/process-payouts" ||
     p === "/api/orders/expire-unpaid" ||
-    p === "/api/monitoring"
+    p === "/api/monitoring" ||
+    p.startsWith("/api/monitoring/")
   ) {
     return "exempt";
   }
