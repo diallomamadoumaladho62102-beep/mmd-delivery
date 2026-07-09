@@ -4,6 +4,7 @@ import {
   isMarketplaceCheckoutLiveEnvEnabled,
   MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
 } from "@/lib/marketplaceLiveCheckout";
+import { assertMarketplaceLiveMoneyAllowed } from "@/lib/marketplaceLaunchControl";
 import { createMarketplaceLiveCheckoutSession } from "@/lib/marketplaceLiveCheckoutService";
 import { requireMarketplaceClientAuth } from "@/lib/marketplaceApiAuth";
 
@@ -15,6 +16,19 @@ type LiveCheckoutBody = {
 };
 
 export async function POST(req: NextRequest) {
+  const e2eGate = assertMarketplaceLiveMoneyAllowed();
+  if (e2eGate.ok === false) {
+    return mmdLocationJson(
+      {
+        ok: false,
+        error: e2eGate.error,
+        live_checkout_enabled: false,
+        message: e2eGate.message,
+      },
+      403
+    );
+  }
+
   const auth = await requireMarketplaceClientAuth(req);
   if (auth.ok === false) return auth.response;
 
@@ -87,11 +101,18 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const envEnabled = isMarketplaceCheckoutLiveEnvEnabled();
+  const e2eGate = assertMarketplaceLiveMoneyAllowed();
+  const envEnabled =
+    e2eGate.ok && isMarketplaceCheckoutLiveEnvEnabled();
   return mmdLocationJson({
     ok: true,
     live_checkout_env_enabled: envEnabled,
     live_checkout_enabled: envEnabled,
-    message: envEnabled ? null : MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
+    seller_payouts_e2e_ready: e2eGate.ok,
+    message: envEnabled
+      ? null
+      : e2eGate.ok === false
+        ? e2eGate.message
+        : MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
   });
 }

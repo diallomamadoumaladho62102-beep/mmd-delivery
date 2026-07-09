@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { computeDeliveryPricing } from "@/lib/deliveryPricing";
 import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine";
 import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
+import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
 
-// ✅ On accepte MAPBOX_ACCESS_TOKEN ou NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
-const MAPBOX_TOKEN =
-  process.env.MAPBOX_ACCESS_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-
-if (!MAPBOX_TOKEN) {
-  console.warn(
-    "⚠️ Token Mapbox manquant (MAPBOX_ACCESS_TOKEN ou NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN)."
-  );
+function requireMapboxToken(): string {
+  const token = tryGetServerMapboxToken();
+  if (!token) {
+    throw new Error("MAPBOX_ACCESS_TOKEN missing");
+  }
+  return token;
 }
 
 // ✅ FIX TS: on évite le union (A | B) qui casse Partial<BodyShape>
@@ -29,7 +28,7 @@ type BodyShape = {
 };
 
 async function geocodeAddress(address: string) {
-  if (!MAPBOX_TOKEN) throw new Error("Token Mapbox manquant (env serveur)");
+  const MAPBOX_TOKEN = requireMapboxToken();
 
   const url =
     "https://api.mapbox.com/geocoding/v5/mapbox.places/" +
@@ -61,7 +60,7 @@ async function getDistanceAndDuration(
   dropoffLat: number,
   dropoffLng: number
 ) {
-  if (!MAPBOX_TOKEN) throw new Error("Token Mapbox manquant (env serveur)");
+  const MAPBOX_TOKEN = requireMapboxToken();
 
   const url = new URL(
     `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupLng},${pickupLat};${dropoffLng},${dropoffLat}`

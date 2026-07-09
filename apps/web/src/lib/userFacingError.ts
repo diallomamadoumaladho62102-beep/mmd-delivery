@@ -1,3 +1,5 @@
+import { captureProductionException } from "@/lib/sentryCapture";
+
 const TECHNICAL_PATTERNS: RegExp[] = [
   /unrecognized format\(\)/i,
   /postgres/i,
@@ -112,4 +114,5 @@ function mapKnownErrorCode(code: string, message: string): string | null {
 
 export function logTechnicalError(scope: string, error: unknown, metadata?: Record<string, unknown>) {
   console.error(`[${scope}]`, error, metadata ?? {});
+  captureProductionException(scope, error, metadata);
 }

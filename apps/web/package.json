@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint src/lib app/api",
     "test:rbac": "tsx src/lib/adminRbac.test.ts && tsx src/lib/adminOutbound.test.ts",
-    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && tsx src/lib/platformLaunchControl.test.ts && tsx src/lib/platformCountryInference.test.ts && tsx src/lib/platformScopeResolver.test.ts && tsx src/lib/platformCountyScope.test.ts && tsx src/lib/canStartServiceInCounty.test.ts && tsx src/lib/cronAuth.test.ts && tsx src/lib/platformScopeResolver.clientScope.test.ts && tsx src/lib/platformRouteGuards.test.ts && tsx src/lib/marketplaceLaunchControl.test.ts && tsx src/lib/adminPlatformLaunchPatch.test.ts",
+    "test:platform-launch": "node scripts/smoke-platform-launch.mjs && tsx src/lib/platformLaunchControl.test.ts && tsx src/lib/platformCountryInference.test.ts && tsx src/lib/platformScopeResolver.test.ts && tsx src/lib/platformCountyScope.test.ts && tsx src/lib/canStartServiceInCounty.test.ts && tsx src/lib/cronAuth.test.ts && tsx src/lib/apiRateLimit.test.ts && tsx src/lib/mapboxToken.test.ts && tsx src/lib/paymentProviders.webhook.test.ts && tsx src/lib/platformScopeResolver.clientScope.test.ts && tsx src/lib/platformRouteGuards.test.ts && tsx src/lib/marketplaceLaunchControl.test.ts && tsx src/lib/adminPlatformLaunchPatch.test.ts",
     "test:delivery-pricing-v2": "tsx src/lib/deliveryPricingEngine/deliveryPricingEngine.test.ts",
     "test:marketplace-checkout": "tsx src/lib/marketplaceCheckout.test.ts",
     "test:service-fee": "tsx src/lib/clientServiceFee.test.ts",
@@ -30,6 +30,7 @@
     "test:ci": "pnpm test:rbac && tsx src/lib/authValidation.test.ts && tsx src/lib/createPaymentIntentIdempotency.test.ts && tsx src/lib/userFacingError.test.ts && tsx src/lib/taxiMapbox.test.ts && tsx src/lib/driverIdentityPhone.test.ts && tsx src/lib/adminStaffLogin.test.ts && tsx src/lib/driverIdentityDisplay.test.ts && tsx src/lib/driverIdentityOps.test.ts && tsx src/lib/driverIdentityTrustScore.test.ts && tsx src/lib/driverIdentityAiInsight.test.ts && tsx src/lib/transactionalOutbound.test.ts && tsx src/lib/driverLocationsRls.test.ts && tsx src/lib/driverIdentityRiskEngine.test.ts && tsx src/lib/driverIdentityRls.test.ts && tsx src/lib/restaurantOrderAutomation.test.ts && tsx src/lib/vehicleCategoryEligibility.test.ts && tsx src/lib/driverServiceDispatch.test.ts && tsx src/lib/driverVehicleSecurity.test.ts && tsx src/lib/taxiInternationalFinalization.test.ts && tsx src/lib/taxiClientPreferences.test.ts && tsx src/lib/taxiCityDetection.test.ts && tsx src/lib/taxiActiveRideCompliance.test.ts && tsx src/lib/rideSafetyRecording.test.ts && tsx src/lib/productionTrustBoundary.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/stripeWebhookChargeRefunded.test.ts && tsx src/lib/stripeWebhookPaymentFailure.test.ts && tsx src/lib/deliveryProofUrl.test.ts && tsx src/lib/profilesSignupRoleGuard.test.ts && pnpm test:platform-launch && pnpm test:delivery-pricing-v2 && pnpm test:service-fee && pnpm test:payment-routing && pnpm test:payout-routing && pnpm test:payout-providers && pnpm test:wait-fee && pnpm test:wait-timer && pnpm test:admin-payment-methods && pnpm test:admin-payout-methods && node scripts/store-submission-readiness.mjs && tsx src/lib/deepLinkWellKnown.test.ts"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.64.0",
     "@stripe/stripe-js": "4.10.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "2.46.1",
@@ -48,16 +49,16 @@
     "tailwindcss": "3.4.10"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/node": "20.14.11",
     "@types/pdfkit": "^0.17.5",
     "@types/react": "19.1.17",
     "@types/react-dom": "19.1.9",
+    "@typescript-eslint/eslint-plugin": "^8.57.2",
+    "@typescript-eslint/parser": "^8.57.2",
     "autoprefixer": "10.4.20",
     "baseline-browser-mapping": "^2.10.0",
     "cross-env": "^10.1.0",
-    "@eslint/js": "^9.39.4",
-    "@typescript-eslint/eslint-plugin": "^8.57.2",
-    "@typescript-eslint/parser": "^8.57.2",
     "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^4.4.4",
     "postcss": "8.4.47",

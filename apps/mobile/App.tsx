@@ -13,6 +13,7 @@ import { setupNotifications, registerUserPushToken } from "./src/lib/notificatio
 import { mmdAudio } from "./src/lib/mmdAudio";
 import { syncLocaleForRole } from "./src/i18n";
 import { logStartupProbe, reportBootError } from "./src/lib/startupProbe";
+import { initMobileSentry, wrapWithSentry } from "./src/lib/sentry";
 
 type Role = "client" | "driver" | "restaurant";
 
@@ -69,7 +70,9 @@ function Splash(): React.JSX.Element {
   );
 }
 
-export default function App(): React.JSX.Element {
+function App(): React.JSX.Element {
+  initMobileSentry();
+
   const [session, setSession] = useState<SessionLike>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
@@ -210,3 +213,5 @@ export default function App(): React.JSX.Element {
 
   return <AppRootShell initialRouteName={initialRouteName} navKey={navKey} />;
 }
+
+export default wrapWithSentry(App);

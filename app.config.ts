@@ -77,6 +77,7 @@ export default ({ config }) => {
   );
   const EXPO_PUBLIC_MAPBOX_TOKEN = cleanEnv(env.EXPO_PUBLIC_MAPBOX_TOKEN);
   const EXPO_PUBLIC_STRIPE_PK = cleanEnv(env.EXPO_PUBLIC_STRIPE_PK);
+  const EXPO_PUBLIC_SENTRY_DSN = cleanEnv(env.EXPO_PUBLIC_SENTRY_DSN);
   const RNMAPBOX_MAPS_DOWNLOAD_TOKEN = cleanEnv(
     env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN
   );
@@ -147,6 +148,13 @@ export default ({ config }) => {
       "expo-location",
       "expo-task-manager",
       "expo-web-browser",
+      [
+        "@sentry/react-native/expo",
+        {
+          organization: cleanEnv(env.SENTRY_ORG) || "mmd-delivery",
+          project: cleanEnv(env.SENTRY_PROJECT_MOBILE) || "mmd-mobile",
+        },
+      ],
     ],
 
     updates: {
@@ -241,6 +249,7 @@ export default ({ config }) => {
       EXPO_PUBLIC_SUPABASE_ANON_KEY,
       EXPO_PUBLIC_MAPBOX_TOKEN,
       EXPO_PUBLIC_STRIPE_PK,
+      EXPO_PUBLIC_SENTRY_DSN,
       EXPO_PUBLIC_LEGAL_PRIVACY_URL,
       EXPO_PUBLIC_LEGAL_TERMS_URL,
       EXPO_PUBLIC_SUPPORT_URL,

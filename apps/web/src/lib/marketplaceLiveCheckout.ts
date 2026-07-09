@@ -1,10 +1,20 @@
 export {
   isMarketplaceCheckoutLiveEnvEnabled,
   isMarketplaceCheckoutLiveEnabledForConfig,
+  assertMarketplaceLiveMoneyAllowed,
+  isMarketplaceSellerPayoutsE2EReady,
+} from "@/lib/marketplaceLaunchControl";
+import {
+  isMarketplaceCheckoutLiveEnvEnabled,
+  isMarketplaceSellerPayoutsE2EReady,
 } from "@/lib/marketplaceLaunchControl";
 
+/** Env-only live flag AND seller payouts E2E readiness. */
 export function isMarketplaceCheckoutLiveEnabled(): boolean {
-  return process.env.MARKETPLACE_CHECKOUT_LIVE_ENABLED === "true";
+  return (
+    isMarketplaceSellerPayoutsE2EReady() &&
+    isMarketplaceCheckoutLiveEnvEnabled()
+  );
 }
 
 export const MARKETPLACE_CHECKOUT_LIVE_COMING_SOON =

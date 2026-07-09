@@ -2,6 +2,7 @@ import {
   DEFAULT_TAXI_COUNTRY_CODE,
   normalizeTaxiCountryCode,
 } from "@/lib/taxiCountries";
+import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
 
 export const TAXI_SUPPORTED_COUNTRY_CODES = new Set([
   "US",
@@ -48,7 +49,7 @@ export async function detectTaxiCountryFromCoords(
   const longitude = Number(lng);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
-  const token = process.env.MAPBOX_ACCESS_TOKEN;
+  const token = tryGetServerMapboxToken();
   if (!token) return null;
 
   const url =

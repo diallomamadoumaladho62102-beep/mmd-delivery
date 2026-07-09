@@ -1,43 +1,25 @@
 import { NextRequest } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
+import { checkRateLimit, getRequestClientIp } from "@/lib/apiRateLimit";
 
 const RATE_WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_USER = 60;
 const MAX_REQUESTS_PER_IP = 20;
 
-type RateBucket = Map<string, number[]>;
-
-const globalForRateLimit = globalThis as typeof globalThis & {
-  __mmdMapboxRateLimit?: { users: RateBucket; ips: RateBucket };
-};
-
-function getRateLimitStores(): { users: RateBucket; ips: RateBucket } {
-  if (!globalForRateLimit.__mmdMapboxRateLimit) {
-    globalForRateLimit.__mmdMapboxRateLimit = {
-      users: new Map(),
-      ips: new Map(),
-    };
-  }
-  return globalForRateLimit.__mmdMapboxRateLimit;
-}
-
-function pruneAndCount(store: RateBucket, key: string, now: number): number {
-  const windowStart = now - RATE_WINDOW_MS;
-  const existing = store.get(key) ?? [];
-  const pruned = existing.filter((ts) => ts >= windowStart);
-  pruned.push(now);
-  store.set(key, pruned);
-  return pruned.length;
-}
-
 function isRateLimited(userId: string, ip: string): boolean {
-  const now = Date.now();
-  const { users, ips } = getRateLimitStores();
-  const userCount = pruneAndCount(users, userId, now);
-  const ipCount = pruneAndCount(ips, ip, now);
-  return (
-    userCount > MAX_REQUESTS_PER_USER || ipCount > MAX_REQUESTS_PER_IP
-  );
+  const user = checkRateLimit({
+    namespace: "mapbox:user",
+    key: userId,
+    limit: MAX_REQUESTS_PER_USER,
+    windowMs: RATE_WINDOW_MS,
+  });
+  const ipLimit = checkRateLimit({
+    namespace: "mapbox:ip",
+    key: ip,
+    limit: MAX_REQUESTS_PER_IP,
+    windowMs: RATE_WINDOW_MS,
+  });
+  return user.limited || ipLimit.limited;
 }
 
 function extractBearerToken(req: NextRequest): string {
@@ -45,15 +27,6 @@ function extractBearerToken(req: NextRequest): string {
     req.headers.get("authorization") || req.headers.get("Authorization") || "";
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() ?? "";
-}
-
-function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return req.headers.get("x-real-ip")?.trim() || "unknown";
 }
 
 async function getUserFromBearerToken(token: string): Promise<User | null> {
@@ -111,7 +84,7 @@ export async function assertMapboxComputeDistanceAccess(
     return { ok: false, status: 401, error: "Invalid token" };
   }
 
-  const ip = getClientIp(req);
+  const ip = getRequestClientIp(req.headers);
 
   if (isRateLimited(user.id, ip)) {
     return { ok: false, status: 429, error: "Too many requests" };

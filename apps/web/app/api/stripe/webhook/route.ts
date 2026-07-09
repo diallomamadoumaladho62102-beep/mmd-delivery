@@ -27,6 +27,7 @@ import {
   handleCheckoutSessionExpiredEvent,
   handlePaymentIntentFailedEvent,
 } from "@/lib/stripeWebhookPaymentFailure";
+import { recordProductionCriticalError } from "@/lib/productionMonitoring";
 import {
   getStripeAmountFromCheckoutSession as getTaxiCheckoutAmountCents,
   handleTaxiStripePayment,
@@ -451,6 +452,7 @@ function walletBridgeFailureResponse(
   error: string,
 ) {
   console.error("[webhook] wallet bridge failed", { ...context, error });
+  recordProductionCriticalError("stripe_webhook_wallet_bridge", error, context);
   return json(
     {
       received: true,

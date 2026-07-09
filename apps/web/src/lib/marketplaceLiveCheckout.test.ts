@@ -24,11 +24,18 @@ const originalLiveFlag = process.env.MARKETPLACE_CHECKOUT_LIVE_ENABLED;
 async function main() {
   await test("live checkout flag defaults to disabled", () => {
     delete process.env.MARKETPLACE_CHECKOUT_LIVE_ENABLED;
+    delete process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY;
     assert.equal(isMarketplaceCheckoutLiveEnabled(), false);
     assert.equal(
       MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
       "Marketplace live checkout is not enabled yet"
     );
+  });
+
+  await test("live checkout stays OFF without seller payouts E2E even if env live", () => {
+    process.env.MARKETPLACE_CHECKOUT_LIVE_ENABLED = "true";
+    delete process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY;
+    assert.equal(isMarketplaceCheckoutLiveEnabled(), false);
   });
 
   await test("marketplace stripe metadata parser recognizes seller_order_id", () => {

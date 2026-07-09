@@ -1,7 +1,5 @@
-const MAPBOX_TOKEN =
-  process.env.MAPBOX_ACCESS_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
 
-const EARTH_RADIUS_MILES = 3958.8;
 export const ROUTE_UNAVAILABLE = "route_unavailable";
 
 export type TaxiRouteInput = {
@@ -55,28 +53,10 @@ export function isValidCoordinate(lat: unknown, lng: unknown): boolean {
   return true;
 }
 
-function toRadians(value: number) {
-  return (value * Math.PI) / 180;
-}
-
-function estimateHaversineRoute(
-  pickupLat: number,
-  pickupLng: number,
-  dropoffLat: number,
-  dropoffLng: number,
-) {
-  const dLat = toRadians(dropoffLat - pickupLat);
-  const dLng = toRadians(dropoffLng - pickupLng);
-  const lat1 = toRadians(pickupLat);
-  const lat2 = toRadians(dropoffLat);
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  const distanceMiles = EARTH_RADIUS_MILES * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const durationMinutes = Math.max(5, (distanceMiles / 25) * 60);
-
-  return { distanceMiles, durationMinutes, fallback: true as const };
+function requireMapboxToken(): string {
+  const token = tryGetServerMapboxToken();
+  if (!token) throw new Error(ROUTE_UNAVAILABLE);
+  return token;
 }
 
 function buildCoordinatePath(coordinates: Array<{ lat: number; lng: number }>) {
@@ -94,7 +74,7 @@ function buildCoordinatePath(coordinates: Array<{ lat: number; lng: number }>) {
 }
 
 async function geocodeAddress(address: string) {
-  if (!MAPBOX_TOKEN) throw new Error(ROUTE_UNAVAILABLE);
+  const MAPBOX_TOKEN = requireMapboxToken();
 
   const trimmed = String(address ?? "").trim();
   if (trimmed.length < 3) throw new Error(ROUTE_UNAVAILABLE);
@@ -126,10 +106,14 @@ async function geocodeAddress(address: string) {
   return { lat, lng };
 }
 
-async function getMultiLegDistanceAndDuration(
+/**
+ * Paid taxi quotes MUST use Mapbox Directions. Haversine fallback is forbidden —
+ * under-quoting on API failure is a production safety/revenue risk.
+ */
+export async function getMultiLegDistanceAndDuration(
   coordinates: { lat: number; lng: number }[],
 ) {
-  if (!MAPBOX_TOKEN) throw new Error(ROUTE_UNAVAILABLE);
+  const MAPBOX_TOKEN = requireMapboxToken();
   if (coordinates.length < 2) throw new Error(ROUTE_UNAVAILABLE);
 
   const coordPath = buildCoordinatePath(coordinates);
@@ -144,36 +128,31 @@ async function getMultiLegDistanceAndDuration(
   });
 
   if (!res.ok) {
-    console.error("[taxiMapbox] directions failed", {
+    console.error("[taxiMapbox] directions failed (fail-closed)", {
       status: res.status,
       coordinates: coordinates.length,
     });
-    return estimateHaversineRoute(
-      coordinates[0].lat,
-      coordinates[0].lng,
-      coordinates[coordinates.length - 1].lat,
-      coordinates[coordinates.length - 1].lng,
-    );
+    throw new Error(ROUTE_UNAVAILABLE);
   }
 
   const json = await res.json();
   const route = json.routes?.[0];
   if (!route) {
-    console.error("[taxiMapbox] directions empty route", { coordinates: coordinates.length });
-    return estimateHaversineRoute(
-      coordinates[0].lat,
-      coordinates[0].lng,
-      coordinates[coordinates.length - 1].lat,
-      coordinates[coordinates.length - 1].lng,
-    );
+    console.error("[taxiMapbox] directions empty route (fail-closed)", {
+      coordinates: coordinates.length,
+    });
+    throw new Error(ROUTE_UNAVAILABLE);
   }
 
   const distanceMeters = Number(route.distance ?? 0);
   const durationSeconds = Number(route.duration ?? 0);
+  if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
+    throw new Error(ROUTE_UNAVAILABLE);
+  }
 
   return {
     distanceMiles: distanceMeters / 1609.34,
-    durationMinutes: durationSeconds / 60,
+    durationMinutes: Math.max(1, durationSeconds / 60),
     fallback: false as const,
   };
 }
@@ -191,6 +170,9 @@ async function getDistanceAndDuration(
 }
 
 export async function resolveTaxiRoute(input: TaxiRouteInput): Promise<TaxiRouteResult> {
+  // Prefer explicit coordinates — no early token probe needed.
+  void 0;
+
   let pickupLat = input.pickupLat;
   let pickupLng = input.pickupLng;
   let dropoffLat = input.dropoffLat;

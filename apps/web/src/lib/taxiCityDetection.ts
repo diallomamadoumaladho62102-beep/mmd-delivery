@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
+import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
 
 export function normalizeTaxiCityName(city: unknown): string | null {
   const normalized = String(city ?? "")
@@ -25,7 +26,7 @@ export async function detectTaxiCityFromCoords(
   const longitude = Number(lng);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
-  const token = process.env.MAPBOX_ACCESS_TOKEN;
+  const token = tryGetServerMapboxToken();
   if (!token) return null;
 
   const url =

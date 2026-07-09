@@ -14,6 +14,7 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
 import { recordSuccessfulStripeOrderPayout } from "@/lib/payoutExecutionBridge";
+import { recordProductionCriticalError } from "@/lib/productionMonitoring";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1259,6 +1260,7 @@ export async function POST(req: NextRequest) {
     console.error("[transfers/run] fatal error", {
       message: getErrorMessage(e),
     });
+    recordProductionCriticalError("stripe_transfers_run", getErrorMessage(e));
 
     return json({ error: "Internal server error" }, 500);
   }

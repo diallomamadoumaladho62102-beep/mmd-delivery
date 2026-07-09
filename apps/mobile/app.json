@@ -57,7 +57,14 @@
           "RNMapboxMapsDownloadToken": "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "mmd-delivery",
+          "project": "mmd-mobile"
+        }
+      ]
     ],
     "android": {
       "package": "com.maladho2025.mmddelivery",
@@ -74,11 +81,34 @@
         "CAMERA",
         "READ_MEDIA_IMAGES",
         "READ_EXTERNAL_STORAGE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "www.mmddelivery.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "mmddelivery.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "ios": {
       "bundleIdentifier": "com.maladho2025.mmddelivery",
       "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:www.mmddelivery.com",
+        "applinks:mmddelivery.com"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "MMD Delivery uses your location to show nearby restaurants, set pickup and drop-off points, and help drivers navigate during active deliveries and taxi rides.",

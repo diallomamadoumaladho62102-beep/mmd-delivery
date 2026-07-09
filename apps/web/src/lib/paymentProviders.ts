@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type {
   ProviderInitiateInput,
   ProviderInitiateResult,
@@ -15,6 +16,25 @@ export type PaymentProviderAdapter = {
 
 function env(name: string): string {
   return String(process.env[name] ?? "").trim();
+}
+
+function timingSafeEqualUtf8(a: string, b: string): boolean {
+  const aBytes = new TextEncoder().encode(a);
+  const bBytes = new TextEncoder().encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i += 1) diff |= aBytes[i]! ^ bBytes[i]!;
+  return diff === 0;
+}
+
+/** PayDunya IPN: hash is SHA-512 of the master key (official IPN contract). */
+export function computePaydunyaIpnHash(masterKey: string): string {
+  return createHash("sha512").update(String(masterKey), "utf8").digest("hex");
+}
+
+export function verifyPaydunyaIpnHash(receivedHash: string, masterKey: string): boolean {
+  const expected = computePaydunyaIpnHash(masterKey);
+  return timingSafeEqualUtf8(receivedHash.trim().toLowerCase(), expected.toLowerCase());
 }
 
 function mapProviderStatus(raw: unknown): ProviderInitiateResult["status"] | "failed" {
@@ -192,19 +212,28 @@ export const paydunyaAdapter: PaymentProviderAdapter = {
   async parseWebhook(body, headers) {
     const payload = (body ?? {}) as Record<string, unknown>;
     const data = (payload.data ?? payload) as Record<string, unknown>;
-    // PayDunya IPN includes a hash; require private key configured and hash present.
-    // Final paid status is always re-confirmed via fetchStatus in handleProviderWebhook.
+    const masterKey = env("PAYDUNYA_MASTER_KEY");
     const privateKey = env("PAYDUNYA_PRIVATE_KEY");
-    if (!privateKey) {
+    if (!masterKey || !privateKey) {
       return { ok: false, error: "webhook_secret_not_configured" };
     }
     const hash = String(data.hash ?? payload.hash ?? headers.get("x-paydunya-hash") ?? "").trim();
     if (!hash) {
       return { ok: false, error: "missing_signature" };
     }
+    if (!verifyPaydunyaIpnHash(hash, masterKey)) {
+      return { ok: false, error: "invalid_signature" };
+    }
     const statusRaw = String(data.status ?? payload.status ?? "").toLowerCase();
+    // Never trust IPN "completed" as final paid — handleProviderWebhook reconfirms via fetchStatus.
     const status =
-      statusRaw === "completed" ? "paid" : statusRaw === "cancelled" ? "canceled" : mapProviderStatus(statusRaw);
+      statusRaw === "completed"
+        ? "processing"
+        : statusRaw === "cancelled"
+          ? "canceled"
+          : mapProviderStatus(statusRaw) === "paid"
+            ? "processing"
+            : mapProviderStatus(statusRaw);
     const externalReference = String(data.token ?? data.invoice_token ?? payload.token ?? "").trim();
     if (!externalReference) return { ok: false, error: "missing_external_reference" };
     return {
@@ -271,27 +300,40 @@ export const cinetpayAdapter: PaymentProviderAdapter = {
   async parseWebhook(body, headers) {
     const payload = (body ?? {}) as Record<string, unknown>;
     const data = (payload.data ?? payload) as Record<string, unknown>;
-    // CinetPay notify payloads are not cryptographically signed in all modes.
-    // Require API credentials configured; paid status is re-confirmed via fetchStatus.
     if (!env("CINETPAY_API_KEY") || !env("CINETPAY_SITE_ID")) {
       return { ok: false, error: "webhook_secret_not_configured" };
     }
-    void headers;
+    // Optional shared notify secret (set CINETPAY_WEBHOOK_SECRET in production).
+    const expectedSecret = env("CINETPAY_WEBHOOK_SECRET");
+    if (expectedSecret) {
+      const provided = String(
+        headers.get("x-token") ??
+          headers.get("x-cinetpay-signature") ??
+          headers.get("x-webhook-secret") ??
+          data.token ??
+          payload.token ??
+          ""
+      ).trim();
+      if (!provided || !timingSafeEqualUtf8(provided, expectedSecret)) {
+        return { ok: false, error: "invalid_signature" };
+      }
+    }
     const externalReference = String(
       data.transaction_id ?? payload.transaction_id ?? data.cpm_trans_id ?? ""
     ).trim();
     if (!externalReference) return { ok: false, error: "missing_external_reference" };
     const statusRaw = String(data.status ?? payload.status ?? "").toLowerCase();
+    // Never mark paid from notify body — sole paid path is fetchStatus reconfirm.
     const status =
-      statusRaw === "accepted" || statusRaw === "completed"
-        ? "paid"
-        : statusRaw === "refused"
-          ? "failed"
-          : mapProviderStatus(statusRaw);
+      statusRaw === "refused" || statusRaw === "failed"
+        ? "failed"
+        : statusRaw === "canceled" || statusRaw === "cancelled"
+          ? "canceled"
+          : "processing";
     return {
       ok: true,
       externalReference,
-      externalEventId: String(data.cpm_trans_id ?? payload.cpm_trans_id ?? `${externalReference}:${status}`),
+      externalEventId: String(data.cpm_trans_id ?? payload.cpm_trans_id ?? `${externalReference}:${statusRaw || "notify"}`),
       status,
       payload: payload as Record<string, unknown>,
     };

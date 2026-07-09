@@ -45,6 +45,28 @@ export function isMarketplacePayoutsLiveEnvEnabled(): boolean {
   return process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED === "true";
 }
 
+/**
+ * Seller payouts E2E readiness gate. Live marketplace money paths stay OFF until
+ * MARKETPLACE_SELLER_PAYOUTS_E2E_READY=true is explicitly set after certification.
+ */
+export function isMarketplaceSellerPayoutsE2EReady(): boolean {
+  return process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY === "true";
+}
+
+export function assertMarketplaceLiveMoneyAllowed():
+  | { ok: true }
+  | { ok: false; error: string; message: string } {
+  if (!isMarketplaceSellerPayoutsE2EReady()) {
+    return {
+      ok: false,
+      error: "marketplace_seller_payouts_e2e_not_ready",
+      message:
+        "Marketplace live checkout/dispatch/payouts stay OFF until seller payouts E2E certification sets MARKETPLACE_SELLER_PAYOUTS_E2E_READY=true.",
+    };
+  }
+  return { ok: true };
+}
+
 export function isPlatformScopeOperational(config: MarketplaceLiveToggleConfig): boolean {
   if (config.maintenance_mode || config.launch_status === "maintenance") return false;
   return config.platform_enabled;
@@ -53,6 +75,7 @@ export function isPlatformScopeOperational(config: MarketplaceLiveToggleConfig):
 export function isMarketplaceCheckoutLiveEnabledForConfig(
   config: MarketplaceLiveToggleConfig
 ): boolean {
+  if (!isMarketplaceSellerPayoutsE2EReady()) return false;
   return (
     isMarketplaceCheckoutLiveEnvEnabled() &&
     isPlatformScopeOperational(config) &&
@@ -66,6 +89,7 @@ export function isMarketplaceCheckoutLiveEnabledForConfig(
 export function isMarketplaceDispatchLiveEnabledForConfig(
   config: MarketplaceLiveToggleConfig
 ): boolean {
+  if (!isMarketplaceSellerPayoutsE2EReady()) return false;
   return (
     isMarketplaceDispatchLiveEnvEnabled() &&
     isPlatformScopeOperational(config) &&
@@ -78,6 +102,7 @@ export function isMarketplaceDispatchLiveEnabledForConfig(
 export function isMarketplacePayoutsLiveEnabledForConfig(
   config: MarketplaceLiveToggleConfig
 ): boolean {
+  if (!isMarketplaceSellerPayoutsE2EReady()) return false;
   return (
     isMarketplacePayoutsLiveEnvEnabled() &&
     isPlatformScopeOperational(config) &&
@@ -134,6 +159,26 @@ export function sanitizePlatformLaunchMarketplaceFlags(
   body: PlatformLaunchPatchInput
 ): { ok: true; merged: MarketplaceLiveToggleConfig } | { ok: false; error: string } {
   let merged = mergeLaunchBooleans(existing, body);
+
+  // Hard lock: refuse enabling any live marketplace money flag until E2E payouts ready.
+  if (!isMarketplaceSellerPayoutsE2EReady()) {
+    if (
+      body.marketplace_checkout_live_enabled === true ||
+      body.marketplace_dispatch_live_enabled === true ||
+      body.marketplace_payouts_live_enabled === true
+    ) {
+      return {
+        ok: false,
+        error: "marketplace_seller_payouts_e2e_not_ready",
+      };
+    }
+    merged = {
+      ...merged,
+      marketplace_checkout_live_enabled: false,
+      marketplace_dispatch_live_enabled: false,
+      marketplace_payouts_live_enabled: false,
+    };
+  }
 
   if (!merged.platform_enabled || merged.maintenance_mode) {
     merged = {

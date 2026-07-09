@@ -22,7 +22,8 @@ type Props = {
 export function DriverLiveMap({ driverId }: Props) {
   const { location, loading, error } = useDriverLocation(driverId);
 
-  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim()
+    || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim();
 
   // 🗺️ état de la vue de la carte (centrage + zoom)
   const [viewState, setViewState] = useState({
@@ -46,7 +47,7 @@ export function DriverLiveMap({ driverId }: Props) {
   if (!token) {
     return (
       <p className="text-xs text-red-600">
-        Mapbox n&apos;est pas configuré (NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN manquant).
+        Mapbox n&apos;est pas configuré (NEXT_PUBLIC_MAPBOX_TOKEN manquant).
       </p>
     );
   }

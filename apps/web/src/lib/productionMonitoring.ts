@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countStripeWebhookEvents24h } from "@/lib/stripeWebhookEventsHealth";
+import {
+  captureProductionException,
+  captureProductionMessage,
+} from "@/lib/sentryCapture";
 
 export type ProductionMonitoringCheck = {
   name: string;
@@ -48,6 +52,22 @@ export function recordProductionCriticalError(
   }
 
   console.error("[production-critical]", entry);
+
+  captureProductionMessage(scope, message, meta);
+  if (meta?.error) {
+    captureProductionException(scope, meta.error, meta);
+  }
+
+  // Fire-and-forget ops webhook for payment/dispatch critical scopes.
+  const criticalScopes = /payment|stripe|payout|dispatch|webhook|taxi|order/i;
+  if (criticalScopes.test(scope) && trimWebhookUrl()) {
+    void sendProductionMonitoringAlert({
+      severity: "critical",
+      scope,
+      message,
+      meta: meta ?? {},
+    });
+  }
 }
 
 export async function sendProductionMonitoringAlert(payload: Record<string, unknown>) {
@@ -134,6 +154,56 @@ export async function runProductionMonitoringChecks(
     ok: recentCriticalErrors.length === 0,
     severity: recentCriticalErrors.length > 0 ? "critical" : "info",
     count: recentCriticalErrors.length,
+  });
+
+  const cronSecretSet = Boolean(String(process.env.CRON_SECRET ?? "").trim());
+  checks.push({
+    name: "cron_secret_configured",
+    ok: cronSecretSet || env !== "production",
+    severity: "critical",
+    detail: cronSecretSet ? undefined : "CRON_SECRET missing",
+  });
+
+  const mapboxServer = Boolean(String(process.env.MAPBOX_ACCESS_TOKEN ?? "").trim());
+  const mapboxPublic = Boolean(
+    String(process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "").trim() ||
+      String(process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "").trim()
+  );
+  checks.push({
+    name: "mapbox_tokens",
+    ok: mapboxServer && mapboxPublic,
+    severity: "critical",
+    detail: !mapboxServer
+      ? "MAPBOX_ACCESS_TOKEN missing"
+      : !mapboxPublic
+        ? "NEXT_PUBLIC_MAPBOX_TOKEN missing"
+        : undefined,
+  });
+
+  const sentryConfigured = Boolean(
+    String(process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN ?? "").trim()
+  );
+  checks.push({
+    name: "sentry_dsn",
+    ok: sentryConfigured || env !== "production",
+    severity: "critical",
+    detail: sentryConfigured ? undefined : "NEXT_PUBLIC_SENTRY_DSN missing",
+  });
+
+  const marketplaceE2E =
+    process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY === "true";
+  const marketplaceLiveEnv =
+    process.env.MARKETPLACE_CHECKOUT_LIVE_ENABLED === "true" ||
+    process.env.MARKETPLACE_DISPATCH_LIVE_ENABLED === "true" ||
+    process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED === "true";
+  checks.push({
+    name: "marketplace_live_locked",
+    ok: !marketplaceLiveEnv || marketplaceE2E,
+    severity: "critical",
+    detail:
+      marketplaceLiveEnv && !marketplaceE2E
+        ? "Marketplace live env flags ON without MARKETPLACE_SELLER_PAYOUTS_E2E_READY"
+        : undefined,
   });
 
   const ok = checks.every(

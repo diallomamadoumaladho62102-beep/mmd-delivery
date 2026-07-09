@@ -51,4 +51,12 @@ export function formatBootError(error: unknown): string {
 
 export function reportBootError(scope: string, error: unknown): void {
   console.error(BOOT_TAG, scope, formatBootError(error));
+  try {
+    // Lazy require avoids circular init during module load.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { captureMobileException } = require("./sentry") as typeof import("./sentry");
+    captureMobileException(scope, error);
+  } catch {
+    // telemetry must never break boot
+  }
 }
