@@ -51,12 +51,7 @@
           "merchantIdentifier": "merchant.com.maladho2025.mmddelivery"
         }
       ],
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsDownloadToken": "$RNMAPBOX_MAPS_DOWNLOAD_TOKEN"
-        }
-      ],
+      "@rnmapbox/maps",
       "expo-web-browser",
       [
         "@sentry/react-native/expo",

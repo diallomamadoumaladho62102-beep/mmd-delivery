@@ -78,9 +78,6 @@ export default ({ config }) => {
   const EXPO_PUBLIC_MAPBOX_TOKEN = cleanEnv(env.EXPO_PUBLIC_MAPBOX_TOKEN);
   const EXPO_PUBLIC_STRIPE_PK = cleanEnv(env.EXPO_PUBLIC_STRIPE_PK);
   const EXPO_PUBLIC_SENTRY_DSN = cleanEnv(env.EXPO_PUBLIC_SENTRY_DSN);
-  const RNMAPBOX_MAPS_DOWNLOAD_TOKEN = cleanEnv(
-    env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN
-  );
   const EAS_BUILD_PROFILE = cleanEnv(env.EAS_BUILD_PROFILE);
 
   const EXPO_PUBLIC_LEGAL_PRIVACY_URL =
@@ -138,12 +135,7 @@ export default ({ config }) => {
           merchantIdentifier: STRIPE_MERCHANT_ID,
         },
       ],
-      [
-        "@rnmapbox/maps",
-        {
-          RNMapboxMapsDownloadToken: RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
-        },
-      ],
+      "@rnmapbox/maps",
       "expo-image-picker",
       "expo-location",
       "expo-task-manager",
