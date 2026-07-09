@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { createClient } from "@supabase/supabase-js";
 import { buildDispatchInternalHeaders } from "@/lib/dispatchInternalAuth";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
@@ -11,19 +12,7 @@ function json(body: Record<string, unknown>, status = 200) {
 }
 
 function isCronAuthorized(request: NextRequest): boolean {
-  const vercelCron = request.headers.get("x-vercel-cron");
-  if (vercelCron) return true;
-
-  const expected = (process.env.CRON_SECRET || "").trim();
-  if (!expected) return false;
-
-  const headerSecret = (request.headers.get("x-cron-secret") || "").trim();
-  if (headerSecret && headerSecret === expected) return true;
-
-  const authHeader = request.headers.get("authorization") || "";
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-  const bearer = bearerMatch?.[1]?.trim() ?? "";
-  return bearer.length > 0 && bearer === expected;
+  return isAuthorizedCronRequest(request);
 }
 
 export async function GET(request: NextRequest) {

@@ -7,6 +7,10 @@ import {
   recordPaymentWebhookEvent,
 } from "@/lib/paymentTransactionService";
 
+/**
+ * Never trust a provider webhook "paid" claim alone.
+ * Re-confirm with the provider status API before marking money as settled.
+ */
 export async function handleProviderWebhook(
   supabaseAdmin: SupabaseClient,
   providerRaw: string,
@@ -42,10 +46,28 @@ export async function handleProviderWebhook(
     return { ok: false as const, status: 404, error: "payment_transaction_not_found" };
   }
 
+  let nextStatus = parsed.status;
+
+  // Critical: forged "paid" webhooks must not settle money without provider confirmation.
+  if (nextStatus === "paid") {
+    if (!transaction.external_reference) {
+      return { ok: false as const, status: 400, error: "missing_external_reference_on_transaction" };
+    }
+    const remote = await adapter.fetchStatus(transaction.external_reference, false);
+    if (remote.ok !== true) {
+      return { ok: false as const, status: 502, error: remote.error ?? "provider_status_unavailable" };
+    }
+    if (remote.status !== "paid") {
+      nextStatus = remote.status === "failed" || remote.status === "canceled" || remote.status === "expired"
+        ? remote.status
+        : "processing";
+    }
+  }
+
   const updated = await applyTransactionStatusUpdate(
     supabaseAdmin,
     transaction,
-    parsed.status,
+    nextStatus,
     { provider_payload: parsed.payload }
   );
 

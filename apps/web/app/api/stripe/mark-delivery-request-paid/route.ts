@@ -323,9 +323,10 @@ async function stripePaymentLooksPaid(params: {
           }
         }
 
+        // Do not treat checkout session "paid" as settled without a succeeded PaymentIntent.
         return {
-          paid: true,
-          stripe_paid: true,
+          paid: false,
+          stripe_paid: false,
           payment_intent_id: sessionPiId,
           session_id: session.id,
           session_payment_status: sessionPaymentStatus,

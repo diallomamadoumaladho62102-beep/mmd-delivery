@@ -91,8 +91,22 @@ export const orangeMoneyGuineaAdapter: PaymentProviderAdapter = {
     const payload = (body ?? {}) as Record<string, unknown>;
     const signature = headers.get("x-orange-signature") ?? headers.get("x-signature");
     const secret = env("ORANGE_MONEY_GN_WEBHOOK_SECRET");
-    if (secret && !signature) {
+    // Always require a configured secret + matching signature (timing-safe token compare).
+    if (!secret) {
+      return { ok: false, error: "webhook_secret_not_configured" };
+    }
+    if (!signature) {
       return { ok: false, error: "missing_signature" };
+    }
+    const a = new TextEncoder().encode(String(signature));
+    const b = new TextEncoder().encode(secret);
+    if (a.length !== b.length) {
+      return { ok: false, error: "invalid_signature" };
+    }
+    let diff = 0;
+    for (let i = 0; i < a.length; i += 1) diff |= a[i]! ^ b[i]!;
+    if (diff !== 0) {
+      return { ok: false, error: "invalid_signature" };
     }
     const status = mapProviderStatus(payload.status ?? payload.payment_status);
     const externalReference = String(
@@ -175,9 +189,19 @@ export const paydunyaAdapter: PaymentProviderAdapter = {
       payload: json as Record<string, unknown>,
     };
   },
-  async parseWebhook(body) {
+  async parseWebhook(body, headers) {
     const payload = (body ?? {}) as Record<string, unknown>;
     const data = (payload.data ?? payload) as Record<string, unknown>;
+    // PayDunya IPN includes a hash; require private key configured and hash present.
+    // Final paid status is always re-confirmed via fetchStatus in handleProviderWebhook.
+    const privateKey = env("PAYDUNYA_PRIVATE_KEY");
+    if (!privateKey) {
+      return { ok: false, error: "webhook_secret_not_configured" };
+    }
+    const hash = String(data.hash ?? payload.hash ?? headers.get("x-paydunya-hash") ?? "").trim();
+    if (!hash) {
+      return { ok: false, error: "missing_signature" };
+    }
     const statusRaw = String(data.status ?? payload.status ?? "").toLowerCase();
     const status =
       statusRaw === "completed" ? "paid" : statusRaw === "cancelled" ? "canceled" : mapProviderStatus(statusRaw);
@@ -186,7 +210,7 @@ export const paydunyaAdapter: PaymentProviderAdapter = {
     return {
       ok: true,
       externalReference,
-      externalEventId: String(data.hash ?? payload.hash ?? `${externalReference}:${status}`),
+      externalEventId: String(hash || `${externalReference}:${status}`),
       status,
       payload: payload as Record<string, unknown>,
     };
@@ -244,9 +268,15 @@ export const cinetpayAdapter: PaymentProviderAdapter = {
       payload: json as Record<string, unknown>,
     };
   },
-  async parseWebhook(body) {
+  async parseWebhook(body, headers) {
     const payload = (body ?? {}) as Record<string, unknown>;
     const data = (payload.data ?? payload) as Record<string, unknown>;
+    // CinetPay notify payloads are not cryptographically signed in all modes.
+    // Require API credentials configured; paid status is re-confirmed via fetchStatus.
+    if (!env("CINETPAY_API_KEY") || !env("CINETPAY_SITE_ID")) {
+      return { ok: false, error: "webhook_secret_not_configured" };
+    }
+    void headers;
     const externalReference = String(
       data.transaction_id ?? payload.transaction_id ?? data.cpm_trans_id ?? ""
     ).trim();

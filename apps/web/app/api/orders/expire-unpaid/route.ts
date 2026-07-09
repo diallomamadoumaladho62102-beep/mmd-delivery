@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -104,21 +105,6 @@ function getSupabaseAdminClient(): SupabaseClient {
   });
 }
 
-function isAuthorizedCronRequest(req: NextRequest): boolean {
-  const vercelCron = req.headers.get("x-vercel-cron");
-  if (vercelCron) return true;
-
-  const expected = (process.env.CRON_SECRET || "").trim();
-  if (!expected) return false;
-
-  const headerSecret = (req.headers.get("x-cron-secret") || "").trim();
-  if (headerSecret && headerSecret === expected) return true;
-
-  const authHeader = req.headers.get("authorization") || "";
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-  const bearer = bearerMatch?.[1]?.trim() ?? "";
-  return bearer.length > 0 && bearer === expected;
-}
 
 async function runExpireUnpaid() {
   const supabaseAdmin = getSupabaseAdminClient();

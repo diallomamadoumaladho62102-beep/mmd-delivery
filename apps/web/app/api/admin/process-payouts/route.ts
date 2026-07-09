@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AdminAccessError, assertCanRetryPayout } from "@/lib/adminServer";
+import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,19 +77,7 @@ function getSupabaseAdmin(): SupabaseClient {
 }
 
 function isCronAuthorized(request: NextRequest): boolean {
-  const vercelCron = request.headers.get("x-vercel-cron");
-  if (vercelCron) return true;
-
-  const expected = (process.env.CRON_SECRET || "").trim();
-  if (!expected) return false;
-
-  const headerSecret = (request.headers.get("x-cron-secret") || "").trim();
-  if (headerSecret && headerSecret === expected) return true;
-
-  const authHeader = request.headers.get("authorization") || "";
-  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-  const bearer = bearerMatch?.[1]?.trim() ?? "";
-  return bearer.length > 0 && bearer === expected;
+  return isAuthorizedCronRequest(request);
 }
 
 async function authorize(request: NextRequest): Promise<{
@@ -163,15 +152,16 @@ async function callTransferRun(params: {
   };
 
   if (cron) {
-    const secret = process.env.STRIPE_TRANSFERS_ADMIN_SECRET;
+    const secret = (process.env.CRON_SECRET || "").trim();
 
     if (!secret) {
       throw new Error(
-        "Missing STRIPE_TRANSFERS_ADMIN_SECRET for cron payout processing."
+        "Missing CRON_SECRET for cron payout processing."
       );
     }
 
-    headers["x-admin-secret"] = secret;
+    headers.Authorization = `Bearer ${secret}`;
+    headers["x-cron-secret"] = secret;
   } else {
     const bearer = getIncomingBearerToken(request);
 

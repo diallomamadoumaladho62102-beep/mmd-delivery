@@ -2592,6 +2592,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Reject Stripe test-mode events against production deployments.
+    const isProd =
+      process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+    const allowTestInProd =
+      String(process.env.STRIPE_ALLOW_TEST_EVENTS_IN_PROD ?? "")
+        .trim()
+        .toLowerCase() === "true";
+    if (isProd && event.livemode === false && !allowTestInProd) {
+      return json(
+        {
+          received: true,
+          ignored: "test_mode_event_rejected_in_production",
+          type: event.type,
+        },
+        200
+      );
+    }
+
     if (!HANDLED_EVENT_TYPES.has(event.type)) {
       return json({
         received: true,
