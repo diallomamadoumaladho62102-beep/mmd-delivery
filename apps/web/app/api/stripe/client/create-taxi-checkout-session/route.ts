@@ -22,6 +22,7 @@ import {
   fetchTaxiCountryLaunchConfig,
 } from "@/lib/taxiLaunchControl";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,subtotal_cents,service_fee_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only"
+        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,subtotal_cents,service_fee_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -162,6 +163,33 @@ export async function POST(req: NextRequest) {
     );
     if (platformCheckout.ok === false) {
       return taxiJson({ ok: false, ...platformCheckout }, 403);
+    }
+
+    const originCountyGate = await assertCanStartServiceFromOrigin(supabaseAdmin, {
+      service: "taxi",
+      origin: {
+        countryCode: String(ride.country_code ?? "US"),
+        lat: (ride as { pickup_lat?: number | null }).pickup_lat ?? null,
+        lng: (ride as { pickup_lng?: number | null }).pickup_lng ?? null,
+      },
+      destination: {
+        countryCode: String(ride.country_code ?? "US"),
+        lat: (ride as { dropoff_lat?: number | null }).dropoff_lat ?? null,
+        lng: (ride as { dropoff_lng?: number | null }).dropoff_lng ?? null,
+      },
+    });
+    if (!originCountyGate.allowed) {
+      return taxiJson(
+        {
+          ok: false,
+          error: "taxi_unavailable",
+          code: originCountyGate.code,
+          title: originCountyGate.title,
+          message: originCountyGate.message,
+          actions: originCountyGate.actions,
+        },
+        403
+      );
     }
 
     const stripeGuard = assertStripeCheckoutAllowed(String(ride.country_code ?? "US"));

@@ -31,9 +31,9 @@ function getAdminClient() {
 }
 
 async function triggerDriverPayoutForOrder(req: NextRequest, orderId: string) {
-  const adminSecret = process.env.STRIPE_TRANSFERS_ADMIN_SECRET?.trim() || "";
-  if (!adminSecret) {
-    return { ok: false, error: "Missing STRIPE_TRANSFERS_ADMIN_SECRET" };
+  const cronSecret = process.env.CRON_SECRET?.trim() || "";
+  if (!cronSecret) {
+    return { ok: false, error: "Missing CRON_SECRET" };
   }
 
   const endpoint = `${req.nextUrl.origin}/api/stripe/transfers/run`;
@@ -42,7 +42,8 @@ async function triggerDriverPayoutForOrder(req: NextRequest, orderId: string) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-admin-secret": adminSecret,
+      Authorization: `Bearer ${cronSecret}`,
+      "x-cron-secret": cronSecret,
     },
     body: JSON.stringify({ order_id: orderId, target: "driver" }),
     cache: "no-store",

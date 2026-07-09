@@ -5,6 +5,7 @@ import {
   assertCanManageTaxiPayouts,
 } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { assertTaxiPayoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
@@ -82,23 +83,11 @@ function normalizeCurrency(v: unknown): string {
   return normalizeTaxiCurrencyForStripe(v, "usd");
 }
 
-function timingSafeEqualStrings(a: string, b: string): boolean {
-  const aBytes = new TextEncoder().encode(a);
-  const bBytes = new TextEncoder().encode(b);
-  if (aBytes.length !== bBytes.length) return false;
-  let result = 0;
-  for (let i = 0; i < aBytes.length; i += 1) {
-    result |= aBytes[i] ^ bBytes[i];
-  }
-  return result === 0;
-}
-
 async function authorizeRequest(req: NextRequest): Promise<string> {
-  const adminSecret = process.env.STRIPE_TRANSFERS_ADMIN_SECRET;
-  const provided = req.headers.get("x-admin-secret") || "";
-
-  if (adminSecret && provided && timingSafeEqualStrings(provided, adminSecret)) {
-    return "secret:stripe_transfers_admin_secret";
+  // Internal jobs may call with CRON_SECRET. Shared STRIPE_TRANSFERS_ADMIN_SECRET
+  // alone is intentionally NOT accepted (same rule as transfers/run).
+  if (isAuthorizedCronRequest(req)) {
+    return "cron:stripe_taxi_transfers";
   }
 
   const admin = await assertCanManageTaxiPayouts(req);

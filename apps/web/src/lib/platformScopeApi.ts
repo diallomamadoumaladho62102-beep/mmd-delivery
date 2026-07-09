@@ -7,6 +7,10 @@ import {
   mmdLocationJson,
 } from "@/lib/mmdLocationCore";
 import {
+  enrichDriverFeaturesWithServiceArea,
+  resolveCountySnapshotFromInput,
+} from "@/lib/originCountyServiceGate";
+import {
   resolveClientPlatformScope,
   resolveDriverPlatformScope,
   resolvePlatformScopeFeatures,
@@ -116,19 +120,36 @@ export async function buildDriverFeaturesResponse(
     );
   }
 
-  const outOfService = Boolean(features.out_of_service_area);
+  const county = await resolveCountySnapshotFromInput(supabaseAdmin, {
+    countryCode: scope.country_code,
+    stateCode: scope.state_code ?? scope.region_code,
+    countyCode: scope.county_code,
+    lat: Number.isFinite(Number(input.lat)) ? Number(input.lat) : null,
+    lng: Number.isFinite(Number(input.lng)) ? Number(input.lng) : null,
+  });
+
+  const area = enrichDriverFeaturesWithServiceArea({
+    features: {
+      platform_enabled: features.platform_enabled,
+      can_go_online: features.can_go_online,
+      message: features.message,
+      county_code: scope.county_code,
+    },
+    county,
+  });
+
   const payload = {
     ok: true as const,
     scope,
     ...features,
-    can_go_online: !outOfService && features.platform_enabled,
-    can_receive_requests: !outOfService && features.platform_enabled,
-    out_of_service_area: outOfService,
-    driver_status_label: outOfService ? "Out of Service Area" : null,
-    unavailable_title: outOfService ? "Out of Service Area" : features.unavailable_title,
-    message: outOfService
-      ? "You have entered an area where MMD Delivery is not operating yet.\nYou can finish your current trip, but you will not receive new requests until you return to an active county."
-      : features.message,
+    can_go_online: area.can_go_online,
+    can_receive_requests: area.can_receive_requests,
+    out_of_service_area: area.out_of_service_area,
+    driver_status_label: area.driver_status_label,
+    unavailable_title: area.out_of_service_area
+      ? area.title ?? "Out of Service Area"
+      : features.unavailable_title,
+    message: area.message,
   };
 
   return mmdLocationJson(payload);

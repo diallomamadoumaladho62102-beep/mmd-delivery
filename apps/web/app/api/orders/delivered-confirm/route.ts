@@ -423,15 +423,15 @@ async function runSinglePayout(params: {
 }): Promise<PayoutAttemptResult> {
   const { req, orderId, target } = params;
 
-  const adminSecret = process.env.STRIPE_TRANSFERS_ADMIN_SECRET?.trim() || "";
-  if (!adminSecret) {
+  const cronSecret = process.env.CRON_SECRET?.trim() || "";
+  if (!cronSecret) {
     return {
       target,
       ok: false,
       status: null,
       transfer_id: null,
       already_succeeded: false,
-      error: "Missing STRIPE_TRANSFERS_ADMIN_SECRET",
+      error: "Missing CRON_SECRET",
     };
   }
 
@@ -442,7 +442,8 @@ async function runSinglePayout(params: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-admin-secret": adminSecret,
+        Authorization: `Bearer ${cronSecret}`,
+        "x-cron-secret": cronSecret,
       },
       body: JSON.stringify({
         order_id: orderId,

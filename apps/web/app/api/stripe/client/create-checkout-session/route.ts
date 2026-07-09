@@ -9,6 +9,7 @@ import {
   assertPlatformFeature,
 } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import {
   assertFoodCheckoutCurrencyAllowed,
@@ -532,6 +533,33 @@ export async function POST(req: NextRequest) {
           error: platformCheckout.error,
           message: platformCheckout.message,
           country_code: platformCheckout.country_code,
+        },
+        403
+      );
+    }
+
+    const originCountyGate = await assertCanStartServiceFromOrigin(supabaseAdmin, {
+      service: "food",
+      origin: {
+        countryCode: platformCountry,
+        lat: order.pickup_lat,
+        lng: order.pickup_lng,
+      },
+      destination: {
+        countryCode: platformCountry,
+        lat: order.dropoff_lat,
+        lng: order.dropoff_lng,
+      },
+    });
+    if (!originCountyGate.allowed) {
+      return json(
+        {
+          ok: false,
+          error: "restaurant_unavailable",
+          code: originCountyGate.code,
+          title: originCountyGate.title,
+          message: originCountyGate.message,
+          actions: originCountyGate.actions,
         },
         403
       );

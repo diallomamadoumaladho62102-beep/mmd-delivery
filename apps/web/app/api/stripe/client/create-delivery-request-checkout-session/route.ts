@@ -7,6 +7,7 @@ import {
 import { stripe } from "@/lib/stripe";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
+import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import {
   assertFoodCheckoutCurrencyAllowed,
@@ -519,6 +520,28 @@ export async function POST(req: NextRequest) {
           error: platformCheckout.error,
           message: platformCheckout.message,
           country_code: platformCheckout.country_code,
+        },
+        403
+      );
+    }
+
+    const originCountyGate = await assertCanStartServiceFromOrigin(supabaseAdmin, {
+      service: "delivery",
+      origin: {
+        countryCode: platformCountry,
+        lat: request.pickup_lat,
+        lng: request.pickup_lng,
+      },
+    });
+    if (!originCountyGate.allowed) {
+      return json(
+        {
+          ok: false,
+          error: "delivery_unavailable",
+          code: originCountyGate.code,
+          title: originCountyGate.title,
+          message: originCountyGate.message,
+          actions: originCountyGate.actions,
         },
         403
       );

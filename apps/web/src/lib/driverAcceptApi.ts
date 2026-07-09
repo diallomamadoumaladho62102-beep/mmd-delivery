@@ -124,6 +124,26 @@ export async function requireDriverAcceptUser(
     return { ok: false, response: driverAcceptJson({ error: "Invalid token" }, 401) };
   }
 
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return {
+      ok: false,
+      response: driverAcceptJson({ error: "Could not verify driver profile" }, 500),
+    };
+  }
+
+  if (String(profile?.role ?? "").trim().toLowerCase() !== "driver") {
+    return {
+      ok: false,
+      response: driverAcceptJson({ error: "Driver role required" }, 403),
+    };
+  }
+
   return { ok: true, user, supabaseUser, supabaseAdmin };
 }
 
