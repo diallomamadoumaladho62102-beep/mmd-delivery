@@ -16,9 +16,32 @@ type ExpoNetworkModule = {
 
 function getExpoNetwork(): ExpoNetworkModule | null {
   try {
-    // Optional dependency — keep failure-counter path if native module is missing.
+    // Never load expo-network's default entry until native ExpoNetwork is linked.
+    // ExpoNetwork.js calls requireNativeModule('ExpoNetwork') at module eval.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("expo-network") as ExpoNetworkModule;
+    const { requireOptionalNativeModule } = require("expo-modules-core") as {
+      requireOptionalNativeModule?: (name: string) => unknown;
+    };
+    if (typeof requireOptionalNativeModule !== "function") {
+      return null;
+    }
+    const native = requireOptionalNativeModule("ExpoNetwork") as ExpoNetworkModule | null;
+    if (!native) {
+      return null;
+    }
+    // Native present - safe to load JS wrapper (named exports include getNetworkStateAsync).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require("expo-network") as ExpoNetworkModule & {
+      default?: ExpoNetworkModule;
+    };
+    const api = mod.default ?? mod;
+    if (api && typeof api.getNetworkStateAsync === "function") {
+      return api;
+    }
+    if (typeof native.getNetworkStateAsync === "function") {
+      return native;
+    }
+    return null;
   } catch {
     return null;
   }
