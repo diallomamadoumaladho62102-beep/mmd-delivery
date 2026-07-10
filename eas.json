@@ -17,7 +17,8 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
+        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com",
+        "SENTRY_ALLOW_FAILURE": "true"
       }
     },
     "production": {
@@ -25,7 +26,8 @@
       "environment": "production",
       "env": {
         "APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
+        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com",
+        "SENTRY_ALLOW_FAILURE": "true"
       }
     }
   },

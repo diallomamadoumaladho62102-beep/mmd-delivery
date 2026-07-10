@@ -93,7 +93,10 @@
               "pathPrefix": "/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -112,7 +115,11 @@
         "NSCameraUsageDescription": "MMD Delivery uses the camera to capture delivery proof photos, location reference photos, and profile pictures.",
         "NSMicrophoneUsageDescription": "MMD Delivery uses the microphone during optional in-ride safety recordings when you choose to start an audio or video safety recording.",
         "NSPhotoLibraryUsageDescription": "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
-        "LSApplicationQueriesSchemes": ["waze", "comgooglemaps", "googlemaps"]
+        "LSApplicationQueriesSchemes": [
+          "waze",
+          "comgooglemaps",
+          "googlemaps"
+        ]
       }
     },
     "extra": {
