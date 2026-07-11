@@ -78,6 +78,30 @@ serve(async (req) => {
       return json({ error: "Missing STRIPE_RETURN_URL / STRIPE_REFRESH_URL" }, 500);
     }
 
+    // Fail-closed: Connect onboarding mode follows STRIPE_SECRET_KEY.
+    // sk_test_ produces Stripe-hosted "TEST BANK" UI — refuse unless explicitly allowed.
+    const allowTestConnect =
+      String(Deno.env.get("STRIPE_ALLOW_TEST_CONNECT") ?? "")
+        .trim()
+        .toLowerCase() === "true";
+    const stripeMode = stripeKey.startsWith("sk_live_")
+      ? "live"
+      : stripeKey.startsWith("sk_test_")
+        ? "test"
+        : "unknown";
+    if (stripeMode !== "live" && !allowTestConnect) {
+      return json(
+        {
+          error: "stripe_secret_key_must_be_live",
+          message:
+            "Connect onboarding requires Supabase secret STRIPE_SECRET_KEY=sk_live_*. " +
+            "Set STRIPE_ALLOW_TEST_CONNECT=true only for non-production Edge testing.",
+          stripe_mode: stripeMode,
+        },
+        500,
+      );
+    }
+
     const authHeader = getAuthHeader(req);
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return json({ error: "Missing Authorization Bearer token" }, 401);
@@ -128,12 +152,50 @@ serve(async (req) => {
     }
 
     let accountId: string | null = (prof as any)?.stripe_account_id ?? null;
+    let clearedStaleTestAccount = false;
 
     const connectCountry = normalizeStripeConnectCountry(
       body?.country_code ??
         body?.countryCode ??
         inferConnectCountryFromProfile((prof as any)?.city, (prof as any)?.state)
     );
+
+    // If DB still holds a test-mode acct_ after switching to sk_live_, retrieve fails —
+    // clear and recreate under Live so onboarding never reuses a test Connect account.
+    if (accountId) {
+      try {
+        await stripe.accounts.retrieve(accountId);
+      } catch (retrieveErr: any) {
+        console.error(
+          "create_connect_account: stale stripe_account_id, clearing for recreate:",
+          accountId,
+          retrieveErr?.message ?? retrieveErr,
+        );
+        const clearPayload =
+          role === "driver"
+            ? { stripe_account_id: null, stripe_onboarded: false }
+            : {
+                stripe_account_id: null,
+                stripe_onboarding_status: "pending",
+                stripe_onboarded: false,
+              };
+        const { error: clearErr } = await supabase
+          .from(table)
+          .update(clearPayload)
+          .eq("user_id", userId);
+        if (clearErr) {
+          return json(
+            {
+              error: "Failed to clear stale Stripe Connect account id",
+              details: clearErr.message,
+            },
+            400,
+          );
+        }
+        accountId = null;
+        clearedStaleTestAccount = true;
+      }
+    }
 
     // Créer le compte Stripe si absent
     if (!accountId) {
@@ -176,6 +238,8 @@ serve(async (req) => {
       country: connectCountry,
       onboarding_url: link.url,
       expires_at: link.expires_at ?? null,
+      stripe_mode: stripeMode,
+      cleared_stale_test_account: clearedStaleTestAccount,
     });
   } catch (e: any) {
     console.error("create_connect_account fatal:", e);

@@ -15,13 +15,29 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY =
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
+const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
 // ⚠️ Stripe Account Links préfère des URLs web (https://...)
 const DEFAULT_RETURN_URL =
   Deno.env.get("STRIPE_RETURN_URL") ?? "https://example.com/stripe/return";
 const DEFAULT_REFRESH_URL =
   Deno.env.get("STRIPE_REFRESH_URL") ?? "https://example.com/stripe/refresh";
+
+function assertStripeConnectSecretOrThrow() {
+  if (!STRIPE_SECRET_KEY) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+  const allowTest =
+    String(Deno.env.get("STRIPE_ALLOW_TEST_CONNECT") ?? "")
+      .trim()
+      .toLowerCase() === "true";
+  if (!STRIPE_SECRET_KEY.startsWith("sk_live_") && !allowTest) {
+    throw new Error(
+      "stripe_secret_key_must_be_live: set Supabase STRIPE_SECRET_KEY to sk_live_* " +
+        "(or STRIPE_ALLOW_TEST_CONNECT=true for non-production only)",
+    );
+  }
+}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -83,6 +99,8 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") {
       return json({ error: "Use POST" }, 405);
     }
+
+    assertStripeConnectSecretOrThrow();
 
     // --- Auth ---
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -161,7 +179,31 @@ Deno.serve(async (req) => {
 
     let stripeAccountId = profile.stripe_account_id as string | null;
 
-    // 2) Créer le compte Stripe Express si absent
+    // 2) Recreate if DB still points at a test-mode acct_ after switching to sk_live_
+    if (stripeAccountId) {
+      const getRes = await fetch(
+        `https://api.stripe.com/v1/accounts/${encodeURIComponent(stripeAccountId)}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Bearer ${STRIPE_SECRET_KEY}` },
+        },
+      );
+      if (!getRes.ok) {
+        console.log(
+          "restaurant-connect-link: clearing stale stripe_account_id",
+          stripeAccountId,
+        );
+        await supabaseAdmin
+          .from("restaurant_profiles")
+          .update({
+            stripe_account_id: null,
+            stripe_onboarding_status: "pending",
+          })
+          .eq("user_id", userId);
+        stripeAccountId = null;
+      }
+    }
+
     if (!stripeAccountId) {
       const acct = await stripePOST("accounts", {
         type: "express",
