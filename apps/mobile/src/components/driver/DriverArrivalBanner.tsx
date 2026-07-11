@@ -7,6 +7,8 @@ type Props = {
   stage: NavigationStage;
   address: string;
   onOpenOrderDetails: () => void;
+  /** Distance from the bottom (above the trip bar + home indicator). */
+  bottomOffset?: number;
 };
 
 export function DriverArrivalBanner({
@@ -14,6 +16,7 @@ export function DriverArrivalBanner({
   stage,
   address,
   onOpenOrderDetails,
+  bottomOffset = 108,
 }: Props) {
   if (!visible) return null;
 
@@ -33,7 +36,7 @@ export function DriverArrivalBanner({
         position: "absolute",
         left: 14,
         right: 14,
-        bottom: 108,
+        bottom: bottomOffset,
         zIndex: 28,
         borderRadius: 18,
         paddingHorizontal: 12,

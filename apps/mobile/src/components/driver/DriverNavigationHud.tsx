@@ -1,8 +1,10 @@
 import React from "react";
 import { View, Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NavigationInstruction } from "../../lib/navigationInstructions";
 import { extractStreetName } from "../../lib/navigationInstructions";
 import { formatManeuverDistanceLabel } from "../../lib/navigationLocale";
+import { resolveHudTopPadding, HUD_BOTTOM_PADDING } from "../../lib/navigationSafeArea";
 import { DriverNavigationTurnArrow } from "./DriverNavigationTurnArrow";
 
 type Props = {
@@ -11,6 +13,8 @@ type Props = {
 };
 
 export function DriverNavigationHud({ visible, instruction }: Props) {
+  const insets = useSafeAreaInsets();
+
   if (!visible || !instruction) return null;
 
   const streetName = extractStreetName(instruction.title);
@@ -28,9 +32,9 @@ export function DriverNavigationHud({ visible, instruction }: Props) {
         left: 0,
         right: 0,
         zIndex: 40,
-        paddingTop: 36,
-        paddingBottom: 12,
-        paddingHorizontal: 12,
+        paddingTop: resolveHudTopPadding(insets.top),
+        paddingBottom: HUD_BOTTOM_PADDING,
+        paddingHorizontal: 12 + Math.max(insets.left, insets.right),
         backgroundColor: "#000000",
         shadowColor: "#000",
         shadowOpacity: 0.2,

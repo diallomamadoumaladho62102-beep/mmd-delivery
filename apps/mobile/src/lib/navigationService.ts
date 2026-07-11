@@ -13,10 +13,33 @@ import {
 
 export type RoutePoint = CoordinatePoint;
 
+/** One Mapbox `voiceInstructions` prompt (already localized by the API). */
+export type NavigationVoicePrompt = {
+  /** Distance before the maneuver at which Mapbox recommends speaking. */
+  distanceAlongGeometryMeters: number;
+  announcement: string;
+};
+
 export type NavigationRouteStep = {
   instruction: string;
   distanceMeters: number;
   durationSeconds: number;
+  /** Mapbox `maneuver.type` (turn, roundabout, fork, arrive, …). */
+  maneuverType?: string;
+  /** Mapbox `maneuver.modifier` (left, right, slight left, uturn, …). */
+  maneuverModifier?: string;
+  /** `step.name` — road being driven for this step. */
+  roadName?: string;
+  /** GPS coordinate of the maneuver point (`maneuver.location`). */
+  maneuverPoint?: CoordinatePoint;
+  /**
+   * Cumulative distance (m) from the route start to this step's maneuver point.
+   * Filled during parsing so the live engine can compute distance-to-maneuver
+   * from the driver's traveled distance without relying on a static index.
+   */
+  maneuverAlongRouteMeters?: number;
+  /** Mapbox pre-localized voice prompts for this step, when available. */
+  voicePrompts?: NavigationVoicePrompt[];
 };
 
 export type NavigationRoute = {
@@ -54,23 +77,77 @@ function buildCoords(points: RoutePoint[]): string {
   return points.map((p) => `${p.longitude},${p.latitude}`).join(";");
 }
 
+function parseVoicePrompts(raw: unknown): NavigationVoicePrompt[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const prompts = raw
+    .map((entry) => {
+      const item = entry as {
+        distanceAlongGeometry?: number;
+        announcement?: string;
+      };
+      const announcement = String(item?.announcement || "").trim();
+      const distance = Number(item?.distanceAlongGeometry);
+      if (!announcement || !Number.isFinite(distance)) return null;
+      return {
+        distanceAlongGeometryMeters: Math.max(0, distance),
+        announcement,
+      };
+    })
+    .filter((entry): entry is NavigationVoicePrompt => entry != null);
+  return prompts.length ? prompts : undefined;
+}
+
+function parseManeuverPoint(location: unknown): CoordinatePoint | undefined {
+  if (!Array.isArray(location) || location.length < 2) return undefined;
+  const longitude = Number(location[0]);
+  const latitude = Number(location[1]);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return undefined;
+  return { latitude, longitude };
+}
+
 function parseSteps(rawSteps: unknown[]): NavigationRouteStep[] {
+  let alongRouteMeters = 0;
+
   return rawSteps
     .map((step) => {
       const item = step as {
-        maneuver?: { instruction?: string };
+        maneuver?: {
+          instruction?: string;
+          type?: string;
+          modifier?: string;
+          location?: number[];
+        };
+        name?: string;
         distance?: number;
         duration?: number;
+        voiceInstructions?: unknown;
       };
 
       const instruction = String(item?.maneuver?.instruction || "").trim();
-      if (!instruction) return null;
+      const distanceMeters = Math.round(Number(item.distance) || 0);
+      if (!instruction) {
+        alongRouteMeters += distanceMeters;
+        return null;
+      }
 
-      return {
+      const parsed: NavigationRouteStep = {
         instruction,
-        distanceMeters: Math.round(Number(item.distance) || 0),
+        distanceMeters,
         durationSeconds: Math.round(Number(item.duration) || 0),
+        maneuverType: item.maneuver?.type
+          ? String(item.maneuver.type).trim().toLowerCase()
+          : undefined,
+        maneuverModifier: item.maneuver?.modifier
+          ? String(item.maneuver.modifier).trim().toLowerCase()
+          : undefined,
+        roadName: item.name ? String(item.name).trim() || undefined : undefined,
+        maneuverPoint: parseManeuverPoint(item.maneuver?.location),
+        maneuverAlongRouteMeters: alongRouteMeters,
+        voicePrompts: parseVoicePrompts(item.voiceInstructions),
       };
+
+      alongRouteMeters += distanceMeters;
+      return parsed;
     })
     .filter((step): step is NavigationRouteStep => step != null);
 }
@@ -142,6 +219,8 @@ export async function fetchNavigationRoutes(
       `&annotations=maxspeed` +
       `&steps=true` +
       `&banner_instructions=true` +
+      `&voice_instructions=true` +
+      `&voice_units=metric` +
       `&language=${encodeURIComponent(language)}` +
       `&access_token=${token}`;
 

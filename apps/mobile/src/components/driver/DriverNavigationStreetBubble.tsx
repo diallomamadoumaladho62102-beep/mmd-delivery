@@ -9,6 +9,9 @@ type Props = {
 export function DriverNavigationStreetBubbleLabel({ streetName }: Props) {
   const label = extractStreetName(streetName);
 
+  // Rounded pill only — no CSS border triangle pointer. The previous downward
+  // triangle (borderTopColor) rendered as a dark "pointe" over the map on both
+  // Android and iOS; it is removed at the source so it cannot reappear.
   return (
     <View style={{ alignItems: "center" }}>
       <View
@@ -16,14 +19,14 @@ export function DriverNavigationStreetBubbleLabel({ streetName }: Props) {
           backgroundColor: "#1B3F63",
           paddingHorizontal: 16,
           paddingVertical: 8,
-          borderRadius: 10,
+          borderRadius: 12,
           borderWidth: 1,
           borderColor: "rgba(0,229,255,0.22)",
           shadowColor: "#000000",
-          shadowOpacity: 0.45,
-          shadowRadius: 8,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 8,
+          shadowOpacity: 0.28,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 6,
         }}
       >
         <Text
@@ -37,18 +40,6 @@ export function DriverNavigationStreetBubbleLabel({ streetName }: Props) {
           {label}
         </Text>
       </View>
-      <View
-        style={{
-          width: 0,
-          height: 0,
-          borderLeftWidth: 8,
-          borderRightWidth: 8,
-          borderTopWidth: 9,
-          borderLeftColor: "transparent",
-          borderRightColor: "transparent",
-          borderTopColor: "#1B3F63",
-        }}
-      />
     </View>
   );
 }

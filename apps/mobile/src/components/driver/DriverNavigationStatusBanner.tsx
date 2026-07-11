@@ -122,6 +122,8 @@ export function resolveNavigationStatusBanner(
 type Props = {
   banner: NavigationStatusBanner | null;
   onResume?: () => void;
+  /** Distance from the top of the screen (below the safe-area HUD). */
+  topOffset?: number;
 };
 
 const TONE_STYLES = {
@@ -142,7 +144,7 @@ const TONE_STYLES = {
   },
 } as const;
 
-export function DriverNavigationStatusBanner({ banner, onResume }: Props) {
+export function DriverNavigationStatusBanner({ banner, onResume, topOffset = 118 }: Props) {
   if (!banner) return null;
 
   const tone = TONE_STYLES[banner.tone];
@@ -154,7 +156,7 @@ export function DriverNavigationStatusBanner({ banner, onResume }: Props) {
         position: "absolute",
         left: 12,
         right: 12,
-        top: 118,
+        top: topOffset,
         zIndex: 38,
         borderRadius: 12,
         paddingHorizontal: 12,

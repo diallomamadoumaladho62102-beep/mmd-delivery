@@ -3,10 +3,12 @@ import { View, Text } from "react-native";
 
 type Props = {
   alert: { message: string } | null;
+  /** Distance from the bottom (above the trip bar + home indicator). */
+  bottomOffset?: number;
 };
 
 /** Pill noire — alertes MMD uniquement. */
-export function DriverNavigationAlertPill({ alert }: Props) {
+export function DriverNavigationAlertPill({ alert, bottomOffset = 112 }: Props) {
   if (!alert?.message) return null;
 
   return (
@@ -16,7 +18,7 @@ export function DriverNavigationAlertPill({ alert }: Props) {
         position: "absolute",
         left: 16,
         right: 16,
-        bottom: 112,
+        bottom: bottomOffset,
         zIndex: 28,
         alignItems: "center",
       }}

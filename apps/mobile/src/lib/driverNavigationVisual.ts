@@ -249,17 +249,32 @@ export const ROUTE_FUTURE_WIDTH_RATIO = ROUTE_LINE_WIDTH_RATIO;
 export const ROUTE_TRAVELED_WIDTH_RATIO = ROUTE_LINE_WIDTH_RATIO;
 export const ROUTE_FUTURE_GLOW_MULTIPLIER = 1.0;
 
+/** Insets réels de l'appareil (react-native-safe-area-context). */
+export type NavigationSafeAreaInsets = {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+};
+
 /** Padding caméra — ancre véhicule au-dessus barre trip + marge flèche. */
 export function computeNavigationScreenLayout(
   screen: { width: number; height: number },
+  insets?: NavigationSafeAreaInsets,
 ): NavigationScreenLayout {
   const { width, height } = screen;
+  const safeTop = Math.max(0, insets?.top ?? 0);
+  const safeBottom = Math.max(0, insets?.bottom ?? 0);
+  const safeLeft = Math.max(0, insets?.left ?? 0);
+  const safeRight = Math.max(0, insets?.right ?? 0);
+
   const topInset = Math.round(height * TOP_UI_RATIO);
   const cameraPaddingBottom =
     Math.round(height * TRIP_BAR_HEIGHT_RATIO) +
     Math.round(height * SAFE_AREA_BOTTOM_RATIO) +
     Math.round(height * ARROW_BOTTOM_SCREEN_MARGIN_RATIO) +
-    Math.round(height * LOOK_AHEAD_SCREEN_PADDING_RATIO);
+    Math.round(height * LOOK_AHEAD_SCREEN_PADDING_RATIO) +
+    safeBottom;
   const targetAnchorY = height * NAV_ICON_SCREEN_RATIO;
   const paddingTop = Math.round(2 * targetAnchorY - height + cameraPaddingBottom);
 
@@ -268,10 +283,10 @@ export function computeNavigationScreenLayout(
     height,
     routeFutureWidth: width * ROUTE_LINE_WIDTH_RATIO,
     routeTraveledWidth: width * ROUTE_LINE_WIDTH_RATIO,
-    cameraPaddingTop: Math.max(topInset, paddingTop),
+    cameraPaddingTop: Math.max(topInset, paddingTop) + safeTop,
     cameraPaddingBottom,
-    cameraPaddingLeft: HORIZONTAL_INSET,
-    cameraPaddingRight: HORIZONTAL_INSET,
+    cameraPaddingLeft: HORIZONTAL_INSET + safeLeft,
+    cameraPaddingRight: HORIZONTAL_INSET + safeRight,
   };
 }
 

@@ -6,6 +6,7 @@
   useState,
 } from "react";
 import { SafeAreaView, View, StatusBar } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
 import Mapbox from "@rnmapbox/maps";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -19,14 +20,35 @@ import {
   getMapStyleStreets,
   isMapboxConfigured,
 } from "../lib/mapboxConfig";
-import { buildNavigationInstruction } from "../lib/navigationInstructions";
+import {
+  buildNavigationInstruction,
+  formatNavigationDistance,
+  type NavigationInstruction,
+} from "../lib/navigationInstructions";
 import {
   fitCameraToRoute,
 } from "../lib/navigationService";
 import {
+  buildManeuverList,
+  formatManeuverVoice,
+  selectActiveManeuver,
+} from "../lib/navigationManeuvers";
+import {
+  evaluateManeuverVoice,
+  initVoiceTriggerState,
+  resolveVoicePriority,
+} from "../lib/navigationVoiceTriggers";
+import {
+  computeSafetyAnnouncements,
+  initSafetyVoiceState,
+  projectSafetyEventsOntoRoute,
+  type RoadSafetyEvent,
+} from "../lib/roadSafety";
+import { resolveOverlayInsets } from "../lib/navigationSafeArea";
+import {
   resolveNavigationVoiceLanguage,
   speakArrival,
-  speakNavigationProgress,
+  speakNavigation,
   speakReroute,
   stopNavigationVoice,
 } from "../lib/navigationVoice";
@@ -210,6 +232,17 @@ export default function DriverMapScreen() {
   const navigation = useNavigation<Nav>();
   const navRoute = useRoute<RouteProp<RootStackParamList, "DriverMap">>();
   const { t, i18n } = useTranslation();
+  const safeAreaInsets = useSafeAreaInsets();
+  const overlayInsets = useMemo(
+    () =>
+      resolveOverlayInsets({
+        top: safeAreaInsets.top,
+        bottom: safeAreaInsets.bottom,
+        left: safeAreaInsets.left,
+        right: safeAreaInsets.right,
+      }),
+    [safeAreaInsets.top, safeAreaInsets.bottom, safeAreaInsets.left, safeAreaInsets.right],
+  );
 
   useKeepAwake();
 
@@ -279,6 +312,8 @@ export default function DriverMapScreen() {
     pickup: false,
     dropoff: false,
   });
+  const voiceTriggerStateRef = useRef(initVoiceTriggerState());
+  const safetyVoiceStateRef = useRef(initSafetyVoiceState());
   const tripSessionRef = useRef<TripHistorySession | null>(null);
 
   const [trip, setTrip] = useState<NavigationTrip | null>(null);
@@ -408,8 +443,49 @@ export default function DriverMapScreen() {
   const displayRemainingMeters =
     routeProgress?.remainingMeters ?? remainingMeters;
 
-  const instruction = useMemo(() => {
+  /** Stable route identity — changes on reroute / alternative selection. */
+  const routeVersion = useMemo(() => {
+    if (!activeRouteGeometry) return "";
+    return `${selectedRouteIndex}:${activeRouteGeometry.geometry.coordinates.length}`;
+  }, [activeRouteGeometry, selectedRouteIndex]);
+
+  /** Ordered maneuvers with cumulative along-route distances. */
+  const maneuvers = useMemo(
+    () => buildManeuverList(navigationRoute?.steps, routeVersion),
+    [navigationRoute?.steps, routeVersion],
+  );
+
+  /**
+   * Active maneuver selected from live traveled distance — the single source of
+   * truth shared by the HUD and the voice engine (visuel = vocal).
+   */
+  const maneuverSelection = useMemo(() => {
+    if (!maneuvers.length || !routeProgress) return null;
+    return selectActiveManeuver(maneuvers, routeProgress.traveledMeters);
+  }, [maneuvers, routeProgress]);
+
+  const instruction = useMemo<NavigationInstruction | null>(() => {
     if (!trip || !navigationRoute) return null;
+
+    if (maneuverSelection) {
+      const { active, distanceMeters, secondary, secondaryDistanceMeters } =
+        maneuverSelection;
+      return {
+        title: active.rawInstruction,
+        subtitle: formatNavigationDistance(displayRemainingMeters, navLocale),
+        maneuverDistanceMeters: distanceMeters,
+        distanceMeters: displayRemainingMeters,
+        voiceText: formatManeuverVoice({
+          maneuver: active,
+          distanceMeters: null,
+          locale: navLocale,
+        }),
+        maneuverType: active.kind,
+        secondaryTitle: secondary?.rawInstruction,
+        secondaryManeuverType: secondary?.kind,
+        secondaryDistanceMeters: secondaryDistanceMeters ?? undefined,
+      };
+    }
 
     return buildNavigationInstruction({
       remainingMeters: displayRemainingMeters,
@@ -417,7 +493,7 @@ export default function DriverMapScreen() {
       steps: navigationRoute.steps,
       locale: navLocale,
     });
-  }, [displayRemainingMeters, navLocale, navigationRoute, trip]);
+  }, [displayRemainingMeters, maneuverSelection, navLocale, navigationRoute, trip]);
 
   const camera = useDriverNavigationCamera({
     cameraRef,
@@ -429,6 +505,23 @@ export default function DriverMapScreen() {
     navigationActive,
     enabled: mapboxReady && !!navigationPoint && !navigationPaused,
   });
+
+  /**
+   * Raw road-safety events. Empty until an authorized provider/backend feed is
+   * wired — cameras / stop signs / school zones are NOT available from the
+   * Mapbox driving profile, so we never fabricate them (see roadSafety.ts).
+   */
+  const rawSafetyEvents = useMemo<RoadSafetyEvent[]>(() => [], []);
+
+  /** Only events genuinely ahead on the active route (never parallel/behind). */
+  const projectedSafetyEvents = useMemo(() => {
+    if (!activeRouteGeometry || !routeProgress) return [];
+    return projectSafetyEventsOntoRoute({
+      events: rawSafetyEvents,
+      geometry: activeRouteGeometry,
+      traveledMeters: routeProgress.traveledMeters,
+    });
+  }, [activeRouteGeometry, routeProgress, rawSafetyEvents]);
 
   const navigationAlert = useDriverNavigationAlert({
     enabled: navigationActive && !!trip && !navigationPaused,
@@ -536,6 +629,7 @@ export default function DriverMapScreen() {
   const controlsTopOffset = Math.max(
     96,
     Math.round(camera.screenLayout.cameraPaddingTop - 28),
+    overlayInsets.controlsTop,
   );
 
   const handleToggleVoice = useCallback(() => {
@@ -799,31 +893,86 @@ export default function DriverMapScreen() {
     camera.recenter();
   }, [activeRouteGeometry, camera.recenter]);
 
+  // Arrival voice is driven by the real order geofence (pickup/dropoff), which
+  // is more reliable than the route-geometry end point.
   useEffect(() => {
-    if (!voiceEnabled || navigationPaused || !instruction || !trip) return;
+    if (!voiceEnabled || navigationPaused || !trip) return;
 
     if (trip.stage === "pickup" && arrival.pickupArrived && !arrivalVoiceRef.current.pickup) {
       arrivalVoiceRef.current.pickup = true;
       void speakArrival("pickup", voiceLanguage);
-      return;
-    }
-
-    if (
+    } else if (
       trip.stage === "dropoff" &&
       arrival.dropoffArrived &&
       !arrivalVoiceRef.current.dropoff
     ) {
       arrivalVoiceRef.current.dropoff = true;
       void speakArrival("dropoff", voiceLanguage);
-      return;
     }
-
-    void speakNavigationProgress(instruction.voiceText, voiceLanguage);
   }, [
     arrival.dropoffArrived,
     arrival.pickupArrived,
-    instruction,
     navigationPaused,
+    trip,
+    voiceEnabled,
+    voiceLanguage,
+  ]);
+
+  // Distance-threshold voice engine: 500 m / 200 m / immediate announcements
+  // for the active maneuver, plus safety alerts, arbitrated by priority so a
+  // safety alert never masks an urgent navigation maneuver. No repetition
+  // (per-maneuver memory) and automatic reset on reroute (routeVersion).
+  useEffect(() => {
+    if (!voiceEnabled || navigationPaused || !trip || !navigationActive) return;
+    // Final arrival is handled by the geofence effect above.
+    if (destinationArrived) return;
+
+    const navResult = evaluateManeuverVoice({
+      state: voiceTriggerStateRef.current,
+      routeVersion,
+      selection: maneuverSelection,
+      locale: navLocale,
+    });
+    voiceTriggerStateRef.current = navResult.state;
+
+    const safetyResult = computeSafetyAnnouncements({
+      state: safetyVoiceStateRef.current,
+      routeVersion,
+      events: projectedSafetyEvents,
+      locale: navLocale,
+    });
+    safetyVoiceStateRef.current = safetyResult.state;
+
+    const navAnnouncement =
+      navResult.announcement && navResult.announcement.bucket !== "arrival"
+        ? navResult.announcement
+        : null;
+
+    const { primary, deferred } = resolveVoicePriority([
+      navAnnouncement,
+      safetyResult.announcement,
+    ]);
+
+    if (primary) {
+      void speakNavigation(primary.text, true, voiceLanguage);
+      // Defer lower-priority announcements so they never overlap the primary.
+      deferred.forEach((item, index) => {
+        setTimeout(
+          () => {
+            void speakNavigation(item.text, true, voiceLanguage);
+          },
+          3500 * (index + 1),
+        );
+      });
+    }
+  }, [
+    destinationArrived,
+    maneuverSelection,
+    navLocale,
+    navigationActive,
+    navigationPaused,
+    projectedSafetyEvents,
+    routeVersion,
     trip,
     voiceEnabled,
     voiceLanguage,
@@ -974,6 +1123,7 @@ export default function DriverMapScreen() {
         <DriverNavigationStatusBanner
           banner={statusBanner}
           onResume={navigationPaused ? handleResumeNavigation : undefined}
+          topOffset={overlayInsets.statusBannerTop}
         />
 
         <DriverNavigationControls
@@ -992,7 +1142,10 @@ export default function DriverMapScreen() {
           onStopNavigation={handleStopNavigation}
         />
 
-        <DriverNavigationAlertPill alert={navigationAlert} />
+        <DriverNavigationAlertPill
+          alert={navigationAlert}
+          bottomOffset={overlayInsets.alertPillBottom}
+        />
 
         {!destinationArrived ? (
           <DriverNavigationThenToast
@@ -1009,6 +1162,7 @@ export default function DriverMapScreen() {
               trip.stage === "pickup" ? trip.pickupAddress : trip.dropoffAddress
             }
             onOpenOrderDetails={handleOpenOrderDetails}
+            bottomOffset={overlayInsets.arrivalBannerBottom}
           />
         ) : null}
 
