@@ -5,7 +5,7 @@
   useRef,
   useState,
 } from "react";
-import { SafeAreaView, View, StatusBar } from "react-native";
+import { SafeAreaView, View, StatusBar, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
 import Mapbox from "@rnmapbox/maps";
@@ -36,14 +36,19 @@ import {
 import {
   evaluateManeuverVoice,
   initVoiceTriggerState,
-  resolveVoicePriority,
 } from "../lib/navigationVoiceTriggers";
 import {
   computeSafetyAnnouncements,
   initSafetyVoiceState,
   projectSafetyEventsOntoRoute,
-  type RoadSafetyEvent,
 } from "../lib/roadSafety";
+import { isCategoryEnabled } from "../lib/roadSafetyConfig";
+import {
+  enqueueVoice,
+  initVoiceQueue,
+  pruneVoiceQueue,
+  takeNextVoice,
+} from "../lib/navigationVoiceQueue";
 import { resolveOverlayInsets } from "../lib/navigationSafeArea";
 import {
   resolveNavigationVoiceLanguage,
@@ -75,6 +80,7 @@ import { useDriverNavigationCamera } from "../hooks/useDriverNavigationCamera";
 import { useArrivalGeofence } from "../hooks/useArrivalGeofence";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import { useDriverNavigationAlert } from "../hooks/useDriverNavigationAlert";
+import { useRoadSafetyEvents } from "../hooks/useRoadSafetyEvents";
 import { DriverNavigationHud } from "../components/driver/DriverNavigationHud";
 import { DriverNavigationBottomBar } from "../components/driver/DriverNavigationBottomBar";
 import { DriverNavigationControls } from "../components/driver/DriverNavigationControls";
@@ -88,6 +94,8 @@ import {
 import { DriverNavigationRouteLayers } from "../components/driver/DriverNavigationRouteLayers";
 import { DriverNavigationStreetBubbleLabel } from "../components/driver/DriverNavigationStreetBubble";
 import { DriverNavigationAlertPill } from "../components/driver/DriverNavigationAlertPill";
+import { DriverNavigationSafetyPanel } from "../components/driver/DriverNavigationSafetyPanel";
+import { DriverNavigationSafetyMarkers } from "../components/driver/DriverNavigationSafetyMarkers";
 import { DriverNavigationVehicleMarker } from "../components/driver/DriverNavigationVehicleMarker";
 import { DriverMapFallbackStates } from "../components/driver/DriverMapFallbackStates";
 import { useDriverTripHistory } from "../hooks/useDriverTripHistory";
@@ -233,6 +241,8 @@ export default function DriverMapScreen() {
   const navRoute = useRoute<RouteProp<RootStackParamList, "DriverMap">>();
   const { t, i18n } = useTranslation();
   const safeAreaInsets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const navScheme = colorScheme === "dark" ? "night" : "day";
   const overlayInsets = useMemo(
     () =>
       resolveOverlayInsets({
@@ -314,6 +324,7 @@ export default function DriverMapScreen() {
   });
   const voiceTriggerStateRef = useRef(initVoiceTriggerState());
   const safetyVoiceStateRef = useRef(initSafetyVoiceState());
+  const voiceQueueRef = useRef(initVoiceQueue());
   const tripSessionRef = useRef<TripHistorySession | null>(null);
 
   const [trip, setTrip] = useState<NavigationTrip | null>(null);
@@ -507,21 +518,50 @@ export default function DriverMapScreen() {
   });
 
   /**
-   * Raw road-safety events. Empty until an authorized provider/backend feed is
-   * wired — cameras / stop signs / school zones are NOT available from the
-   * Mapbox driving profile, so we never fabricate them (see roadSafety.ts).
+   * Real road-safety data from the Supabase `road-safety-events` Edge Function
+   * (curated + OpenStreetMap/Overpass aggregation, ODbL). No provider secret
+   * keys ever ship in the app; the backend applies per-country legal gating and
+   * returns the runtime config used below. Cached with fallback; refetched on
+   * reroute (bbox tile change).
    */
-  const rawSafetyEvents = useMemo<RoadSafetyEvent[]>(() => [], []);
+  const roadSafety = useRoadSafetyEvents({
+    enabled: navigationActive && !!trip && !navigationPaused,
+    routeGeometry: activeRouteGeometry,
+    countryCode: trip?.orderCountryCode ?? null,
+  });
+
+  /** Client-side defense in depth: honor per-country enable flags + confidence. */
+  const enabledSafetyEvents = useMemo(
+    () =>
+      roadSafety.events.filter(
+        (event) =>
+          isCategoryEnabled(roadSafety.config, event.type) &&
+          (event.confidence ?? 0) >= roadSafety.config.minConfidence,
+      ),
+    [roadSafety.events, roadSafety.config],
+  );
 
   /** Only events genuinely ahead on the active route (never parallel/behind). */
   const projectedSafetyEvents = useMemo(() => {
     if (!activeRouteGeometry || !routeProgress) return [];
     return projectSafetyEventsOntoRoute({
-      events: rawSafetyEvents,
+      events: enabledSafetyEvents,
       geometry: activeRouteGeometry,
       traveledMeters: routeProgress.traveledMeters,
+      maxLateralMeters: roadSafety.config.corridorRadiusMeters,
     });
-  }, [activeRouteGeometry, routeProgress, rawSafetyEvents]);
+  }, [
+    activeRouteGeometry,
+    routeProgress,
+    enabledSafetyEvents,
+    roadSafety.config.corridorRadiusMeters,
+  ]);
+
+  /** Nearest ahead event drives the contextual premium panel. */
+  const nearestSafetyEvent = useMemo(
+    () => (projectedSafetyEvents.length ? projectedSafetyEvents[0] : null),
+    [projectedSafetyEvents],
+  );
 
   const navigationAlert = useDriverNavigationAlert({
     enabled: navigationActive && !!trip && !navigationPaused,
@@ -935,12 +975,18 @@ export default function DriverMapScreen() {
     });
     voiceTriggerStateRef.current = navResult.state;
 
-    const safetyResult = computeSafetyAnnouncements({
-      state: safetyVoiceStateRef.current,
-      routeVersion,
-      events: projectedSafetyEvents,
-      locale: navLocale,
-    });
+    const safetyResult = roadSafety.config.enableVoice
+      ? computeSafetyAnnouncements({
+          state: safetyVoiceStateRef.current,
+          routeVersion,
+          events: projectedSafetyEvents,
+          locale: navLocale,
+          thresholds: {
+            far: roadSafety.config.announceFarMeters,
+            near: roadSafety.config.announceNearMeters,
+          },
+        })
+      : { state: safetyVoiceStateRef.current, announcement: null };
     safetyVoiceStateRef.current = safetyResult.state;
 
     const navAnnouncement =
@@ -948,22 +994,23 @@ export default function DriverMapScreen() {
         ? navResult.announcement
         : null;
 
-    const { primary, deferred } = resolveVoicePriority([
-      navAnnouncement,
-      safetyResult.announcement,
-    ]);
+    // Robust priority queue: enqueue candidates, cancel obsolete ones (a safety
+    // event now behind, or a maneuver already passed), then speak the highest
+    // priority once the minimum spacing has elapsed so nothing overlaps.
+    const now = Date.now();
+    let queue = voiceQueueRef.current;
+    queue = enqueueVoice(queue, navAnnouncement, now);
+    queue = enqueueVoice(queue, safetyResult.announcement, now);
 
-    if (primary) {
-      void speakNavigation(primary.text, true, voiceLanguage);
-      // Defer lower-priority announcements so they never overlap the primary.
-      deferred.forEach((item, index) => {
-        setTimeout(
-          () => {
-            void speakNavigation(item.text, true, voiceLanguage);
-          },
-          3500 * (index + 1),
-        );
-      });
+    const activeIds = new Set<string>();
+    if (maneuverSelection) activeIds.add(maneuverSelection.active.id);
+    for (const event of projectedSafetyEvents) activeIds.add(`safety:${event.id}`);
+    queue = pruneVoiceQueue(queue, now, activeIds);
+
+    const { state: nextQueue, announcement } = takeNextVoice(queue, now);
+    voiceQueueRef.current = nextQueue;
+    if (announcement) {
+      void speakNavigation(announcement.text, true, voiceLanguage);
     }
   }, [
     destinationArrived,
@@ -972,6 +1019,7 @@ export default function DriverMapScreen() {
     navigationActive,
     navigationPaused,
     projectedSafetyEvents,
+    roadSafety.config,
     routeVersion,
     trip,
     voiceEnabled,
@@ -1116,6 +1164,13 @@ export default function DriverMapScreen() {
             </Mapbox.PointAnnotation>
           )}
 
+          {navigationActive && projectedSafetyEvents.length > 0 && (
+            <DriverNavigationSafetyMarkers
+              events={projectedSafetyEvents}
+              locale={navLocale}
+            />
+          )}
+
         </Mapbox.MapView>
 
         <DriverNavigationHud visible={!!instruction} instruction={instruction} />
@@ -1126,6 +1181,15 @@ export default function DriverMapScreen() {
           topOffset={overlayInsets.statusBannerTop}
         />
 
+        {navigationActive && !destinationArrived ? (
+          <DriverNavigationSafetyPanel
+            event={nearestSafetyEvent}
+            locale={navLocale}
+            scheme={navScheme}
+            topOffset={overlayInsets.statusBannerTop + 44}
+          />
+        ) : null}
+
         <DriverNavigationControls
           topOffset={controlsTopOffset}
           voiceEnabled={voiceEnabled}
@@ -1133,6 +1197,7 @@ export default function DriverMapScreen() {
           routes={routes}
           selectedRouteIndex={selectedRouteIndex}
           navLocale={navLocale}
+          scheme={navScheme}
           onSelectRouteIndex={handleSelectRouteIndex}
           onToggleVoice={handleToggleVoice}
           onRecenter={handleRecenter}

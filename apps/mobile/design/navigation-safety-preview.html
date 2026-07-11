@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MMD Navigation — Road Safety UI preview</title>
+    <!--
+      Reliable local render of the premium navigation/road-safety UI using the
+      EXACT design tokens from apps/mobile/src/theme/navigationTheme.ts and the
+      SAFETY_COLORS map. This mirrors the React Native styles (colors, radii,
+      spacing, elevation) 1:1 so the visual design can be validated without an
+      emulator. NOTE: this is a design preview, not the on-device Mapbox render;
+      final validation on a physical Android/iOS device remains (see report).
+    -->
+    <style>
+      :root {
+        --radius-sm: 12px;
+        --radius-md: 16px;
+        --radius-lg: 22px;
+        --space-sm: 8px;
+        --space-md: 12px;
+        --hit: 52px;
+      }
+      * { box-sizing: border-box; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+      body { margin: 0; background: #0b0f17; color: #e5e7eb; padding: 28px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      p.lead { color: #94a3b8; margin: 0 0 24px; font-size: 13px; }
+      .grid { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+      .col-title { font-size: 12px; font-weight: 700; letter-spacing: .4px; color: #cbd5e1; margin: 0 0 10px; text-transform: uppercase; }
+
+      /* ---- device frame ---- */
+      .device { border-radius: 40px; padding: 10px; background: #1b1f27; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+      .device.small .screen { width: 300px; height: 620px; }
+      .device.large .screen { width: 360px; height: 720px; }
+      .screen { position: relative; border-radius: 32px; overflow: hidden; }
+      .screen.day { background:
+        repeating-linear-gradient(115deg, #eef1f5 0 42px, #e6eaf0 42px 46px),
+        #eef1f5; }
+      .screen.night { background:
+        repeating-linear-gradient(115deg, #1a2230 0 42px, #141b27 42px 46px),
+        #0f1622; }
+      /* route line */
+      .route { position:absolute; left:38%; top:8%; width:16px; height:84%;
+        background: linear-gradient(#2ECC71 0 40%, #48C4E0 40% 100%); border-radius: 12px;
+        transform: rotate(6deg); box-shadow: 0 0 12px rgba(72,196,224,.6); }
+      .arrow { position:absolute; left:38%; top:62%; width:26px; height:26px; margin-left:-5px;
+        background:#0B84FF; border:3px solid #fff; border-radius:50%;
+        box-shadow:0 4px 10px rgba(0,0,0,.4); }
+
+      /* notch / dynamic island */
+      .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:26px;
+        background:#000; border-bottom-left-radius:16px; border-bottom-right-radius:16px; z-index:60; }
+      .island { position:absolute; top:10px; left:50%; transform:translateX(-50%); width:112px; height:30px;
+        background:#000; border-radius:20px; z-index:60; }
+
+      /* HUD */
+      .hud { position:absolute; top:0; left:0; right:0; background:#000; color:#fff;
+        padding:44px 14px 14px; display:flex; align-items:center; gap:12px; z-index:40; }
+      .hud .turn { width:44px; height:44px; border-radius:12px; background:#0B84FF; display:flex;
+        align-items:center; justify-content:center; font-size:26px; }
+      .hud .txt b { font-size:19px; display:block; line-height:1.1; }
+      .hud .txt span { font-size:13px; color:#9fb3c8; }
+
+      /* safety contextual panel */
+      .panel { position:absolute; left:12px; top:118px; display:flex; align-items:center; gap:8px;
+        padding:8px 12px; border-radius:16px; z-index:39; max-width:78%; }
+      .panel.day { background:rgba(255,255,255,.96); border:1px solid rgba(15,23,42,.1);
+        box-shadow:0 4px 10px rgba(0,0,0,.22); }
+      .panel.night { background:rgba(17,20,28,.94); border:1px solid rgba(255,255,255,.12);
+        box-shadow:0 4px 10px rgba(0,0,0,.4); }
+      .panel .pico { width:34px; height:34px; border-radius:12px; display:flex; align-items:center;
+        justify-content:center; font-size:16px; border:2px solid; }
+      .panel .ptitle { font-size:15px; font-weight:900; }
+      .panel.day .ptitle { color:#0F172A; }
+      .panel.night .ptitle { color:#F8FAFC; }
+      .panel .pdist { font-size:13px; font-weight:800; }
+      .panel.day .pdist { color:#0B84FF; }
+      .panel.night .pdist { color:#48C4E0; }
+      .panel .pcap { font-size:11px; }
+      .panel.day .pcap { color:#5B6472; }
+      .panel.night .pcap { color:#9CA6B8; }
+      .dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin:0 6px 1px; }
+
+      /* floating controls */
+      .controls { position:absolute; right:12px; top:150px; display:flex; flex-direction:column;
+        gap:8px; z-index:30; }
+      .fab { width:var(--hit); height:var(--hit); border-radius:22px; display:flex; align-items:center;
+        justify-content:center; font-size:22px; border:1px solid; box-shadow:0 4px 10px rgba(0,0,0,.22); }
+      .fab.day { background:rgba(255,255,255,.96); border-color:rgba(15,23,42,.1); color:#0F172A; }
+      .fab.night { background:rgba(17,20,28,.94); border-color:rgba(255,255,255,.12); color:#F8FAFC; }
+      .fab.active { background:#22C55E; border-color:#22C55E; color:#04140A; }
+      .fab.alert { background:#DC2626; border-color:#DC2626; color:#fff; }
+      .fab.small { width:44px; height:44px; font-size:18px; }
+
+      /* speed limit + overspeed */
+      .limit { width:56px; height:56px; border-radius:50%; background:#fff; border:5px solid #DC2626;
+        display:flex; align-items:center; justify-content:center; font-weight:900; color:#111827; font-size:20px; }
+      .overspeed { animation:pulse 1s ease-in-out infinite; }
+      @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5);} 50%{box-shadow:0 0 0 8px rgba(220,38,38,0);} }
+
+      /* bottom bar */
+      .bottom { position:absolute; left:0; right:0; bottom:0; background:#000; color:#fff;
+        padding:15px 18px 26px; display:flex; align-items:center; justify-content:space-between; z-index:40; }
+      .bottom .eta b { font-size:20px; } .bottom .eta span { color:#9fb3c8; font-size:12px; }
+
+      /* badge gallery */
+      .gallery { display:flex; flex-wrap:wrap; gap:16px; margin-top:8px; }
+      .badge { width:64px; height:64px; border-radius:16px; display:flex; flex-direction:column;
+        align-items:center; justify-content:center; border:2px solid; font-size:22px; gap:2px; }
+      .badge small { font-size:9px; font-weight:800; }
+      .card { background:#111826; border:1px solid #1f2a3a; border-radius:14px; padding:16px; }
+      .nodata { position:absolute; left:12px; bottom:96px; right:12px; z-index:38;
+        padding:10px 12px; border-radius:16px; font-size:12px; text-align:center; }
+      .nodata.night { background:rgba(17,20,28,.94); color:#9CA6B8; border:1px solid rgba(255,255,255,.12); }
+      .attrib { position:absolute; left:12px; bottom:78px; font-size:9px; z-index:38; }
+      .attrib.day { color:#5B6472; } .attrib.night { color:#6b7688; }
+    </style>
+  </head>
+  <body>
+    <h1>MMD Delivery — Premium road-safety navigation UI</h1>
+    <p class="lead">Reliable local render using the exact tokens from <code>navigationTheme.ts</code>. On-device Mapbox validation still pending (no emulator / EAS in this env).</p>
+
+    <div class="grid">
+      <!-- Android small, DAY, speed camera 500m -->
+      <div>
+        <div class="col-title">Android small · Day · Camera 500 m</div>
+        <div class="device small">
+          <div class="screen day">
+            <div class="route"></div><div class="arrow"></div>
+            <div class="hud"><div class="turn">↰</div><div class="txt"><b>Turn left onto Rue 5</b><span>450 m</span></div></div>
+            <div class="panel day">
+              <div class="pico" style="background:#1F2937;border-color:#F59E0B;color:#FDE68A;">📷</div>
+              <div><div class="ptitle">Speed camera</div>
+                <div><span class="pdist">500 m</span><span class="dot" style="background:#00B34D"></span><span class="pcap">Informative — real signage prevails</span></div></div>
+            </div>
+            <div class="controls">
+              <div class="fab small day">⚡</div>
+              <div class="fab day">◎</div>
+              <div class="fab active">🔊</div>
+              <div class="fab day">⏸</div>
+              <div class="fab alert">✕</div>
+            </div>
+            <div class="attrib day">© OpenStreetMap contributors</div>
+            <div class="bottom"><div class="eta"><b>12 min</b> <span>· 4.3 km</span></div><div class="limit">50</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- iPhone large, DAY (Dynamic Island), STOP 200m -->
+      <div>
+        <div class="col-title">iPhone · Dynamic Island · Day · STOP 200 m</div>
+        <div class="device large">
+          <div class="screen day">
+            <div class="island"></div>
+            <div class="route"></div><div class="arrow"></div>
+            <div class="hud" style="padding-top:52px"><div class="turn">↑</div><div class="txt"><b>Continue on Main St</b><span>1.2 km</span></div></div>
+            <div class="panel day">
+              <div class="pico" style="background:#B91C1C;border-color:#fff;color:#fff;">✋</div>
+              <div><div class="ptitle">Stop sign</div>
+                <div><span class="pdist">200 m</span><span class="dot" style="background:#B45309"></span><span class="pcap">Informative — real signage prevails</span></div></div>
+            </div>
+            <div class="controls">
+              <div class="fab day">◎</div>
+              <div class="fab active">🔊</div>
+              <div class="fab day">⏸</div>
+              <div class="fab day">🗺</div>
+              <div class="fab day">☰</div>
+              <div class="fab alert">✕</div>
+            </div>
+            <div class="attrib day">© OpenStreetMap contributors</div>
+            <div class="bottom"><div class="eta"><b>18 min</b> <span>· 9.1 km</span></div><div class="limit">30</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Android small, NIGHT, school zone + overspeed -->
+      <div>
+        <div class="col-title">Android · Night · School zone + overspeed</div>
+        <div class="device small">
+          <div class="screen night">
+            <div class="route"></div><div class="arrow"></div>
+            <div class="hud"><div class="turn">↱</div><div class="txt"><b>Turn right onto Ave Kennedy</b><span>300 m</span></div></div>
+            <div class="panel night">
+              <div class="pico" style="background:#B45309;border-color:#FCD34D;color:#FEF3C7;">🏫</div>
+              <div><div class="ptitle">School zone</div>
+                <div><span class="pdist">500 m</span><span class="pcap" style="margin-left:6px">30 km/h</span><span class="dot" style="background:#FBBF24"></span></div></div>
+            </div>
+            <div class="controls">
+              <div class="fab night">◎</div>
+              <div class="fab active">🔊</div>
+              <div class="fab alert">▶</div>
+              <div class="fab alert">✕</div>
+            </div>
+            <div class="attrib night">© OpenStreetMap contributors</div>
+            <div class="bottom"><div class="eta"><b>7 min</b> <span>· 2.0 km</span></div>
+              <div class="limit overspeed" style="border-color:#DC2626;background:#DC2626;color:#fff;">30</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- iPhone notch, NIGHT, red-light + no data -->
+      <div>
+        <div class="col-title">iPhone · Notch · Night · Red-light / no-data</div>
+        <div class="device large">
+          <div class="screen night">
+            <div class="notch"></div>
+            <div class="route"></div><div class="arrow"></div>
+            <div class="hud" style="padding-top:52px"><div class="turn">↰</div><div class="txt"><b>Keep left</b><span>800 m</span></div></div>
+            <div class="panel night">
+              <div class="pico" style="background:#1F2937;border-color:#EF4444;color:#FCA5A5;">🚦</div>
+              <div><div class="ptitle">Red light camera</div>
+                <div><span class="pdist">350 m</span><span class="dot" style="background:#00B34D"></span><span class="pcap">Informative — real signage prevails</span></div></div>
+            </div>
+            <div class="controls">
+              <div class="fab small active">A0</div>
+              <div class="fab small night">A1</div>
+              <div class="fab night">◎</div>
+              <div class="fab night" style="opacity:.55">🔇</div>
+              <div class="fab alert">✕</div>
+            </div>
+            <div class="nodata night">No verified safety data for this area — drive by real signage</div>
+            <div class="attrib night">© OpenStreetMap contributors</div>
+            <div class="bottom"><div class="eta"><b>25 min</b> <span>· 14 km</span></div><div class="limit" style="opacity:.5">--</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:28px">
+      <div class="col-title">Premium safety badge family (day & night consistent)</div>
+      <div class="gallery">
+        <div class="badge" style="background:#1F2937;border-color:#F59E0B;color:#FDE68A;">📷<small>Camera</small></div>
+        <div class="badge" style="background:#1F2937;border-color:#EF4444;color:#FCA5A5;">🚦<small>Red light</small></div>
+        <div class="badge" style="background:#B91C1C;border-color:#fff;color:#fff;">✋<small>STOP</small></div>
+        <div class="badge" style="background:#B45309;border-color:#FCD34D;color:#FEF3C7;">🏫<small>School</small></div>
+        <div class="badge" style="background:#fff;border-color:#DC2626;color:#111;">50<small>Limit</small></div>
+        <div class="badge overspeed" style="background:#DC2626;border-color:#991B1B;color:#fff;">50<small>Over</small></div>
+      </div>
+    </div>
+  </body>
+</html>

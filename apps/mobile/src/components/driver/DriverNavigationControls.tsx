@@ -1,11 +1,13 @@
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View } from "react-native";
 import type { NavigationRoute } from "../../lib/navigationService";
 import {
   formatRouteAltLabel,
   formatTripDistance,
   type NavigationLocale,
 } from "../../lib/navigationLocale";
+import { MapFloatingButton } from "./map/MapFloatingButton";
+import { NAV_SPACE, type NavColorScheme } from "../../theme/navigationTheme";
 
 type Props = {
   topOffset: number;
@@ -14,6 +16,7 @@ type Props = {
   routes: NavigationRoute[];
   selectedRouteIndex: number;
   navLocale: NavigationLocale;
+  scheme?: NavColorScheme;
   onSelectRouteIndex: (index: number) => void;
   onToggleVoice: () => void;
   onRecenter: () => void;
@@ -27,11 +30,13 @@ function formatRouteSummary(route: NavigationRoute, locale: NavigationLocale): s
   return `${route.etaMinutes} min · ${formatTripDistance(route.distanceMeters, locale)}`;
 }
 
-function routeAltIcon(index: number): string {
-  if (index === 0) return "⚡";
-  return `A${index}`;
-}
-
+/**
+ * Premium floating map controls — a single coherent button family (recenter,
+ * voice, pause, overview, details, stop + route alternatives) with accessible
+ * tactile targets, animated press, clear active/alert states and day/night
+ * contrast. Positioned to never collide with the HUD, driver arrow or bottom
+ * bar (topOffset is safe-area aware).
+ */
 export function DriverNavigationControls({
   topOffset,
   voiceEnabled,
@@ -39,6 +44,7 @@ export function DriverNavigationControls({
   routes,
   selectedRouteIndex,
   navLocale,
+  scheme = "night",
   onSelectRouteIndex,
   onToggleVoice,
   onRecenter,
@@ -53,112 +59,75 @@ export function DriverNavigationControls({
     <View
       style={{
         position: "absolute",
-        right: 6,
+        right: NAV_SPACE.md,
         top: topOffset,
         zIndex: 30,
         alignItems: "center",
+        gap: NAV_SPACE.sm,
       }}
     >
       {showRouteAlts
         ? routes.map((route, index) => {
             const selected = index === selectedRouteIndex;
             const label = formatRouteAltLabel(index, navLocale);
-            const summary = formatRouteSummary(route, navLocale);
             return (
-              <TouchableOpacity
+              <MapFloatingButton
                 key={`route-alt-${index}`}
+                compact
+                scheme={scheme}
+                state={selected ? "active" : "default"}
+                icon={index === 0 ? "flash" : "navigate-outline"}
+                accessibilityLabel={`${label}, ${formatRouteSummary(route, navLocale)}`}
                 onPress={() => onSelectRouteIndex(index)}
-                activeOpacity={0.86}
-                accessibilityRole="button"
-                accessibilityLabel={`${label}, ${summary}`}
-                accessibilityState={{ selected }}
-                style={controlStyle(
-                  selected ? "rgba(37,99,235,0.92)" : undefined,
-                  selected ? "rgba(96,165,250,0.55)" : undefined,
-                )}
-              >
-                <Text
-                  style={{
-                    color: selected ? "#FFFFFF" : "#CBD5E1",
-                    fontSize: index === 0 ? 13 : 9,
-                    fontWeight: "800",
-                  }}
-                >
-                  {routeAltIcon(index)}
-                </Text>
-              </TouchableOpacity>
+              />
             );
           })
         : null}
 
-      {showRouteAlts ? <View style={{ height: 6 }} /> : null}
-
-      <TouchableOpacity
+      <MapFloatingButton
+        scheme={scheme}
+        icon="locate"
+        accessibilityLabel="Recentrer la carte"
         onPress={onRecenter}
-        activeOpacity={0.86}
-        accessibilityRole="button"
-        style={controlStyle()}
-      >
-        <Text style={{ color: "#CBD5E1", fontSize: 13, fontWeight: "600" }}>⌖</Text>
-      </TouchableOpacity>
+      />
 
-      <TouchableOpacity
+      <MapFloatingButton
+        scheme={scheme}
+        icon={voiceEnabled ? "volume-high" : "volume-mute"}
+        state={voiceEnabled ? "active" : "default"}
+        accessibilityLabel={voiceEnabled ? "Couper le son" : "Activer le son"}
         onPress={onToggleVoice}
-        activeOpacity={0.86}
-        style={controlStyle(voiceEnabled ? undefined : "rgba(69,10,10,0.55)")}
-      >
-        <Text style={{ color: "#CBD5E1", fontSize: 12, fontWeight: "600" }}>
-          {voiceEnabled ? "🔊" : "🔇"}
-        </Text>
-      </TouchableOpacity>
+      />
 
-      <TouchableOpacity
+      <MapFloatingButton
+        scheme={scheme}
+        icon={navigationPaused ? "play" : "pause"}
+        state={navigationPaused ? "alert" : "default"}
+        accessibilityLabel={navigationPaused ? "Reprendre la navigation" : "Mettre en pause"}
         onPress={onTogglePause}
-        activeOpacity={0.86}
-        style={controlStyle(navigationPaused ? "rgba(30,58,138,0.72)" : undefined)}
-      >
-        <Text style={{ color: "#CBD5E1", fontSize: 11, fontWeight: "600" }}>
-          {navigationPaused ? "▶" : "⏸"}
-        </Text>
-      </TouchableOpacity>
+      />
 
-      <TouchableOpacity onPress={onRouteOverview} activeOpacity={0.86} style={controlStyle()}>
-        <Text style={{ color: "#CBD5E1", fontSize: 11, fontWeight: "600" }}>▭</Text>
-      </TouchableOpacity>
+      <MapFloatingButton
+        scheme={scheme}
+        icon="map-outline"
+        accessibilityLabel="Vue d'ensemble de l'itinéraire"
+        onPress={onRouteOverview}
+      />
 
-      <TouchableOpacity onPress={onOpenOrderDetails} activeOpacity={0.86} style={controlStyle()}>
-        <Text style={{ color: "#CBD5E1", fontSize: 11, fontWeight: "600" }}>☰</Text>
-      </TouchableOpacity>
+      <MapFloatingButton
+        scheme={scheme}
+        icon="list"
+        accessibilityLabel="Détails de la commande"
+        onPress={onOpenOrderDetails}
+      />
 
-      <TouchableOpacity
+      <MapFloatingButton
+        scheme={scheme}
+        icon="close"
+        state="alert"
+        accessibilityLabel="Arrêter la navigation"
         onPress={onStopNavigation}
-        activeOpacity={0.86}
-        style={controlStyle("rgba(127,29,29,0.72)")}
-      >
-        <Text style={{ color: "#FECACA", fontSize: 11, fontWeight: "900" }}>✕</Text>
-      </TouchableOpacity>
+      />
     </View>
   );
-}
-
-function controlStyle(
-  backgroundColor = "rgba(15,23,42,0.82)",
-  borderColor = "rgba(0,0,0,0.14)",
-) {
-  return {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    borderWidth: 1,
-    borderColor,
-    marginBottom: 9,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 3,
-  };
 }

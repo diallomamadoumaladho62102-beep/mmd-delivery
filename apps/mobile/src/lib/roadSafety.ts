@@ -247,6 +247,18 @@ const SAFETY_BANDS = {
   nearBandTop: 230,
 } as const;
 
+/** Resolve announcement bands from configurable thresholds (with tolerance). */
+function resolveBands(thresholds?: { far?: number; near?: number }) {
+  const far = thresholds?.far ?? SAFETY_BANDS.far;
+  const near = thresholds?.near ?? SAFETY_BANDS.near;
+  return {
+    far,
+    near,
+    farBandTop: Math.round(far * 1.1),
+    nearBandTop: Math.round(near * 1.15),
+  };
+}
+
 function safetyLabel(
   event: ProjectedSafetyEvent,
   distanceMetersValue: number,
@@ -283,11 +295,13 @@ export function computeSafetyAnnouncements(params: {
   routeVersion: string;
   events: ProjectedSafetyEvent[];
   locale: string | NavigationLocale;
+  thresholds?: { far?: number; near?: number };
 }): { state: SafetyVoiceState; announcement: VoiceAnnouncement | null } {
   const locale =
     typeof params.locale === "string"
       ? resolveNavigationLocale(params.locale)
       : params.locale;
+  const bands = resolveBands(params.thresholds);
 
   let state = params.state;
   if (state.routeVersion !== params.routeVersion) {
@@ -301,7 +315,7 @@ export function computeSafetyAnnouncements(params: {
     const flags = { ...(byEvent[event.id] ?? { a500: false, a200: false }) };
     const distance = event.distanceAheadMeters;
 
-    if (!flags.a200 && distance <= SAFETY_BANDS.nearBandTop) {
+    if (!flags.a200 && distance <= bands.nearBandTop) {
       flags.a200 = true;
       flags.a500 = true;
       byEvent[event.id] = flags;
@@ -310,17 +324,13 @@ export function computeSafetyAnnouncements(params: {
           bucket: "200",
           maneuverId: `safety:${event.id}`,
           priority: VoicePriority.SafetyNear,
-          text: safetyLabel(event, SAFETY_BANDS.near, locale),
+          text: safetyLabel(event, bands.near, locale),
         };
       }
       continue;
     }
 
-    if (
-      !flags.a500 &&
-      distance <= SAFETY_BANDS.farBandTop &&
-      distance > SAFETY_BANDS.nearBandTop
-    ) {
+    if (!flags.a500 && distance <= bands.farBandTop && distance > bands.nearBandTop) {
       flags.a500 = true;
       byEvent[event.id] = flags;
       if (!announcement) {
@@ -328,7 +338,7 @@ export function computeSafetyAnnouncements(params: {
           bucket: "500",
           maneuverId: `safety:${event.id}`,
           priority: VoicePriority.Safety500,
-          text: safetyLabel(event, SAFETY_BANDS.far, locale),
+          text: safetyLabel(event, bands.far, locale),
         };
       }
       continue;
