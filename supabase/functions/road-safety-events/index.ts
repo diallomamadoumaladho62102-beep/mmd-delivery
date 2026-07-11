@@ -8,6 +8,7 @@
 // aggregated `road_safety_events` table (curated + OSM-ingested) filtered by the
 // per-country config, and returns the ODbL attribution string.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
+import { resolveEnabledTypes, validateBbox } from "../_shared/roadSafetyValidation.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -36,20 +37,10 @@ const DEFAULT_CONFIG = {
   overspeed_tolerance_kmh: 10,
   corridor_radius_meters: 25,
   min_confidence: 0.5,
+  legal_status: "unknown",
 };
 
 type Bbox = { south: number; west: number; north: number; east: number };
-
-function validBbox(b: any): b is Bbox {
-  return (
-    b &&
-    [b.south, b.west, b.north, b.east].every((v) => Number.isFinite(v)) &&
-    b.south <= b.north &&
-    b.west <= b.east &&
-    b.north - b.south <= 2 &&
-    b.east - b.west <= 2
-  );
-}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -64,9 +55,10 @@ Deno.serve(async (req: Request) => {
       bbox?: Bbox;
       countryCode?: string;
     };
-    if (!validBbox(body.bbox)) return json({ error: "invalid_bbox" }, 400);
+    const bboxCheck = validateBbox(body.bbox, 2);
+    if (!bboxCheck.ok) return json({ error: "invalid_bbox", reason: bboxCheck.reason }, 400);
 
-    const bbox = body.bbox;
+    const bbox = body.bbox as Bbox;
     const countryCode = String(body.countryCode ?? "").trim().toUpperCase() || null;
 
     const admin = createClient(url, serviceKey, {
@@ -85,12 +77,8 @@ Deno.serve(async (req: Request) => {
       if (cfg) config = { ...config, ...cfg };
     }
 
-    const enabledTypes: string[] = [];
-    if (config.enable_speed_camera) enabledTypes.push("speed_camera");
-    if (config.enable_red_light_camera) enabledTypes.push("red_light_camera");
-    if (config.enable_stop_sign) enabledTypes.push("stop_sign");
-    if (config.enable_school_zone) enabledTypes.push("school_zone");
-    if (config.enable_speed_limit) enabledTypes.push("speed_limit");
+    // Legal gating: camera categories only when legal_status === 'allowed'.
+    const enabledTypes = resolveEnabledTypes(config);
 
     if (enabledTypes.length === 0) {
       return json({ events: [], config, attribution: ATTRIBUTION });

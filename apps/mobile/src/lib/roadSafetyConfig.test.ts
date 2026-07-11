@@ -21,8 +21,10 @@ const merged = resolveRuntimeConfig({
   overspeed_tolerance_kmh: 5,
   corridor_radius_meters: 30,
   min_confidence: 0.7,
+  legal_status: "allowed",
 });
 assert(merged.enableSpeedCamera === true, "camera enabled per country");
+assert(merged.legalStatus === "allowed", "legal status merged");
 assert(merged.enableRedLightCamera === true, "red-light enabled per country");
 assert(merged.overspeedToleranceKmh === 5, "tolerance overridden");
 assert(merged.corridorRadiusMeters === 30, "corridor overridden");
@@ -38,13 +40,34 @@ const bad = resolveRuntimeConfig({
 assert(bad.announceFarMeters === 500, "NaN → default");
 assert(bad.minConfidence === 0.5, "invalid → default");
 
-// --- Per-country legal gating ---
-const camerasDisabled = resolveRuntimeConfig({ enable_speed_camera: false });
+// --- Per-country enable gating ---
+const camerasDisabled = resolveRuntimeConfig({ enable_speed_camera: false, legal_status: "allowed" });
 assert(
   isCategoryEnabled(camerasDisabled, "speed_camera") === false,
-  "disabled camera category not shown (legal restriction respected)",
+  "disabled camera category not shown",
 );
 assert(isCategoryEnabled(camerasDisabled, "stop_sign") === true, "stop still enabled");
-assert(isCategoryEnabled(merged, "speed_camera") === true, "enabled camera shown");
+assert(isCategoryEnabled(merged, "speed_camera") === true, "enabled+allowed camera shown");
+
+// --- Legal gating: cameras NEVER shown unless legal_status === 'allowed' ---
+const enabledButUnknown = resolveRuntimeConfig({
+  enable_speed_camera: true,
+  enable_red_light_camera: true,
+  legal_status: "unknown",
+});
+assert(
+  isCategoryEnabled(enabledButUnknown, "speed_camera") === false,
+  "unknown legal status → camera NOT auto-activated",
+);
+assert(
+  isCategoryEnabled(enabledButUnknown, "red_light_camera") === false,
+  "unknown legal status → red-light NOT auto-activated",
+);
+assert(isCategoryEnabled(enabledButUnknown, "stop_sign") === true, "stop unaffected by legal status");
+
+const restricted = resolveRuntimeConfig({ enable_speed_camera: true, legal_status: "restricted" });
+assert(isCategoryEnabled(restricted, "speed_camera") === false, "restricted → camera off");
+const disabled = resolveRuntimeConfig({ enable_speed_camera: true, legal_status: "disabled" });
+assert(isCategoryEnabled(disabled, "speed_camera") === false, "disabled → camera off");
 
 console.log("roadSafetyConfig tests passed");

@@ -1,0 +1,52 @@
+name: Road safety OSM ingest
+
+# Controlled, low-frequency ingestion (daily) — NOT every few minutes. The
+# Edge Function itself enforces per-zone frequency (daily/weekly), a no-overlap
+# lock, retry/backoff and spacing between zones to respect Overpass fair-use.
+on:
+  schedule:
+    - cron: "17 4 * * *" # daily 04:17 UTC
+  workflow_dispatch:
+    inputs:
+      maxZones:
+        description: "Max zones to process this run (kept small for the 150s edge limit)"
+        required: false
+        default: "3"
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      INGEST_SECRET: ${{ secrets.ROAD_SAFETY_INGEST_SECRET }}
+      FUNCTIONS_URL: ${{ vars.SUPABASE_FUNCTIONS_URL || 'https://sjmszohmhudayxawfows.supabase.co/functions/v1' }}
+      MAX_ZONES: ${{ github.event.inputs.maxZones || '3' }}
+    steps:
+      - name: Validate secret
+        run: |
+          if [ -z "${INGEST_SECRET}" ]; then
+            echo "::error::Missing repository secret ROAD_SAFETY_INGEST_SECRET."
+            exit 1
+          fi
+
+      - name: Trigger scheduled ingestion
+        run: |
+          set -euo pipefail
+          echo "Calling ${FUNCTIONS_URL}/road-safety-ingest-scheduled (maxZones=${MAX_ZONES})"
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${FUNCTIONS_URL}/road-safety-ingest-scheduled" \
+            -H "Content-Type: application/json" \
+            -H "x-ingest-secret: ${INGEST_SECRET}" \
+            -d "{\"maxZones\": ${MAX_ZONES}}")
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+          echo "HTTP ${code}"
+          echo "$body"
+          if [ "$code" != "200" ]; then
+            echo "::error::Ingestion HTTP ${code}"
+            exit 1
+          fi
+          if echo "$body" | grep -q '"ok":false'; then
+            echo "::error::One or more zones failed to ingest"
+            exit 1
+          fi

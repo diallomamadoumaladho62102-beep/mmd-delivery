@@ -1,20 +1,9 @@
 // deno-lint-ignore-file no-explicit-any
-// OpenStreetMap (Overpass) ingestion for road-safety events.
-//
-// Runs SERVER-SIDE only. Overpass requires no API key, but is rate-limited, so
-// results are cached/upserted into `road_safety_events` with an expiry. Callers
-// must present the shared ingest secret (x-ingest-secret) — never exposed to
-// the mobile app.
-//
-// Input (POST JSON): { bbox: {south,west,north,east}, countryCode?: string, ttlHours?: number }
-// OSM data is ODbL — attribution "© OpenStreetMap contributors" is required by
-// any client displaying it.
+// Manual OpenStreetMap (Overpass) ingestion for a single bbox. Server-side only
+// (x-ingest-secret). Delegates fetch/map/upsert to the shared ingest routine.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
-import {
-  buildOverpassQuery,
-  mapOsmElements,
-  type OsmElement,
-} from "../_shared/osmSafetyMapping.ts";
+import { validateBbox } from "../_shared/roadSafetyValidation.ts";
+import { ingestBbox, type IngestBbox } from "../_shared/roadSafetyIngest.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -29,8 +18,6 @@ function json(body: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
-
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -48,68 +35,29 @@ Deno.serve(async (req: Request) => {
     if (!url || !serviceKey) return json({ error: "server_misconfigured" }, 500);
 
     const body = (await req.json().catch(() => ({}))) as {
-      bbox?: { south: number; west: number; north: number; east: number };
+      bbox?: IngestBbox;
       countryCode?: string;
       ttlHours?: number;
     };
-    const bbox = body.bbox;
-    if (
-      !bbox ||
-      ![bbox.south, bbox.west, bbox.north, bbox.east].every((v) => Number.isFinite(v)) ||
-      bbox.north - bbox.south > 1 ||
-      bbox.east - bbox.west > 1
-    ) {
-      return json({ error: "invalid_bbox" }, 400);
-    }
+
+    // Manual ingest is capped tighter than the query API (Overpass load).
+    const bboxCheck = validateBbox(body.bbox, 1);
+    if (!bboxCheck.ok) return json({ error: "invalid_bbox", reason: bboxCheck.reason }, 400);
 
     const countryCode = String(body.countryCode ?? "").trim().toUpperCase() || null;
     const ttlHours = Math.min(Math.max(Number(body.ttlHours) || 168, 1), 720);
 
-    const overpassRes = await fetch(OVERPASS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: buildOverpassQuery(bbox),
-    });
-    if (!overpassRes.ok) {
-      return json({ error: "overpass_failed", status: overpassRes.status }, 502);
-    }
-    const overpassJson = (await overpassRes.json()) as { elements?: OsmElement[] };
-    const mapped = mapOsmElements(overpassJson.elements ?? []);
-
-    const expiresAt = new Date(Date.now() + ttlHours * 3600_000).toISOString();
-    const rows = mapped.map((event) => ({
-      ...event,
-      country_code: countryCode,
-      is_active: true,
-      expires_at: expiresAt,
-    }));
-
-    const admin = createClient(url, serviceKey, {
-      auth: { persistSession: false },
+    const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+    const result = await ingestBbox(admin as any, {
+      bbox: body.bbox as IngestBbox,
+      countryCode,
+      ttlHours,
     });
 
-    let upserted = 0;
-    // Upsert in chunks, de-duplicated by (source, source_ref).
-    for (let i = 0; i < rows.length; i += 200) {
-      const chunk = rows.slice(i, i + 200);
-      const { error } = await admin
-        .from("road_safety_events")
-        .upsert(chunk, { onConflict: "source,source_ref" });
-      if (error) return json({ error: "upsert_failed", details: error.message }, 500);
-      upserted += chunk.length;
-    }
-
-    return json({
-      ok: true,
-      fetched: overpassJson.elements?.length ?? 0,
-      mapped: mapped.length,
-      upserted,
-      attribution: "© OpenStreetMap contributors",
-    });
+    return json({ ok: true, ...result, attribution: "© OpenStreetMap contributors" });
   } catch (error) {
-    return json(
-      { error: "unexpected", details: error instanceof Error ? error.message : String(error) },
-      500,
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    const status = message.startsWith("overpass_failed") ? 502 : 500;
+    return json({ error: "ingest_failed", details: message }, status);
   }
 });

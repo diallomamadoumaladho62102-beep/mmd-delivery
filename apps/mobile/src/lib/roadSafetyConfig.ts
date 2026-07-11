@@ -8,6 +8,8 @@
  */
 import type { RoadSafetyEventType } from "./roadSafety";
 
+export type RoadSafetyLegalStatus = "allowed" | "restricted" | "unknown" | "disabled";
+
 export type RoadSafetyRuntimeConfig = {
   enableSpeedCamera: boolean;
   enableRedLightCamera: boolean;
@@ -20,6 +22,8 @@ export type RoadSafetyRuntimeConfig = {
   overspeedToleranceKmh: number;
   corridorRadiusMeters: number;
   minConfidence: number;
+  /** Legal state for camera-warning categories (gates cameras client-side). */
+  legalStatus: RoadSafetyLegalStatus;
 };
 
 /**
@@ -38,6 +42,7 @@ export const DEFAULT_RUNTIME_CONFIG: RoadSafetyRuntimeConfig = {
   overspeedToleranceKmh: 10,
   corridorRadiusMeters: 25,
   minConfidence: 0.5,
+  legalStatus: "unknown",
 };
 
 type RawConfig = Partial<{
@@ -52,7 +57,14 @@ type RawConfig = Partial<{
   overspeed_tolerance_kmh: number;
   corridor_radius_meters: number;
   min_confidence: number;
+  legal_status: string;
 }>;
+
+function legalStatusOf(value: unknown): RoadSafetyLegalStatus {
+  return value === "allowed" || value === "restricted" || value === "disabled"
+    ? value
+    : "unknown";
+}
 
 function num(value: unknown, fallback: number): number {
   const n = Number(value);
@@ -79,19 +91,25 @@ export function resolveRuntimeConfig(raw: RawConfig | null | undefined): RoadSaf
     overspeedToleranceKmh: num(raw.overspeed_tolerance_kmh, d.overspeedToleranceKmh),
     corridorRadiusMeters: num(raw.corridor_radius_meters, d.corridorRadiusMeters),
     minConfidence: num(raw.min_confidence, d.minConfidence),
+    legalStatus: legalStatusOf(raw.legal_status),
   };
 }
 
-/** Is a category allowed to be shown under the current config? */
+/**
+ * Is a category allowed to be shown under the current config? Camera categories
+ * are additionally gated by legal status: only surfaced when 'allowed'
+ * (never on 'unknown'/'restricted'/'disabled').
+ */
 export function isCategoryEnabled(
   config: RoadSafetyRuntimeConfig,
   type: RoadSafetyEventType,
 ): boolean {
+  const cameraAllowed = config.legalStatus === "allowed";
   switch (type) {
     case "speed_camera":
-      return config.enableSpeedCamera;
+      return config.enableSpeedCamera && cameraAllowed;
     case "red_light_camera":
-      return config.enableRedLightCamera;
+      return config.enableRedLightCamera && cameraAllowed;
     case "stop_sign":
       return config.enableStopSign;
     case "school_zone":

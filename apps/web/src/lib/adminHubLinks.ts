@@ -243,6 +243,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "taxi_drivers.read",
   },
   {
+    href: "/admin/road-safety",
+    title: "Road Safety",
+    description: "Radars, STOP, zones scolaires, limitations — config légale par pays + événements curés",
+    permission: "taxi_drivers.read",
+  },
+  {
     href: "/admin/taxi-taxes",
     title: "Taxi Taxes",
     description: "Taxes par pays — TVA, sales tax placeholders",
