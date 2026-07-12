@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
     .select("*")
     .single();
 
-  if (error) return json({ ok: false, error: error.message }, 500);
+  if (error || !data) return json({ ok: false, error: error?.message ?? "vehicle_insert_failed" }, 500);
 
   await auth.supabaseAdmin.rpc("recalculate_vehicle_category_eligibility", {
     p_vehicle_id: data.id,

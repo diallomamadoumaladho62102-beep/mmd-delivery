@@ -22,7 +22,8 @@ type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductList"
 
 export default function MarketplaceProductListScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { sellerId, sellerName, sellerCountryCode, sellerIsOpen = true } = route.params;
+  const { sellerId, sellerName, sellerCountryCode, sellerIsOpen = true } =
+    route.params ?? ({} as typeof route.params);
   const scope = { sellerCountryCode };
   const [products, setProducts] = useState<MarketplaceProduct[]>([]);
   const [loading, setLoading] = useState(true);

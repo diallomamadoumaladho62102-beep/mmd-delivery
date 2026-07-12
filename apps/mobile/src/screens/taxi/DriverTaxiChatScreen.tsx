@@ -45,7 +45,7 @@ export default function DriverTaxiChatScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<ChatRoute>();
   const { t } = useTranslation();
-  const rideId = route.params.rideId;
+  const rideId = route.params?.rideId;
   const scrollRef = useRef<ScrollView | null>(null);
 
   const [messages, setMessages] = useState<TaxiMessage[]>([]);

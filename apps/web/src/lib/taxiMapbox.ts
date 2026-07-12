@@ -93,8 +93,8 @@ async function geocodeAddress(address: string) {
     throw new Error(ROUTE_UNAVAILABLE);
   }
 
-  const json = await res.json();
-  const feature = json.features?.[0];
+  const json = await res.json().catch(() => null);
+  const feature = json?.features?.[0];
   if (!feature?.center) {
     console.error("[taxiMapbox] geocoding empty result", { address: trimmed });
     throw new Error(ROUTE_UNAVAILABLE);
@@ -135,8 +135,8 @@ export async function getMultiLegDistanceAndDuration(
     throw new Error(ROUTE_UNAVAILABLE);
   }
 
-  const json = await res.json();
-  const route = json.routes?.[0];
+  const json = await res.json().catch(() => null);
+  const route = json?.routes?.[0];
   if (!route) {
     console.error("[taxiMapbox] directions empty route (fail-closed)", {
       coordinates: coordinates.length,

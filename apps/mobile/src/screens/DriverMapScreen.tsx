@@ -302,7 +302,7 @@ export default function DriverMapScreen() {
       setNavigationPaused(qa.paused);
     };
 
-    void Linking.getInitialURL().then(applyUrl);
+    void Linking.getInitialURL().then(applyUrl).catch(() => {});
     const subscription = Linking.addEventListener("url", (event) => {
       applyUrl(event.url);
     });
@@ -396,7 +396,10 @@ export default function DriverMapScreen() {
   const routeProgress = useMemo(() => {
     if (!location.point || !activeRouteGeometry) return null;
 
-    const geometryKey = String(activeRouteGeometry.geometry.coordinates.length);
+    const coordsLength = activeRouteGeometry.geometry?.coordinates?.length ?? 0;
+    if (coordsLength < 2) return null;
+
+    const geometryKey = String(coordsLength);
     if (routeGeometryKeyRef.current !== geometryKey) {
       routeGeometryKeyRef.current = geometryKey;
       lastTraveledMetersRef.current = 0;
@@ -457,7 +460,7 @@ export default function DriverMapScreen() {
   /** Stable route identity — changes on reroute / alternative selection. */
   const routeVersion = useMemo(() => {
     if (!activeRouteGeometry) return "";
-    return `${selectedRouteIndex}:${activeRouteGeometry.geometry.coordinates.length}`;
+    return `${selectedRouteIndex}:${activeRouteGeometry.geometry?.coordinates?.length ?? 0}`;
   }, [activeRouteGeometry, selectedRouteIndex]);
 
   /** Ordered maneuvers with cumulative along-route distances. */
@@ -741,8 +744,9 @@ export default function DriverMapScreen() {
   const maneuverBubblePoint = useMemo(() => {
     if (!instruction || !navigationPoint || !activeRouteGeometry) return null;
 
+    const maneuverDistance = instruction.maneuverDistanceMeters ?? 0;
     const aheadMeters = Math.min(
-      Math.max(instruction.maneuverDistanceMeters * 0.95, 80),
+      Math.max(maneuverDistance * 0.95, 80),
       650,
     );
 
@@ -765,7 +769,7 @@ export default function DriverMapScreen() {
     void supabase.auth.getUser().then(({ data, error }) => {
       if (cancelled || error || !data?.user) return;
       setDriverId(data.user.id);
-    });
+    }).catch(() => {});
 
     return () => {
       cancelled = true;
@@ -779,7 +783,7 @@ export default function DriverMapScreen() {
       if (session) {
         void appendDriverTripHistory(finalizeTripHistorySession(session)).then(() => {
           void tripHistory.refresh();
-        });
+        }).catch(() => {});
         tripSessionRef.current = null;
       }
     };

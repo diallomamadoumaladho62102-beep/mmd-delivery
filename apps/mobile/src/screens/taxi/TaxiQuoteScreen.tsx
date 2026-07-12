@@ -56,6 +56,7 @@ type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
 export default function TaxiQuoteScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<QuoteRoute>();
+  const params = route.params ?? ({} as QuoteRoute["params"]);
   const { t } = useTranslation();
   const [paying, setPaying] = useState(false);
   const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
@@ -80,27 +81,27 @@ export default function TaxiQuoteScreen() {
   const [businessAccounts, setBusinessAccounts] = useState<
     { member_id: string; account?: { id: string; name: string } | null }[]
   >([]);
-  const [quoteState, setQuoteState] = useState(route.params.quote);
+  const [quoteState, setQuoteState] = useState(params.quote);
   const [sharedDiscountCents, setSharedDiscountCents] = useState(0);
-  const [pickupAddress, setPickupAddress] = useState(route.params.pickupAddress);
-  const [dropoffAddress, setDropoffAddress] = useState(route.params.dropoffAddress);
+  const [pickupAddress, setPickupAddress] = useState(params.pickupAddress);
+  const [dropoffAddress, setDropoffAddress] = useState(params.dropoffAddress);
   const [pickupLocationId, setPickupLocationId] = useState(
-    route.params.pickupLocationId ?? ""
+    params.pickupLocationId ?? ""
   );
   const [dropoffLocationId, setDropoffLocationId] = useState(
-    route.params.dropoffLocationId ?? ""
+    params.dropoffLocationId ?? ""
   );
-  const [routeInfo, setRouteInfo] = useState(route.params.route);
+  const [routeInfo, setRouteInfo] = useState(params.route);
   const { features: platformFeatures } = useClientPlatformFeatures();
   const market = useMemo(
     () => resolveMarketScopeFromFeatures(platformFeatures),
     [platformFeatures]
   );
-  const countryCode = route.params.countryCode ?? market.countryCode ?? "";
+  const countryCode = params.countryCode ?? market.countryCode ?? "";
   const lang = countryCode
     ? resolveTaxiLanguageForCountry(countryCode)
     : resolveTaxiLanguageForCountry("US");
-  const countryResolution = route.params.countryResolution as
+  const countryResolution = params.countryResolution as
     | { source?: string; detectedCountryCode?: string | null }
     | undefined;
 
@@ -169,7 +170,7 @@ export default function TaxiQuoteScreen() {
       pickupLng: Number(routeInfo?.pickupLng),
       dropoffLat: Number(routeInfo?.dropoffLat),
       dropoffLng: Number(routeInfo?.dropoffLng),
-      vehicleClass: route.params.vehicleClass as TaxiVehicleClass,
+      vehicleClass: params.vehicleClass as TaxiVehicleClass,
       countryCode,
       sharedRide,
     })
@@ -183,7 +184,7 @@ export default function TaxiQuoteScreen() {
         }
       })
       .catch(() => {
-        setQuoteState(route.params.quote);
+        setQuoteState(params.quote);
         setSharedDiscountCents(0);
       });
   }, [
@@ -193,10 +194,10 @@ export default function TaxiQuoteScreen() {
     dropoffAddress,
     pickupLocationId,
     dropoffLocationId,
-    route.params.vehicleClass,
+    params.vehicleClass,
   ]);
 
-  const vehicleClass = route.params.vehicleClass;
+  const vehicleClass = params.vehicleClass;
 
   const currency = String(quoteState?.currency ?? "USD");
   const fmt = (cents: unknown) =>
@@ -289,9 +290,9 @@ export default function TaxiQuoteScreen() {
         rewardId: rewardId ?? undefined,
         sharedRide,
         premiumDriverOnly,
-        preferElectricOrHybrid: route.params.preferElectricOrHybrid === true,
-        clientPreferences: route.params.clientPreferences ?? {},
-        ambiancePreference: route.params.ambiancePreference ?? "none",
+        preferElectricOrHybrid: params.preferElectricOrHybrid === true,
+        clientPreferences: params.clientPreferences ?? {},
+        ambiancePreference: params.ambiancePreference ?? "none",
         businessAccountId:
           businessRide && businessAccountId ? businessAccountId : undefined,
         businessTripType: businessRide && businessAccountId ? "business" : "personal",

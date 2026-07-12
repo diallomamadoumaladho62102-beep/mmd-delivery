@@ -7,6 +7,7 @@ import { ActivityIndicator, Image, Text, View } from "react-native";
 import "./src/i18n";
 
 import { AppRootShell } from "./src/components/AppRootShell";
+import { AppErrorBoundary } from "./src/components/AppErrorBoundary";
 import { supabase } from "./src/lib/supabase";
 import { getSelectedRole } from "./src/lib/authRole";
 import { setupNotifications, registerUserPushToken } from "./src/lib/notifications";
@@ -211,7 +212,11 @@ function App(): React.JSX.Element {
     return <Splash />;
   }
 
-  return <AppRootShell initialRouteName={initialRouteName} navKey={navKey} />;
+  return (
+    <AppErrorBoundary>
+      <AppRootShell initialRouteName={initialRouteName} navKey={navKey} />
+    </AppErrorBoundary>
+  );
 }
 
 export default wrapWithSentry(App);

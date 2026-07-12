@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { safeRequestJson } from "@/lib/safeRequestJson";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,9 @@ export async function PATCH(request: NextRequest) {
   try {
     const session = await assertStaffPermission("taxi_drivers.manage", request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, any>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const ruleId = String(body.rule_id ?? body.id ?? "").trim();
     if (!ruleId) return json({ ok: false, error: "rule_id_required" }, 400);
 
@@ -74,7 +77,9 @@ export async function POST(request: NextRequest) {
   try {
     const session = await assertStaffPermission("taxi_drivers.manage", request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, any>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const countryCode = body.country_code ? String(body.country_code).trim().toUpperCase() : null;
     const stateCode = body.state_code ? String(body.state_code).trim().toUpperCase() : null;
     const city = body.city ? String(body.city).trim().toLowerCase() : null;

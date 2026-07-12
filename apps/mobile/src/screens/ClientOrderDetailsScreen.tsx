@@ -364,7 +364,7 @@ export function ClientOrderDetailsScreen() {
   const { t, i18n } = useTranslation();
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
-  const { orderId } = route.params;
+  const { orderId } = route.params ?? ({} as typeof route.params);
 
   useEffect(() => {
     ensureMapboxTokenApplied();

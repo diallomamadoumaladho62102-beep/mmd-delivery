@@ -43,7 +43,8 @@ type Props = {
 export default function MarketplaceCartScreen({ route }: Props) {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { sellerId, sellerName, sellerCountryCode, orderId } = route.params;
+  const { sellerId, sellerName, sellerCountryCode, orderId } =
+    route.params ?? ({} as typeof route.params);
   const { features: platformFeatures } = useClientPlatformFeatures();
   const market = useMemo(
     () => resolveMarketScopeFromFeatures(platformFeatures),

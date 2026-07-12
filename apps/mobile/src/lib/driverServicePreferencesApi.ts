@@ -85,10 +85,15 @@ export async function fetchDriverServicePreferences(): Promise<{
   } catch (error) {
     const cached = await AsyncStorage.getItem(PREFS_CACHE_KEY);
     if (cached) {
-      return JSON.parse(cached) as {
-        preferences: DriverServicePreferences;
-        has_any_enabled: boolean;
-      };
+      try {
+        return JSON.parse(cached) as {
+          preferences: DriverServicePreferences;
+          has_any_enabled: boolean;
+        };
+      } catch {
+        // Corrupt cache — drop it and surface the original network error.
+        await AsyncStorage.removeItem(PREFS_CACHE_KEY).catch(() => {});
+      }
     }
     throw error;
   }

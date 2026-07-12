@@ -26,16 +26,18 @@ export default function CreateErrandOrderForm() {
         }),
       });
       if (!res.ok) {
-        const t = await res.text();
-        alert("Erreur: " + t);
+        const t = await res.text().catch(() => "");
+        alert("Erreur: " + (t || `HTTP ${res.status}`));
         return;
       }
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (data?.id) {
         window.location.href = `/orders/${data.id}/chat`;
       } else {
         alert("Commande créée, mais ID introuvable.");
       }
+    } catch {
+      alert("Réseau indisponible. Veuillez réessayer.");
     } finally {
       setLoading(false);
     }

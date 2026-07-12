@@ -8,19 +8,23 @@ export default function CreateOrderForm() {
   const [dropoffAddress, setDropoffAddress] = useState("");
 
   async function submit() {
-    const res = await fetch("/api/orders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kind,
-        pickup_kind: pickupKind,
-        pickup_address: pickupAddress,
-        dropoff_address: dropoffAddress
-      })
-    });
-    const json = await res.json();
-    if (json?.error) alert(json.error);
-    else alert("Commande créée");
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind,
+          pickup_kind: pickupKind,
+          pickup_address: pickupAddress,
+          dropoff_address: dropoffAddress
+        })
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.error) alert(json?.error ?? "Échec de la création de la commande");
+      else alert("Commande créée");
+    } catch {
+      alert("Réseau indisponible. Veuillez réessayer.");
+    }
   }
 
   return (

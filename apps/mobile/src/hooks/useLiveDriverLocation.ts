@@ -21,15 +21,18 @@ export function useLiveDriverLocation(driverId?: string | null) {
     let mounted = true;
 
     // initial fetch
-    supabase
+    void supabase
       .from("driver_locations")
       .select("driver_id,lat,lng,updated_at")
       .eq("driver_id", driverId)
-      .single()
-      .then(({ data }) => {
-        if (!mounted) return;
-        if (data) setLocation(data as any);
-      });
+      .maybeSingle()
+      .then(
+        ({ data }) => {
+          if (!mounted) return;
+          if (data) setLocation(data as any);
+        },
+        () => {},
+      );
 
     // realtime updates
     const channel = subscribePostgresChannel(`driver_locations:${driverId}`, [

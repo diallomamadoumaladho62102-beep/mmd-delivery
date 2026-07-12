@@ -21,8 +21,10 @@ export function useMyProfile() {
           .from("profiles")
           .select("id, role, vendor_id, driver_id")
           .eq("id", uid)
-          .single();
+          .maybeSingle();
         if (!stop) setProfile((data as any) ?? null);
+      } catch {
+        if (!stop) setProfile(null);
       } finally {
         if (!stop) setLoading(false);
       }

@@ -12,6 +12,7 @@ import {
   notifyAdminDocumentChanges,
   recalculateVehicleWithNotifications,
 } from "@/lib/vehicleEligibilityAdminService";
+import { safeRequestJson } from "@/lib/safeRequestJson";
 
 export const dynamic = "force-dynamic";
 
@@ -92,7 +93,9 @@ export async function PATCH(request: NextRequest) {
   try {
     const session = await assertCanManageTaxiDrivers(request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, any>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
 
     const vehicleId = String(body.vehicle_id ?? body.vehicleId ?? "").trim();
     const category = String(body.category ?? "").trim() as TaxiCategory;

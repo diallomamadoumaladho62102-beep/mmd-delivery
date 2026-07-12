@@ -185,7 +185,7 @@ function withOptionalOrderTimestamps(next: OrderStatus) {
 export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
   const { t, i18n } = useTranslation();
   const safeBack = useSafeBackNavigation("RestaurantCommandCenter");
-  const { orderId } = route.params as { orderId: string };
+  const { orderId } = (route.params ?? {}) as { orderId?: string };
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);

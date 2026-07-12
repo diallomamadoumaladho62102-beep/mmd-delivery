@@ -677,7 +677,7 @@ export function DriverHomeScreen() {
       );
     }
     if (wasOutOfServiceRef.current === false && out === true && isOnline) {
-      void setDriverOnlineStatus(false).then(() => setIsOnline(false));
+      void setDriverOnlineStatus(false).then(() => setIsOnline(false)).catch(() => setIsOnline(false));
       Alert.alert(
         platformFeatures.unavailable_title ??
           t("driver.home.outOfServiceTitle", "Out of Service Area"),

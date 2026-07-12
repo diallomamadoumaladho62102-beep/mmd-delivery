@@ -52,7 +52,7 @@ export default function TaxiRideTrackingScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<TrackingRoute>();
   const { t } = useTranslation();
-  const rideId = route.params.rideId;
+  const rideId = route.params?.rideId;
 
   const [ride, setRide] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);

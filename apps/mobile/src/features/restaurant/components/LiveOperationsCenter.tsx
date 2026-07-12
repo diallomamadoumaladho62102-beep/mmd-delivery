@@ -215,15 +215,15 @@ function LiveOperationsCenterComponent({
     | { kind: "new"; card: CommandCenterNewOrderCard }
     | { kind: "attention"; card: CommandCenterAttentionCard }
   > = [
-    ...data.driverArrived.map((card) => ({ kind: "driver" as const, variant: "arrived" as const, card })),
-    ...data.driverApproaching.map((card) => ({
+    ...(data.driverArrived ?? []).map((card) => ({ kind: "driver" as const, variant: "arrived" as const, card })),
+    ...(data.driverApproaching ?? []).map((card) => ({
       kind: "driver" as const,
       variant: "approaching" as const,
       card,
     })),
-    ...data.driverEnRoute.map((card) => ({ kind: "driver" as const, variant: "en_route" as const, card })),
-    ...data.newOrders.map((card) => ({ kind: "new" as const, card })),
-    ...data.attentionRequired.map((card) => ({ kind: "attention" as const, card })),
+    ...(data.driverEnRoute ?? []).map((card) => ({ kind: "driver" as const, variant: "en_route" as const, card })),
+    ...(data.newOrders ?? []).map((card) => ({ kind: "new" as const, card })),
+    ...(data.attentionRequired ?? []).map((card) => ({ kind: "attention" as const, card })),
   ];
 
   const liveCount = cards.length;

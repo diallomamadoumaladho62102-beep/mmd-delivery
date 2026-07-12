@@ -32,11 +32,11 @@ export async function getDistanceAndEta(
     throw new Error(`Mapbox Directions unavailable (${res.status})`);
   }
 
-  const json = (await res.json()) as {
+  const json = (await res.json().catch(() => null)) as {
     routes?: Array<{ distance?: number; duration?: number }>;
-  };
+  } | null;
 
-  const route = json.routes?.[0];
+  const route = json?.routes?.[0];
   if (!route || !Number.isFinite(route.distance) || !Number.isFinite(route.duration)) {
     throw new Error("Mapbox Directions returned no usable route");
   }

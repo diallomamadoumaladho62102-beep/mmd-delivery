@@ -746,7 +746,7 @@ function isAllowedDriverVisibleOrder(order: Order, driverId: string) {
 export function DriverOrderDetailsScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<DriverOrderDetailsRoute>();
-  const routeParams = route.params as any;
+  const routeParams = (route.params ?? {}) as any;
   const { orderId } = routeParams;
   const sourceTable = normalizeSourceTable(routeParams?.sourceTable ?? routeParams?.source_table);
 

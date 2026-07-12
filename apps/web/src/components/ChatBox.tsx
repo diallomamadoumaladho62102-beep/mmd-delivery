@@ -27,25 +27,31 @@ export default function ChatBox({ orderId }: { orderId: string }) {
     let isMounted = true;
 
     // qui suis-je ?
-    supabase.auth.getUser().then(({ data }) => {
+    void supabase.auth.getUser().then(({ data }) => {
       if (!isMounted) return;
       setMe(data.user?.id ?? null);
+    }).catch(() => {
+      if (isMounted) setMe(null);
     });
 
     // charge l'historique
-    (async () => {
-      const { data, error } = await supabase
-        .from("order_messages")
-        .select(
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("order_messages")
+          .select(
+            `
+            ${ORDER_MESSAGE_SELECT},
+            profiles:profiles!order_messages_user_id_fkey(full_name, avatar_url)
           `
-          ${ORDER_MESSAGE_SELECT},
-          profiles:profiles!order_messages_user_id_fkey(full_name, avatar_url)
-        `
-        )
-        .eq("order_id", orderId)
-        .order("created_at", { ascending: true });
+          )
+          .eq("order_id", orderId)
+          .order("created_at", { ascending: true });
 
-      if (!error && isMounted) setMsgs((data ?? []) as Msg[]);
+        if (!error && isMounted) setMsgs((data ?? []) as Msg[]);
+      } catch {
+        // transient transport error — keep existing messages, no crash
+      }
     })();
 
     // realtime

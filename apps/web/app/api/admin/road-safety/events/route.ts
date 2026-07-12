@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { safeRequestJson } from "@/lib/safeRequestJson";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,9 @@ export async function POST(request: NextRequest) {
   try {
     const session = await assertStaffPermission("taxi_drivers.manage", request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, any>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
 
     const type = EVENT_TYPES.includes(body.type) ? body.type : null;
     const latitude = Number(body.latitude);
@@ -112,7 +115,9 @@ export async function PATCH(request: NextRequest) {
   try {
     const session = await assertStaffPermission("taxi_drivers.manage", request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, any>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const id = String(body.id ?? "").trim();
     if (!id) return json({ ok: false, error: "id_required" }, 400);
 

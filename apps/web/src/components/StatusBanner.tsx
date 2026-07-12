@@ -16,15 +16,18 @@ export default function StatusBanner({ orderId }: { orderId: string }) {
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from("orders").select("status").eq("id", orderId).single()
-      .then(({ data }) => setStatus(data?.status ?? null));
+    void supabase.from("orders").select("status").eq("id", orderId).maybeSingle()
+      .then(
+        ({ data }) => setStatus(data?.status ?? null),
+        () => setStatus(null),
+      );
 
     const chan = supabase
       .channel(`status_banner_${orderId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` },
-        (payload: any) => setStatus(payload.new.status)
+        (payload: any) => setStatus(payload?.new?.status ?? null)
       )
       .subscribe();
 

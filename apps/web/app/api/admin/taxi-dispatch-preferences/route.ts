@@ -10,6 +10,7 @@ import {
 } from "@/lib/taxiClientPreferences";
 import { normalizeTaxiCityName } from "@/lib/taxiCityDetection";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
+import { safeRequestJson } from "@/lib/safeRequestJson";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,9 @@ export async function POST(request: NextRequest) {
   try {
     const session = await assertStaffPermission("taxi_drivers.manage", request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, any>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
 
     const countryRaw = body.country_code;
     const cityRaw = body.city;
@@ -148,7 +151,9 @@ export async function PATCH(request: NextRequest) {
   try {
     const session = await assertStaffPermission("taxi_drivers.manage", request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, any>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body;
     const ruleId = String(body.rule_id ?? body.id ?? "").trim();
 
     if (!ruleId) return json({ ok: false, error: "rule_id_required" }, 400);

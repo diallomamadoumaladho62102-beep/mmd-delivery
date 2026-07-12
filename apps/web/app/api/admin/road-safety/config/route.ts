@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { safeRequestJson } from "@/lib/safeRequestJson";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,9 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await assertStaffPermission("taxi_drivers.manage", request);
     const supabase = buildSupabaseAdminClient();
-    const body = await request.json();
+    const parsed = await safeRequestJson<Record<string, unknown>>(request);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.body as Record<string, any>;
 
     const countryCode = String(body.country_code ?? "").trim().toUpperCase();
     if (!/^[A-Z]{2}$/.test(countryCode)) {

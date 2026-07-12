@@ -55,7 +55,11 @@ export async function fetchDriverMarketplaceJobs(): Promise<{
 
 export async function fetchDriverMarketplaceJob(jobId: string): Promise<DriverMarketplaceJob> {
   const body = await authFetch(`/api/driver/marketplace-jobs?job_id=${encodeURIComponent(jobId)}`);
-  return body.job as DriverMarketplaceJob;
+  const job = body?.job as DriverMarketplaceJob | undefined;
+  if (!job?.id) {
+    throw new Error("Job introuvable ou indisponible");
+  }
+  return job;
 }
 
 export async function acceptDriverMarketplaceJob(jobId: string): Promise<DriverMarketplaceJob> {

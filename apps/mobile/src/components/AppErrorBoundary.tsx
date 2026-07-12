@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { formatBootError, reportBootError } from "../lib/startupProbe";
 
 type Props = {
@@ -20,6 +20,10 @@ export class AppErrorBoundary extends React.Component<Props, State> {
   componentDidCatch(error: Error, info: React.ErrorInfo): void {
     reportBootError(`react-boundary:${info.componentStack?.slice(0, 120) ?? "unknown"}`, error);
   }
+
+  reset = (): void => {
+    this.setState({ error: null });
+  };
 
   render(): React.ReactNode {
     if (!this.state.error) {
@@ -45,12 +49,25 @@ export class AppErrorBoundary extends React.Component<Props, State> {
             marginBottom: 12,
           }}
         >
-          MMD Delivery — erreur au démarrage
+          MMD Delivery — une erreur est survenue
         </Text>
         <Text style={{ color: "#FECACA", marginBottom: 16, lineHeight: 22 }}>
-          Copiez ce message depuis Xcode Console (filtre MMD-BOOT) et partagez-le
-          au support.
+          Vous pouvez réessayer. Si le problème persiste, partagez ce message au
+          support.
         </Text>
+        <Pressable
+          onPress={this.reset}
+          style={{
+            backgroundColor: "#F8FAFC",
+            borderRadius: 10,
+            paddingVertical: 12,
+            paddingHorizontal: 20,
+            alignSelf: "flex-start",
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ color: "#111827", fontWeight: "700" }}>Réessayer</Text>
+        </Pressable>
         <ScrollView
           style={{
             flex: 1,

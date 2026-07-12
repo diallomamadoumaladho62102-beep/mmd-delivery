@@ -41,7 +41,7 @@ function RestaurantAiGrowthManagerComponent({
           </Text>
         </View>
       ) : (
-        data.recommendations.map((item) => (
+        (data.recommendations ?? []).map((item) => (
           <View key={item.id} style={styles.recoCard}>
             <Text style={[styles.recoTitle, { textAlign: textAlignStart() }]}>
               {t(item.titleKey)}
