@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import { evaluateStripeSettlement } from "./requirePaymentIntentSucceeded";
+import {
+  evaluateStripeSettlement,
+  assertSettlementMatchesExpectation,
+  type PaymentSettlementResult,
+} from "./requirePaymentIntentSucceeded";
 
 function test(name: string, fn: () => void) {
   try {
@@ -138,6 +142,105 @@ test("missing references are not settled", () => {
   const r = evaluateStripeSettlement({});
   assert.equal(r.ok, false);
   if (!r.ok) assert.equal(r.reason, "missing_stripe_reference");
+});
+
+// ---------------------------------------------------------------------------
+// assertSettlementMatchesExpectation — amount / currency / user / service /
+// quote matching on top of a succeeded settlement.
+// ---------------------------------------------------------------------------
+
+const settledOk: PaymentSettlementResult = {
+  ok: true,
+  payment_intent_id: "pi_ok",
+  amount_cents: 1500,
+  currency: "usd",
+  session_id: "cs_ok",
+};
+
+test("expectation: a non-settled payment always fails, carrying the reason", () => {
+  const notSettled: PaymentSettlementResult = {
+    ok: false,
+    reason: "payment_intent_status_processing",
+    payment_intent_id: "pi_p",
+    session_id: null,
+  };
+  const r = assertSettlementMatchesExpectation(notSettled, {}, {});
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.equal(r.field, "settlement");
+    assert.equal(r.reason, "payment_intent_status_processing");
+  }
+});
+
+test("expectation: matching amount + currency passes", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    { user_id: "u1", module: "taxi", quote_id: "q1" },
+    { amountCents: 1500, currency: "USD", userId: "u1", serviceType: "taxi", quoteId: "q1" }
+  );
+  assert.equal(r.ok, true);
+});
+
+test("expectation: wrong amount is rejected", () => {
+  const r = assertSettlementMatchesExpectation(settledOk, {}, { amountCents: 1499 });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "amount");
+});
+
+test("expectation: wrong currency is rejected", () => {
+  const r = assertSettlementMatchesExpectation(settledOk, {}, { currency: "eur" });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "currency");
+});
+
+test("expectation: wrong user in metadata is rejected", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    { user_id: "attacker" },
+    { userId: "victim" }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "user");
+});
+
+test("expectation: wrong service_type in metadata is rejected", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    { module: "marketplace" },
+    { serviceType: "taxi" }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "service_type");
+});
+
+test("expectation: wrong quote_id in metadata is rejected", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    { quote_id: "q_other" },
+    { quoteId: "q_expected" }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "quote_id");
+});
+
+test("expectation: missing metadata is tolerated (verify-if-present)", () => {
+  // Legacy PaymentIntents created before a field existed must not be falsely
+  // rejected — only a POSITIVE mismatch blocks the transition to paid.
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    {},
+    { userId: "u1", serviceType: "taxi", quoteId: "q1" }
+  );
+  assert.equal(r.ok, true);
+});
+
+test("expectation: user match via client_user_id metadata alias", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    { client_user_id: "u1" },
+    { userId: "u1" }
+  );
+  assert.equal(r.ok, true);
 });
 
 console.log("requirePaymentIntentSucceeded tests passed");

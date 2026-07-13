@@ -252,3 +252,124 @@ export async function requirePaymentIntentSucceeded(refs: {
 
   return evaluateStripeSettlement({ session });
 }
+
+// ---------------------------------------------------------------------------
+// Expectation matching — the second half of the "definitively paid" gate.
+//
+// A succeeded PaymentIntent is necessary but not sufficient: before a resource
+// is flipped to `paid` we must also confirm the settled money matches what the
+// server expected for THIS resource, so a PaymentIntent belonging to another
+// user / service / quote / amount can never be replayed onto the wrong row.
+//
+// Semantics:
+//   * amount / currency are verified whenever the caller passes an expectation
+//     (the settled PaymentIntent always reports them).
+//   * metadata fields (user_id, service_type, quote_id) are verified
+//     "if-present": a POSITIVE mismatch is rejected, but a missing metadata
+//     value is tolerated so legacy PaymentIntents created before a field was
+//     added are never falsely rejected. This keeps webhook retries replayable.
+// ---------------------------------------------------------------------------
+
+export type PaymentExpectation = {
+  /** Expected amount in the smallest currency unit (Stripe minor units). */
+  amountCents?: number | null;
+  /** Expected ISO currency code (case-insensitive). */
+  currency?: string | null;
+  /** Expected owning user id (compared against metadata.user_id). */
+  userId?: string | null;
+  /** Expected service, e.g. "taxi" | "food" | "delivery" | "marketplace". */
+  serviceType?: string | null;
+  /** Expected server quote id, when the flow is quote-first. */
+  quoteId?: string | null;
+};
+
+export type PaymentExpectationResult =
+  | { ok: true; field?: undefined; reason?: undefined }
+  | { ok: false; field: string; reason: string };
+
+function metaValue(
+  metadata: Record<string, unknown> | null | undefined,
+  keys: string[]
+): string | null {
+  if (!metadata) return null;
+  for (const key of keys) {
+    const raw = metadata[key];
+    if (raw != null) {
+      const s = String(raw).trim();
+      if (s) return s;
+    }
+  }
+  return null;
+}
+
+/**
+ * Verify a settled payment matches the server's expectation for a resource.
+ * Pure (no network) so it is fully unit-testable and reusable across every
+ * "mark as paid" path. Returns a structured, secret-free failure reason.
+ */
+export function assertSettlementMatchesExpectation(
+  settled: PaymentSettlementResult,
+  metadata: Record<string, unknown> | null | undefined,
+  expected: PaymentExpectation
+): PaymentExpectationResult {
+  if (!settled.ok) {
+    return { ok: false, field: "settlement", reason: settled.reason };
+  }
+
+  if (expected.amountCents != null && Number.isFinite(expected.amountCents)) {
+    const want = Math.round(Number(expected.amountCents));
+    if (settled.amount_cents !== want) {
+      return {
+        ok: false,
+        field: "amount",
+        reason: `amount_mismatch_${settled.amount_cents}_vs_${want}`,
+      };
+    }
+  }
+
+  if (expected.currency) {
+    const want = String(expected.currency).toLowerCase();
+    if (String(settled.currency).toLowerCase() !== want) {
+      return {
+        ok: false,
+        field: "currency",
+        reason: `currency_mismatch_${settled.currency}_vs_${want}`,
+      };
+    }
+  }
+
+  if (expected.userId) {
+    const mdUser = metaValue(metadata, ["user_id", "userId", "client_user_id"]);
+    if (mdUser && mdUser !== String(expected.userId)) {
+      return { ok: false, field: "user", reason: "metadata_user_mismatch" };
+    }
+  }
+
+  if (expected.serviceType) {
+    const mdSvc = metaValue(metadata, [
+      "service_type",
+      "serviceType",
+      "module",
+    ]);
+    if (mdSvc && mdSvc.toLowerCase() !== String(expected.serviceType).toLowerCase()) {
+      return {
+        ok: false,
+        field: "service_type",
+        reason: "metadata_service_mismatch",
+      };
+    }
+  }
+
+  if (expected.quoteId) {
+    const mdQuote = metaValue(metadata, [
+      "quote_id",
+      "quoteId",
+      "route_quote_id",
+    ]);
+    if (mdQuote && mdQuote !== String(expected.quoteId)) {
+      return { ok: false, field: "quote_id", reason: "metadata_quote_mismatch" };
+    }
+  }
+
+  return { ok: true };
+}

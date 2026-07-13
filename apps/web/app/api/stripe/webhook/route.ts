@@ -1325,6 +1325,7 @@ async function handleCheckoutCompletedLikeEvent(
       expectedAmountCents: getTaxiCheckoutAmountCents(session),
       expectedCurrency: sessionCurrency,
       source: `webhook:${event.type}`,
+      metadata,
     });
 
     if (!taxiResult.ok) {
@@ -1972,6 +1973,7 @@ async function handlePaymentIntentSucceeded(
       expectedCurrency: piCurrency,
       source: "webhook:payment_intent.succeeded",
       paymentIntent: pi,
+      metadata,
     });
 
     if (!taxiResult.ok) {
