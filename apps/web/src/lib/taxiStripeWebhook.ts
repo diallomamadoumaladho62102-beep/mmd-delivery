@@ -233,6 +233,8 @@ export async function handleTaxiStripePayment(params: {
     const expectation = assertSettlementMatchesExpectation(settled, metadata, {
       userId: row.client_user_id ?? null,
       serviceType: "taxi",
+      entityId: taxiRideId,
+      entityIdKeys: ["taxi_ride_id", "taxiRideId", "ride_id"],
     });
     if (!expectation.ok) {
       return {

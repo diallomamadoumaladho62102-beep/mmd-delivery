@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
@@ -842,6 +843,9 @@ export async function POST(req: NextRequest) {
           success_url: successUrl,
           cancel_url: cancelUrl,
           metadata: {
+            metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+            service_type: "delivery",
+            module: "delivery",
             delivery_request_id: deliveryRequestId,
             deliveryRequestId: deliveryRequestId,
             user_id: String(user.id),
@@ -852,6 +856,9 @@ export async function POST(req: NextRequest) {
           },
           payment_intent_data: {
             metadata: {
+              metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+              service_type: "delivery",
+              module: "delivery",
               delivery_request_id: deliveryRequestId,
               deliveryRequestId: deliveryRequestId,
               user_id: String(user.id),

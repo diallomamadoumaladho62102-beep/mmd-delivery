@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 import {
   computeMarketplaceCheckoutShadow,
@@ -221,17 +222,23 @@ export async function createMarketplaceLiveCheckoutSession(
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata: {
+      metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+      service_type: "marketplace",
       module: "marketplace",
       seller_order_id: order.id,
       seller_id: order.seller_id,
       client_user_id: params.clientUserId,
+      user_id: params.clientUserId,
     },
     payment_intent_data: {
       metadata: {
+        metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+        service_type: "marketplace",
         module: "marketplace",
         seller_order_id: order.id,
         seller_id: order.seller_id,
         client_user_id: params.clientUserId,
+        user_id: params.clientUserId,
       },
     },
   });

@@ -2,6 +2,16 @@
 -- Payment integrity: one Stripe PaymentIntent == one paid resource.
 -- =============================================================================
 --
+-- NOTE ON THIS FILE'S TIMESTAMP (20260804120000)
+--   This repository currently uses FORWARD-DATED migration timestamps: at the
+--   time of writing (civil date 2026-07-13) the newest existing migration was
+--   `20260803120000_road_safety_events.sql`. `20260804120000` was chosen only
+--   to stay strictly greater than that last identifier so this migration keeps
+--   running LAST and never becomes out-of-order in environments where the
+--   August migrations are already applied. The timestamp therefore represents
+--   MIGRATION ORDER, not the real civil creation date.
+--
+
 -- Goal
 --   Prevent the SAME stripe_payment_intent_id from settling more than one
 --   order / seller_order / delivery_request / taxi_ride, by adding partial

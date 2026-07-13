@@ -259,16 +259,34 @@ export async function requirePaymentIntentSucceeded(refs: {
 // A succeeded PaymentIntent is necessary but not sufficient: before a resource
 // is flipped to `paid` we must also confirm the settled money matches what the
 // server expected for THIS resource, so a PaymentIntent belonging to another
-// user / service / quote / amount can never be replayed onto the wrong row.
+// user / service / entity / quote / amount can never be replayed onto the
+// wrong row (including a cross-service replay, e.g. a taxi PI onto an order).
 //
-// Semantics:
-//   * amount / currency are verified whenever the caller passes an expectation
-//     (the settled PaymentIntent always reports them).
-//   * metadata fields (user_id, service_type, quote_id) are verified
-//     "if-present": a POSITIVE mismatch is rejected, but a missing metadata
-//     value is tolerated so legacy PaymentIntents created before a field was
-//     added are never falsely rejected. This keeps webhook retries replayable.
+// METADATA POLICY (versioned)
+//   Every NEW PaymentIntent is stamped with `metadata_schema_version`
+//   (see PAYMENT_METADATA_SCHEMA_VERSION) by its creator. The matcher keys its
+//   strictness off that marker:
+//     * VERSIONED metadata (new PIs): the business fields the caller declares
+//       required (user, service_type, entity id) MUST be present AND match.
+//       A missing required field BLOCKS the transition to paid.
+//     * UNVERSIONED metadata (historical PIs minted before this policy): the
+//       same fields are verified "if-present" only — a positive mismatch is
+//       rejected, but a MISSING value is tolerated so PaymentIntents already in
+//       circulation are never falsely rejected. This is a bounded, documented
+//       backward-compatibility window, NOT the permanent rule.
+//   amount / currency are always verified when the caller passes them (the
+//   settled PaymentIntent always reports them, regardless of version).
+//   quote_id is optional even on versioned PIs ("verify if the flow has one").
 // ---------------------------------------------------------------------------
+
+/**
+ * Bump when the required-metadata contract changes. Written by every
+ * PaymentIntent creator so settlement can tell a "new" PI (strict) apart from a
+ * "historical" PI (tolerant). Presence — not the exact number — drives
+ * strictness, so older versioned PIs stay strict too.
+ */
+export const PAYMENT_METADATA_SCHEMA_VERSION = "1";
+const METADATA_VERSION_KEYS = ["metadata_schema_version", "metadataSchemaVersion"];
 
 export type PaymentExpectation = {
   /** Expected amount in the smallest currency unit (Stripe minor units). */
@@ -279,7 +297,11 @@ export type PaymentExpectation = {
   userId?: string | null;
   /** Expected service, e.g. "taxi" | "food" | "delivery" | "marketplace". */
   serviceType?: string | null;
-  /** Expected server quote id, when the flow is quote-first. */
+  /** Expected business entity id (order/ride/request/seller_order id). */
+  entityId?: string | null;
+  /** Metadata keys that should carry `entityId` (creator-specific aliases). */
+  entityIdKeys?: string[];
+  /** Expected server quote id, when the flow is quote-first (optional). */
   quoteId?: string | null;
 };
 
@@ -298,6 +320,48 @@ function metaValue(
       const s = String(raw).trim();
       if (s) return s;
     }
+  }
+  return null;
+}
+
+export function isVersionedPaymentMetadata(
+  metadata: Record<string, unknown> | null | undefined
+): boolean {
+  return metaValue(metadata, METADATA_VERSION_KEYS) != null;
+}
+
+function matchMetaField(params: {
+  field: string;
+  expected: string | null | undefined;
+  metadata: Record<string, unknown> | null | undefined;
+  keys: string[];
+  versioned: boolean;
+  required: boolean;
+  caseInsensitive?: boolean;
+}): PaymentExpectationResult | null {
+  const { field, expected, metadata, keys, versioned, required } = params;
+  if (!expected || keys.length === 0) return null;
+
+  const val = metaValue(metadata, keys);
+  if (val == null) {
+    // New (versioned) PI missing a required business field => hard block.
+    if (versioned && required) {
+      return {
+        ok: false,
+        field,
+        reason: `metadata_${field}_missing_on_versioned_pi`,
+      };
+    }
+    // Historical PI or optional field => tolerated (nothing to compare).
+    return null;
+  }
+
+  const a = params.caseInsensitive ? val.toLowerCase() : val;
+  const b = params.caseInsensitive
+    ? String(expected).toLowerCase()
+    : String(expected);
+  if (a !== b) {
+    return { ok: false, field, reason: `metadata_${field}_mismatch` };
   }
   return null;
 }
@@ -338,37 +402,46 @@ export function assertSettlementMatchesExpectation(
     }
   }
 
-  if (expected.userId) {
-    const mdUser = metaValue(metadata, ["user_id", "userId", "client_user_id"]);
-    if (mdUser && mdUser !== String(expected.userId)) {
-      return { ok: false, field: "user", reason: "metadata_user_mismatch" };
-    }
-  }
+  const versioned = isVersionedPaymentMetadata(metadata);
 
-  if (expected.serviceType) {
-    const mdSvc = metaValue(metadata, [
-      "service_type",
-      "serviceType",
-      "module",
-    ]);
-    if (mdSvc && mdSvc.toLowerCase() !== String(expected.serviceType).toLowerCase()) {
-      return {
-        ok: false,
-        field: "service_type",
-        reason: "metadata_service_mismatch",
-      };
-    }
-  }
+  const metaChecks: (PaymentExpectationResult | null)[] = [
+    matchMetaField({
+      field: "user",
+      expected: expected.userId,
+      metadata,
+      keys: ["user_id", "userId", "client_user_id"],
+      versioned,
+      required: true,
+    }),
+    matchMetaField({
+      field: "service_type",
+      expected: expected.serviceType,
+      metadata,
+      keys: ["service_type", "serviceType", "module"],
+      versioned,
+      required: true,
+      caseInsensitive: true,
+    }),
+    matchMetaField({
+      field: "entity",
+      expected: expected.entityId,
+      metadata,
+      keys: expected.entityIdKeys ?? [],
+      versioned,
+      required: true,
+    }),
+    matchMetaField({
+      field: "quote",
+      expected: expected.quoteId,
+      metadata,
+      keys: ["quote_id", "quoteId", "route_quote_id"],
+      versioned,
+      required: false,
+    }),
+  ];
 
-  if (expected.quoteId) {
-    const mdQuote = metaValue(metadata, [
-      "quote_id",
-      "quoteId",
-      "route_quote_id",
-    ]);
-    if (mdQuote && mdQuote !== String(expected.quoteId)) {
-      return { ok: false, field: "quote_id", reason: "metadata_quote_mismatch" };
-    }
+  for (const result of metaChecks) {
+    if (result) return result;
   }
 
   return { ok: true };

@@ -220,18 +220,19 @@ test("expectation: wrong quote_id in metadata is rejected", () => {
     { quoteId: "q_expected" }
   );
   assert.equal(r.ok, false);
-  if (!r.ok) assert.equal(r.field, "quote_id");
+  if (!r.ok) assert.equal(r.field, "quote");
 });
 
-test("expectation: missing metadata is tolerated (verify-if-present)", () => {
-  // Legacy PaymentIntents created before a field existed must not be falsely
-  // rejected — only a POSITIVE mismatch blocks the transition to paid.
-  const r = assertSettlementMatchesExpectation(
-    settledOk,
-    {},
-    { userId: "u1", serviceType: "taxi", quoteId: "q1" }
-  );
-  assert.equal(r.ok, true);
+test("expectation: HISTORICAL (unversioned) PI missing metadata is tolerated", () => {
+  // Legacy PaymentIntents created before the metadata policy must not be
+  // falsely rejected — only a POSITIVE mismatch blocks the transition to paid.
+  const res = assertSettlementMatchesExpectation(settledOk, {}, {
+    userId: "u1",
+    serviceType: "taxi",
+    entityId: "e1",
+    entityIdKeys: ["taxi_ride_id"],
+  });
+  assert.equal(res.ok, true);
 });
 
 test("expectation: user match via client_user_id metadata alias", () => {
@@ -239,6 +240,93 @@ test("expectation: user match via client_user_id metadata alias", () => {
     settledOk,
     { client_user_id: "u1" },
     { userId: "u1" }
+  );
+  assert.equal(r.ok, true);
+});
+
+// ---------------------------------------------------------------------------
+// Versioned metadata policy: NEW PaymentIntents (carrying
+// metadata_schema_version) must contain the required business fields; a
+// missing required field BLOCKS the transition to paid.
+// ---------------------------------------------------------------------------
+
+const versioned = (extra: Record<string, unknown>) => ({
+  metadata_schema_version: "1",
+  ...extra,
+});
+
+test("policy: versioned PI missing required user metadata is rejected", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ service_type: "taxi", taxi_ride_id: "ride1" }),
+    { userId: "u1", serviceType: "taxi", entityId: "ride1", entityIdKeys: ["taxi_ride_id"] }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.equal(r.field, "user");
+    assert.equal(r.reason, "metadata_user_missing_on_versioned_pi");
+  }
+});
+
+test("policy: versioned PI missing required service_type is rejected", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u1", taxi_ride_id: "ride1" }),
+    { userId: "u1", serviceType: "taxi", entityId: "ride1", entityIdKeys: ["taxi_ride_id"] }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "service_type");
+});
+
+test("policy: versioned PI missing required entity id is rejected", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u1", service_type: "taxi" }),
+    { userId: "u1", serviceType: "taxi", entityId: "ride1", entityIdKeys: ["taxi_ride_id"] }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "entity");
+});
+
+test("policy: versioned PI with all required fields present + matching passes", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u1", service_type: "taxi", taxi_ride_id: "ride1" }),
+    { userId: "u1", serviceType: "taxi", entityId: "ride1", entityIdKeys: ["taxi_ride_id"] }
+  );
+  assert.equal(r.ok, true);
+});
+
+test("policy: versioned PI with WRONG entity id is rejected (wrong ride/order)", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u1", service_type: "taxi", taxi_ride_id: "ride_OTHER" }),
+    { userId: "u1", serviceType: "taxi", entityId: "ride1", entityIdKeys: ["taxi_ride_id"] }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) {
+    assert.equal(r.field, "entity");
+    assert.equal(r.reason, "metadata_entity_mismatch");
+  }
+});
+
+test("policy: cross-service replay rejected — taxi PI cannot settle a food order", () => {
+  // A PaymentIntent minted for taxi (service_type=taxi) presented to a food
+  // settlement (expects service_type=food) must be rejected.
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u1", service_type: "taxi", taxi_ride_id: "ride1" }),
+    { userId: "u1", serviceType: "food", entityId: "order1", entityIdKeys: ["order_id"] }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "service_type");
+});
+
+test("policy: entity id alias (ride_id) is honoured", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u1", service_type: "taxi", ride_id: "ride1" }),
+    { userId: "u1", serviceType: "taxi", entityId: "ride1", entityIdKeys: ["taxi_ride_id", "ride_id"] }
   );
   assert.equal(r.ok, true);
 });

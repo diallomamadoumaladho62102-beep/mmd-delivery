@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
+import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import {
   getSupabaseAdminClient,
@@ -350,6 +351,8 @@ export async function POST(req: NextRequest) {
         success_url: body.successUrl?.trim() || urls.successUrl,
         cancel_url: body.cancelUrl?.trim() || urls.cancelUrl,
         metadata: {
+          metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+          service_type: "taxi",
           module: "taxi",
           taxi_ride_id: taxiRideId,
           taxiRideId: taxiRideId,
@@ -374,6 +377,8 @@ export async function POST(req: NextRequest) {
         },
         payment_intent_data: {
           metadata: {
+            metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+            service_type: "taxi",
             module: "taxi",
             taxi_ride_id: taxiRideId,
             taxiRideId: taxiRideId,
