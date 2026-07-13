@@ -62,7 +62,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await assertStaffPermission("users.sellers.read", request);
+    // Money-mutating actions (approve / cancel / simulate payouts) require the
+    // seller *manage* permission, not merely read. Behaviour-neutral for current
+    // roles (every role with read also has manage) but prevents a future
+    // read-only auditor role from approving payouts.
+    await assertStaffPermission("users.sellers.manage", request);
     const supabase = buildSupabaseAdminClient();
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
     const action = String(body.action ?? "").trim().toLowerCase();

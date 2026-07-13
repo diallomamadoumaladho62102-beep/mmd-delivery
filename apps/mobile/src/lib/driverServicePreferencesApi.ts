@@ -220,6 +220,17 @@ export async function addDriverVehicle(patch: Record<string, unknown>): Promise<
   });
 }
 
+export async function fetchDriverVehicleById(vehicleId: string): Promise<{
+  vehicle: Record<string, unknown> | null;
+  categories: VehicleCategoryStatus[];
+}> {
+  const body = await authFetch(`/api/driver/vehicles/${vehicleId}`);
+  return {
+    vehicle: body.vehicle ?? null,
+    categories: body.categories ?? [],
+  };
+}
+
 export async function updateDriverVehicleById(
   vehicleId: string,
   patch: Record<string, unknown>,

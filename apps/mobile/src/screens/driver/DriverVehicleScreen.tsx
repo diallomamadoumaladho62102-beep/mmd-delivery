@@ -11,16 +11,26 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  useNavigation,
+  useRoute,
+  type RouteProp,
+} from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
-  fetchDriverVehicleSnapshot,
+  addDriverVehicle,
   fetchDriverCapabilities,
-  requestDriverVehicleReview,
+  fetchDriverVehicleById,
   updateDriverCapabilities,
-  updateDriverVehicle,
+  updateDriverVehicleById,
   type VehicleCategoryStatus,
 } from "../../lib/driverServicePreferencesApi";
 import { toUserFacingError } from "../../lib/userFacingError";
+
+type Nav = NativeStackNavigationProp<RootStackParamList, "DriverVehicle">;
+type Rt = RouteProp<RootStackParamList, "DriverVehicle">;
 
 function statusColor(status: string) {
   if (status === "eligible") return "#15803d";
@@ -30,6 +40,17 @@ function statusColor(status: string) {
 }
 
 export function DriverVehicleScreen() {
+  const navigation = useNavigation<Nav>();
+  const route = useRoute<Rt>();
+  const paramVehicleId = route.params?.vehicleId;
+  // "new" (or missing param) => create a distinct vehicle via the multi-vehicle
+  // POST endpoint. A real id => edit that specific vehicle by id. This screen must
+  // never fall back to the legacy singular /api/driver/vehicle endpoint, which only
+  // ever targets the driver's primary vehicle and would silently overwrite it.
+  const vehicleId =
+    paramVehicleId && paramVehicleId !== "new" ? paramVehicleId : null;
+  const isCreate = vehicleId === null;
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [categories, setCategories] = useState<VehicleCategoryStatus[]>([]);
@@ -56,33 +77,39 @@ export function DriverVehicleScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [data, capabilities] = await Promise.all([
-        fetchDriverVehicleSnapshot(),
-        fetchDriverCapabilities().catch(() => ({ non_smoking: false })),
-      ]);
-      setCategories(data.categories);
-      const v = data.vehicle;
-      if (v) {
-        setForm({
-          vehicle_make: String(v.vehicle_make ?? ""),
-          vehicle_model: String(v.vehicle_model ?? ""),
-          vehicle_year: v.vehicle_year != null ? String(v.vehicle_year) : "",
-          vehicle_color: String(v.vehicle_color ?? ""),
-          license_plate: String(v.license_plate ?? ""),
-          seats_count: String(v.seats_count ?? 4),
-          vehicle_type: String(v.vehicle_type ?? "sedan"),
-          has_air_conditioning: Boolean(v.has_air_conditioning),
-          wheelchair_accessible: Boolean(v.wheelchair_accessible),
-          fuel_type: String(v.fuel_type ?? "gasoline"),
-          nickname: String(v.nickname ?? ""),
-          child_seat_available: Boolean(v.child_seat_available),
-          pets_allowed: Boolean(v.pets_allowed),
-          large_luggage: Boolean(v.large_luggage),
-          phone_charger_available: Boolean(v.phone_charger_available),
-          quiet_vehicle: Boolean(v.quiet_vehicle),
-          non_smoking: capabilities.non_smoking,
-        });
+      const capabilities = await fetchDriverCapabilities().catch(() => ({
+        non_smoking: false,
+      }));
+
+      if (vehicleId) {
+        const data = await fetchDriverVehicleById(vehicleId);
+        setCategories(data.categories);
+        const v = data.vehicle;
+        if (v) {
+          setForm({
+            vehicle_make: String(v.vehicle_make ?? ""),
+            vehicle_model: String(v.vehicle_model ?? ""),
+            vehicle_year: v.vehicle_year != null ? String(v.vehicle_year) : "",
+            vehicle_color: String(v.vehicle_color ?? ""),
+            license_plate: String(v.license_plate ?? ""),
+            seats_count: String(v.seats_count ?? 4),
+            vehicle_type: String(v.vehicle_type ?? "sedan"),
+            has_air_conditioning: Boolean(v.has_air_conditioning),
+            wheelchair_accessible: Boolean(v.wheelchair_accessible),
+            fuel_type: String(v.fuel_type ?? "gasoline"),
+            nickname: String(v.nickname ?? ""),
+            child_seat_available: Boolean(v.child_seat_available),
+            pets_allowed: Boolean(v.pets_allowed),
+            large_luggage: Boolean(v.large_luggage),
+            phone_charger_available: Boolean(v.phone_charger_available),
+            quiet_vehicle: Boolean(v.quiet_vehicle),
+            non_smoking: capabilities.non_smoking,
+          });
+        } else {
+          setForm((prev) => ({ ...prev, non_smoking: capabilities.non_smoking }));
+        }
       } else {
+        setCategories([]);
         setForm((prev) => ({ ...prev, non_smoking: capabilities.non_smoking }));
       }
     } catch (error) {
@@ -90,7 +117,7 @@ export function DriverVehicleScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [vehicleId]);
 
   useEffect(() => {
     void load();
@@ -99,29 +126,40 @@ export function DriverVehicleScreen() {
   const save = async () => {
     setSaving(true);
     try {
-      const [data] = await Promise.all([
-        updateDriverVehicle({
-          vehicle_make: form.vehicle_make.trim(),
-          vehicle_model: form.vehicle_model.trim(),
-          vehicle_year: Number(form.vehicle_year) || null,
-          vehicle_color: form.vehicle_color.trim(),
-          license_plate: form.license_plate.trim(),
-          seats_count: Number(form.seats_count) || 4,
-          vehicle_type: form.vehicle_type.trim(),
-          has_air_conditioning: form.has_air_conditioning,
-          wheelchair_accessible: form.wheelchair_accessible,
-          fuel_type: form.fuel_type,
-          nickname: form.nickname.trim() || null,
-          child_seat_available: form.child_seat_available,
-          pets_allowed: form.pets_allowed,
-          large_luggage: form.large_luggage,
-          phone_charger_available: form.phone_charger_available,
-          quiet_vehicle: form.quiet_vehicle,
-        }),
-        updateDriverCapabilities({ non_smoking: form.non_smoking }),
-      ]);
-      setCategories(data.categories);
-      Alert.alert("Véhicule", "Informations enregistrées. L'éligibilité a été recalculée.");
+      const payload: Record<string, unknown> = {
+        vehicle_make: form.vehicle_make.trim(),
+        vehicle_model: form.vehicle_model.trim(),
+        vehicle_year: Number(form.vehicle_year) || null,
+        vehicle_color: form.vehicle_color.trim(),
+        license_plate: form.license_plate.trim(),
+        seats_count: Number(form.seats_count) || 4,
+        vehicle_type: form.vehicle_type.trim(),
+        has_air_conditioning: form.has_air_conditioning,
+        wheelchair_accessible: form.wheelchair_accessible,
+        fuel_type: form.fuel_type,
+        nickname: form.nickname.trim() || null,
+        child_seat_available: form.child_seat_available,
+        pets_allowed: form.pets_allowed,
+        large_luggage: form.large_luggage,
+        phone_charger_available: form.phone_charger_available,
+        quiet_vehicle: form.quiet_vehicle,
+      };
+
+      await updateDriverCapabilities({ non_smoking: form.non_smoking });
+
+      if (vehicleId) {
+        await updateDriverVehicleById(vehicleId, payload);
+      } else {
+        await addDriverVehicle(payload);
+      }
+
+      Alert.alert(
+        "Véhicule",
+        isCreate
+          ? "Véhicule ajouté. Il est en attente de validation par l'équipe MMD."
+          : "Informations enregistrées. L'éligibilité a été recalculée.",
+      );
+      navigation.goBack();
     } catch (error) {
       Alert.alert("Erreur", toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."));
     } finally {
@@ -129,20 +167,10 @@ export function DriverVehicleScreen() {
     }
   };
 
-  const requestReview = async () => {
-    try {
-      await requestDriverVehicleReview();
-      Alert.alert("Revue admin", "Votre demande a été envoyée à l'équipe MMD.");
-      await load();
-    } catch (error) {
-      Alert.alert("Erreur", toUserFacingError(error, "Impossible d'envoyer la demande pour le moment."));
-    }
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
-        <ScreenHeader title="Véhicule" variant="light" fallbackRoute="DriverTabs" />
+        <ScreenHeader title="Véhicule" variant="light" fallbackRoute="DriverVehicles" />
         <ActivityIndicator style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
@@ -151,10 +179,10 @@ export function DriverVehicleScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title="Véhicule"
+        title={isCreate ? "Ajouter un véhicule" : "Véhicule"}
         subtitle="Les catégories taxi sont calculées par le serveur. Vous ne pouvez pas vous auto-attribuer Comfort, XL ou Wheelchair."
         variant="light"
-        fallbackRoute="DriverTabs"
+        fallbackRoute="DriverVehicles"
       />
       <ScrollView contentContainerStyle={styles.content}>
 
@@ -221,25 +249,27 @@ export function DriverVehicleScreen() {
         ))}
 
         <TouchableOpacity style={styles.primaryBtn} disabled={saving} onPress={() => void save()}>
-          <Text style={styles.primaryBtnText}>{saving ? "Enregistrement…" : "Enregistrer"}</Text>
+          <Text style={styles.primaryBtnText}>
+            {saving ? "Enregistrement…" : isCreate ? "Ajouter le véhicule" : "Enregistrer"}
+          </Text>
         </TouchableOpacity>
 
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Catégories autorisées</Text>
-        {categories.map((cat) => (
-          <View key={cat.category} style={styles.categoryCard}>
-            <Text style={styles.categoryTitle}>{cat.label}</Text>
-            <Text style={[styles.categoryStatus, { color: statusColor(cat.status) }]}>
-              {cat.status}
-            </Text>
-            {cat.reason_message ? (
-              <Text style={styles.categoryReason}>{cat.reason_message}</Text>
-            ) : null}
-          </View>
-        ))}
-
-        <TouchableOpacity style={styles.secondaryBtn} onPress={() => void requestReview()}>
-          <Text style={styles.secondaryBtnText}>Demander une revue admin</Text>
-        </TouchableOpacity>
+        {!isCreate && categories.length > 0 ? (
+          <>
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Catégories autorisées</Text>
+            {categories.map((cat) => (
+              <View key={cat.category} style={styles.categoryCard}>
+                <Text style={styles.categoryTitle}>{cat.label}</Text>
+                <Text style={[styles.categoryStatus, { color: statusColor(cat.status) }]}>
+                  {cat.status}
+                </Text>
+                {cat.reason_message ? (
+                  <Text style={styles.categoryReason}>{cat.reason_message}</Text>
+                ) : null}
+              </View>
+            ))}
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -266,15 +296,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   primaryBtnText: { color: "#fff", fontWeight: "700" },
-  secondaryBtn: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 10,
-    padding: 12,
-    alignItems: "center",
-  },
-  secondaryBtnText: { color: "#0f172a", fontWeight: "600" },
   categoryCard: {
     backgroundColor: "#f8fafc",
     borderRadius: 10,

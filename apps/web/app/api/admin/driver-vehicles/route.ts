@@ -118,6 +118,11 @@ export async function PATCH(request: NextRequest) {
     if (action === "approve_vehicle") {
       const vehicleAfter = {
         admin_review_status: "approved",
+        // Approving a vehicle must also make it operationally selectable. The driver
+        // "set active vehicle" RPC (set_driver_active_vehicle) requires
+        // vehicle_status = 'active'; without flipping it here an approved vehicle
+        // stays 'pending_review' forever and can never be selected as active.
+        vehicle_status: "active",
         inspection_status: body.inspection_status ?? "approved",
         insurance_status: body.insurance_status ?? "approved",
         registration_status: body.registration_status ?? "approved",
