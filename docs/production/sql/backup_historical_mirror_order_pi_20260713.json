@@ -1,0 +1,59 @@
+{
+  "purpose": "Pre-correction backup of three historical delivery_request mirror orders before NULL-ing duplicated stripe_payment_intent_id / stripe_session_id.",
+  "project_ref": "sjmszohmhudayxawfows",
+  "project_name": "mmd_delivery",
+  "backed_up_at_utc": "2026-07-13T09:28:00Z",
+  "correction_applied_at_utc": "2026-07-13T09:31:59Z",
+  "migration_applied": "20260804120000_payment_intent_uniqueness",
+  "rationale": "Historical architecture co-created delivery_requests + pickup_dropoff orders sharing one PaymentIntent. delivery_requests is payment source of truth; current syncPaidDeliveryRequestOrder does not copy PI onto mirror orders.",
+  "rows": [
+    {
+      "id": "9aa30884-d7e2-4df8-b871-4921f64b6608",
+      "external_ref_id": "92f87f47-c228-498a-94e4-6e6a2759d1b7",
+      "external_ref_type": "delivery_request",
+      "stripe_payment_intent_id": "pi_3TK9QbARYL6CPXX20t9IZAjd",
+      "stripe_session_id": "cs_test_a1YKH2S52Ma9ykVYLh461yYZVTT0FkmPTxvmkwyQEGeoo6FEbIf3Ox0a1t",
+      "payment_status": "paid",
+      "status": "accepted",
+      "paid_at": "2026-04-09 03:39:12.588+00",
+      "created_at": "2026-04-09 03:38:27.489918+00",
+      "updated_at": "2026-05-26 07:16:22.630973+00",
+      "client_user_id": "379cb6a0-2e6e-43f5-b2de-dacac7144c94",
+      "total": "10.17",
+      "currency": "USD",
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d"
+    },
+    {
+      "id": "e7751184-5bf7-4db0-bb84-46308a204084",
+      "external_ref_id": "f3303ae3-552d-466d-ad35-7ae36386866d",
+      "external_ref_type": "delivery_request",
+      "stripe_payment_intent_id": "pi_3TKCANARYL6CPXX22K1ftx1f",
+      "stripe_session_id": "cs_test_a1L2jdc5Bl5hv0wHNcxPax6uM8BcPYtSM9BG5Ybm3svFogY5PPCGmc9wVo",
+      "payment_status": "paid",
+      "status": "accepted",
+      "paid_at": "2026-04-09 06:34:36.436+00",
+      "created_at": "2026-04-09 06:33:54.276199+00",
+      "updated_at": "2026-05-26 07:16:15.139853+00",
+      "client_user_id": "379cb6a0-2e6e-43f5-b2de-dacac7144c94",
+      "total": "10.05",
+      "currency": "USD",
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d"
+    },
+    {
+      "id": "4fbd3968-4709-4578-af78-c81e3c19c6e6",
+      "external_ref_id": "7fa39fad-6461-4cda-a0a6-a33531215ffd",
+      "external_ref_type": "delivery_request",
+      "stripe_payment_intent_id": "pi_3TKZH9ARYL6CPXX21zqLZLu4",
+      "stripe_session_id": "cs_test_a1GLp9a6npULf29QjngOgv2pQ0zX22QghSF0HYPhlbEnAX6YZxhocQig24",
+      "payment_status": "paid",
+      "status": "accepted",
+      "paid_at": "2026-04-10 07:15:08.586+00",
+      "created_at": "2026-04-10 07:14:30.22312+00",
+      "updated_at": "2026-05-26 07:15:53.286849+00",
+      "client_user_id": "379cb6a0-2e6e-43f5-b2de-dacac7144c94",
+      "total": "10.17",
+      "currency": "USD",
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d"
+    }
+  ]
+}
