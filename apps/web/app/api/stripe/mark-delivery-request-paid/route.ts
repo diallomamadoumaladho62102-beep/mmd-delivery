@@ -522,6 +522,12 @@ export async function POST(req: NextRequest) {
         sessionId:
           stripeCheck.session_id ??
           (requestedSessionId || deliveryRequest.stripe_session_id),
+        expectation: {
+          userIds: [deliveryRequest.created_by, deliveryRequest.client_user_id],
+          serviceType: "delivery",
+          entityId: deliveryRequest.id,
+          entityIdKeys: ["delivery_request_id", "deliveryRequestId"],
+        },
       }
     );
 

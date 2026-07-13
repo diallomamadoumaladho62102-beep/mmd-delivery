@@ -1,0 +1,68 @@
+-- =============================================================================
+-- Payment Intent Integrity — MANUAL REPAIR SUGGESTIONS
+-- =============================================================================
+--
+-- !!! DO NOT RUN THIS FILE AUTOMATICALLY. !!!
+-- !!! DO NOT INCLUDE IT IN ANY MIGRATION.  !!!
+--
+-- These are *proposals* to inspect and, only where appropriate and after human
+-- review, run MANUALLY to resolve BLOCKED items reported by
+-- `payment_intent_integrity_audit.sql`, so the partial unique indexes in
+-- migration 20260804120000_payment_intent_uniqueness.sql can be applied.
+--
+-- Golden rules:
+--   * Never delete, merge, or rewrite historical financial rows blindly.
+--   * A real duplicate PaymentIntent on two paid rows means MONEY reconciliation
+--     is required first (Stripe dashboard: was the PI actually charged once?).
+--   * Prefer clearing an *erroneous* PI reference on a NON-paid / cancelled /
+--     expired row over touching a paid row.
+--   * Keep an export/backup of affected rows before any UPDATE.
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- 0) Snapshot the rows you are about to touch (run + save the output first).
+-- -----------------------------------------------------------------------------
+-- select * from public.orders            where stripe_payment_intent_id = 'pi_XXX';
+-- select * from public.seller_orders     where stripe_payment_intent_id = 'pi_XXX';
+-- select * from public.taxi_rides        where stripe_payment_intent_id = 'pi_XXX';
+-- select * from public.delivery_requests where stripe_payment_intent_id = 'pi_XXX';
+
+-- -----------------------------------------------------------------------------
+-- 1) Duplicate PI where ONE row is paid and the OTHER is an abandoned draft /
+--    cancelled / expired attempt (safe case): clear the PI on the NON-paid row.
+--    Adjust the table name and predicate to your audited data.
+-- -----------------------------------------------------------------------------
+-- update public.orders
+--   set stripe_payment_intent_id = null,
+--       updated_at = now()
+-- where id = '<NON_PAID_ROW_ID>'
+--   and lower(coalesce(payment_status,'')) <> 'paid'
+--   and stripe_payment_intent_id = 'pi_XXX';
+
+-- Same shape for the other tables (replace table + id):
+-- update public.seller_orders     set stripe_payment_intent_id = null, updated_at = now() where id = '<ID>' and lower(coalesce(payment_status,'')) <> 'paid' and stripe_payment_intent_id = 'pi_XXX';
+-- update public.taxi_rides        set stripe_payment_intent_id = null, updated_at = now() where id = '<ID>' and lower(coalesce(payment_status,'')) <> 'paid' and stripe_payment_intent_id = 'pi_XXX';
+-- update public.delivery_requests set stripe_payment_intent_id = null, updated_at = now() where id = '<ID>' and lower(coalesce(payment_status,'')) <> 'paid' and stripe_payment_intent_id = 'pi_XXX';
+
+-- -----------------------------------------------------------------------------
+-- 2) Malformed PI values (not shaped like pi_*): these are almost always test
+--    junk or a mis-stored session id. Confirm in Stripe, then null them out on
+--    NON-paid rows only.
+-- -----------------------------------------------------------------------------
+-- update public.orders
+--   set stripe_payment_intent_id = null, updated_at = now()
+-- where stripe_payment_intent_id is not null
+--   and stripe_payment_intent_id not like 'pi\_%' escape '\'
+--   and lower(coalesce(payment_status,'')) <> 'paid';
+
+-- -----------------------------------------------------------------------------
+-- 3) Duplicate PI where BOTH rows are paid (DANGER — do NOT auto-fix):
+--    Reconcile in Stripe. A single PaymentIntent can only settle one charge, so
+--    at most one row is legitimately paid. Decide which row keeps the PI and
+--    which must be refunded / voided / relinked as a business decision.
+--    No SQL is proposed here on purpose.
+-- -----------------------------------------------------------------------------
+
+-- After repairs: re-run docs/production/sql/payment_intent_integrity_audit.sql
+-- and confirm SAFE_TO_APPLY_UNIQUE_CONSTRAINTS = true before applying the
+-- migration.

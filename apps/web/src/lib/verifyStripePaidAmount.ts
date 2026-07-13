@@ -4,7 +4,11 @@ import {
   type DeliveryRequestAmountSource,
 } from "@/lib/deliveryRequestAmountCents";
 import { resolveOrderAmountCents, type OrderAmountSource } from "@/lib/orderAmountCents";
-import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
+import {
+  requirePaymentIntentSucceeded,
+  assertSettlementMatchesExpectation,
+  type PaymentExpectation,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 export type AmountVerificationResult =
   | {
@@ -22,6 +26,7 @@ export type AmountVerificationResult =
         | "stripe_not_paid"
         | "amount_mismatch"
         | "currency_mismatch"
+        | "metadata_mismatch"
         | "stripe_lookup_failed";
       expected_cents?: number | null;
       actual_cents?: number | null;
@@ -48,6 +53,7 @@ type PaidStripeAmountResult =
       currency: string;
       payment_intent_id: string | null;
       session_id: string | null;
+      metadata: Record<string, unknown> | null;
     }
   | { paid: false; reason: string };
 
@@ -81,7 +87,40 @@ async function loadPaidStripeAmount(params: {
     currency: normalizeCurrencyCode(settled.currency),
     payment_intent_id: settled.payment_intent_id,
     session_id: settled.session_id,
+    metadata: settled.metadata,
   };
+}
+
+// Shared metadata-policy check for the amount helpers. `expectation` should NOT
+// carry amount/currency (those are already validated against the DB row here);
+// it declares the business identity (user / service_type / entity id / quote).
+function checkExpectation(
+  stripePaid: Extract<PaidStripeAmountResult, { paid: true }>,
+  expectation: PaymentExpectation | undefined,
+  expectedCurrency: string
+): AmountVerificationResult | null {
+  if (!expectation) return null;
+  const result = assertSettlementMatchesExpectation(
+    {
+      ok: true,
+      payment_intent_id: stripePaid.payment_intent_id,
+      amount_cents: stripePaid.amount_cents,
+      currency: stripePaid.currency,
+      session_id: stripePaid.session_id,
+      metadata: stripePaid.metadata,
+    },
+    stripePaid.metadata,
+    expectation
+  );
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: "metadata_mismatch",
+      expected_currency: expectedCurrency,
+      message: `${result.field}:${result.reason}`,
+    };
+  }
+  return null;
 }
 
 export async function verifyStripePaidMatchesDeliveryRequest(
@@ -89,7 +128,11 @@ export async function verifyStripePaidMatchesDeliveryRequest(
     stripe_payment_intent_id?: string | null;
     stripe_session_id?: string | null;
   },
-  opts?: { paymentIntentId?: string | null; sessionId?: string | null }
+  opts?: {
+    paymentIntentId?: string | null;
+    sessionId?: string | null;
+    expectation?: PaymentExpectation;
+  }
 ): Promise<AmountVerificationResult> {
   const expectedCents = resolveDeliveryRequestAmountCents(deliveryRequest);
   const expectedCurrency = normalizeCurrencyCode(deliveryRequest.currency);
@@ -138,6 +181,13 @@ export async function verifyStripePaidMatchesDeliveryRequest(
     };
   }
 
+  const expectationFailure = checkExpectation(
+    stripePaid,
+    opts?.expectation,
+    expectedCurrency
+  );
+  if (expectationFailure) return expectationFailure;
+
   return {
     ok: true,
     expected_cents: expectedCents,
@@ -154,7 +204,11 @@ export async function verifyStripePaidMatchesOrder(
     stripe_payment_intent_id?: string | null;
     stripe_session_id?: string | null;
   },
-  opts?: { paymentIntentId?: string | null; sessionId?: string | null }
+  opts?: {
+    paymentIntentId?: string | null;
+    sessionId?: string | null;
+    expectation?: PaymentExpectation;
+  }
 ): Promise<AmountVerificationResult> {
   const expectedCents = resolveOrderAmountCents(order);
   const expectedCurrency = normalizeCurrencyCode(order.currency);
@@ -199,6 +253,13 @@ export async function verifyStripePaidMatchesOrder(
       actual_currency: stripePaid.currency,
     };
   }
+
+  const expectationFailure = checkExpectation(
+    stripePaid,
+    opts?.expectation,
+    expectedCurrency
+  );
+  if (expectationFailure) return expectationFailure;
 
   return {
     ok: true,

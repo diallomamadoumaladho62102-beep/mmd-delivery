@@ -5,6 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
+import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import {
   assertPlatformFeature,
 } from "@/lib/platformLaunchControl";
@@ -884,6 +885,9 @@ export async function POST(req: NextRequest) {
           success_url: successUrl,
           cancel_url: cancelUrl,
           metadata: {
+            metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+            service_type: "food",
+            module: "food",
             order_id: orderId,
             orderId: orderId,
             user_id: String(user.id),
@@ -893,6 +897,9 @@ export async function POST(req: NextRequest) {
           },
           payment_intent_data: {
             metadata: {
+              metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
+              service_type: "food",
+              module: "food",
               order_id: orderId,
               orderId: orderId,
               user_id: String(user.id),

@@ -8,7 +8,10 @@ import {
   normalizeTaxiCurrencyUpper,
 } from "@/lib/taxiStripeAmounts";
 import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
-import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
+import {
+  requirePaymentIntentSucceeded,
+  assertSettlementMatchesExpectation,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -119,6 +122,9 @@ export async function handleTaxiStripePayment(params: {
   // When the caller already holds a succeeded PaymentIntent object (e.g. the
   // payment_intent.succeeded event), pass it to avoid a redundant Stripe fetch.
   paymentIntent?: Stripe.PaymentIntent | null;
+  // Stripe metadata (from the session or PaymentIntent) so we can assert the
+  // settled money belongs to THIS ride's owner and service before marking paid.
+  metadata?: Record<string, unknown> | null;
 }): Promise<{ ok: boolean; already_paid?: boolean; error?: string }> {
   const { supabaseAdmin, taxiRideId, sessionId, paymentIntentId, source } = params;
 
@@ -213,6 +219,28 @@ export async function handleTaxiStripePayment(params: {
     });
     if (!settled.ok) {
       return { ok: false, error: `payment_intent_not_succeeded:${settled.reason}` };
+    }
+
+    // Ownership + service guard (verify-if-present): reject a succeeded PI whose
+    // metadata says it belongs to another user or a non-taxi service. Amount and
+    // currency are already validated above with taxi minor-unit conversion, so
+    // they are intentionally not re-checked here. Missing metadata is tolerated
+    // (legacy PIs) — only a positive mismatch blocks the transition to paid.
+    const metadata =
+      params.metadata ??
+      (params.paymentIntent?.metadata as Record<string, unknown> | undefined) ??
+      null;
+    const expectation = assertSettlementMatchesExpectation(settled, metadata, {
+      userId: row.client_user_id ?? null,
+      serviceType: "taxi",
+      entityId: taxiRideId,
+      entityIdKeys: ["taxi_ride_id", "taxiRideId", "ride_id"],
+    });
+    if (!expectation.ok) {
+      return {
+        ok: false,
+        error: `payment_expectation_${expectation.field}:${expectation.reason}`,
+      };
     }
   }
 

@@ -6,7 +6,11 @@ import {
   fromStripeAmount,
   normalizeTaxiCurrencyUpper,
 } from "@/lib/taxiStripeAmounts";
-import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
+import {
+  requirePaymentIntentSucceeded,
+  assertSettlementMatchesExpectation,
+  type PaymentExpectation,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 type TaxiRideAmountSource = {
   total_cents: number | null;
@@ -64,6 +68,7 @@ export async function verifyStripePaidMatchesTaxiRide(
   refs: {
     paymentIntentId?: string | null;
     sessionId?: string | null;
+    expectation?: PaymentExpectation;
   }
 ): Promise<AmountVerificationResult> {
   const expectedCents = Math.round(Number(ride.total_cents ?? 0));
@@ -81,6 +86,25 @@ export async function verifyStripePaidMatchesTaxiRide(
 
   if (!settled.ok) {
     return { ok: false, error: "stripe_not_paid" };
+  }
+
+  // Metadata policy (user / service_type / entity id). Amount & currency are
+  // validated below with taxi minor-unit conversion, so they are not re-checked
+  // here.
+  if (refs.expectation) {
+    const expectation = assertSettlementMatchesExpectation(
+      settled,
+      settled.metadata,
+      refs.expectation
+    );
+    if (!expectation.ok) {
+      return {
+        ok: false,
+        error: "metadata_mismatch",
+        expected_currency: expectedCurrency,
+        message: `${expectation.field}:${expectation.reason}`,
+      };
+    }
   }
 
   return compareTaxiPaidAmounts({

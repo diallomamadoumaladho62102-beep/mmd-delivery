@@ -475,6 +475,12 @@ export async function POST(req: NextRequest) {
           stripeCheck.payment_intent_id ??
           deliveryRequest.stripe_payment_intent_id,
         sessionId: deliveryRequest.stripe_session_id,
+        expectation: {
+          userIds: [deliveryRequest.created_by, deliveryRequest.client_user_id],
+          serviceType: "delivery",
+          entityId: deliveryRequest.id,
+          entityIdKeys: ["delivery_request_id", "deliveryRequestId"],
+        },
       }
     );
 
