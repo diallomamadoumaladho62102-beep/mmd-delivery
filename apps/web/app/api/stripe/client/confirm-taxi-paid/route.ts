@@ -188,6 +188,12 @@ export async function POST(req: NextRequest) {
       paymentIntentId:
         stripeCheck.payment_intent_id ?? ride.stripe_payment_intent_id,
       sessionId: ride.stripe_session_id,
+      expectation: {
+        userId: ride.client_user_id ?? null,
+        serviceType: "taxi",
+        entityId: taxiRideId,
+        entityIdKeys: ["taxi_ride_id", "taxiRideId", "ride_id"],
+      },
     });
 
     if (isAmountVerificationFailure(amountCheck)) {

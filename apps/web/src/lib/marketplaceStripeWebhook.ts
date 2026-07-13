@@ -3,6 +3,10 @@ import type Stripe from "stripe";
 import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout";
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 import { prepareMarketplaceSellerPayoutAfterPayment } from "@/lib/marketplacePayoutService";
+import {
+  requirePaymentIntentSucceeded,
+  assertSettlementMatchesExpectation,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 type SellerOrderPaymentRow = {
   id: string;
@@ -52,6 +56,9 @@ export async function handleMarketplaceStripePayment(params: {
   expectedAmountCents?: number | null;
   expectedCurrency?: string | null;
   source: string;
+  metadata?: Record<string, unknown> | null;
+  paymentIntent?: Stripe.PaymentIntent | null;
+  session?: Stripe.Checkout.Session | null;
 }): Promise<{ ok: boolean; already_paid?: boolean; ignored?: string; error?: string }> {
   if (!isMarketplaceCheckoutLiveEnabled()) {
     return {
@@ -99,6 +106,34 @@ export async function handleMarketplaceStripePayment(params: {
     row.stripe_checkout_session_id !== sessionId
   ) {
     return { ok: false, error: "session_mismatch" };
+  }
+
+  // Single source of truth: never mark a seller_order paid on session status
+  // alone — require the underlying PaymentIntent to have actually succeeded and
+  // to carry the expected marketplace business identity (strict for versioned
+  // PIs, tolerant for historical ones).
+  const settled = await requirePaymentIntentSucceeded({
+    paymentIntentId: paymentIntentId ?? row.stripe_payment_intent_id ?? null,
+    sessionId: sessionId ?? row.stripe_checkout_session_id ?? null,
+    paymentIntent: params.paymentIntent ?? undefined,
+    session: params.session ?? undefined,
+  });
+  if (!settled.ok) {
+    return { ok: false, error: `payment_intent_not_succeeded:${settled.reason}` };
+  }
+
+  const metadata = params.metadata ?? settled.metadata ?? null;
+  const expectation = assertSettlementMatchesExpectation(settled, metadata, {
+    userIds: [row.client_user_id],
+    serviceType: "marketplace",
+    entityId: sellerOrderId,
+    entityIdKeys: ["seller_order_id", "sellerOrderId", "order_id"],
+  });
+  if (!expectation.ok) {
+    return {
+      ok: false,
+      error: `payment_expectation_${expectation.field}:${expectation.reason}`,
+    };
   }
 
   const paidAt = new Date().toISOString();

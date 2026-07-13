@@ -14,7 +14,11 @@ import {
 } from "@/lib/platformRouteGuards";
 import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 import { bridgeStripeWalletFromPaidOrder } from "@/lib/stripeInboundWalletBridge";
-import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
+import {
+  requirePaymentIntentSucceeded,
+  evaluateStripeSettlement,
+  assertSettlementMatchesExpectation,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -444,6 +448,29 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const piExpectation = assertSettlementMatchesExpectation(
+        evaluateStripeSettlement({ paymentIntent }),
+        metadata,
+        {
+          userIds: [order.created_by, order.client_user_id],
+          serviceType: "food",
+          entityId: orderId,
+          entityIdKeys: ["order_id", "orderId"],
+        }
+      );
+      if (!piExpectation.ok) {
+        return json(
+          {
+            ok: false,
+            error: "payment_expectation_mismatch",
+            orderId,
+            field: piExpectation.field,
+            reason: piExpectation.reason,
+          },
+          409
+        );
+      }
+
       const walletBridge = await bridgeStripeWalletFromPaidOrder(supabaseAdmin, {
         paymentIntentId: paymentIntentIdOnOrder,
         order,
@@ -617,6 +644,29 @@ export async function POST(req: NextRequest) {
         orderId,
         stripe_status: settled.reason,
       });
+    }
+
+    const sessionExpectation = assertSettlementMatchesExpectation(
+      settled,
+      settled.metadata,
+      {
+        userIds: [order.created_by, order.client_user_id],
+        serviceType: "food",
+        entityId: orderId,
+        entityIdKeys: ["order_id", "orderId"],
+      }
+    );
+    if (!sessionExpectation.ok) {
+      return json(
+        {
+          ok: false,
+          error: "payment_expectation_mismatch",
+          orderId,
+          field: sessionExpectation.field,
+          reason: sessionExpectation.reason,
+        },
+        409
+      );
     }
 
     if (paymentIntentId) {

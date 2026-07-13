@@ -27,6 +27,12 @@ export type PaymentSettlementResult =
       /** Lowercase Stripe currency code (e.g. "usd", "gnf"). */
       currency: string;
       session_id: string | null;
+      /**
+       * Business metadata resolved from the settled PaymentIntent (preferred)
+       * or the Checkout Session. Used by the metadata policy check so callers
+       * do not have to re-fetch Stripe objects.
+       */
+      metadata: Record<string, unknown> | null;
       // Complementary optional so callers can read `.reason` on the union even
       // under tsconfig `strict: false` (where discriminant narrowing is loose).
       reason?: undefined;
@@ -38,6 +44,7 @@ export type PaymentSettlementResult =
       session_id: string | null;
       amount_cents?: undefined;
       currency?: undefined;
+      metadata?: undefined;
     };
 
 export function isPaymentSettlementFailure(
@@ -64,6 +71,7 @@ type PaymentIntentLike = {
   status?: string | null;
   amount?: number | null;
   currency?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 type SessionLike = {
@@ -73,7 +81,19 @@ type SessionLike = {
   amount_total?: number | null;
   currency?: string | null;
   payment_intent?: unknown;
+  metadata?: Record<string, unknown> | null;
 };
+
+function resolveSettlementMetadata(
+  pi: PaymentIntentLike | null | undefined,
+  session: SessionLike | null | undefined
+): Record<string, unknown> | null {
+  const piMeta = pi?.metadata;
+  if (piMeta && typeof piMeta === "object") return piMeta;
+  const sessionMeta = session?.metadata;
+  if (sessionMeta && typeof sessionMeta === "object") return sessionMeta;
+  return null;
+}
 
 /**
  * Pure settlement evaluation from already-fetched Stripe objects (no network).
@@ -121,6 +141,7 @@ export function evaluateStripeSettlement(input: {
       amount_cents: Math.round(amount),
       currency: String(pi.currency ?? "").toLowerCase() || "usd",
       session_id: sessionId,
+      metadata: resolveSettlementMetadata(pi, input.session),
     };
   }
 
@@ -140,6 +161,7 @@ export function evaluateStripeSettlement(input: {
         amount_cents: 0,
         currency: String(session.currency ?? "").toLowerCase() || "usd",
         session_id: sessionId,
+        metadata: resolveSettlementMetadata(null, session),
       };
     }
 
@@ -295,6 +317,14 @@ export type PaymentExpectation = {
   currency?: string | null;
   /** Expected owning user id (compared against metadata.user_id). */
   userId?: string | null;
+  /**
+   * Additional acceptable owner ids. Some resources have more than one
+   * legitimate owner column (e.g. an order's `created_by` may differ from its
+   * `client_user_id`), and the PaymentIntent only records the single checkout
+   * initiator. The user check passes when metadata matches ANY candidate, so a
+   * versioned PI is still hard-blocked when its user matches none of them.
+   */
+  userIds?: (string | null | undefined)[];
   /** Expected service, e.g. "taxi" | "food" | "delivery" | "marketplace". */
   serviceType?: string | null;
   /** Expected business entity id (order/ride/request/seller_order id). */
@@ -366,6 +396,39 @@ function matchMetaField(params: {
   return null;
 }
 
+// Like matchMetaField, but the metadata value only needs to match ANY of the
+// provided candidate ids (used for owner columns that may legitimately differ).
+function matchMetaFieldAnyOf(params: {
+  field: string;
+  candidates: (string | null | undefined)[];
+  metadata: Record<string, unknown> | null | undefined;
+  keys: string[];
+  versioned: boolean;
+  required: boolean;
+}): PaymentExpectationResult | null {
+  const candidates = params.candidates
+    .map((v) => (v == null ? "" : String(v).trim()))
+    .filter((v) => v.length > 0);
+  if (candidates.length === 0 || params.keys.length === 0) return null;
+
+  const val = metaValue(params.metadata, params.keys);
+  if (val == null) {
+    if (params.versioned && params.required) {
+      return {
+        ok: false,
+        field: params.field,
+        reason: `metadata_${params.field}_missing_on_versioned_pi`,
+      };
+    }
+    return null;
+  }
+
+  if (!candidates.includes(val)) {
+    return { ok: false, field: params.field, reason: `metadata_${params.field}_mismatch` };
+  }
+  return null;
+}
+
 /**
  * Verify a settled payment matches the server's expectation for a resource.
  * Pure (no network) so it is fully unit-testable and reusable across every
@@ -405,9 +468,9 @@ export function assertSettlementMatchesExpectation(
   const versioned = isVersionedPaymentMetadata(metadata);
 
   const metaChecks: (PaymentExpectationResult | null)[] = [
-    matchMetaField({
+    matchMetaFieldAnyOf({
       field: "user",
-      expected: expected.userId,
+      candidates: [expected.userId, ...(expected.userIds ?? [])],
       metadata,
       keys: ["user_id", "userId", "client_user_id"],
       versioned,
@@ -445,4 +508,64 @@ export function assertSettlementMatchesExpectation(
   }
 
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Combined gate: "is this payment settled AND does it belong to this entity?".
+// The single reusable primitive every settlement path should call — it runs
+// requirePaymentIntentSucceeded (network) then the pure metadata-policy check,
+// using the metadata resolved from the settled Stripe object so callers never
+// re-fetch. Returns a structured, secret-free result that is safe to log and
+// (for webhooks) safe for Stripe to replay when the failure is transient.
+// ---------------------------------------------------------------------------
+
+export type StripeSettlementForEntityResult =
+  | {
+      ok: true;
+      settlement: Extract<PaymentSettlementResult, { ok: true }>;
+      stage?: undefined;
+      field?: undefined;
+      reason?: undefined;
+    }
+  | {
+      ok: false;
+      stage: "settlement" | "expectation";
+      field?: string;
+      reason: string;
+      settlement?: undefined;
+    };
+
+export async function assertStripeSettlementForEntity(params: {
+  paymentIntentId?: string | null;
+  sessionId?: string | null;
+  paymentIntent?: Stripe.PaymentIntent | null;
+  session?: Stripe.Checkout.Session | null;
+  expectation: PaymentExpectation;
+}): Promise<StripeSettlementForEntityResult> {
+  const settled = await requirePaymentIntentSucceeded({
+    paymentIntentId: params.paymentIntentId,
+    sessionId: params.sessionId,
+    paymentIntent: params.paymentIntent,
+    session: params.session,
+  });
+
+  if (!settled.ok) {
+    return { ok: false, stage: "settlement", reason: settled.reason };
+  }
+
+  const expectation = assertSettlementMatchesExpectation(
+    settled,
+    settled.metadata,
+    params.expectation
+  );
+  if (!expectation.ok) {
+    return {
+      ok: false,
+      stage: "expectation",
+      field: expectation.field,
+      reason: expectation.reason,
+    };
+  }
+
+  return { ok: true, settlement: settled };
 }

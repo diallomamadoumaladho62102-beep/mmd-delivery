@@ -46,9 +46,46 @@ import {
   bridgeStripeWalletFromPaidDeliveryRequest,
   bridgeStripeWalletFromPaidOrder,
 } from "@/lib/stripeInboundWalletBridge";
+import {
+  assertSettlementMatchesExpectation,
+  type PaymentExpectation,
+  type PaymentExpectationResult,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+// Defense-in-depth for the shared webhook: the event is Stripe-signed, but the
+// handler routes purely by metadata. Before marking any resource paid we
+// re-assert that the (signed) metadata's user / service_type / entity id match
+// the resource actually loaded from the DB — finding `order_id` in metadata is
+// not enough. Versioned PIs (metadata_schema_version) are strictly validated;
+// historical PIs keep the tolerant "verify-if-present" behaviour. Amount and
+// currency are already checked against the row before this runs, so they are
+// not re-passed here. Returns a secret-free, replay-safe result.
+function assertWebhookEntityMetadata(
+  metadata: Record<string, unknown> | null,
+  refs: {
+    paymentIntentId: string | null;
+    sessionId: string | null;
+    amountCents: number | null;
+    currency: string | null;
+  },
+  expectation: PaymentExpectation
+): PaymentExpectationResult {
+  return assertSettlementMatchesExpectation(
+    {
+      ok: true,
+      payment_intent_id: refs.paymentIntentId,
+      amount_cents: refs.amountCents ?? 0,
+      currency: String(refs.currency ?? "usd").toLowerCase(),
+      session_id: refs.sessionId,
+      metadata,
+    },
+    metadata,
+    expectation
+  );
+}
 
 type OrderRow = {
   id: string;
@@ -61,6 +98,7 @@ type OrderRow = {
   stripe_payment_intent_id: string | null;
   client_user_id?: string | null;
   created_by?: string | null;
+  user_id?: string | null;
   country_code?: string | null;
   kind?: string | null;
 };
@@ -472,7 +510,7 @@ async function loadOrderForPaymentCheck(
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "id, payment_status, total, grand_total, total_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, country_code, kind"
+      "id, payment_status, total, grand_total, total_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, user_id, country_code, kind"
     )
     .eq("id", orderId)
     .maybeSingle<OrderRow>();
@@ -1379,6 +1417,8 @@ async function handleCheckoutCompletedLikeEvent(
       expectedAmountCents: getMarketplaceStripeAmountFromCheckoutSession(session),
       expectedCurrency: sessionCurrency,
       source: `webhook:${event.type}`,
+      metadata,
+      session,
     });
 
     if (!marketplaceResult.ok) {
@@ -1573,6 +1613,40 @@ async function handleCheckoutCompletedLikeEvent(
         via: "already_paid",
         type: event.type,
       });
+    }
+
+    const metadataGate = assertWebhookEntityMetadata(
+      metadata,
+      {
+        paymentIntentId,
+        sessionId,
+        amountCents: sessionAmountTotal,
+        currency: sessionCurrency,
+      },
+      {
+        userIds: [order.client_user_id, order.created_by, order.user_id],
+        serviceType: "food",
+        entityId: orderId,
+        entityIdKeys: ["order_id", "orderId"],
+      }
+    );
+    if (!metadataGate.ok) {
+      console.log("❌ WEBHOOK: order settlement metadata mismatch", {
+        orderId,
+        field: metadataGate.field,
+        reason: metadataGate.reason,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "payment_expectation_mismatch",
+          field: metadataGate.field,
+          reason: metadataGate.reason,
+          order_id: orderId,
+        },
+        409
+      );
     }
 
     const walletGate = await requireOrderWalletBridge({
@@ -1833,6 +1907,40 @@ async function handleCheckoutCompletedLikeEvent(
     });
   }
 
+  const deliveryMetadataGate = assertWebhookEntityMetadata(
+    metadata,
+    {
+      paymentIntentId,
+      sessionId,
+      amountCents: sessionAmountTotal,
+      currency: sessionCurrency,
+    },
+    {
+      userIds: [deliveryRequest.created_by, deliveryRequest.client_user_id],
+      serviceType: "delivery",
+      entityId: deliveryRequestId,
+      entityIdKeys: ["delivery_request_id", "deliveryRequestId"],
+    }
+  );
+  if (!deliveryMetadataGate.ok) {
+    console.log("❌ WEBHOOK: delivery_request settlement metadata mismatch", {
+      deliveryRequestId,
+      field: deliveryMetadataGate.field,
+      reason: deliveryMetadataGate.reason,
+    });
+    return json(
+      {
+        received: true,
+        ok: false,
+        error: "payment_expectation_mismatch",
+        field: deliveryMetadataGate.field,
+        reason: deliveryMetadataGate.reason,
+        delivery_request_id: deliveryRequestId,
+      },
+      409
+    );
+  }
+
   const walletGateDr = await requireDeliveryRequestWalletBridge({
     supabaseAdmin,
     paymentIntentId,
@@ -2015,6 +2123,8 @@ async function handlePaymentIntentSucceeded(
       expectedAmountCents: getMarketplaceStripeAmountFromPaymentIntent(pi),
       expectedCurrency: piCurrency,
       source: "webhook:payment_intent.succeeded",
+      metadata,
+      paymentIntent: pi,
     });
 
     if (!marketplaceResult.ok) {
@@ -2188,6 +2298,40 @@ async function handlePaymentIntentSucceeded(
         via: "already_paid",
         type: event.type,
       });
+    }
+
+    const metadataGatePi = assertWebhookEntityMetadata(
+      metadata,
+      {
+        paymentIntentId,
+        sessionId: order.stripe_session_id ?? null,
+        amountCents: piAmount,
+        currency: piCurrency,
+      },
+      {
+        userIds: [order.client_user_id, order.created_by, order.user_id],
+        serviceType: "food",
+        entityId: orderId,
+        entityIdKeys: ["order_id", "orderId"],
+      }
+    );
+    if (!metadataGatePi.ok) {
+      console.log("❌ WEBHOOK PI: order settlement metadata mismatch", {
+        orderId,
+        field: metadataGatePi.field,
+        reason: metadataGatePi.reason,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: "payment_expectation_mismatch",
+          field: metadataGatePi.field,
+          reason: metadataGatePi.reason,
+          order_id: orderId,
+        },
+        409
+      );
     }
 
     const walletGatePi = await requireOrderWalletBridge({
@@ -2465,6 +2609,40 @@ async function handlePaymentIntentSucceeded(
       via: "already_paid",
       type: event.type,
     });
+  }
+
+  const deliveryMetadataGatePi = assertWebhookEntityMetadata(
+    metadata,
+    {
+      paymentIntentId,
+      sessionId: deliveryRequest.stripe_session_id ?? null,
+      amountCents: piAmount,
+      currency: piCurrency,
+    },
+    {
+      userIds: [deliveryRequest.created_by, deliveryRequest.client_user_id],
+      serviceType: "delivery",
+      entityId: deliveryRequestId,
+      entityIdKeys: ["delivery_request_id", "deliveryRequestId"],
+    }
+  );
+  if (!deliveryMetadataGatePi.ok) {
+    console.log("❌ WEBHOOK PI: delivery_request settlement metadata mismatch", {
+      deliveryRequestId,
+      field: deliveryMetadataGatePi.field,
+      reason: deliveryMetadataGatePi.reason,
+    });
+    return json(
+      {
+        received: true,
+        ok: false,
+        error: "payment_expectation_mismatch",
+        field: deliveryMetadataGatePi.field,
+        reason: deliveryMetadataGatePi.reason,
+        delivery_request_id: deliveryRequestId,
+      },
+      409
+    );
   }
 
   const walletGateDrPi = await requireDeliveryRequestWalletBridge({

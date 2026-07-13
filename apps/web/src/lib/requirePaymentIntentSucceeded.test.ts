@@ -155,6 +155,7 @@ const settledOk: PaymentSettlementResult = {
   amount_cents: 1500,
   currency: "usd",
   session_id: "cs_ok",
+  metadata: null,
 };
 
 test("expectation: a non-settled payment always fails, carrying the reason", () => {
@@ -329,6 +330,67 @@ test("policy: entity id alias (ride_id) is honoured", () => {
     { userId: "u1", serviceType: "taxi", entityId: "ride1", entityIdKeys: ["taxi_ride_id", "ride_id"] }
   );
   assert.equal(r.ok, true);
+});
+
+// ---------------------------------------------------------------------------
+// Owner candidate list: a resource may have multiple legitimate owner columns
+// (created_by vs client_user_id) while the PI records the single initiator.
+// ---------------------------------------------------------------------------
+
+test("expectation: userIds candidate list matches a secondary owner", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    { user_id: "u2" },
+    { userIds: ["u1", "u2"] }
+  );
+  assert.equal(r.ok, true);
+});
+
+test("policy: versioned PI whose user matches NONE of the candidates is rejected", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u3", service_type: "delivery", delivery_request_id: "d1" }),
+    {
+      userIds: ["u1", "u2"],
+      serviceType: "delivery",
+      entityId: "d1",
+      entityIdKeys: ["delivery_request_id"],
+    }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "user");
+});
+
+test("policy: cross-service replay rejected — food PI cannot settle a delivery request", () => {
+  const r = assertSettlementMatchesExpectation(
+    settledOk,
+    versioned({ user_id: "u1", service_type: "food", order_id: "order1" }),
+    {
+      userIds: ["u1"],
+      serviceType: "delivery",
+      entityId: "d1",
+      entityIdKeys: ["delivery_request_id"],
+    }
+  );
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.field, "service_type");
+});
+
+test("settlement result now carries resolved PI metadata", () => {
+  const r = evaluateStripeSettlement({
+    paymentIntent: {
+      id: "pi_md",
+      status: "succeeded",
+      amount: 1000,
+      currency: "usd",
+      metadata: { service_type: "taxi", user_id: "u1" },
+    },
+  });
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.metadata?.service_type, "taxi");
+    assert.equal(r.metadata?.user_id, "u1");
+  }
 });
 
 console.log("requirePaymentIntentSucceeded tests passed");
