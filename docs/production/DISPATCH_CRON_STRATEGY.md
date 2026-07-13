@@ -11,7 +11,12 @@ MMD Delivery uses **Vercel cron** for low-frequency jobs and **GitHub Actions** 
 | Daily 06:00 | `/api/cron/taxi-monitoring-snapshot` | Taxi ops monitoring |
 | Daily 00:05 | `/api/cron/vehicle-eligibility-refresh` | Driver vehicle category eligibility |
 
-These routes accept `CRON_SECRET`, `x-cron-secret`, or Vercel cron headers.
+**Authentication (unified on `CRON_SECRET`).** Every cron route validates the request via `isAuthorizedCronRequest()` (`apps/web/src/lib/cronAuth.ts`), which accepts **only**:
+
+- `Authorization: Bearer <CRON_SECRET>`, or
+- `x-cron-secret: <CRON_SECRET>`.
+
+The `x-vercel-cron` header alone is **rejected** (it is spoofable outside Vercel's network). Vercel Cron works because, when the `CRON_SECRET` environment variable is set in the Vercel project, **Vercel automatically sends it as `Authorization: Bearer <CRON_SECRET>`** on every cron invocation — so the exact same secret and verifier back both Vercel and GitHub-Actions triggers. In production, a missing `CRON_SECRET` fails closed (all cron requests are rejected).
 
 ## External cron (GitHub Actions — `.github/workflows/production-dispatch-crons.yml`)
 

@@ -1,4 +1,3 @@
-import { stripe } from "@/lib/stripe";
 import {
   isAmountVerificationFailure,
   type AmountVerificationResult,
@@ -7,6 +6,7 @@ import {
   fromStripeAmount,
   normalizeTaxiCurrencyUpper,
 } from "@/lib/taxiStripeAmounts";
+import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
 
 type TaxiRideAmountSource = {
   total_cents: number | null;
@@ -14,15 +14,6 @@ type TaxiRideAmountSource = {
   stripe_payment_intent_id?: string | null;
   stripe_session_id?: string | null;
 };
-
-function paymentIntentIdFromUnknown(value: unknown): string | null {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (value && typeof value === "object" && "id" in value) {
-    const maybeId = (value as { id?: unknown }).id;
-    if (typeof maybeId === "string" && maybeId.trim()) return maybeId.trim();
-  }
-  return null;
-}
 
 function compareTaxiPaidAmounts(params: {
   expectedCents: number;
@@ -81,54 +72,25 @@ export async function verifyStripePaidMatchesTaxiRide(
   }
 
   const expectedCurrency = normalizeTaxiCurrencyUpper(ride.currency);
-  const piId =
-    String(refs.paymentIntentId ?? ride.stripe_payment_intent_id ?? "").trim() ||
-    null;
-  const sessionId =
-    String(refs.sessionId ?? ride.stripe_session_id ?? "").trim() || null;
 
-  if (piId) {
-    try {
-      const pi = await stripe.paymentIntents.retrieve(piId);
-      if (pi.status !== "succeeded") {
-        return { ok: false, error: "stripe_not_paid" };
-      }
-      return compareTaxiPaidAmounts({
-        expectedCents,
-        expectedCurrency,
-        stripeAmount: Math.round(Number(pi.amount ?? 0)),
-        stripeCurrency: String(pi.currency ?? expectedCurrency),
-        paymentIntentId: pi.id,
-        sessionId,
-      });
-    } catch {
-      return { ok: false, error: "stripe_lookup_failed" };
-    }
+  // Single source of truth: only a succeeded PaymentIntent counts as paid.
+  const settled = await requirePaymentIntentSucceeded({
+    paymentIntentId: refs.paymentIntentId ?? ride.stripe_payment_intent_id ?? null,
+    sessionId: refs.sessionId ?? ride.stripe_session_id ?? null,
+  });
+
+  if (!settled.ok) {
+    return { ok: false, error: "stripe_not_paid" };
   }
 
-  if (sessionId) {
-    try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ["payment_intent"],
-      });
-      if (String(session.payment_status ?? "").toLowerCase() !== "paid") {
-        return { ok: false, error: "stripe_not_paid" };
-      }
-      return compareTaxiPaidAmounts({
-        expectedCents,
-        expectedCurrency,
-        stripeAmount: Math.round(Number(session.amount_total ?? 0)),
-        stripeCurrency: String(session.currency ?? expectedCurrency),
-        paymentIntentId:
-          paymentIntentIdFromUnknown(session.payment_intent) ?? null,
-        sessionId: session.id,
-      });
-    } catch {
-      return { ok: false, error: "stripe_lookup_failed" };
-    }
-  }
-
-  return { ok: false, error: "stripe_not_paid" };
+  return compareTaxiPaidAmounts({
+    expectedCents,
+    expectedCurrency,
+    stripeAmount: settled.amount_cents,
+    stripeCurrency: settled.currency || expectedCurrency,
+    paymentIntentId: settled.payment_intent_id,
+    sessionId: settled.session_id,
+  });
 }
 
 export { isAmountVerificationFailure };

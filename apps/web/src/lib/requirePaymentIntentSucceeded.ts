@@ -1,0 +1,254 @@
+import type Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
+
+/**
+ * Single source of truth for "is this Stripe payment definitively successful?".
+ *
+ * Business rule (platform-wide): a payment is only considered definitively
+ * successful when its underlying PaymentIntent has status === "succeeded".
+ * A Checkout Session's `payment_status === "paid"` / `status === "complete"`
+ * is NOT sufficient on its own — those fields can be set on a session whose
+ * PaymentIntent is still processing, requires action, or (for async payment
+ * methods) has not actually settled. Every "mark as paid" decision in the app
+ * must resolve through this module.
+ *
+ * The only exception is a genuinely free checkout (amount_total === 0 with
+ * `payment_status === "no_payment_required"`), which never produces a
+ * PaymentIntent and is treated as settled with a null PaymentIntent id.
+ */
+
+export type PaymentSettlementResult =
+  | {
+      ok: true;
+      /** null only for zero-amount `no_payment_required` sessions. */
+      payment_intent_id: string | null;
+      /** Amount in the smallest currency unit, as reported by Stripe. */
+      amount_cents: number;
+      /** Lowercase Stripe currency code (e.g. "usd", "gnf"). */
+      currency: string;
+      session_id: string | null;
+      // Complementary optional so callers can read `.reason` on the union even
+      // under tsconfig `strict: false` (where discriminant narrowing is loose).
+      reason?: undefined;
+    }
+  | {
+      ok: false;
+      reason: string;
+      payment_intent_id: string | null;
+      session_id: string | null;
+      amount_cents?: undefined;
+      currency?: undefined;
+    };
+
+export function isPaymentSettlementFailure(
+  result: PaymentSettlementResult
+): result is Extract<PaymentSettlementResult, { ok: false }> {
+  return result.ok === false;
+}
+
+function paymentIntentIdFromUnknown(value: unknown): string | null {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (value && typeof value === "object" && "id" in value) {
+    const maybeId = (value as { id?: unknown }).id;
+    if (typeof maybeId === "string" && maybeId.trim()) return maybeId.trim();
+  }
+  return null;
+}
+
+function errorMessage(e: unknown, fallback: string): string {
+  return e instanceof Error && e.message ? e.message : fallback;
+}
+
+type PaymentIntentLike = {
+  id?: string | null;
+  status?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+};
+
+type SessionLike = {
+  id?: string | null;
+  payment_status?: string | null;
+  status?: string | null;
+  amount_total?: number | null;
+  currency?: string | null;
+  payment_intent?: unknown;
+};
+
+/**
+ * Pure settlement evaluation from already-fetched Stripe objects (no network).
+ * Exported so the rule can be unit-tested and reused by callers that already
+ * hold expanded Stripe objects (e.g. signed webhook events).
+ */
+export function evaluateStripeSettlement(input: {
+  paymentIntent?: PaymentIntentLike | null;
+  session?: SessionLike | null;
+}): PaymentSettlementResult {
+  const sessionId = input.session?.id ? String(input.session.id) : null;
+
+  const expandedFromSession =
+    input.session &&
+    typeof input.session.payment_intent === "object" &&
+    input.session.payment_intent
+      ? (input.session.payment_intent as PaymentIntentLike)
+      : null;
+
+  const pi = input.paymentIntent ?? expandedFromSession;
+
+  if (pi) {
+    const status = String(pi.status ?? "").toLowerCase();
+    const piId = paymentIntentIdFromUnknown(pi.id);
+    if (status !== "succeeded") {
+      return {
+        ok: false,
+        reason: `payment_intent_status_${status || "unknown"}`,
+        payment_intent_id: piId,
+        session_id: sessionId,
+      };
+    }
+    const amount = Number(pi.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return {
+        ok: false,
+        reason: "payment_intent_amount_missing",
+        payment_intent_id: piId,
+        session_id: sessionId,
+      };
+    }
+    return {
+      ok: true,
+      payment_intent_id: piId,
+      amount_cents: Math.round(amount),
+      currency: String(pi.currency ?? "").toLowerCase() || "usd",
+      session_id: sessionId,
+    };
+  }
+
+  const session = input.session ?? null;
+  if (session) {
+    const payStatus = String(session.payment_status ?? "").toLowerCase();
+    const amount = Number(session.amount_total ?? 0);
+
+    // Genuinely free checkout — Stripe never creates a PaymentIntent for these.
+    if (
+      payStatus === "no_payment_required" &&
+      (!Number.isFinite(amount) || amount === 0)
+    ) {
+      return {
+        ok: true,
+        payment_intent_id: null,
+        amount_cents: 0,
+        currency: String(session.currency ?? "").toLowerCase() || "usd",
+        session_id: sessionId,
+      };
+    }
+
+    // A paid/complete session whose PaymentIntent we could not resolve to
+    // "succeeded" is explicitly NOT considered settled.
+    return {
+      ok: false,
+      reason: `checkout_session_pi_unresolved_${payStatus || "unknown"}`,
+      payment_intent_id: paymentIntentIdFromUnknown(session.payment_intent),
+      session_id: sessionId,
+    };
+  }
+
+  return {
+    ok: false,
+    reason: "missing_stripe_reference",
+    payment_intent_id: null,
+    session_id: null,
+  };
+}
+
+/**
+ * Resolve, from Stripe, whether a payment is definitively successful.
+ *
+ * Resolution order:
+ *  1. An explicit PaymentIntent (object or id) — the strongest signal.
+ *  2. The PaymentIntent attached to a Checkout Session (expanded, or retrieved
+ *     by id). The session's own payment_status is never trusted on its own.
+ */
+export async function requirePaymentIntentSucceeded(refs: {
+  paymentIntentId?: string | null;
+  sessionId?: string | null;
+  paymentIntent?: Stripe.PaymentIntent | null;
+  session?: Stripe.Checkout.Session | null;
+}): Promise<PaymentSettlementResult> {
+  const piId = String(refs.paymentIntentId ?? "").trim() || null;
+  const sessionId =
+    String(refs.sessionId ?? refs.session?.id ?? "").trim() || null;
+
+  if (refs.paymentIntent) {
+    return evaluateStripeSettlement({
+      paymentIntent: refs.paymentIntent,
+      session: refs.session ?? null,
+    });
+  }
+
+  if (piId) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(piId);
+      return evaluateStripeSettlement({
+        paymentIntent: pi,
+        session: refs.session ?? null,
+      });
+    } catch (e) {
+      return {
+        ok: false,
+        reason: errorMessage(e, "payment_intent_retrieve_failed"),
+        payment_intent_id: piId,
+        session_id: sessionId,
+      };
+    }
+  }
+
+  let session = refs.session ?? null;
+  if (!session && sessionId) {
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ["payment_intent"],
+      });
+    } catch (e) {
+      return {
+        ok: false,
+        reason: errorMessage(e, "checkout_session_retrieve_failed"),
+        payment_intent_id: null,
+        session_id: sessionId,
+      };
+    }
+  }
+
+  if (!session) {
+    return {
+      ok: false,
+      reason: "missing_stripe_reference",
+      payment_intent_id: null,
+      session_id: sessionId,
+    };
+  }
+
+  const expanded =
+    typeof session.payment_intent === "object" && session.payment_intent
+      ? (session.payment_intent as Stripe.PaymentIntent)
+      : null;
+  const sessionPiId = paymentIntentIdFromUnknown(session.payment_intent);
+
+  // Session carried only a PaymentIntent id (not expanded) — fetch it so we can
+  // assert the real status rather than trusting session.payment_status.
+  if (!expanded && sessionPiId) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(sessionPiId);
+      return evaluateStripeSettlement({ paymentIntent: pi, session });
+    } catch (e) {
+      return {
+        ok: false,
+        reason: errorMessage(e, "payment_intent_retrieve_failed"),
+        payment_intent_id: sessionPiId,
+        session_id: session.id ?? sessionId,
+      };
+    }
+  }
+
+  return evaluateStripeSettlement({ session });
+}

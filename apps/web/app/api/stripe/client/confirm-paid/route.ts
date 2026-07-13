@@ -14,6 +14,7 @@ import {
 } from "@/lib/platformRouteGuards";
 import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 import { bridgeStripeWalletFromPaidOrder } from "@/lib/stripeInboundWalletBridge";
+import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -599,6 +600,23 @@ export async function POST(req: NextRequest) {
         },
         409
       );
+    }
+
+    // Single source of truth: never mark paid on session.payment_status alone —
+    // require the underlying PaymentIntent to have actually succeeded.
+    const settled = await requirePaymentIntentSucceeded({
+      paymentIntentId: paymentIntentId ?? order.stripe_payment_intent_id ?? null,
+      sessionId: order.stripe_session_id,
+      session,
+    });
+
+    if (!settled.ok) {
+      return json({
+        ok: false,
+        message: "Payment not confirmed by Stripe yet",
+        orderId,
+        stripe_status: settled.reason,
+      });
     }
 
     if (paymentIntentId) {
