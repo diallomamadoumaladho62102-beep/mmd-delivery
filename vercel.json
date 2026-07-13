@@ -13,6 +13,18 @@
       "schedule": "0 5 * * *"
     },
     {
+      "path": "/api/cron/expire-stale-payments",
+      "schedule": "15 5 * * *"
+    },
+    {
+      "path": "/api/cron/taxi-payouts",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/marketplace-payouts",
+      "schedule": "45 4 * * *"
+    },
+    {
       "path": "/api/cron/taxi-monitoring-snapshot",
       "schedule": "0 6 * * *"
     },

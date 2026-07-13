@@ -50,6 +50,21 @@ try {
     );
   });
 
+  test("cron auth rejects missing secret in production", () => {
+    const saved = env.CRON_SECRET;
+    delete env.CRON_SECRET;
+    try {
+      assert.equal(
+        isAuthorizedCronRequest(
+          fakeReq({ authorization: "Bearer anything" })
+        ),
+        false
+      );
+    } finally {
+      env.CRON_SECRET = saved;
+    }
+  });
+
   test("isProductionRuntime true when NODE_ENV=production", () => {
     assert.equal(isProductionRuntime(), true);
   });

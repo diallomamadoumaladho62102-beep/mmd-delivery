@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
+import { withCronJobLock } from "@/lib/cronJobLock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const EXPIRE_UNPAID_JOB = "expire-unpaid";
 
 type ExpirableOrderRow = {
   id: string;
@@ -192,7 +195,24 @@ async function handleExpireUnpaidRequest(req: NextRequest) {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    return await runExpireUnpaid();
+    const supabaseAdmin = getSupabaseAdminClient();
+    const locked = await withCronJobLock(
+      supabaseAdmin,
+      EXPIRE_UNPAID_JOB,
+      () => runExpireUnpaid(),
+      { ttlSeconds: 10 * 60 }
+    );
+
+    if (!locked.ok) {
+      return json({
+        ok: true,
+        skipped: true,
+        reason: "lock_busy",
+        job: EXPIRE_UNPAID_JOB,
+      });
+    }
+
+    return locked.result;
   } catch (e: unknown) {
     const message = getErrorMessage(e);
 
