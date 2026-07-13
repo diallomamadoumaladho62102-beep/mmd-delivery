@@ -144,7 +144,7 @@ export default ({ config }) => {
         "@sentry/react-native/expo",
         {
           organization: cleanEnv(env.SENTRY_ORG) || "mmd-delivery",
-          project: cleanEnv(env.SENTRY_PROJECT_MOBILE) || "mmd-mobile",
+          project: cleanEnv(env.SENTRY_PROJECT_MOBILE) || "mmd-delivery-mobile",
         },
       ],
     ],

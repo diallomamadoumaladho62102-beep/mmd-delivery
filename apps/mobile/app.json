@@ -57,7 +57,7 @@
         "@sentry/react-native/expo",
         {
           "organization": "mmd-delivery",
-          "project": "mmd-mobile"
+          "project": "mmd-delivery-mobile"
         }
       ]
     ],
