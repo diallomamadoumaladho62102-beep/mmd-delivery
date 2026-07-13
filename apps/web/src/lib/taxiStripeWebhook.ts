@@ -8,6 +8,7 @@ import {
   normalizeTaxiCurrencyUpper,
 } from "@/lib/taxiStripeAmounts";
 import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
+import { requirePaymentIntentSucceeded } from "@/lib/requirePaymentIntentSucceeded";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -115,6 +116,9 @@ export async function handleTaxiStripePayment(params: {
   expectedAmountCents?: number | null;
   expectedCurrency?: string | null;
   source: string;
+  // When the caller already holds a succeeded PaymentIntent object (e.g. the
+  // payment_intent.succeeded event), pass it to avoid a redundant Stripe fetch.
+  paymentIntent?: Stripe.PaymentIntent | null;
 }): Promise<{ ok: boolean; already_paid?: boolean; error?: string }> {
   const { supabaseAdmin, taxiRideId, sessionId, paymentIntentId, source } = params;
 
@@ -177,23 +181,50 @@ export async function handleTaxiStripePayment(params: {
   const paymentAlreadyRecorded =
     String(row.payment_status ?? "").trim().toLowerCase() === "paid";
 
-  if (paymentIntentId) {
-    const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
-      paymentIntentId,
-      taxiRide: row,
-      source: paymentAlreadyRecorded ? `${source}:already_paid` : source,
-    });
-    if (walletBridge.ok === false) {
-      return { ok: false, error: walletBridge.error };
-    }
-  }
-
+  // Idempotent replay: ride already paid. Keep the (idempotent) wallet bridge
+  // but do not re-run Stripe verification or re-flip status.
   if (paymentAlreadyRecorded) {
+    if (paymentIntentId) {
+      const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
+        paymentIntentId,
+        taxiRide: row,
+        source: `${source}:already_paid`,
+      });
+      if (walletBridge.ok === false) {
+        return { ok: false, error: walletBridge.error };
+      }
+    }
     console.log("[handleTaxiStripePayment] idempotent skip", {
       taxiRideId,
       source,
     });
     return { ok: true, already_paid: true };
+  }
+
+  // Platform rule (single source of truth): before flipping a ride to paid we
+  // require the underlying PaymentIntent to have actually succeeded. A checkout
+  // session's payment_status is never trusted on its own. Webhooks are retried
+  // by Stripe, so a transient verification failure is safely re-attempted.
+  if (paymentIntentId || params.paymentIntent) {
+    const settled = await requirePaymentIntentSucceeded({
+      paymentIntentId: paymentIntentId ?? null,
+      sessionId: sessionId ?? null,
+      paymentIntent: params.paymentIntent ?? null,
+    });
+    if (!settled.ok) {
+      return { ok: false, error: `payment_intent_not_succeeded:${settled.reason}` };
+    }
+  }
+
+  if (paymentIntentId) {
+    const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
+      paymentIntentId,
+      taxiRide: row,
+      source,
+    });
+    if (walletBridge.ok === false) {
+      return { ok: false, error: walletBridge.error };
+    }
   }
 
   const markResult = await markTaxiRidePaidRobustly(supabaseAdmin, {

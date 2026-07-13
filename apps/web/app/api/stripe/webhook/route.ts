@@ -1971,6 +1971,7 @@ async function handlePaymentIntentSucceeded(
       expectedAmountCents: getStripeAmountFromPaymentIntent(pi),
       expectedCurrency: piCurrency,
       source: "webhook:payment_intent.succeeded",
+      paymentIntent: pi,
     });
 
     if (!taxiResult.ok) {
