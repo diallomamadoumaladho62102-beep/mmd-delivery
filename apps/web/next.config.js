@@ -14,6 +14,12 @@ const nextConfig = {
 };
 
 module.exports = withSentryConfig(nextConfig, {
+  // Build-time source map upload + release creation require both org and
+  // project; @sentry/nextjs silently skips the upload otherwise, even when
+  // SENTRY_AUTH_TOKEN is set. Official Sentry slugs (org "mmd-delivery"):
+  // web project = "mmd-delivery-web". Kept env-overridable for flexibility.
+  org: process.env.SENTRY_ORG || "mmd-delivery",
+  project: process.env.SENTRY_PROJECT || "mmd-delivery-web",
   silent: true,
   disableLogger: true,
   // Upload source maps only when SENTRY_AUTH_TOKEN is present (CI/Vercel).
