@@ -96,3 +96,20 @@ export async function withCronJobLock<T>(
     throw error;
   }
 }
+
+/** Best-effort clear of a hung lease (ops / recovery). */
+export async function forceReleaseExpiredCronJobLock(
+  supabaseAdmin: SupabaseClient,
+  jobName: string
+): Promise<void> {
+  await supabaseAdmin
+    .from("cron_job_locks")
+    .update({
+      locked_by: null,
+      locked_at: null,
+      locked_until: null,
+      last_error: "force_clear_expired_or_ops",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("job_name", jobName);
+}
