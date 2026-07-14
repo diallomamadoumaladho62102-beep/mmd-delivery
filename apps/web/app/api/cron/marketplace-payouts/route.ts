@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { withCronJobLock } from "@/lib/cronJobLock";
 import { finishCronRun, startCronRun } from "@/lib/cronObservability";
+import { createCronPhaseTracer } from "@/lib/cronPhaseTrace";
+import { buildCronSupabaseAdmin } from "@/lib/cronSupabase";
+import {
+  CRON_JOB_BUDGET_MS,
+  CRON_SUPABASE_TIMEOUT_MS,
+  CRON_VERCEL_MAX_DURATION_SEC,
+  CronTimeoutError,
+  readCronBatchLimit,
+} from "@/lib/cronTimeouts";
 import { executeMarketplacePayouts } from "@/lib/marketplacePayoutService";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = CRON_VERCEL_MAX_DURATION_SEC;
 
 const JOB = "marketplace-payouts";
 
@@ -18,42 +27,43 @@ export const MARKETPLACE_PAYOUT_BLOCKERS = [
   "no_atomic_processing_claim_for_live_transfer",
 ] as const;
 
-/**
- * Marketplace payout cron — INVENTORY_ONLY until financial model is complete.
- * Never creates Stripe Transfers from this route.
- */
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
 }
 
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Missing Supabase admin env");
-  return createClient(url, key, { auth: { persistSession: false } });
-}
-
 async function handle(req: NextRequest) {
   const start = startCronRun(JOB, true);
+  const limit = readCronBatchLimit(req.nextUrl.searchParams, 1);
+  const trace = createCronPhaseTracer(JOB, start.run_id);
+  trace.mark("request_received", { batch_size: limit });
 
   try {
     if (!isAuthorizedCronRequest(req)) {
+      trace.mark("response_sent");
       return json(
         finishCronRun(start, {
           ok: false,
           error: "Unauthorized",
           lock_acquired: false,
+          phases: trace.phases,
         }),
         401
       );
     }
+    trace.mark("auth_validated");
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const supabaseAdmin = buildCronSupabaseAdmin(CRON_SUPABASE_TIMEOUT_MS);
 
+    trace.mark("lock_attempt_started");
     const locked = await withCronJobLock(
       supabaseAdmin,
       JOB,
       async () => {
+        trace.mark("lock_acquired");
+        trace.mark("supabase_query_started", {
+          detail: { query: "marketplace_payout_ledgers" },
+        });
+
         const [sellerRes, driverRes] = await Promise.all([
           supabaseAdmin
             .from("marketplace_seller_payouts")
@@ -62,7 +72,7 @@ async function handle(req: NextRequest) {
             )
             .in("status", ["pending", "approved", "failed"])
             .order("updated_at", { ascending: true })
-            .limit(50),
+            .limit(Math.max(0, limit)),
           supabaseAdmin
             .from("marketplace_driver_payouts")
             .select(
@@ -70,11 +80,18 @@ async function handle(req: NextRequest) {
             )
             .in("status", ["pending", "approved", "failed"])
             .order("updated_at", { ascending: true })
-            .limit(50),
+            .limit(Math.max(0, limit)),
         ]);
 
+        trace.mark("supabase_query_finished", {
+          detail: {
+            seller_rows: (sellerRes.data ?? []).length,
+            driver_rows: (driverRes.data ?? []).length,
+          },
+        });
+
         const execution = await executeMarketplacePayouts(supabaseAdmin, {
-          limit: 50,
+          limit: Math.max(0, limit),
         });
 
         const sellerCount = (sellerRes.data ?? []).length;
@@ -102,44 +119,60 @@ async function handle(req: NextRequest) {
           failed: 0,
         };
       },
-      { ttlSeconds: 10 * 60 }
+      {
+        lockedBy: `marketplace:${start.run_id}`,
+        ttlSeconds: Math.ceil(CRON_JOB_BUDGET_MS / 1000) + 30,
+      }
     );
 
-    if (!locked.ok) {
+    if (locked.ok === false) {
+      trace.mark("lock_busy", { detail: { error: locked.error } });
+      trace.mark("response_sent");
       return json(
         finishCronRun(start, {
           ok: true,
           skipped: 1,
-          reason: "lock_busy",
+          reason: locked.error,
           mode: "INVENTORY_ONLY",
           lock_acquired: false,
           transfers_created: 0,
+          phases: trace.phases,
         })
       );
     }
 
+    trace.mark("processing_finished");
+    trace.mark("response_sent");
     return json(
       finishCronRun(start, {
         ...locked.result,
         ok: true,
         lock_acquired: true,
+        batch_limit: limit,
+        phases: trace.phases,
+        vercel_max_duration_sec: CRON_VERCEL_MAX_DURATION_SEC,
+        job_budget_ms: CRON_JOB_BUDGET_MS,
       })
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("[marketplace-payouts] fatal", {
-      message,
-      run_id: start.run_id,
-    });
+    const code =
+      error instanceof CronTimeoutError
+        ? error.code
+        : error instanceof Error
+          ? error.message
+          : String(error);
+    trace.mark("error", { detail: { code } });
+    trace.mark("response_sent");
     return json(
       finishCronRun(start, {
         ok: false,
-        error: "Internal server error",
+        error: code,
         mode: "INVENTORY_ONLY",
         lock_acquired: false,
         transfers_created: 0,
+        phases: trace.phases,
       }),
-      500
+      error instanceof CronTimeoutError ? 504 : 500
     );
   }
 }

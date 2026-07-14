@@ -60,6 +60,8 @@ export type ExpireStalePaymentsSummary = {
   stripe_pi_already_canceled: number;
   errors: number;
   details: Array<Record<string, unknown>>;
+  partial?: boolean;
+  stopped_reason?: string | null;
 };
 
 function lower(value: unknown): string {
@@ -114,7 +116,6 @@ export function shouldExpireLocally(
     return !isTerminalOrderStatus(row.status);
   }
 
-  // delivery_request: cancel only while still awaiting payment visibility
   const status = lower(row.status);
   return (
     status === "pending" ||
@@ -212,9 +213,10 @@ export async function claimCancelLocalEntity(
 async function cancelStripePaymentIntentIfSafe(
   stripe: Stripe,
   paymentIntentId: string,
-  dryRun: boolean
+  dryRun: boolean,
+  retrieve: (id: string) => Promise<Stripe.PaymentIntent>
 ): Promise<"canceled" | "already_canceled" | "skipped_succeeded" | "skipped_in_progress" | "skipped_unknown"> {
-  const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+  const pi = await retrieve(paymentIntentId);
   const action = decideStripePiAction(pi.status);
 
   if (action === "already_canceled") return "already_canceled";
@@ -227,7 +229,6 @@ async function cancelStripePaymentIntentIfSafe(
       await stripe.paymentIntents.cancel(paymentIntentId);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      // Tolerate races where Stripe already canceled.
       if (/already.*?cancel/i.test(message) || /resource_missing/i.test(message)) {
         return "already_canceled";
       }
@@ -244,24 +245,49 @@ export async function runExpireStalePayments(opts: {
   dryRun?: boolean;
   now?: Date;
   limit?: number;
+  startedMs?: number;
+  budgetMs?: number;
+  onPhase?: (
+    phase:
+      | "supabase_query_started"
+      | "supabase_query_finished"
+      | "stripe_retrieve_started"
+      | "stripe_retrieve_finished"
+      | "processing_started"
+      | "processing_finished"
+      | "job_deadline_reached"
+      | "vercel_deadline_approaching",
+    detail?: Record<string, unknown>
+  ) => void;
+  retrievePaymentIntent?: (id: string) => Promise<Stripe.PaymentIntent>;
 }): Promise<ExpireStalePaymentsSummary> {
   const dryRun = opts.dryRun === true;
   const now = opts.now ?? new Date();
   const nowMs = now.getTime();
   const nowIso = now.toISOString();
+  const startedMs = opts.startedMs ?? Date.now();
+  const budgetMs = opts.budgetMs ?? 45_000;
+  const limitRaw = Number(opts.limit ?? EXPIRE_BATCH_LIMIT);
   const limit = Math.min(
     EXPIRE_BATCH_LIMIT,
-    Math.max(1, Number(opts.limit ?? EXPIRE_BATCH_LIMIT) || EXPIRE_BATCH_LIMIT)
+    Math.max(0, Number.isFinite(limitRaw) ? Math.floor(limitRaw) : EXPIRE_BATCH_LIMIT)
   );
 
-  // Select rows whose expires_at is older than (now - margin) already applied in filter:
-  // expires_at < now - margin  <=>  expires_at + margin < now
   const cutoffIso = new Date(nowMs - EXPIRE_SAFETY_MARGIN_MS).toISOString();
 
+  opts.onPhase?.("supabase_query_started", { batch_size: limit });
   const [orders, deliveryRequests] = await Promise.all([
-    loadStaleOrders(opts.supabaseAdmin, cutoffIso, limit),
-    loadStaleDeliveryRequests(opts.supabaseAdmin, cutoffIso, limit),
+    limit === 0
+      ? Promise.resolve([] as StalePaymentRow[])
+      : loadStaleOrders(opts.supabaseAdmin, cutoffIso, limit),
+    limit === 0
+      ? Promise.resolve([] as StalePaymentRow[])
+      : loadStaleDeliveryRequests(opts.supabaseAdmin, cutoffIso, limit),
   ]);
+  opts.onPhase?.("supabase_query_finished", {
+    orders: orders.length,
+    delivery_requests: deliveryRequests.length,
+  });
 
   const candidates = [...orders, ...deliveryRequests]
     .filter((row) => shouldExpireLocally(row, nowMs))
@@ -277,9 +303,29 @@ export async function runExpireStalePayments(opts: {
     stripe_pi_already_canceled: 0,
     errors: 0,
     details: [],
+    partial: false,
+    stopped_reason: null,
   };
 
+  opts.onPhase?.("processing_started", { eligible: candidates.length });
+
+  const retrieve =
+    opts.retrievePaymentIntent ??
+    ((id: string) => opts.stripe!.paymentIntents.retrieve(id));
+
   for (const row of candidates) {
+    if (Date.now() - startedMs >= budgetMs) {
+      summary.partial = true;
+      summary.stopped_reason = "job_deadline_reached";
+      opts.onPhase?.("job_deadline_reached", {
+        processed: summary.canceled_local,
+      });
+      break;
+    }
+    if (Date.now() - startedMs >= budgetMs - 3_000) {
+      opts.onPhase?.("vercel_deadline_approaching");
+    }
+
     const detail: Record<string, unknown> = {
       entity_type: row.entityType,
       entity_id: row.id,
@@ -287,17 +333,26 @@ export async function runExpireStalePayments(opts: {
     };
 
     try {
-      // Re-check Stripe BEFORE local cancel when a PI exists, to avoid racing a late settle.
       const piId = String(row.stripe_payment_intent_id ?? "").trim();
       if (piId && opts.stripe) {
+        opts.onPhase?.("stripe_retrieve_started", {
+          resource_ref: piId.slice(0, 8) + "…",
+        });
         const stripeResult = await cancelStripePaymentIntentIfSafe(
           opts.stripe,
           piId,
-          dryRun
+          dryRun,
+          retrieve
         );
+        opts.onPhase?.("stripe_retrieve_finished", {
+          action: stripeResult,
+        });
         detail.stripe_pi_action = stripeResult;
 
-        if (stripeResult === "skipped_succeeded" || stripeResult === "skipped_in_progress") {
+        if (
+          stripeResult === "skipped_succeeded" ||
+          stripeResult === "skipped_in_progress"
+        ) {
           summary.stripe_pi_skipped += 1;
           detail.skipped_local = true;
           summary.details.push(detail);
@@ -328,11 +383,20 @@ export async function runExpireStalePayments(opts: {
     } catch (error) {
       summary.errors += 1;
       detail.error = error instanceof Error ? error.message : String(error);
-      console.error("[expireStalePayments] row failed", detail);
+      console.error("[expireStalePayments] row failed", {
+        entity_type: row.entityType,
+        entity_id: String(row.id).slice(0, 8) + "…",
+        error: detail.error,
+      });
     }
 
     summary.details.push(detail);
   }
+
+  opts.onPhase?.("processing_finished", {
+    canceled_local: summary.canceled_local,
+    partial: summary.partial === true,
+  });
 
   return summary;
 }

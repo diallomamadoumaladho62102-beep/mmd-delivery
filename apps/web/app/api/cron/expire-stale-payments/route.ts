@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { withCronJobLock } from "@/lib/cronJobLock";
 import { finishCronRun, startCronRun } from "@/lib/cronObservability";
+import { createCronPhaseTracer, maskResourceId } from "@/lib/cronPhaseTrace";
+import { buildCronSupabaseAdmin } from "@/lib/cronSupabase";
+import {
+  CRON_JOB_BUDGET_MS,
+  CRON_STRIPE_TIMEOUT_MS,
+  CRON_SUPABASE_TIMEOUT_MS,
+  CRON_VERCEL_MAX_DURATION_SEC,
+  CronTimeoutError,
+  readCronBatchLimit,
+  withTimeout,
+} from "@/lib/cronTimeouts";
 import {
   PAYMENT_EXPIRATION_LOCK_JOB,
   runExpireStalePayments,
@@ -11,13 +21,12 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = CRON_VERCEL_MAX_DURATION_SEC;
 
 /**
  * Canonical payment-expiration cron.
  * Owns: unpaid/processing orders + delivery_requests past expires_at (+15m margin),
  * Stripe PaymentIntent cancel when safe, shared lock `payment-expiration`.
- *
- * Alias: `/api/orders/expire-unpaid` (same runner + same lock).
  */
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
@@ -29,19 +38,14 @@ function json(body: Record<string, unknown>, status = 200) {
   });
 }
 
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error("Missing Supabase admin env");
-  }
-  return createClient(url, key, { auth: { persistSession: false } });
-}
-
 function getStripe(): Stripe | null {
   const key = String(process.env.STRIPE_SECRET_KEY ?? "").trim();
   if (!key) return null;
-  return new Stripe(key, { apiVersion: "2023-10-16" });
+  return new Stripe(key, {
+    apiVersion: "2023-10-16",
+    timeout: CRON_STRIPE_TIMEOUT_MS,
+    maxNetworkRetries: 0,
+  });
 }
 
 function readDryRun(req: NextRequest): boolean {
@@ -57,77 +61,143 @@ function readDryRun(req: NextRequest): boolean {
 
 async function handle(req: NextRequest) {
   const dryRun = readDryRun(req);
+  const limit = readCronBatchLimit(req.nextUrl.searchParams, 1);
   const start = startCronRun("expire-stale-payments", dryRun);
+  const trace = createCronPhaseTracer("expire-stale-payments", start.run_id);
+  trace.mark("request_received", { batch_size: limit });
 
   try {
     if (!isAuthorizedCronRequest(req)) {
+      trace.mark("response_sent", { detail: { auth: false } });
       return json(
         finishCronRun(start, {
           ok: false,
           error: "Unauthorized",
           lock_acquired: false,
+          phases: trace.phases,
         }),
         401
       );
     }
+    trace.mark("auth_validated");
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const supabaseAdmin = buildCronSupabaseAdmin(CRON_SUPABASE_TIMEOUT_MS);
+    const stripe = getStripe();
+
+    trace.mark("lock_attempt_started");
     const locked = await withCronJobLock(
       supabaseAdmin,
       PAYMENT_EXPIRATION_LOCK_JOB,
-      async () =>
-        runExpireStalePayments({
+      async () => {
+        trace.mark("lock_acquired", {
+          detail: { locked_by: `expire:${start.run_id}` },
+        });
+        return runExpireStalePayments({
           supabaseAdmin,
-          stripe: getStripe(),
+          stripe,
           dryRun,
-        }),
-      { ttlSeconds: 10 * 60 }
+          limit,
+          startedMs: start.startedMs,
+          budgetMs: CRON_JOB_BUDGET_MS,
+          onPhase: (phase, detail) => {
+            trace.mark(phase, {
+              batch_size: limit,
+              resource_ref:
+                typeof detail?.resource_ref === "string"
+                  ? detail.resource_ref
+                  : maskResourceId(detail?.entity_id),
+              detail,
+            });
+          },
+          retrievePaymentIntent: async (id) => {
+            if (!stripe) throw new Error("stripe_missing");
+            return withTimeout(
+              stripe.paymentIntents.retrieve(id),
+              CRON_STRIPE_TIMEOUT_MS,
+              "stripe_timeout"
+            );
+          },
+        });
+      },
+      {
+        lockedBy: `expire:${start.run_id}`,
+        ttlSeconds: Math.ceil(CRON_JOB_BUDGET_MS / 1000) + 30,
+      }
     );
 
-    if (!locked.ok) {
+    if (locked.ok === false) {
+      const reason =
+        locked.error === "lock_timeout" ? "lock_timeout" : "lock_busy";
+      trace.mark(reason === "lock_timeout" ? "error" : "lock_busy", {
+        detail: { error: locked.error },
+      });
+      trace.mark("response_sent");
       return json(
         finishCronRun(start, {
           ok: true,
           skipped: 1,
-          reason: "lock_busy",
+          reason,
           job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
           lock_acquired: false,
+          phases: trace.phases,
+          vercel_max_duration_sec: CRON_VERCEL_MAX_DURATION_SEC,
+          job_budget_ms: CRON_JOB_BUDGET_MS,
         })
       );
     }
 
+    const result = locked.result;
+    const criticalFail = result.errors > 0 && result.canceled_local === 0;
+    trace.mark("response_sent");
     return json(
       finishCronRun(start, {
-        ok: true,
-        dry_run: locked.result.dry_run,
-        scanned: locked.result.scanned,
-        canceled_local: locked.result.canceled_local,
-        stripe_pi_canceled: locked.result.stripe_pi_canceled,
-        stripe_pi_skipped: locked.result.stripe_pi_skipped,
-        stripe_pi_already_canceled: locked.result.stripe_pi_already_canceled,
-        error_count: locked.result.errors,
-        details: locked.result.details,
-        processed: locked.result.canceled_local,
-        eligible: locked.result.scanned,
-        skipped: locked.result.stripe_pi_skipped,
-        failed: locked.result.errors,
+        ok: !criticalFail,
+        dry_run: result.dry_run,
+        scanned: result.scanned,
+        canceled_local: result.canceled_local,
+        stripe_pi_canceled: result.stripe_pi_canceled,
+        stripe_pi_skipped: result.stripe_pi_skipped,
+        stripe_pi_already_canceled: result.stripe_pi_already_canceled,
+        error_count: result.errors,
+        details: result.details,
+        processed: result.canceled_local,
+        eligible: result.scanned,
+        skipped: result.stripe_pi_skipped,
+        failed: result.errors,
         lock_acquired: true,
         job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
-      })
+        partial: result.partial === true,
+        stopped_reason: result.stopped_reason ?? null,
+        batch_limit: limit,
+        phases: trace.phases,
+        vercel_max_duration_sec: CRON_VERCEL_MAX_DURATION_SEC,
+        job_budget_ms: CRON_JOB_BUDGET_MS,
+      }),
+      criticalFail ? 500 : 200
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const code =
+      error instanceof CronTimeoutError
+        ? error.code
+        : error instanceof Error
+          ? error.message
+          : "Unknown error";
+    trace.mark("error", { detail: { code } });
+    trace.mark("response_sent");
     console.error("[expire-stale-payments] fatal", {
-      message,
+      code,
       run_id: start.run_id,
     });
     return json(
       finishCronRun(start, {
         ok: false,
-        error: "Internal server error",
+        error: code,
         lock_acquired: false,
+        phases: trace.phases,
+        vercel_max_duration_sec: CRON_VERCEL_MAX_DURATION_SEC,
+        job_budget_ms: CRON_JOB_BUDGET_MS,
       }),
-      500
+      error instanceof CronTimeoutError ? 504 : 500
     );
   }
 }
