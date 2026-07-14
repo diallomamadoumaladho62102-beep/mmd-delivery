@@ -30,6 +30,10 @@ import {
 import { subscribeTaxiOfferPushRefresh } from "../../lib/taxiPushEvents";
 import { DriverWaitTimerPanel } from "./DriverWaitTimerPanel";
 import { TaxiSafetyRecordingPanel } from "../taxi/TaxiSafetyRecordingPanel";
+import {
+  filterActiveTaxiOffers,
+  formatOfferCountdown,
+} from "../../lib/taxiOfferExpiry";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -73,13 +77,7 @@ type Props = {
 };
 
 function formatOfferRemaining(expiresAt: string, nowMs: number): string {
-  const remainingMs = new Date(expiresAt).getTime() - nowMs;
-  if (remainingMs <= 0) return "Expired";
-  const totalSeconds = Math.ceil(remainingMs / 1000);
-  if (totalSeconds < 60) return `${totalSeconds}s left`;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}m ${seconds}s left`;
+  return formatOfferCountdown(expiresAt, nowMs);
 }
 
 export function DriverTaxiPanel({ isOnline }: Props) {
@@ -96,10 +94,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
 
   const taxiEnabled = features?.taxi_enabled === true;
   const showPanel = taxiEnabled && driverApproved;
-  const activeOffers = offers.filter((offer) => {
-    if (!offer.expires_at) return true;
-    return new Date(offer.expires_at).getTime() > nowMs;
-  });
+  const activeOffers = filterActiveTaxiOffers(offers, nowMs);
 
   const refresh = useCallback(async () => {
     if (!showPanel || !isOnline) {
@@ -171,10 +166,47 @@ export function DriverTaxiPanel({ isOnline }: Props) {
   async function handleAccept(offer: TaxiOfferRow) {
     setActionId(offer.id);
     try {
-      await acceptTaxiOffer(offer.id);
+      const result = await acceptTaxiOffer(offer.id);
+      if (result?.ok === false) {
+        const reason = String(
+          result?.error ?? result?.reason_code ?? "Offer no longer available"
+        ).toLowerCase();
+        const takenOrExpired =
+          reason.includes("taken") ||
+          reason.includes("expired") ||
+          reason.includes("not_available") ||
+          reason.includes("already_assigned") ||
+          reason.includes("no_longer") ||
+          reason.includes("offer_not");
+        await refresh();
+        Alert.alert(
+          "Taxi",
+          takenOrExpired
+            ? toUserFacingError(
+                result,
+                "This offer was taken or expired. Offers refreshed."
+              )
+            : toUserFacingError(result, "Accept failed")
+        );
+        return;
+      }
       await refresh();
     } catch (e: unknown) {
-      Alert.alert("Taxi", toUserFacingError(e, "Accept failed"));
+      const message = e instanceof Error ? e.message : String(e);
+      const lower = message.toLowerCase();
+      const takenOrExpired =
+        lower.includes("taken") ||
+        lower.includes("expired") ||
+        lower.includes("not available") ||
+        lower.includes("already") ||
+        lower.includes("status changed");
+      await refresh();
+      Alert.alert(
+        "Taxi",
+        takenOrExpired
+          ? toUserFacingError(e, "This offer was taken or expired. Offers refreshed.")
+          : toUserFacingError(e, "Accept failed")
+      );
     } finally {
       setActionId(null);
     }

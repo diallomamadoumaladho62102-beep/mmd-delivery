@@ -284,6 +284,7 @@ export default function TaxiQuoteScreen() {
   }
 
   async function handleConfirmAndPay() {
+    if (paying) return;
     setPaying(true);
     try {
       const created = await createTaxiRide({

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -28,12 +28,13 @@ import {
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
 import { TaxiSafetyRecordingPanel } from "../../components/taxi/TaxiSafetyRecordingPanel";
-import {
-  ensureMapboxTokenApplied,
-  getMapboxModule,
-  getMapStyleStreets,
-} from "../../lib/mapboxConfig";
 import { useLiveDriverLocation } from "../../hooks/useLiveDriverLocation";
+import { useLiveTripEta } from "../../hooks/useLiveTripEta";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import { LiveTripMap } from "../../components/tracking/LiveTripMap";
+import { LiveEtaBanner } from "../../components/tracking/LiveEtaBanner";
+import { toCoordinatePoint } from "../../lib/coordinates";
+import { resolveEtaEndpoints } from "../../lib/liveTripTracking";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiRideTracking">;
 type TrackingRoute = RouteProp<RootStackParamList, "TaxiRideTracking">;
@@ -50,43 +51,19 @@ const PAYMENT_PENDING = new Set(["pending_payment", "processing"]);
 const PAID_PAYMENT = new Set(["paid", "refunded"]);
 const ACTIVE_SAFETY_STATUSES = new Set(["accepted", "driver_arrived", "in_progress"]);
 
-function isValidCoord(lat: unknown, lng: unknown) {
-  const latN = Number(lat);
-  const lngN = Number(lng);
-  return Number.isFinite(latN) && Number.isFinite(lngN);
-}
-
-function getCameraForPoints(points: [number, number][]) {
-  if (points.length === 0) {
-    return { centerCoordinate: [-73.95, 40.65] as [number, number], zoomLevel: 11 };
-  }
-  if (points.length === 1) {
-    return { centerCoordinate: points[0], zoomLevel: 14 };
-  }
-  const lngs = points.map((p) => p[0]);
-  const lats = points.map((p) => p[1]);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const delta = Math.max(maxLat - minLat, maxLng - minLng, 0.01);
-  return {
-    centerCoordinate: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] as [number, number],
-    zoomLevel: Math.max(10, Math.min(15, Math.log2(360 / (delta * 3.2)))),
-  };
-}
-
 export default function TaxiRideTrackingScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<TrackingRoute>();
   const { t } = useTranslation();
   const rideId = route.params?.rideId;
+  const network = useNetworkStatus();
 
   const [ride, setRide] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const mountedRef = useRef(true);
 
   const { location: liveDriver } = useLiveDriverLocation(
     String(ride?.driver_id ?? "") || null
@@ -146,23 +123,33 @@ export default function TaxiRideTrackingScreen() {
             : [];
         nextRide = { ...nextRide, stops: stopsFromResult };
       }
-      setRide(nextRide);
+      if (mountedRef.current) {
+        setRide(nextRide);
+      }
     } catch (e: unknown) {
       const message =
         e instanceof Error
           ? e.message
           : t("taxi.ride.loadFailed", "Unable to load ride");
-      setLoadError(message);
+      if (mountedRef.current) {
+        setLoadError(message);
+      }
       console.log("[TaxiRideTracking]", e);
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [rideId, maybeConfirmPayment, t]);
 
   useEffect(() => {
+    mountedRef.current = true;
     void load();
     const timer = setInterval(() => void load(), 12000);
-    return () => clearInterval(timer);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(timer);
+    };
   }, [load]);
 
   useEffect(() => {
@@ -199,47 +186,69 @@ export default function TaxiRideTrackingScreen() {
   const awaitingPayment =
     PAYMENT_PENDING.has(paymentStatus) ||
     (paymentStatus === "unpaid" && status === "pending_payment");
-  const pickupLat = Number(ride?.pickup_lat);
-  const pickupLng = Number(ride?.pickup_lng);
-  const dropoffLat = Number(ride?.dropoff_lat);
-  const dropoffLng = Number(ride?.dropoff_lng);
 
-  const driverLat = Number(liveDriver?.lat);
-  const driverLng = Number(liveDriver?.lng);
-  const hasLiveDriver = isValidCoord(driverLat, driverLng);
+  const pickupCoord = useMemo(
+    () => toCoordinatePoint(ride?.pickup_lat, ride?.pickup_lng),
+    [ride?.pickup_lat, ride?.pickup_lng]
+  );
+  const dropoffCoord = useMemo(
+    () => toCoordinatePoint(ride?.dropoff_lat, ride?.dropoff_lng),
+    [ride?.dropoff_lat, ride?.dropoff_lng]
+  );
+  const driverCoord = useMemo(() => {
+    if (!liveDriver) return null;
+    return toCoordinatePoint(liveDriver.lat, liveDriver.lng);
+  }, [liveDriver]);
 
-  const mapPoints = useMemo(() => {
-    const points: [number, number][] = [];
-    if (isValidCoord(pickupLng, pickupLat)) {
-      points.push([pickupLng, pickupLat]);
-    }
-    if (isValidCoord(dropoffLng, dropoffLat)) {
-      points.push([dropoffLng, dropoffLat]);
-    }
-    if (hasLiveDriver) {
-      points.push([driverLng, driverLat]);
-    }
-    return points;
-  }, [pickupLat, pickupLng, dropoffLat, dropoffLng, hasLiveDriver, driverLat, driverLng]);
+  const stopPoints = useMemo(() => {
+    const stops = ride?.stops;
+    if (!Array.isArray(stops)) return [];
+    return stops
+      .map((stop, index) => {
+        if (stop == null || typeof stop !== "object") return null;
+        const row = stop as { lat?: number; lng?: number; stop_order?: number };
+        const point = toCoordinatePoint(row.lat, row.lng);
+        if (!point) return null;
+        return {
+          ...point,
+          id: `stop-${row.stop_order ?? index}`,
+          label: String(row.stop_order ?? index + 1),
+        };
+      })
+      .filter(Boolean) as Array<{
+      latitude: number;
+      longitude: number;
+      id: string;
+      label: string;
+    }>;
+  }, [ride?.stops]);
 
-  const camera = useMemo(() => getCameraForPoints(mapPoints), [mapPoints]);
+  const etaEndpoints = useMemo(
+    () =>
+      resolveEtaEndpoints({
+        status,
+        pickup: pickupCoord,
+        dropoff: dropoffCoord,
+        driver: driverCoord,
+      }),
+    [status, pickupCoord, dropoffCoord, driverCoord]
+  );
 
-  const routeLineFeature = useMemo(() => {
-    if (!isValidCoord(pickupLng, pickupLat) || !isValidCoord(dropoffLng, dropoffLat)) {
-      return null;
+  const liveEta = useLiveTripEta({
+    from: etaEndpoints.from,
+    to: etaEndpoints.to,
+    enabled: Boolean(etaEndpoints.from && etaEndpoints.to),
+  });
+
+  const prevNetworkRef = useRef(network.quality);
+  useEffect(() => {
+    const prev = prevNetworkRef.current;
+    prevNetworkRef.current = network.quality;
+    if (prev !== "online" && network.quality === "online") {
+      void load();
+      void liveEta.refresh();
     }
-    return {
-      type: "Feature" as const,
-      properties: {},
-      geometry: {
-        type: "LineString" as const,
-        coordinates: [
-          [pickupLng, pickupLat],
-          [dropoffLng, dropoffLat],
-        ],
-      },
-    };
-  }, [pickupLat, pickupLng, dropoffLat, dropoffLng]);
+  }, [network.quality, load, liveEta.refresh]);
 
   const intermediateStops = useMemo(() => {
     const stops = ride?.stops;
@@ -257,6 +266,7 @@ export default function TaxiRideTrackingScreen() {
 
   const durationMinutes = Number(ride?.duration_minutes);
   const distanceMiles = Number(ride?.distance_miles);
+  const hasLiveDriver = Boolean(driverCoord);
 
   async function handleRetryPayment() {
     await load();
@@ -313,78 +323,27 @@ export default function TaxiRideTrackingScreen() {
     );
   }
 
-  const Mapbox = getMapboxModule();
-  const mapReady =
-    Boolean(Mapbox) &&
-    ensureMapboxTokenApplied() &&
-    Number.isFinite(pickupLat) &&
-    Number.isFinite(pickupLng);
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <View style={{ flex: 1 }}>
-        {mapReady && Mapbox ? (
-          <Mapbox.MapView
-            style={{ flex: 1 }}
-            styleURL={getMapStyleStreets()}
-            logoEnabled={false}
-            attributionEnabled={false}
-          >
-            <Mapbox.Camera
-              zoomLevel={camera.zoomLevel}
-              centerCoordinate={camera.centerCoordinate}
-              animationMode="flyTo"
-              animationDuration={650}
-            />
-            <Mapbox.PointAnnotation
-              id="pickup"
-              coordinate={[pickupLng, pickupLat]}
-            >
-              <View style={pinStyle("#22C55E")}>
-                <Text style={pinTextStyle}>P</Text>
-              </View>
-            </Mapbox.PointAnnotation>
-            {Number.isFinite(dropoffLat) && Number.isFinite(dropoffLng) ? (
-              <Mapbox.PointAnnotation
-                id="dropoff"
-                coordinate={[dropoffLng, dropoffLat]}
-              >
-                <View style={pinStyle("#EF4444")}>
-                  <Text style={pinTextStyle}>D</Text>
-                </View>
-              </Mapbox.PointAnnotation>
-            ) : null}
-            {hasLiveDriver ? (
-              <Mapbox.PointAnnotation
-                id="live-driver"
-                coordinate={[driverLng, driverLat]}
-              >
-                <View style={pinStyle("#38BDF8")}>
-                  <Text style={pinTextStyle}>T</Text>
-                </View>
-              </Mapbox.PointAnnotation>
-            ) : null}
-            {routeLineFeature ? (
-              <Mapbox.ShapeSource id="taxi-route-line" shape={routeLineFeature}>
-                <Mapbox.LineLayer
-                  id="taxi-route-line-layer"
-                  style={{
-                    lineColor: "#60A5FA",
-                    lineWidth: 4,
-                    lineOpacity: 0.85,
-                  }}
-                />
-              </Mapbox.ShapeSource>
-            ) : null}
-          </Mapbox.MapView>
-        ) : (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "#94A3B8" }}>
-              {t("taxi.ride.mapUnavailable", "Map unavailable")}
-            </Text>
-          </View>
-        )}
+        <LiveTripMap
+          pickup={pickupCoord}
+          dropoff={dropoffCoord}
+          driver={driverCoord}
+          stops={stopPoints}
+          routeGeometry={liveEta.eta?.geometry ?? null}
+          fill
+          showRezoom
+          stale={liveEta.stale || network.quality === "offline"}
+          badgeText={
+            network.quality === "offline"
+              ? t("taxi.ride.offline", "Offline — tracking may be stale")
+              : ride?.driver_id && !driverCoord
+                ? t("taxi.ride.waitingDriverGps", "Waiting for driver GPS…")
+                : null
+          }
+        />
 
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 2 }}>
           <ScreenHeader
@@ -396,31 +355,32 @@ export default function TaxiRideTrackingScreen() {
 
         <ScrollView
           style={{
-            maxHeight: 360,
+            maxHeight: 380,
             backgroundColor: "rgba(15,23,42,0.96)",
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
             padding: 18,
           }}
         >
-          <Text style={{ color: "#94A3B8", marginTop: 4 }}>
+          <LiveEtaBanner
+            distanceMiles={liveEta.eta?.distanceMiles ?? (Number.isFinite(distanceMiles) ? distanceMiles : null)}
+            etaMinutes={liveEta.eta?.etaMinutes ?? (Number.isFinite(durationMinutes) ? durationMinutes : null)}
+            nextStep={liveEta.eta?.nextStep}
+            stale={liveEta.stale}
+            offline={liveEta.offline || network.quality === "offline"}
+            loading={liveEta.loading}
+            updatedAt={
+              liveEta.updatedAt ??
+              (liveDriver?.updated_at
+                ? new Date(liveDriver.updated_at).getTime()
+                : null)
+            }
+            emptyMessage={t("taxi.ride.etaUnavailable", "Live ETA unavailable")}
+          />
+
+          <Text style={{ color: "#94A3B8", marginTop: 10 }}>
             {formatTaxiCents(ride?.total_cents, String(ride?.currency ?? "USD"))}
           </Text>
-
-          {Number.isFinite(durationMinutes) && durationMinutes > 0 ? (
-            <Text style={{ color: "#CBD5E1", marginTop: 6, textAlign: textAlignStart() }}>
-              {t("taxi.ride.durationMinutes", "Duration: {{minutes}} min", {
-                minutes: Math.ceil(durationMinutes),
-              })}
-            </Text>
-          ) : null}
-          {Number.isFinite(distanceMiles) && distanceMiles > 0 ? (
-            <Text style={{ color: "#CBD5E1", marginTop: 4, textAlign: textAlignStart() }}>
-              {t("taxi.ride.distanceMiles", "Distance: {{miles}} mi", {
-                miles: distanceMiles.toFixed(1),
-              })}
-            </Text>
-          ) : null}
 
           {loadError ? (
             <Text style={{ color: "#FCA5A5", marginTop: 8 }}>{loadError}</Text>
@@ -523,9 +483,9 @@ export default function TaxiRideTrackingScreen() {
                   })}
                 </Text>
               ) : null}
-              {hasLiveDriver ? (
-                <Text style={{ color: "#64748B", marginTop: 2, fontSize: 11 }}>
-                  {driverLat.toFixed(5)}, {driverLng.toFixed(5)}
+              {!hasLiveDriver ? (
+                <Text style={{ color: "#FBBF24", marginTop: 4, fontSize: 12 }}>
+                  {t("taxi.ride.driverGpsUnavailable", "Driver GPS unavailable")}
                 </Text>
               ) : null}
             </View>
@@ -573,19 +533,6 @@ function formatStatus(status: string, defaultTitle: string) {
   if (!status) return defaultTitle;
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-function pinStyle(color: string) {
-  return {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: color,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-  };
-}
-
-const pinTextStyle = { color: "#fff", fontWeight: "800" as const, fontSize: 12 };
 
 function actionBtn(bg: string) {
   return {

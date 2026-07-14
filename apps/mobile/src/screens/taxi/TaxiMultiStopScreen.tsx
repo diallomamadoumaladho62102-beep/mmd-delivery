@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
@@ -18,6 +17,11 @@ import MarketScopeCard from "../../components/market/MarketScopeCard";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { AddressAutocomplete } from "../../components/location/AddressAutocomplete";
+import {
+  buildMultiStopQuoteNavigationParams,
+  shouldCreateRideBeforePayment,
+} from "../../lib/taxiBookingFlow";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
 
@@ -41,6 +45,15 @@ export default function TaxiMultiStopScreen() {
       return;
     }
 
+    // Invariant: quote first — never create ride before payment from this screen.
+    if (shouldCreateRideBeforePayment()) {
+      Alert.alert(
+        t("taxi.multiStop.title", "Multi-stop ride"),
+        t("taxi.multiStop.createBlocked", "Ride create is blocked until payment.")
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const countryCode = market.countryCode;
@@ -59,7 +72,7 @@ export default function TaxiMultiStopScreen() {
 
       if (!result?.ok) throw new Error(result?.error ?? "Quote failed");
 
-      navigation.navigate("TaxiQuote", {
+      const params = buildMultiStopQuoteNavigationParams({
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
         vehicleClass: "standard",
@@ -68,6 +81,8 @@ export default function TaxiMultiStopScreen() {
         route: { ...result.route, stops: result.route?.stops ?? stops },
         stops,
       });
+
+      navigation.navigate("TaxiQuote", params);
     } catch (e: unknown) {
       Alert.alert(
         t("taxi.multiStop.title", "Multi-stop ride"),
@@ -85,40 +100,40 @@ export default function TaxiMultiStopScreen() {
         fallbackRoute="ClientHome"
         variant="dark"
       />
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} keyboardShouldPersistTaps="handled">
         <MarketScopeCard
           market={market}
           areaLabel={t("taxi.home.yourArea", "Your area")}
           currencyLabel={t("taxi.home.currencyLabel", "Currency")}
           loading={scopeLoading}
         />
-        <TextInput
+        <AddressAutocomplete
           value={pickup}
           onChangeText={setPickup}
+          onSelect={(place) => setPickup(place.fullAddress)}
           placeholder={t("taxi.quote.pickup", "Pickup")}
-          placeholderTextColor="#64748B"
-          style={inputStyle}
+          country={market.countryCode || undefined}
         />
-        <TextInput
+        <AddressAutocomplete
           value={stop1}
           onChangeText={setStop1}
+          onSelect={(place) => setStop1(place.fullAddress)}
           placeholder={t("taxi.multiStop.stop1", "Stop 1 (optional)")}
-          placeholderTextColor="#64748B"
-          style={inputStyle}
+          country={market.countryCode || undefined}
         />
-        <TextInput
+        <AddressAutocomplete
           value={stop2}
           onChangeText={setStop2}
+          onSelect={(place) => setStop2(place.fullAddress)}
           placeholder={t("taxi.multiStop.stop2", "Stop 2 (optional)")}
-          placeholderTextColor="#64748B"
-          style={inputStyle}
+          country={market.countryCode || undefined}
         />
-        <TextInput
+        <AddressAutocomplete
           value={dropoff}
           onChangeText={setDropoff}
+          onSelect={(place) => setDropoff(place.fullAddress)}
           placeholder={t("taxi.multiStop.finalDestination", "Final destination")}
-          placeholderTextColor="#64748B"
-          style={inputStyle}
+          country={market.countryCode || undefined}
         />
         <TouchableOpacity
           onPress={handleQuote}
@@ -140,12 +155,3 @@ export default function TaxiMultiStopScreen() {
     </SafeAreaView>
   );
 }
-
-const inputStyle = {
-  backgroundColor: "rgba(15,23,42,0.95)",
-  borderWidth: 1,
-  borderColor: "#334155",
-  borderRadius: 14,
-  padding: 14,
-  color: "#F8FAFC",
-} as const;

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StatusBar,
   ScrollView,
@@ -14,7 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
-import * as Location from "expo-location";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
@@ -39,23 +37,9 @@ import {
   fetchTaxiCategoryAvailability,
   type TaxiCategoryAvailability,
 } from "../../lib/driverServicePreferencesApi";
-
-function formatReverseGeocodeAddress(
-  place: Location.LocationGeocodedAddress,
-  lat: number,
-  lng: number
-): string {
-  const street = [place.streetNumber, place.street].filter(Boolean).join(" ").trim();
-  const parts = [
-    street || place.name,
-    place.city || place.subregion,
-    place.region,
-    place.postalCode,
-    place.country,
-  ].filter(Boolean);
-  if (parts.length > 0) return parts.join(", ");
-  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-}
+import { AddressAutocomplete } from "../../components/location/AddressAutocomplete";
+import { reverseGeocode } from "../../lib/reverseGeocode";
+import { getFreshPosition } from "../../lib/locationPermissionState";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
@@ -130,12 +114,31 @@ export default function TaxiHomeScreen() {
   const [currencyCode, setCurrencyCode] = useState(market.currencyCode);
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [proximity, setProximity] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
+
+  useEffect(() => {
+    void getFreshPosition({ timeoutMs: 5000, preferLastKnown: true }).then((pos) => {
+      if (
+        Number.isFinite(pos.latitude) &&
+        Number.isFinite(pos.longitude) &&
+        (pos.state === "fresh" || pos.state === "cached" || pos.state === "weak_accuracy")
+      ) {
+        setProximity({ lat: pos.latitude, lng: pos.longitude });
+      }
+    });
+  }, []);
 
   const handleUseMyGps = useCallback(async () => {
     setGpsLoading(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
+      const pos = await getFreshPosition({ timeoutMs: 8000 });
+      if (
+        pos.state !== "fresh" &&
+        pos.state !== "cached" &&
+        pos.state !== "weak_accuracy"
+      ) {
         Alert.alert(
           t("taxi.home.gpsPermissionTitle", "Location permission"),
           t(
@@ -146,25 +149,10 @@ export default function TaxiHomeScreen() {
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const { latitude, longitude } = position.coords;
-
-      let address = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-      try {
-        const places = await Location.reverseGeocodeAsync({
-          latitude,
-          longitude,
-        });
-        if (places[0]) {
-          address = formatReverseGeocodeAddress(places[0], latitude, longitude);
-        }
-      } catch {
-        // Keep coordinate fallback when reverse geocode fails.
-      }
-
-      setPickup(address);
+      const { latitude, longitude } = pos;
+      setProximity({ lat: latitude, lng: longitude });
+      const geo = await reverseGeocode(latitude, longitude);
+      setPickup(geo.fullAddress);
       setPickupLocationId("");
     } catch (e: unknown) {
       Alert.alert(
@@ -370,12 +358,21 @@ export default function TaxiHomeScreen() {
           <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
             {t("taxi.home.pickup", "Pickup")}
           </Text>
-          <TextInput
+          <AddressAutocomplete
             value={pickup}
-            onChangeText={setPickup}
+            onChangeText={(text) => {
+              setPickup(text);
+              setPickupLocationId("");
+            }}
+            onSelect={(place) => {
+              setPickup(place.fullAddress);
+              setPickupLocationId("");
+              setProximity({ lat: place.latitude, lng: place.longitude });
+            }}
             placeholder={t("taxi.home.pickupPlaceholder", "Pickup address")}
-            placeholderTextColor="#64748B"
-            style={inputStyle}
+            proximity={proximity}
+            country={countryCode || undefined}
+            showUseGps={false}
           />
           <View style={{ flexDirection: rowDirection(), gap: 10 }}>
             <TouchableOpacity
@@ -426,12 +423,19 @@ export default function TaxiHomeScreen() {
           <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
             {t("taxi.home.dropoff", "Dropoff")}
           </Text>
-          <TextInput
+          <AddressAutocomplete
             value={dropoff}
-            onChangeText={setDropoff}
+            onChangeText={(text) => {
+              setDropoff(text);
+              setDropoffLocationId("");
+            }}
+            onSelect={(place) => {
+              setDropoff(place.fullAddress);
+              setDropoffLocationId("");
+            }}
             placeholder={t("taxi.home.dropoffPlaceholder", "Dropoff address")}
-            placeholderTextColor="#64748B"
-            style={inputStyle}
+            proximity={proximity}
+            country={countryCode || undefined}
           />
           <TouchableOpacity
             onPress={openDropoffPicker}

@@ -50,7 +50,11 @@ import Mapbox from "@rnmapbox/maps";
 
 // ✅ Live driver hook
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
+import { useLiveTripEta } from "../hooks/useLiveTripEta";
+import { LiveEtaBanner } from "../components/tracking/LiveEtaBanner";
+import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { startMaskedCall } from "../lib/maskedCall";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
 
 function isValidCoordinate(latValue: unknown, lngValue: unknown) {
   const lat = Number(latValue);
@@ -1305,6 +1309,25 @@ export function ClientOrderDetailsScreen() {
     return { latitude: Number(liveDriver.lat), longitude: Number(liveDriver.lng) };
   }, [liveDriver]);
 
+  const network = useNetworkStatus();
+
+  const etaEndpoints = useMemo(
+    () =>
+      resolveEtaEndpoints({
+        status: order?.status,
+        pickup: pickupCoord,
+        dropoff: dropoffCoord,
+        driver: driverCoord,
+      }),
+    [order?.status, pickupCoord, dropoffCoord, driverCoord]
+  );
+
+  const liveEta = useLiveTripEta({
+    from: etaEndpoints.from,
+    to: etaEndpoints.to,
+    enabled: Boolean(etaEndpoints.from && etaEndpoints.to),
+  });
+
   const polylineCoords = useMemo(() => {
     const coords: { latitude: number; longitude: number }[] = [];
     if (pickupCoord) coords.push(pickupCoord);
@@ -1320,7 +1343,10 @@ export function ClientOrderDetailsScreen() {
     return pts;
   }, [pickupCoord, dropoffCoord, driverCoord]);
 
-  const routeLineFeature = useMemo(() => makeLineFeature(polylineCoords), [polylineCoords]);
+  const routeLineFeature = useMemo(
+    () => liveEta.eta?.geometry ?? makeLineFeature(polylineCoords),
+    [liveEta.eta?.geometry, polylineCoords]
+  );
 
   const initialCamera = useMemo(() => getCameraForCoords(mapPoints), [mapPoints]);
 
@@ -1349,6 +1375,15 @@ export function ClientOrderDetailsScreen() {
       return () => clearTimeout(tt);
     }
   }, [order, mapPoints, fitMapToTrip]);
+
+  const prevNetworkRef = useRef(network.quality);
+  useEffect(() => {
+    const prev = prevNetworkRef.current;
+    prevNetworkRef.current = network.quality;
+    if (prev !== "online" && network.quality === "online") {
+      void liveEta.refresh();
+    }
+  }, [network.quality, liveEta.refresh]);
 
   const meta = statusMeta(order?.status ?? "pending", ts);
   const progress = statusProgress(order?.status ?? "pending");
@@ -1776,6 +1811,28 @@ export function ClientOrderDetailsScreen() {
                     )}
                   </View>
                 </View>
+              </View>
+
+              <View style={{ marginTop: 10, marginHorizontal: 20 }}>
+                <LiveEtaBanner
+                  distanceMiles={liveEta.eta?.distanceMiles}
+                  etaMinutes={liveEta.eta?.etaMinutes}
+                  nextStep={liveEta.eta?.nextStep}
+                  progressPercent={typeof progress === "number" ? progress * 100 : null}
+                  stale={liveEta.stale}
+                  offline={liveEta.offline || network.quality === "offline"}
+                  loading={liveEta.loading}
+                  updatedAt={
+                    liveEta.updatedAt ??
+                    (liveDriver?.updated_at
+                      ? new Date(liveDriver.updated_at).getTime()
+                      : null)
+                  }
+                  emptyMessage={ts(
+                    "client.orderDetails.etaUnavailable",
+                    "Live ETA unavailable"
+                  )}
+                />
               </View>
           </>
         )}

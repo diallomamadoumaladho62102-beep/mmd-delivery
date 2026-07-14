@@ -1,5 +1,5 @@
 import { toUserFacingError } from "../lib/userFacingError";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  AppState,
+  type AppStateStatus,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -23,6 +25,12 @@ import { rowDirection, textAlignStart } from "../i18n/rtl";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { useSafeBackNavigation } from "../navigation/navigationBack";
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
+import { useLiveTripEta } from "../hooks/useLiveTripEta";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { LiveTripMap } from "../components/tracking/LiveTripMap";
+import { LiveEtaBanner } from "../components/tracking/LiveEtaBanner";
+import { resolveEtaEndpoints } from "../lib/liveTripTracking";
+import { toCoordinatePoint } from "../lib/coordinates";
 import { getApiBaseUrl } from "../lib/apiBase";
 
 const API_URL = getApiBaseUrl();
@@ -65,6 +73,10 @@ type DeliveryRequestRecord = {
   paid_at: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
@@ -83,6 +95,10 @@ type OrderRecord = {
   paid_at: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
@@ -111,6 +127,10 @@ type ScreenData = {
   paid_at: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
+  dropoff_lat: number | null;
+  dropoff_lng: number | null;
   distance_miles: number | null;
   total: number | null;
   delivery_fee: number | null;
@@ -314,6 +334,10 @@ function mapDeliveryRequestToScreenData(
     paid_at: request.paid_at,
     pickup_address: request.pickup_address,
     dropoff_address: request.dropoff_address,
+    pickup_lat: request.pickup_lat,
+    pickup_lng: request.pickup_lng,
+    dropoff_lat: request.dropoff_lat,
+    dropoff_lng: request.dropoff_lng,
     distance_miles: request.distance_miles,
     total: request.total,
     delivery_fee: request.delivery_fee,
@@ -345,6 +369,10 @@ function mapOrderToScreenData(
     paid_at: order.paid_at,
     pickup_address: order.pickup_address,
     dropoff_address: order.dropoff_address,
+    pickup_lat: order.pickup_lat,
+    pickup_lng: order.pickup_lng,
+    dropoff_lat: order.dropoff_lat,
+    dropoff_lng: order.dropoff_lng,
     distance_miles: order.distance_miles,
     total: order.total,
     delivery_fee: order.delivery_fee,
@@ -446,6 +474,10 @@ export function ClientDeliveryRequestDetailsScreen() {
             paid_at,
             pickup_address,
             dropoff_address,
+            pickup_lat,
+            pickup_lng,
+            dropoff_lat,
+            dropoff_lng,
             distance_miles,
             total,
             delivery_fee,
@@ -482,6 +514,10 @@ export function ClientDeliveryRequestDetailsScreen() {
                 paid_at: toSafeString(directOrder.paid_at),
                 pickup_address: toSafeString(directOrder.pickup_address),
                 dropoff_address: toSafeString(directOrder.dropoff_address),
+                pickup_lat: toSafeNumber(directOrder.pickup_lat),
+                pickup_lng: toSafeNumber(directOrder.pickup_lng),
+                dropoff_lat: toSafeNumber(directOrder.dropoff_lat),
+                dropoff_lng: toSafeNumber(directOrder.dropoff_lng),
                 distance_miles: toSafeNumber(directOrder.distance_miles),
                 total: toSafeNumber(directOrder.total),
                 delivery_fee: toSafeNumber(directOrder.delivery_fee),
@@ -518,6 +554,10 @@ export function ClientDeliveryRequestDetailsScreen() {
             paid_at,
             pickup_address,
             dropoff_address,
+            pickup_lat,
+            pickup_lng,
+            dropoff_lat,
+            dropoff_lng,
             distance_miles,
             total,
             delivery_fee,
@@ -547,6 +587,10 @@ export function ClientDeliveryRequestDetailsScreen() {
           paid_at: toSafeString(requestData.paid_at),
           pickup_address: toSafeString(requestData.pickup_address),
           dropoff_address: toSafeString(requestData.dropoff_address),
+          pickup_lat: toSafeNumber(requestData.pickup_lat),
+          pickup_lng: toSafeNumber(requestData.pickup_lng),
+          dropoff_lat: toSafeNumber(requestData.dropoff_lat),
+          dropoff_lng: toSafeNumber(requestData.dropoff_lng),
           distance_miles: toSafeNumber(requestData.distance_miles),
           total: toSafeNumber(requestData.total),
           delivery_fee: toSafeNumber(requestData.delivery_fee),
@@ -570,6 +614,10 @@ export function ClientDeliveryRequestDetailsScreen() {
             paid_at,
             pickup_address,
             dropoff_address,
+            pickup_lat,
+            pickup_lng,
+            dropoff_lat,
+            dropoff_lng,
             distance_miles,
             total,
             delivery_fee,
@@ -605,6 +653,10 @@ export function ClientDeliveryRequestDetailsScreen() {
                 paid_at: toSafeString(linkedOrder.paid_at),
                 pickup_address: toSafeString(linkedOrder.pickup_address),
                 dropoff_address: toSafeString(linkedOrder.dropoff_address),
+                pickup_lat: toSafeNumber(linkedOrder.pickup_lat),
+                pickup_lng: toSafeNumber(linkedOrder.pickup_lng),
+                dropoff_lat: toSafeNumber(linkedOrder.dropoff_lat),
+                dropoff_lng: toSafeNumber(linkedOrder.dropoff_lng),
                 distance_miles: toSafeNumber(linkedOrder.distance_miles),
                 total: toSafeNumber(linkedOrder.total),
                 delivery_fee: toSafeNumber(linkedOrder.delivery_fee),
@@ -736,6 +788,56 @@ export function ClientDeliveryRequestDetailsScreen() {
   const { location: liveDriverLocation } = useLiveDriverLocation(
     data?.driver_id ?? null,
   );
+  const network = useNetworkStatus();
+
+  const pickupCoord = useMemo(
+    () => toCoordinatePoint(data?.pickup_lat, data?.pickup_lng),
+    [data?.pickup_lat, data?.pickup_lng]
+  );
+  const dropoffCoord = useMemo(
+    () => toCoordinatePoint(data?.dropoff_lat, data?.dropoff_lng),
+    [data?.dropoff_lat, data?.dropoff_lng]
+  );
+  const driverCoord = useMemo(() => {
+    if (!liveDriverLocation) return null;
+    return toCoordinatePoint(liveDriverLocation.lat, liveDriverLocation.lng);
+  }, [liveDriverLocation]);
+
+  const etaEndpoints = useMemo(
+    () =>
+      resolveEtaEndpoints({
+        status: data?.status,
+        pickup: pickupCoord,
+        dropoff: dropoffCoord,
+        driver: driverCoord,
+      }),
+    [data?.status, pickupCoord, dropoffCoord, driverCoord]
+  );
+
+  const liveEta = useLiveTripEta({
+    from: etaEndpoints.from,
+    to: etaEndpoints.to,
+    enabled: Boolean(etaEndpoints.from && etaEndpoints.to),
+  });
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") {
+        void loadDetails({ silent: true });
+      }
+    });
+    return () => sub.remove();
+  }, [loadDetails]);
+
+  const prevNetworkRef = useRef(network.quality);
+  useEffect(() => {
+    const prev = prevNetworkRef.current;
+    prevNetworkRef.current = network.quality;
+    if (prev !== "online" && network.quality === "online") {
+      void loadDetails({ silent: true });
+      void liveEta.refresh();
+    }
+  }, [network.quality, loadDetails, liveEta.refresh]);
 
   const primaryReference = useMemo(() => {
     if (data?.orderId) return shortRef(data.orderId);
@@ -964,6 +1066,58 @@ export function ClientDeliveryRequestDetailsScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
+          {(pickupCoord || dropoffCoord) ? (
+            <View style={{ marginBottom: 14, gap: 10 }}>
+              <LiveTripMap
+                pickup={pickupCoord}
+                dropoff={dropoffCoord}
+                driver={driverCoord}
+                routeGeometry={liveEta.eta?.geometry ?? null}
+                height={240}
+                stale={liveEta.stale || liveEta.offline}
+                badgeText={
+                  data.driver_id && !driverCoord
+                    ? t(
+                        "client.deliveryRequest.waitingDriverGps",
+                        "Waiting for driver GPS…"
+                      )
+                    : liveEta.offline
+                      ? t("client.deliveryRequest.offline", "Offline — map may be stale")
+                      : null
+                }
+              />
+              <LiveEtaBanner
+                distanceMiles={liveEta.eta?.distanceMiles}
+                etaMinutes={liveEta.eta?.etaMinutes}
+                nextStep={liveEta.eta?.nextStep}
+                stale={liveEta.stale}
+                offline={liveEta.offline}
+                loading={liveEta.loading}
+                updatedAt={liveEta.updatedAt ?? (liveDriverLocation?.updated_at
+                  ? new Date(liveDriverLocation.updated_at).getTime()
+                  : null)}
+                emptyMessage={t(
+                  "client.deliveryRequest.etaUnavailable",
+                  "Live ETA unavailable"
+                )}
+              />
+              {data.driver_id && !driverCoord ? (
+                <Text style={{ color: "#FBBF24", fontSize: 12, fontWeight: "700" }}>
+                  {t(
+                    "client.deliveryRequest.driverMissingGps",
+                    "Driver assigned but GPS is unavailable right now."
+                  )}
+                </Text>
+              ) : null}
+              {liveDriverLocation?.updated_at ? (
+                <Text style={{ color: "#64748B", fontSize: 11 }}>
+                  {t("client.deliveryRequest.lastUpdate", "Last update:")}{" "}
+                  {new Date(liveDriverLocation.updated_at).toLocaleTimeString()}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
           <View
             style={{
               borderRadius: 24,
