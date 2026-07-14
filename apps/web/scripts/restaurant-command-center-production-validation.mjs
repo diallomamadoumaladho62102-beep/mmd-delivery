@@ -87,7 +87,7 @@ async function resolveRestaurantToken() {
   const email = String(process.env.CERTIFICATION_RESTAURANT_EMAIL ?? "").trim();
   const password = String(process.env.CERTIFICATION_RESTAURANT_PASSWORD ?? "").trim();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   if (!email || !password || !supabaseUrl || !supabaseAnonKey) {
     return null;

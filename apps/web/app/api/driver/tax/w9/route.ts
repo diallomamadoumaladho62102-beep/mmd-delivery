@@ -480,7 +480,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
     if (!supabaseUrl || !serviceKey) {
       return NextResponse.json({ routeVersion: ROUTE_VERSION, reqId, error: "Missing env" }, { status: 500 });
     }
@@ -629,7 +629,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const serviceKey = (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
     if (!supabaseUrl || !serviceKey) {
       return NextResponse.json({ routeVersion: ROUTE_VERSION, reqId, error: "Missing env" }, { status: 500 });
     }

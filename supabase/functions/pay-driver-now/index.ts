@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.25.0?target=deno&deno-std=0.224.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
+import {
+  getEdgePublishableKeyOptional,
+  getEdgeSecretKeyOptional,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 type Json = Record<string, unknown>;
 
@@ -51,16 +56,20 @@ serve(async (req) => {
       return json({ error: "Method not allowed" }, 405);
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseAnon = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-    const supabaseService = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    let supabaseUrl = "";
+    try {
+      supabaseUrl = getEdgeSupabaseUrl();
+    } catch {
+      supabaseUrl = "";
+    }
+    const supabaseAnon = getEdgePublishableKeyOptional();
+    const supabaseService = getEdgeSecretKeyOptional();
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
     if (!supabaseUrl || !supabaseAnon || !supabaseService) {
       return json(
         {
-          error:
-            "Missing Supabase env vars (SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY)",
+          error: "Missing Supabase env vars",
         },
         500,
       );

@@ -7,6 +7,10 @@
 // Auth: x-ingest-secret (server-only). Never called from the mobile app.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
 import { ingestBbox } from "../_shared/roadSafetyIngest.ts";
+import {
+  getEdgeSecretKeyOptional,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -32,8 +36,13 @@ Deno.serve(async (req: Request) => {
   const provided = req.headers.get("x-ingest-secret");
   if (!ingestSecret || provided !== ingestSecret) return json({ error: "unauthorized" }, 401);
 
-  const url = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  let url = "";
+  try {
+    url = getEdgeSupabaseUrl();
+  } catch {
+    url = "";
+  }
+  const serviceKey = getEdgeSecretKeyOptional();
   if (!url || !serviceKey) return json({ error: "server_misconfigured" }, 500);
 
   const body = (await req.json().catch(() => ({}))) as { maxZones?: number; force?: boolean };

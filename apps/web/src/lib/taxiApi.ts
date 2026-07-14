@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { hasAnyRole, normalizeUserRole, type UserRole } from "@/lib/roles";
+import {
+  getSupabasePublishableKey,
+  getSupabaseSecretKey,
+  getSupabaseUrl,
+} from "@/lib/supabaseEnv";
 
 const STAFF_ROLES = ["admin", "ops", "support", "finance", "review"] as const;
 const UUID_RE = /^[0-9a-f-]{36}$/i;
@@ -67,32 +72,14 @@ export function normalizeStatus(value: unknown): string {
 }
 
 export function getSupabaseUserClient(token: string): SupabaseClient {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Missing env (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY)"
-    );
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(getSupabaseUrl(), getSupabasePublishableKey(), {
     auth: { persistSession: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 }
 
 export function getSupabaseAdminClient(): SupabaseClient {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error(
-      "Missing env (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)"
-    );
-  }
-
-  return createClient(supabaseUrl, supabaseServiceKey, {
+  return createClient(getSupabaseUrl(), getSupabaseSecretKey(), {
     auth: { persistSession: false },
   });
 }

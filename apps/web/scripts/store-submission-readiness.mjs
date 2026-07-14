@@ -298,7 +298,7 @@ async function checkEdgeFunctions() {
     { note: "Gateway JWT required — not a live onboarding stub" },
   );
 
-  const anon = (process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+  const anon = (process.env.SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
   if (anon) {
     const { res, body } = await fetchProbe(`${fnBase}/stripe_driver_onboarding`, {
       method: "POST",

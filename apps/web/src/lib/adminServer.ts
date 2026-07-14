@@ -2,6 +2,10 @@ import { NextRequest } from "next/server";
 import { createClient, type User } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "@/lib/supabaseEnv";
 import { isAccountActive } from "@/lib/accountStatus";
 import {
   canAccessAdminDashboard,
@@ -48,16 +52,12 @@ function normalizeRole(value: unknown): UserRole | null {
     : null;
 }
 
-function getSupabaseUrl(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (!value) throw new Error("Missing SUPABASE URL");
-  return value;
+function getSupabaseUrlLocal(): string {
+  return getSupabaseUrl();
 }
 
 function getSupabaseAnonKey(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  if (!value) throw new Error("Missing SUPABASE ANON KEY");
-  return value;
+  return getSupabasePublishableKey();
 }
 
 function getBearerToken(request?: NextRequest): string {
@@ -71,7 +71,7 @@ function getBearerToken(request?: NextRequest): string {
 }
 
 function createStatelessSupabaseClient() {
-  return createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+  return createClient(getSupabaseUrlLocal(), getSupabaseAnonKey(), {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

@@ -1,13 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
+import {
+  getSupabasePublishableKeyOptional,
+  getSupabaseUrlOptional,
+} from "@/lib/supabaseEnv";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = getSupabaseUrlOptional();
+const supabasePublishableKey = getSupabasePublishableKeyOptional();
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase env manquants (URL ou ANON KEY). Vérifie .env.local");
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error(
+    "Supabase env manquants (URL ou PUBLISHABLE/ANON KEY). Vérifie .env.local"
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

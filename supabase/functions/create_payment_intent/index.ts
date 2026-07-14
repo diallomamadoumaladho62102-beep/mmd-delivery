@@ -2,10 +2,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Stripe from "npm:stripe";
 import { createClient } from "npm:@supabase/supabase-js";
+import {
+  getEdgePublishableKey,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_URL = getEdgeSupabaseUrl();
+const SUPABASE_ANON_KEY = getEdgePublishableKey();
 
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",

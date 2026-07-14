@@ -9,6 +9,10 @@
 // per-country config, and returns the ODbL attribution string.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
 import { resolveEnabledTypes, validateBbox } from "../_shared/roadSafetyValidation.ts";
+import {
+  getEdgeSecretKeyOptional,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -47,8 +51,13 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
-    const url = Deno.env.get("SUPABASE_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    let url = "";
+    try {
+      url = getEdgeSupabaseUrl();
+    } catch {
+      url = "";
+    }
+    const serviceKey = getEdgeSecretKeyOptional();
     if (!url || !serviceKey) return json({ error: "server_misconfigured" }, 500);
 
     const body = (await req.json().catch(() => ({}))) as {

@@ -1,6 +1,11 @@
 import { serve } from "std/http/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import {
+  getEdgePublishableKeyOptional,
+  getEdgeSecretKeyOptional,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 type Json = Record<string, unknown>;
 
@@ -95,26 +100,26 @@ const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
 /**
- * IMPORTANT:
- * - Supabase Edge Functions ignore env vars that start with SUPABASE_
- * - So we prefer SB_URL / SB_SERVICE_ROLE_KEY
- * - Fallback to SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY for compatibility
+ * Prefer SB_* aliases when set, then shared resolvers (publishable/secret + legacy).
  */
 const SB_URL =
   (Deno.env.get("SB_URL") ?? "").trim() ||
-  (Deno.env.get("SUPABASE_URL") ?? "").trim() ||
-  "";
+  (() => {
+    try {
+      return getEdgeSupabaseUrl();
+    } catch {
+      return "";
+    }
+  })();
 
 const SB_SERVICE_ROLE_KEY =
   (Deno.env.get("SB_SERVICE_ROLE_KEY") ?? "").trim() ||
-  (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "").trim() ||
-  "";
+  getEdgeSecretKeyOptional();
 
 // Optional (not required here, but kept for future use)
 const SB_ANON_KEY =
   (Deno.env.get("SB_ANON_KEY") ?? "").trim() ||
-  (Deno.env.get("SUPABASE_ANON_KEY") ?? "").trim() ||
-  "";
+  getEdgePublishableKeyOptional();
 
 // Safe startup logs (no secrets)
 log("info", "stripe_webhook.env_loaded", {

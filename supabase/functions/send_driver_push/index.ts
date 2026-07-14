@@ -10,6 +10,10 @@ import {
 } from "../_shared/securePush.ts";
 
 import { MMD_PUSH_SOUNDS } from "../_shared/mmdPushSounds.ts";
+import {
+  getEdgeSecretKeyOptional,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,8 +48,13 @@ serve(async (req: Request) => {
 
   try {
     const pushKey = String(Deno.env.get("PUSH_API_KEY") ?? "").trim();
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = getEdgeSecretKeyOptional();
+    let supabaseUrl = "";
+    try {
+      supabaseUrl = getEdgeSupabaseUrl();
+    } catch {
+      supabaseUrl = "";
+    }
 
     if (!serviceKey || !supabaseUrl) {
       console.error("[send_driver_push] missing Supabase env");

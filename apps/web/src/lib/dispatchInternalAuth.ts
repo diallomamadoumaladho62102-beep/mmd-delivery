@@ -71,7 +71,7 @@ function getSupabaseUrl(): string {
 }
 
 function getSupabaseAnonKey(): string {
-  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const value = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.trim();
   if (!value) throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY");
   return value;
 }

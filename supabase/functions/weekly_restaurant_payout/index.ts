@@ -1,5 +1,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  getEdgePublishableKeyOptional,
+  getEdgeSecretKey,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,8 +13,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = getEdgeSupabaseUrl();
+const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
 const CRON_SECRET = Deno.env.get("CRON_SECRET")!;
 
 // URL publique des Edge Functions (prod)
@@ -40,7 +45,7 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") return json({ error: "Use POST" }, 405);
 
     if (!SUPABASE_SERVICE_ROLE_KEY) {
-      return json({ error: "Missing SUPABASE_SERVICE_ROLE_KEY" }, 500);
+      return json({ error: "Missing Supabase secret key" }, 500);
     }
     if (!CRON_SECRET) {
       return json({ error: "Missing CRON_SECRET" }, 500);
@@ -78,7 +83,7 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "apikey": Deno.env.get("SUPABASE_ANON_KEY") ?? "", // optionnel si ton pay_restaurant_now ne l'exige pas
+            "apikey": getEdgePublishableKeyOptional(), // optionnel si ton pay_restaurant_now ne l'exige pas
             "x-cron-secret": CRON_SECRET, // ✅ pass-through
           },
           body: JSON.stringify({ restaurant_user_id: r.user_id, auto: true }),

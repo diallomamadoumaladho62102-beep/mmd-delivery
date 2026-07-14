@@ -1,6 +1,11 @@
 // supabase/functions/restaurant-connect-link/index.ts
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  getEdgePublishableKey,
+  getEdgeSecretKey,
+  getEdgeSupabaseUrl,
+} from "../_shared/supabaseKeys.ts";
 
 // --- CORS ---
 const corsHeaders = {
@@ -11,10 +16,9 @@ const corsHeaders = {
 };
 
 // --- ENV ---
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SUPABASE_SERVICE_ROLE_KEY =
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = getEdgeSupabaseUrl();
+const SUPABASE_ANON_KEY = getEdgePublishableKey();
+const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
 // ⚠️ Stripe Account Links préfère des URLs web (https://...)
