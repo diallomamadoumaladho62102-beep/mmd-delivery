@@ -9,6 +9,10 @@ import {
   validateDeliveryRequestFields,
 } from "@/lib/deliveryRequestApiShared";
 import { createDeliveryRequestServerSide } from "@/lib/deliveryRequestService";
+import {
+  deliverySharePctApiErrorPayload,
+  isDeliverySharePctError,
+} from "@/lib/deliveryShareApiError";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
@@ -69,6 +73,12 @@ export async function POST(req: NextRequest) {
       pricing: buildDeliveryPricingResponse(result),
     });
   } catch (error) {
+    if (isDeliverySharePctError(error)) {
+      return mmdLocationJson(
+        deliverySharePctApiErrorPayload("api.delivery-requests.create", error),
+        400
+      );
+    }
     const message = error instanceof Error ? error.message : "Server error";
     return mmdLocationJson({ ok: false, error: message }, 400);
   }

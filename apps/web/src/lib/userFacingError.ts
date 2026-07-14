@@ -22,6 +22,8 @@ const TECHNICAL_PATTERNS: RegExp[] = [
   /invalid jwt/i,
   /fetch failed/i,
   /driverSharePct\s*\+\s*platformSharePct/i,
+  /delivery share pair incomplete/i,
+  /must be provided together/i,
   /delivery_share_pct_invalid/i,
   /delivery_fee_abnormal/i,
 ];
@@ -90,7 +92,11 @@ function mapKnownErrorCode(code: string, message: string): string | null {
       break;
   }
 
-  if (/driverSharePct\s*\+\s*platformSharePct/i.test(message)) {
+  if (
+    /driverSharePct\s*\+\s*platformSharePct/i.test(message) ||
+    /delivery share pair incomplete/i.test(message) ||
+    /must be provided together/i.test(message)
+  ) {
     return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
   }
 

@@ -73,6 +73,24 @@ test("admin refuses 80 + 25 delivery split", () => {
   );
 });
 
+test("admin accepts 75 + 25 delivery split", () => {
+  const { payload } = buildPricingPayload(
+    baseForm({ delivery_driver_pct: "75", delivery_platform_pct: "25" })
+  );
+  assert.equal(payload.delivery_driver_pct, 75);
+  assert.equal(payload.delivery_platform_pct, 25);
+});
+
+test("admin refuses 80 + 30 delivery split", () => {
+  expectThrows(
+    () =>
+      buildPricingPayload(
+        baseForm({ delivery_driver_pct: "80", delivery_platform_pct: "30" })
+      ),
+    "≤ 100"
+  );
+});
+
 test("admin converts 0–1 fraction inputs to 0–100", () => {
   const { payload } = buildPricingPayload(
     baseForm({ delivery_driver_pct: "0.8", delivery_platform_pct: "0.2" })

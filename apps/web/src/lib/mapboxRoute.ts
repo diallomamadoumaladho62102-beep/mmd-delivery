@@ -1,3 +1,4 @@
+import { metersToMiles } from "@/lib/deliveryPricing";
 import { getServerMapboxToken } from "@/lib/mapboxToken";
 
 const MAPBOX_DIRECTIONS_URL =
@@ -41,7 +42,8 @@ export async function getDistanceAndEta(
     throw new Error("Mapbox Directions returned no usable route");
   }
 
-  const distanceMiles = Number((Number(route.distance) / 1609.34).toFixed(2));
+  // Mapbox returns meters — never treat as km or miles. Canonical factor: 1609.34.
+  const distanceMiles = metersToMiles(Number(route.distance));
   const etaMinutes = Math.round(Number(route.duration) / 60);
 
   return { distanceMiles, etaMinutes };

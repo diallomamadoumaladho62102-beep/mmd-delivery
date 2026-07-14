@@ -109,6 +109,8 @@ export function round2(value: number): number {
 /**
  * Validate delivery fee share percentages (driver + platform).
  * Does NOT include restaurant/vendor commission — that is a separate base.
+ *
+ * Server rule: driver >= 0, platform >= 0, driver + platform <= 100.
  */
 export function assertDeliverySharePctValid(
   driverSharePct: number,
@@ -133,12 +135,63 @@ export function assertDeliverySharePctValid(
 }
 
 /**
+ * Require BOTH delivery share fields from an Admin `pricing_config` row.
+ * No silent fallbacks when a field is missing — that historically turned a
+ * valid Admin 70/30 into an invalid runtime 80/30.
+ */
+export function requireDeliverySharePctPair(input: {
+  delivery_driver_pct: unknown;
+  delivery_platform_pct: unknown;
+  configKey?: string | null;
+}): { driverSharePct: number; platformSharePct: number } {
+  const driverMissing =
+    input.delivery_driver_pct == null || input.delivery_driver_pct === "";
+  const platformMissing =
+    input.delivery_platform_pct == null || input.delivery_platform_pct === "";
+
+  if (driverMissing || platformMissing) {
+    throw new DeliveryPricingConfigError(
+      DELIVERY_SHARE_PCT_INVALID_CODE,
+      "pricing_config delivery share pair incomplete: both delivery_driver_pct and delivery_platform_pct are required together.",
+      {
+        configKey: input.configKey ?? null,
+        delivery_driver_pct: input.delivery_driver_pct ?? null,
+        delivery_platform_pct: input.delivery_platform_pct ?? null,
+        missing: [
+          ...(driverMissing ? ["delivery_driver_pct"] : []),
+          ...(platformMissing ? ["delivery_platform_pct"] : []),
+        ],
+      }
+    );
+  }
+
+  const driverSharePct = normalizeSharePctScale(input.delivery_driver_pct);
+  const platformSharePct = normalizeSharePctScale(input.delivery_platform_pct);
+
+  if (driverSharePct == null || platformSharePct == null) {
+    throw new DeliveryPricingConfigError(
+      DELIVERY_SHARE_PCT_INVALID_CODE,
+      "pricing_config delivery share pair is not numeric.",
+      {
+        configKey: input.configKey ?? null,
+        delivery_driver_pct: input.delivery_driver_pct,
+        delivery_platform_pct: input.delivery_platform_pct,
+      }
+    );
+  }
+
+  assertDeliverySharePctValid(driverSharePct, platformSharePct);
+  return { driverSharePct, platformSharePct };
+}
+
+/**
  * Build a normalized delivery pricing config.
  *
  * Critical merge rules:
  * - Percentages on 0–1 scale are converted to 0–100.
- * - If only one of driver/platform share is provided, the other is derived
- *   as 100 − provided (instead of silently keeping the unrelated default 80/20).
+ * - If neither share is provided → engine defaults 80/20 (preview / no Admin row).
+ * - If exactly one share is provided → reject (partial/Admin-missing field).
+ *   Never silently keep the other default (old 80/30 bug).
  * - Restaurant/vendor % must never be mixed into this pair.
  */
 export function normalizeDeliveryPricingConfig(
@@ -147,20 +200,36 @@ export function normalizeDeliveryPricingConfig(
   const driverProvided = config?.driverSharePct != null;
   const platformProvided = config?.platformSharePct != null;
 
+  if (driverProvided !== platformProvided) {
+    throw new DeliveryPricingConfigError(
+      DELIVERY_SHARE_PCT_INVALID_CODE,
+      "driverSharePct and platformSharePct must be provided together.",
+      {
+        driverSharePct: config?.driverSharePct ?? null,
+        platformSharePct: config?.platformSharePct ?? null,
+      }
+    );
+  }
+
   const scaledDriver = normalizeSharePctScale(config?.driverSharePct);
   const scaledPlatform = normalizeSharePctScale(config?.platformSharePct);
 
-  let driverSharePct = scaledDriver ?? DEFAULT_DELIVERY_PRICING_CONFIG.driverSharePct;
-  let platformSharePct =
-    scaledPlatform ?? DEFAULT_DELIVERY_PRICING_CONFIG.platformSharePct;
+  let driverSharePct = DEFAULT_DELIVERY_PRICING_CONFIG.driverSharePct;
+  let platformSharePct = DEFAULT_DELIVERY_PRICING_CONFIG.platformSharePct;
 
-  if (platformProvided && !driverProvided && scaledPlatform != null) {
-    driverSharePct = round2(Math.max(0, 100 - scaledPlatform));
-  } else if (driverProvided && !platformProvided && scaledDriver != null) {
-    platformSharePct = round2(Math.max(0, 100 - scaledDriver));
-  } else if (!driverProvided && !platformProvided) {
-    driverSharePct = DEFAULT_DELIVERY_PRICING_CONFIG.driverSharePct;
-    platformSharePct = DEFAULT_DELIVERY_PRICING_CONFIG.platformSharePct;
+  if (driverProvided && platformProvided) {
+    if (scaledDriver == null || scaledPlatform == null) {
+      throw new DeliveryPricingConfigError(
+        DELIVERY_SHARE_PCT_INVALID_CODE,
+        "driverSharePct and platformSharePct must be finite numbers.",
+        {
+          driverSharePct: config?.driverSharePct ?? null,
+          platformSharePct: config?.platformSharePct ?? null,
+        }
+      );
+    }
+    driverSharePct = scaledDriver;
+    platformSharePct = scaledPlatform;
   }
 
   const merged: Required<DeliveryPricingConfig> = {
@@ -192,6 +261,14 @@ export function normalizeDeliveryPricingConfig(
   assertDeliverySharePctValid(merged.driverSharePct, merged.platformSharePct);
 
   return merged;
+}
+
+/** Canonical meters→miles factor used by Mapbox Directions integrations. */
+export const METERS_PER_MILE = 1609.34;
+
+export function metersToMiles(meters: number): number {
+  assertFiniteNonNegative(meters, "meters");
+  return Number((meters / METERS_PER_MILE).toFixed(2));
 }
 
 /**

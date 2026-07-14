@@ -3,7 +3,7 @@ import { getDistanceAndEta } from "@/lib/mapboxRoute";
 import {
   computeDeliveryPricing,
   evaluateDeliveryFeeAbnormality,
-  normalizeSharePctScale,
+  requireDeliverySharePctPair,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
@@ -303,17 +303,14 @@ async function getActiveFoodDeliveryPricingConfig(
     throw new Error(`Pricing config error: active ${configKey} config not found`);
   }
 
-  // Both delivery shares must come from pricing_config (Admin/Supabase).
-  // Never leave driverSharePct at the hard-coded default while overriding
-  // platformSharePct alone — that produces false 80+X > 100 failures when
-  // Admin saved a valid 70/30 (or any platformSharePct > 20).
-  // Restaurant/vendor % (restaurant_pct / platform_pct) is a different base
-  // and must not be mixed into this delivery split.
-  const platformSharePct =
-    normalizeSharePctScale(data.delivery_platform_pct) ?? 20;
-  const driverSharePct =
-    normalizeSharePctScale(data.delivery_driver_pct) ??
-    roundFoodMoney(100 - platformSharePct);
+  // Both delivery shares must come from pricing_config (Admin/Supabase) together.
+  // No silent fallback when either field is missing (would recreate 80/30 bugs).
+  // Restaurant/vendor % (restaurant_pct / platform_pct) is a different base.
+  const { driverSharePct, platformSharePct } = requireDeliverySharePctPair({
+    delivery_driver_pct: data.delivery_driver_pct,
+    delivery_platform_pct: data.delivery_platform_pct,
+    configKey,
+  });
 
   return {
     configKey,

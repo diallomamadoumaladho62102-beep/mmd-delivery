@@ -295,10 +295,15 @@ export async function persistMarketplaceDeliveryShadow(
       countryCode: params.countryCode ?? null,
       distanceMiles: shadow.estimated_distance_miles,
       durationMinutes: shadow.estimated_minutes,
-      v1Pricing: computeDeliveryPricing({
-        distanceMiles: shadow.estimated_distance_miles,
-        durationMinutes: shadow.estimated_minutes,
-      }),
+      // Shadow compare only — no Admin pricing_config row here. Pass the
+      // engine default pair explicitly so we never silently mix partial shares.
+      v1Pricing: computeDeliveryPricing(
+        {
+          distanceMiles: shadow.estimated_distance_miles,
+          durationMinutes: shadow.estimated_minutes,
+        },
+        { driverSharePct: 80, platformSharePct: 20 }
+      ),
       inputs: {
         path: "marketplaceDeliveryShadow",
         seller_id: params.sellerId,

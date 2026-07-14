@@ -1023,10 +1023,12 @@ export function ClientRestaurantMenuScreen() {
 
       const userMessage =
         code === "delivery_share_pct_invalid" ||
-        /driverSharePct\s*\+\s*platformSharePct/i.test(rawMessage)
+        /driverSharePct\s*\+\s*platformSharePct/i.test(rawMessage) ||
+        /delivery share pair incomplete/i.test(rawMessage) ||
+        /must be provided together/i.test(rawMessage)
           ? tr(
               "clientRestaurantMenu.errors.deliveryShareInvalid",
-              "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support. / Delivery pricing is temporarily unavailable. Please try again later or contact support."
+              "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support."
             )
           : toUserFacingError(
               err,

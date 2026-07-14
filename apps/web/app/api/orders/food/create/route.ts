@@ -1,9 +1,5 @@
 import { NextRequest } from "next/server";
 import { mmdLocationJson } from "@/lib/mmdLocationCore";
-import {
-  DELIVERY_SHARE_PCT_INVALID_CODE,
-  DeliveryPricingConfigError,
-} from "@/lib/deliveryPricing";
 import { requireFoodClientAuth } from "@/lib/foodOrderApiAuth";
 import {
   buildFoodPricingResponse,
@@ -12,9 +8,12 @@ import {
   readFoodOrderBodyFields,
   validateFoodOrderBodyFields,
 } from "@/lib/foodOrderApiShared";
+import {
+  deliverySharePctApiErrorPayload,
+  isDeliverySharePctError,
+} from "@/lib/deliveryShareApiError";
 import { createFoodOrderServerSide } from "@/lib/foodOrderService";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
-import { logTechnicalError } from "@/lib/userFacingError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,23 +86,10 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";
 
-    if (
-      error instanceof DeliveryPricingConfigError ||
-      /driverSharePct\s*\+\s*platformSharePct/i.test(message) ||
-      message.includes(DELIVERY_SHARE_PCT_INVALID_CODE)
-    ) {
-      logTechnicalError("api.orders.food.create", error, {
-        code: DELIVERY_SHARE_PCT_INVALID_CODE,
-      });
+    if (isDeliverySharePctError(error)) {
       // Never create an order when the delivery split is invalid.
-      // Mobile maps this code to a localized user message; technical detail goes to Sentry.
       return mmdLocationJson(
-        {
-          ok: false,
-          error: DELIVERY_SHARE_PCT_INVALID_CODE,
-          code: DELIVERY_SHARE_PCT_INVALID_CODE,
-          message: DELIVERY_SHARE_PCT_INVALID_CODE,
-        },
+        deliverySharePctApiErrorPayload("api.orders.food.create", error),
         400
       );
     }

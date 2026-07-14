@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { computeDeliveryPricing } from "@/lib/deliveryPricing";
+import {
+  computeDeliveryPricing,
+  METERS_PER_MILE,
+} from "@/lib/deliveryPricing";
 import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine";
 import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
 import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
@@ -87,7 +90,8 @@ async function getDistanceAndDuration(
   const distanceMeters: number = Number(route.distance ?? 0);
   const durationSeconds: number = Number(route.duration ?? 0);
 
-  const distanceMiles = distanceMeters / 1609.34;
+  // Mapbox returns meters. Do not treat meters as km or miles.
+  const distanceMiles = distanceMeters / METERS_PER_MILE;
 
   // ✅ minutes en number propre
   const etaMinutes = durationSeconds / 60;
@@ -191,11 +195,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 💰 Formule MMD (déjà définie dans lib/deliveryPricing)
-    const deliveryPrice = computeDeliveryPricing({
-      distanceMiles,
-      durationMinutes: etaMinutes,
-    });
+    // Estimate only (client preview). Food/errand quote+create load BOTH
+    // delivery_driver_pct and delivery_platform_pct from Admin pricing_config.
+    const deliveryPrice = computeDeliveryPricing(
+      { distanceMiles, durationMinutes: etaMinutes },
+      { driverSharePct: 80, platformSharePct: 20 }
+    );
 
     void logDeliveryPricingV2Shadow({
       sourceType: "delivery_request",

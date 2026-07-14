@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDistanceAndEta } from "@/lib/mapboxRoute";
 import {
   computeDeliveryPricing,
-  normalizeSharePctScale,
+  requireDeliverySharePctPair,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
@@ -137,11 +137,11 @@ async function getActiveErrandDeliveryPricingConfig(
     throw new Error(`Pricing config error: active ${configKey} config not found`);
   }
 
-  const platformSharePct =
-    normalizeSharePctScale(data.delivery_platform_pct) ?? 20;
-  const driverSharePct =
-    normalizeSharePctScale(data.delivery_driver_pct) ??
-    roundPlatformMoney(100 - platformSharePct);
+  const { driverSharePct, platformSharePct } = requireDeliverySharePctPair({
+    delivery_driver_pct: data.delivery_driver_pct,
+    delivery_platform_pct: data.delivery_platform_pct,
+    configKey,
+  });
 
   return {
     configKey,

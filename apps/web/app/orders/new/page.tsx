@@ -349,10 +349,12 @@ export default function NewOrderPage() {
       setPickupCoordsPreview({ lat: pickupLat, lon: pickupLon });
       setDropoffCoordsPreview({ lat: dropoffLat, lon: dropoffLon });
 
-      let pricing = computeDeliveryPricing({
-        distanceMiles,
-        durationMinutes,
-      });
+      // Preview only — authoritative fee comes from server quote/create which
+      // loads both delivery_driver_pct + delivery_platform_pct from pricing_config.
+      let pricing = computeDeliveryPricing(
+        { distanceMiles, durationMinutes },
+        { driverSharePct: 80, platformSharePct: 20 }
+      );
 
       if (pickupLat != null && pickupLon != null) {
         const { zone, multiplier } = getZoneBoostFromCoords(pickupLat, pickupLon);
