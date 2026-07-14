@@ -16,6 +16,7 @@ import {
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { normalizeTaxiCurrencyForStripe } from "@/lib/taxiCountries";
+import { evaluateTaxiPayoutEligibility } from "@/lib/taxiPayoutEligibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,11 +31,14 @@ type TaxiRideRow = {
   id: string;
   status: string | null;
   payment_status: string | null;
+  refund_status: string | null;
   currency: string | null;
   country_code: string | null;
   driver_id: string | null;
   stripe_payment_intent_id: string | null;
   total_cents: number | null;
+  completed_at: string | null;
+  updated_at: string | null;
 };
 
 type TaxiCommissionRow = {
@@ -73,10 +77,6 @@ function getStripe() {
 
 function getSupabaseAdmin() {
   return buildSupabaseAdminClient();
-}
-
-function lower(v: unknown): string {
-  return String(v ?? "").trim().toLowerCase();
 }
 
 function normalizeCurrency(v: unknown): string {
@@ -124,25 +124,13 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideErr } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id, status, payment_status, currency, country_code, driver_id, stripe_payment_intent_id, total_cents"
+        "id, status, payment_status, refund_status, currency, country_code, driver_id, stripe_payment_intent_id, total_cents, completed_at, updated_at"
       )
       .eq("id", rideId)
       .maybeSingle<TaxiRideRow>();
 
     if (rideErr || !ride) {
       return json({ error: "Taxi ride not found" }, 404);
-    }
-
-    if (lower(ride.status) !== "completed") {
-      return json({ error: "Taxi ride is not completed" }, 409);
-    }
-
-    if (lower(ride.payment_status) !== "paid") {
-      return json({ error: "Taxi ride is not paid" }, 409);
-    }
-
-    if (!ride.driver_id) {
-      return json({ error: "Taxi ride has no driver" }, 409);
     }
 
     let { data: commission, error: comErr } = await supabaseAdmin
@@ -206,26 +194,74 @@ export async function POST(req: NextRequest) {
     }
 
     const amount = Math.round(Number(commission.driver_cents ?? 0));
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return json({ error: "Driver payout amount invalid" }, 409);
+
+    let destination = "";
+    if (ride.driver_id) {
+      const { data: features } = await supabaseAdmin
+        .from("taxi_driver_features")
+        .select("stripe_connect_account_id")
+        .eq("user_id", ride.driver_id)
+        .maybeSingle<DriverFeaturesRow>();
+
+      destination = String(features?.stripe_connect_account_id ?? "").trim();
+
+      if (!destination) {
+        const { data: driverProfile } = await supabaseAdmin
+          .from("driver_profiles")
+          .select("stripe_account_id")
+          .eq("user_id", ride.driver_id)
+          .maybeSingle<DriverProfileRow>();
+
+        destination = String(driverProfile?.stripe_account_id ?? "").trim();
+      }
     }
 
-    const { data: features } = await supabaseAdmin
-      .from("taxi_driver_features")
-      .select("stripe_connect_account_id")
-      .eq("user_id", ride.driver_id)
-      .maybeSingle<DriverFeaturesRow>();
+    let connectReady: boolean | null = null;
+    if (destination) {
+      try {
+        const account = await stripe.accounts.retrieve(destination);
+        connectReady =
+          account.charges_enabled === true && account.payouts_enabled === true;
+      } catch {
+        connectReady = false;
+      }
+    } else {
+      connectReady = false;
+    }
 
-    let destination = String(features?.stripe_connect_account_id ?? "").trim();
+    const holdHours = Number(process.env.TAXI_PAYOUT_HOLD_HOURS ?? 24);
+    const holdMs =
+      Number.isFinite(holdHours) && holdHours >= 0
+        ? holdHours * 60 * 60 * 1000
+        : 24 * 60 * 60 * 1000;
 
-    if (!destination) {
-      const { data: driverProfile } = await supabaseAdmin
-        .from("driver_profiles")
-        .select("stripe_account_id")
-        .eq("user_id", ride.driver_id)
-        .maybeSingle<DriverProfileRow>();
+    const eligibility = evaluateTaxiPayoutEligibility({
+      rideStatus: ride.status,
+      paymentStatus: ride.payment_status,
+      refundStatus: ride.refund_status,
+      driverId: ride.driver_id,
+      driverCents: amount,
+      driverPaidOut: commission.driver_paid_out,
+      driverTransferId: commission.driver_transfer_id,
+      completedAt: ride.completed_at ?? ride.updated_at,
+      holdUntilMs: holdMs,
+      connectReady,
+    });
 
-      destination = String(driverProfile?.stripe_account_id ?? "").trim();
+    if (eligibility.ok === false) {
+      const reason = eligibility.reason;
+      const status =
+        reason === "connect_not_ready" || reason === "missing_driver"
+          ? 400
+          : 409;
+      return json(
+        {
+          ok: false,
+          error: reason,
+          taxi_ride_id: rideId,
+        },
+        status
+      );
     }
 
     if (!destination) {

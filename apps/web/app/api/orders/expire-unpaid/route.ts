@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import Stripe from "stripe";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
+import { withCronJobLock } from "@/lib/cronJobLock";
+import { finishCronRun, startCronRun } from "@/lib/cronObservability";
+import {
+  PAYMENT_EXPIRATION_LOCK_JOB,
+  runExpireStalePayments,
+} from "@/lib/expireStalePayments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ExpirableOrderRow = {
-  id: string;
-  status: string | null;
-  payment_status: string | null;
-  expires_at: string | null;
-  paid_at?: string | null;
-  stripe_session_id?: string | null;
-  stripe_payment_intent_id?: string | null;
-};
-
-const EXPIRE_BATCH_LIMIT = 500;
-
+/**
+ * Compatibility alias for historical Vercel cron `/api/orders/expire-unpaid`.
+ * Delegates to the same runner as `/api/cron/expire-stale-payments` and shares
+ * the `payment-expiration` lock so both cannot cancel the same rows concurrently.
+ *
+ * Canonical schedule owner: `/api/cron/expire-stale-payments`.
+ */
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
     status,
@@ -34,7 +36,7 @@ function methodNotAllowed() {
     {
       status: 405,
       headers: {
-        Allow: "POST",
+        Allow: "GET, POST",
         "Cache-Control": "no-store",
         "Pragma": "no-cache",
         "X-Content-Type-Options": "nosniff",
@@ -43,173 +45,116 @@ function methodNotAllowed() {
   );
 }
 
-function getErrorMessage(value: unknown): string {
-  if (value instanceof Error && value.message) {
-    return value.message;
-  }
-
-  if (
-    value &&
-    typeof value === "object" &&
-    "message" in value &&
-    typeof (value as { message?: unknown }).message === "string"
-  ) {
-    return (value as { message: string }).message;
-  }
-
-  return "Unknown error";
-}
-
-function isTerminalStatus(status: unknown): boolean {
-  const s = String(status ?? "").trim().toLowerCase();
-  return s === "delivered" || s === "ready" || s === "canceled";
-}
-
-function isExpiredIso(value: unknown, nowMs: number): boolean {
-  const iso = String(value ?? "").trim();
-  if (!iso) return false;
-
-  const ms = new Date(iso).getTime();
-  if (!Number.isFinite(ms)) return false;
-
-  return ms < nowMs;
-}
-
-function shouldCancelExpiredOrder(
-  order: ExpirableOrderRow,
-  nowMs: number
-): boolean {
-  if (!order?.id) return false;
-  if (isTerminalStatus(order.status)) return false;
-
-  const paymentStatus = String(order.payment_status ?? "").trim().toLowerCase();
-  if (paymentStatus !== "unpaid" && paymentStatus !== "processing") {
-    return false;
-  }
-
-  return isExpiredIso(order.expires_at, nowMs);
-}
-
-function getSupabaseAdminClient(): SupabaseClient {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceKey) {
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
     throw new Error(
       "Missing env (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)"
     );
   }
-
-  return createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false },
-  });
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
-
-async function runExpireUnpaid() {
-  const supabaseAdmin = getSupabaseAdminClient();
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const nowMs = now.getTime();
-
-  const { data, error: selErr } = await supabaseAdmin
-      .from("orders")
-      .select(
-        "id, status, payment_status, expires_at, paid_at, stripe_session_id, stripe_payment_intent_id"
-      )
-      .in("payment_status", ["unpaid", "processing"])
-      .not("expires_at", "is", null)
-      .lt("expires_at", nowIso)
-      .limit(EXPIRE_BATCH_LIMIT);
-
-  if (selErr) {
-    console.error("[expire-unpaid] select failed", {
-      message: selErr.message,
-      code: selErr.code,
-      details: selErr.details,
-      hint: selErr.hint,
-    });
-
-    return json({ error: "Failed to query expired orders" }, 500);
-  }
-
-  const expired = Array.isArray(data) ? (data as ExpirableOrderRow[]) : [];
-
-  if (!expired.length) {
-    return json({
-      ok: true,
-      expired: 0,
-      canceled: 0,
-    });
-  }
-
-  const ids = expired
-    .filter((order) => shouldCancelExpiredOrder(order, nowMs))
-    .map((order) => order.id);
-
-  if (!ids.length) {
-    return json({
-      ok: true,
-      expired: expired.length,
-      canceled: 0,
-      note: "No cancellable rows",
-    });
-  }
-
-  const { error: updErr } = await supabaseAdmin
-    .from("orders")
-    .update({
-      status: "canceled",
-      payment_status: "unpaid",
-      updated_at: nowIso,
-    })
-    .in("id", ids)
-    .neq("payment_status", "paid");
-
-  if (updErr) {
-    console.error("[expire-unpaid] update failed", {
-      message: updErr.message,
-      code: updErr.code,
-      details: updErr.details,
-      hint: updErr.hint,
-      ids_count: ids.length,
-    });
-
-    return json({ error: "Failed to cancel expired orders" }, 500);
-  }
-
-  return json({
-    ok: true,
-    expired: expired.length,
-    canceled: ids.length,
-    ids,
-  });
+function getStripe(): Stripe | null {
+  const key = String(process.env.STRIPE_SECRET_KEY ?? "").trim();
+  if (!key) return null;
+  return new Stripe(key, { apiVersion: "2023-10-16" });
 }
 
-async function handleExpireUnpaidRequest(req: NextRequest) {
+function readDryRun(req: NextRequest): boolean {
+  const fromEnv =
+    String(process.env.EXPIRE_STALE_PAYMENTS_DRY_RUN ?? "")
+      .trim()
+      .toLowerCase() === "true";
+  const urlFlag = req.nextUrl.searchParams.get("dry_run");
+  if (urlFlag === "1" || urlFlag === "true") return true;
+  if (urlFlag === "0" || urlFlag === "false") return false;
+  return fromEnv;
+}
+
+async function handle(req: NextRequest) {
+  const dryRun = readDryRun(req);
+  const start = startCronRun("expire-unpaid", dryRun);
+
   try {
     if (!isAuthorizedCronRequest(req)) {
-      return json({ error: "Unauthorized" }, 401);
+      return json(
+        finishCronRun(start, {
+          ok: false,
+          error: "Unauthorized",
+          lock_acquired: false,
+        }),
+        401
+      );
     }
 
-    return await runExpireUnpaid();
-  } catch (e: unknown) {
-    const message = getErrorMessage(e);
+    const supabaseAdmin = getSupabaseAdmin();
+    const locked = await withCronJobLock(
+      supabaseAdmin,
+      PAYMENT_EXPIRATION_LOCK_JOB,
+      async () =>
+        runExpireStalePayments({
+          supabaseAdmin,
+          stripe: getStripe(),
+          dryRun,
+        }),
+      { ttlSeconds: 10 * 60 }
+    );
 
-    console.error("[expire-unpaid] fatal error", {
-      message,
-    });
+    if (!locked.ok) {
+      return json(
+        finishCronRun(start, {
+          ok: true,
+          skipped: 1,
+          reason: "lock_busy",
+          job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
+          lock_acquired: false,
+          alias_of: "expire-stale-payments",
+        })
+      );
+    }
 
-    return json({ error: "Internal server error" }, 500);
+    return json(
+      finishCronRun(start, {
+        ok: true,
+        dry_run: locked.result.dry_run,
+        scanned: locked.result.scanned,
+        canceled_local: locked.result.canceled_local,
+        stripe_pi_canceled: locked.result.stripe_pi_canceled,
+        stripe_pi_skipped: locked.result.stripe_pi_skipped,
+        stripe_pi_already_canceled: locked.result.stripe_pi_already_canceled,
+        error_count: locked.result.errors,
+        details: locked.result.details,
+        processed: locked.result.canceled_local,
+        eligible: locked.result.scanned,
+        skipped: locked.result.stripe_pi_skipped,
+        failed: locked.result.errors,
+        lock_acquired: true,
+        alias_of: "expire-stale-payments",
+        job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
+      })
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[expire-unpaid] fatal", { message, run_id: start.run_id });
+    return json(
+      finishCronRun(start, {
+        ok: false,
+        error: "Internal server error",
+        lock_acquired: false,
+      }),
+      500
+    );
   }
 }
 
 export async function GET(req: NextRequest) {
-  return handleExpireUnpaidRequest(req);
+  return handle(req);
 }
 
 export async function POST(req: NextRequest) {
-  return handleExpireUnpaidRequest(req);
+  return handle(req);
 }
 
 export async function PUT() {

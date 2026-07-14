@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { AdminAccessError, assertCanRetryPayout } from "@/lib/adminServer";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
+import { withCronJobLock } from "@/lib/cronJobLock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const WEEKLY_PAYOUT_DAY_UTC = 0; // 0 = Sunday
 const HYBRID_LOOKBACK_DAYS = 14;
+const PROCESS_PAYOUTS_JOB = "process-payouts";
 
 type PayoutMode = "hybrid" | "weekly" | "immediate";
 
@@ -300,20 +302,24 @@ async function runProcessPayouts(request: NextRequest) {
       });
     }
 
-    const limit = Math.min(
-      Math.max(Number(searchParams.get("limit") ?? 25), 1),
-      100
-    );
+    const locked = await withCronJobLock(
+      supabase,
+      PROCESS_PAYOUTS_JOB,
+      async () => {
+        const limit = Math.min(
+          Math.max(Number(searchParams.get("limit") ?? 25), 1),
+          100
+        );
 
-    const { weekStartIso, weekEndIso } = getPreviousWeekWindowUtc();
-    const hybridSinceIso = new Date(
-      Date.now() - HYBRID_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
-    ).toISOString();
+        const { weekStartIso, weekEndIso } = getPreviousWeekWindowUtc();
+        const hybridSinceIso = new Date(
+          Date.now() - HYBRID_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+        ).toISOString();
 
-    let query = supabase
-      .from("orders")
-      .select(
-        `
+        let query = supabase
+          .from("orders")
+          .select(
+            `
           id,
           created_at,
           delivered_confirmed_at,
@@ -326,111 +332,129 @@ async function runProcessPayouts(request: NextRequest) {
           restaurant_transfer_id,
           driver_transfer_id
         `
-      )
-      .eq("payment_status", "paid")
-      .in("status", ["delivered", "completed"])
-      .order("delivered_confirmed_at", { ascending: true, nullsFirst: false })
-      .limit(limit);
+          )
+          .eq("payment_status", "paid")
+          .in("status", ["delivered", "completed"])
+          .order("delivered_confirmed_at", { ascending: true, nullsFirst: false })
+          .limit(limit);
 
-    if (!forceRun) {
-      if (payoutMode === "weekly") {
-        query = query
-          .gte("created_at", weekStartIso)
-          .lt("created_at", weekEndIso);
-      } else {
-        query = query.gte("delivered_confirmed_at", hybridSinceIso);
-      }
-    }
+        if (!forceRun) {
+          if (payoutMode === "weekly") {
+            query = query
+              .gte("created_at", weekStartIso)
+              .lt("created_at", weekEndIso);
+          } else {
+            query = query.gte("delivered_confirmed_at", hybridSinceIso);
+          }
+        }
 
-    const { data: orders, error } = await query;
+        const { data: orders, error } = await query;
 
-    if (error) {
-      throw new Error(`Failed to load eligible orders: ${error.message}`);
-    }
+        if (error) {
+          throw new Error(`Failed to load eligible orders: ${error.message}`);
+        }
 
-    const typedOrders = (orders ?? []) as OrderRow[];
-    const results: ProcessResult[] = [];
+        const typedOrders = (orders ?? []) as OrderRow[];
+        const results: ProcessResult[] = [];
 
-    for (const order of typedOrders) {
-      const { data: commissionRow, error: commissionErr } = await supabase
-        .from("order_commissions")
-        .select("order_id")
-        .eq("order_id", order.id)
-        .maybeSingle<{ order_id: string }>();
+        for (const order of typedOrders) {
+          const { data: commissionRow, error: commissionErr } = await supabase
+            .from("order_commissions")
+            .select("order_id")
+            .eq("order_id", order.id)
+            .maybeSingle<{ order_id: string }>();
 
-      if (commissionErr || !commissionRow?.order_id) {
-        console.error("[process-payouts] skipping order without commissions", {
-          order_id: order.id,
-          error: commissionErr?.message ?? "order_commissions_missing",
-        });
-        results.push({
-          order_id: order.id,
-          target: "restaurant",
-          ok: false,
-          skipped: true,
-          error: "order_commissions_missing",
-        });
-        results.push({
-          order_id: order.id,
-          target: "driver",
-          ok: false,
-          skipped: true,
-          error: "order_commissions_missing",
-        });
-        continue;
-      }
+          if (commissionErr || !commissionRow?.order_id) {
+            console.error("[process-payouts] skipping order without commissions", {
+              order_id: order.id,
+              error: commissionErr?.message ?? "order_commissions_missing",
+            });
+            results.push({
+              order_id: order.id,
+              target: "restaurant",
+              ok: false,
+              skipped: true,
+              error: "order_commissions_missing",
+            });
+            results.push({
+              order_id: order.id,
+              target: "driver",
+              ok: false,
+              skipped: true,
+              error: "order_commissions_missing",
+            });
+            continue;
+          }
 
-      if (hasRestaurant(order)) {
-        results.push(
-          await processTarget({
-            request,
-            order,
-            target: "restaurant",
-            cron,
-          })
-        );
-      } else {
-        results.push({
-          order_id: order.id,
-          target: "restaurant",
-          ok: true,
-          skipped: true,
-          data: "Skipped restaurant payout: errand/simple delivery order.",
-        });
-      }
+          if (hasRestaurant(order)) {
+            results.push(
+              await processTarget({
+                request,
+                order,
+                target: "restaurant",
+                cron,
+              })
+            );
+          } else {
+            results.push({
+              order_id: order.id,
+              target: "restaurant",
+              ok: true,
+              skipped: true,
+              data: "Skipped restaurant payout: errand/simple delivery order.",
+            });
+          }
 
-      results.push(
-        await processTarget({
-          request,
-          order,
-          target: "driver",
+          results.push(
+            await processTarget({
+              request,
+              order,
+              target: "driver",
+              cron,
+            })
+          );
+        }
+
+        const processed = results.filter((r) => r.ok && !r.skipped).length;
+        const skipped = results.filter((r) => r.skipped).length;
+        const failed = results.filter((r) => !r.ok).length;
+
+        return {
+          ok: true as const,
+          actor,
           cron,
-        })
-      );
+          payout_mode: payoutMode,
+          weekly: payoutMode === "weekly" && !forceRun,
+          force_run: forceRun,
+          payout_day_utc: "Sunday",
+          payout_window_start:
+            forceRun || payoutMode !== "weekly" ? null : weekStartIso,
+          payout_window_end:
+            forceRun || payoutMode !== "weekly" ? null : weekEndIso,
+          hybrid_lookback_since:
+            forceRun || payoutMode === "weekly" ? null : hybridSinceIso,
+          checked_orders: typedOrders.length,
+          processed,
+          skipped,
+          failed,
+          results,
+        };
+      },
+      { ttlSeconds: 20 * 60 }
+    );
+
+    if (!locked.ok) {
+      return json({
+        ok: true,
+        skipped: true,
+        reason: "lock_busy",
+        job: PROCESS_PAYOUTS_JOB,
+        actor,
+        cron,
+      });
     }
 
-    const processed = results.filter((r) => r.ok && !r.skipped).length;
-    const skipped = results.filter((r) => r.skipped).length;
-    const failed = results.filter((r) => !r.ok).length;
-
-    return json({
-      ok: true,
-      actor,
-      cron,
-      payout_mode: payoutMode,
-      weekly: payoutMode === "weekly" && !forceRun,
-      force_run: forceRun,
-      payout_day_utc: "Sunday",
-      payout_window_start:
-        forceRun || payoutMode !== "weekly" ? null : weekStartIso,
-      payout_window_end: forceRun || payoutMode !== "weekly" ? null : weekEndIso,
-      hybrid_lookback_since: forceRun || payoutMode === "weekly" ? null : hybridSinceIso,
-      checked_orders: typedOrders.length,
-      processed,
-      skipped,
-      failed,
-      results,
-    });
+    return json(locked.result);
   } catch (error) {
     const status = error instanceof AdminAccessError ? error.status : 500;
 
