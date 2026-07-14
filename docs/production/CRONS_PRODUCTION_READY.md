@@ -9,7 +9,7 @@
 
 Vercel schedules only the canonical path. Concurrent alias/canonical calls cannot both mutate: shared lease + atomic claim (`payment_status in unpaid|processing` update returning rows).
 
-TTL lock: 10 minutes; expired lease reusable.
+TTL lock: 10 minutes; expired lease reusable. Acquire uses `FOR UPDATE SKIP LOCKED` + `lock_timeout=2s` (migration `20260805140000`).
 
 ## Taxi financial model (confirmed)
 
@@ -33,3 +33,10 @@ Cron may run live in production; with zero eligible drivers returns `ok:true`, `
 ## Observability
 
 All new/updated money/expire crons emit: `ok`, `job`, `run_id`, `dry_run`, `started_at`, `finished_at`, `duration_ms`, `scanned`, `eligible`, `processed`, `skipped`, `failed`, `lock_acquired`, truncated `errors`. Never logs secrets.
+
+## Production validation notes (2026-07-14)
+
+- Migrations applied on linked `mmd_delivery` (`sjmszohmhudayxawfows`): locks, freeze commissions, nonblocking acquire.
+- Concurrent acquire verified once via SQL: first `ok`, second `lock_busy`, release ok.
+- Auth: missing/wrong secret → HTTP 401 fast on deployed routes.
+- Authenticated cron HTTP calls and direct Supabase REST from the validation environment intermittently **time out** (same class as pre-existing GH dispatch `upstream request timeout`). Live dry-run/execute metrics for expire/taxi/marketplace could not be completed during that outage window.
