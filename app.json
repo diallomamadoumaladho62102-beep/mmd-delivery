@@ -13,7 +13,6 @@
     "assetBundlePatterns": ["**/*"],
     "android": {
       "package": "com.maladho2025.mmddelivery",
-      "versionCode": 1,
       "permissions": ["INTERNET"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
@@ -22,7 +21,6 @@
     },
     "ios": {
       "bundleIdentifier": "com.maladho2025.mmddelivery",
-      "buildNumber": "1.0.0",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

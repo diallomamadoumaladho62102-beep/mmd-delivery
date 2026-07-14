@@ -15,6 +15,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "production",
       "env": {
         "APP_ENV": "production",
         "EAS_BUILD_PROFILE": "preview",
@@ -24,6 +25,7 @@
     },
     "android-smoke": {
       "distribution": "internal",
+      "environment": "production",
       "autoIncrement": true,
       "android": {
         "buildType": "apk"
@@ -37,6 +39,7 @@
     },
     "ios-simulator": {
       "distribution": "internal",
+      "environment": "production",
       "ios": {
         "simulator": true
       },
@@ -50,6 +53,9 @@
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
         "APP_ENV": "production",
         "EAS_BUILD_PROFILE": "production",
