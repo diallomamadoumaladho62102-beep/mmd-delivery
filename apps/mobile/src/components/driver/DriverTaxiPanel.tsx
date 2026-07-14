@@ -72,6 +72,16 @@ type Props = {
   isOnline: boolean;
 };
 
+function formatOfferRemaining(expiresAt: string, nowMs: number): string {
+  const remainingMs = new Date(expiresAt).getTime() - nowMs;
+  if (remainingMs <= 0) return "Expired";
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s left`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s left`;
+}
+
 export function DriverTaxiPanel({ isOnline }: Props) {
   const navigation = useNavigation<Nav>();
   const [features, setFeatures] = useState<TaxiDriverFeatures | null>(null);
@@ -82,9 +92,14 @@ export function DriverTaxiPanel({ isOnline }: Props) {
   );
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const taxiEnabled = features?.taxi_enabled === true;
   const showPanel = taxiEnabled && driverApproved;
+  const activeOffers = offers.filter((offer) => {
+    if (!offer.expires_at) return true;
+    return new Date(offer.expires_at).getTime() > nowMs;
+  });
 
   const refresh = useCallback(async () => {
     if (!showPanel || !isOnline) {
@@ -143,6 +158,11 @@ export function DriverTaxiPanel({ isOnline }: Props) {
       void refresh();
     });
   }, [refresh]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (!showPanel) {
     return null;
@@ -324,10 +344,10 @@ export function DriverTaxiPanel({ isOnline }: Props) {
           </View>
         ) : null}
 
-        {!activeRide && offers.length > 0 ? (
+        {!activeRide && activeOffers.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Taxi offers</Text>
-            {offers.slice(0, 3).map((offer) => {
+            {activeOffers.slice(0, 3).map((offer) => {
               const ride = offer.taxi_rides;
               const busy = actionId === offer.id;
               return (
@@ -361,6 +381,11 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                   <Text style={styles.meta} numberOfLines={1}>
                     → {ride?.dropoff_address ?? "Dropoff"}
                   </Text>
+                  {offer.expires_at ? (
+                    <Text style={styles.expiry}>
+                      {formatOfferRemaining(offer.expires_at, nowMs)}
+                    </Text>
+                  ) : null}
                   <Text style={styles.payout}>
                     {formatDriverPayout(
                       ride?.driver_payout_cents,
@@ -404,7 +429,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
           </View>
         ) : null}
 
-        {!activeRide && offers.length === 0 && !loading ? (
+        {!activeRide && activeOffers.length === 0 && !loading ? (
           <Text style={styles.empty}>No taxi offers right now.</Text>
         ) : null}
       </View>
@@ -466,6 +491,7 @@ const styles = StyleSheet.create({
   section: { marginTop: 10, gap: 6 },
   sectionTitle: { color: "#E2E8F0", fontWeight: "800" },
   meta: { color: "#94A3B8", fontSize: 13 },
+  expiry: { color: "#FDE68A", fontSize: 12, fontWeight: "700", marginTop: 2 },
   payout: { color: "#86EFAC", fontWeight: "800", marginTop: 2 },
   favoriteBadge: {
     color: "#FDE68A",

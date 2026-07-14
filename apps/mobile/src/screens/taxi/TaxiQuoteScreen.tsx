@@ -160,6 +160,17 @@ export default function TaxiQuoteScreen() {
     taxi_quote_dropoff: handleDropoffLocation,
   });
 
+  const rideStops = useMemo(() => {
+    if (Array.isArray(params.stops) && params.stops.length > 0) {
+      return params.stops;
+    }
+    const fromRoute = params.route?.stops;
+    if (Array.isArray(fromRoute) && fromRoute.length > 0) {
+      return fromRoute as { address?: string; lat?: number; lng?: number }[];
+    }
+    return undefined;
+  }, [params.stops, params.route?.stops]);
+
   useEffect(() => {
     void quoteTaxiRide({
       pickupAddress,
@@ -173,6 +184,7 @@ export default function TaxiQuoteScreen() {
       vehicleClass: params.vehicleClass as TaxiVehicleClass,
       countryCode,
       sharedRide,
+      stops: rideStops,
     })
       .then((result) => {
         if (result?.ok && result.quote) {
@@ -195,6 +207,7 @@ export default function TaxiQuoteScreen() {
     pickupLocationId,
     dropoffLocationId,
     params.vehicleClass,
+    rideStops,
   ]);
 
   const vehicleClass = params.vehicleClass;
@@ -296,6 +309,7 @@ export default function TaxiQuoteScreen() {
         businessAccountId:
           businessRide && businessAccountId ? businessAccountId : undefined,
         businessTripType: businessRide && businessAccountId ? "business" : "personal",
+        stops: rideStops,
       });
 
       if (!created?.ok || !created?.ride?.id) {

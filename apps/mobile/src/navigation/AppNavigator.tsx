@@ -217,6 +217,7 @@ export type RootStackParamList = {
     countryResolution?: Record<string, unknown>;
     quote: Record<string, unknown>;
     route: Record<string, unknown>;
+    stops?: { address?: string; lat?: number; lng?: number }[];
     locationPickerResult?: MmdLocationPickerResult;
     preferElectricOrHybrid?: boolean;
     clientPreferences?: Record<string, boolean>;

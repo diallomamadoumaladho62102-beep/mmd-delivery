@@ -137,7 +137,17 @@ export default ({ config }) => {
       ],
       "@rnmapbox/maps",
       "expo-image-picker",
-      "expo-location",
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "MMD Delivery uses your location to show nearby restaurants, set pickup and drop-off points, and help drivers navigate during active deliveries and taxi rides.",
+          locationAlwaysAndWhenInUsePermission:
+            "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
+          isAndroidBackgroundLocationEnabled: true,
+          isAndroidForegroundServiceEnabled: true,
+        },
+      ],
       "expo-task-manager",
       "expo-web-browser",
       [

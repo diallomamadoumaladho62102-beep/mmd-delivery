@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  AppState,
+  type AppStateStatus,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -21,7 +23,6 @@ import {
   fetchTaxiRide,
   formatTaxiCents,
 } from "../../lib/taxiClientApi";
-import { supabase } from "../../lib/supabase";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -32,6 +33,7 @@ import {
   getMapboxModule,
   getMapStyleStreets,
 } from "../../lib/mapboxConfig";
+import { useLiveDriverLocation } from "../../hooks/useLiveDriverLocation";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiRideTracking">;
 type TrackingRoute = RouteProp<RootStackParamList, "TaxiRideTracking">;
@@ -48,6 +50,32 @@ const PAYMENT_PENDING = new Set(["pending_payment", "processing"]);
 const PAID_PAYMENT = new Set(["paid", "refunded"]);
 const ACTIVE_SAFETY_STATUSES = new Set(["accepted", "driver_arrived", "in_progress"]);
 
+function isValidCoord(lat: unknown, lng: unknown) {
+  const latN = Number(lat);
+  const lngN = Number(lng);
+  return Number.isFinite(latN) && Number.isFinite(lngN);
+}
+
+function getCameraForPoints(points: [number, number][]) {
+  if (points.length === 0) {
+    return { centerCoordinate: [-73.95, 40.65] as [number, number], zoomLevel: 11 };
+  }
+  if (points.length === 1) {
+    return { centerCoordinate: points[0], zoomLevel: 14 };
+  }
+  const lngs = points.map((p) => p[0]);
+  const lats = points.map((p) => p[1]);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const delta = Math.max(maxLat - minLat, maxLng - minLng, 0.01);
+  return {
+    centerCoordinate: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] as [number, number],
+    zoomLevel: Math.max(10, Math.min(15, Math.log2(360 / (delta * 3.2)))),
+  };
+}
+
 export default function TaxiRideTrackingScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<TrackingRoute>();
@@ -59,6 +87,10 @@ export default function TaxiRideTrackingScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+
+  const { location: liveDriver } = useLiveDriverLocation(
+    String(ride?.driver_id ?? "") || null
+  );
 
   const maybeConfirmPayment = useCallback(
     async (rideRow: Record<string, unknown> | null) => {
@@ -106,6 +138,14 @@ export default function TaxiRideTrackingScreen() {
       const result = await fetchTaxiRide(rideId);
       let nextRide = (result?.ride as Record<string, unknown>) ?? null;
       nextRide = await maybeConfirmPayment(nextRide);
+      if (nextRide) {
+        const stopsFromResult = Array.isArray(result?.stops)
+          ? result.stops
+          : Array.isArray(nextRide.stops)
+            ? nextRide.stops
+            : [];
+        nextRide = { ...nextRide, stops: stopsFromResult };
+      }
       setRide(nextRide);
     } catch (e: unknown) {
       const message =
@@ -123,6 +163,15 @@ export default function TaxiRideTrackingScreen() {
     void load();
     const timer = setInterval(() => void load(), 12000);
     return () => clearInterval(timer);
+  }, [load]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") {
+        void load();
+      }
+    });
+    return () => sub.remove();
   }, [load]);
 
   useEffect(() => {
@@ -154,6 +203,60 @@ export default function TaxiRideTrackingScreen() {
   const pickupLng = Number(ride?.pickup_lng);
   const dropoffLat = Number(ride?.dropoff_lat);
   const dropoffLng = Number(ride?.dropoff_lng);
+
+  const driverLat = Number(liveDriver?.lat);
+  const driverLng = Number(liveDriver?.lng);
+  const hasLiveDriver = isValidCoord(driverLat, driverLng);
+
+  const mapPoints = useMemo(() => {
+    const points: [number, number][] = [];
+    if (isValidCoord(pickupLng, pickupLat)) {
+      points.push([pickupLng, pickupLat]);
+    }
+    if (isValidCoord(dropoffLng, dropoffLat)) {
+      points.push([dropoffLng, dropoffLat]);
+    }
+    if (hasLiveDriver) {
+      points.push([driverLng, driverLat]);
+    }
+    return points;
+  }, [pickupLat, pickupLng, dropoffLat, dropoffLng, hasLiveDriver, driverLat, driverLng]);
+
+  const camera = useMemo(() => getCameraForPoints(mapPoints), [mapPoints]);
+
+  const routeLineFeature = useMemo(() => {
+    if (!isValidCoord(pickupLng, pickupLat) || !isValidCoord(dropoffLng, dropoffLat)) {
+      return null;
+    }
+    return {
+      type: "Feature" as const,
+      properties: {},
+      geometry: {
+        type: "LineString" as const,
+        coordinates: [
+          [pickupLng, pickupLat],
+          [dropoffLng, dropoffLat],
+        ],
+      },
+    };
+  }, [pickupLat, pickupLng, dropoffLat, dropoffLng]);
+
+  const intermediateStops = useMemo(() => {
+    const stops = ride?.stops;
+    if (!Array.isArray(stops)) return [];
+    return stops
+      .map((stop, index) => {
+        if (stop == null || typeof stop !== "object") return null;
+        const row = stop as { address?: string; stop_order?: number };
+        const address = String(row.address ?? "").trim();
+        if (!address) return null;
+        return { key: `${row.stop_order ?? index}`, address, order: Number(row.stop_order ?? index + 1) };
+      })
+      .filter(Boolean) as { key: string; address: string; order: number }[];
+  }, [ride?.stops]);
+
+  const durationMinutes = Number(ride?.duration_minutes);
+  const distanceMiles = Number(ride?.distance_miles);
 
   async function handleRetryPayment() {
     await load();
@@ -229,12 +332,10 @@ export default function TaxiRideTrackingScreen() {
             attributionEnabled={false}
           >
             <Mapbox.Camera
-              zoomLevel={12}
-              centerCoordinate={[
-                pickupLng,
-                (pickupLat + (Number.isFinite(dropoffLat) ? dropoffLat : pickupLat)) /
-                  2,
-              ]}
+              zoomLevel={camera.zoomLevel}
+              centerCoordinate={camera.centerCoordinate}
+              animationMode="flyTo"
+              animationDuration={650}
             />
             <Mapbox.PointAnnotation
               id="pickup"
@@ -253,6 +354,28 @@ export default function TaxiRideTrackingScreen() {
                   <Text style={pinTextStyle}>D</Text>
                 </View>
               </Mapbox.PointAnnotation>
+            ) : null}
+            {hasLiveDriver ? (
+              <Mapbox.PointAnnotation
+                id="live-driver"
+                coordinate={[driverLng, driverLat]}
+              >
+                <View style={pinStyle("#38BDF8")}>
+                  <Text style={pinTextStyle}>T</Text>
+                </View>
+              </Mapbox.PointAnnotation>
+            ) : null}
+            {routeLineFeature ? (
+              <Mapbox.ShapeSource id="taxi-route-line" shape={routeLineFeature}>
+                <Mapbox.LineLayer
+                  id="taxi-route-line-layer"
+                  style={{
+                    lineColor: "#60A5FA",
+                    lineWidth: 4,
+                    lineOpacity: 0.85,
+                  }}
+                />
+              </Mapbox.ShapeSource>
             ) : null}
           </Mapbox.MapView>
         ) : (
@@ -283,6 +406,21 @@ export default function TaxiRideTrackingScreen() {
           <Text style={{ color: "#94A3B8", marginTop: 4 }}>
             {formatTaxiCents(ride?.total_cents, String(ride?.currency ?? "USD"))}
           </Text>
+
+          {Number.isFinite(durationMinutes) && durationMinutes > 0 ? (
+            <Text style={{ color: "#CBD5E1", marginTop: 6, textAlign: textAlignStart() }}>
+              {t("taxi.ride.durationMinutes", "Duration: {{minutes}} min", {
+                minutes: Math.ceil(durationMinutes),
+              })}
+            </Text>
+          ) : null}
+          {Number.isFinite(distanceMiles) && distanceMiles > 0 ? (
+            <Text style={{ color: "#CBD5E1", marginTop: 4, textAlign: textAlignStart() }}>
+              {t("taxi.ride.distanceMiles", "Distance: {{miles}} mi", {
+                miles: distanceMiles.toFixed(1),
+              })}
+            </Text>
+          ) : null}
 
           {loadError ? (
             <Text style={{ color: "#FCA5A5", marginTop: 8 }}>{loadError}</Text>
@@ -350,6 +488,21 @@ export default function TaxiRideTrackingScreen() {
               address: String(ride?.pickup_address ?? "—"),
             })}
           </Text>
+          {intermediateStops.length > 0 ? (
+            <View style={{ marginTop: 8, gap: 4 }}>
+              {intermediateStops.map((stop) => (
+                <Text
+                  key={stop.key}
+                  style={{ color: "#94A3B8", textAlign: textAlignStart() }}
+                >
+                  {t("taxi.ride.stopLabel", "Stop {{n}}: {{address}}", {
+                    n: stop.order,
+                    address: stop.address,
+                  })}
+                </Text>
+              ))}
+            </View>
+          ) : null}
           <Text style={{ color: "#CBD5E1", marginTop: 6, textAlign: textAlignStart() }}>
             {t("taxi.ride.dropoffLabel", "Dropoff: {{address}}", {
               address: String(ride?.dropoff_address ?? "—"),
@@ -357,9 +510,25 @@ export default function TaxiRideTrackingScreen() {
           </Text>
 
           {ride?.driver_id ? (
-            <Text style={{ color: "#86EFAC", marginTop: 10, fontWeight: "700" }}>
-              {t("taxi.ride.driverAssigned", "Driver assigned")}
-            </Text>
+            <View style={{ marginTop: 10 }}>
+              <Text style={{ color: "#86EFAC", fontWeight: "700" }}>
+                {hasLiveDriver
+                  ? t("taxi.ride.driverEnRoute", "Driver en route")
+                  : t("taxi.ride.driverAssigned", "Driver assigned")}
+              </Text>
+              {hasLiveDriver && liveDriver?.updated_at ? (
+                <Text style={{ color: "#93C5FD", marginTop: 4, fontSize: 12 }}>
+                  {t("taxi.ride.driverLastUpdate", "Driver last update: {{time}}", {
+                    time: new Date(liveDriver.updated_at).toLocaleTimeString(),
+                  })}
+                </Text>
+              ) : null}
+              {hasLiveDriver ? (
+                <Text style={{ color: "#64748B", marginTop: 2, fontSize: 11 }}>
+                  {driverLat.toFixed(5)}, {driverLng.toFixed(5)}
+                </Text>
+              ) : null}
+            </View>
           ) : status === "paid" || status === "dispatching" ? (
             <Text style={{ color: "#FDE68A", marginTop: 10 }}>
               {t("taxi.ride.lookingForDriver", "Looking for a driver…")}

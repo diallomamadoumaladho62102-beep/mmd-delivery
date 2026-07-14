@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
+import * as Location from "expo-location";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
@@ -38,6 +39,23 @@ import {
   fetchTaxiCategoryAvailability,
   type TaxiCategoryAvailability,
 } from "../../lib/driverServicePreferencesApi";
+
+function formatReverseGeocodeAddress(
+  place: Location.LocationGeocodedAddress,
+  lat: number,
+  lng: number
+): string {
+  const street = [place.streetNumber, place.street].filter(Boolean).join(" ").trim();
+  const parts = [
+    street || place.name,
+    place.city || place.subregion,
+    place.region,
+    place.postalCode,
+    place.country,
+  ].filter(Boolean);
+  if (parts.length > 0) return parts.join(", ");
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiHome">;
 type TaxiHomeRoute = RouteProp<RootStackParamList, "TaxiHome">;
@@ -111,6 +129,52 @@ export default function TaxiHomeScreen() {
   const [countryCode, setCountryCode] = useState(market.countryCode);
   const [currencyCode, setCurrencyCode] = useState(market.currencyCode);
   const [loading, setLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  const handleUseMyGps = useCallback(async () => {
+    setGpsLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          t("taxi.home.gpsPermissionTitle", "Location permission"),
+          t(
+            "taxi.home.gpsPermissionBody",
+            "Allow location access to use your current position as pickup."
+          )
+        );
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const { latitude, longitude } = position.coords;
+
+      let address = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+      try {
+        const places = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+        if (places[0]) {
+          address = formatReverseGeocodeAddress(places[0], latitude, longitude);
+        }
+      } catch {
+        // Keep coordinate fallback when reverse geocode fails.
+      }
+
+      setPickup(address);
+      setPickupLocationId("");
+    } catch (e: unknown) {
+      Alert.alert(
+        t("taxi.home.gpsErrorTitle", "GPS"),
+        toUserFacingError(e, t("taxi.home.gpsErrorBody", "Unable to read your current location."))
+      );
+    } finally {
+      setGpsLoading(false);
+    }
+  }, [t]);
 
   const handlePickupLocation = useCallback(
     (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
@@ -313,25 +377,49 @@ export default function TaxiHomeScreen() {
             placeholderTextColor="#64748B"
             style={inputStyle}
           />
-          <TouchableOpacity
-            onPress={openPickupPicker}
-            style={{
-              borderRadius: 12,
-              paddingVertical: 12,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: pickupLocationId ? "#22C55E" : "#334155",
-              backgroundColor: pickupLocationId
-                ? "rgba(34,197,94,0.12)"
-                : "rgba(15,23,42,0.8)",
-            }}
-          >
-            <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
-              {pickupLocationId
-                ? t("taxi.home.pickupPinned", "Pickup pinned on map")
-                : t("taxi.home.pinPickup", "Pin exact pickup on map")}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: rowDirection(), gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => void handleUseMyGps()}
+              disabled={gpsLoading}
+              style={{
+                flex: 1,
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#334155",
+                backgroundColor: "rgba(15,23,42,0.8)",
+              }}
+            >
+              {gpsLoading ? (
+                <ActivityIndicator color="#93C5FD" />
+              ) : (
+                <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+                  {t("taxi.home.useMyGps", "Use my GPS")}
+                </Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={openPickupPicker}
+              style={{
+                flex: 1,
+                borderRadius: 12,
+                paddingVertical: 12,
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: pickupLocationId ? "#22C55E" : "#334155",
+                backgroundColor: pickupLocationId
+                  ? "rgba(34,197,94,0.12)"
+                  : "rgba(15,23,42,0.8)",
+              }}
+            >
+              <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+                {pickupLocationId
+                  ? t("taxi.home.pickupPinned", "Pickup pinned on map")
+                  : t("taxi.home.pinPickup", "Pin exact pickup on map")}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={{ gap: 10 }}>

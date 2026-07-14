@@ -13,12 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
-import { textAlignStart } from "../../i18n/rtl";
-import {
-  createTaxiRide,
-  quoteTaxiRide,
-  type TaxiVehicleClass,
-} from "../../lib/taxiClientApi";
+import { quoteTaxiRide } from "../../lib/taxiClientApi";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
@@ -64,26 +59,14 @@ export default function TaxiMultiStopScreen() {
 
       if (!result?.ok) throw new Error(result?.error ?? "Quote failed");
 
-      const created = await createTaxiRide({
-        pickupAddress: pickup.trim(),
-        dropoffAddress: dropoff.trim(),
-        stops,
-        vehicleClass: "standard" as TaxiVehicleClass,
-        countryCode,
-        expectedQuoteTotalCents: Number(result.quote?.total_cents ?? 0),
-      });
-
-      if (!created?.ok || !created?.ride?.id) {
-        throw new Error(created?.error ?? "Create failed");
-      }
-
       navigation.navigate("TaxiQuote", {
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
         vehicleClass: "standard",
         countryCode,
-        quote: created.quote ?? result.quote,
+        quote: result.quote,
         route: { ...result.route, stops: result.route?.stops ?? stops },
+        stops,
       });
     } catch (e: unknown) {
       Alert.alert(
