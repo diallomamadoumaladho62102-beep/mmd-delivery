@@ -82,6 +82,17 @@ function assertPercent(name: string, value: number) {
   }
 }
 
+/**
+ * Convert accidental 0–1 fraction inputs (0.8) to 0–100 (80) before save.
+ */
+function normalizeAdminSharePct(value: number): number {
+  if (!Number.isFinite(value)) return value;
+  if (value > 0 && value <= 1) {
+    return round2(value * 100);
+  }
+  return round2(value);
+}
+
 function assertMoney(name: string, value: number) {
   if (!Number.isFinite(value) || value < 0 || value > MAX_MONEY_VALUE) {
     throw new Error(
@@ -138,10 +149,10 @@ export function buildPricingPayload(formData: FormData): {
   const restaurantPct = round2(parseNumber(formData.get("restaurant_pct")));
   const platformPct = round2(parseNumber(formData.get("platform_pct")));
 
-  const deliveryPlatformPct = round2(
+  const deliveryPlatformPct = normalizeAdminSharePct(
     parseNumber(formData.get("delivery_platform_pct"), 20)
   );
-  const deliveryDriverPct = round2(
+  const deliveryDriverPct = normalizeAdminSharePct(
     parseNumber(formData.get("delivery_driver_pct"), 80)
   );
 
@@ -192,16 +203,23 @@ export function buildPricingPayload(formData: FormData): {
     );
   }
 
+  // Delivery split is independent from restaurant_pct + platform_pct (food/vendor).
+  // Never allow saving a config that cannot be loaded by computeDeliveryPricing.
+  const deliveryTotal = round2(deliveryDriverPct + deliveryPlatformPct);
+  if (deliveryTotal > 100) {
+    throw new Error(
+      "Delivery driver % + delivery platform % must be ≤ 100 / La livraison chauffeur % + plateforme % doit être ≤ 100."
+    );
+  }
   if (deliveryDriverPct + deliveryPlatformPct > 0) {
-    const deliveryTotal = round2(deliveryDriverPct + deliveryPlatformPct);
-    if (deliveryTotal !== 100) {
+    if (Math.abs(deliveryTotal - 100) > 0.009) {
       throw new Error(
-        "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire 100."
+        "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire exactement 100. Exemple valide : 80 + 20."
       );
     }
   } else if (deliveryPlatformPct !== 0 || deliveryDriverPct !== 0) {
     throw new Error(
-      "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire 100."
+      "Delivery driver % + delivery platform % must equal 100 / La livraison chauffeur % + plateforme % doit faire exactement 100."
     );
   }
 

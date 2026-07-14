@@ -21,8 +21,25 @@ function testStripeGenericFrench() {
   );
 }
 
+function testDeliverySharePctUserMessage() {
+  assert.equal(isTechnicalErrorMessage("driverSharePct + platformSharePct must be <= 100."), true);
+  assert.equal(
+    toUserFacingError({
+      code: "delivery_share_pct_invalid",
+      message: "driverSharePct + platformSharePct must be <= 100.",
+    }),
+    "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.",
+  );
+  assert.equal(
+    toUserFacingError(new Error("driverSharePct + platformSharePct must be <= 100.")),
+    "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.",
+  );
+}
+
 testTechnicalPatterns();
 testKnownCodes();
 testStripeGenericFrench();
+testDeliverySharePctUserMessage();
 
 console.log("userFacingError.test.ts OK");
+

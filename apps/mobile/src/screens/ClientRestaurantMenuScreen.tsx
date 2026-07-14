@@ -24,6 +24,7 @@ import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
+import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientRestaurantMenu">;
 type Route = RouteProp<RootStackParamList, "ClientRestaurantMenu">;
@@ -1006,16 +1007,36 @@ export function ClientRestaurantMenuScreen() {
         index: 0,
         routes: [{ name: "ClientOrderDetails", params: { orderId } }],
       });
-    } catch (err: any) {
-      console.error("Erreur création commande restaurant (mobile):", err);
-      Alert.alert(
-        tr("common.error.title", "Erreur"),
-        err?.message ??
-          tr(
-            "clientRestaurantMenu.createOrderError",
-            "Impossible de créer la commande pour le moment."
-          )
-      );
+    } catch (err: unknown) {
+      logTechnicalError("ClientRestaurantMenu.create", err, {
+        restaurantId,
+        subtotal: serverPricing?.subtotal ?? null,
+        deliveryFee: serverPricing?.delivery_fee ?? deliveryFee,
+      });
+
+      const code = String(
+        (err as { code?: string; error?: string } | null)?.code ??
+          (err as { code?: string; error?: string } | null)?.error ??
+          ""
+      ).trim();
+      const rawMessage = err instanceof Error ? err.message : String(err ?? "");
+
+      const userMessage =
+        code === "delivery_share_pct_invalid" ||
+        /driverSharePct\s*\+\s*platformSharePct/i.test(rawMessage)
+          ? tr(
+              "clientRestaurantMenu.errors.deliveryShareInvalid",
+              "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support. / Delivery pricing is temporarily unavailable. Please try again later or contact support."
+            )
+          : toUserFacingError(
+              err,
+              tr(
+                "clientRestaurantMenu.createOrderError",
+                "Impossible de créer la commande pour le moment."
+              )
+            );
+
+      Alert.alert(tr("common.error.title", "Erreur"), userMessage);
     } finally {
       setCreating(false);
     }

@@ -300,6 +300,59 @@ export default function AdminPricingView() {
 
     try {
       const formData = new FormData(e.currentTarget);
+
+      // Clear Admin-side validation before hitting the API — never trust that
+      // delivery_driver_pct + delivery_platform_pct will be accepted later.
+      const orderType = String(formData.get("config_key") ?? "").includes("marketplace")
+        ? "marketplace"
+        : "delivery";
+      const deliveryDriver = Number(
+        String(formData.get("delivery_driver_pct") ?? "0").replace(",", ".")
+      );
+      const deliveryPlatform = Number(
+        String(formData.get("delivery_platform_pct") ?? "0").replace(",", ".")
+      );
+      const deliverySum = round2(
+        (Number.isFinite(deliveryDriver) ? deliveryDriver : 0) +
+          (Number.isFinite(deliveryPlatform) ? deliveryPlatform : 0)
+      );
+
+      if (deliverySum > 100) {
+        throw new Error(
+          "Delivery driver % + delivery platform % must be ≤ 100 / La part chauffeur + plateforme livraison doit être ≤ 100."
+        );
+      }
+
+      const row = rows.find((item) => item.id === rowId);
+      const isDeliveryOrder =
+        row?.order_type === "food" || row?.order_type === "errand" || orderType === "delivery";
+
+      if (
+        isDeliveryOrder &&
+        row?.order_type !== "marketplace" &&
+        Math.abs(deliverySum - 100) > 0.009
+      ) {
+        throw new Error(
+          "Delivery driver % + delivery platform % must equal 100 before save / La part chauffeur + plateforme livraison doit faire exactement 100 avant enregistrement (ex. 80 + 20)."
+        );
+      }
+
+      const restaurantPct = Number(
+        String(formData.get("restaurant_pct") ?? "0").replace(",", ".")
+      );
+      const platformPct = Number(
+        String(formData.get("platform_pct") ?? "0").replace(",", ".")
+      );
+      if (
+        Number.isFinite(restaurantPct) &&
+        Number.isFinite(platformPct) &&
+        round2(restaurantPct + platformPct) > 100
+      ) {
+        throw new Error(
+          "Restaurant % + Platform % must be ≤ 100 / Restaurant % + Plateforme % doit être ≤ 100. Do not mix vendor commission with delivery driver/platform shares."
+        );
+      }
+
       const res = await adminFetch("/api/admin/pricing", {
         method: "POST",
         body: formData,

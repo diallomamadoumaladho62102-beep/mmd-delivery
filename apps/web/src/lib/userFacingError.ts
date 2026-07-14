@@ -21,6 +21,9 @@ const TECHNICAL_PATTERNS: RegExp[] = [
   /JWT expired/i,
   /invalid jwt/i,
   /fetch failed/i,
+  /driverSharePct\s*\+\s*platformSharePct/i,
+  /delivery_share_pct_invalid/i,
+  /delivery_fee_abnormal/i,
 ];
 
 export function isTechnicalErrorMessage(message: string): boolean {
@@ -81,8 +84,14 @@ function mapKnownErrorCode(code: string, message: string): string | null {
     case "wallet_ledger_bridge_failed":
     case "payment_setup_failed":
       return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
+    case "delivery_share_pct_invalid":
+      return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
     default:
       break;
+  }
+
+  if (/driverSharePct\s*\+\s*platformSharePct/i.test(message)) {
+    return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
   }
 
   if (/invalid login credentials/i.test(message)) {

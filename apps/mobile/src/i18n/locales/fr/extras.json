@@ -584,5 +584,11 @@
       "restaurant": "Restaurant",
       "seller": "Vendeur Marketplace"
     }
+  },
+  "clientRestaurantMenu": {
+    "createOrderError": "Impossible de créer la commande pour le moment.",
+    "errors": {
+      "deliveryShareInvalid": "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support."
+    }
   }
 }

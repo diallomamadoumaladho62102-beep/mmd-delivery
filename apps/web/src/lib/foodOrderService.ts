@@ -178,6 +178,10 @@ export async function createFoodOrderServerSide(
   );
 
   if (commissionErr) {
+    // Do not leave a half-created unpaid food order when commission math fails.
+    // Operational fulfillment still requires Stripe payment_status=paid.
+    await supabaseAdmin.from("order_members").delete().eq("order_id", orderId);
+    await supabaseAdmin.from("orders").delete().eq("id", orderId);
     throw new Error(`Commission refresh failed: ${commissionErr.message}`);
   }
 

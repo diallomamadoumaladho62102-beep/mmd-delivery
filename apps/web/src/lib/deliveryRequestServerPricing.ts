@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDistanceAndEta } from "@/lib/mapboxRoute";
 import {
   computeDeliveryPricing,
+  normalizeSharePctScale,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
@@ -136,13 +137,20 @@ async function getActiveErrandDeliveryPricingConfig(
     throw new Error(`Pricing config error: active ${configKey} config not found`);
   }
 
+  const platformSharePct =
+    normalizeSharePctScale(data.delivery_platform_pct) ?? 20;
+  const driverSharePct =
+    normalizeSharePctScale(data.delivery_driver_pct) ??
+    roundPlatformMoney(100 - platformSharePct);
+
   return {
     configKey,
     baseFare: roundPlatformMoney(toFiniteNumber(data.delivery_fee_base, 2.5)),
     perMile: roundPlatformMoney(toFiniteNumber(data.delivery_fee_per_mile, 0.9)),
     perMinute: roundPlatformMoney(toFiniteNumber(data.delivery_fee_per_minute, 0.15)),
     minFare: 0,
-    platformSharePct: roundPlatformMoney(toFiniteNumber(data.delivery_platform_pct, 20)),
+    driverSharePct,
+    platformSharePct,
   };
 }
 

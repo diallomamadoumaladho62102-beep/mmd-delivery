@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDistanceAndEta } from "@/lib/mapboxRoute";
 import {
   computeDeliveryPricing,
+  evaluateDeliveryFeeAbnormality,
+  normalizeSharePctScale,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
@@ -301,13 +303,26 @@ async function getActiveFoodDeliveryPricingConfig(
     throw new Error(`Pricing config error: active ${configKey} config not found`);
   }
 
+  // Both delivery shares must come from pricing_config (Admin/Supabase).
+  // Never leave driverSharePct at the hard-coded default while overriding
+  // platformSharePct alone — that produces false 80+X > 100 failures when
+  // Admin saved a valid 70/30 (or any platformSharePct > 20).
+  // Restaurant/vendor % (restaurant_pct / platform_pct) is a different base
+  // and must not be mixed into this delivery split.
+  const platformSharePct =
+    normalizeSharePctScale(data.delivery_platform_pct) ?? 20;
+  const driverSharePct =
+    normalizeSharePctScale(data.delivery_driver_pct) ??
+    roundFoodMoney(100 - platformSharePct);
+
   return {
     configKey,
     baseFare: roundFoodMoney(toFiniteFoodNumber(data.delivery_fee_base, 2.5)),
     perMile: roundFoodMoney(toFiniteFoodNumber(data.delivery_fee_per_mile, 0.9)),
     perMinute: roundFoodMoney(toFiniteFoodNumber(data.delivery_fee_per_minute, 0.15)),
     minFare: 0,
-    platformSharePct: roundFoodMoney(toFiniteFoodNumber(data.delivery_platform_pct, 20)),
+    driverSharePct,
+    platformSharePct,
   };
 }
 
@@ -395,6 +410,21 @@ export async function computeFoodOrderPricing(
 
   const rawDeliveryFee = roundFoodMoney(toFiniteFoodNumber(deliveryPricing.deliveryFee));
   const driverPayoutEstimate = roundFoodMoney(toFiniteFoodNumber(deliveryPricing.driverPayout));
+
+  const feeAudit = evaluateDeliveryFeeAbnormality(
+    rawDeliveryFee,
+    { distanceMiles: safeDistanceMiles, durationMinutes: safeEtaMinutes },
+    deliveryPricingConfig
+  );
+  if (feeAudit.abnormal) {
+    console.warn("[foodOrderServerPricing] abnormal delivery fee", {
+      ...feeAudit.details,
+      reason: feeAudit.reason,
+      configKey: deliveryPricingConfig.configKey,
+      subtotal,
+    });
+  }
+
   const normalizedPromoCode = normalizeFoodPromoCode(promoCode);
 
   const { data: pricingData, error: pricingError } = await supabaseAdmin.rpc(

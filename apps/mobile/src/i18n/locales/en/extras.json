@@ -584,5 +584,11 @@
       "noStatements": "No statements available yet.",
       "taxDocuments": "Tax Documents"
     }
+  },
+  "clientRestaurantMenu": {
+    "createOrderError": "Unable to create the order right now.",
+    "errors": {
+      "deliveryShareInvalid": "Delivery pricing is temporarily unavailable. Please try again later or contact support."
+    }
   }
 }

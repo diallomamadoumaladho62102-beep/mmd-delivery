@@ -92,8 +92,15 @@ async function foodOrderFetch(
 
   const payload = await res.json().catch(() => ({}));
   if (!res.ok || payload.ok === false) {
+    const code = String(payload.code ?? payload.error ?? "").trim();
     const message = String(payload.error ?? payload.message ?? "").trim();
-    throw new Error(message || `Food order request failed (${res.status})`);
+    const err = new Error(message || `Food order request failed (${res.status})`) as Error & {
+      code?: string;
+      error?: string;
+    };
+    err.code = code || undefined;
+    err.error = code || message || undefined;
+    throw err;
   }
 
   return payload;

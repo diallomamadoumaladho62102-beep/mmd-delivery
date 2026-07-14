@@ -24,6 +24,9 @@ const TECHNICAL_PATTERNS: RegExp[] = [
   /fetch failed/i,
   /edge function/i,
   /functions\.invoke/i,
+  /driverSharePct\s*\+\s*platformSharePct/i,
+  /delivery_share_pct_invalid/i,
+  /delivery_fee_abnormal/i,
 ];
 
 export function isTechnicalErrorMessage(message: string): boolean {
@@ -86,8 +89,14 @@ function mapKnownErrorCode(code: string, message: string): string | null {
     case "wallet_ledger_bridge_failed":
     case "payment_setup_failed":
       return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
+    case "delivery_share_pct_invalid":
+      return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
     default:
       break;
+  }
+
+  if (/driverSharePct\s*\+\s*platformSharePct/i.test(message)) {
+    return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
   }
 
   if (/invalid login credentials/i.test(message)) {
@@ -127,4 +136,17 @@ function mapKnownErrorCode(code: string, message: string): string | null {
 
 export function logTechnicalError(scope: string, error: unknown, metadata?: Record<string, unknown>) {
   console.error(`[${scope}]`, error, metadata ?? {});
+  try {
+    // Lazy require avoids circular init with sentry bootstrap.
+    const { captureMobileException } = require("./sentry") as {
+      captureMobileException: (
+        scope: string,
+        error: unknown,
+        extra?: Record<string, unknown>
+      ) => void;
+    };
+    captureMobileException(scope, error, metadata);
+  } catch {
+    // never throw from telemetry
+  }
 }
