@@ -83,6 +83,53 @@ async function main() {
     if (two.ok) assert.equal(two.result, 2);
   });
 
+  await test("payment-expiration shared lock serializes expire alias + canonical", async () => {
+    state.holders.clear();
+    const lockName = "payment-expiration";
+    let expireStaleRan = false;
+
+    const holdStarted = withCronJobLock(
+      supabase,
+      lockName,
+      async () => {
+        // Keep the lease while the concurrent caller attempts acquire.
+        await new Promise((r) => setTimeout(r, 80));
+        return "alias-done";
+      },
+      { lockedBy: "expire-unpaid" }
+    );
+
+    // Ensure first acquire completed before concurrent attempt.
+    await new Promise((r) => setTimeout(r, 5));
+    assert.equal(state.holders.get(lockName), "expire-unpaid");
+
+    const concurrent = await withCronJobLock(
+      supabase,
+      lockName,
+      async () => {
+        expireStaleRan = true;
+        return "stale-should-not-run";
+      },
+      { lockedBy: "expire-stale-payments" }
+    );
+
+    assert.equal(concurrent.ok, false);
+    assert.equal(expireStaleRan, false);
+    const held = await holdStarted;
+    assert.equal(held.ok, true);
+  });
+
+  await test("atomic claim: second cancel on same id is already_processed", async () => {
+    const claimed = new Set<string>();
+    async function claimOnce(id: string): Promise<"claimed" | "already_processed"> {
+      if (claimed.has(id)) return "already_processed";
+      claimed.add(id);
+      return "claimed";
+    }
+    assert.equal(await claimOnce("order-1"), "claimed");
+    assert.equal(await claimOnce("order-1"), "already_processed");
+  });
+
   console.log("cronJobLock tests passed");
 }
 

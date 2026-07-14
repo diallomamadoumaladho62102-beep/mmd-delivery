@@ -3,14 +3,22 @@ import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { withCronJobLock } from "@/lib/cronJobLock";
+import { finishCronRun, startCronRun } from "@/lib/cronObservability";
 import {
-  EXPIRE_STALE_PAYMENTS_JOB,
+  PAYMENT_EXPIRATION_LOCK_JOB,
   runExpireStalePayments,
 } from "@/lib/expireStalePayments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Canonical payment-expiration cron.
+ * Owns: unpaid/processing orders + delivery_requests past expires_at (+15m margin),
+ * Stripe PaymentIntent cancel when safe, shared lock `payment-expiration`.
+ *
+ * Alias: `/api/orders/expire-unpaid` (same runner + same lock).
+ */
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
     status,
@@ -48,37 +56,80 @@ function readDryRun(req: NextRequest): boolean {
 }
 
 async function handle(req: NextRequest) {
-  if (!isAuthorizedCronRequest(req)) {
-    return json({ ok: false, error: "Unauthorized" }, 401);
-  }
-
   const dryRun = readDryRun(req);
-  const supabaseAdmin = getSupabaseAdmin();
+  const start = startCronRun("expire-stale-payments", dryRun);
 
-  const locked = await withCronJobLock(
-    supabaseAdmin,
-    EXPIRE_STALE_PAYMENTS_JOB,
-    async () =>
-      runExpireStalePayments({
-        supabaseAdmin,
-        stripe: getStripe(),
-        dryRun,
-      }),
-    { ttlSeconds: 10 * 60 }
-  );
+  try {
+    if (!isAuthorizedCronRequest(req)) {
+      return json(
+        finishCronRun(start, {
+          ok: false,
+          error: "Unauthorized",
+          lock_acquired: false,
+        }),
+        401
+      );
+    }
 
-  if (!locked.ok) {
-    // Contended run is not a hard failure — another worker holds the lease.
-    return json({
-      ok: true,
-      skipped: true,
-      reason: "lock_busy",
-      job: EXPIRE_STALE_PAYMENTS_JOB,
-      locked_by: locked.lockedBy ?? null,
+    const supabaseAdmin = getSupabaseAdmin();
+    const locked = await withCronJobLock(
+      supabaseAdmin,
+      PAYMENT_EXPIRATION_LOCK_JOB,
+      async () =>
+        runExpireStalePayments({
+          supabaseAdmin,
+          stripe: getStripe(),
+          dryRun,
+        }),
+      { ttlSeconds: 10 * 60 }
+    );
+
+    if (!locked.ok) {
+      return json(
+        finishCronRun(start, {
+          ok: true,
+          skipped: 1,
+          reason: "lock_busy",
+          job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
+          lock_acquired: false,
+        })
+      );
+    }
+
+    return json(
+      finishCronRun(start, {
+        ok: true,
+        dry_run: locked.result.dry_run,
+        scanned: locked.result.scanned,
+        canceled_local: locked.result.canceled_local,
+        stripe_pi_canceled: locked.result.stripe_pi_canceled,
+        stripe_pi_skipped: locked.result.stripe_pi_skipped,
+        stripe_pi_already_canceled: locked.result.stripe_pi_already_canceled,
+        error_count: locked.result.errors,
+        details: locked.result.details,
+        processed: locked.result.canceled_local,
+        eligible: locked.result.scanned,
+        skipped: locked.result.stripe_pi_skipped,
+        failed: locked.result.errors,
+        lock_acquired: true,
+        job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
+      })
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[expire-stale-payments] fatal", {
+      message,
+      run_id: start.run_id,
     });
+    return json(
+      finishCronRun(start, {
+        ok: false,
+        error: "Internal server error",
+        lock_acquired: false,
+      }),
+      500
+    );
   }
-
-  return json(locked.result);
 }
 
 export async function GET(req: NextRequest) {

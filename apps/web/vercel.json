@@ -9,10 +9,6 @@
       "schedule": "0 3 * * 0"
     },
     {
-      "path": "/api/orders/expire-unpaid",
-      "schedule": "0 5 * * *"
-    },
-    {
       "path": "/api/cron/expire-stale-payments",
       "schedule": "15 5 * * *"
     },

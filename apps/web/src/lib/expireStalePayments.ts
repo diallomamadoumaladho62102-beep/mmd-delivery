@@ -1,7 +1,22 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 
-export const EXPIRE_STALE_PAYMENTS_JOB = "expire-stale-payments";
+/**
+ * Shared lease for all payment-expiration entrypoints
+ * (`/api/orders/expire-unpaid` alias + `/api/cron/expire-stale-payments`).
+ * Prevents concurrent local cancel of the same order/DR rows.
+ */
+export const PAYMENT_EXPIRATION_LOCK_JOB = "payment-expiration";
+
+/** @deprecated Use PAYMENT_EXPIRATION_LOCK_JOB — kept for log/job labeling only. */
+export const EXPIRE_STALE_PAYMENTS_JOB = PAYMENT_EXPIRATION_LOCK_JOB;
+
+/**
+ * Responsibilities:
+ * - Canonical owner: `/api/cron/expire-stale-payments` (orders + delivery_requests + safe Stripe PI cancel).
+ * - Compatibility alias: `/api/orders/expire-unpaid` delegates to the same runner + shared lock.
+ * - Neither path may run concurrently with the other (shared `payment-expiration` lock).
+ */
 
 /** Extra grace after expires_at before local cancel / Stripe cancel. */
 export const EXPIRE_SAFETY_MARGIN_MS = 15 * 60 * 1000;
@@ -165,38 +180,33 @@ async function loadStaleDeliveryRequests(
   }));
 }
 
-async function cancelLocalEntity(
+/**
+ * Atomic claim: update returns claimed rows. If another worker already
+ * canceled/paid the row, returned count is 0 and we skip double-processing.
+ */
+export async function claimCancelLocalEntity(
   supabaseAdmin: SupabaseClient,
   row: StalePaymentRow,
   nowIso: string,
   dryRun: boolean
-): Promise<void> {
-  if (dryRun) return;
+): Promise<"claimed" | "already_processed" | "dry_run"> {
+  if (dryRun) return "dry_run";
 
-  if (row.entityType === "order") {
-    const { error } = await supabaseAdmin
-      .from("orders")
-      .update({
-        status: "canceled",
-        payment_status: "unpaid",
-        updated_at: nowIso,
-      })
-      .eq("id", row.id)
-      .neq("payment_status", "paid");
-    if (error) throw new Error(`order_cancel_failed: ${error.message}`);
-    return;
-  }
-
-  const { error } = await supabaseAdmin
-    .from("delivery_requests")
+  const table = row.entityType === "order" ? "orders" : "delivery_requests";
+  const { data, error } = await supabaseAdmin
+    .from(table)
     .update({
       status: "canceled",
       payment_status: "unpaid",
       updated_at: nowIso,
     })
     .eq("id", row.id)
-    .neq("payment_status", "paid");
-  if (error) throw new Error(`delivery_request_cancel_failed: ${error.message}`);
+    .in("payment_status", ["unpaid", "processing"])
+    .select("id");
+
+  if (error) throw new Error(`${table}_cancel_failed: ${error.message}`);
+  if (!Array.isArray(data) || data.length === 0) return "already_processed";
+  return "claimed";
 }
 
 async function cancelStripePaymentIntentIfSafe(
@@ -301,7 +311,18 @@ export async function runExpireStalePayments(opts: {
         }
       }
 
-      await cancelLocalEntity(opts.supabaseAdmin, row, nowIso, dryRun);
+      const claim = await claimCancelLocalEntity(
+        opts.supabaseAdmin,
+        row,
+        nowIso,
+        dryRun
+      );
+      detail.local_claim = claim;
+      if (claim === "already_processed") {
+        detail.skipped_local = true;
+        summary.details.push(detail);
+        continue;
+      }
       summary.canceled_local += 1;
       detail.local_canceled = true;
     } catch (error) {

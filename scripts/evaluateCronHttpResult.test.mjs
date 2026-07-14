@@ -56,4 +56,20 @@ test("HTTP 200 without ok field is success", () => {
   assert.equal(result.ok, true);
 });
 
+test("HTTP 200 empty body is success", () => {
+  const result = evaluateCronHttpResult(200, "");
+  assert.equal(result.ok, true);
+});
+
+test("HTTP 200 with whitespace-only body is success", () => {
+  const result = evaluateCronHttpResult(200, "   ");
+  assert.equal(result.ok, true);
+});
+
+test("HTTP 502 is failure", () => {
+  const result = evaluateCronHttpResult(502, "Bad Gateway");
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, "http_502");
+});
+
 console.log("evaluateCronHttpResult tests passed");
