@@ -31,7 +31,18 @@ function cleanEnv(value) {
   return String(value ?? "").trim();
 }
 
+/**
+ * Stripe PK guard for Expo config.
+ *
+ * - Non-production profiles: only format-check when a key is present.
+ * - Production profile on a real EAS cloud build (`EAS_BUILD=true`): require pk_live_.
+ * - Local preflight (`eas config` / `expo config`) with production profile env injected
+ *   from eas.json must NOT fail when the key lives only in EAS Production secrets.
+ *   If a key is present locally, still reject pk_test_ / invalid prefixes.
+ */
 function assertStripePublishableKeyForEasBuild(easBuildProfile, stripePublishableKey) {
+  const isEasCloudBuild = cleanEnv(process.env.EAS_BUILD).toLowerCase() === "true";
+
   if (easBuildProfile !== "production") {
     if (
       stripePublishableKey &&
@@ -45,6 +56,25 @@ function assertStripePublishableKeyForEasBuild(easBuildProfile, stripePublishabl
     return;
   }
 
+  // Local preflight: allow missing key (injected later from EAS Production env).
+  if (!isEasCloudBuild) {
+    if (!stripePublishableKey) {
+      return;
+    }
+    if (stripePublishableKey.startsWith("pk_test_")) {
+      throw new Error(
+        "[MMD] Production EAS profile cannot use a pk_test_ Stripe publishable key."
+      );
+    }
+    if (!stripePublishableKey.startsWith("pk_live_")) {
+      throw new Error(
+        "[MMD] Production EAS profile requires a pk_live_ Stripe publishable key."
+      );
+    }
+    return;
+  }
+
+  // Real EAS production cloud build: hard requirement.
   if (!stripePublishableKey) {
     throw new Error(
       "[MMD] Production EAS build requires EXPO_PUBLIC_STRIPE_PK. Set an EAS secret with your pk_live_ key."
