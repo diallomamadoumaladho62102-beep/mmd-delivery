@@ -110,7 +110,8 @@ export async function createFoodOrderServerSide(
       tax: pricing.tax,
       discounts: pricing.discounts,
       total: pricing.total,
-      grand_total: pricing.total,
+      // grand_total is GENERATED ALWAYS in production (mirrors total).
+      // Inserting a value raises: cannot insert a non-DEFAULT value into column "grand_total".
       total_cents: pricing.totalCents,
       service_fee: pricing.serviceFee,
       service_fee_cents: pricing.serviceFeeCents,
