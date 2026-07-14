@@ -1,9 +1,0 @@
-{
-  "cli": {
-    "version": ">= 18.4.0",
-    "appVersionSource": "remote"
-  },
-  "build": {},
-  "submit": {},
-  "_comment": "Canonical EAS config is at repository root: ../../eas.json. Run eas build from repo root."
-}
