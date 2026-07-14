@@ -90,10 +90,13 @@ export async function runMmdAiChat(params: {
   const history = (params.body.history ?? [])
     .slice(-20)
     .filter((turn) => turn.content?.trim())
-    .map((turn) => ({
-      role: turn.role,
-      content: turn.content.trim().slice(0, 2000),
-    }));
+    .map((turn) => {
+      const role = turn.role === "assistant" ? "assistant" : "user";
+      return {
+        role,
+        content: turn.content.trim().slice(0, 2000),
+      };
+    });
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },

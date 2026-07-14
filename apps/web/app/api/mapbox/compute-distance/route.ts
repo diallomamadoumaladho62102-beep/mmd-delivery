@@ -251,12 +251,13 @@ export async function POST(req: NextRequest) {
       delivery_fee: deliveryPrice,
       delivery_fee_usd: deliveryPrice,
     });
-  } catch (e: any) {
-    console.error("API /mapbox/compute-distance error:", e);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Erreur interne serveur";
+    console.error("API /mapbox/compute-distance error:", message.slice(0, 200));
     return NextResponse.json(
       {
         ok: false,
-        error: e?.message ?? "Erreur interne serveur",
+        error: "Erreur interne serveur",
       },
       { status: 500 }
     );
