@@ -51,7 +51,7 @@
     "tailwindcss": "3.4.10"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.4",
+    "@eslint/js": "^10.0.1",
     "@types/node": "20.14.11",
     "@types/pdfkit": "^0.17.5",
     "@types/react": "19.1.17",
