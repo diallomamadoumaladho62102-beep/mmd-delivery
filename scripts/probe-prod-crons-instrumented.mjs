@@ -36,7 +36,7 @@ if (!secret) {
   process.exit(1);
 }
 
-async function probe(path, timeoutMs = 20_000) {
+async function probe(path, timeoutMs = 65_000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const started = Date.now();
@@ -105,12 +105,14 @@ async function probe(path, timeoutMs = 20_000) {
 
 console.log(JSON.stringify({ site, secret_present: true }));
 
+await probe("/api/cron/infra-probe?skip_lock=1");
 await probe("/api/cron/infra-probe");
 await probe("/api/cron/infra-probe?stripe=1");
 await probe("/api/cron/taxi-payouts?limit=0&inventory_only=1");
 await probe("/api/cron/marketplace-payouts?limit=0");
 await probe("/api/cron/expire-stale-payments?dry_run=1&limit=0");
 await probe("/api/cron/expire-stale-payments?dry_run=1&limit=1");
+await probe("/api/cron/expire-stale-payments?limit=1");
 await probe("/api/cron/taxi-payouts?limit=1");
 await probe("/api/cron/marketplace-payouts?limit=1");
 await probe("/api/cron/taxi-monitoring-snapshot");

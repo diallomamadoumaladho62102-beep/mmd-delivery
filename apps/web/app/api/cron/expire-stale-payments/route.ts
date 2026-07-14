@@ -128,14 +128,20 @@ async function handle(req: NextRequest) {
 
     if (locked.ok === false) {
       const reason =
-        locked.error === "lock_timeout" ? "lock_timeout" : "lock_busy";
-      trace.mark(reason === "lock_timeout" ? "error" : "lock_busy", {
+        locked.error === "supabase_timeout"
+          ? "supabase_timeout"
+          : locked.error === "lock_timeout"
+            ? "lock_timeout"
+            : "lock_busy";
+      const infraTimeout =
+        reason === "supabase_timeout" || reason === "lock_timeout";
+      trace.mark(reason === "lock_busy" ? "lock_busy" : "error", {
         detail: { error: locked.error },
       });
       trace.mark("response_sent");
       return json(
         finishCronRun(start, {
-          ok: true,
+          ok: !infraTimeout,
           skipped: 1,
           reason,
           job_lock: PAYMENT_EXPIRATION_LOCK_JOB,
@@ -143,7 +149,8 @@ async function handle(req: NextRequest) {
           phases: trace.phases,
           vercel_max_duration_sec: CRON_VERCEL_MAX_DURATION_SEC,
           job_budget_ms: CRON_JOB_BUDGET_MS,
-        })
+        }),
+        infraTimeout ? 504 : 200
       );
     }
 

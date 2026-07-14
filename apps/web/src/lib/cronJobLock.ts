@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
+import { buildCronSupabaseAdmin } from "@/lib/cronSupabase";
 import {
   CRON_LOCK_TIMEOUT_MS,
   CronTimeoutError,
-  withTimeout,
 } from "@/lib/cronTimeouts";
 
 export type CronLockAcquisition =
@@ -15,6 +15,22 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+/**
+ * Prefer a client whose fetch abort matches lock timeout.
+ * Falls back to the caller client (unit tests / missing env).
+ * Avoid Promise.race shorter than fetch abort: that orphans DB locks.
+ */
+function lockRpcClient(
+  fallback: SupabaseClient,
+  timeoutMs: number
+): SupabaseClient {
+  try {
+    return buildCronSupabaseAdmin(timeoutMs);
+  } catch {
+    return fallback;
+  }
+}
+
 export async function acquireCronJobLock(
   supabaseAdmin: SupabaseClient,
   jobName: string,
@@ -23,20 +39,14 @@ export async function acquireCronJobLock(
   const lockedBy = String(opts?.lockedBy ?? `cron:${randomUUID()}`).trim();
   const ttlSeconds = Math.max(30, Number(opts?.ttlSeconds ?? 300) || 300);
   const timeoutMs = Math.max(500, Number(opts?.timeoutMs ?? CRON_LOCK_TIMEOUT_MS) || CRON_LOCK_TIMEOUT_MS);
+  const client = lockRpcClient(supabaseAdmin, timeoutMs);
 
   try {
-    const rpcResult = await withTimeout(
-      Promise.resolve(
-        supabaseAdmin.rpc("try_acquire_cron_job_lock", {
-          p_job_name: jobName,
-          p_locked_by: lockedBy,
-          p_ttl_seconds: ttlSeconds,
-        })
-      ),
-      timeoutMs,
-      "lock_timeout"
-    );
-    const { data, error } = rpcResult;
+    const { data, error } = await client.rpc("try_acquire_cron_job_lock", {
+      p_job_name: jobName,
+      p_locked_by: lockedBy,
+      p_ttl_seconds: ttlSeconds,
+    });
 
     if (error) {
       return { ok: false, error: error.message };
@@ -62,7 +72,19 @@ export async function acquireCronJobLock(
     };
   } catch (error) {
     if (error instanceof CronTimeoutError) {
-      return { ok: false, error: "lock_timeout" };
+      // Best-effort: if the server committed after our abort, drop our lease.
+      await releaseCronJobLock(
+        supabaseAdmin,
+        jobName,
+        lockedBy,
+        "acquire_client_timeout_cleanup"
+      );
+      // Prefer the underlying fetch code so ops can tell lock race vs Supabase hang.
+      return {
+        ok: false,
+        error:
+          error.code === "supabase_timeout" ? "supabase_timeout" : "lock_timeout",
+      };
     }
     return {
       ok: false,
@@ -78,18 +100,12 @@ export async function releaseCronJobLock(
   errorMessage?: string | null
 ): Promise<void> {
   try {
-    const releaseResult = await withTimeout(
-      Promise.resolve(
-        supabaseAdmin.rpc("release_cron_job_lock", {
-          p_job_name: jobName,
-          p_locked_by: lockedBy,
-          p_error: errorMessage ?? null,
-        })
-      ),
-      CRON_LOCK_TIMEOUT_MS,
-      "lock_timeout"
-    );
-    const { error } = releaseResult;
+    const client = lockRpcClient(supabaseAdmin, CRON_LOCK_TIMEOUT_MS);
+    const { error } = await client.rpc("release_cron_job_lock", {
+      p_job_name: jobName,
+      p_locked_by: lockedBy,
+      p_error: errorMessage ?? null,
+    });
 
     if (error) {
       console.error("[cronJobLock] release failed", {
@@ -139,20 +155,22 @@ export async function forceReleaseExpiredCronJobLock(
   supabaseAdmin: SupabaseClient,
   jobName: string
 ): Promise<void> {
-  await withTimeout(
-    Promise.resolve(
-      supabaseAdmin
-        .from("cron_job_locks")
-        .update({
-          locked_by: null,
-          locked_at: null,
-          locked_until: null,
-          last_error: "force_clear_expired_or_ops",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("job_name", jobName)
-    ),
-    CRON_LOCK_TIMEOUT_MS,
-    "lock_timeout"
-  );
+  try {
+    const client = lockRpcClient(supabaseAdmin, CRON_LOCK_TIMEOUT_MS);
+    await client
+      .from("cron_job_locks")
+      .update({
+        locked_by: null,
+        locked_at: null,
+        locked_until: null,
+        last_error: "force_clear_expired_or_ops",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("job_name", jobName);
+  } catch (error) {
+    console.error("[cronJobLock] force release timed out or failed", {
+      jobName,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
