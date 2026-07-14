@@ -42,6 +42,12 @@ jobs:
       - name: Verify migration files
         run: node scripts/verify-migration-files.mjs
 
+      - name: Verify profiles signup role guard
+        run: node scripts/verify-profiles-signup-role-guard.mjs
+
+      - name: Cron HTTP evaluator unit test
+        run: node scripts/evaluateCronHttpResult.test.mjs
+
       - name: Lint
         run: pnpm --dir apps/mobile lint && pnpm --dir apps/web lint
 
@@ -51,5 +57,11 @@ jobs:
       - name: Web critical tests
         run: pnpm --dir apps/web test:ci
 
+      - name: Mobile maps tests
+        run: pnpm --dir apps/mobile test:maps
+
       - name: Mobile navigation tests
         run: pnpm --dir apps/mobile test:navigation
+
+      - name: Web Mapbox places parse tests
+        run: pnpm --dir apps/web test:maps-places-parse

@@ -1147,6 +1147,10 @@ export function DriverHomeScreen() {
             applyDriverCoordinates(pos.coords.latitude, pos.coords.longitude);
           },
         );
+        if (cancelled) {
+          sub.remove();
+          sub = null;
+        }
       } catch (e) {
         console.log("Erreur GPS driver:", e);
         if (!cancelled && mountedRef.current) setGpsLoading(false);

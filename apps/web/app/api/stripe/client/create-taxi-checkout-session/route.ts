@@ -12,7 +12,6 @@ import {
 import { assertTaxiCheckoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import { snapshotFromRideRow } from "@/lib/taxiFinalPrice";
-import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 import {
   alignTaxiAmountCentsForZeroDecimal,
   formatTaxiCheckoutAmount,
@@ -267,7 +266,11 @@ export async function POST(req: NextRequest) {
     }
 
     const priceSnapshot = snapshotFromRideRow(ride);
-    if (priceSnapshot.total_cents !== amountCents) {
+    const alignedSnapshotTotal = alignTaxiAmountCentsForZeroDecimal(
+      currency,
+      priceSnapshot.total_cents
+    );
+    if (alignedSnapshotTotal !== amountCents) {
       return taxiJson(
         {
           ok: false,
@@ -275,6 +278,7 @@ export async function POST(req: NextRequest) {
           message: "Ride total does not match computed price snapshot",
           ride_total_cents: amountCents,
           snapshot_total_cents: priceSnapshot.total_cents,
+          aligned_snapshot_total_cents: alignedSnapshotTotal,
         },
         409
       );
@@ -305,42 +309,19 @@ export async function POST(req: NextRequest) {
       .eq("id", taxiRideId)
       .neq("payment_status", "paid");
 
-    const serviceFeeCents = Math.round(
-      Number((ride as { service_fee_cents?: number }).service_fee_cents ?? 0)
-    );
-    const subtotalCents = Math.round(
-      Number((ride as { subtotal_cents?: number }).subtotal_cents ?? 0)
-    );
-    const checkoutLineItems =
-      totalDiscountCents > 0
-        ? [
-            {
-              quantity: 1,
-              price_data: {
-                currency,
-                unit_amount: stripeUnitAmount,
-                product_data: {
-                  name: `MMD Taxi ${taxiRideId.slice(0, 8)}`,
-                  description: `Taxi ride payment • ${checkoutLabel}`,
-                },
-              },
-            },
-          ]
-        : buildStripeCheckoutLineItems({
-            currency,
-            productName: `MMD Taxi ${taxiRideId.slice(0, 8)}`,
-            breakdown: {
-              subtotalCents,
-              serviceFeeCents,
-              taxCents,
-              totalCents: amountCents,
-            },
-            labels: {
-              subtotal: "Ride fare",
-              serviceFee: "Service fee",
-              tax: "Tax",
-            },
-          });
+    const checkoutLineItems = [
+      {
+        quantity: 1,
+        price_data: {
+          currency,
+          unit_amount: stripeUnitAmount,
+          product_data: {
+            name: `MMD Taxi ${taxiRideId.slice(0, 8)}`,
+            description: `Taxi ride payment • ${checkoutLabel}`,
+          },
+        },
+      },
+    ];
 
     const session = await stripe.checkout.sessions.create(
       {

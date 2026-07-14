@@ -3,8 +3,8 @@ import { createClient, type User } from "@supabase/supabase-js";
 import { checkRateLimit, getRequestClientIp } from "@/lib/apiRateLimit";
 
 const RATE_WINDOW_MS = 60_000;
-const MAX_REQUESTS_PER_USER = 60;
-const MAX_REQUESTS_PER_IP = 20;
+const MAX_REQUESTS_PER_USER = 120;
+const MAX_REQUESTS_PER_IP = 120;
 
 function isRateLimited(userId: string, ip: string): boolean {
   const user = checkRateLimit({

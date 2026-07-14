@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
@@ -59,6 +59,8 @@ export default function TaxiQuoteScreen() {
   const params = route.params ?? ({} as QuoteRoute["params"]);
   const { t } = useTranslation();
   const [paying, setPaying] = useState(false);
+  const payingRef = useRef(false);
+  const quoteRequestIdRef = useRef(0);
   const [paymentPickerVisible, setPaymentPickerVisible] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
@@ -172,6 +174,8 @@ export default function TaxiQuoteScreen() {
   }, [params.stops, params.route?.stops]);
 
   useEffect(() => {
+    let cancelled = false;
+    const requestId = ++quoteRequestIdRef.current;
     void quoteTaxiRide({
       pickupAddress,
       dropoffAddress,
@@ -187,6 +191,7 @@ export default function TaxiQuoteScreen() {
       stops: rideStops,
     })
       .then((result) => {
+        if (cancelled || requestId !== quoteRequestIdRef.current) return;
         if (result?.ok && result.quote) {
           setQuoteState(result.quote);
           setSharedDiscountCents(Number(result.quote.shared_discount_cents ?? 0));
@@ -196,9 +201,13 @@ export default function TaxiQuoteScreen() {
         }
       })
       .catch(() => {
+        if (cancelled || requestId !== quoteRequestIdRef.current) return;
         setQuoteState(params.quote);
         setSharedDiscountCents(0);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [
     sharedRide,
     countryCode,
@@ -284,7 +293,26 @@ export default function TaxiQuoteScreen() {
   }
 
   async function handleConfirmAndPay() {
-    if (paying) return;
+    if (paying || payingRef.current) return;
+    const pickupLat = Number(routeInfo?.pickupLat);
+    const pickupLng = Number(routeInfo?.pickupLng);
+    const dropoffLat = Number(routeInfo?.dropoffLat);
+    const dropoffLng = Number(routeInfo?.dropoffLng);
+    const hasCoords =
+      Number.isFinite(pickupLat) &&
+      Number.isFinite(pickupLng) &&
+      Number.isFinite(dropoffLat) &&
+      Number.isFinite(dropoffLng);
+    const hasLocationIds = Boolean(pickupLocationId || dropoffLocationId);
+    if (!hasCoords && !hasLocationIds && !pickupAddress.trim()) {
+      Alert.alert(
+        t("taxi.quote.payment", "Payment"),
+        t("taxi.quote.missingRoute", "Pickup and dropoff are incomplete")
+      );
+      return;
+    }
+
+    payingRef.current = true;
     setPaying(true);
     try {
       const created = await createTaxiRide({
@@ -292,10 +320,10 @@ export default function TaxiQuoteScreen() {
         dropoffAddress,
         pickupLocationId: pickupLocationId || undefined,
         dropoffLocationId: dropoffLocationId || undefined,
-        pickupLat: Number(routeInfo?.pickupLat),
-        pickupLng: Number(routeInfo?.pickupLng),
-        dropoffLat: Number(routeInfo?.dropoffLat),
-        dropoffLng: Number(routeInfo?.dropoffLng),
+        pickupLat: hasCoords ? pickupLat : undefined,
+        pickupLng: hasCoords ? pickupLng : undefined,
+        dropoffLat: hasCoords ? dropoffLat : undefined,
+        dropoffLng: hasCoords ? dropoffLng : undefined,
         vehicleClass: vehicleClass as TaxiVehicleClass,
         countryCode,
         expectedQuoteTotalCents: netTotalCents,
@@ -335,6 +363,7 @@ export default function TaxiQuoteScreen() {
         });
         setPaymentMethods(methods);
         setLoadingPaymentMethods(false);
+        payingRef.current = false;
         setPaying(false);
         return;
       }
@@ -365,6 +394,7 @@ export default function TaxiQuoteScreen() {
         toUserFacingError(e, t("taxi.quote.paymentFailed", "Unable to start payment"))
       );
     } finally {
+      payingRef.current = false;
       setPaying(false);
     }
   }

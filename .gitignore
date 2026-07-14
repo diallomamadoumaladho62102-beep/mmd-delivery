@@ -27,6 +27,11 @@ docs/production/docs/
 docs/production/final-certification.env
 docs/production/store-submission.env
 google-play-service-account.json
+google-services.json
+GoogleService-Info.plist
+*.pem
+.env.development
+.env.staging
 docs/production/reports/
 docs/production/tools/
 *.keystore

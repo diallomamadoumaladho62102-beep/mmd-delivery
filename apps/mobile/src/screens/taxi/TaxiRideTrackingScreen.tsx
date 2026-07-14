@@ -69,9 +69,11 @@ export default function TaxiRideTrackingScreen() {
     String(ride?.driver_id ?? "") || null
   );
 
+  const confirmingPaymentRef = useRef(false);
+
   const maybeConfirmPayment = useCallback(
     async (rideRow: Record<string, unknown> | null) => {
-      if (!rideRow || confirmingPayment) return rideRow;
+      if (!rideRow || confirmingPaymentRef.current) return rideRow;
 
       const paymentStatus = String(rideRow.payment_status ?? "").toLowerCase();
       const rideStatus = String(rideRow.status ?? "").toLowerCase();
@@ -93,6 +95,7 @@ export default function TaxiRideTrackingScreen() {
         return rideRow;
       }
 
+      confirmingPaymentRef.current = true;
       setConfirmingPayment(true);
 
       try {
@@ -103,10 +106,11 @@ export default function TaxiRideTrackingScreen() {
         console.log("[TaxiRideTracking] confirm retry:", e);
         return rideRow;
       } finally {
+        confirmingPaymentRef.current = false;
         setConfirmingPayment(false);
       }
     },
-    [rideId, confirmingPayment]
+    [rideId]
   );
 
   const load = useCallback(async () => {

@@ -41,6 +41,7 @@ export function useLiveDriverLocation(driverId?: string | null) {
         table: "driver_locations",
         filter: `driver_id=eq.${driverId}`,
         callback: (payload) => {
+          if (!mounted) return;
           const next = (payload as { new?: Record<string, unknown> }).new;
           if (next?.lat != null && next?.lng != null) setLocation(next as DriverLocation);
         },

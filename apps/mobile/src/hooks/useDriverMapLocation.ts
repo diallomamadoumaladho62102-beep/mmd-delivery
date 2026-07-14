@@ -123,7 +123,7 @@ export function useDriverMapLocation(enabled = true): DriverMapLocationState {
         applyPosition(current);
 
         subscriptionRef.current?.remove();
-        subscriptionRef.current = await Location.watchPositionAsync(
+        const nextSub = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.BestForNavigation,
             timeInterval: 2000,
@@ -134,6 +134,11 @@ export function useDriverMapLocation(enabled = true): DriverMapLocationState {
             applyPosition(pos);
           },
         );
+        if (cancelled || !mountedRef.current) {
+          nextSub.remove();
+          return;
+        }
+        subscriptionRef.current = nextSub;
       } catch (error) {
         if (!mountedRef.current) return;
         setErrorMessage(

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   View,
@@ -91,6 +91,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const actionLockRef = useRef(false);
 
   const taxiEnabled = features?.taxi_enabled === true;
   const showPanel = taxiEnabled && driverApproved;
@@ -164,6 +165,8 @@ export function DriverTaxiPanel({ isOnline }: Props) {
   }
 
   async function handleAccept(offer: TaxiOfferRow) {
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
     setActionId(offer.id);
     try {
       const result = await acceptTaxiOffer(offer.id);
@@ -208,11 +211,14 @@ export function DriverTaxiPanel({ isOnline }: Props) {
           : toUserFacingError(e, "Accept failed")
       );
     } finally {
+      actionLockRef.current = false;
       setActionId(null);
     }
   }
 
   async function handleReject(offer: TaxiOfferRow) {
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
     setActionId(offer.id);
     try {
       await rejectTaxiOffer(offer.id);
@@ -220,13 +226,15 @@ export function DriverTaxiPanel({ isOnline }: Props) {
     } catch (e: unknown) {
       Alert.alert("Taxi", toUserFacingError(e, "Reject failed"));
     } finally {
+      actionLockRef.current = false;
       setActionId(null);
     }
   }
 
   async function lifecycle(action: "arrive" | "start" | "complete") {
     const rideId = String(activeRide?.id ?? "");
-    if (!rideId) return;
+    if (!rideId || actionLockRef.current) return;
+    actionLockRef.current = true;
 
     setActionId(rideId);
     try {
@@ -237,6 +245,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
     } catch (e: unknown) {
       Alert.alert("Taxi", toUserFacingError(e, "Action failed"));
     } finally {
+      actionLockRef.current = false;
       setActionId(null);
     }
   }
@@ -381,7 +390,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
             <Text style={styles.sectionTitle}>Taxi offers</Text>
             {activeOffers.slice(0, 3).map((offer) => {
               const ride = offer.taxi_rides;
-              const busy = actionId === offer.id;
+              const busy = actionId != null;
               return (
                 <View key={offer.id} style={styles.offerCard}>
                   {offer.is_favorite_dispatch || offer.wave === 0 ? (

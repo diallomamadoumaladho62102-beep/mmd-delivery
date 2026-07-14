@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   Text,
@@ -37,8 +37,10 @@ export default function TaxiScheduledBookScreen() {
   const [dropoff, setDropoff] = useState("");
   const [when, setWhen] = useState("");
   const [loading, setLoading] = useState(false);
+  const bookingInFlightRef = useRef(false);
 
   async function handleBook() {
+    if (bookingInFlightRef.current) return;
     if (!market.scopeResolved || !market.countryCode) {
       Alert.alert(
         t("taxi.scheduledBook.title", "Schedule a ride"),
@@ -47,6 +49,7 @@ export default function TaxiScheduledBookScreen() {
       return;
     }
 
+    bookingInFlightRef.current = true;
     setLoading(true);
     try {
       const scheduledPickupAt = new Date(when).toISOString();
@@ -86,6 +89,7 @@ export default function TaxiScheduledBookScreen() {
         toUserFacingError(e, t("taxi.scheduledBook.bookingFailed", "Booking failed"))
       );
     } finally {
+      bookingInFlightRef.current = false;
       setLoading(false);
     }
   }

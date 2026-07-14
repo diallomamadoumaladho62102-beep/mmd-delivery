@@ -12,8 +12,14 @@ const DRIVER_LOCATION_TASK = "MMD_DRIVER_BACKGROUND_LOCATION_TASK";
 const KEEP_AWAKE_TAG = "mmd-driver-location-tracking";
 
 let isTrackingStarted = false;
+let trackingStartInFlight: Promise<void> | null = null;
 let locationSubscription: Location.LocationSubscription | null = null;
 let appStateSubscription: { remove: () => void } | null = null;
+
+/** True while presence GPS (Home online) is active — Order Details should not open a second watch. */
+export function isDriverPresenceTrackingActive(): boolean {
+  return isTrackingStarted || trackingStartInFlight != null;
+}
 
 type TrackingOptions = {
   intervalMs?: number;
@@ -317,59 +323,85 @@ export async function startDriverLocationTracking(
 ) {
   const intervalMs = options.intervalMs ?? 5000;
 
-  try {
-    if (isTrackingStarted) {
-      logInfo("Tracking déjà actif, on ne relance pas.");
-      return;
-    }
-
-    const user = await getAuthenticatedDriverUser();
-
-    if (!user) {
-      logError("Aucun utilisateur chauffeur, tracking annulé.");
-      return;
-    }
-
-    const driverId = user.id;
-    const driverEmail = user.email ?? null;
-
-    logInfo("Driver utilisé pour le tracking:", driverId, "-", driverEmail);
-
-    const permissions = await requestLocationPermissions();
-
-    if (!permissions.foregroundGranted) {
-      return;
-    }
-
-    await updateDriverOnlineStatus(driverId, true);
-    await startKeepAwake();
-    subscribeAppStateForKeepAwake();
-
-    const current = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-
-    await sendDriverLocationToSupabase({
-      driver_id: driverId,
-      lat: current.coords.latitude,
-      lng: current.coords.longitude,
-      updated_at: new Date().toISOString(),
-    });
-
-    await startForegroundTracking(driverId, intervalMs);
-
-    if (permissions.backgroundGranted) {
-      await startBackgroundTracking(driverId, intervalMs);
-    }
-
-    isTrackingStarted = true;
-
-    logSuccess(
-      `Tracking GPS chauffeur démarré pour ${driverId} (intervalle = ${intervalMs}ms)`,
-    );
-  } catch (e: any) {
-    logError("Erreur startDriverLocationTracking:", e?.message ?? String(e));
+  if (isTrackingStarted) {
+    logInfo("Tracking déjà actif, on ne relance pas.");
+    return;
   }
+  if (trackingStartInFlight) {
+    await trackingStartInFlight;
+    return;
+  }
+
+  trackingStartInFlight = (async () => {
+    try {
+      if (isTrackingStarted) {
+        return;
+      }
+
+      const user = await getAuthenticatedDriverUser();
+
+      if (!user) {
+        logError("Aucun utilisateur chauffeur, tracking annulé.");
+        return;
+      }
+
+      const driverId = user.id;
+      const driverEmail = user.email ?? null;
+
+      logInfo("Driver utilisé pour le tracking:", driverId, "-", driverEmail);
+
+      const permissions = await requestLocationPermissions();
+
+      if (!permissions.foregroundGranted) {
+        return;
+      }
+
+      await updateDriverOnlineStatus(driverId, true);
+      await startKeepAwake();
+      subscribeAppStateForKeepAwake();
+
+      const current = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      await sendDriverLocationToSupabase({
+        driver_id: driverId,
+        lat: current.coords.latitude,
+        lng: current.coords.longitude,
+        updated_at: new Date().toISOString(),
+      });
+
+      await startForegroundTracking(driverId, intervalMs);
+
+      if (permissions.backgroundGranted) {
+        await startBackgroundTracking(driverId, intervalMs);
+      }
+
+      isTrackingStarted = true;
+
+      logSuccess(
+        `Tracking GPS chauffeur démarré pour ${driverId} (intervalle = ${intervalMs}ms)`,
+      );
+    } catch (e: any) {
+      logError("Erreur startDriverLocationTracking:", e?.message ?? String(e));
+      try {
+        if (locationSubscription) {
+          locationSubscription.remove();
+          locationSubscription = null;
+        }
+        await stopBackgroundTracking();
+        stopKeepAwake();
+        unsubscribeAppStateForKeepAwake();
+      } catch {
+        // best-effort rollback
+      }
+      isTrackingStarted = false;
+    } finally {
+      trackingStartInFlight = null;
+    }
+  })();
+
+  await trackingStartInFlight;
 }
 
 export async function stopDriverLocationTracking(options?: { setOffline?: boolean }) {
