@@ -31,6 +31,16 @@ function lockRpcClient(
   }
 }
 
+function asTimeoutCode(error: unknown): CronTimeoutError["code"] | null {
+  if (error instanceof CronTimeoutError) return error.code;
+  const message = error instanceof Error ? error.message : String(error);
+  if (/fetch_aborted_after_/i.test(message) || /supabase_timeout/i.test(message)) {
+    return "supabase_timeout";
+  }
+  if (/lock_timeout/i.test(message)) return "lock_timeout";
+  return null;
+}
+
 export async function acquireCronJobLock(
   supabaseAdmin: SupabaseClient,
   jobName: string,
@@ -49,6 +59,16 @@ export async function acquireCronJobLock(
     });
 
     if (error) {
+      const timed = asTimeoutCode(error);
+      if (timed) {
+        await releaseCronJobLock(
+          supabaseAdmin,
+          jobName,
+          lockedBy,
+          "acquire_client_timeout_cleanup"
+        );
+        return { ok: false, error: timed };
+      }
       return { ok: false, error: error.message };
     }
 
@@ -71,7 +91,8 @@ export async function acquireCronJobLock(
         typeof payload.locked_until === "string" ? payload.locked_until : null,
     };
   } catch (error) {
-    if (error instanceof CronTimeoutError) {
+    const timed = asTimeoutCode(error);
+    if (timed) {
       // Best-effort: if the server committed after our abort, drop our lease.
       await releaseCronJobLock(
         supabaseAdmin,
@@ -79,12 +100,7 @@ export async function acquireCronJobLock(
         lockedBy,
         "acquire_client_timeout_cleanup"
       );
-      // Prefer the underlying fetch code so ops can tell lock race vs Supabase hang.
-      return {
-        ok: false,
-        error:
-          error.code === "supabase_timeout" ? "supabase_timeout" : "lock_timeout",
-      };
+      return { ok: false, error: timed };
     }
     return {
       ok: false,
