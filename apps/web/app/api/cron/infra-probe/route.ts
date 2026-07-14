@@ -17,7 +17,8 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 /** Confirmed project ceiling via sibling route /api/ai/chat (maxDuration=60). */
-export const maxDuration = CRON_VERCEL_MAX_DURATION_SEC;
+/** Confirmed ceiling for this Vercel project (same as /api/ai/chat). */
+export const maxDuration = 60;
 
 const JOB = "infra-probe";
 const LOCK = "infra-probe";

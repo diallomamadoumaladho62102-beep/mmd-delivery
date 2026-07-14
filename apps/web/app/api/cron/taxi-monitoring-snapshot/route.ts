@@ -11,7 +11,8 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = CRON_VERCEL_MAX_DURATION_SEC;
+/** Confirmed ceiling for this Vercel project (same as /api/ai/chat). */
+export const maxDuration = 60;
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });

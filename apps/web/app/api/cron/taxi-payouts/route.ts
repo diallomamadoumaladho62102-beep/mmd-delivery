@@ -16,7 +16,8 @@ import { evaluateTaxiPayoutEligibility } from "@/lib/taxiPayoutEligibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = CRON_VERCEL_MAX_DURATION_SEC;
+/** Confirmed ceiling for this Vercel project (same as /api/ai/chat). */
+export const maxDuration = 60;
 
 const JOB = "taxi-payouts";
 const DEFAULT_HOLD_HOURS = 24;
