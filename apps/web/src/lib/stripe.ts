@@ -1,18 +1,26 @@
 import Stripe from "stripe";
 
 const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY ?? "").trim();
-const isVercelProduction =
-  String(process.env.VERCEL_ENV ?? "").trim() === "production" ||
-  String(process.env.NODE_ENV ?? "").trim() === "production";
+
+/**
+ * Only Vercel Production runtime (`VERCEL_ENV=production`).
+ * Do NOT use NODE_ENV: Next.js sets NODE_ENV=production for Preview builds too,
+ * which previously made Dependabot/Preview deploys throw when STRIPE was sk_test.
+ */
+const isVercelProductionRuntime =
+  String(process.env.VERCEL_ENV ?? "").trim() === "production";
 
 if (
-  isVercelProduction &&
+  isVercelProductionRuntime &&
   stripeSecretKey &&
   !stripeSecretKey.startsWith("sk_live_")
 ) {
-  throw new Error(
-    "[MMD] Production requires STRIPE_SECRET_KEY=sk_live_*. " +
-      "A sk_test_ key would create test-mode Connect accounts and TEST BANK onboarding.",
+  // Soft warning: Production is currently provisioned with sk_test for controlled
+  // payment validation. Hard-failing here would 500 every Stripe import path.
+  // Re-enable a hard throw when Live keys are restored on Vercel Production.
+  console.error(
+    "[MMD] WARNING: Vercel production STRIPE_SECRET_KEY is not sk_live_*. " +
+      "Connect onboarding and bank flows will be TEST mode until Live keys are restored.",
   );
 }
 
