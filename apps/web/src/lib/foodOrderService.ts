@@ -110,9 +110,16 @@ export async function createFoodOrderServerSide(
       tax: pricing.tax,
       discounts: pricing.discounts,
       total: pricing.total,
-      // grand_total is GENERATED ALWAYS in production (mirrors total).
-      // Inserting a value raises: cannot insert a non-DEFAULT value into column "grand_total".
-      total_cents: pricing.totalCents,
+      // Feed generated grand_total (items_subtotal + tax_amount + delivery_fee - discounts)
+      items_subtotal: pricing.subtotal,
+      tax_amount: pricing.tax,
+      // grand_total and total_cents are GENERATED ALWAYS in production.
+      // Inserting either raises: cannot insert a non-DEFAULT value into column "...".
+      // total_cents = GREATEST(0, subtotal_cents + delivery_fee_cents + taxes_cents)
+      subtotal_cents: Math.round(pricing.subtotal * 100),
+      delivery_fee_cents: Math.round(pricing.deliveryFee * 100),
+      taxes_cents: Math.round(pricing.tax * 100),
+      tax_cents: Math.round(pricing.tax * 100),
       service_fee: pricing.serviceFee,
       service_fee_cents: pricing.serviceFeeCents,
       service_fee_pct: pricing.serviceFeePct,
