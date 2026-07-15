@@ -914,13 +914,33 @@ export async function POST(req: NextRequest) {
     } catch (e: unknown) {
       await rollbackToUnpaid(supabaseAdmin, orderId);
 
+      const message = getErrorMessage(e);
       console.error("[create-checkout-session] stripe create failed", {
         order_id: orderId,
         user_id: user.id,
-        message: getErrorMessage(e),
+        message,
       });
 
-      return json({ error: "Stripe session create failed" }, 500);
+      // Surface a short Stripe error class to callers (no secrets).
+      const safeHint =
+        /api.?key|authentication/i.test(message)
+          ? "stripe_auth"
+          : /amount|currency|line_items|unit_amount/i.test(message)
+            ? "stripe_amount"
+            : /expires_at|expiration/i.test(message)
+              ? "stripe_expires"
+              : /idempotency/i.test(message)
+                ? "stripe_idempotency"
+                : "stripe_create";
+
+      return json(
+        {
+          error: "Stripe session create failed",
+          code: safeHint,
+          detail: message.slice(0, 180),
+        },
+        500
+      );
     }
 
     const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
