@@ -5,6 +5,7 @@ import {
   assertQuoteMatchesStripeAmount,
   computeDeliveryPricing,
   DeliveryPricingConfigError,
+  DELIVERY_FEE_RATES_ZERO_CODE,
   DELIVERY_SHARE_PCT_INVALID_CODE,
   evaluateDeliveryFeeAbnormality,
   explainDeliveryFee,
@@ -13,6 +14,7 @@ import {
   normalizeDeliveryPricingConfig,
   normalizeSharePctScale,
   requireDeliverySharePctPair,
+  requirePositiveDeliveryFeeRates,
   round2,
 } from "./deliveryPricing";
 
@@ -280,6 +282,44 @@ test("Mapbox meters→miles conversion has no km/miles confusion", () => {
   ).deliveryFee;
   assert.ok(wrongFee > rightFee * 100);
   assert.ok(Math.abs(rightFee - 25.45) < 0.05);
+});
+
+test("all-zero delivery rates are refused (no silent free delivery)", () => {
+  expectThrows(
+    () =>
+      requirePositiveDeliveryFeeRates({
+        configKey: "food_default",
+        baseFare: 0,
+        perMile: 0,
+        perMinute: 0,
+      }),
+    DELIVERY_FEE_RATES_ZERO_CODE
+  );
+});
+
+test("food_default 70/30 with engine rates prices a 2.06mi / 9min trip", () => {
+  requirePositiveDeliveryFeeRates({
+    configKey: "food_default",
+    baseFare: 2.5,
+    perMile: 0.9,
+    perMinute: 0.15,
+  });
+  const priced = computeDeliveryPricing(
+    { distanceMiles: 2.06, durationMinutes: 9 },
+    {
+      baseFare: 2.5,
+      perMile: 0.9,
+      perMinute: 0.15,
+      minFare: 3.49,
+      driverSharePct: 70,
+      platformSharePct: 30,
+    }
+  );
+  // 2.50 + 2.06*0.90 + 9*0.15 = 5.704 → 5.70; minFare does not bind
+  assert.equal(priced.deliveryFee, 5.7);
+  assert.equal(priced.platformFee, 1.71);
+  assert.equal(priced.driverPayout, 3.99);
+  assert.equal(round2(priced.platformFee + priced.driverPayout), priced.deliveryFee);
 });
 
 console.log("deliveryPricing.test.ts OK");

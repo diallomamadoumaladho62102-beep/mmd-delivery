@@ -6,8 +6,10 @@ import {
 } from "@/lib/geoTrust";
 import {
   computeDeliveryPricing,
+  DEFAULT_DELIVERY_PRICING_CONFIG,
   evaluateDeliveryFeeAbnormality,
   requireDeliverySharePctPair,
+  requirePositiveDeliveryFeeRates,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
@@ -322,12 +324,31 @@ async function getActiveFoodDeliveryPricingConfig(
     configKey,
   });
 
+  // Explicit zeros from Admin are NOT treated as "missing" defaults.
+  // Missing/null uses engine defaults; all-zero rates fail closed.
+  const baseFare = roundFoodMoney(
+    data.delivery_fee_base == null
+      ? DEFAULT_DELIVERY_PRICING_CONFIG.baseFare
+      : toFiniteFoodNumber(data.delivery_fee_base)
+  );
+  const perMile = roundFoodMoney(
+    data.delivery_fee_per_mile == null
+      ? DEFAULT_DELIVERY_PRICING_CONFIG.perMile
+      : toFiniteFoodNumber(data.delivery_fee_per_mile)
+  );
+  const perMinute = roundFoodMoney(
+    data.delivery_fee_per_minute == null
+      ? DEFAULT_DELIVERY_PRICING_CONFIG.perMinute
+      : toFiniteFoodNumber(data.delivery_fee_per_minute)
+  );
+  requirePositiveDeliveryFeeRates({ configKey, baseFare, perMile, perMinute });
+
   return {
     configKey,
-    baseFare: roundFoodMoney(toFiniteFoodNumber(data.delivery_fee_base, 2.5)),
-    perMile: roundFoodMoney(toFiniteFoodNumber(data.delivery_fee_per_mile, 0.9)),
-    perMinute: roundFoodMoney(toFiniteFoodNumber(data.delivery_fee_per_minute, 0.15)),
-    minFare: 0,
+    baseFare,
+    perMile,
+    perMinute,
+    minFare: DEFAULT_DELIVERY_PRICING_CONFIG.minFare,
     driverSharePct,
     platformSharePct,
   };

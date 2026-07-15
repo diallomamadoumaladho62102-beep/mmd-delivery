@@ -19,6 +19,7 @@ export type DeliveryPricingConfig = {
 };
 
 export const DELIVERY_SHARE_PCT_INVALID_CODE = "delivery_share_pct_invalid";
+export const DELIVERY_FEE_RATES_ZERO_CODE = "delivery_fee_rates_zero";
 export const DELIVERY_FEE_ABNORMAL_CODE = "delivery_fee_abnormal";
 
 export class DeliveryPricingConfigError extends Error {
@@ -33,7 +34,7 @@ export class DeliveryPricingConfigError extends Error {
   }
 }
 
-const DEFAULT_DELIVERY_PRICING_CONFIG: Required<DeliveryPricingConfig> = {
+export const DEFAULT_DELIVERY_PRICING_CONFIG: Required<DeliveryPricingConfig> = {
   baseFare: 2.5,
   perMile: 0.9,
   perMinute: 0.15,
@@ -41,6 +42,37 @@ const DEFAULT_DELIVERY_PRICING_CONFIG: Required<DeliveryPricingConfig> = {
   driverSharePct: 80,
   platformSharePct: 20,
 };
+
+/**
+ * Paid Food/Delivery must never silently price free delivery from zero Admin rates.
+ * Explicit free delivery requires a dedicated promo / rule path, not zeroed rate fields.
+ */
+export function requirePositiveDeliveryFeeRates(input: {
+  configKey?: string;
+  baseFare: number;
+  perMile: number;
+  perMinute: number;
+}): void {
+  const baseFare = Number(input.baseFare);
+  const perMile = Number(input.perMile);
+  const perMinute = Number(input.perMinute);
+  assertFiniteNonNegative(baseFare, "baseFare");
+  assertFiniteNonNegative(perMile, "perMile");
+  assertFiniteNonNegative(perMinute, "perMinute");
+
+  if (baseFare <= 0 && perMile <= 0 && perMinute <= 0) {
+    throw new DeliveryPricingConfigError(
+      DELIVERY_FEE_RATES_ZERO_CODE,
+      `Active pricing_config ${input.configKey ?? "(unknown)"} has delivery fee rates set to zero. Refusing free delivery without an explicit promo rule.`,
+      {
+        configKey: input.configKey ?? null,
+        baseFare,
+        perMile,
+        perMinute,
+      }
+    );
+  }
+}
 
 /** Soft ceiling: fees above this vs computed raw fare or absolute level need audit. */
 export const DELIVERY_FEE_ABNORMAL_MULTIPLIER = 8;
@@ -506,5 +538,3 @@ export function assertQuoteMatchesStripeAmount(params: {
     );
   }
 }
-
-export { DEFAULT_DELIVERY_PRICING_CONFIG };

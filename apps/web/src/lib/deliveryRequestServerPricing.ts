@@ -2,7 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDistanceAndEta } from "@/lib/mapboxRoute";
 import {
   computeDeliveryPricing,
+  DEFAULT_DELIVERY_PRICING_CONFIG,
   requireDeliverySharePctPair,
+  requirePositiveDeliveryFeeRates,
   type DeliveryPricingConfig,
 } from "@/lib/deliveryPricing";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
@@ -149,12 +151,29 @@ async function getActiveErrandDeliveryPricingConfig(
     configKey,
   });
 
+  const baseFare = roundPlatformMoney(
+    data.delivery_fee_base == null
+      ? DEFAULT_DELIVERY_PRICING_CONFIG.baseFare
+      : toFiniteNumber(data.delivery_fee_base)
+  );
+  const perMile = roundPlatformMoney(
+    data.delivery_fee_per_mile == null
+      ? DEFAULT_DELIVERY_PRICING_CONFIG.perMile
+      : toFiniteNumber(data.delivery_fee_per_mile)
+  );
+  const perMinute = roundPlatformMoney(
+    data.delivery_fee_per_minute == null
+      ? DEFAULT_DELIVERY_PRICING_CONFIG.perMinute
+      : toFiniteNumber(data.delivery_fee_per_minute)
+  );
+  requirePositiveDeliveryFeeRates({ configKey, baseFare, perMile, perMinute });
+
   return {
     configKey,
-    baseFare: roundPlatformMoney(toFiniteNumber(data.delivery_fee_base, 2.5)),
-    perMile: roundPlatformMoney(toFiniteNumber(data.delivery_fee_per_mile, 0.9)),
-    perMinute: roundPlatformMoney(toFiniteNumber(data.delivery_fee_per_minute, 0.15)),
-    minFare: 0,
+    baseFare,
+    perMile,
+    perMinute,
+    minFare: DEFAULT_DELIVERY_PRICING_CONFIG.minFare,
     driverSharePct,
     platformSharePct,
   };
