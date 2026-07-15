@@ -5,6 +5,10 @@ import {
   AdminAccessError,
   assertCanRetryPayout,
 } from "@/lib/adminServer";
+import {
+  isPaymentSettlementFailure,
+  requirePaymentIntentSucceeded,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -219,7 +223,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const paymentIntentId = resolvePaymentIntentIdFromSession(session);
+    const paymentIntentIdRaw = resolvePaymentIntentIdFromSession(session);
     const existingOrder = await getOrderForSync(supabaseAdmin, orderId);
 
     if (!existingOrder) {
@@ -250,115 +254,116 @@ export async function POST(req: NextRequest) {
 
     if (
       isNonEmptyString(existingOrder.stripe_payment_intent_id) &&
-      isNonEmptyString(paymentIntentId) &&
-      existingOrder.stripe_payment_intent_id !== paymentIntentId
+      isNonEmptyString(paymentIntentIdRaw) &&
+      existingOrder.stripe_payment_intent_id !== paymentIntentIdRaw
     ) {
       return json(
         {
           error: "Payment intent/order mismatch",
           order_id: orderId,
           session_id: sessionId,
-          payment_intent_id: paymentIntentId,
+          payment_intent_id: paymentIntentIdRaw,
           existing_payment_intent_id: existingOrder.stripe_payment_intent_id,
         },
         409
       );
     }
 
-    if (paymentStatus === "paid") {
-      const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
-        "mark_order_paid",
-        {
-          p_order_id: orderId,
-          p_session_id: sessionId,
-          p_payment_intent_id: paymentIntentId,
-        }
-      );
+    // Single source of truth: never mark paid from session.payment_status alone.
+    const settled = await requirePaymentIntentSucceeded({
+      paymentIntentId: paymentIntentIdRaw,
+      sessionId,
+      session,
+    });
 
-      if (rpcErr) {
-        logSupabaseError("[sync-session] mark_order_paid failed", rpcErr, {
+    if (isPaymentSettlementFailure(settled)) {
+      // Session not settled via PaymentIntent — optionally cancel expired sessions.
+      if (sessionStatus === "expired") {
+        const nowIso = new Date().toISOString();
+        const { error: updErr } = await supabaseAdmin
+          .from("orders")
+          .update({
+            payment_status: "unpaid",
+            status: "canceled",
+            updated_at: nowIso,
+          })
+          .eq("id", orderId)
+          .neq("payment_status", "paid");
+
+        if (updErr) {
+          logSupabaseError("[sync-session] cancel expired order failed", updErr, {
+            actor,
+            order_id: orderId,
+            session_id: sessionId,
+          });
+          return json({ error: updErr.message }, 500);
+        }
+
+        const finalOrder = await getOrderForSync(supabaseAdmin, orderId);
+        return json({
+          ok: true,
+          action: "canceled",
           actor,
           order_id: orderId,
           session_id: sessionId,
-          payment_intent_id: paymentIntentId,
+          payment_status: paymentStatus,
+          session_status: sessionStatus,
+          settlement_reason: settled.reason,
+          order_status: finalOrder?.status ?? null,
+          order_payment_status: finalOrder?.payment_status ?? null,
         });
-
-        return json({ error: rpcErr.message }, 500);
       }
 
-      const finalOrder = await getOrderForSync(supabaseAdmin, orderId);
+      return json(
+        {
+          ok: false,
+          error: "payment_not_settled",
+          reason: settled.reason,
+          order_id: orderId,
+          session_id: sessionId,
+          payment_status: paymentStatus,
+          session_status: sessionStatus,
+        },
+        409
+      );
+    }
 
-      return json({
-        ok: true,
-        action: "paid",
+    const paymentIntentId = settled.payment_intent_id;
+
+    const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
+      "mark_order_paid",
+      {
+        p_order_id: orderId,
+        p_session_id: sessionId,
+        p_payment_intent_id: paymentIntentId,
+      }
+    );
+
+    if (rpcErr) {
+      logSupabaseError("[sync-session] mark_order_paid failed", rpcErr, {
         actor,
         order_id: orderId,
         session_id: sessionId,
         payment_intent_id: paymentIntentId,
-        payment_status: paymentStatus,
-        session_status: sessionStatus,
-        order_status: finalOrder?.status ?? null,
-        order_payment_status: finalOrder?.payment_status ?? null,
-        rpcData,
-      });
-    }
-
-    const nowIso = new Date().toISOString();
-
-    const shouldCancel = sessionStatus === "expired";
-
-    const { error: updErr } = await supabaseAdmin
-      .from("orders")
-      .update({
-        payment_status: "unpaid",
-        ...(shouldCancel ? { status: "canceled" } : {}),
-        updated_at: nowIso,
-      })
-      .eq("id", orderId)
-      .neq("payment_status", "paid");
-
-    if (updErr) {
-      logSupabaseError("[sync-session] reset order failed", updErr, {
-        actor,
-        order_id: orderId,
-        session_id: sessionId,
-        payment_status: paymentStatus,
-        session_status: sessionStatus,
       });
 
-      return json({ error: updErr.message }, 500);
+      return json({ error: rpcErr.message }, 500);
     }
 
     const finalOrder = await getOrderForSync(supabaseAdmin, orderId);
 
-    if (!finalOrder) {
-      logStripeSync("[sync-session] post-update order missing", {
-        actor,
-        order_id: orderId,
-        session_id: sessionId,
-      });
-
-      return json(
-        {
-          error: "Order missing after sync update",
-          order_id: orderId,
-          session_id: sessionId,
-        },
-        500
-      );
-    }
-
     return json({
       ok: true,
-      action: shouldCancel ? "canceled" : "unpaid",
+      action: "paid",
       actor,
       order_id: orderId,
       session_id: sessionId,
       payment_intent_id: paymentIntentId,
       payment_status: paymentStatus,
       session_status: sessionStatus,
-      order_status: finalOrder.status,
-      order_payment_status: finalOrder.payment_status,
+      order_status: finalOrder?.status ?? null,
+      order_payment_status: finalOrder?.payment_status ?? null,
+      rpcData,
     });
   } catch (e: unknown) {
     const status = e instanceof AdminAccessError ? e.status : 500;

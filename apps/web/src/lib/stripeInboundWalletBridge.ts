@@ -4,6 +4,10 @@ import {
   getPaymentTransactionByExternalReference,
 } from "@/lib/paymentTransactionService";
 import type { PaymentEntityType, PaymentTransactionRow } from "@/lib/paymentTypes";
+import {
+  isPaymentSettlementFailure,
+  requirePaymentIntentSucceeded,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 export type StripeInboundWalletInput = {
   paymentIntentId: string;
@@ -34,6 +38,14 @@ export async function recordStripeInboundWalletBridge(
   const paymentIntentId = String(input.paymentIntentId ?? "").trim();
   if (!paymentIntentId) {
     return { ok: false, error: "missing_payment_intent_id" };
+  }
+
+  // Defense-in-depth: never credit wallet for a PaymentIntent that is not
+  // definitively succeeded (covers already_paid replay paths that skip
+  // settlement earlier in the caller).
+  const settled = await requirePaymentIntentSucceeded({ paymentIntentId });
+  if (isPaymentSettlementFailure(settled)) {
+    return { ok: false, error: `payment_intent_not_succeeded:${settled.reason}` };
   }
 
   if (!Number.isFinite(input.amountCents) || input.amountCents <= 0) {

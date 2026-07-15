@@ -49,23 +49,62 @@ export async function GET(req: NextRequest) {
   const auth = await requireDriver(req);
   if (!auth.ok) return auth.response;
 
-  const { data: vehicle, error: vehicleError } = await auth.supabaseAdmin
-    .from("driver_vehicles")
-    .select("*")
-    .eq("driver_user_id", auth.userId)
-    .eq("is_primary", true)
+  // Prefer active_vehicle_id; fall back to newest non-deleted vehicle.
+  const { data: profile } = await auth.supabaseAdmin
+    .from("driver_profiles")
+    .select("active_vehicle_id")
+    .eq("user_id", auth.userId)
     .maybeSingle();
 
-  if (vehicleError) {
-    logTechnicalError("driver.vehicle.get", vehicleError, { userId: auth.userId });
-    return json(
-      {
-        ok: false,
-        error: "vehicle_load_failed",
-        message: toUserFacingError(vehicleError, "Impossible de charger le véhicule pour le moment."),
-      },
-      500,
-    );
+  let vehicle: Record<string, unknown> | null = null;
+  const activeId = profile?.active_vehicle_id
+    ? String(profile.active_vehicle_id)
+    : null;
+
+  if (activeId) {
+    const { data, error } = await auth.supabaseAdmin
+      .from("driver_vehicles")
+      .select("*")
+      .eq("id", activeId)
+      .eq("driver_user_id", auth.userId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (error) {
+      logTechnicalError("driver.vehicle.get", error, { userId: auth.userId });
+      return json(
+        {
+          ok: false,
+          error: "vehicle_load_failed",
+          message: toUserFacingError(error, "Impossible de charger le véhicule pour le moment."),
+        },
+        500,
+      );
+    }
+    vehicle = (data as Record<string, unknown> | null) ?? null;
+  }
+
+  if (!vehicle) {
+    const { data, error: vehicleError } = await auth.supabaseAdmin
+      .from("driver_vehicles")
+      .select("*")
+      .eq("driver_user_id", auth.userId)
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (vehicleError) {
+      logTechnicalError("driver.vehicle.get", vehicleError, { userId: auth.userId });
+      return json(
+        {
+          ok: false,
+          error: "vehicle_load_failed",
+          message: toUserFacingError(vehicleError, "Impossible de charger le véhicule pour le moment."),
+        },
+        500,
+      );
+    }
+    vehicle = (data as Record<string, unknown> | null) ?? null;
   }
 
   const { data: eligibility, error: eligibilityError } = await auth.supabaseAdmin

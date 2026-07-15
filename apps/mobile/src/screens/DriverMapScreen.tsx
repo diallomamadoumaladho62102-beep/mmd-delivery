@@ -1177,7 +1177,7 @@ export default function DriverMapScreen() {
 
         </Mapbox.MapView>
 
-        <DriverNavigationHud visible={!!instruction} instruction={instruction} />
+        <DriverNavigationHud visible={!!instruction} instruction={instruction} locale={navLocale} />
 
         <DriverNavigationStatusBanner
           banner={statusBanner}

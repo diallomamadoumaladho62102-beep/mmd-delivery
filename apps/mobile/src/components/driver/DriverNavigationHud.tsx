@@ -10,9 +10,11 @@ import { DriverNavigationTurnArrow } from "./DriverNavigationTurnArrow";
 type Props = {
   visible: boolean;
   instruction: NavigationInstruction | null;
+  /** BCP-47 / app nav locale (e.g. "fr", "en"). Defaults to "fr". */
+  locale?: string;
 };
 
-export function DriverNavigationHud({ visible, instruction }: Props) {
+export function DriverNavigationHud({ visible, instruction, locale = "fr" }: Props) {
   const insets = useSafeAreaInsets();
 
   if (!visible || !instruction) return null;
@@ -20,7 +22,7 @@ export function DriverNavigationHud({ visible, instruction }: Props) {
   const streetName = extractStreetName(instruction.title);
   const maneuverDistance = formatManeuverDistanceLabel(
     instruction.maneuverDistanceMeters,
-    "fr",
+    locale,
   );
 
   return (

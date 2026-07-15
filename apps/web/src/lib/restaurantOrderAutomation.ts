@@ -98,16 +98,30 @@ async function validateOrderItemsAvailable(
   const items = Array.isArray(order.items_json)
     ? (order.items_json as OrderItemJson[])
     : [];
+
+  if (items.length === 0) {
+    return { ok: false, reason: "items_invalid" };
+  }
+
   const itemIds = items
     .map((line) => String(line.item_id ?? "").trim())
     .filter(Boolean);
 
-  if (itemIds.length === 0) return { ok: true };
+  if (itemIds.length === 0 || itemIds.length !== items.length) {
+    return { ok: false, reason: "items_invalid" };
+  }
 
-  const { data: menuItems, error } = await supabaseAdmin
-    .from("menu_items")
+  const restaurantUserId = String(order.restaurant_user_id ?? "").trim();
+  let query = supabaseAdmin
+    .from("restaurant_items")
     .select("id,is_available")
     .in("id", itemIds);
+
+  if (restaurantUserId) {
+    query = query.eq("restaurant_user_id", restaurantUserId);
+  }
+
+  const { data: menuItems, error } = await query;
 
   if (error) return { ok: false, reason: "menu_lookup_failed" };
 
@@ -143,7 +157,8 @@ async function isRestaurantTooBusy(
     .eq("restaurant_user_id", restaurantUserId)
     .in("status", ["accepted", "prepared"]);
 
-  if (error) return false;
+  // Fail closed: on error treat as busy so auto-accept does not continue blindly.
+  if (error) return true;
   return (count ?? 0) >= threshold;
 }
 

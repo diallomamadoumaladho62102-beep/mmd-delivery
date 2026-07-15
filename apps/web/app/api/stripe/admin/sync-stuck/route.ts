@@ -9,6 +9,10 @@ import {
   AdminAccessError,
   assertCanRetryPayout,
 } from "@/lib/adminServer";
+import {
+  isPaymentSettlementFailure,
+  requirePaymentIntentSucceeded,
+} from "@/lib/requirePaymentIntentSucceeded";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -486,10 +490,19 @@ export async function POST(req: NextRequest) {
         const stripeSessionStatus = safeLower(session.status);
 
         if (stripePaymentStatus === "paid") {
-          const paymentIntentId =
-            typeof session.payment_intent === "string"
-              ? session.payment_intent
-              : null;
+          // Never mark paid from session.payment_status alone — require a
+          // succeeded PaymentIntent (platform single source of truth).
+          const settled = await requirePaymentIntentSucceeded({
+            sessionId,
+            session,
+          });
+
+          if (isPaymentSettlementFailure(settled)) {
+            // Not yet settled — leave processing; do not count as failure.
+            continue;
+          }
+
+          const paymentIntentId = settled.payment_intent_id;
 
           if (!dryRun) {
             const { error: rpcErr } = await supabaseAdmin.rpc("mark_order_paid", {

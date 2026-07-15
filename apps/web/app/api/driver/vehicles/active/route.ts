@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   if (!vehicleId) return json({ ok: false, error: "vehicle_id_required" }, 400);
 
   const { data, error } = await auth.supabaseAdmin.rpc("set_driver_active_vehicle", {
+    p_driver_user_id: auth.userId,
     p_vehicle_id: vehicleId,
   });
 

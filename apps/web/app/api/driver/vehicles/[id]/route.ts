@@ -156,7 +156,7 @@ export async function DELETE(
     return json({ ok: false, error: "active_ride_in_progress" }, 400);
   }
 
-  const { error } = await auth.supabaseAdmin
+  const { data: deletedRows, error } = await auth.supabaseAdmin
     .from("driver_vehicles")
     .update({
       deleted_at: new Date().toISOString(),
@@ -165,7 +165,9 @@ export async function DELETE(
       updated_at: new Date().toISOString(),
     })
     .eq("id", vehicleId)
-    .eq("driver_user_id", auth.userId);
+    .eq("driver_user_id", auth.userId)
+    .is("deleted_at", null)
+    .select("id");
 
   if (error) {
     logTechnicalError("driver.vehicles.update", error, { userId: auth.userId, vehicleId });
@@ -178,6 +180,16 @@ export async function DELETE(
       500,
     );
   }
+
+  if (!deletedRows || deletedRows.length === 0) {
+    return json({ ok: false, error: "vehicle_not_found" }, 404);
+  }
+
+  // Soft-delete trigger clears active_vehicle_id + recalculates eligibility;
+  // still call eligibility explicitly for defense-in-depth.
+  await auth.supabaseAdmin.rpc("recalculate_vehicle_category_eligibility", {
+    p_vehicle_id: vehicleId,
+  });
 
   await auth.supabaseAdmin.rpc("log_driver_vehicle_history", {
     p_driver_user_id: auth.userId,

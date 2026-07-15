@@ -147,6 +147,20 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    const { data: profile, error: profileError } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", restaurantUserId)
+      .maybeSingle();
+
+    if (profileError) {
+      return jsonError("Profile lookup failed", 500);
+    }
+
+    if (String(profile?.role ?? "").toLowerCase() !== "restaurant") {
+      return jsonError("Forbidden", 403);
+    }
+
     let signedUrl: string | null = null;
 
     if (download) {

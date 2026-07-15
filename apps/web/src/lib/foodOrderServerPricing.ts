@@ -127,6 +127,9 @@ export type FoodOrderPricingResult = {
   distanceMiles: number;
   etaMinutes: number;
   driverPayoutEstimate: number;
+  /** Server-resolved restaurant pickup coordinates (never client-trusted). */
+  pickupLat: number;
+  pickupLng: number;
 };
 
 export function toFiniteFoodNumber(value: unknown, fallback = 0) {
@@ -342,7 +345,29 @@ export async function computeFoodOrderPricing(
     throw new Error("restaurantUserId manquant");
   }
 
-  validateCoordinates(pickupLat, pickupLng, "Pickup");
+  // Pickup coordinates are always resolved from the restaurant profile —
+  // never trust client-supplied pickup lat/lng for distance-based fees.
+  const { data: restaurantProfile, error: restaurantProfileError } =
+    await supabaseAdmin
+      .from("restaurant_profiles")
+      .select("location_lat,location_lng,lat,lng")
+      .eq("user_id", restaurantUserId)
+      .maybeSingle();
+
+  if (restaurantProfileError) {
+    throw new Error(
+      `Impossible de charger le restaurant: ${restaurantProfileError.message}`
+    );
+  }
+
+  const resolvedPickupLat = toFiniteFoodNumber(
+    restaurantProfile?.location_lat ?? restaurantProfile?.lat ?? pickupLat
+  );
+  const resolvedPickupLng = toFiniteFoodNumber(
+    restaurantProfile?.location_lng ?? restaurantProfile?.lng ?? pickupLng
+  );
+
+  validateCoordinates(resolvedPickupLat, resolvedPickupLng, "Pickup");
   validateCoordinates(dropoffLat, dropoffLng, "Dropoff");
 
   const platformCountry = inferPlatformCountryCode({
@@ -383,7 +408,7 @@ export async function computeFoodOrderPricing(
   );
 
   const { distanceMiles, etaMinutes } = await getDistanceAndEta(
-    { lat: pickupLat, lng: pickupLng },
+    { lat: resolvedPickupLat, lng: resolvedPickupLng },
     { lat: dropoffLat, lng: dropoffLng }
   );
 
@@ -518,5 +543,7 @@ export async function computeFoodOrderPricing(
     distanceMiles: safeDistanceMiles,
     etaMinutes: safeEtaMinutes,
     driverPayoutEstimate,
+    pickupLat: resolvedPickupLat,
+    pickupLng: resolvedPickupLng,
   };
 }

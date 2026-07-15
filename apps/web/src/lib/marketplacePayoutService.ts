@@ -310,12 +310,15 @@ export async function prepareMarketplaceDriverPayout(
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("seller_orders")
-    .select("currency,sellers(country_code)")
+    .select("currency,payment_status,status,sellers(country_code)")
     .eq("id", job.seller_order_id)
     .maybeSingle();
 
   if (orderError) return { ok: false, error: orderError.message };
   if (!order) return { ok: false, error: "seller_order_not_found" };
+  if (!isSellerOrderPaid(order as SellerOrderPayoutSource)) {
+    return { ok: true, skipped: "order_not_paid" };
+  }
 
   const liveEnabled = await resolvePayoutLiveForSellerOrder(
     supabaseAdmin,

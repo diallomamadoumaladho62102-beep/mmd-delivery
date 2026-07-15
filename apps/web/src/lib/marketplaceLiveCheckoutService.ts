@@ -93,9 +93,11 @@ async function assertActiveOrderProducts(
 
   if (error) throw new Error(error.message);
 
-  const activeIds = new Set((products ?? []).map((row) => row.id));
+  const activeById = new Map(
+    (products ?? []).map((row) => [String(row.id), Number(row.price_cents)])
+  );
   for (const item of items) {
-    if (!item.product_id || !activeIds.has(item.product_id)) {
+    if (!item.product_id || !activeById.has(item.product_id)) {
       throw new Error(`Inactive or invalid product: ${item.title}`);
     }
   }
@@ -105,9 +107,10 @@ async function assertActiveOrderProducts(
     region: order.region_code ?? undefined,
   });
 
+  // Always price from live catalog — never trust stale cart line prices.
   return computeMarketplaceCheckoutShadow(
     items.map((item) => ({
-      price_cents: item.price_cents,
+      price_cents: activeById.get(String(item.product_id)) ?? 0,
       quantity: item.quantity,
     })),
     {
@@ -187,10 +190,16 @@ export async function createMarketplaceLiveCheckoutSession(
   if (existingSessionId) {
     try {
       const existing = await stripe.checkout.sessions.retrieve(existingSessionId);
+      const existingAmount = Number(existing.amount_total ?? NaN);
+      const existingCurrency = String(existing.currency ?? "")
+        .trim()
+        .toLowerCase();
       if (
         existing.status === "open" &&
         existing.url &&
-        existing.payment_status !== "paid"
+        existing.payment_status !== "paid" &&
+        existingAmount === totals.total_cents &&
+        existingCurrency === currency
       ) {
         return {
           order,

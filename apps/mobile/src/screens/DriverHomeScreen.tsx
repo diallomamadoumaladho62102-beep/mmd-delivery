@@ -23,6 +23,8 @@ import {
   Vibration,
   type AppStateStatus,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MapFloatingButton } from "../components/driver/map/MapFloatingButton";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -638,6 +640,7 @@ function demandColor(demand: ZoneDemand) {
 
 export function DriverHomeScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const navAny = navigation as unknown as AnyNav;
   const { t } = useTranslation();
   const { features: platformFeatures, refresh: refreshDriverPlatformFeatures } =
@@ -2260,16 +2263,28 @@ export function DriverHomeScreen() {
         </Animated.View>
 
 
-        <TouchableOpacity onPress={resetMapBearing} activeOpacity={0.86} style={styles.compassButton}>
-          <Text style={styles.compassN}>N</Text>
-          <Text style={styles.compassArrow}>▲</Text>
-        </TouchableOpacity>
-
-        {hasLocation && (
-          <TouchableOpacity onPress={centerOnDriver} activeOpacity={0.86} style={styles.centerButton}>
-            <AppIcon name="locate" />
-          </TouchableOpacity>
-        )}
+        <View
+          pointerEvents="box-none"
+          style={[styles.mapFabColumn, { top: Math.max(insets.top, 12) + 72 }]}
+        >
+          <MapFloatingButton
+            icon="compass"
+            caption="N"
+            onPress={resetMapBearing}
+            accessibilityLabel={t("driver.home.map.compass", "Réorienter vers le nord")}
+            scheme="night"
+            compact
+          />
+          {hasLocation ? (
+            <MapFloatingButton
+              icon="locate"
+              onPress={centerOnDriver}
+              accessibilityLabel={t("driver.home.map.recenter", "Recentrer sur ma position")}
+              scheme="night"
+              style={{ marginTop: 10 }}
+            />
+          ) : null}
+        </View>
 
         {gpsLoading && (
           <View style={styles.loadingOverlay}>
@@ -2732,6 +2747,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: CARD_BORDER,
     zIndex: 80,
+  },
+  mapFabColumn: {
+    position: "absolute",
+    right: 16,
+    zIndex: 80,
+    alignItems: "center",
   },
   compassN: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
   compassArrow: { color: "#93C5FD", fontSize: 12, fontWeight: "900", marginTop: -4 },

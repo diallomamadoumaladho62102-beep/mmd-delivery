@@ -126,7 +126,8 @@ export async function handleTaxiStripePayment(params: {
   // settled money belongs to THIS ride's owner and service before marking paid.
   metadata?: Record<string, unknown> | null;
 }): Promise<{ ok: boolean; already_paid?: boolean; error?: string }> {
-  const { supabaseAdmin, taxiRideId, sessionId, paymentIntentId, source } = params;
+  const { supabaseAdmin, taxiRideId, sessionId, source } = params;
+  let paymentIntentId = params.paymentIntentId ?? null;
 
   const { data: ride, error: rideError } = await supabaseAdmin
     .from("taxi_rides")
@@ -208,40 +209,43 @@ export async function handleTaxiStripePayment(params: {
   }
 
   // Platform rule (single source of truth): before flipping a ride to paid we
-  // require the underlying PaymentIntent to have actually succeeded. A checkout
-  // session's payment_status is never trusted on its own. Webhooks are retried
-  // by Stripe, so a transient verification failure is safely re-attempted.
-  if (paymentIntentId || params.paymentIntent) {
-    const settled = await requirePaymentIntentSucceeded({
-      paymentIntentId: paymentIntentId ?? null,
-      sessionId: sessionId ?? null,
-      paymentIntent: params.paymentIntent ?? null,
-    });
-    if (!settled.ok) {
-      return { ok: false, error: `payment_intent_not_succeeded:${settled.reason}` };
-    }
+  // ALWAYS require the underlying PaymentIntent to have actually succeeded.
+  // A checkout session's payment_status is never trusted on its own — even when
+  // the webhook event carries no PI id (resolve via sessionId). Skipping this
+  // when PI was missing previously allowed session-only settlement.
+  const settled = await requirePaymentIntentSucceeded({
+    paymentIntentId: paymentIntentId ?? null,
+    sessionId: sessionId ?? row.stripe_session_id ?? null,
+    paymentIntent: params.paymentIntent ?? null,
+  });
+  if (!settled.ok) {
+    return { ok: false, error: `payment_intent_not_succeeded:${settled.reason}` };
+  }
+  if (settled.payment_intent_id) {
+    paymentIntentId = settled.payment_intent_id;
+  }
 
-    // Ownership + service guard (verify-if-present): reject a succeeded PI whose
-    // metadata says it belongs to another user or a non-taxi service. Amount and
-    // currency are already validated above with taxi minor-unit conversion, so
-    // they are intentionally not re-checked here. Missing metadata is tolerated
-    // (legacy PIs) — only a positive mismatch blocks the transition to paid.
-    const metadata =
-      params.metadata ??
-      (params.paymentIntent?.metadata as Record<string, unknown> | undefined) ??
-      null;
-    const expectation = assertSettlementMatchesExpectation(settled, metadata, {
-      userId: row.client_user_id ?? null,
-      serviceType: "taxi",
-      entityId: taxiRideId,
-      entityIdKeys: ["taxi_ride_id", "taxiRideId", "ride_id"],
-    });
-    if (!expectation.ok) {
-      return {
-        ok: false,
-        error: `payment_expectation_${expectation.field}:${expectation.reason}`,
-      };
-    }
+  // Ownership + service guard (verify-if-present): reject a succeeded PI whose
+  // metadata says it belongs to another user or a non-taxi service. Amount and
+  // currency are already validated above with taxi minor-unit conversion, so
+  // they are intentionally not re-checked here. Missing metadata is tolerated
+  // (legacy PIs) — only a positive mismatch blocks the transition to paid.
+  const metadata =
+    params.metadata ??
+    settled.metadata ??
+    (params.paymentIntent?.metadata as Record<string, unknown> | undefined) ??
+    null;
+  const expectation = assertSettlementMatchesExpectation(settled, metadata, {
+    userId: row.client_user_id ?? null,
+    serviceType: "taxi",
+    entityId: taxiRideId,
+    entityIdKeys: ["taxi_ride_id", "taxiRideId", "ride_id"],
+  });
+  if (!expectation.ok) {
+    return {
+      ok: false,
+      error: `payment_expectation_${expectation.field}:${expectation.reason}`,
+    };
   }
 
   if (paymentIntentId) {

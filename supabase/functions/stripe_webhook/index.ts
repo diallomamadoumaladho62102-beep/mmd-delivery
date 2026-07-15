@@ -368,9 +368,10 @@ serve(async (req) => {
     if (
       isCheckoutPaidEvent &&
       paymentStatus !== "paid" &&
-      paymentStatus !== "no_payment_required" &&
-      sessionStatus !== "complete"
+      paymentStatus !== "no_payment_required"
     ) {
+      // Never treat session.status === "complete" as paid — only PI succeeded
+      // (or genuine no_payment_required) may settle. Canonical handler is Vercel.
       log("warn", "stripe_webhook.checkout_not_paid", {
         request_id,
         event_id,
@@ -527,13 +528,64 @@ serve(async (req) => {
         return json({ received: true, ok: false, error: "Amount mismatch (blocked)" }, 200);
       }
 
+      // Single source of truth: PaymentIntent must be succeeded (unless free checkout).
+      let resolvedPaymentIntentId = paymentIntentId;
+      if (paymentStatus === "no_payment_required" && (stripeAmount === 0 || stripeAmount === null)) {
+        resolvedPaymentIntentId = null;
+      } else {
+        if (!resolvedPaymentIntentId) {
+          log("warn", "stripe_webhook.missing_payment_intent", {
+            request_id,
+            event_id,
+            order_id: orderId,
+            session_id: stripeSessionId,
+          });
+          return json({
+            received: true,
+            ok: true,
+            ignored: true,
+            reason: "payment_intent_unresolved",
+            order_id: orderId,
+          }, 200);
+        }
+        try {
+          const pi = await stripe.paymentIntents.retrieve(resolvedPaymentIntentId);
+          if (lower(pi.status) !== "succeeded") {
+            log("warn", "stripe_webhook.payment_intent_not_succeeded", {
+              request_id,
+              event_id,
+              order_id: orderId,
+              payment_intent_id: resolvedPaymentIntentId,
+              status: pi.status,
+            });
+            return json({
+              received: true,
+              ok: true,
+              ignored: true,
+              reason: `payment_intent_status_${pi.status}`,
+              order_id: orderId,
+            }, 200);
+          }
+        } catch (piErr: unknown) {
+          const msg = piErr instanceof Error ? piErr.message : String(piErr);
+          log("error", "stripe_webhook.payment_intent_retrieve_failed", {
+            request_id,
+            event_id,
+            order_id: orderId,
+            payment_intent_id: resolvedPaymentIntentId,
+            error: msg,
+          });
+          return json({ received: true, ok: false, error: "PI retrieve failed" }, 500);
+        }
+      }
+
       const { data, error } = await supabase.rpc("apply_checkout_paid", {
         p_event_id: event_id,
         p_event_type: event_type,
         p_livemode: livemode,
         p_order_id: orderId,
         p_session_id: stripeSessionId,
-        p_payment_intent_id: paymentIntentId,
+        p_payment_intent_id: resolvedPaymentIntentId,
         p_payload: payloadMinimal,
       });
 
