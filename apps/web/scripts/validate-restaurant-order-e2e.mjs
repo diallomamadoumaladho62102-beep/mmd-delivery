@@ -477,6 +477,8 @@ async function main() {
     has_client_secret: Boolean(clientSecret),
     checkout_url: checkout.json?.checkout_url || checkout.json?.url || null,
     error: checkout.json?.error || checkout.json?.message,
+    code: checkout.json?.code,
+    detail: checkout.json?.detail,
   });
 
   if (stripeSecret && (paymentIntentId || clientSecret)) {

@@ -866,6 +866,9 @@ export async function POST(req: NextRequest) {
       session = await stripe.checkout.sessions.create(
         {
           mode: "payment",
+          // Explicit card PM: avoids "No valid payment method types" when
+          // Dashboard automatic PMs are empty/misconfigured for the currency.
+          payment_method_types: ["card"],
           client_reference_id: orderId,
           expires_at: Math.floor(effectiveExpiresAtMs / 1000),
           line_items: buildStripeCheckoutLineItems({
