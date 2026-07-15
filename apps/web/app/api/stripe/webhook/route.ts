@@ -48,6 +48,8 @@ import {
 } from "@/lib/stripeInboundWalletBridge";
 import {
   assertSettlementMatchesExpectation,
+  isPaymentSettlementFailure,
+  requirePaymentIntentSucceeded,
   type PaymentExpectation,
   type PaymentExpectationResult,
 } from "@/lib/requirePaymentIntentSucceeded";
@@ -1316,7 +1318,7 @@ async function handleCheckoutCompletedLikeEvent(
 
   const deliveryRequestId = pickDeliveryRequestIdFromMetadata(metadata);
 
-  const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
+  let paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
   const sessionId = normalizeStringOrNull(session.id);
   const sessionAmountTotal = getStripeAmountTotalFromSession(session);
   const sessionCurrency = normalizeCurrency(session.currency);
@@ -1451,24 +1453,43 @@ async function handleCheckoutCompletedLikeEvent(
     });
   }
 
-  if (!isCheckoutSessionActuallyPaid(session)) {
-    console.log("ℹ️ WEBHOOK: checkout session not paid yet, ignored", {
+  // Single source of truth (platform-wide): a food/delivery order is only
+  // settled when its underlying PaymentIntent is `succeeded`. The Checkout
+  // Session `payment_status === "paid"` is NOT trusted on its own — this
+  // mirrors the taxi/marketplace handlers and the client confirm paths.
+  const settlement = await requirePaymentIntentSucceeded({
+    paymentIntentId,
+    sessionId,
+    session,
+  });
+
+  if (isPaymentSettlementFailure(settlement)) {
+    console.log("ℹ️ WEBHOOK: checkout session PI not settled yet, ignored", {
       type: event.type,
       orderId,
       deliveryRequestId,
       sessionId,
       payment_status: session.payment_status,
+      reason: settlement.reason,
     });
 
+    // Return 200 so Stripe does not retry aggressively; the eventual
+    // `payment_intent.succeeded` event will settle the order.
     return json({
       received: true,
       ok: true,
       order_id: orderId,
       delivery_request_id: deliveryRequestId,
       type: event.type,
-      ignored: "session_not_paid",
+      ignored: "payment_not_settled",
+      reason: settlement.reason,
       payment_status: session.payment_status,
     });
+  }
+
+  // Prefer the PaymentIntent id resolved by the settlement authority.
+  if (settlement.payment_intent_id) {
+    paymentIntentId = settlement.payment_intent_id;
   }
 
   if (orderId) {

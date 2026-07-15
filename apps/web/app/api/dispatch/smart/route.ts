@@ -239,7 +239,11 @@ export async function POST(req: NextRequest) {
     const orderKind = normalize(order.kind);
     const paymentStatus = normalize(order.payment_status);
 
-    if (orderKind === "food" && paymentStatus !== "paid") {
+    // Platform rule: no order of ANY kind (food, errand, pickup_dropoff, ...)
+    // becomes dispatchable until it is definitively paid. Restricting this to
+    // food previously allowed unpaid errand / pickup_dropoff orders to be
+    // dispatched to drivers.
+    if (paymentStatus !== "paid") {
       await recordDispatchAttempt({
         supabase,
         orderId: order.id,
