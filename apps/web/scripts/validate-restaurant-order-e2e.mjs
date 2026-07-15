@@ -469,19 +469,44 @@ async function main() {
     null;
   clientSecret =
     checkout.json?.client_secret || checkout.json?.clientSecret || null;
+  const checkoutUrl =
+    checkout.json?.checkout_url || checkout.json?.url || null;
   validationLog.payment_intent_id = paymentIntentId;
 
-  logStep("6.create_payment_intent", Boolean(checkoutOk && (paymentIntentId || clientSecret || checkout.json?.checkout_url)), {
+  const stripeMode =
+    stripeSecret.startsWith("sk_live_")
+      ? "live"
+      : stripeSecret.startsWith("sk_test_")
+        ? "test"
+        : "unknown";
+  const sessionMode =
+    typeof checkoutUrl === "string" && checkoutUrl.includes("cs_live_")
+      ? "live"
+      : typeof checkoutUrl === "string" && checkoutUrl.includes("cs_test_")
+        ? "test"
+        : "unknown";
+
+  logStep("6.create_payment_intent", Boolean(checkout.res.ok && (paymentIntentId || clientSecret || checkoutUrl)), {
     http: checkout.res.status,
     payment_intent_id: paymentIntentId,
     has_client_secret: Boolean(clientSecret),
-    checkout_url: checkout.json?.checkout_url || checkout.json?.url || null,
+    checkout_url: checkoutUrl ? String(checkoutUrl).slice(0, 48) + "…" : null,
+    session_mode: sessionMode,
+    local_stripe_mode: stripeMode,
     error: checkout.json?.error || checkout.json?.message,
     code: checkout.json?.code,
     detail: checkout.json?.detail,
   });
 
-  if (stripeSecret && (paymentIntentId || clientSecret)) {
+  if (sessionMode === "live" && stripeMode === "test") {
+    logStep("7.stripe_test_payment", false, {
+      error:
+        "REFUSED: Production Checkout is cs_live_* while local STRIPE_SECRET_KEY is sk_test_*. Refusing Test confirm against Live to avoid mode mix / live charge.",
+    });
+    logStep("8.webhook_or_confirm_paid", false, {
+      error: "Skipped — Live/Test mismatch; no paid confirmation executed",
+    });
+  } else if (stripeSecret && (paymentIntentId || clientSecret)) {
     const piId =
       paymentIntentId ||
       String(clientSecret || "").split("_secret")[0] ||
