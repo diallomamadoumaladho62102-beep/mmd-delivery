@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ROUTE_VERSION = "w9-verify-005-rate-limit-audit-tsfix";
+const ROUTE_VERSION = "w9-verify-006-rate-limit-insert-any-cast";
 
 const DEFAULT_BUCKET = "driver-docs";
 const DEFAULT_TTL_SECONDS = 3600;
@@ -407,8 +407,10 @@ async function checkRateLimitOrThrow(params: {
     }
 
     // increment best-effort
+    // `as any` keeps Dependabot/@supabase upgrades from inferring insert → never
+    // when Database generics are absent (see ROUTE_VERSION / prior TS fix comment).
     if (!sel.data) {
-      const ins = await params.supabaseAdmin.from("tax_rate_limits").insert([
+      const ins = await (params.supabaseAdmin.from("tax_rate_limits") as any).insert([
         {
           key,
           window_start: ws,
@@ -418,14 +420,12 @@ async function checkRateLimitOrThrow(params: {
       ]);
 
       if (ins.error) {
-        await params.supabaseAdmin
-          .from("tax_rate_limits")
+        await (params.supabaseAdmin.from("tax_rate_limits") as any)
           .update({ count: currentCount + 1, updated_at: new Date().toISOString() })
           .eq("key", key);
       }
     } else {
-      await params.supabaseAdmin
-        .from("tax_rate_limits")
+      await (params.supabaseAdmin.from("tax_rate_limits") as any)
         .update({ count: currentCount + 1, updated_at: new Date().toISOString() })
         .eq("key", key);
     }
@@ -451,7 +451,7 @@ async function auditLog(params: {
   const ua = getUserAgent(params.req);
 
   // IMPORTANT: jamais de TIN complet, jamais de tin_encrypted ici
-  await params.supabaseAdmin.from("tax_audit_logs").insert([
+  await (params.supabaseAdmin.from("tax_audit_logs") as any).insert([
     {
       driver_id: params.driverId,
       action: params.action,
