@@ -23,6 +23,11 @@ import {
 } from "@/lib/taxiLaunchControl";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
+import {
+  buildStripeCheckoutReturnUrls,
+  isLegacyVercelOrigin,
+  resolvePublicSiteOrigin,
+} from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,15 +44,33 @@ function getBearer(req: NextRequest) {
   return auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
 }
 
-function buildCheckoutUrls(taxiRideId: string, req: NextRequest) {
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    req.nextUrl.origin.replace(/\/$/, "");
+function buildCheckoutUrls(taxiRideId: string) {
+  return buildStripeCheckoutReturnUrls({
+    successQuery: { taxiRideId },
+    cancelQuery: { taxiRideId },
+  });
+}
 
-  return {
-    successUrl: `${origin}/stripe/success?taxiRideId=${encodeURIComponent(taxiRideId)}`,
-    cancelUrl: `${origin}/stripe/cancel?taxiRideId=${encodeURIComponent(taxiRideId)}`,
-  };
+function resolveTaxiCheckoutUrl(
+  override: string | undefined,
+  fallback: string,
+): string {
+  const trimmed = String(override ?? "").trim();
+  if (!trimmed) return fallback;
+  try {
+    const parsed = new URL(trimmed);
+    if (isLegacyVercelOrigin(parsed.origin)) {
+      return fallback;
+    }
+    // Production: only allow canonical origin overrides.
+    const canonical = resolvePublicSiteOrigin();
+    if (parsed.origin !== new URL(canonical).origin) {
+      return fallback;
+    }
+    return trimmed;
+  } catch {
+    return fallback;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -295,7 +318,7 @@ export async function POST(req: NextRequest) {
     const sharedDiscountCents = Math.round(Number(ride.shared_discount_cents ?? 0));
     const totalDiscountCents =
       promoDiscountCents + loyaltyDiscountCents + sharedDiscountCents;
-    const urls = buildCheckoutUrls(taxiRideId, req);
+    const urls = buildCheckoutUrls(taxiRideId);
     const idempotencyKey = `taxi_checkout_${taxiRideId}_${user.id}_${stripeUnitAmount}_${currency}`;
     const checkoutLabel = formatTaxiCheckoutAmount(currency, amountCents);
 
@@ -329,8 +352,8 @@ export async function POST(req: NextRequest) {
         payment_method_types: ["card"],
         client_reference_id: taxiRideId,
         line_items: checkoutLineItems,
-        success_url: body.successUrl?.trim() || urls.successUrl,
-        cancel_url: body.cancelUrl?.trim() || urls.cancelUrl,
+        success_url: resolveTaxiCheckoutUrl(body.successUrl, urls.successUrl),
+        cancel_url: resolveTaxiCheckoutUrl(body.cancelUrl, urls.cancelUrl),
         metadata: {
           metadata_schema_version: PAYMENT_METADATA_SCHEMA_VERSION,
           service_type: "taxi",

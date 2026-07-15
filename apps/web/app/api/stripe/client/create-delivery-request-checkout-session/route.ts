@@ -17,6 +17,7 @@ import {
 } from "@/lib/foodCurrencyGuard";
 import { validateDeliveryRequestBeforeCheckout } from "@/lib/deliveryRequestService";
 import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
+import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -148,69 +149,6 @@ function safeTitle(value: unknown): string | null {
 
 function safeDescription(value: string): string {
   return value.trim().slice(0, MAX_DESCRIPTION_LENGTH);
-}
-
-function isPrivateIpv4(hostname: string): boolean {
-  return (
-    /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
-    /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(hostname)
-  );
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
-
-function normalizeBaseUrl(v?: string | null): string {
-  const s = String(v ?? "").trim();
-  if (!s) return "";
-
-  const withProtocol =
-    s.startsWith("http://") || s.startsWith("https://") ? s : `https://${s}`;
-
-  try {
-    const parsed = new URL(withProtocol);
-    const hostname = parsed.hostname;
-
-    const allowHttp =
-      parsed.protocol === "http:" &&
-      (isLoopbackHost(hostname) || isPrivateIpv4(hostname));
-
-    const allowHttps = parsed.protocol === "https:";
-
-    if (!allowHttp && !allowHttps) {
-      return "";
-    }
-
-    return parsed.toString().replace(/\/$/, "");
-  } catch {
-    return "";
-  }
-}
-
-function normalizeAbsoluteCheckoutUrl(v?: string | null): string {
-  const s = String(v ?? "").trim();
-  if (!s) return "";
-
-  try {
-    const parsed = new URL(s);
-    const hostname = parsed.hostname;
-
-    const allowHttp =
-      parsed.protocol === "http:" &&
-      (isLoopbackHost(hostname) || isPrivateIpv4(hostname));
-
-    const allowHttps = parsed.protocol === "https:";
-
-    if (!allowHttp && !allowHttps) {
-      return "";
-    }
-
-    return parsed.toString();
-  } catch {
-    return "";
-  }
 }
 
 function logSupabaseError(
@@ -363,46 +301,17 @@ async function rollbackToUnpaid(
   }
 }
 
-function buildPublicBaseUrl(): string {
-  const candidates = [
-    process.env.NEXT_PUBLIC_WEB_BASE_URL,
-    process.env.NEXT_PUBLIC_SITE_URL,
-    process.env.APP_BASE_URL,
-    process.env.VERCEL_URL
-      ? `https://${String(process.env.VERCEL_URL).replace(/^https?:\/\//, "")}`
-      : "",
-  ];
-
-  for (const candidate of candidates) {
-    const normalized = normalizeBaseUrl(candidate);
-    if (normalized) return normalized;
-  }
-
-  throw new Error(
-    "Missing public site base URL. Set NEXT_PUBLIC_WEB_BASE_URL or NEXT_PUBLIC_SITE_URL."
-  );
-}
-
 function buildCheckoutUrls(deliveryRequestId: string) {
-  const normalizedBase = buildPublicBaseUrl();
+  const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls({
+    successQuery: { deliveryRequestId },
+    cancelQuery: { deliveryRequestId },
+  });
 
-  const rawSuccessBase =
-    process.env.STRIPE_CHECKOUT_SUCCESS_URL || `${normalizedBase}/stripe/success`;
-
-  const rawCancelBase =
-    process.env.STRIPE_CHECKOUT_CANCEL_URL || `${normalizedBase}/stripe/cancel`;
-
-  const normalizedSuccessBase = normalizeAbsoluteCheckoutUrl(rawSuccessBase);
-  const normalizedCancelBase = normalizeAbsoluteCheckoutUrl(rawCancelBase);
-
-  if (!normalizedSuccessBase || !normalizedCancelBase) {
+  if (!successUrl || !cancelUrl) {
     throw new Error(
-      "Invalid checkout return URLs. Check STRIPE_CHECKOUT_SUCCESS_URL / STRIPE_CHECKOUT_CANCEL_URL."
+      "Invalid checkout return URLs. Check STRIPE_CHECKOUT_SUCCESS_URL / STRIPE_CHECKOUT_CANCEL_URL.",
     );
   }
-
-  const successUrl = `${normalizedSuccessBase.replace(/\/$/, "")}?deliveryRequestId=${encodeURIComponent(deliveryRequestId)}`;
-  const cancelUrl = `${normalizedCancelBase.replace(/\/$/, "")}?deliveryRequestId=${encodeURIComponent(deliveryRequestId)}`;
 
   return { successUrl, cancelUrl };
 }

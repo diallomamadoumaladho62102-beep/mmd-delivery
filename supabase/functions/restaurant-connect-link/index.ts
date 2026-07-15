@@ -23,9 +23,9 @@ const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
 // ⚠️ Stripe Account Links préfère des URLs web (https://...)
 const DEFAULT_RETURN_URL =
-  Deno.env.get("STRIPE_RETURN_URL") ?? "https://example.com/stripe/return";
+  Deno.env.get("STRIPE_RETURN_URL") ?? "https://www.mmddelivery.com/stripe/return";
 const DEFAULT_REFRESH_URL =
-  Deno.env.get("STRIPE_REFRESH_URL") ?? "https://example.com/stripe/refresh";
+  Deno.env.get("STRIPE_REFRESH_URL") ?? "https://www.mmddelivery.com/stripe/refresh";
 
 function assertStripeConnectSecretOrThrow() {
   if (!STRIPE_SECRET_KEY) {

@@ -30,7 +30,7 @@ async function runRetryOrderDispatch(request: NextRequest) {
 
   const origin = getDispatchSiteOrigin();
   if (!origin) {
-    return json({ error: "Missing site origin (NEXT_PUBLIC_SITE_URL / VERCEL_URL)" }, 500);
+    return json({ error: "Missing site origin (canonical production site URL)" }, 500);
   }
 
   const supabase = createClient(

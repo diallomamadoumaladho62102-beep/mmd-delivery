@@ -13,6 +13,7 @@ import {
 } from "@/lib/marketplaceOrderService";
 import { isMarketplaceCheckoutLiveEnvEnabled } from "@/lib/marketplaceLiveCheckout";
 import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
+import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 
 type ApprovedSellerRow = {
   id: string;
@@ -27,25 +28,12 @@ function normalizeCurrency(value: unknown): string {
   return /^[A-Z]{3}$/.test(code) ? code : "USD";
 }
 
-function buildPublicBaseUrl(): string {
-  const candidate =
-    process.env.NEXT_PUBLIC_WEB_BASE_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "https://www.mmddelivery.com";
-  return candidate.replace(/\/+$/, "");
-}
-
 function buildMarketplaceCheckoutUrls(sellerOrderId: string) {
-  const base = buildPublicBaseUrl();
-  const successBase =
-    process.env.STRIPE_CHECKOUT_SUCCESS_URL || `${base}/stripe/success`;
-  const cancelBase =
-    process.env.STRIPE_CHECKOUT_CANCEL_URL || `${base}/stripe/cancel`;
-
-  return {
-    successUrl: `${successBase.replace(/\/$/, "")}?seller_order_id=${encodeURIComponent(sellerOrderId)}`,
-    cancelUrl: `${cancelBase.replace(/\/$/, "")}?seller_order_id=${encodeURIComponent(sellerOrderId)}`,
-  };
+  const { successUrl, cancelUrl } = buildStripeCheckoutReturnUrls({
+    successQuery: { seller_order_id: sellerOrderId },
+    cancelQuery: { seller_order_id: sellerOrderId },
+  });
+  return { successUrl, cancelUrl };
 }
 
 function paymentIntentIdFromUnknown(value: unknown): string | null {

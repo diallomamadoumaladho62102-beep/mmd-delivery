@@ -75,17 +75,16 @@ serve(async (req) => {
     const supabaseAnon = getEdgePublishableKeyOptional();
     const supabaseService = getEdgeSecretKeyOptional();
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
-    const returnUrl = Deno.env.get("STRIPE_RETURN_URL") ?? "";
-    const refreshUrl = Deno.env.get("STRIPE_REFRESH_URL") ?? "";
+    const returnUrl =
+      Deno.env.get("STRIPE_RETURN_URL") ?? "https://www.mmddelivery.com/stripe/return";
+    const refreshUrl =
+      Deno.env.get("STRIPE_REFRESH_URL") ?? "https://www.mmddelivery.com/stripe/refresh";
 
     if (!supabaseUrl || !supabaseAnon || !supabaseService) {
       return json({ error: "Missing Supabase env vars" }, 500);
     }
     if (!stripeKey) {
       return json({ error: "Missing STRIPE_SECRET_KEY" }, 500);
-    }
-    if (!returnUrl || !refreshUrl) {
-      return json({ error: "Missing STRIPE_RETURN_URL / STRIPE_REFRESH_URL" }, 500);
     }
 
     // Fail-closed: Connect onboarding mode follows STRIPE_SECRET_KEY.
