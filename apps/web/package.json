@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^10.64.0",
-    "@stripe/stripe-js": "4.10.0",
+    "@stripe/stripe-js": "9.10.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "2.46.1",
     "classnames": "2.5.1",
