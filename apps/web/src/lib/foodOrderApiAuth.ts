@@ -7,6 +7,7 @@ import {
   resolvePlatformScopeFeatures,
 } from "@/lib/platformScopeResolver";
 import { resolveCountySnapshotFromInput } from "@/lib/originCountyServiceGate";
+import { detectPlatformCountryFromCoordinates } from "@/lib/platformCountryInference";
 
 function parseOptionalNumber(value: unknown): number | undefined {
   const n = Number(value);
@@ -30,11 +31,31 @@ export async function requireFoodClientAuth(req: NextRequest) {
 
   const query = readClientScopeQuery(req);
   const body = await readOptionalJsonBody(req);
+  const restaurantUserId = String(
+    body?.restaurant_user_id ?? body?.restaurant_id ?? "",
+  ).trim();
+  const { data: restaurantLocation } = restaurantUserId
+    ? await auth.supabaseAdmin
+        .from("restaurant_profiles")
+        .select("location_lat,location_lng,lat,lng")
+        .eq("user_id", restaurantUserId)
+        .maybeSingle()
+    : { data: null };
+  const restaurantLat = parseOptionalNumber(
+    restaurantLocation?.location_lat ?? restaurantLocation?.lat,
+  );
+  const restaurantLng = parseOptionalNumber(
+    restaurantLocation?.location_lng ?? restaurantLocation?.lng,
+  );
+  const restaurantCountry = detectPlatformCountryFromCoordinates(
+    restaurantLat,
+    restaurantLng,
+  );
 
   // Food origin = restaurant / pickup location (not client dropoff).
   const originInput = {
     countryCode:
-      String(body?.pickup_country ?? body?.pickupCountry ?? query.pickupCountry ?? query.manualCountry ?? "US") ||
+      String(restaurantCountry ?? body?.pickup_country ?? body?.pickupCountry ?? query.pickupCountry ?? query.manualCountry ?? "US") ||
       "US",
     stateCode:
       String(body?.pickup_state ?? body?.pickupState ?? query.pickupState ?? query.manualState ?? "") ||
@@ -43,10 +64,12 @@ export async function requireFoodClientAuth(req: NextRequest) {
       String(body?.pickup_county ?? body?.pickupCounty ?? query.pickupCounty ?? query.manualCounty ?? "") ||
       undefined,
     lat:
+      restaurantLat ??
       parseOptionalNumber(body?.pickup_lat ?? body?.pickupLat) ??
       query.pickupLat ??
       query.lat,
     lng:
+      restaurantLng ??
       parseOptionalNumber(body?.pickup_lng ?? body?.pickupLng) ??
       query.pickupLng ??
       query.lng,

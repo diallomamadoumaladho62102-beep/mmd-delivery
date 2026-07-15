@@ -8,7 +8,6 @@ import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { resolveTaxiPickupCity } from "@/lib/taxiCityDetection";
 import {
   assertTaxiQuotePriceMatches,
-  snapshotFromQuoteRpc,
   snapshotFromRideRow,
 } from "@/lib/taxiFinalPrice";
 import {
@@ -23,6 +22,7 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
+import { validateRouteClaimsServer } from "@/lib/geoTrust";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -207,6 +207,28 @@ export async function POST(req: NextRequest) {
 
     const countryCode = countryResult.resolution.countryCode;
 
+    await validateRouteClaimsServer({
+      pickup: {
+        address: route.pickupAddress ?? locationInput.pickupAddress,
+        lat: route.pickupLat,
+        lng: route.pickupLng,
+        claimedCountryCode: countryCode,
+      },
+      dropoff: {
+        address: route.dropoffAddress ?? locationInput.dropoffAddress,
+        lat: route.dropoffLat,
+        lng: route.dropoffLng,
+        claimedCountryCode: countryCode,
+      },
+      stops: route.stops.map((stop) => ({
+        address: stop.address,
+        lat: stop.lat,
+        lng: stop.lng,
+        claimedCountryCode: countryCode,
+      })),
+      serverDistanceMiles: route.distanceMiles,
+    });
+
     const platformCheck = await assertPlatformFeature(
       auth.supabaseAdmin,
       countryCode,
@@ -311,6 +333,16 @@ export async function POST(req: NextRequest) {
         body.expectedQuoteTotalCents ?? body.expected_quote_total_cents ?? 0
       )
     );
+    if (!Number.isFinite(expectedQuoteTotalCents) || expectedQuoteTotalCents <= 0) {
+      return taxiJson(
+        {
+          ok: false,
+          error: "expected_quote_required",
+          message: "A current server quote is required before creating a ride.",
+        },
+        400,
+      );
+    }
     const quoteGrossCents = Math.round(Number(quoteWithServiceFee.total_cents ?? 0));
 
     let businessMemberId: string | null = null;
@@ -574,6 +606,14 @@ export async function POST(req: NextRequest) {
       finalPrice
     );
     if (driftCheck.ok === false) {
+      // Do not leave an unpaid/orphan ride behind when the submitted quote was
+      // falsified or legitimately drifted. Stops are removed by FK cascade.
+      await auth.supabaseAdmin
+        .from("taxi_rides")
+        .delete()
+        .eq("id", ride.id)
+        .eq("client_user_id", auth.user.id)
+        .eq("payment_status", "unpaid");
       return taxiJson(
         {
           ok: false,

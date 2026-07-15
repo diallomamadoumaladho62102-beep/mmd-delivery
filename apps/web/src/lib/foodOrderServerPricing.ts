@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDistanceAndEta } from "@/lib/mapboxRoute";
 import {
+  evaluateServerRoute,
+  validateLocationClaimServer,
+} from "@/lib/geoTrust";
+import {
   computeDeliveryPricing,
   evaluateDeliveryFeeAbnormality,
   requireDeliverySharePctPair,
@@ -91,6 +95,8 @@ export type FoodOrderPricingInput = {
   supabaseAdmin: SupabaseClient;
   restaurantUserId: string;
   items: FoodOrderLineInput[];
+  pickupAddress: string;
+  dropoffAddress: string;
   pickupLat: number;
   pickupLng: number;
   dropoffLat: number;
@@ -130,6 +136,7 @@ export type FoodOrderPricingResult = {
   /** Server-resolved restaurant pickup coordinates (never client-trusted). */
   pickupLat: number;
   pickupLng: number;
+  pickupAddress: string;
 };
 
 export function toFiniteFoodNumber(value: unknown, fallback = 0) {
@@ -333,8 +340,8 @@ export async function computeFoodOrderPricing(
     supabaseAdmin,
     restaurantUserId,
     items,
-    pickupLat,
-    pickupLng,
+    pickupAddress,
+    dropoffAddress,
     dropoffLat,
     dropoffLng,
     countryCode,
@@ -350,7 +357,7 @@ export async function computeFoodOrderPricing(
   const { data: restaurantProfile, error: restaurantProfileError } =
     await supabaseAdmin
       .from("restaurant_profiles")
-      .select("location_lat,location_lng,lat,lng")
+      .select("location_lat,location_lng,lat,lng,address")
       .eq("user_id", restaurantUserId)
       .maybeSingle();
 
@@ -360,20 +367,52 @@ export async function computeFoodOrderPricing(
     );
   }
 
+  if (
+    restaurantProfile?.location_lat == null &&
+    restaurantProfile?.lat == null
+  ) {
+    throw new Error("restaurant_coordinates_missing");
+  }
   const resolvedPickupLat = toFiniteFoodNumber(
-    restaurantProfile?.location_lat ?? restaurantProfile?.lat ?? pickupLat
+    restaurantProfile?.location_lat ?? restaurantProfile?.lat
   );
   const resolvedPickupLng = toFiniteFoodNumber(
-    restaurantProfile?.location_lng ?? restaurantProfile?.lng ?? pickupLng
+    restaurantProfile?.location_lng ?? restaurantProfile?.lng
   );
+  const resolvedPickupAddress =
+    String(restaurantProfile?.address ?? "").trim() || pickupAddress;
 
   validateCoordinates(resolvedPickupLat, resolvedPickupLng, "Pickup");
   validateCoordinates(dropoffLat, dropoffLng, "Dropoff");
 
+  const [trustedPickup, trustedDropoff] = await Promise.all([
+    validateLocationClaimServer({
+      role: "pickup",
+      address: resolvedPickupAddress,
+      lat: resolvedPickupLat,
+      lng: resolvedPickupLng,
+      claimedCountryCode: countryCode,
+    }),
+    validateLocationClaimServer({
+      role: "dropoff",
+      address: dropoffAddress,
+      lat: dropoffLat,
+      lng: dropoffLng,
+      claimedCountryCode: countryCode,
+    }),
+  ]);
+  if (
+    trustedPickup.countryCode &&
+    trustedDropoff.countryCode &&
+    trustedPickup.countryCode !== trustedDropoff.countryCode
+  ) {
+    throw new Error("cross_country_route_not_supported");
+  }
+
   const platformCountry = inferPlatformCountryCode({
-    countryCode,
-    lat: dropoffLat,
-    lng: dropoffLng,
+    countryCode: trustedPickup.countryCode ?? countryCode,
+    lat: resolvedPickupLat,
+    lng: resolvedPickupLng,
   });
 
   const currency = currencyForPlatformCountry(platformCountry, { strict: true });
@@ -411,6 +450,12 @@ export async function computeFoodOrderPricing(
     { lat: resolvedPickupLat, lng: resolvedPickupLng },
     { lat: dropoffLat, lng: dropoffLng }
   );
+  const routeTrust = evaluateServerRoute({
+    pickup: { lat: resolvedPickupLat, lng: resolvedPickupLng },
+    dropoff: { lat: dropoffLat, lng: dropoffLng },
+    serverDistanceMiles: distanceMiles,
+  });
+  if (routeTrust.ok === false) throw new Error(routeTrust.code);
 
   const safeDistanceMiles = roundFoodMoney(toFiniteFoodNumber(distanceMiles));
   const safeEtaMinutes = Math.max(0, Math.round(toFiniteFoodNumber(etaMinutes)));
@@ -545,5 +590,7 @@ export async function computeFoodOrderPricing(
     driverPayoutEstimate,
     pickupLat: resolvedPickupLat,
     pickupLng: resolvedPickupLng,
+    pickupAddress:
+      trustedPickup.canonicalAddress ?? resolvedPickupAddress,
   };
 }

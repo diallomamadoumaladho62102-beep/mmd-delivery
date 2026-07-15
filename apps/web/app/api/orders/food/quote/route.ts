@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
     const pricing = await quoteFoodOrderServerSide({
       supabaseAdmin: auth.supabaseAdmin,
       restaurantUserId: fields.restaurantUserId,
+      pickupAddress: fields.pickupAddress,
+      dropoffAddress: fields.dropoffAddress,
       pickupLat: fields.pickupLat,
       pickupLng: fields.pickupLng,
       dropoffLat: fields.dropoffLat,

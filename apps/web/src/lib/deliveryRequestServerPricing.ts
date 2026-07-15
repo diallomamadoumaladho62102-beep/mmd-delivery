@@ -21,6 +21,10 @@ import {
   currencyForPlatformCountry,
   roundPlatformMoney,
 } from "@/lib/platformCurrency";
+import {
+  evaluateServerRoute,
+  validateLocationClaimServer,
+} from "@/lib/geoTrust";
 
 type ComputeOrderPricingRow = {
   config_key: string;
@@ -52,6 +56,8 @@ type PricingConfigRow = {
 
 export type DeliveryRequestPricingInput = {
   supabaseAdmin: SupabaseClient;
+  pickupAddress: string;
+  dropoffAddress: string;
   pickupLat: number;
   pickupLng: number;
   dropoffLat: number;
@@ -159,6 +165,8 @@ export async function computeDeliveryRequestPricing(
 ): Promise<DeliveryRequestPricingResult> {
   const {
     supabaseAdmin,
+    pickupAddress,
+    dropoffAddress,
     pickupLat,
     pickupLng,
     dropoffLat,
@@ -171,10 +179,35 @@ export async function computeDeliveryRequestPricing(
   validateCoordinates(pickupLat, pickupLng, "Pickup");
   validateCoordinates(dropoffLat, dropoffLng, "Dropoff");
 
+  const [trustedPickup, trustedDropoff] = await Promise.all([
+    validateLocationClaimServer({
+      role: "pickup",
+      address: pickupAddress,
+      lat: pickupLat,
+      lng: pickupLng,
+      claimedCountryCode: countryCode,
+    }),
+    validateLocationClaimServer({
+      role: "dropoff",
+      address: dropoffAddress,
+      lat: dropoffLat,
+      lng: dropoffLng,
+      claimedCountryCode: countryCode,
+    }),
+  ]);
+
+  if (
+    trustedPickup.countryCode &&
+    trustedDropoff.countryCode &&
+    trustedPickup.countryCode !== trustedDropoff.countryCode
+  ) {
+    throw new Error("cross_country_route_not_supported");
+  }
+
   const platformCountry = inferPlatformCountryCode({
-    countryCode,
-    lat: dropoffLat,
-    lng: dropoffLng,
+    countryCode: trustedPickup.countryCode ?? countryCode,
+    lat: pickupLat,
+    lng: pickupLng,
   });
 
   const currency = currencyForPlatformCountry(platformCountry, { strict: true });
@@ -209,6 +242,13 @@ export async function computeDeliveryRequestPricing(
     { lat: pickupLat, lng: pickupLng },
     { lat: dropoffLat, lng: dropoffLng }
   );
+
+  const routeTrust = evaluateServerRoute({
+    pickup: { lat: pickupLat, lng: pickupLng },
+    dropoff: { lat: dropoffLat, lng: dropoffLng },
+    serverDistanceMiles: distanceMiles,
+  });
+  if (routeTrust.ok === false) throw new Error(routeTrust.code);
 
   const safeDistanceMiles = roundPlatformMoney(toFiniteNumber(distanceMiles));
   const safeEtaMinutes = Math.max(0, Math.round(toFiniteNumber(etaMinutes)));

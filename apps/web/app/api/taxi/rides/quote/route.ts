@@ -10,6 +10,7 @@ import { snapshotFromQuoteRpc } from "@/lib/taxiFinalPrice";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
+import { validateRouteClaimsServer } from "@/lib/geoTrust";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -118,6 +119,28 @@ export async function POST(req: NextRequest) {
     }
 
     const countryCode = countryResult.resolution.countryCode;
+
+    await validateRouteClaimsServer({
+      pickup: {
+        address: route.pickupAddress ?? locationInput.pickupAddress,
+        lat: route.pickupLat,
+        lng: route.pickupLng,
+        claimedCountryCode: countryCode,
+      },
+      dropoff: {
+        address: route.dropoffAddress ?? locationInput.dropoffAddress,
+        lat: route.dropoffLat,
+        lng: route.dropoffLng,
+        claimedCountryCode: countryCode,
+      },
+      stops: route.stops.map((stop) => ({
+        address: stop.address,
+        lat: stop.lat,
+        lng: stop.lng,
+        claimedCountryCode: countryCode,
+      })),
+      serverDistanceMiles: route.distanceMiles,
+    });
 
     const platformCheck = await assertPlatformFeature(
       auth.supabaseAdmin,

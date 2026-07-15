@@ -9,6 +9,9 @@ import {
   fetchTaxiCountryLaunchConfig,
 } from "@/lib/taxiLaunchControl";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
+import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
+import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
+import { validateRouteClaimsServer } from "@/lib/geoTrust";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,20 +47,6 @@ type Body = {
   reward_id?: string;
   stops?: StopBody[];
 };
-
-const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
-const QUOTE_DRIFT_TOLERANCE_RATIO = 0.02;
-
-function isQuotePriceWithinTolerance(expected: number, actual: number) {
-  if (!Number.isFinite(expected) || expected <= 0) return true;
-  if (!Number.isFinite(actual) || actual <= 0) return false;
-  const diff = Math.abs(actual - expected);
-  const maxDiff = Math.max(
-    QUOTE_DRIFT_TOLERANCE_CENTS,
-    Math.round(expected * QUOTE_DRIFT_TOLERANCE_RATIO)
-  );
-  return diff <= maxDiff;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -130,6 +119,28 @@ export async function POST(req: NextRequest) {
 
     const countryCode = countryResult.resolution.countryCode;
 
+    await validateRouteClaimsServer({
+      pickup: {
+        address: route.pickupAddress ?? body.pickupAddress,
+        lat: route.pickupLat,
+        lng: route.pickupLng,
+        claimedCountryCode: countryCode,
+      },
+      dropoff: {
+        address: route.dropoffAddress ?? body.dropoffAddress,
+        lat: route.dropoffLat,
+        lng: route.dropoffLng,
+        claimedCountryCode: countryCode,
+      },
+      stops: route.stops.map((stop) => ({
+        address: stop.address,
+        lat: stop.lat,
+        lng: stop.lng,
+        claimedCountryCode: countryCode,
+      })),
+      serverDistanceMiles: route.distanceMiles,
+    });
+
     const platformCheck = await assertPlatformFeature(
       auth.supabaseAdmin,
       countryCode,
@@ -138,6 +149,35 @@ export async function POST(req: NextRequest) {
     );
     if (platformCheck.ok === false) {
       return taxiJson({ ok: false, ...platformCheck }, 403);
+    }
+
+    if (shouldApplyCountyCommercialOverride(countryCode)) {
+      const originGate = await assertCanStartServiceFromOrigin(auth.supabaseAdmin, {
+        service: "taxi",
+        origin: {
+          countryCode,
+          lat: route.pickupLat,
+          lng: route.pickupLng,
+        },
+        destination: {
+          countryCode,
+          lat: route.dropoffLat,
+          lng: route.dropoffLng,
+        },
+      });
+      if (!originGate.allowed) {
+        return taxiJson(
+          {
+            ok: false,
+            error: "taxi_unavailable",
+            code: originGate.code,
+            title: originGate.title,
+            message: originGate.message,
+            actions: originGate.actions,
+          },
+          403,
+        );
+      }
     }
 
     const launchConfig = await fetchTaxiCountryLaunchConfig(

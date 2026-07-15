@@ -74,6 +74,8 @@ export async function createFoodOrderServerSide(
     supabaseAdmin,
     restaurantUserId,
     items,
+    pickupAddress,
+    dropoffAddress,
     pickupLat,
     pickupLng,
     dropoffLat,
@@ -98,7 +100,7 @@ export async function createFoodOrderServerSide(
       restaurant_id: restaurantUserId,
       restaurant_user_id: restaurantUserId,
       restaurant_name: restaurantName.trim(),
-      pickup_address: pickupAddress.trim(),
+      pickup_address: pricing.pickupAddress,
       dropoff_address: dropoffAddress.trim(),
       pickup_lat: pricing.pickupLat,
       pickup_lng: pricing.pickupLng,
@@ -208,6 +210,8 @@ type StoredOrderRow = {
   kind: string | null;
   order_type: string | null;
   restaurant_user_id: string | null;
+  pickup_address: string | null;
+  dropoff_address: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
   dropoff_lat: number | null;
@@ -253,7 +257,7 @@ export async function validateFoodOrderBeforeCheckout(
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "id, kind, order_type, restaurant_user_id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, subtotal, tax, total, grand_total, total_cents, currency, delivery_fee, items_json, promo_code_applied"
+      "id, kind, order_type, restaurant_user_id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, subtotal, tax, total, grand_total, total_cents, currency, delivery_fee, items_json, promo_code_applied"
     )
     .eq("id", orderId)
     .maybeSingle<StoredOrderRow>();
@@ -282,6 +286,8 @@ export async function validateFoodOrderBeforeCheckout(
     supabaseAdmin,
     restaurantUserId,
     items: lines,
+    pickupAddress: String(data.pickup_address ?? ""),
+    dropoffAddress: String(data.dropoff_address ?? ""),
     pickupLat: toFiniteFoodNumber(data.pickup_lat),
     pickupLng: toFiniteFoodNumber(data.pickup_lng),
     dropoffLat: toFiniteFoodNumber(data.dropoff_lat),
@@ -314,12 +320,14 @@ export async function validateFoodOrderBeforeCheckout(
 }
 
 export async function quoteFoodOrderServerSide(
-  input: Omit<CreateFoodOrderInput, "clientId" | "restaurantName" | "pickupAddress" | "dropoffAddress">
+  input: Omit<CreateFoodOrderInput, "clientId" | "restaurantName">
 ) {
   return computeFoodOrderPricing({
     supabaseAdmin: input.supabaseAdmin,
     restaurantUserId: input.restaurantUserId,
     items: input.items,
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
     pickupLat: input.pickupLat,
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,

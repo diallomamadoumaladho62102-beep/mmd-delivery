@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { runDeliveryPricingV2Engine } from "@/lib/deliveryPricingEngine";
 import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine/logShadow";
 import { computeDeliveryPricing } from "@/lib/deliveryPricing";
+import { getDistanceAndEta } from "@/lib/mapboxRoute";
+import {
+  evaluateServerRoute,
+  forwardGeocodeEvidence,
+  validateLocationClaimServer,
+} from "@/lib/geoTrust";
 
 export type MarketplaceDeliveryShadowStatus =
   | "not_started"
@@ -121,6 +127,8 @@ export function computeMarketplaceDeliveryShadow(input: {
   dropoffCountryCode?: string | null;
   activeDriversInZone?: number;
   demandLevel?: number;
+  serverDistanceMiles?: number;
+  serverEtaMinutes?: number;
 }): MarketplaceDeliveryShadowResult {
   const hasCoords =
     input.pickupLat != null &&
@@ -128,10 +136,14 @@ export function computeMarketplaceDeliveryShadow(input: {
     input.dropoffLat != null &&
     input.dropoffLng != null;
 
-  const estimatedDistanceMiles = hasCoords
-    ? Math.round(haversineMiles(input.pickupLat!, input.pickupLng!, input.dropoffLat!, input.dropoffLng!) * 100) / 100
-    : 3.5;
-  const estimatedMinutes = estimateMinutesFromMiles(estimatedDistanceMiles);
+  const estimatedDistanceMiles = Number.isFinite(input.serverDistanceMiles)
+    ? Math.round(Number(input.serverDistanceMiles) * 100) / 100
+    : hasCoords
+      ? Math.round(haversineMiles(input.pickupLat!, input.pickupLng!, input.dropoffLat!, input.dropoffLng!) * 100) / 100
+      : 3.5;
+  const estimatedMinutes = Number.isFinite(input.serverEtaMinutes)
+    ? Math.max(1, Math.round(Number(input.serverEtaMinutes)))
+    : estimateMinutesFromMiles(estimatedDistanceMiles);
 
   const v2 = runDeliveryPricingV2Engine({
     distanceMiles: estimatedDistanceMiles,
@@ -182,7 +194,7 @@ async function loadLocationPoint(
   if (!locationId) return null;
   const { data, error } = await supabaseAdmin
     .from("location_points")
-    .select("id,pin_lat,pin_lng,country_code,commune_name,quartier_name")
+    .select("id,pin_lat,pin_lng,country_code,commune_name,quartier_name,formatted_address,directions_text")
     .eq("id", locationId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -218,14 +230,13 @@ export async function buildMarketplaceDeliveryShadowForOrder(
     countryCode?: string | null;
   }
 ): Promise<MarketplaceDeliveryShadowResult> {
-  const [{ data: seller, error: sellerError }, pickupPoint, dropoffPoint, activeDrivers] =
+  const [{ data: seller, error: sellerError }, dropoffPoint, activeDrivers] =
     await Promise.all([
       supabaseAdmin
         .from("sellers")
         .select("id,address,city,country_code,region_code,mmd_zone_id")
         .eq("id", params.sellerId)
         .maybeSingle(),
-      loadLocationPoint(supabaseAdmin, params.pickupLocationId),
       loadLocationPoint(supabaseAdmin, params.dropoffLocationId),
       countOnlineDriversInCountry(supabaseAdmin, params.countryCode),
     ]);
@@ -237,19 +248,57 @@ export async function buildMarketplaceDeliveryShadowForOrder(
     .filter(Boolean)
     .join(", ");
 
+  const sellerGeo = await forwardGeocodeEvidence(
+    sellerPickupAddress,
+    seller.country_code,
+  );
+  if (!sellerGeo?.center) throw new Error("seller_coordinates_unavailable");
+  if (
+    dropoffPoint?.pin_lat == null ||
+    dropoffPoint?.pin_lng == null
+  ) {
+    throw new Error("marketplace_dropoff_coordinates_missing");
+  }
+
+  const pickup = sellerGeo.center;
+  const dropoff = {
+    lat: Number(dropoffPoint.pin_lat),
+    lng: Number(dropoffPoint.pin_lng),
+  };
+  await validateLocationClaimServer({
+    role: "dropoff",
+    address:
+      dropoffPoint.formatted_address ??
+      dropoffPoint.directions_text ??
+      [dropoffPoint.quartier_name, dropoffPoint.commune_name].filter(Boolean).join(", "),
+    lat: dropoff.lat,
+    lng: dropoff.lng,
+    claimedCountryCode:
+      dropoffPoint.country_code ?? params.countryCode ?? seller.country_code,
+  });
+  const route = await getDistanceAndEta(pickup, dropoff);
+  const routeTrust = evaluateServerRoute({
+    pickup,
+    dropoff,
+    serverDistanceMiles: route.distanceMiles,
+  });
+  if (routeTrust.ok === false) throw new Error(routeTrust.code);
+
   return computeMarketplaceDeliveryShadow({
-    pickupLat: pickupPoint?.pin_lat,
-    pickupLng: pickupPoint?.pin_lng,
-    dropoffLat: dropoffPoint?.pin_lat,
-    dropoffLng: dropoffPoint?.pin_lng,
-    pickupLocationId: pickupPoint?.id ?? params.pickupLocationId ?? null,
+    pickupLat: pickup.lat,
+    pickupLng: pickup.lng,
+    dropoffLat: dropoff.lat,
+    dropoffLng: dropoff.lng,
+    pickupLocationId: null,
     dropoffLocationId: dropoffPoint?.id ?? params.dropoffLocationId ?? null,
     sellerPickupAddress,
-    pickupZoneCode: seller.region_code ?? pickupPoint?.quartier_name ?? null,
+    pickupZoneCode: seller.region_code ?? null,
     dropoffZoneCode: dropoffPoint?.quartier_name ?? dropoffPoint?.commune_name ?? null,
-    pickupCountryCode: seller.country_code ?? pickupPoint?.country_code ?? params.countryCode ?? null,
+    pickupCountryCode: seller.country_code ?? params.countryCode ?? null,
     dropoffCountryCode: dropoffPoint?.country_code ?? params.countryCode ?? null,
     activeDriversInZone: activeDrivers,
+    serverDistanceMiles: route.distanceMiles,
+    serverEtaMinutes: route.etaMinutes,
   });
 }
 

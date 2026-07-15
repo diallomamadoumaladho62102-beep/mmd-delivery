@@ -42,6 +42,8 @@ export async function createDeliveryRequestServerSide(
 ): Promise<CreateDeliveryRequestResult> {
   const pricing = await computeDeliveryRequestPricing({
     supabaseAdmin: input.supabaseAdmin,
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
     pickupLat: input.pickupLat,
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,
@@ -110,6 +112,8 @@ type StoredDeliveryRequestRow = {
   id: string;
   created_by: string | null;
   client_user_id: string | null;
+  pickup_address: string | null;
+  dropoff_address: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
   dropoff_lat: number | null;
@@ -131,7 +135,7 @@ export async function validateDeliveryRequestBeforeCheckout(
   const { data, error } = await supabaseAdmin
     .from("delivery_requests")
     .select(
-      "id, created_by, client_user_id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, subtotal, tax, total, currency, delivery_fee, payment_status"
+      "id, created_by, client_user_id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, subtotal, tax, total, currency, delivery_fee, payment_status"
     )
     .eq("id", deliveryRequestId)
     .maybeSingle<StoredDeliveryRequestRow>();
@@ -148,6 +152,8 @@ export async function validateDeliveryRequestBeforeCheckout(
 
   const pricing = await computeDeliveryRequestPricing({
     supabaseAdmin,
+    pickupAddress: String(data.pickup_address ?? ""),
+    dropoffAddress: String(data.dropoff_address ?? ""),
     pickupLat: toFiniteNumber(data.pickup_lat),
     pickupLng: toFiniteNumber(data.pickup_lng),
     dropoffLat: toFiniteNumber(data.dropoff_lat),
@@ -263,10 +269,12 @@ export async function syncPaidDeliveryRequestOrder(
 }
 
 export async function quoteDeliveryRequestServerSide(
-  input: Omit<CreateDeliveryRequestInput, "clientId" | "title" | "description" | "pickupAddress" | "dropoffAddress" | "requestType">
+  input: Omit<CreateDeliveryRequestInput, "clientId" | "title" | "description" | "requestType">
 ) {
   return computeDeliveryRequestPricing({
     supabaseAdmin: input.supabaseAdmin,
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
     pickupLat: input.pickupLat,
     pickupLng: input.pickupLng,
     dropoffLat: input.dropoffLat,
