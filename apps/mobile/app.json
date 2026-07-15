@@ -59,7 +59,8 @@
           "organization": "mmd-delivery",
           "project": "mmd-delivery-mobile"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "android": {
       "package": "com.maladho2025.mmddelivery",
