@@ -3,14 +3,14 @@ import { View, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NavigationInstruction } from "../../lib/navigationInstructions";
 import { extractStreetName } from "../../lib/navigationInstructions";
-import { formatManeuverDistanceLabel } from "../../lib/navigationLocale";
+import { formatManeuverDistanceLabel, resolveNavigationLocale } from "../../lib/navigationLocale";
 import { resolveHudTopPadding, HUD_BOTTOM_PADDING } from "../../lib/navigationSafeArea";
 import { DriverNavigationTurnArrow } from "./DriverNavigationTurnArrow";
 
 type Props = {
   visible: boolean;
   instruction: NavigationInstruction | null;
-  /** BCP-47 / app nav locale (e.g. "fr", "en"). Defaults to "fr". */
+  /** App locale (e.g. "fr", "en-US"). Normalized via resolveNavigationLocale. */
   locale?: string;
 };
 
@@ -22,7 +22,7 @@ export function DriverNavigationHud({ visible, instruction, locale = "fr" }: Pro
   const streetName = extractStreetName(instruction.title);
   const maneuverDistance = formatManeuverDistanceLabel(
     instruction.maneuverDistanceMeters,
-    locale,
+    resolveNavigationLocale(locale),
   );
 
   return (
