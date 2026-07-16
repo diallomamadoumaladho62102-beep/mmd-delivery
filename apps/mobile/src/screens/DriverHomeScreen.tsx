@@ -49,6 +49,7 @@ import { ensureMapboxTokenApplied } from "../lib/mapboxConfig";
 import {
   fetchDriverServicePreferences,
   hasAnyDriverServiceEnabled,
+  setDriverOnlineViaApi,
 } from "../lib/driverServicePreferencesApi";
 import {
   fetchDriverIdentityStatus,
@@ -64,6 +65,7 @@ import {
   DRIVER_PRESENCE_HEARTBEAT_MS,
 } from "../lib/driverPresenceConfig";
 import { subscribeDriverMissionPushRefresh } from "../lib/driverMissionPushEvents";
+import { toUserFacingError } from "../lib/userFacingError";
 
 import Mapbox from "@rnmapbox/maps";
 import * as Location from "expo-location";
@@ -1020,35 +1022,18 @@ export function DriverHomeScreen() {
   }, [t]);
 
   const setDriverProfileOnline = useCallback(
-    async (userId: string, nextOnline: boolean) => {
-      const { data, error } = await supabase
-        .from("driver_profiles")
-        .update({
-          is_online: nextOnline,
-        })
-        .eq("user_id", userId)
-        .select("user_id,is_online")
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (!data) {
+    async (_userId: string, nextOnline: boolean) => {
+      // Authenticated clients cannot write is_online (self-write guard). Always go
+      // through the service-role API which also enforces vehicle eligibility.
+      const confirmed = await setDriverOnlineViaApi(nextOnline);
+      if (confirmed !== nextOnline) {
         throw new Error(
           nextOnline
-            ? "Impossible de confirmer le statut en ligne dans Supabase."
-            : "Impossible de confirmer le statut hors ligne dans Supabase.",
+            ? "Impossible de confirmer le passage en ligne."
+            : "Impossible de confirmer le passage hors ligne.",
         );
       }
-
-      if (Boolean(data.is_online) !== nextOnline) {
-        throw new Error(
-          nextOnline
-            ? "Supabase n’a pas confirmé le passage en ligne."
-            : "Supabase n’a pas confirmé le passage hors ligne.",
-        );
-      }
-
-      return data;
+      return { is_online: confirmed };
     },
     [],
   );
@@ -2033,15 +2018,22 @@ export function DriverHomeScreen() {
       }
 
       const documents = Array.from(latestByType.values());
-      const docTypeSet = new Set(
-        documents.map((d: any) =>
-          String(d?.doc_type ?? d?.type ?? "")
-            .trim()
-            .toLowerCase(),
-        ),
+      const approvedDocTypeSet = new Set(
+        documents
+          .filter((d: any) => {
+            const status = String(d?.status ?? "")
+              .trim()
+              .toLowerCase();
+            return status === "approved" || status === "verified" || status === "valid";
+          })
+          .map((d: any) =>
+            String(d?.doc_type ?? d?.type ?? "")
+              .trim()
+              .toLowerCase(),
+          ),
       );
 
-      const hasDoc = (docType: string) => docTypeSet.has(docType.toLowerCase());
+      const hasDoc = (docType: string) => approvedDocTypeSet.has(docType.toLowerCase());
       const missing: string[] = [];
 
       if (!driver.full_name) missing.push("Nom complet");
@@ -2059,12 +2051,7 @@ export function DriverHomeScreen() {
 
       const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
       if (isVehicle) {
-        if (!driver.vehicle_brand) missing.push("Marque véhicule");
-        if (!driver.vehicle_model) missing.push("Modèle véhicule");
-        if (!driver.vehicle_year) missing.push("Année véhicule");
-        if (!driver.plate_number) missing.push("Plaque");
-        if (!driver.license_number) missing.push("Numéro permis");
-        if (!driver.license_expiration && !driver.license_expiry) missing.push("Expiration permis");
+        if (!driver.vehicle_brand && !driver.active_vehicle_id) missing.push("Véhicule");
         if (!hasDoc("license_front")) missing.push("Permis recto");
         if (!hasDoc("license_back")) missing.push("Permis verso");
         if (!hasDoc("insurance")) missing.push("Assurance");
@@ -2138,7 +2125,10 @@ export function DriverHomeScreen() {
       lastOfferIdRef.current = null;
     } catch (e: any) {
       console.log("toggleOnline error:", e);
-      Alert.alert(t("shared.orderChat.alerts.errorTitle", "Erreur"), e?.message ?? "Impossible de changer le statut.");
+      Alert.alert(
+        t("shared.orderChat.alerts.errorTitle", "Erreur"),
+        toUserFacingError(e, "Impossible de changer le statut pour le moment."),
+      );
     }
   }, [ensureDriverCanGoOnline, ensureGpsPermission, fetchDriverOrders, getUserIdOrThrow, isOnline, setDriverProfileOnline, startDbGpsTracking, stopDbGpsTracking, stopSound, t]);
 

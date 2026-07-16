@@ -37,6 +37,19 @@ test("driver vehicle trigger blocks document self-approval", () => {
   assert.match(sql, /new\.wheelchair_equipment_verified := old\.wheelchair_equipment_verified/i);
 });
 
+test("online/active vehicle hardening migration is present", () => {
+  const onlineGateMigration = path.join(
+    repoRoot,
+    "supabase",
+    "migrations",
+    "20260815120000_driver_vehicle_online_gate_hardening.sql",
+  );
+  const sql = fs.readFileSync(onlineGateMigration, "utf8");
+  assert.match(sql, /active_vehicle_id/i);
+  assert.match(sql, /admin_review_status/i);
+  assert.doesNotMatch(sql, /%.1f/);
+});
+
 test("is_taxi_driver_eligible checks service preference", () => {
   const sql = fs.readFileSync(baseMigration, "utf8");
   assert.match(sql, /is_driver_service_enabled\(p_user_id, 'taxi'\)/i);

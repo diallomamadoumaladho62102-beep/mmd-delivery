@@ -273,7 +273,10 @@ export function DriverAccountScreen() {
         );
 
         if (upErr) {
-          Alert.alert("driver_profiles", `Upsert blocked: ${upErr.message}`);
+          Alert.alert(
+            "Erreur",
+            toUserFacingError(upErr, "Impossible de créer le profil chauffeur pour le moment."),
+          );
         }
 
         const again = await supabase
@@ -301,7 +304,10 @@ export function DriverAccountScreen() {
       }
 
       if (pErr) {
-        Alert.alert("driver_profiles", pErr.message);
+        Alert.alert(
+          "Erreur",
+          toUserFacingError(pErr, "Impossible de charger le profil chauffeur pour le moment."),
+        );
       }
 
       const dp = (profileRaw as unknown as DriverProfile | null) ?? null;
@@ -345,7 +351,10 @@ export function DriverAccountScreen() {
             .eq("user_id", uid);
 
           if (second.error) {
-            Alert.alert("driver_documents", toUserFacingError(second.error, "Impossible d'envoyer les documents pour le moment."));
+            Alert.alert(
+              t("common.errorTitle", "Error"),
+              toUserFacingError(second.error, "Impossible de charger les documents pour le moment."),
+            );
           } else {
             docs = second.data ?? [];
           }
@@ -353,7 +362,12 @@ export function DriverAccountScreen() {
 
         const approved = new Set(
           (docs ?? [])
-            .filter((x: any) => (x?.status ? x?.status === "approved" : true))
+            .filter((x: any) => {
+              const status = String(x?.status ?? "")
+                .trim()
+                .toLowerCase();
+              return status === "approved" || status === "verified" || status === "valid";
+            })
             .map((x: any) => String(x.doc_type))
         );
 

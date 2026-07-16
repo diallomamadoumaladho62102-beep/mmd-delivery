@@ -115,6 +115,20 @@ export async function PATCH(request: NextRequest) {
     let notificationsSent = 0;
     const vehicleBefore = { ...vehicle };
 
+    const knownActions = new Set([
+      "approve_vehicle",
+      "reject_vehicle",
+      "suspend_vehicle",
+      "reactivate_vehicle",
+      "approve_category",
+      "suspend_category",
+      "unsuspend_category",
+    ]);
+
+    if (!knownActions.has(action) && !(body.rule_patch && body.rule_id)) {
+      return json({ ok: false, error: "invalid_action" }, 400);
+    }
+
     if (action === "approve_vehicle") {
       const vehicleAfter = {
         admin_review_status: "approved",
@@ -123,6 +137,7 @@ export async function PATCH(request: NextRequest) {
         // vehicle_status = 'active'; without flipping it here an approved vehicle
         // stays 'pending_review' forever and can never be selected as active.
         vehicle_status: "active",
+        vehicle_active: true,
         inspection_status: body.inspection_status ?? "approved",
         insurance_status: body.insurance_status ?? "approved",
         registration_status: body.registration_status ?? "approved",
@@ -131,7 +146,11 @@ export async function PATCH(request: NextRequest) {
         updated_at: new Date().toISOString(),
       };
 
-      await supabase.from("driver_vehicles").update(vehicleAfter).eq("id", vehicleId);
+      const { error: approveError } = await supabase
+        .from("driver_vehicles")
+        .update(vehicleAfter)
+        .eq("id", vehicleId);
+      if (approveError) return json({ ok: false, error: approveError.message }, 500);
 
       notificationsSent += await notifyAdminDocumentChanges({
         supabaseAdmin: supabase,
@@ -145,15 +164,35 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "reject_vehicle") {
-      await supabase
+      const vehicleAfter = {
+        admin_review_status: "rejected",
+        vehicle_status: "rejected",
+        vehicle_active: false,
+        admin_review_notes: String(body.notes ?? ""),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: rejectError } = await supabase
         .from("driver_vehicles")
+        .update(vehicleAfter)
+        .eq("id", vehicleId);
+      if (rejectError) return json({ ok: false, error: rejectError.message }, 500);
+
+      // Clear active pointer so the driver cannot stay "available" on a rejected vehicle.
+      await supabase
+        .from("driver_profiles")
         .update({
-          admin_review_status: "rejected",
-          vehicle_status: "rejected",
-          admin_review_notes: String(body.notes ?? ""),
+          active_vehicle_id: null,
+          is_online: false,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", vehicleId);
+        .eq("user_id", vehicle.driver_user_id)
+        .eq("active_vehicle_id", vehicleId);
+
+      const recalc = await recalculateVehicleWithNotifications(supabase, vehicleId, {
+        adminAction: "reject_category",
+      });
+      notificationsSent += recalc.notificationsSent;
 
       notificationsSent += await notifyAdminCategoryAction({
         supabaseAdmin: supabase,
@@ -165,7 +204,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "suspend_vehicle") {
-      await supabase
+      const { error: suspendError } = await supabase
         .from("driver_vehicles")
         .update({
           vehicle_status: "suspended",
@@ -173,6 +212,17 @@ export async function PATCH(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", vehicleId);
+      if (suspendError) return json({ ok: false, error: suspendError.message }, 500);
+
+      await supabase
+        .from("driver_profiles")
+        .update({
+          active_vehicle_id: null,
+          is_online: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", vehicle.driver_user_id)
+        .eq("active_vehicle_id", vehicleId);
 
       await supabase.rpc("log_driver_vehicle_history", {
         p_driver_user_id: vehicle.driver_user_id,
@@ -181,6 +231,11 @@ export async function PATCH(request: NextRequest) {
         p_actor_user_id: session.userId,
         p_metadata: { notes: body.notes ?? null },
       });
+
+      const recalc = await recalculateVehicleWithNotifications(supabase, vehicleId, {
+        adminAction: "suspend_category",
+      });
+      notificationsSent += recalc.notificationsSent;
 
       notificationsSent += await notifyAdminCategoryAction({
         supabaseAdmin: supabase,
@@ -192,14 +247,16 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (action === "reactivate_vehicle") {
-      await supabase
+      const { error: reactivateError } = await supabase
         .from("driver_vehicles")
         .update({
           vehicle_status: "active",
           vehicle_active: true,
+          admin_review_status: "approved",
           updated_at: new Date().toISOString(),
         })
         .eq("id", vehicleId);
+      if (reactivateError) return json({ ok: false, error: reactivateError.message }, 500);
 
       await supabase.rpc("log_driver_vehicle_history", {
         p_driver_user_id: vehicle.driver_user_id,
@@ -233,11 +290,12 @@ export async function PATCH(request: NextRequest) {
         patch.admin_suspended = false;
       }
 
-      await supabase
+      const { error: categoryError } = await supabase
         .from("vehicle_category_eligibility")
         .update(patch)
         .eq("vehicle_id", vehicleId)
         .eq("category", category);
+      if (categoryError) return json({ ok: false, error: categoryError.message }, 500);
 
       if (action === "unsuspend_category") {
         const recalc = await recalculateVehicleWithNotifications(supabase, vehicleId, {
@@ -255,15 +313,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (body.rule_patch && body.rule_id) {
-      await supabase
+      const { error: ruleError } = await supabase
         .from("vehicle_category_rules")
         .update({ ...body.rule_patch, updated_at: new Date().toISOString() })
         .eq("id", body.rule_id);
+      if (ruleError) return json({ ok: false, error: ruleError.message }, 500);
 
       const { data: allVehicles } = await supabase
         .from("driver_vehicles")
         .select("id")
-        .eq("vehicle_active", true);
+        .eq("vehicle_active", true)
+        .is("deleted_at", null);
 
       for (const row of allVehicles ?? []) {
         const recalc = await recalculateVehicleWithNotifications(supabase, String(row.id));
@@ -281,8 +341,7 @@ export async function PATCH(request: NextRequest) {
       request,
     });
 
-    return json({ ok: true, notifications_sent: notificationsSent });
-  } catch (e) {
+    return json({ ok: true, notifications_sent: notificationsSent });  } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;
     return json(
       { ok: false, error: e instanceof Error ? e.message : "Server error" },

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireDriver } from "@/lib/driverServicePreferencesAuth";
+import { didMaterialVehicleFieldsChange } from "@/lib/driverOnlineStatus";
 import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 import {
   TAXI_CATEGORY_LABELS,
@@ -98,6 +99,26 @@ export async function PATCH(
     }
   }
 
+  const materialChanged = didMaterialVehicleFieldsChange(
+    existing as Record<string, unknown>,
+    patch,
+  );
+  const wasApproved =
+    String(existing.admin_review_status ?? "").toLowerCase() === "approved" ||
+    String(existing.vehicle_status ?? "").toLowerCase() === "active";
+
+  // Material edits by the driver always require a fresh admin review. Service-role
+  // updates bypass the authenticated self-write guard, so we enforce this here.
+  if (materialChanged && wasApproved) {
+    patch.admin_review_status = "pending_review";
+    patch.vehicle_status = "pending_review";
+    patch.inspection_status = "pending";
+    patch.insurance_status = "pending";
+    patch.registration_status = "pending";
+    patch.wheelchair_equipment_verified = false;
+    patch.admin_review_notes = null;
+  }
+
   const { error } = await auth.supabaseAdmin
     .from("driver_vehicles")
     .update(patch)
@@ -115,11 +136,35 @@ export async function PATCH(
     );
   }
 
+  if (materialChanged && wasApproved) {
+    await auth.supabaseAdmin
+      .from("driver_profiles")
+      .update({
+        active_vehicle_id: null,
+        is_online: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", auth.userId)
+      .eq("active_vehicle_id", vehicleId);
+
+    await auth.supabaseAdmin.rpc("log_driver_vehicle_history", {
+      p_driver_user_id: auth.userId,
+      p_vehicle_id: vehicleId,
+      p_action: "vehicle_resubmitted_for_review",
+      p_actor_user_id: auth.userId,
+      p_metadata: { reason: "material_fields_changed" },
+    });
+  }
+
   await auth.supabaseAdmin.rpc("recalculate_vehicle_category_eligibility", {
     p_vehicle_id: vehicleId,
   });
 
-  return json({ ok: true, vehicle_id: vehicleId });
+  return json({
+    ok: true,
+    vehicle_id: vehicleId,
+    requires_review: Boolean(materialChanged && wasApproved),
+  });
 }
 
 export async function DELETE(

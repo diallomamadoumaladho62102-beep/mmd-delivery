@@ -7,6 +7,8 @@ import {
 import { AppState, Platform, type AppStateStatus } from "react-native";
 import { supabase } from "./supabase";
 import { isDriverOnlineEligible } from "./accountStatus";
+import { setDriverOnlineViaApi } from "./driverServicePreferencesApi";
+import { logTechnicalError } from "./userFacingError";
 
 const DRIVER_LOCATION_TASK = "MMD_DRIVER_BACKGROUND_LOCATION_TASK";
 const KEEP_AWAKE_TAG = "mmd-driver-location-tracking";
@@ -234,12 +236,18 @@ async function updateDriverOnlineStatus(
     }
   }
 
-  const { error } = await supabase
-    .from("driver_profiles")
-    .update({ is_online: isOnline })
-    .eq("user_id", driverId);
-
-  if (error) {
+  try {
+    // Authenticated clients cannot mutate is_online (self-write guard). Use API.
+    const confirmed = await setDriverOnlineViaApi(isOnline);
+    if (confirmed !== isOnline) {
+      logError(
+        `Confirmation is_online manquante (${isOnline}) pour`,
+        driverId,
+      );
+      return;
+    }
+  } catch (error) {
+    logTechnicalError("driver.location.online", error, { driverId, isOnline });
     logError(
       `Erreur mise à jour driver_profiles.is_online (${isOnline}):`,
       error,

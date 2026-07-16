@@ -12,6 +12,14 @@ function testKnownCodes() {
     toUserFacingError({ error: "documents_required" }),
     "Ce mode de transport nécessite une validation de vos documents avant d'être activé.",
   );
+  assert.equal(
+    toUserFacingError({ error: "no_active_vehicle" }),
+    "Sélectionnez un véhicule actif et approuvé avant de passer en ligne.",
+  );
+  assert.equal(
+    toUserFacingError({ error: "vehicle_pending_review" }),
+    "Votre véhicule est en attente de validation. Vous pourrez passer en ligne après approbation.",
+  );
 }
 
 function testStripeGenericFrench() {

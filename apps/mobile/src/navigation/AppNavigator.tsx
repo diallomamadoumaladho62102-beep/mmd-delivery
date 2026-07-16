@@ -116,6 +116,10 @@ import {
 } from "../lib/driverMissionPush";
 import { notifyDriverMissionPushReceived } from "../lib/driverMissionPushEvents";
 import { notifyTaxiOfferPushReceived } from "../lib/taxiPushEvents";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../lib/supabaseRealtime";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -976,6 +980,48 @@ export function AppNavigator({
       if (st === "active") scheduleSync();
     });
 
+    let profileChannel: ReturnType<typeof supabase.channel> | null = null;
+    let profileUserId: string | null = null;
+
+    const subscribeDriverProfile = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const uid = data.session?.user?.id ?? null;
+        if (!alive || !uid) return;
+        if (profileUserId === uid && profileChannel) return;
+
+        await unsubscribeSupabaseChannel(profileChannel);
+        profileChannel = null;
+        profileUserId = uid;
+
+        profileChannel = subscribePostgresChannel(
+          `driver-profile-status-${uid}`,
+          [
+            {
+              event: "UPDATE",
+              table: "driver_profiles",
+              filter: `user_id=eq.${uid}`,
+              callback: () => {
+                if (alive) scheduleSync();
+              },
+            },
+            {
+              event: "*",
+              table: "driver_vehicles",
+              filter: `driver_user_id=eq.${uid}`,
+              callback: () => {
+                if (alive) scheduleSync();
+              },
+            },
+          ],
+        );
+      } catch (e) {
+        console.log("driver profile realtime subscribe error:", e);
+      }
+    };
+
+    void subscribeDriverProfile();
+
     return () => {
       alive = false;
       try {
@@ -984,6 +1030,7 @@ export function AppNavigator({
       try {
         appStateSub?.remove?.();
       } catch {}
+      void unsubscribeSupabaseChannel(profileChannel);
     };
   }, [openResetPassword, scheduleSync]);
 

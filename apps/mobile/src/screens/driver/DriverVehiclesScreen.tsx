@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +19,11 @@ import {
   setDriverActiveVehicle,
   type DriverVehicleListItem,
 } from "../../lib/driverServicePreferencesApi";
+import { supabase } from "../../lib/supabase";
+import {
+  subscribePostgresChannel,
+  unsubscribeSupabaseChannel,
+} from "../../lib/supabaseRealtime";
 import { toUserFacingError } from "../../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverVehicles">;
@@ -96,6 +101,7 @@ export function DriverVehiclesScreen() {
   const [vehicles, setVehicles] = useState<DriverVehicleListItem[]>([]);
   const [isOnline, setIsOnline] = useState(false);
   const [history, setHistory] = useState<Array<{ action: string; created_at: string }>>([]);
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,11 +117,61 @@ export function DriverVehiclesScreen() {
     }
   }, []);
 
+  const scheduleReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      void load();
+    }, 250);
+  }, [load]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
     }, [load]),
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const subscribe = async () => {
+      const { data } = await supabase.auth.getSession();
+      const userId = data.session?.user?.id;
+      if (!userId || cancelled) return;
+
+      channel = subscribePostgresChannel(
+        `driver-vehicles-${userId}`,
+        [
+          {
+            event: "*",
+            table: "driver_vehicles",
+            filter: `driver_user_id=eq.${userId}`,
+            callback: () => scheduleReload(),
+          },
+          {
+            event: "*",
+            table: "vehicle_category_eligibility",
+            filter: `driver_user_id=eq.${userId}`,
+            callback: () => scheduleReload(),
+          },
+          {
+            event: "UPDATE",
+            table: "driver_profiles",
+            filter: `user_id=eq.${userId}`,
+            callback: () => scheduleReload(),
+          },
+        ],
+      );
+    };
+
+    void subscribe();
+
+    return () => {
+      cancelled = true;
+      if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+      void unsubscribeSupabaseChannel(channel);
+    };
+  }, [scheduleReload]);
 
   const activate = async (vehicleId: string) => {
     try {

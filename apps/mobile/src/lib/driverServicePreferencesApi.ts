@@ -253,6 +253,29 @@ export async function setDriverActiveVehicle(vehicleId: string): Promise<string>
   return String(body.active_vehicle_id ?? vehicleId);
 }
 
+export async function setDriverOnlineViaApi(isOnline: boolean): Promise<boolean> {
+  const body = await authFetch("/api/driver/online", {
+    method: "PATCH",
+    body: JSON.stringify({ is_online: isOnline }),
+  });
+  return body.is_online === true;
+}
+
+export async function fetchDriverOnlineStatus(): Promise<{
+  is_online: boolean;
+  status: string | null;
+  transport_mode: string | null;
+  active_vehicle_id: string | null;
+}> {
+  const body = await authFetch("/api/driver/online");
+  return {
+    is_online: body.is_online === true,
+    status: body.status ?? null,
+    transport_mode: body.transport_mode ?? null,
+    active_vehicle_id: body.active_vehicle_id ?? null,
+  };
+}
+
 export type TaxiCategoryAvailability = {
   category: string;
   label: string;

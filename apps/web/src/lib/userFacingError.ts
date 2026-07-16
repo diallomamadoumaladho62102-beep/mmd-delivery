@@ -68,6 +68,32 @@ function mapKnownErrorCode(code: string, message: string): string | null {
       return "Ce mode de transport nécessite une validation de vos documents avant d'être activé.";
     case "invalid_transport_mode":
       return "Mode de transport invalide.";
+    case "must_be_offline":
+      return "Passez hors ligne pour modifier ou supprimer un véhicule.";
+    case "active_ride_in_progress":
+      return "Impossible de changer de véhicule pendant une course.";
+    case "vehicle_not_active":
+      return "Ce véhicule n'est pas actif ou approuvé.";
+    case "vehicle_not_found":
+      return "Véhicule introuvable.";
+    case "no_active_vehicle":
+      return "Sélectionnez un véhicule actif et approuvé avant de passer en ligne.";
+    case "vehicle_pending_review":
+      return "Votre véhicule est en attente de validation. Vous pourrez passer en ligne après approbation.";
+    case "vehicle_rejected":
+      return "Votre véhicule a été refusé. Corrigez les informations ou ajoutez un nouveau véhicule.";
+    case "vehicle_not_eligible":
+      return "Votre véhicule actif n'est pas éligible. Attendez la validation admin ou choisissez un autre véhicule.";
+    case "no_service_enabled":
+      return "Activez au moins un service (Food, Colis ou Taxi) avant de passer en ligne.";
+    case "driver_not_approved":
+      return "Votre compte chauffeur doit être approuvé avant de passer en ligne.";
+    case "driver_suspended":
+      return "Votre compte chauffeur est suspendu.";
+    case "driver_disabled":
+      return "Votre compte chauffeur est désactivé.";
+    case "online_status_update_failed":
+      return "Impossible de changer le statut pour le moment.";
     case "route_unavailable":
       return "Nous n'avons pas pu calculer l'itinéraire exact pour le moment. Veuillez vérifier les adresses ou réessayer.";
     case "card_declined":

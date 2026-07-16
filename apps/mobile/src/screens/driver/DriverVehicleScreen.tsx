@@ -157,7 +157,7 @@ export function DriverVehicleScreen() {
         "Véhicule",
         isCreate
           ? "Véhicule ajouté. Il est en attente de validation par l'équipe MMD."
-          : "Informations enregistrées. L'éligibilité a été recalculée.",
+          : "Informations enregistrées. Si des champs importants ont changé, le véhicule repasse en validation admin.",
       );
       navigation.goBack();
     } catch (error) {
