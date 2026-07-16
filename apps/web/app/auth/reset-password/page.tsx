@@ -16,12 +16,33 @@ function getUrlParams(): Record<string, string> {
     : "";
 
   const raw = [hash, query].filter(Boolean).join("&");
+  const allowedKeys = new Set([
+    "access_token",
+    "refresh_token",
+    "expires_in",
+    "expires_at",
+    "token_type",
+    "type",
+    "error",
+    "error_description",
+    "error_code",
+  ]);
 
   raw.split("&").forEach((part) => {
-    const [key, value] = part.split("=");
-    if (key && value) {
-      params[decodeURIComponent(key)] = decodeURIComponent(value);
+    const eq = part.indexOf("=");
+    if (eq <= 0) return;
+    let key = part.slice(0, eq);
+    let value = part.slice(eq + 1);
+    try {
+      key = decodeURIComponent(key);
+      value = decodeURIComponent(value);
+    } catch {
+      return;
     }
+    if (!allowedKeys.has(key)) return;
+    // Prevent prototype pollution / remote property injection.
+    if (key === "__proto__" || key === "constructor" || key === "prototype") return;
+    params[key] = value;
   });
 
   return params;
