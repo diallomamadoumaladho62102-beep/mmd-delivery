@@ -9,6 +9,7 @@ import {
   type OrderLikeRow,
   type SourceTable,
 } from "@/lib/maskedCallCreate";
+import { normalizePhoneE164 } from "@/lib/phoneE164";
 
 export const runtime = "nodejs";
 
@@ -40,8 +41,7 @@ function getBearerToken(req: NextRequest): string | null {
 }
 
 function normalizePhone(phone: string | null | undefined): string | null {
-  const value = String(phone ?? "").trim();
-  return value.length > 0 ? value : null;
+  return normalizePhoneE164(phone);
 }
 
 async function getProfilePhone(userId: string): Promise<string | null> {

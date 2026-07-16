@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { normalizePhoneE164 } from "../lib/phoneE164";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
@@ -43,7 +44,7 @@ export function DriverOnboardingScreen() {
   const needsVehicle = transportMode === "car" || transportMode === "moto";
 
   function normalizePhone(p: string) {
-    return String(p ?? "").replace(/[^\d+]/g, "").trim();
+    return normalizePhoneE164(p) ?? "";
   }
 
   function parseYear(y: string) {

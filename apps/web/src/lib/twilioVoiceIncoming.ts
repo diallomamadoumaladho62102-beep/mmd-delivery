@@ -7,6 +7,7 @@ import {
   formDataToParamRecord,
 } from "@/lib/twilioRequestValidation";
 import { getTwilioVoiceStatusCallbackUrl } from "@/lib/twilioProductionUrls";
+import { normalizePhoneE164, phonesEquivalent } from "@/lib/phoneE164";
 
 const MMD_TWILIO_NUMBER = getTwilioPhoneNumber();
 const ADMIN_SUPPORT_PHONE =
@@ -89,7 +90,7 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
     return new Response(twilioAuth.message, { status: twilioAuth.status });
   }
 
-  const from = String(formData.get("From") || "").trim();
+  const from = normalizePhoneE164(String(formData.get("From") || "").trim());
   const callSid = String(formData.get("CallSid") || "").trim();
 
   if (!from) {
@@ -98,15 +99,21 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
 
   const now = new Date().toISOString();
 
-  const { data: session, error: sessionError } = await supabaseAdmin
+  const { data: sessions, error: sessionError } = await supabaseAdmin
     .from("call_sessions")
     .select("*")
-    .eq("caller_phone", from)
     .in("status", [...ROUTABLE_SESSION_STATUSES])
     .gt("expires_at", now)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(25);
+
+  const session =
+    (sessions ?? []).find((row) =>
+      phonesEquivalent(
+        (row as { caller_phone?: string | null }).caller_phone,
+        from,
+      ),
+    ) ?? null;
 
   if (sessionError) {
     console.error("[twilio/voice/incoming] call_sessions lookup error", {
@@ -122,8 +129,10 @@ export async function handleTwilioVoiceIncoming(req: NextRequest) {
     );
   }
 
-  const targetPhone = String(session.target_phone || "").trim();
-  const proxyNumber = String(session.proxy_number || MMD_TWILIO_NUMBER).trim();
+  const targetPhone = normalizePhoneE164(String(session.target_phone || "")) || "";
+  const proxyNumber = normalizePhoneE164(
+    String(session.proxy_number || MMD_TWILIO_NUMBER),
+  ) || MMD_TWILIO_NUMBER;
 
   if (!targetPhone) {
     return twilioVoiceSay(

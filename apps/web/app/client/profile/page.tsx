@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
+import { normalizePhoneE164 } from "@/lib/phoneE164";
 
 type ClientProfileRow = {
   user_id: string;
@@ -176,9 +177,25 @@ export default function ClientProfilePage() {
       }
     }
 
+    const normalizedPhone = normalizePhoneE164(profile.phone);
+
+    if (normalizedPhone) {
+      const { error: phoneError } = await supabase
+        .from("profiles")
+        .update({ phone: normalizedPhone })
+        .eq("id", userId);
+
+      if (phoneError) {
+        console.error(phoneError);
+        setErr(phoneError.message);
+        setSaving(false);
+        return;
+      }
+    }
+
     const payload = {
       user_id: userId,
-      phone: profile.phone || null,
+      phone: normalizedPhone,
       default_address: profile.default_address || null,
       floor: profile.floor || null,
       door_code: profile.door_code || null,
@@ -266,7 +283,7 @@ export default function ClientProfilePage() {
               className="mt-1 w-full border rounded px-3 py-2 text-sm"
               value={profile.phone ?? ""}
               onChange={(e) => onChangeField("phone", e.target.value)}
-              placeholder="9297408722"
+              placeholder="+19297408722"
             />
           </label>
 

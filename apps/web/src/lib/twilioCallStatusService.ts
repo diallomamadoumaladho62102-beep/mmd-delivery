@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { mapTwilioCallStatus } from "./chatReceiptStatus";
+import { normalizePhoneE164, phonesEquivalent } from "./phoneE164";
 
 export type MappedCallStatus = ReturnType<typeof mapTwilioCallStatus>;
 
@@ -52,40 +53,55 @@ export async function applyTwilioStatusCallback(params: {
 
   let sessionId: string | null = null;
 
-  if (input.callSid) {
-    const { data: session } = await supabaseAdmin
-      .from("call_sessions")
-      .select("id, status, started_at, answered_at")
-      .or(
-        `twilio_call_sid.eq.${input.callSid},caller_phone.eq.${input.fromPhone ?? ""}`,
-      )
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  if (input.callSid || input.fromPhone) {
+    const normalizedFrom = normalizePhoneE164(input.fromPhone);
 
-    const row = session as {
+    const { data: sessions } = await supabaseAdmin
+      .from("call_sessions")
+      .select("id, status, started_at, answered_at, caller_phone, twilio_call_sid")
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    const row =
+      (sessions ?? []).find((session) => {
+        const candidate = session as {
+          id?: string;
+          caller_phone?: string | null;
+          twilio_call_sid?: string | null;
+        };
+        if (
+          input.callSid &&
+          candidate.twilio_call_sid &&
+          candidate.twilio_call_sid === input.callSid
+        ) {
+          return true;
+        }
+        return phonesEquivalent(candidate.caller_phone, normalizedFrom);
+      }) ?? null;
+
+    const sessionRow = row as {
       id?: string;
       status?: string | null;
       started_at?: string | null;
       answered_at?: string | null;
     } | null;
 
-    sessionId = row?.id ?? null;
+    sessionId = sessionRow?.id ?? null;
 
-    if (sessionId && mappedStatus && shouldApplyStatusUpdate(row?.status, mappedStatus)) {
+    if (sessionId && mappedStatus && shouldApplyStatusUpdate(sessionRow?.status, mappedStatus)) {
       const update: Record<string, unknown> = {
         status: mappedStatus,
         final_status: mappedStatus,
         twilio_call_sid: input.callSid,
       };
 
-      if (mappedStatus === "ringing" && !row?.started_at) {
+      if (mappedStatus === "ringing" && !sessionRow?.started_at) {
         update.started_at = now;
       }
 
       if (mappedStatus === "connected") {
-        update.answered_at = row?.answered_at ?? now;
-        update.started_at = row?.started_at ?? now;
+        update.answered_at = sessionRow?.answered_at ?? now;
+        update.started_at = sessionRow?.started_at ?? now;
       }
 
       if (
