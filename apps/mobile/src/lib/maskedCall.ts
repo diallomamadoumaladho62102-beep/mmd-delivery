@@ -28,8 +28,19 @@ function getErrorMessage(error: unknown) {
 }
 
 function normalizeSourceTable(value: unknown): SourceTable {
-  if (value === "delivery_requests") return "delivery_requests";
-  if (value === "taxi_rides") return "taxi_rides";
+  const raw = String(value ?? "orders").trim().toLowerCase();
+  if (raw === "delivery_requests" || raw === "delivery_request") {
+    return "delivery_requests";
+  }
+  if (raw === "taxi_rides" || raw === "taxi_ride") {
+    return "taxi_rides";
+  }
+  if (
+    raw === "marketplace_delivery_jobs" ||
+    raw === "marketplace_delivery_job"
+  ) {
+    return "marketplace_delivery_jobs";
+  }
   return "orders";
 }
 

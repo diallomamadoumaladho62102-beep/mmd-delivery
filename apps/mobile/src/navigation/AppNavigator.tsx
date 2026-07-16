@@ -33,6 +33,9 @@ import {
   isDriverMissionPushType,
   navigateToDriverMission,
 } from "../lib/driverMissionPush";
+import {
+  navigateFromCommunicationPush,
+} from "../lib/communicationPushRouting";
 import { notifyDriverMissionPushReceived } from "../lib/driverMissionPushEvents";
 import {
   extractTaxiPushPayload,
@@ -379,6 +382,9 @@ export function AppNavigator({
     }
 
     function handleNotificationData(data: unknown) {
+      if (navigateFromCommunicationPush(navRef.current as any, data)) {
+        return;
+      }
       handleDriverMissionPush(data);
       handleClientTaxiPush(data);
     }

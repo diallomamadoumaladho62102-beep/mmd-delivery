@@ -21,6 +21,7 @@ export function DriverChatScreen() {
 
   const orderId = String(route?.params?.orderId ?? "").trim();
   const rawTargetRole = route?.params?.targetRole;
+  const sourceTable = route?.params?.sourceTable ?? route?.params?.source_table;
 
   const targetRole: ChatTargetRole = isValidTargetRole(rawTargetRole)
     ? rawTargetRole
@@ -80,6 +81,7 @@ export function DriverChatScreen() {
     <OrderChatBaseScreen
       orderId={orderId}
       targetRole={targetRole}
+      sourceTable={sourceTable}
       onBack={safeBack}
       titlePrefix={titlePrefix}
     />

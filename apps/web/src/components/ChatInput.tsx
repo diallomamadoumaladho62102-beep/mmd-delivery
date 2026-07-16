@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseBrowser";
+import { sendChatMessage } from "@/lib/chat";
 
 export default function ChatInput({
   orderId,
   onSent,
+  senderRole,
+  targetRole,
 }: {
   orderId: string;
   onSent?: () => void;
+  senderRole?: string | null;
+  targetRole?: string | null;
 }) {
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -17,44 +21,21 @@ export default function ChatInput({
 
   async function send() {
     setErr(null);
-    const t = text.trim();
-    if (!t && !file) return;
+    const trimmed = text.trim();
+    if (!trimmed && !file) return;
 
     setPending(true);
     try {
-      let image_path: string | null = null;
-
-      // upload image optionnel
-      if (file) {
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const key = `${orderId}/${crypto.randomUUID()}-${safeName}`;
-
-        const up = await supabase.storage
-          .from("chat-uploads")
-          .upload(key, file, { upsert: false });
-
-        if (up.error) throw new Error(up.error.message);
-        image_path = key;
-      }
-
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error("Non connecté.");
-
-      // ✅ IMPORTANT: colonne = message (pas text)
-      const { error } = await supabase.from("order_messages").insert({
-        order_id: orderId,
-        user_id: user.id,
-        message: t || "", // ou null si tu préfères, mais ChatBox affiche message
-        image_path,
+      await sendChatMessage(orderId, trimmed, file, {
+        senderRole,
+        targetRole,
       });
-
-      if (error) throw new Error(error.message);
 
       setText("");
       setFile(null);
       onSent?.();
-    } catch (e: any) {
-      setErr(e?.message || String(e));
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setPending(false);
     }
@@ -80,7 +61,7 @@ export default function ChatInput({
       <div className="flex items-center gap-2">
         <input
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
 

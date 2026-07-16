@@ -25,6 +25,15 @@ import {
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
 import { mmdAudio } from "../../lib/mmdAudio";
+import { fireOrderChatPushNotify } from "../../lib/chatPushClient";
+import {
+  canRoleAccessChatResource,
+  loadChatParticipantIds,
+  mapTargetRoleToPushRole,
+  normalizeChatSourceTable,
+  resolveChatTargetUserId,
+  type ChatSourceTable,
+} from "../../lib/orderChatAccess";
 
 type ChatTargetRole = "client" | "driver" | "restaurant" | "admin" | "";
 
@@ -269,6 +278,7 @@ function targetRoleLabel(role: ChatTargetRole, t: TFunction) {
 export function OrderChatBaseScreen(props: {
   orderId: string;
   targetRole?: ChatTargetRole | string;
+  sourceTable?: ChatSourceTable | string;
   onBack: () => void;
   titlePrefix?: string;
 }) {
@@ -276,6 +286,7 @@ export function OrderChatBaseScreen(props: {
   const { t } = useTranslation();
 
   const targetRole = normalizeTargetRole(props.targetRole);
+  const sourceTable = normalizeChatSourceTable(props.sourceTable);
   const currentRole = normalizeRoleFromTitlePrefix(titlePrefix);
   const isValidOrderId = useMemo(() => isValidUuid(orderId), [orderId]);
 
@@ -328,41 +339,17 @@ export function OrderChatBaseScreen(props: {
     const profileRole = normalizeTargetRole((profile as any)?.role);
     const role = currentRole || profileRole;
 
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .select("id,client_id,client_user_id,user_id,restaurant_id,restaurant_user_id,driver_id,status")
-      .eq("id", orderId)
-      .maybeSingle();
+    const participantIds = await loadChatParticipantIds(supabase, orderId, sourceTable);
 
-    if (orderError) throw orderError;
-
-    if (!order) {
+    if (!participantIds) {
       return { userId, role, canAccess: false };
     }
 
-    const status = String((order as any)?.status || "").trim().toLowerCase();
-
-    if (status === "canceled" || status === "delivered") {
-      return { userId, role, canAccess: false };
-    }
-
-    const isClient =
-      String((order as any)?.client_id || "") === userId ||
-      String((order as any)?.client_user_id || "") === userId ||
-      String((order as any)?.user_id || "") === userId;
-
-    const isRestaurant =
-      String((order as any)?.restaurant_id || "") === userId ||
-      String((order as any)?.restaurant_user_id || "") === userId;
-
-    const isDriver = String((order as any)?.driver_id || "") === userId;
-    const isAdmin = role === "admin";
-
-    const roleMatches =
-      isAdmin ||
-      (role === "client" && isClient) ||
-      (role === "restaurant" && isRestaurant) ||
-      (role === "driver" && isDriver);
+    const roleMatches = canRoleAccessChatResource({
+      userId,
+      role,
+      participantIds,
+    });
 
     const targetAllowed = canRoleChatWithTarget(role, targetRole);
 
@@ -371,7 +358,7 @@ export function OrderChatBaseScreen(props: {
       role,
       canAccess: roleMatches && targetAllowed,
     };
-  }, [currentRole, isValidOrderId, orderId, targetRole]);
+  }, [currentRole, isValidOrderId, orderId, sourceTable, targetRole]);
 
 
   const loadParticipants = useCallback(
@@ -382,28 +369,21 @@ export function OrderChatBaseScreen(props: {
       }
 
       try {
-        const { data: order, error } = await supabase
-          .from("orders")
-          .select("client_id,client_user_id,user_id,restaurant_id,restaurant_user_id,driver_id,restaurant_name")
-          .eq("id", orderId)
-          .maybeSingle();
+        const participantIds = await loadChatParticipantIds(
+          supabase,
+          orderId,
+          sourceTable,
+        );
 
-        if (error) throw error;
-
-        if (!order) {
+        if (!participantIds) {
           setParticipants({});
           return;
         }
 
-        const clientId =
-          String((order as any)?.client_user_id || "").trim() ||
-          String((order as any)?.client_id || "").trim() ||
-          String((order as any)?.user_id || "").trim();
-
-        const driverId = String((order as any)?.driver_id || "").trim();
-        const restaurantUserId = String((order as any)?.restaurant_user_id || "").trim();
-        const restaurantId = String((order as any)?.restaurant_id || "").trim();
-        const restaurantFallbackName = String((order as any)?.restaurant_name || "").trim();
+        const clientId = participantIds.clientId;
+        const driverId = participantIds.driverId;
+        const restaurantUserId = participantIds.restaurantUserId;
+        const restaurantFallbackName = participantIds.restaurantLabel;
 
         const next: Record<string, ChatParticipant> = {};
 
@@ -437,46 +417,51 @@ export function OrderChatBaseScreen(props: {
         await fetchProfile(clientId, "client", targetRoleLabel("client", t));
         await fetchProfile(driverId, "driver", targetRoleLabel("driver", t));
 
-        if (restaurantUserId || restaurantId) {
+        if (restaurantUserId) {
           try {
             let restaurantProfile: RestaurantProfile | null = null;
 
-            if (restaurantUserId) {
-              const { data } = await supabase
-                .from("restaurant_profiles")
-                .select("id, user_id, restaurant_name, business_name, avatar_url, logo_url")
-                .eq("user_id", restaurantUserId)
+            const { data } = await supabase
+              .from("restaurant_profiles")
+              .select("id, user_id, restaurant_name, business_name, avatar_url, logo_url")
+              .eq("user_id", restaurantUserId)
+              .maybeSingle();
+
+            restaurantProfile = (data as RestaurantProfile | null) ?? null;
+
+            if (!restaurantProfile && sourceTable === "marketplace_delivery_jobs") {
+              const { data: sellerProfile } = await supabase
+                .from("profiles")
+                .select("id, full_name, avatar_url")
+                .eq("id", restaurantUserId)
                 .maybeSingle();
 
-              restaurantProfile = (data as RestaurantProfile | null) ?? null;
+              next[restaurantUserId] = {
+                id: restaurantUserId,
+                role: "restaurant",
+                name: displayNameFromProfile(
+                  sellerProfile as BasicProfile | null,
+                  restaurantFallbackName || targetRoleLabel("restaurant", t),
+                  restaurantUserId,
+                ),
+                avatarUrl: resolveAvatarUrl((sellerProfile as BasicProfile | null)?.avatar_url),
+              };
+            } else {
+              next[restaurantUserId] = {
+                id: restaurantUserId,
+                role: "restaurant",
+                name: displayNameFromRestaurant(
+                  restaurantProfile,
+                  restaurantFallbackName || targetRoleLabel("restaurant", t),
+                ),
+                avatarUrl:
+                  resolveAvatarUrl(restaurantProfile?.avatar_url) ||
+                  resolveAvatarUrl(restaurantProfile?.logo_url),
+              };
             }
-
-            if (!restaurantProfile && restaurantId) {
-              const { data } = await supabase
-                .from("restaurant_profiles")
-                .select("id, user_id, restaurant_name, business_name, avatar_url, logo_url")
-                .eq("id", restaurantId)
-                .maybeSingle();
-
-              restaurantProfile = (data as RestaurantProfile | null) ?? null;
-            }
-
-            const restaurantKey = restaurantUserId || restaurantId;
-            next[restaurantKey] = {
-              id: restaurantKey,
-              role: "restaurant",
-              name: displayNameFromRestaurant(
-                restaurantProfile,
-                restaurantFallbackName || targetRoleLabel("restaurant", t)
-              ),
-              avatarUrl:
-                resolveAvatarUrl(restaurantProfile?.avatar_url) ||
-                resolveAvatarUrl(restaurantProfile?.logo_url),
-            };
           } catch {
-            const restaurantKey = restaurantUserId || restaurantId;
-            next[restaurantKey] = {
-              id: restaurantKey,
+            next[restaurantUserId] = {
+              id: restaurantUserId,
               role: "restaurant",
               name: restaurantFallbackName || targetRoleLabel("restaurant", t),
               avatarUrl: null,
@@ -507,7 +492,7 @@ export function OrderChatBaseScreen(props: {
         setParticipants({});
       }
     },
-    [isValidOrderId, orderId, t]
+    [isValidOrderId, orderId, sourceTable, t]
   );
 
   const enrichSignedUrls = useCallback(async (data: Row[]) => {
@@ -895,6 +880,30 @@ export function OrderChatBaseScreen(props: {
 
       if (error) throw error;
 
+      if (targetRole && targetRole !== "admin") {
+        const participantIds = await loadChatParticipantIds(
+          supabase,
+          orderId,
+          sourceTable,
+        );
+        const targetUserId = participantIds
+          ? resolveChatTargetUserId(participantIds, targetRole)
+          : null;
+        const pushRole =
+          sourceTable === "marketplace_delivery_jobs" && targetRole === "restaurant"
+            ? "seller"
+            : mapTargetRoleToPushRole(targetRole);
+
+        if (targetUserId && pushRole) {
+          void fireOrderChatPushNotify({
+            orderId,
+            targetUserId,
+            targetRole: pushRole,
+            preview: trimmed || (image_path ? "Photo" : null),
+          });
+        }
+      }
+
       setText("");
       setPickedImage(null);
 
@@ -918,6 +927,7 @@ export function OrderChatBaseScreen(props: {
     isValidOrderId,
     targetRole,
     currentRole,
+    sourceTable,
     verifyAccess,
     uploadPickedImage,
     load,

@@ -7,9 +7,14 @@ import { supabase } from "./supabase";
 
 let handlerInstalled = false;
 
-export type MobilePushRole = "client" | "driver" | "restaurant";
+export type MobilePushRole = "client" | "driver" | "restaurant" | "seller";
 
-const MOBILE_PUSH_ROLES: MobilePushRole[] = ["client", "driver", "restaurant"];
+const MOBILE_PUSH_ROLES: MobilePushRole[] = [
+  "client",
+  "driver",
+  "restaurant",
+  "seller",
+];
 
 function isMobilePushRole(value: unknown): value is MobilePushRole {
   return typeof value === "string" && MOBILE_PUSH_ROLES.includes(value as MobilePushRole);

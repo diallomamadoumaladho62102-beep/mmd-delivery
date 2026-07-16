@@ -10,6 +10,7 @@ export function OrderChatScreen() {
   const { t } = useTranslation();
 
   const orderId: string = String(route?.params?.orderId ?? "");
+  const sourceTable = route?.params?.sourceTable ?? route?.params?.source_table;
 
   // ✅ Re-render auto quand la langue change
   const titlePrefix = useMemo(() => {
@@ -19,6 +20,7 @@ export function OrderChatScreen() {
   return (
     <OrderChatBaseScreen
       orderId={orderId}
+      sourceTable={sourceTable}
       onBack={() => navigation.goBack()}
       titlePrefix={titlePrefix}
     />

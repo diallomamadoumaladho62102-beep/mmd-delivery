@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { getTwilioPhoneNumber } from "@/lib/twilioPhone";
 import {
   buildParticipantRpc,
   getResourceLabel,
@@ -17,7 +18,7 @@ type ProfilePhoneRow = {
   role?: string | null;
 };
 
-const MMD_TWILIO_NUMBER = "+19294924563";
+const MMD_TWILIO_NUMBER = getTwilioPhoneNumber();
 
 function getSupabaseAdmin() {
   return buildSupabaseAdminClient();
@@ -88,7 +89,30 @@ function selectColumns(sourceTable: SourceTable): string {
   if (sourceTable === "taxi_rides") {
     return "id, client_user_id, driver_id";
   }
+  if (sourceTable === "marketplace_delivery_jobs") {
+    return "id, client_id, assigned_driver_id, seller_id, sellers(user_id)";
+  }
   return "id, client_id, client_user_id, created_by, driver_id, restaurant_id";
+}
+
+function mapResourceRow(
+  sourceTable: SourceTable,
+  data: Record<string, unknown> | null,
+): OrderLikeRow | null {
+  if (!data) return null;
+
+  if (sourceTable === "marketplace_delivery_jobs") {
+    const sellers = data.sellers as { user_id?: string | null } | null;
+    return {
+      id: String(data.id ?? ""),
+      client_id: (data.client_id as string | null) ?? null,
+      assigned_driver_id: (data.assigned_driver_id as string | null) ?? null,
+      seller_id: (data.seller_id as string | null) ?? null,
+      seller_user_id: sellers?.user_id ?? null,
+    };
+  }
+
+  return data as unknown as OrderLikeRow;
 }
 
 async function loadResourceRow(
@@ -99,8 +123,10 @@ async function loadResourceRow(
     sourceTable === "delivery_requests"
       ? "delivery_requests"
       : sourceTable === "taxi_rides"
-      ? "taxi_rides"
-      : "orders";
+        ? "taxi_rides"
+        : sourceTable === "marketplace_delivery_jobs"
+          ? "marketplace_delivery_jobs"
+          : "orders";
 
   const { data, error } = await getSupabaseAdmin()
     .from(table)
@@ -117,7 +143,10 @@ async function loadResourceRow(
     return null;
   }
 
-  return (data as unknown as OrderLikeRow | null) ?? null;
+  return mapResourceRow(
+    sourceTable,
+    (data as unknown as Record<string, unknown> | null) ?? null,
+  );
 }
 
 async function isParticipant(

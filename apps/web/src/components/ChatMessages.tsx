@@ -4,6 +4,12 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { mmdAudio } from "@/lib/mmdAudio";
+import {
+  buildChatImageStoragePath,
+  CHAT_IMAGE_BUCKET,
+  toChatImagePath,
+  validateChatImageFile,
+} from "@/lib/chatUploadSecurity";
 
 type Row = {
   id: number;
@@ -167,25 +173,35 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
       let image_path: string | null = null;
 
       if (file) {
+        validateChatImageFile(file);
         const uid = (await supabase.auth.getUser()).data.user?.id ?? "anon";
         const ext = file.name.split(".").pop() || "jpg";
-        const key = `${orderId}/${Date.now()}_${Math.random().toString(36).slice(2)}_${uid}.${ext}`;
+        const key = buildChatImageStoragePath(orderId, ext);
 
-        const { error: upErr } = await supabase.storage.from("chat-images").upload(key, file, {
+        const { error: upErr } = await supabase.storage.from(CHAT_IMAGE_BUCKET).upload(key, file, {
           cacheControl: "3600",
           upsert: false,
         });
         if (upErr) throw upErr;
 
-        image_path = `chat-images/${key}`;
-        // cache bust pour cette image
+        image_path = toChatImagePath(key);
         signedUrlCacheRef.current.delete(image_path);
       }
 
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userIdRef.current ?? "")
+        .maybeSingle();
+
+      const senderRole = String((profile as { role?: string } | null)?.role ?? "").trim() || null;
+
       const { error: insErr } = await supabase.from("order_messages").insert({
         order_id: orderId,
+        user_id: userIdRef.current,
         text: text || null,
         image_path,
+        sender_role: senderRole,
       } as any);
 
       if (insErr) throw insErr;

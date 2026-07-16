@@ -14,6 +14,10 @@ test("normalizeSourceTable accepts mobile aliases", () => {
   assert.equal(normalizeSourceTable("delivery_requests"), "delivery_requests");
   assert.equal(normalizeSourceTable("taxi_rides"), "taxi_rides");
   assert.equal(normalizeSourceTable("taxi_ride"), "taxi_rides");
+  assert.equal(
+    normalizeSourceTable("marketplace_delivery_jobs"),
+    "marketplace_delivery_jobs",
+  );
 });
 
 test("getUserIdByRole maps delivery and taxi participants", () => {

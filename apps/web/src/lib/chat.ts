@@ -1,60 +1,72 @@
 import { supabase } from "@/lib/supabaseBrowser";
+import {
+  buildChatImageStoragePath,
+  CHAT_IMAGE_BUCKET,
+  toChatImagePath,
+  validateChatImageFile,
+} from "@/lib/chatUploadSecurity";
 
 export async function deleteMessageAndImage(msgId: string) {
-  // 1) supprimer la ligne via RPC (et récupérer image_path/bucket)
-  const { data, error } = await supabase.rpc("delete_order_message", { p_msg_id: msgId });
+  const { data, error } = await supabase.rpc("delete_order_message", {
+    p_msg_id: msgId,
+  });
   if (error) throw error;
 
-  // data peut être [] si déjà supprimé
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return;
+  const row = (data ?? null) as {
+    ok?: boolean;
+    image_path?: string | null;
+    bucket?: string | null;
+  } | null;
 
-  const { image_path, bucket } = row as { image_path?: string; bucket?: string };
+  if (!row?.ok) return;
 
-  // 2) si image, suppression Storage (côté client)
-  if (image_path) {
-    const { error: delErr } = await supabase.storage.from(bucket || "chat-uploads").remove([image_path]);
-    // on n'échoue pas la suppression du message si l'image manque déjà
-    if (delErr && delErr.message?.includes("Object not found") === false) {
-      console.warn("Storage remove warning:", delErr.message);
-    }
+  const imagePath = String(row.image_path ?? "").trim();
+  if (!imagePath) return;
+
+  const bucket = String(row.bucket ?? CHAT_IMAGE_BUCKET).trim() || CHAT_IMAGE_BUCKET;
+  const storageKey = imagePath.replace(new RegExp(`^${bucket}/`), "");
+
+  const { error: delErr } = await supabase.storage.from(bucket).remove([storageKey]);
+  if (delErr && delErr.message?.includes("Object not found") === false) {
+    console.warn("Storage remove warning:", delErr.message);
   }
 }
 
-export async function sendChatMessage(orderId: string, text: string, file: File | null) {
-  // 0) récupérer l'utilisateur pour user_id
+export async function sendChatMessage(
+  orderId: string,
+  text: string,
+  file: File | null,
+  roles?: { senderRole?: string | null; targetRole?: string | null },
+) {
   const { data: userData, error: userErr } = await supabase.auth.getUser();
   if (userErr) throw userErr;
   const userId = userData?.user?.id;
 
   let imagePath: string | null = null;
-  const bucket = "chat-uploads";
 
-  // 1) upload si fichier
   if (file) {
-    // chemin: <orderId>/<timestamp>-<sanitized-name>
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${orderId}/${Date.now()}-${safeName}`;
+    validateChatImageFile(file);
+    const ext = file.name.split(".").pop() || "jpg";
+    const key = buildChatImageStoragePath(orderId, ext);
 
-    const { error: upErr } = await supabase
-      .storage
-      .from(bucket)
-      .upload(path, file, {
+    const { error: upErr } = await supabase.storage
+      .from(CHAT_IMAGE_BUCKET)
+      .upload(key, file, {
         cacheControl: "3600",
         upsert: false,
         contentType: file.type || "application/octet-stream",
       });
     if (upErr) throw upErr;
-    imagePath = path;
+    imagePath = toChatImagePath(key);
   }
 
-  // 2) insérer le message (texte + image_path si présent)
-  const payload: any = {
+  const payload: Record<string, unknown> = {
     order_id: orderId,
     text: text?.trim() || null,
     image_path: imagePath,
-    bucket,
-    user_id: userId || null, // si trigger user_id absent, on envoie quand même
+    user_id: userId || null,
+    sender_role: roles?.senderRole ?? null,
+    target_role: roles?.targetRole ?? null,
   };
 
   const { data, error } = await supabase
@@ -64,13 +76,12 @@ export async function sendChatMessage(orderId: string, text: string, file: File 
     .single();
 
   if (error) {
-    // si upload fait mais insert échoue: rollback image (best-effort)
     if (imagePath) {
-      await supabase.storage.from(bucket).remove([imagePath]).catch(() => {});
+      const storageKey = imagePath.replace(/^chat-images\//, "");
+      await supabase.storage.from(CHAT_IMAGE_BUCKET).remove([storageKey]).catch(() => {});
     }
     throw error;
   }
 
   return data;
 }
-

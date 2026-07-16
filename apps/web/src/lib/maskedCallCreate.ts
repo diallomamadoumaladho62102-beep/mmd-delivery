@@ -1,6 +1,10 @@
 export type CallRole = "client" | "driver" | "restaurant" | "admin";
 
-export type SourceTable = "orders" | "delivery_requests" | "taxi_rides";
+export type SourceTable =
+  | "orders"
+  | "delivery_requests"
+  | "taxi_rides"
+  | "marketplace_delivery_jobs";
 
 export type CallResourceContext = {
   sourceTable: SourceTable;
@@ -17,12 +21,16 @@ export type OrderLikeRow = {
   driver_id?: string | null;
   driver_user_id?: string | null;
   restaurant_id?: string | null;
+  assigned_driver_id?: string | null;
+  seller_id?: string | null;
+  seller_user_id?: string | null;
 };
 
 const SOURCE_TABLES: SourceTable[] = [
   "orders",
   "delivery_requests",
   "taxi_rides",
+  "marketplace_delivery_jobs",
 ];
 
 const ALLOWED_ROLES: CallRole[] = ["client", "driver", "restaurant", "admin"];
@@ -38,6 +46,13 @@ export function normalizeSourceTable(value: unknown): SourceTable {
     return "taxi_rides";
   }
 
+  if (
+    raw === "marketplace_delivery_jobs" ||
+    raw === "marketplace_delivery_job"
+  ) {
+    return "marketplace_delivery_jobs";
+  }
+
   return "orders";
 }
 
@@ -48,6 +63,7 @@ export function isAllowedCallRole(value: unknown): value is CallRole {
 export function getResourceLabel(sourceTable: SourceTable): string {
   if (sourceTable === "delivery_requests") return "Delivery request";
   if (sourceTable === "taxi_rides") return "Taxi ride";
+  if (sourceTable === "marketplace_delivery_jobs") return "Marketplace delivery";
   return "Order";
 }
 
@@ -64,6 +80,19 @@ export function getUserIdByRole(
     }
     if (role === "driver") {
       return row.driver_id ?? row.driver_user_id ?? null;
+    }
+    return null;
+  }
+
+  if (sourceTable === "marketplace_delivery_jobs") {
+    if (role === "client") {
+      return row.client_id ?? row.client_user_id ?? null;
+    }
+    if (role === "driver") {
+      return row.assigned_driver_id ?? row.driver_id ?? row.driver_user_id ?? null;
+    }
+    if (role === "restaurant") {
+      return row.seller_user_id ?? null;
     }
     return null;
   }
@@ -109,6 +138,9 @@ export function isRoleSupportedForSource(
   if (sourceTable === "taxi_rides") {
     return role === "client" || role === "driver";
   }
+  if (sourceTable === "marketplace_delivery_jobs") {
+    return role === "client" || role === "driver" || role === "restaurant";
+  }
   return false;
 }
 
@@ -126,6 +158,12 @@ export function buildParticipantRpc(
     return {
       fn: "taxi_ride_participant_ids",
       args: { p_ride_id: resourceId },
+    };
+  }
+  if (sourceTable === "marketplace_delivery_jobs") {
+    return {
+      fn: "marketplace_delivery_job_participant_ids",
+      args: { p_job_id: resourceId },
     };
   }
   return {

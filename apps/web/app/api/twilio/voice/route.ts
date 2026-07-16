@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { getTwilioPhoneNumber } from "@/lib/twilioPhone";
 import {
   assertTwilioWebhookRequest,
   formDataToParamRecord,
@@ -7,7 +8,7 @@ import {
 
 export const runtime = "nodejs";
 
-const MMD_TWILIO_NUMBER = "+19294924563";
+const MMD_TWILIO_NUMBER = getTwilioPhoneNumber();
 const ADMIN_SUPPORT_PHONE =
   process.env.MMD_ADMIN_SUPPORT_PHONE || "+19297408722";
 
