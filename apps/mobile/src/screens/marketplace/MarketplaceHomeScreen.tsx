@@ -4,7 +4,7 @@ import {
   View,
   Text,
   StatusBar,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
+import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MarketplaceHome">;
 
@@ -93,6 +94,35 @@ export default function MarketplaceHomeScreen() {
 
   const openCount = sellers.filter((s) => s.is_accepting_orders).length;
 
+  const listHeader = (
+    <View style={{ gap: 12, marginBottom: 12 }}>
+      <MarketScopeCard
+        market={market}
+        areaLabel={t("marketplace.home.market", "Your market")}
+        currencyLabel={t("marketplace.home.currency", "Currency")}
+        loading={scopeLoading}
+      />
+
+      {!loading && !error && sellers.length > 0 ? (
+        <Text style={{ color: "#CBD5E1" }}>
+          {t("marketplace.home.openCount", "{{open}} open · {{total}} shops", {
+            open: openCount,
+            total: sellers.length,
+          })}
+        </Text>
+      ) : null}
+
+      <TouchableOpacity
+        onPress={() => navigation.navigate("SellerGate" as never)}
+        style={{ alignSelf: "flex-start", marginBottom: 8 }}
+      >
+        <Text style={{ color: "#A78BFA" }}>
+          {t("marketplace.home.sellCta", "Sell on MMD →")}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
@@ -102,105 +132,82 @@ export default function MarketplaceHomeScreen() {
         fallbackRoute="ClientHome"
         variant="dark"
       />
-      <ScrollView
+      <FlatList
+        data={loading || error ? [] : sellers}
+        keyExtractor={(item) => item.id}
+        {...MARKETPLACE_LIST_PERF}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(true); }} />
         }
         contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 12 }}
-      >
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator color="#A78BFA" />
+          ) : error ? (
+            <Text style={{ color: "#FCA5A5" }}>{error}</Text>
+          ) : (
+            <Text style={{ color: "#CBD5E1" }}>
+              {t("marketplace.home.emptyOpen", "No approved shops in your area yet.")}
+            </Text>
+          )
+        }
+        renderItem={({ item: seller }) => {
+          const isOpen = Boolean(seller.is_accepting_orders);
+          const productCount = seller.active_product_count ?? 0;
 
-        <MarketScopeCard
-          market={market}
-          areaLabel={t("marketplace.home.market", "Your market")}
-          currencyLabel={t("marketplace.home.currency", "Currency")}
-          loading={scopeLoading}
-        />
-
-        {!loading && !error && sellers.length > 0 ? (
-          <Text style={{ color: "#CBD5E1" }}>
-            {t("marketplace.home.openCount", "{{open}} open · {{total}} shops", {
-              open: openCount,
-              total: sellers.length,
-            })}
-          </Text>
-        ) : null}
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate("SellerGate" as never)}
-          style={{ alignSelf: "flex-start", marginBottom: 8 }}
-        >
-          <Text style={{ color: "#A78BFA" }}>
-            {t("marketplace.home.sellCta", "Sell on MMD →")}
-          </Text>
-        </TouchableOpacity>
-
-        {loading ? (
-          <ActivityIndicator color="#A78BFA" />
-        ) : error ? (
-          <Text style={{ color: "#FCA5A5" }}>{error}</Text>
-        ) : sellers.length === 0 ? (
-          <Text style={{ color: "#CBD5E1" }}>
-            {t("marketplace.home.emptyOpen", "No approved shops in your area yet.")}
-          </Text>
-        ) : (
-          sellers.map((seller) => {
-            const isOpen = Boolean(seller.is_accepting_orders);
-            const productCount = seller.active_product_count ?? 0;
-
-            return (
-              <TouchableOpacity
-                key={seller.id}
-                disabled={!isOpen}
-                onPress={() =>
-                  navigation.navigate("MarketplaceProductList", {
-                    sellerId: seller.id,
-                    sellerName: seller.business_name,
-                    sellerCountryCode: seller.country_code,
-                    sellerIsOpen: isOpen,
-                  })
-                }
-                style={{
-                  backgroundColor: isOpen ? "rgba(124,58,237,0.15)" : "rgba(15,23,42,0.8)",
-                  borderColor: isOpen ? "rgba(196,181,253,0.25)" : "rgba(100,116,139,0.35)",
-                  borderWidth: 1,
-                  borderRadius: 16,
-                  padding: 16,
-                  opacity: isOpen ? 1 : 0.85,
-                }}
-              >
-                <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                  <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "600", flex: 1 }}>
-                    {seller.business_name}
-                  </Text>
-                  <Text
-                    style={{
-                      color: isOpen ? "#86EFAC" : "#FCA5A5",
-                      fontWeight: "700",
-                      fontSize: 12,
-                      alignSelf: "flex-start",
-                    }}
-                  >
-                    {isOpen
-                      ? t("marketplace.home.shopOpen", "Open")
-                      : t("marketplace.home.shopClosed", "Closed")}
-                  </Text>
-                </View>
-                <Text style={{ color: "#CBD5E1", marginTop: 4 }}>
-                  {seller.city}, {seller.country_code}
+          return (
+            <TouchableOpacity
+              disabled={!isOpen}
+              onPress={() =>
+                navigation.navigate("MarketplaceProductList", {
+                  sellerId: seller.id,
+                  sellerName: seller.business_name,
+                  sellerCountryCode: seller.country_code,
+                  sellerIsOpen: isOpen,
+                })
+              }
+              style={{
+                backgroundColor: isOpen ? "rgba(124,58,237,0.15)" : "rgba(15,23,42,0.8)",
+                borderColor: isOpen ? "rgba(196,181,253,0.25)" : "rgba(100,116,139,0.35)",
+                borderWidth: 1,
+                borderRadius: 16,
+                padding: 16,
+                opacity: isOpen ? 1 : 0.85,
+              }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+                <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "600", flex: 1 }}>
+                  {seller.business_name}
                 </Text>
-                <Text style={{ color: "#94A3B8", marginTop: 4 }} numberOfLines={2}>
-                  {seller.address}
+                <Text
+                  style={{
+                    color: isOpen ? "#86EFAC" : "#FCA5A5",
+                    fontWeight: "700",
+                    fontSize: 12,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  {isOpen
+                    ? t("marketplace.home.shopOpen", "Open")
+                    : t("marketplace.home.shopClosed", "Closed")}
                 </Text>
-                <Text style={{ color: "#94A3B8", marginTop: 6 }}>
-                  {t("marketplace.home.productCount", "{{count}} products available", {
-                    count: productCount,
-                  })}
-                </Text>
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+              </View>
+              <Text style={{ color: "#CBD5E1", marginTop: 4 }}>
+                {seller.city}, {seller.country_code}
+              </Text>
+              <Text style={{ color: "#94A3B8", marginTop: 4 }} numberOfLines={2}>
+                {seller.address}
+              </Text>
+              <Text style={{ color: "#94A3B8", marginTop: 6 }}>
+                {t("marketplace.home.productCount", "{{count}} products available", {
+                  count: productCount,
+                })}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
     </SafeAreaView>
   );
 }

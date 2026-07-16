@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
 import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
+import { cacheWrap } from "@/lib/memoryCache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +9,9 @@ export const dynamic = "force-dynamic";
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
     status,
-    headers: { "Cache-Control": "no-store" },
+    headers: {
+      "Cache-Control": status === 200 ? "private, max-age=30" : "no-store",
+    },
   });
 }
 
@@ -86,35 +89,50 @@ export async function POST(req: NextRequest) {
     return json({ ok: true, suggestions: [] });
   }
 
-  const params = new URLSearchParams({
-    access_token: MAPBOX_TOKEN,
-    autocomplete: "true",
-    types: "address,poi,place,locality,neighborhood",
-    limit: String(limit),
-  });
-
   const lat = Number(proximity?.lat);
   const lng = Number(proximity?.lng);
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    params.set("proximity", `${lng},${lat}`);
+  const proximityKey =
+    Number.isFinite(lat) && Number.isFinite(lng)
+      ? `${lat.toFixed(3)},${lng.toFixed(3)}`
+      : "";
+  const cacheKey = `mapbox:places:v1:${query.toLowerCase()}:${country}:${limit}:${proximityKey}`;
+
+  try {
+    const suggestions = await cacheWrap(cacheKey, 30_000, async () => {
+      const MAPBOX_TOKEN_INNER = MAPBOX_TOKEN;
+      const params = new URLSearchParams({
+        access_token: MAPBOX_TOKEN_INNER,
+        autocomplete: "true",
+        types: "address,poi,place,locality,neighborhood",
+        limit: String(limit),
+      });
+
+      if (proximityKey) {
+        params.set("proximity", `${lng},${lat}`);
+      }
+      if (country) {
+        params.set("country", country);
+      }
+
+      const url =
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
+        `?${params.toString()}`;
+
+      const res = await fetch(url, { cache: "no-store" });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error("Mapbox places failed");
+      }
+
+      return parseSuggestions(data);
+    });
+
+    return json({
+      ok: true,
+      suggestions,
+    });
+  } catch {
+    return json({ error: "Mapbox places failed" }, 502);
   }
-  if (country) {
-    params.set("country", country);
-  }
-
-  const url =
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json` +
-    `?${params.toString()}`;
-
-  const res = await fetch(url, { cache: "no-store" });
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    return json({ error: "Mapbox places failed", details: data }, 502);
-  }
-
-  return json({
-    ok: true,
-    suggestions: parseSuggestions(data),
-  });
 }

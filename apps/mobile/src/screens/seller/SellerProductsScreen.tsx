@@ -22,6 +22,7 @@ import { formatMoney, type SellerProductRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
 
 type Props = { navigation: any };
 
@@ -218,6 +219,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
         <FlatList
           data={products}
           keyExtractor={(item) => item.id}
+          {...MARKETPLACE_LIST_PERF}
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
             <Text style={{ color: "#94A3B8", textAlign: "center", marginTop: 24 }}>

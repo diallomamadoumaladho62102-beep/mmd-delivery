@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import "./globals.css";
 import { normalizeWebLocale, webDir, webT } from "../src/i18n/locales";
 import { WebI18nProvider } from "../src/components/WebI18nProvider";
+import WebVitalsReporter from "../src/components/WebVitalsReporter";
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
@@ -28,7 +29,10 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={webDir(locale)}>
       <body className="bg-gray-50 min-h-screen">
-        <WebI18nProvider locale={locale}>{children}</WebI18nProvider>
+        <WebI18nProvider locale={locale}>
+          <WebVitalsReporter />
+          {children}
+        </WebI18nProvider>
       </body>
     </html>
   );

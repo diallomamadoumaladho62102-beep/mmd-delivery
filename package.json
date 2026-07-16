@@ -9,6 +9,8 @@
     "start": "cd apps/web && pnpm start",
     "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
     "test:security": "node scripts/secret-scan.mjs && pnpm --dir apps/web test:security",
+    "test:performance": "pnpm --dir apps/web test:performance && node scripts/bundle-size-report.mjs",
+    "lighthouse:smoke": "node scripts/lighthouse-smoke.mjs",
     "audit:deps": "node scripts/dependency-audit.mjs",
     "android": "expo run:android",
     "ios": "expo run:ios"

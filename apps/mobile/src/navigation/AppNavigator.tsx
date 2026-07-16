@@ -19,95 +19,14 @@ import {
 import { supabase } from "../lib/supabase";
 import { getSelectedRole } from "../lib/authRole";
 
-import { DriverTabs } from "./DriverTabs";
-
 import { HomeScreen } from "../screens/HomeScreen";
 import { RoleSelectScreen } from "../screens/RoleSelectScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
-
-import DeliveryRequestScreen from "../screens/DeliveryRequestScreen";
-
-import { ClientHomeScreen } from "../screens/ClientHomeScreen";
-import MmdAiScreen from "../screens/MmdAiScreen";
-import { ClientNewOrderScreen } from "../screens/ClientNewOrderScreen";
-import { ClientRestaurantListScreen } from "../screens/ClientRestaurantListScreen";
-import { ClientRestaurantMenuScreen } from "../screens/ClientRestaurantMenuScreen";
-import { ClientOrderDetailsScreen } from "../screens/ClientOrderDetailsScreen";
-import { ClientDeliveryRequestDetailsScreen } from "../screens/ClientDeliveryRequestDetailsScreen";
 import { ClientAuthScreen } from "../screens/ClientAuthScreen";
-import { ClientProfileScreen } from "../screens/ClientProfileScreen";
-import { ClientInboxScreen } from "../screens/ClientInboxScreen";
-import { ClientChatScreen } from "../screens/ClientChatScreen";
-
-import { DriverOrderDetailsScreen } from "../screens/DriverOrderDetailsScreen";
-import DriverMapScreen from "../screens/DriverMapScreen";
-import { DriverOnboardingScreen } from "../screens/DriverOnboardingScreen";
-import { DriverIdentityVerificationScreen } from "../screens/DriverIdentityVerificationScreen";
 import { DriverAuthScreen } from "../screens/DriverAuthScreen";
-import { DriverChatScreen } from "../screens/DriverChatScreen";
-
-import { DriverProfileScreen } from "../screens/DriverProfileScreen";
-import { DriverReferralsScreen } from "../screens/DriverReferralsScreen";
-import { DriverOpportunitiesScreen } from "../screens/DriverOpportunitiesScreen";
-import { DriverAccountScreen } from "../screens/DriverAccountScreen";
-import { DriverHelpScreen } from "../screens/DriverHelpScreen";
-import { DriverWorkAccountScreen } from "../screens/DriverWorkAccountScreen";
-import DriverPrivacyScreen from "../screens/DriverPrivacyScreen";
-import DriverAboutScreen from "../screens/DriverAboutScreen";
-import { DriverSecurityScreen } from "../screens/DriverSecurityScreen";
-import { DriverLanguageScreen } from "../screens/DriverLanguageScreen";
-
-import DriverTaxScreen from "../screens/DriverTaxScreen";
-import DriverW9Screen from "../screens/DriverW9Screen";
-
-import { DriverRevenueDetailsScreen } from "../screens/DriverRevenueDetailsScreen";
-import { DriverRevenueHistoryScreen } from "../screens/DriverRevenueHistoryScreen";
-import { DriverWalletScreen } from "../screens/DriverWalletScreen";
-import { DriverServicesScreen } from "../screens/driver/DriverServicesScreen";
-import { DriverVehicleScreen } from "../screens/driver/DriverVehicleScreen";
-import { DriverVehiclesScreen } from "../screens/driver/DriverVehiclesScreen";
-import { DriverBenefitsScreen } from "../screens/DriverBenefitsScreen";
-
 import { RestaurantAuthScreen } from "../screens/RestaurantAuthScreen";
-import { RestaurantHomeScreen } from "../screens/RestaurantHomeScreen";
-import { RestaurantOrdersScreen } from "../screens/RestaurantOrdersScreen";
-import { RestaurantOrderDetailsScreen } from "../screens/RestaurantOrderDetailsScreen";
-import { RestaurantEarningsScreen } from "../screens/RestaurantEarningsScreen";
-import RestaurantFinancialCenterScreen from "../screens/RestaurantFinancialCenterScreen";
-import RestaurantTaxScreen from "../screens/RestaurantTaxScreen";
-import { RestaurantLanguageScreen } from "../screens/RestaurantLanguageScreen";
-import { RestaurantSecurityScreen } from "../screens/RestaurantSecurityScreen";
-import { RestaurantOrderAutomationScreen } from "../screens/restaurant/RestaurantOrderAutomationScreen";
-import RestaurantGateScreen from "../screens/restaurant/RestaurantGateScreen";
-import RestaurantSetupScreen from "../screens/restaurant/RestaurantSetupScreen";
-import RestaurantMenuScreen from "../screens/restaurant/RestaurantMenuScreen";
-import RestaurantCommandCenterScreen from "../screens/restaurant/RestaurantCommandCenterScreen";
-import { RestaurantChatScreen } from "../screens/RestaurantChatScreen";
-import SellerGateScreen from "../screens/seller/SellerGateScreen";
-import SellerOnboardingScreen from "../screens/seller/SellerOnboardingScreen";
-import SellerDashboardScreen from "../screens/seller/SellerDashboardScreen";
-import SellerProductsScreen from "../screens/seller/SellerProductsScreen";
-import SellerOrdersScreen from "../screens/seller/SellerOrdersScreen";
-import MarketplaceHomeScreen from "../screens/marketplace/MarketplaceHomeScreen";
-import MarketplaceProductListScreen from "../screens/marketplace/MarketplaceProductListScreen";
-import MarketplaceProductDetailsScreen from "../screens/marketplace/MarketplaceProductDetailsScreen";
-import MarketplaceCartScreen from "../screens/marketplace/MarketplaceCartScreen";
 
-import LocationPickerTestScreen from "../screens/LocationPickerTestScreen";
-import MMDLocationPickerScreen from "../screens/MMDLocationPickerScreen";
 import type { MmdLocationPickerResult } from "../lib/mmdLocationDisplay";
-import TaxiHomeScreen from "../screens/taxi/TaxiHomeScreen";
-import TaxiQuoteScreen from "../screens/taxi/TaxiQuoteScreen";
-import TaxiFavoritesScreen from "../screens/taxi/TaxiFavoritesScreen";
-import TaxiLoyaltyScreen from "../screens/taxi/TaxiLoyaltyScreen";
-import TaxiScheduledScreen from "../screens/taxi/TaxiScheduledScreen";
-import TaxiScheduledBookScreen from "../screens/taxi/TaxiScheduledBookScreen";
-import TaxiMultiStopScreen from "../screens/taxi/TaxiMultiStopScreen";
-import TaxiLoyaltyRewardsScreen from "../screens/taxi/TaxiLoyaltyRewardsScreen";
-import TaxiRideTrackingScreen from "../screens/taxi/TaxiRideTrackingScreen";
-import TaxiHistoryScreen from "../screens/taxi/TaxiHistoryScreen";
-import TaxiChatScreen from "../screens/taxi/TaxiChatScreen";
-import DriverTaxiChatScreen from "../screens/taxi/DriverTaxiChatScreen";
 import * as Notifications from "expo-notifications";
 import {
   extractDriverMissionPushPayload,
@@ -1091,206 +1010,476 @@ export function AppNavigator({
 
         <Stack.Screen
           name="DeliveryRequest"
-          component={DeliveryRequestScreen}
+          getComponent={() =>
+            require("../screens/DeliveryRequestScreen").default
+          }
         />
 
         <Stack.Screen name="ClientAuth" component={ClientAuthScreen} />
         <Stack.Screen name="DriverAuth" component={DriverAuthScreen} />
         <Stack.Screen name="RestaurantAuth" component={RestaurantAuthScreen} />
 
-        <Stack.Screen name="ClientProfile" component={ClientProfileScreen} />
+        <Stack.Screen
+          name="ClientProfile"
+          getComponent={() =>
+            require("../screens/ClientProfileScreen").ClientProfileScreen
+          }
+        />
         {__DEV__ ? (
           <Stack.Screen
             name="LocationPickerTest"
-            component={LocationPickerTestScreen}
+            getComponent={() =>
+              require("../screens/LocationPickerTestScreen").default
+            }
             options={{ title: "Africa Location Test" }}
           />
         ) : null}
 
         <Stack.Screen
           name="MMDLocationPicker"
-          component={MMDLocationPickerScreen}
+          getComponent={() =>
+            require("../screens/MMDLocationPickerScreen").default
+          }
           options={{ title: "Exact location" }}
         />
 
-        <Stack.Screen name="RestaurantGate" component={RestaurantGateScreen} />
+        <Stack.Screen
+          name="RestaurantGate"
+          getComponent={() =>
+            require("../screens/restaurant/RestaurantGateScreen").default
+          }
+        />
         <Stack.Screen
           name="RestaurantSetup"
-          component={RestaurantSetupScreen}
+          getComponent={() =>
+            require("../screens/restaurant/RestaurantSetupScreen").default
+          }
         />
-        <Stack.Screen name="RestaurantMenu" component={RestaurantMenuScreen} />
+        <Stack.Screen
+          name="RestaurantMenu"
+          getComponent={() =>
+            require("../screens/restaurant/RestaurantMenuScreen").default
+          }
+        />
 
-        <Stack.Screen name="SellerGate" component={SellerGateScreen} />
-        <Stack.Screen name="SellerOnboarding" component={SellerOnboardingScreen} />
-        <Stack.Screen name="SellerDashboard" component={SellerDashboardScreen} />
-        <Stack.Screen name="SellerProducts" component={SellerProductsScreen} />
-        <Stack.Screen name="SellerOrders" component={SellerOrdersScreen} />
+        <Stack.Screen
+          name="SellerGate"
+          getComponent={() =>
+            require("../screens/seller/SellerGateScreen").default
+          }
+        />
+        <Stack.Screen
+          name="SellerOnboarding"
+          getComponent={() =>
+            require("../screens/seller/SellerOnboardingScreen").default
+          }
+        />
+        <Stack.Screen
+          name="SellerDashboard"
+          getComponent={() =>
+            require("../screens/seller/SellerDashboardScreen").default
+          }
+        />
+        <Stack.Screen
+          name="SellerProducts"
+          getComponent={() =>
+            require("../screens/seller/SellerProductsScreen").default
+          }
+        />
+        <Stack.Screen
+          name="SellerOrders"
+          getComponent={() =>
+            require("../screens/seller/SellerOrdersScreen").default
+          }
+        />
 
-        <Stack.Screen name="MarketplaceHome" component={MarketplaceHomeScreen} />
-        <Stack.Screen name="MarketplaceProductList" component={MarketplaceProductListScreen} />
-        <Stack.Screen name="MarketplaceProductDetails" component={MarketplaceProductDetailsScreen} />
-        <Stack.Screen name="MarketplaceCart" component={MarketplaceCartScreen} />
+        <Stack.Screen
+          name="MarketplaceHome"
+          getComponent={() =>
+            require("../screens/marketplace/MarketplaceHomeScreen").default
+          }
+        />
+        <Stack.Screen
+          name="MarketplaceProductList"
+          getComponent={() =>
+            require("../screens/marketplace/MarketplaceProductListScreen")
+              .default
+          }
+        />
+        <Stack.Screen
+          name="MarketplaceProductDetails"
+          getComponent={() =>
+            require("../screens/marketplace/MarketplaceProductDetailsScreen")
+              .default
+          }
+        />
+        <Stack.Screen
+          name="MarketplaceCart"
+          getComponent={() =>
+            require("../screens/marketplace/MarketplaceCartScreen").default
+          }
+        />
 
-        <Stack.Screen name="ClientHome" component={ClientHomeScreen} />
-        <Stack.Screen name="ClientNewOrder" component={ClientNewOrderScreen} />
+        <Stack.Screen
+          name="ClientHome"
+          getComponent={() =>
+            require("../screens/ClientHomeScreen").ClientHomeScreen
+          }
+        />
+        <Stack.Screen
+          name="ClientNewOrder"
+          getComponent={() =>
+            require("../screens/ClientNewOrderScreen").ClientNewOrderScreen
+          }
+        />
         <Stack.Screen
           name="ClientRestaurantList"
-          component={ClientRestaurantListScreen}
+          getComponent={() =>
+            require("../screens/ClientRestaurantListScreen")
+              .ClientRestaurantListScreen
+          }
         />
         <Stack.Screen
           name="ClientRestaurantMenu"
-          component={ClientRestaurantMenuScreen}
+          getComponent={() =>
+            require("../screens/ClientRestaurantMenuScreen")
+              .ClientRestaurantMenuScreen
+          }
         />
         <Stack.Screen
           name="ClientOrderDetails"
-          component={ClientOrderDetailsScreen}
+          getComponent={() =>
+            require("../screens/ClientOrderDetailsScreen")
+              .ClientOrderDetailsScreen
+          }
         />
         <Stack.Screen
           name="ClientDeliveryRequestDetails"
-          component={ClientDeliveryRequestDetailsScreen}
+          getComponent={() =>
+            require("../screens/ClientDeliveryRequestDetailsScreen")
+              .ClientDeliveryRequestDetailsScreen
+          }
         />
-        <Stack.Screen name="ClientInbox" component={ClientInboxScreen} />
-        <Stack.Screen name="MmdAi" component={MmdAiScreen} />
-        <Stack.Screen name="ClientChat" component={ClientChatScreen} />
+        <Stack.Screen
+          name="ClientInbox"
+          getComponent={() =>
+            require("../screens/ClientInboxScreen").ClientInboxScreen
+          }
+        />
+        <Stack.Screen
+          name="MmdAi"
+          getComponent={() => require("../screens/MmdAiScreen").default}
+        />
+        <Stack.Screen
+          name="ClientChat"
+          getComponent={() =>
+            require("../screens/ClientChatScreen").ClientChatScreen
+          }
+        />
 
-        <Stack.Screen name="TaxiHome" component={TaxiHomeScreen} />
-        <Stack.Screen name="TaxiQuote" component={TaxiQuoteScreen} />
+        <Stack.Screen
+          name="TaxiHome"
+          getComponent={() => require("../screens/taxi/TaxiHomeScreen").default}
+        />
+        <Stack.Screen
+          name="TaxiQuote"
+          getComponent={() =>
+            require("../screens/taxi/TaxiQuoteScreen").default
+          }
+        />
         <Stack.Screen
           name="TaxiRideTracking"
-          component={TaxiRideTrackingScreen}
+          getComponent={() =>
+            require("../screens/taxi/TaxiRideTrackingScreen").default
+          }
         />
-        <Stack.Screen name="TaxiHistory" component={TaxiHistoryScreen} />
-        <Stack.Screen name="TaxiFavorites" component={TaxiFavoritesScreen} />
-        <Stack.Screen name="TaxiLoyalty" component={TaxiLoyaltyScreen} />
-        <Stack.Screen name="TaxiScheduled" component={TaxiScheduledScreen} />
-        <Stack.Screen name="TaxiScheduledBook" component={TaxiScheduledBookScreen} />
-        <Stack.Screen name="TaxiMultiStop" component={TaxiMultiStopScreen} />
-        <Stack.Screen name="TaxiLoyaltyRewards" component={TaxiLoyaltyRewardsScreen} />
-        <Stack.Screen name="TaxiChat" component={TaxiChatScreen} />
+        <Stack.Screen
+          name="TaxiHistory"
+          getComponent={() =>
+            require("../screens/taxi/TaxiHistoryScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiFavorites"
+          getComponent={() =>
+            require("../screens/taxi/TaxiFavoritesScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiLoyalty"
+          getComponent={() =>
+            require("../screens/taxi/TaxiLoyaltyScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiScheduled"
+          getComponent={() =>
+            require("../screens/taxi/TaxiScheduledScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiScheduledBook"
+          getComponent={() =>
+            require("../screens/taxi/TaxiScheduledBookScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiMultiStop"
+          getComponent={() =>
+            require("../screens/taxi/TaxiMultiStopScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiLoyaltyRewards"
+          getComponent={() =>
+            require("../screens/taxi/TaxiLoyaltyRewardsScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiChat"
+          getComponent={() => require("../screens/taxi/TaxiChatScreen").default}
+        />
 
-        <Stack.Screen name="DriverTabs" component={DriverTabs} />
+        <Stack.Screen
+          name="DriverTabs"
+          getComponent={() => require("./DriverTabs").DriverTabs}
+        />
         <Stack.Screen
           name="DriverOrderDetails"
-          component={DriverOrderDetailsScreen}
+          getComponent={() =>
+            require("../screens/DriverOrderDetailsScreen")
+              .DriverOrderDetailsScreen
+          }
         />
         <Stack.Screen
           name="DriverMap"
-          component={DriverMapScreen}
+          getComponent={() => require("../screens/DriverMapScreen").default}
           initialParams={
             __DEV__ && process.env.EXPO_PUBLIC_DRIVER_NAV_PREVIEW === "1"
               ? { orderId: "__preview__" }
               : undefined
           }
         />
-        <Stack.Screen name="DriverChat" component={DriverChatScreen} />
-        <Stack.Screen name="DriverTaxiChat" component={DriverTaxiChatScreen} />
+        <Stack.Screen
+          name="DriverChat"
+          getComponent={() =>
+            require("../screens/DriverChatScreen").DriverChatScreen
+          }
+        />
+        <Stack.Screen
+          name="DriverTaxiChat"
+          getComponent={() =>
+            require("../screens/taxi/DriverTaxiChatScreen").default
+          }
+        />
         <Stack.Screen
           name="DriverOnboarding"
-          component={DriverOnboardingScreen}
+          getComponent={() =>
+            require("../screens/DriverOnboardingScreen").DriverOnboardingScreen
+          }
         />
         <Stack.Screen
           name="DriverIdentityVerification"
-          component={DriverIdentityVerificationScreen}
+          getComponent={() =>
+            require("../screens/DriverIdentityVerificationScreen")
+              .DriverIdentityVerificationScreen
+          }
           options={{ title: "Vérification d'identité" }}
         />
 
-        <Stack.Screen name="DriverProfile" component={DriverProfileScreen} />
+        <Stack.Screen
+          name="DriverProfile"
+          getComponent={() =>
+            require("../screens/DriverProfileScreen").DriverProfileScreen
+          }
+        />
         <Stack.Screen
           name="DriverReferrals"
-          component={DriverReferralsScreen}
+          getComponent={() =>
+            require("../screens/DriverReferralsScreen").DriverReferralsScreen
+          }
         />
         <Stack.Screen
           name="DriverOpportunities"
-          component={DriverOpportunitiesScreen}
+          getComponent={() =>
+            require("../screens/DriverOpportunitiesScreen")
+              .DriverOpportunitiesScreen
+          }
         />
-        <Stack.Screen name="DriverAccount" component={DriverAccountScreen} />
-        <Stack.Screen name="DriverHelp" component={DriverHelpScreen} />
+        <Stack.Screen
+          name="DriverAccount"
+          getComponent={() =>
+            require("../screens/DriverAccountScreen").DriverAccountScreen
+          }
+        />
+        <Stack.Screen
+          name="DriverHelp"
+          getComponent={() =>
+            require("../screens/DriverHelpScreen").DriverHelpScreen
+          }
+        />
         <Stack.Screen
           name="DriverWorkAccount"
-          component={DriverWorkAccountScreen}
+          getComponent={() =>
+            require("../screens/DriverWorkAccountScreen")
+              .DriverWorkAccountScreen
+          }
         />
         <Stack.Screen
           name="DriverPrivacyScreen"
-          component={DriverPrivacyScreen}
+          getComponent={() =>
+            require("../screens/DriverPrivacyScreen").default
+          }
         />
         <Stack.Screen
           name="DriverAboutScreen"
-          component={DriverAboutScreen}
+          getComponent={() => require("../screens/DriverAboutScreen").default}
         />
         <Stack.Screen
           name="DriverSecurity"
-          component={DriverSecurityScreen}
+          getComponent={() =>
+            require("../screens/DriverSecurityScreen").DriverSecurityScreen
+          }
         />
         <Stack.Screen
           name="DriverLanguage"
-          component={DriverLanguageScreen}
+          getComponent={() =>
+            require("../screens/DriverLanguageScreen").DriverLanguageScreen
+          }
         />
 
-        <Stack.Screen name="DriverTax" component={DriverTaxScreen} />
-        <Stack.Screen name="DriverW9" component={DriverW9Screen} />
+        <Stack.Screen
+          name="DriverTax"
+          getComponent={() => require("../screens/DriverTaxScreen").default}
+        />
+        <Stack.Screen
+          name="DriverW9"
+          getComponent={() => require("../screens/DriverW9Screen").default}
+        />
 
         <Stack.Screen
           name="DriverRevenueDetails"
-          component={DriverRevenueDetailsScreen}
+          getComponent={() =>
+            require("../screens/DriverRevenueDetailsScreen")
+              .DriverRevenueDetailsScreen
+          }
         />
         <Stack.Screen
           name="DriverRevenueHistory"
-          component={DriverRevenueHistoryScreen}
+          getComponent={() =>
+            require("../screens/DriverRevenueHistoryScreen")
+              .DriverRevenueHistoryScreen
+          }
         />
         <Stack.Screen
           name="DriverServices"
-          component={DriverServicesScreen}
+          getComponent={() =>
+            require("../screens/driver/DriverServicesScreen")
+              .DriverServicesScreen
+          }
           options={{ title: "Mes services" }}
         />
         <Stack.Screen
           name="DriverVehicles"
-          component={DriverVehiclesScreen}
+          getComponent={() =>
+            require("../screens/driver/DriverVehiclesScreen")
+              .DriverVehiclesScreen
+          }
           options={{ title: "Mes véhicules" }}
         />
         <Stack.Screen
           name="DriverVehicle"
-          component={DriverVehicleScreen}
+          getComponent={() =>
+            require("../screens/driver/DriverVehicleScreen").DriverVehicleScreen
+          }
           options={{ title: "Mon véhicule" }}
         />
-        <Stack.Screen name="DriverWallet" component={DriverWalletScreen} />
-        <Stack.Screen name="DriverBenefits" component={DriverBenefitsScreen} />
+        <Stack.Screen
+          name="DriverWallet"
+          getComponent={() =>
+            require("../screens/DriverWalletScreen").DriverWalletScreen
+          }
+        />
+        <Stack.Screen
+          name="DriverBenefits"
+          getComponent={() =>
+            require("../screens/DriverBenefitsScreen").DriverBenefitsScreen
+          }
+        />
 
-        <Stack.Screen name="RestaurantHome" component={RestaurantHomeScreen} />
+        <Stack.Screen
+          name="RestaurantHome"
+          getComponent={() =>
+            require("../screens/RestaurantHomeScreen").RestaurantHomeScreen
+          }
+        />
         <Stack.Screen
           name="RestaurantCommandCenter"
-          component={RestaurantCommandCenterScreen}
+          getComponent={() =>
+            require("../screens/restaurant/RestaurantCommandCenterScreen")
+              .default
+          }
         />
         <Stack.Screen
           name="RestaurantOrders"
-          component={RestaurantOrdersScreen}
+          getComponent={() =>
+            require("../screens/RestaurantOrdersScreen").RestaurantOrdersScreen
+          }
         />
         <Stack.Screen
           name="RestaurantOrderDetails"
-          component={RestaurantOrderDetailsScreen}
+          getComponent={() =>
+            require("../screens/RestaurantOrderDetailsScreen")
+              .RestaurantOrderDetailsScreen
+          }
         />
         <Stack.Screen
           name="RestaurantEarnings"
-          component={RestaurantEarningsScreen}
+          getComponent={() =>
+            require("../screens/RestaurantEarningsScreen")
+              .RestaurantEarningsScreen
+          }
         />
         <Stack.Screen
           name="RestaurantFinancialCenter"
-          component={RestaurantFinancialCenterScreen}
+          getComponent={() =>
+            require("../screens/RestaurantFinancialCenterScreen").default
+          }
         />
-        <Stack.Screen name="RestaurantTax" component={RestaurantTaxScreen} />
+        <Stack.Screen
+          name="RestaurantTax"
+          getComponent={() =>
+            require("../screens/RestaurantTaxScreen").default
+          }
+        />
         <Stack.Screen
           name="RestaurantLanguage"
-          component={RestaurantLanguageScreen}
+          getComponent={() =>
+            require("../screens/RestaurantLanguageScreen")
+              .RestaurantLanguageScreen
+          }
         />
         <Stack.Screen
           name="RestaurantSecurity"
-          component={RestaurantSecurityScreen}
+          getComponent={() =>
+            require("../screens/RestaurantSecurityScreen")
+              .RestaurantSecurityScreen
+          }
         />
         <Stack.Screen
           name="RestaurantOrderAutomation"
-          component={RestaurantOrderAutomationScreen}
+          getComponent={() =>
+            require("../screens/restaurant/RestaurantOrderAutomationScreen")
+              .RestaurantOrderAutomationScreen
+          }
           options={{ title: "Commandes & impression" }}
         />
-        <Stack.Screen name="RestaurantChat" component={RestaurantChatScreen} />
+        <Stack.Screen
+          name="RestaurantChat"
+          getComponent={() =>
+            require("../screens/RestaurantChatScreen").RestaurantChatScreen
+          }
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

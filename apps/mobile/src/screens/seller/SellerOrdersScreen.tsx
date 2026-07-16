@@ -22,6 +22,7 @@ import {
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
 
 type Props = { navigation: any };
 
@@ -145,6 +146,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
         <FlatList
           data={orders}
           keyExtractor={(item) => item.id}
+          {...MARKETPLACE_LIST_PERF}
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
             <Text style={{ color: "#94A3B8", textAlign: "center", marginTop: 24 }}>

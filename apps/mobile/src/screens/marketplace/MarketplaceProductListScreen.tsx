@@ -3,6 +3,7 @@ import { toUserFacingError } from "../../lib/userFacingError";
 import {
   Text,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -22,6 +23,7 @@ import {
   type MarketplaceProduct,
 } from "../../lib/marketplaceApi";
 import { useTranslation } from "react-i18next";
+import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductList">;
 
@@ -107,6 +109,90 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
     }
   }
 
+  const listHeader = (
+    <View style={{ gap: 12, marginBottom: 12 }}>
+      {!sellerIsOpen ? (
+        <Text style={{ color: "#FCA5A5", marginBottom: 8 }}>
+          {t("marketplace.products.shopClosed", "This shop is currently closed.")}
+        </Text>
+      ) : null}
+
+      <TextInput
+        value={search}
+        onChangeText={setSearch}
+        placeholder={t("marketplace.products.search", "Search products")}
+        placeholderTextColor="#64748B"
+        style={{
+          backgroundColor: "#111827",
+          borderWidth: 1,
+          borderColor: "#334155",
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          color: "#F8FAFC",
+        }}
+      />
+
+      {categories.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setCategoryFilter(null)}
+              style={{
+                backgroundColor: categoryFilter == null ? "#7C3AED" : "#1F2937",
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 999,
+              }}
+            >
+              <Text style={{ color: "#F8FAFC", fontSize: 12 }}>
+                {t("marketplace.products.allCategories", "All")}
+              </Text>
+            </TouchableOpacity>
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category}
+                onPress={() => setCategoryFilter(category)}
+                style={{
+                  backgroundColor: categoryFilter === category ? "#7C3AED" : "#1F2937",
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 999,
+                }}
+              >
+                <Text style={{ color: "#F8FAFC", fontSize: 12 }}>{category}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      ) : null}
+
+      <TouchableOpacity
+        disabled={!sellerIsOpen}
+        onPress={() =>
+          navigation.navigate("MarketplaceCart", {
+            sellerId,
+            sellerName,
+            sellerCountryCode,
+          })
+        }
+        style={{
+          alignSelf: "flex-start",
+          backgroundColor: "#6D28D9",
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          borderRadius: 10,
+          marginBottom: 8,
+          opacity: sellerIsOpen ? 1 : 0.5,
+        }}
+      >
+        <Text style={{ color: "#FFF" }}>
+          {t("marketplace.products.openCart", "Open cart / draft")}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
@@ -115,145 +201,68 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
         fallbackRoute="MarketplaceHome"
         variant="dark"
       />
-      <ScrollView
+      <FlatList
+        data={loading || error ? [] : filtered}
+        keyExtractor={(item) => item.id}
+        {...MARKETPLACE_LIST_PERF}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load(true); }} />
         }
         contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 12 }}
-      >
-        {!sellerIsOpen ? (
-          <Text style={{ color: "#FCA5A5", marginBottom: 8 }}>
-            {t("marketplace.products.shopClosed", "This shop is currently closed.")}
-          </Text>
-        ) : null}
-
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder={t("marketplace.products.search", "Search products")}
-          placeholderTextColor="#64748B"
-          style={{
-            backgroundColor: "#111827",
-            borderWidth: 1,
-            borderColor: "#334155",
-            borderRadius: 12,
-            paddingHorizontal: 14,
-            paddingVertical: 12,
-            color: "#F8FAFC",
-          }}
-        />
-
-        {categories.length > 0 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
-            <View style={{ flexDirection: "row", gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => setCategoryFilter(null)}
-                style={{
-                  backgroundColor: categoryFilter == null ? "#7C3AED" : "#1F2937",
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 999,
-                }}
-              >
-                <Text style={{ color: "#F8FAFC", fontSize: 12 }}>
-                  {t("marketplace.products.allCategories", "All")}
-                </Text>
-              </TouchableOpacity>
-              {categories.map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  onPress={() => setCategoryFilter(category)}
-                  style={{
-                    backgroundColor: categoryFilter === category ? "#7C3AED" : "#1F2937",
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    borderRadius: 999,
-                  }}
-                >
-                  <Text style={{ color: "#F8FAFC", fontSize: 12 }}>{category}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        ) : null}
-
-        <TouchableOpacity
-          disabled={!sellerIsOpen}
-          onPress={() =>
-            navigation.navigate("MarketplaceCart", {
-              sellerId,
-              sellerName,
-              sellerCountryCode,
-            })
-          }
-          style={{
-            alignSelf: "flex-start",
-            backgroundColor: "#6D28D9",
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            borderRadius: 10,
-            marginBottom: 8,
-            opacity: sellerIsOpen ? 1 : 0.5,
-          }}
-        >
-          <Text style={{ color: "#FFF" }}>
-            {t("marketplace.products.openCart", "Open cart / draft")}
-          </Text>
-        </TouchableOpacity>
-
-        {loading ? (
-          <ActivityIndicator color="#A78BFA" />
-        ) : error ? (
-          <Text style={{ color: "#FCA5A5" }}>{error}</Text>
-        ) : filtered.length === 0 ? (
-          <Text style={{ color: "#CBD5E1" }}>
-            {t("marketplace.products.empty", "No active products.")}
-          </Text>
-        ) : (
-          filtered.map((product) => (
-            <View
-              key={product.id}
-              style={{
-                borderWidth: 1,
-                borderColor: "#334155",
-                borderRadius: 14,
-                padding: 14,
-                backgroundColor: "#111827",
-                gap: 8,
-              }}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator color="#A78BFA" />
+          ) : error ? (
+            <Text style={{ color: "#FCA5A5" }}>{error}</Text>
+          ) : (
+            <Text style={{ color: "#CBD5E1" }}>
+              {t("marketplace.products.empty", "No active products.")}
+            </Text>
+          )
+        }
+        renderItem={({ item: product }) => (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: "#334155",
+              borderRadius: 14,
+              padding: 14,
+              backgroundColor: "#111827",
+              gap: 8,
+            }}
+          >
+            <TouchableOpacity
+              disabled={!sellerIsOpen}
+              onPress={() =>
+                navigation.navigate("MarketplaceProductDetails", {
+                  sellerId,
+                  sellerName,
+                  sellerCountryCode,
+                  productId: product.id,
+                })
+              }
             >
-              <TouchableOpacity
-                disabled={!sellerIsOpen}
-                onPress={() =>
-                  navigation.navigate("MarketplaceProductDetails", {
-                    sellerId,
-                    sellerName,
-                    sellerCountryCode,
-                    productId: product.id,
-                  })
-                }
-              >
-                <Text style={{ color: "#F8FAFC", fontSize: 17, fontWeight: "600" }}>
-                  {product.title}
-                </Text>
-                <Text style={{ color: "#94A3B8", marginTop: 4 }} numberOfLines={2}>
-                  {product.description || product.category}
-                </Text>
-                <Text style={{ color: "#C4B5FD", marginTop: 8 }}>
-                  {formatMarketplaceMoney(product.price_cents, product.currency)}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => void toggleFavorite(product)}>
-                <Text style={{ color: favoriteIds.has(product.id) ? "#FCD34D" : "#94A3B8" }}>
-                  {favoriteIds.has(product.id)
-                    ? t("marketplace.products.favorited", "★ Favorited")
-                    : t("marketplace.products.favorite", "☆ Favorite")}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ))
+              <Text style={{ color: "#F8FAFC", fontSize: 17, fontWeight: "600" }}>
+                {product.title}
+              </Text>
+              <Text style={{ color: "#94A3B8", marginTop: 4 }} numberOfLines={2}>
+                {product.description || product.category}
+              </Text>
+              <Text style={{ color: "#C4B5FD", marginTop: 8 }}>
+                {formatMarketplaceMoney(product.price_cents, product.currency)}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => void toggleFavorite(product)}>
+              <Text style={{ color: favoriteIds.has(product.id) ? "#FCD34D" : "#94A3B8" }}>
+                {favoriteIds.has(product.id)
+                  ? t("marketplace.products.favorited", "★ Favorited")
+                  : t("marketplace.products.favorite", "☆ Favorite")}
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
-      </ScrollView>
+      />
     </SafeAreaView>
   );
 }

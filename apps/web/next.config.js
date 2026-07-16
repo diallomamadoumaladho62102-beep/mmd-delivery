@@ -37,8 +37,28 @@ const MMD_SECURITY_HEADERS = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  compress: true,
+  poweredByHeader: false,
   turbopack: {
     root: path.resolve(__dirname, "..", ".."),
+  },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/render/**",
+      },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+    ],
   },
   allowedDevOrigins: [
     "http://192.168.1.203:3000",
@@ -51,11 +71,32 @@ const nextConfig = {
         source: "/:path*",
         headers: MMD_SECURITY_HEADERS,
       },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
     ];
   },
 };
 
-module.exports = withSentryConfig(nextConfig, {
+const withAnalyzer = (() => {
+  if (process.env.ANALYZE !== "true") return (config) => config;
+  try {
+    return require("@next/bundle-analyzer")({ enabled: true });
+  } catch {
+    console.warn(
+      "[next.config] ANALYZE=true but @next/bundle-analyzer is not installed; skipping analyzer."
+    );
+    return (config) => config;
+  }
+})();
+
+module.exports = withSentryConfig(withAnalyzer(nextConfig), {
   // Build-time source map upload + release creation require both org and
   // project; @sentry/nextjs silently skips the upload otherwise, even when
   // SENTRY_AUTH_TOKEN is set. Official Sentry slugs (org "mmd-delivery"):
