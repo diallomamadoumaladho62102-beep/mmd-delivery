@@ -38,7 +38,7 @@ export function getTwilioWebhookUrl(
   return `${proto}://${host}${pathname}${search}`;
 }
 
-function buildTwilioSignaturePayload(
+export function buildTwilioSignaturePayload(
   url: string,
   params: Record<string, string>
 ): string {

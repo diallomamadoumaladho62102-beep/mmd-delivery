@@ -8,6 +8,7 @@ import {
 import { transitionRestaurantOrderStatus } from "@/lib/restaurantOrderStatusService";
 import { queueRestaurantPrintJobsForOrder } from "@/lib/restaurantPrintJobs";
 import { notifyClientOrderAccepted } from "@/lib/clientPushNotifications";
+import { notifyOrderAcceptedEmail } from "@/lib/transactionalEmails";
 import { notifyRestaurantNewPaidOrder } from "@/lib/restaurantPushNotifications";
 
 const AUTOMATION_SELECT =
@@ -309,6 +310,13 @@ export async function tryAutoAcceptPaidFoodOrder(
   await notifyClientOrderAccepted({
     supabaseAdmin,
     userIds: [order.client_user_id, order.created_by],
+    orderId: input.orderId,
+    prepMinutes: settings.default_prep_minutes,
+  });
+
+  await notifyOrderAcceptedEmail({
+    supabaseAdmin,
+    clientUserId: order.client_user_id ?? order.created_by ?? null,
     orderId: input.orderId,
     prepMinutes: settings.default_prep_minutes,
   });

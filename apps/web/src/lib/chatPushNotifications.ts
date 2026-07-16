@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolvePushSound } from "./mmdPushSounds";
+import { getUserPushBadgeCount } from "./pushBadgeService";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const DEDUP_WINDOW_MS = 120_000;
@@ -91,6 +92,11 @@ export async function notifyOrderChatMessage(
     return { sent: 0, skipped: "no_tokens" };
   }
 
+  const badgeCount = await getUserPushBadgeCount(
+    params.supabaseAdmin,
+    params.targetUserId,
+  );
+
   const preview = String(params.preview ?? "Nouveau message").trim() || "Nouveau message";
   const data = {
     type: "order_message",
@@ -107,6 +113,7 @@ export async function notifyOrderChatMessage(
     body: preview.slice(0, 180),
     data,
     priority: "high",
+    badge: badgeCount > 0 ? badgeCount : 1,
   }));
 
   let status = "sent";

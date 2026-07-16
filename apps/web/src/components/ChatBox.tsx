@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import RecalcOrderButton from "@/components/RecalcOrderButton";
 import { ORDER_MESSAGE_SELECT } from "@/lib/orderMessages";
+import { sendChatMessage } from "@/lib/chat";
+import {
+  markChatMessageDeliveredViaApi,
+  markChatMessagesReadViaApi,
+} from "@/lib/chatApiClient";
+import { formatChatReceiptLabel } from "@/lib/chatReceiptStatus";
 
 type Msg = {
   id: number;
@@ -12,6 +18,7 @@ type Msg = {
   text: string;
   image_path?: string | null;
   created_at: string;
+  delivery_status?: "sent" | "delivered" | "read" | null;
   profiles?: { full_name?: string | null; avatar_url?: string | null } | null;
 };
 
@@ -48,7 +55,10 @@ export default function ChatBox({ orderId }: { orderId: string }) {
           .eq("order_id", orderId)
           .order("created_at", { ascending: true });
 
-        if (!error && isMounted) setMsgs((data ?? []) as Msg[]);
+        if (!error && isMounted) {
+          setMsgs((data ?? []) as Msg[]);
+          void markChatMessagesReadViaApi({ orderId });
+        }
       } catch {
         // transient transport error — keep existing messages, no crash
       }
@@ -66,8 +76,26 @@ export default function ChatBox({ orderId }: { orderId: string }) {
           filter: `order_id=eq.${orderId}`,
         },
         (payload: any) => {
-          // payload.new n'a pas profiles => OK, on l'affiche sans name si besoin
-          setMsgs((old) => [...old, payload.new as Msg]);
+          const row = payload.new as Msg;
+          if (row?.user_id && row.user_id !== me) {
+            void markChatMessageDeliveredViaApi(String(row.id));
+          }
+          setMsgs((old) => [...old, row]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "order_messages",
+          filter: `order_id=eq.${orderId}`,
+        },
+        (payload: any) => {
+          const row = payload.new as Msg;
+          setMsgs((old) =>
+            old.map((m) => (m.id === row.id ? { ...m, ...row } : m)),
+          );
         }
       )
       .subscribe();
@@ -99,36 +127,7 @@ export default function ChatBox({ orderId }: { orderId: string }) {
     try {
       setSending(true);
 
-      // UID pour l'insert
-      let uid = me;
-      if (!uid) {
-        const { data } = await supabase.auth.getUser();
-        uid = data.user?.id ?? null;
-      }
-
-      let image_path: string | null = null;
-
-      if (file) {
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const filename = `${crypto.randomUUID()}-${safeName}`;
-        const objectPath = `${orderId}/${filename}`;
-
-        const { error: upErr } = await supabase.storage
-          .from("chat-images")
-          .upload(objectPath, file, { cacheControl: "3600", upsert: false });
-
-        if (upErr) throw new Error(`Upload image: ${upErr.message}`);
-        image_path = `chat-images/${objectPath}`;
-      }
-
-      const { error: insErr } = await supabase.from("order_messages").insert({
-        order_id: orderId,
-        user_id: uid,
-        text: text || null,
-        image_path,
-      });
-
-      if (insErr) throw new Error(`Insert message: ${insErr.message}`);
+      await sendChatMessage(orderId, text, file);
 
       setInput("");
       setFile(null);
@@ -174,6 +173,11 @@ export default function ChatBox({ orderId }: { orderId: string }) {
                 >
                   <div className="text-xs opacity-70">
                     {name} • {time}
+                    {isMine ? (
+                      <span className="ml-1">
+                        • {formatChatReceiptLabel(m.delivery_status)}
+                      </span>
+                    ) : null}
                   </div>
 
                   {m.text?.trim() && (

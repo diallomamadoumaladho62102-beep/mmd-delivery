@@ -4,6 +4,7 @@ import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveRestaurantPlatformCountry } from "@/lib/platformCountryResolver";
+import { notifyRestaurantApprovedEmail } from "@/lib/transactionalEmails";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -260,6 +261,16 @@ export async function POST(request: NextRequest) {
       },
       request,
     });
+
+    if (status === "approved") {
+      await notifyRestaurantApprovedEmail({
+        supabaseAdmin: supabase,
+        userId,
+        restaurantName:
+          String((before as { restaurant_name?: string | null })?.restaurant_name ?? "").trim() ||
+          null,
+      });
+    }
 
     return NextResponse.json(
       {

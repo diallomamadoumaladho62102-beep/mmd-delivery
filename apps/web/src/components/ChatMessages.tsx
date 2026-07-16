@@ -5,11 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseBrowser";
 import { mmdAudio } from "@/lib/mmdAudio";
 import {
+  markChatMessageDeliveredViaApi,
+  markChatMessagesReadViaApi,
+  sendChatMessageViaApi,
+} from "@/lib/chatApiClient";
+import {
   buildChatImageStoragePath,
   CHAT_IMAGE_BUCKET,
   toChatImagePath,
   validateChatImageFile,
 } from "@/lib/chatUploadSecurity";
+import { formatChatReceiptLabel } from "@/lib/chatReceiptStatus";
 
 type Row = {
   id: number;
@@ -18,6 +24,7 @@ type Row = {
   text: string | null;
   image_path: string | null;
   created_at: string;
+  delivery_status?: "sent" | "delivered" | "read" | null;
   _signedUrl?: string | null;
 };
 
@@ -99,6 +106,7 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
 
       setRows(enriched);
       setTimeout(scrollToEnd, 50);
+      void markChatMessagesReadViaApi({ orderId });
     } finally {
       loadingRef.current = false;
     }
@@ -121,9 +129,10 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
           filter: `order_id=eq.${orderId}`,
         },
         (payload) => {
-          const row = payload.new as { user_id?: string | null };
+          const row = payload.new as { id?: string; user_id?: string | null };
           if (row?.user_id && row.user_id !== userIdRef.current) {
             void mmdAudio.play("chat");
+            if (row.id) void markChatMessageDeliveredViaApi(String(row.id));
           }
           void load();
         }
@@ -196,15 +205,14 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
 
       const senderRole = String((profile as { role?: string } | null)?.role ?? "").trim() || null;
 
-      const { error: insErr } = await supabase.from("order_messages").insert({
-        order_id: orderId,
-        user_id: userIdRef.current,
+      const sendResult = await sendChatMessageViaApi({
+        orderId,
         text: text || null,
-        image_path,
-        sender_role: senderRole,
-      } as any);
+        imagePath: image_path,
+        senderRole,
+      });
 
-      if (insErr) throw insErr;
+      if (!sendResult.ok) throw new Error(sendResult.error ?? "send_failed");
 
       setText("");
       setFile(null);
@@ -247,10 +255,17 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
   return (
     <div className="space-y-3">
       <div ref={listRef} className="h-96 overflow-y-auto rounded-xl border p-3">
-        {rows.map((r) => (
+        {rows.map((r) => {
+          const isMine = !!r.user_id && r.user_id === userIdRef.current;
+          return (
           <div key={r.id} className="mb-3">
             <div className="text-xs text-gray-500">
               {new Date(r.created_at).toLocaleString()}
+              {isMine ? (
+                <span className="ml-2 opacity-70">
+                  {formatChatReceiptLabel(r.delivery_status)}
+                </span>
+              ) : null}
             </div>
 
             {r.text && <div className="whitespace-pre-wrap">{r.text}</div>}
@@ -268,7 +283,8 @@ export default function ChatMessages({ orderId }: { orderId: string }) {
               supprimer
             </button>
           </div>
-        ))}
+        );
+        })}
       </div>
 
       <div className="flex gap-2 items-center">

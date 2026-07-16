@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseBrowser";
 import { ORDER_MESSAGE_SELECT } from "../lib/orderMessages";
+import { sendChatMessageViaApi } from "../lib/chatApiClient";
 
 type Msg = {
   id: number;
@@ -230,12 +231,14 @@ export default function Messages({ orderId }: { orderId: string }) {
       setFile(null);
       if (fileRef.current) fileRef.current.value = ""; // reset input
 
-      // 3) Insert DB
-      const { error } = await supabase
-        .from("order_messages")
-        .insert({ order_id: orderId, user_id: user.id, text: raw, image_path });
+      // 3) Insert via secured API
+      const sendResult = await sendChatMessageViaApi({
+        orderId,
+        text: raw,
+        imagePath: image_path,
+      });
 
-      if (error) throw error;
+      if (!sendResult.ok) throw new Error(sendResult.error ?? "send_failed");
 
       // 4) Sync
       void load();

@@ -12,6 +12,10 @@ import {
   toChatImagePath,
 } from "./chatUploadSecurity";
 import { getTwilioPhoneNumber } from "./twilioPhone";
+import {
+  formatChatReceiptLabel,
+  mapTwilioCallStatus,
+} from "./chatReceiptStatus";
 
 test("normalizeSourceTable supports marketplace delivery jobs", () => {
   assert.equal(
@@ -63,4 +67,21 @@ test("getTwilioPhoneNumber prefers env", () => {
     if (previous === undefined) delete process.env.TWILIO_PHONE_NUMBER;
     else process.env.TWILIO_PHONE_NUMBER = previous;
   }
+});
+
+test("mapTwilioCallStatus maps ringing answered completed busy failed no-answer canceled", () => {
+  assert.equal(mapTwilioCallStatus("ringing"), "ringing");
+  assert.equal(mapTwilioCallStatus("in-progress"), "connected");
+  assert.equal(mapTwilioCallStatus("answered"), "connected");
+  assert.equal(mapTwilioCallStatus("completed"), "completed");
+  assert.equal(mapTwilioCallStatus("busy"), "declined");
+  assert.equal(mapTwilioCallStatus("failed"), "failed");
+  assert.equal(mapTwilioCallStatus("no-answer"), "missed");
+  assert.equal(mapTwilioCallStatus("canceled"), "canceled");
+});
+
+test("formatChatReceiptLabel returns sent delivered read labels", () => {
+  assert.equal(formatChatReceiptLabel("sent"), "Envoyé");
+  assert.equal(formatChatReceiptLabel("delivered"), "Distribué");
+  assert.equal(formatChatReceiptLabel("read"), "Lu");
 });

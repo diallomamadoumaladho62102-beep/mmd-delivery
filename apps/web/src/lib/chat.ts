@@ -5,6 +5,7 @@ import {
   toChatImagePath,
   validateChatImageFile,
 } from "@/lib/chatUploadSecurity";
+import { sendChatMessageViaApi } from "@/lib/chatApiClient";
 
 export async function deleteMessageAndImage(msgId: string) {
   const { data, error } = await supabase.rpc("delete_order_message", {
@@ -36,12 +37,8 @@ export async function sendChatMessage(
   orderId: string,
   text: string,
   file: File | null,
-  roles?: { senderRole?: string | null; targetRole?: string | null },
+  roles?: { senderRole?: string | null; targetRole?: string | null; targetUserId?: string | null },
 ) {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr) throw userErr;
-  const userId = userData?.user?.id;
-
   let imagePath: string | null = null;
 
   if (file) {
@@ -60,28 +57,22 @@ export async function sendChatMessage(
     imagePath = toChatImagePath(key);
   }
 
-  const payload: Record<string, unknown> = {
-    order_id: orderId,
+  const result = await sendChatMessageViaApi({
+    orderId,
     text: text?.trim() || null,
-    image_path: imagePath,
-    user_id: userId || null,
-    sender_role: roles?.senderRole ?? null,
-    target_role: roles?.targetRole ?? null,
-  };
+    imagePath,
+    senderRole: roles?.senderRole ?? null,
+    targetRole: roles?.targetRole ?? null,
+    targetUserId: roles?.targetUserId ?? null,
+  });
 
-  const { data, error } = await supabase
-    .from("order_messages")
-    .insert(payload)
-    .select("*")
-    .single();
-
-  if (error) {
+  if (!result.ok) {
     if (imagePath) {
       const storageKey = imagePath.replace(/^chat-images\//, "");
       await supabase.storage.from(CHAT_IMAGE_BUCKET).remove([storageKey]).catch(() => {});
     }
-    throw error;
+    throw new Error(result.error ?? "send_failed");
   }
 
-  return data;
+  return result.message;
 }

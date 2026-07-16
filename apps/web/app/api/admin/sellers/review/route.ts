@@ -3,6 +3,7 @@ import { AdminAccessError, assertCanReviewSellers } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { fetchPlatformScopeConfig } from "@/lib/platformScopeResolver";
+import { notifySellerApprovedEmail } from "@/lib/transactionalEmails";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,14 @@ export async function PATCH(request: NextRequest) {
       newValues: (updated ?? { status }) as Record<string, unknown>,
       request,
     });
+
+    if (status === "approved") {
+      await notifySellerApprovedEmail({
+        supabaseAdmin: supabase,
+        userId: String((existing as { user_id?: string | null }).user_id ?? ""),
+        businessName: String((existing as { business_name?: string | null }).business_name ?? ""),
+      });
+    }
 
     return json({ ok: true, item: updated });
   } catch (e) {

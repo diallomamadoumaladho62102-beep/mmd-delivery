@@ -1,11 +1,7 @@
 'use client';
 import * as React from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!
-);
+import { supabase } from '@/lib/supabaseBrowser';
+import { sendChatMessageViaApi } from '@/lib/chatApiClient';
 
 type PageProps = { params: { orderId: string } };
 type Msg = { id: string; order_id: string; user_id: string | null; text: string; created_at: string };
@@ -48,12 +44,11 @@ export default function OrderChatPage({ params }: PageProps) {
 
   const send = async () => {
     if (!text.trim()) return;
-    const { error } = await supabase.from('order_messages').insert({
-      order_id: orderId,
-      text
-      // user_id: sera null si pas d'auth; on le mettra quand on branchera Auth
+    const sendResult = await sendChatMessageViaApi({
+      orderId,
+      text,
     });
-    if (!error) setText('');
+    if (sendResult.ok) setText('');
   };
 
   return (

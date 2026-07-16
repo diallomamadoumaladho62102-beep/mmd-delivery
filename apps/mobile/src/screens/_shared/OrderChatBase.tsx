@@ -25,11 +25,14 @@ import {
   unsubscribeSupabaseChannel,
 } from "../../lib/supabaseRealtime";
 import { mmdAudio } from "../../lib/mmdAudio";
-import { fireOrderChatPushNotify } from "../../lib/chatPushClient";
+import {
+  markChatMessageDeliveredViaApi,
+  markChatMessagesReadViaApi,
+  sendChatMessageViaApi,
+} from "../../lib/chatApi";
 import {
   canRoleAccessChatResource,
   loadChatParticipantIds,
-  mapTargetRoleToPushRole,
   normalizeChatSourceTable,
   resolveChatTargetUserId,
   type ChatSourceTable,
@@ -46,6 +49,9 @@ type Row = {
   created_at: string;
   sender_role?: ChatTargetRole | null;
   target_role?: ChatTargetRole | null;
+  delivery_status?: "sent" | "delivered" | "read" | null;
+  delivered_at?: string | null;
+  read_at?: string | null;
   _signedUrl?: string | null;
 };
 
@@ -547,8 +553,9 @@ export function OrderChatBaseScreen(props: {
       await loadParticipants(access);
 
       const selectWithRoles =
+        "id, order_id, user_id, text, image_path, created_at, sender_role, target_role, delivery_status, delivered_at, read_at";
+      const selectLegacy =
         "id, order_id, user_id, text, image_path, created_at, sender_role, target_role";
-      const selectLegacy = "id, order_id, user_id, text, image_path, created_at";
 
       let query = supabase
         .from("order_messages")
@@ -597,6 +604,11 @@ export function OrderChatBaseScreen(props: {
 
       setRows(enriched);
       scrollToEnd();
+
+      void markChatMessagesReadViaApi({
+        orderId,
+        targetRole: targetRole || null,
+      });
     } catch (e: any) {
       console.log("load chat error:", e);
 
@@ -621,9 +633,12 @@ export function OrderChatBaseScreen(props: {
         table: "order_messages",
         filter: `order_id=eq.${orderId}`,
         callback: (payload) => {
-          const row = (payload as { new?: { user_id?: string | null } }).new;
+          const row = (payload as { new?: { id?: string; user_id?: string | null } }).new;
           if (row?.user_id && row.user_id !== currentUserIdRef.current) {
             void mmdAudio.play("chat");
+            if (row?.id) {
+              void markChatMessageDeliveredViaApi(String(row.id));
+            }
           }
           void load();
         },
@@ -855,53 +870,29 @@ export function OrderChatBaseScreen(props: {
 
       const image_path = pickedImage ? await uploadPickedImage() : null;
 
-      const messagePayload = {
-        order_id: orderId,
-        user_id: userId,
-        text: trimmed || null,
-        image_path,
-        sender_role: senderRole,
-        target_role: targetRole || null,
-      };
-
-      let { error } = await supabase.from("order_messages").insert(messagePayload as any);
-
-      if (error && isMissingColumnError(error)) {
-        const legacyPayload = {
-          order_id: orderId,
-          user_id: userId,
-          text: trimmed || null,
-          image_path,
-        };
-
-        const legacy = await supabase.from("order_messages").insert(legacyPayload as any);
-        error = legacy.error;
-      }
-
-      if (error) throw error;
-
+      let targetUserId: string | null = null;
       if (targetRole && targetRole !== "admin") {
         const participantIds = await loadChatParticipantIds(
           supabase,
           orderId,
           sourceTable,
         );
-        const targetUserId = participantIds
+        targetUserId = participantIds
           ? resolveChatTargetUserId(participantIds, targetRole)
           : null;
-        const pushRole =
-          sourceTable === "marketplace_delivery_jobs" && targetRole === "restaurant"
-            ? "seller"
-            : mapTargetRoleToPushRole(targetRole);
+      }
 
-        if (targetUserId && pushRole) {
-          void fireOrderChatPushNotify({
-            orderId,
-            targetUserId,
-            targetRole: pushRole,
-            preview: trimmed || (image_path ? "Photo" : null),
-          });
-        }
+      const sendResult = await sendChatMessageViaApi({
+        orderId,
+        text: trimmed || null,
+        imagePath: image_path,
+        senderRole: senderRole,
+        targetRole: targetRole || null,
+        targetUserId,
+      });
+
+      if (!sendResult.ok) {
+        throw new Error(sendResult.error ?? "send_failed");
       }
 
       setText("");
@@ -1266,6 +1257,24 @@ export function OrderChatBaseScreen(props: {
                         {r.text}
                       </Text>
                     )}
+
+                    {isMine ? (
+                      <Text
+                        style={{
+                          color: "#BFDBFE",
+                          fontSize: 10,
+                          fontWeight: "800",
+                          marginTop: 6,
+                          textAlign: "right",
+                        }}
+                      >
+                        {r.delivery_status === "read"
+                          ? t("shared.orderChat.receipt.read", "Read")
+                          : r.delivery_status === "delivered"
+                            ? t("shared.orderChat.receipt.delivered", "Delivered")
+                            : t("shared.orderChat.receipt.sent", "Sent")}
+                      </Text>
+                    ) : null}
 
                     {!!r._signedUrl && (
                       <Image

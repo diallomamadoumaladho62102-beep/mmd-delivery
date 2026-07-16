@@ -121,7 +121,8 @@ export function classifyApiPath(pathname: string): ApiRateTier {
     p.includes("sign-in") ||
     p.includes("password") ||
     p.startsWith("/api/push/") ||
-    p.startsWith("/api/chat/")
+    p.startsWith("/api/chat/") ||
+    p.startsWith("/api/auth/transactional/")
   ) {
     return "auth_sensitive";
   }

@@ -12,7 +12,7 @@ export type OrderMessageRow = {
 };
 
 export const ORDER_MESSAGE_SELECT =
-  "id, order_id, user_id, text, image_path, sender_role, target_role, created_at";
+  "id, order_id, user_id, text, image_path, sender_role, target_role, delivery_status, delivered_at, read_at, created_at";
 
 export function messagePreview(row: {
   text?: string | null;

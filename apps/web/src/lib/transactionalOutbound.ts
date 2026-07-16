@@ -63,6 +63,7 @@ export async function sendTransactionalEmail(params: {
   to: string;
   subject: string;
   body: string;
+  html?: string | null;
 }): Promise<{ ok: boolean; skipped?: boolean }> {
   if (!isTransactionalEmailEnabled()) {
     return { ok: false, skipped: true };
@@ -71,9 +72,15 @@ export async function sendTransactionalEmail(params: {
   const to = String(params.to ?? "").trim();
   const subject = String(params.subject ?? "").trim();
   const body = String(params.body ?? "").trim();
+  const html = String(params.html ?? "").trim();
   if (!to || !subject || !body) return { ok: false, skipped: true };
 
-  const result = await sendAdminEmail({ to, subject, body });
+  const result = await sendAdminEmail({
+    to,
+    subject,
+    body,
+    html: html || undefined,
+  });
   return { ok: result.ok, skipped: false };
 }
 
@@ -82,6 +89,7 @@ export async function notifyUserTransactional(params: {
   recipient: TransactionalRecipient;
   subject: string;
   body: string;
+  html?: string | null;
 }): Promise<void> {
   let email = String(params.recipient.email ?? "").trim() || null;
   let phone = String(params.recipient.phone ?? "").trim() || null;
@@ -100,6 +108,7 @@ export async function notifyUserTransactional(params: {
       to: email,
       subject: params.subject,
       body: params.body,
+      html: params.html,
     });
   }
 

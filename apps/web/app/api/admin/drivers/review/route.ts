@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertCanReviewDrivers } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { notifyDriverApprovedEmail } from "@/lib/transactionalEmails";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -432,6 +433,10 @@ export async function POST(request: NextRequest) {
       },
       request,
     });
+
+    if (status === "approved") {
+      await notifyDriverApprovedEmail({ supabaseAdmin: supabase, userId });
+    }
 
     return NextResponse.json(
       {

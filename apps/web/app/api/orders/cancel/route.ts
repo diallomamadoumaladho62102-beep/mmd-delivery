@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
+import { notifyOrderCancelledEmail } from "@/lib/transactionalEmails";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 import {
@@ -218,6 +219,18 @@ async function notifyClientAfterCancel(params: {
         params.order.user_id,
         params.userId,
       ],
+      orderId: params.orderId,
+      refund: params.refund,
+    });
+
+    await notifyOrderCancelledEmail({
+      supabaseAdmin: params.supabaseAdmin,
+      clientUserId:
+        params.order.client_user_id ??
+        params.order.client_id ??
+        params.order.created_by ??
+        params.userId ??
+        null,
       orderId: params.orderId,
       refund: params.refund,
     });

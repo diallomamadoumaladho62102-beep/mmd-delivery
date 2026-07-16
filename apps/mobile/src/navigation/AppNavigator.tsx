@@ -36,6 +36,7 @@ import {
 import {
   navigateFromCommunicationPush,
 } from "../lib/communicationPushRouting";
+import { syncAppBadgeFromServer } from "../lib/chatApi";
 import { notifyDriverMissionPushReceived } from "../lib/driverMissionPushEvents";
 import {
   extractTaxiPushPayload,
@@ -383,10 +384,12 @@ export function AppNavigator({
 
     function handleNotificationData(data: unknown) {
       if (navigateFromCommunicationPush(navRef.current as any, data)) {
+        void syncAppBadgeFromServer();
         return;
       }
       handleDriverMissionPush(data);
       handleClientTaxiPush(data);
+      void syncAppBadgeFromServer();
     }
 
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {

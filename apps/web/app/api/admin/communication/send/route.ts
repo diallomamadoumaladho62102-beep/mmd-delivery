@@ -13,6 +13,7 @@ import {
   sendAdminSms,
   type OutboundChannel,
 } from "@/lib/adminOutbound";
+import { notifyTeamInvitationEmail } from "@/lib/transactionalEmails";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -129,11 +130,23 @@ export async function POST(request: NextRequest) {
       ) {
         return fail("missing_push_config", 503, { provider: "resend" });
       }
-      result = await sendAdminEmail({
-        to: recipientAddress,
-        subject: String(body.subject ?? "MMD Delivery").trim(),
-        body: message,
-      });
+
+      if (recipientUserId) {
+        await notifyTeamInvitationEmail({
+          supabaseAdmin: supabase,
+          userId: recipientUserId,
+          email: recipientAddress,
+          inviteeName: null,
+          invitedBy: "MMD Admin",
+        });
+        result = { ok: true, response: { ok: true, template: "team_invitation" } };
+      } else {
+        result = await sendAdminEmail({
+          to: recipientAddress,
+          subject: String(body.subject ?? "MMD Delivery").trim(),
+          body: message,
+        });
+      }
     }
 
     const ip = getClientIp(request);

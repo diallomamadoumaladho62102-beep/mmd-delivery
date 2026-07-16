@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { ORDER_MESSAGE_SELECT } from "@/lib/orderMessages";
+import { markChatMessagesReadViaApi, sendChatMessageViaApi } from "@/lib/chatApiClient";
 
 type MessageRow = {
   id: string;
@@ -101,6 +102,7 @@ export default function OrderChatPage() {
     }
 
     setMessages((data || []) as MessageRow[]);
+    void markChatMessagesReadViaApi({ orderId });
 
     // 2) Charger les rôles via order_members
     const { data: membersData, error: membersError } = await supabase
@@ -167,15 +169,14 @@ export default function OrderChatPage() {
 
     const user = userData.user;
 
-    const { error: insertError } = await supabase.from("order_messages").insert({
-      order_id: orderId,
-      user_id: user.id,
+    const sendResult = await sendChatMessageViaApi({
+      orderId,
       text: newMessage.trim(),
+      senderRole: rolesByUserId[user.id] ?? null,
     });
 
-    if (insertError) {
-      console.error(insertError);
-      setErr(insertError.message);
+    if (!sendResult.ok) {
+      setErr(sendResult.error ?? "Impossible d'envoyer le message.");
       setSending(false);
       return;
     }
