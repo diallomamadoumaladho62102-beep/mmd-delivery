@@ -1,3 +1,4 @@
+import { buildCorsHeaders } from "../_shared/cors.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
@@ -6,22 +7,16 @@ import {
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const SUPABASE_URL = getEdgeSupabaseUrl();
 const SUPABASE_ANON_KEY = getEdgePublishableKey();
 const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 
-function json(data: unknown, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -53,10 +48,10 @@ async function stripePOST(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: buildCorsHeaders(req) });
 
   if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
-    return json({
+    return json(req, {
       ok: false,
       disabled: true,
       message:
@@ -65,12 +60,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (req.method !== "POST") return json({ error: "Use POST" }, 405);
+    if (req.method !== "POST") return json(req, { error: "Use POST" }, 405);
 
     // --- Auth user (Bearer JWT) ---
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!token) return json({ error: "Missing Authorization Bearer token" }, 401);
+    if (!token) return json(req, { error: "Missing Authorization Bearer token" }, 401);
 
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
@@ -78,7 +73,7 @@ Deno.serve(async (req) => {
     });
 
     const { data: userData, error: userErr } = await supabaseAuth.auth.getUser();
-    if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
+    if (userErr || !userData?.user) return json(req, { error: "Unauthorized" }, 401);
     const callerUserId = userData.user.id;
 
     // --- Admin client ---
@@ -94,7 +89,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (adminErr) throw adminErr;
-    if (!adminRow) return json({ error: "Forbidden (admin only)" }, 403);
+    if (!adminRow) return json(req, { error: "Forbidden (admin only)" }, 403);
 
     // --- Body: restaurant_user_id (optionnel) ---
     let body: any = {};
@@ -104,7 +99,7 @@ Deno.serve(async (req) => {
 
     const restaurant_user_id = String(body?.restaurant_user_id ?? "");
     if (!restaurant_user_id) {
-      return json({ error: "Missing restaurant_user_id" }, 400);
+      return json(req, { error: "Missing restaurant_user_id" }, 400);
     }
 
     // Load restaurant profile (Connect account)
@@ -116,7 +111,7 @@ Deno.serve(async (req) => {
 
     if (profErr) throw profErr;
     if (!profile?.stripe_account_id) {
-      return json({ error: "No stripe_account_id for this restaurant" }, 400);
+      return json(req, { error: "No stripe_account_id for this restaurant" }, 400);
     }
 
     const stripeAccountId = String(profile.stripe_account_id);
@@ -141,7 +136,7 @@ Deno.serve(async (req) => {
     const amountCents = Math.round(amount * 100);
 
     if (!orders || orders.length === 0 || amountCents <= 0) {
-      return json({
+      return json(req, {
         ok: true,
         message: "Nothing to payout",
         restaurant_user_id,
@@ -209,7 +204,7 @@ Deno.serve(async (req) => {
 
     if (updPayErr) throw updPayErr;
 
-    return json({
+    return json(req, {
       ok: true,
       restaurant_user_id,
       stripe_account_id: stripeAccountId,
@@ -223,6 +218,6 @@ Deno.serve(async (req) => {
     console.log("pay_restaurant_now error:", e?.message ?? e);
 
     // best-effort: si payout pending existe, on pourrait le marquer failed (ici on garde simple)
-    return json({ error: e?.message ?? "Unknown error" }, 500);
+    return json(req, { error: e?.message ?? "Unknown error" }, 500);
   }
 });

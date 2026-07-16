@@ -1,3 +1,4 @@
+import { buildCorsHeaders } from "../_shared/cors.ts";
 // supabase/functions/sync_restaurant_connect_status/index.ts
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -7,22 +8,16 @@ import {
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const SUPABASE_URL = getEdgeSupabaseUrl();
 const SUPABASE_ANON_KEY = getEdgePublishableKey();
 const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 
-function json(data: unknown, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -45,12 +40,12 @@ async function stripeGET(path: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: buildCorsHeaders(req) });
   }
 
   try {
     if (req.method !== "POST") {
-      return json({ error: "Use POST" }, 405);
+      return json(req, { error: "Use POST" }, 405);
     }
 
     // --- Auth ---
@@ -60,7 +55,7 @@ Deno.serve(async (req) => {
       : null;
 
     if (!token) {
-      return json({ error: "Missing Authorization Bearer token" }, 401);
+      return json(req, { error: "Missing Authorization Bearer token" }, 401);
     }
 
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -72,7 +67,7 @@ Deno.serve(async (req) => {
       await supabaseAuth.auth.getUser();
 
     if (userErr || !userData?.user) {
-      return json({ error: "Unauthorized" }, 401);
+      return json(req, { error: "Unauthorized" }, 401);
     }
 
     const userId = userData.user.id;
@@ -93,12 +88,12 @@ Deno.serve(async (req) => {
 
     if (profErr) throw profErr;
     if (!profile) {
-      return json({ error: "Restaurant profile not found" }, 404);
+      return json(req, { error: "Restaurant profile not found" }, 404);
     }
 
     const stripeAccountId = profile.stripe_account_id as string | null;
     if (!stripeAccountId) {
-      return json({ error: "No stripe_account_id for this restaurant" }, 400);
+      return json(req, { error: "No stripe_account_id for this restaurant" }, 400);
     }
 
     // 2) Lire le compte Stripe
@@ -135,7 +130,7 @@ Deno.serve(async (req) => {
 
     if (upErr) throw upErr;
 
-    return json({
+    return json(req, {
       stripe_account_id: stripeAccountId,
       stripe_charges_enabled: chargesEnabled,
       stripe_payouts_enabled: payoutsEnabled,
@@ -144,6 +139,6 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     console.log("sync_restaurant_connect_status error:", e);
-    return json({ error: e?.message ?? "Unknown error" }, 500);
+    return json(req, { error: e?.message ?? "Unknown error" }, 500);
   }
 });

@@ -13,17 +13,13 @@ import {
   getEdgeSecretKeyOptional,
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
-function json(body: unknown, status = 200) {
+function json(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -47,8 +43,8 @@ const DEFAULT_CONFIG = {
 type Bbox = { south: number; west: number; north: number; east: number };
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: buildCorsHeaders(req) });
+  if (req.method !== "POST") return json(req, { error: "method_not_allowed" }, 405);
 
   try {
     let url = "";
@@ -58,14 +54,14 @@ Deno.serve(async (req: Request) => {
       url = "";
     }
     const serviceKey = getEdgeSecretKeyOptional();
-    if (!url || !serviceKey) return json({ error: "server_misconfigured" }, 500);
+    if (!url || !serviceKey) return json(req, { error: "server_misconfigured" }, 500);
 
     const body = (await req.json().catch(() => ({}))) as {
       bbox?: Bbox;
       countryCode?: string;
     };
     const bboxCheck = validateBbox(body.bbox, 2);
-    if (!bboxCheck.ok) return json({ error: "invalid_bbox", reason: bboxCheck.reason }, 400);
+    if (!bboxCheck.ok) return json(req, { error: "invalid_bbox", reason: bboxCheck.reason }, 400);
 
     const bbox = body.bbox as Bbox;
     const countryCode = String(body.countryCode ?? "").trim().toUpperCase() || null;
@@ -90,7 +86,7 @@ Deno.serve(async (req: Request) => {
     const enabledTypes = resolveEnabledTypes(config);
 
     if (enabledTypes.length === 0) {
-      return json({ events: [], config, attribution: ATTRIBUTION });
+      return json(req, { events: [], config, attribution: ATTRIBUTION });
     }
 
     let query = admin
@@ -113,11 +109,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const { data, error } = await query;
-    if (error) return json({ error: "query_failed", details: error.message }, 500);
+    if (error) return json(req, { error: "query_failed", details: error.message }, 500);
 
-    return json({ events: data ?? [], config, attribution: ATTRIBUTION });
+    return json(req, { events: data ?? [], config, attribution: ATTRIBUTION });
   } catch (error) {
-    return json(
+    return json(req, 
       { error: "unexpected", details: error instanceof Error ? error.message : String(error) },
       500,
     );

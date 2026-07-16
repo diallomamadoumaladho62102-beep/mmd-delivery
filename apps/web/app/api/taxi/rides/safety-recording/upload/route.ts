@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
-import { buildSafetyRecordingStoragePath } from "@/lib/rideSafetyRecording";
+import { resolveSafetyRecordingUpload } from "@/lib/uploadSecurity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +12,10 @@ export async function PATCH(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const recordingId = String(body.recording_id ?? body.recordingId ?? "").trim();
-    const storagePath = String(body.storage_path ?? body.storagePath ?? "").trim();
+    const clientPath = String(body.storage_path ?? body.storagePath ?? "").trim();
     const fileSizeBytes = Number(body.file_size_bytes ?? body.fileSizeBytes ?? 0);
-    const mimeType = String(body.mime_type ?? body.mimeType ?? "application/octet-stream").trim();
-    const extension = String(body.extension ?? "bin").trim();
+    const mimeType = String(body.mime_type ?? body.mimeType ?? "").trim();
+    const extension = String(body.extension ?? "").trim();
 
     if (!/^[0-9a-f-]{36}$/i.test(recordingId)) {
       return taxiJson({ ok: false, error: "invalid_recording_id" }, 400);
@@ -31,19 +31,24 @@ export async function PATCH(req: NextRequest) {
       return taxiJson({ ok: false, error: "forbidden" }, 403);
     }
 
-    const finalPath =
-      storagePath ||
-      buildSafetyRecordingStoragePath({
-        rideId: String(existing.taxi_ride_id),
-        recordingId,
-        extension,
-      });
+    const resolved = resolveSafetyRecordingUpload({
+      rideId: String(existing.taxi_ride_id),
+      recordingId,
+      clientPath: clientPath || null,
+      mimeType,
+      extension,
+      fileSizeBytes,
+    });
+
+    if (resolved.ok === false) {
+      return taxiJson({ ok: false, error: resolved.error }, 400);
+    }
 
     const { data, error } = await auth.supabaseUser.rpc("complete_ride_safety_recording_upload", {
       p_recording_id: recordingId,
-      p_storage_path: finalPath,
-      p_file_size_bytes: fileSizeBytes,
-      p_mime_type: mimeType,
+      p_storage_path: resolved.storagePath,
+      p_file_size_bytes: resolved.fileSizeBytes,
+      p_mime_type: resolved.mimeType,
     });
 
     if (error) return taxiJson({ ok: false, error: error.message }, 500);
@@ -56,7 +61,7 @@ export async function PATCH(req: NextRequest) {
     return taxiJson({
       ok: true,
       recording: result.recording,
-      storage_path: finalPath,
+      storage_path: resolved.storagePath,
     });
   } catch (e: unknown) {
     return taxiJson({ ok: false, error: e instanceof Error ? e.message : "Server error" }, 500);

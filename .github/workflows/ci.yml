@@ -48,11 +48,17 @@ jobs:
       - name: Cron HTTP evaluator unit test
         run: node scripts/evaluateCronHttpResult.test.mjs
 
+      - name: Secret scan
+        run: node scripts/secret-scan.mjs
+
       - name: Lint
         run: pnpm --dir apps/mobile lint && pnpm --dir apps/web lint
 
       - name: Web build
         run: pnpm --dir apps/web build
+
+      - name: Web security tests
+        run: pnpm --dir apps/web test:security
 
       - name: Web critical tests
         run: pnpm --dir apps/web test:ci

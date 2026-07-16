@@ -1,3 +1,4 @@
+import { buildCorsHeaders } from "../_shared/cors.ts";
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
@@ -5,22 +6,16 @@ import {
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const SUPABASE_URL = getEdgeSupabaseUrl();
 const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY")!;
 const CRON_SECRET = Deno.env.get("CRON_SECRET")!;
 
-function json(data: unknown, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -51,10 +46,10 @@ async function stripePOST(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: buildCorsHeaders(req) });
 
   if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
-    return json({
+    return json(req, {
       ok: true,
       disabled: true,
       handler: "vercel",
@@ -63,12 +58,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (req.method !== "POST") return json({ error: "Use POST" }, 405);
+    if (req.method !== "POST") return json(req, { error: "Use POST" }, 405);
 
     // secret header
     const secret = req.headers.get("x-cron-secret") ?? "";
     if (!CRON_SECRET || secret !== CRON_SECRET) {
-      return json({ error: "Forbidden" }, 403);
+      return json(req, { error: "Forbidden" }, 403);
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -178,9 +173,9 @@ Deno.serve(async (req) => {
       });
     }
 
-    return json({ ok: true, results });
+    return json(req, { ok: true, results });
   } catch (e: any) {
     console.log("pay_restaurant_scheduled error:", e?.message ?? e);
-    return json({ error: e?.message ?? "Unknown error" }, 500);
+    return json(req, { error: e?.message ?? "Unknown error" }, 500);
   }
 });

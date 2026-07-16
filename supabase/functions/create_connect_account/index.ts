@@ -1,3 +1,4 @@
+import { buildCorsHeaders } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.25.0?target=deno&deno-std=0.224.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
@@ -9,16 +10,11 @@ import {
 
 type Json = Record<string, unknown>;
 
-const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
-function json(body: Json, status = 200) {
+function json(req: Request, body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -58,12 +54,12 @@ function inferConnectCountryFromProfile(city: unknown, state: unknown): string {
 serve(async (req) => {
   // CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: buildCorsHeaders(req) });
   }
 
   try {
     if (req.method !== "POST") {
-      return json({ error: "Method not allowed" }, 405);
+      return json(req, { error: "Method not allowed" }, 405);
     }
 
     let supabaseUrl = "";
@@ -81,10 +77,10 @@ serve(async (req) => {
       Deno.env.get("STRIPE_REFRESH_URL") ?? "https://www.mmddelivery.com/stripe/refresh";
 
     if (!supabaseUrl || !supabaseAnon || !supabaseService) {
-      return json({ error: "Missing Supabase env vars" }, 500);
+      return json(req, { error: "Missing Supabase env vars" }, 500);
     }
     if (!stripeKey) {
-      return json({ error: "Missing STRIPE_SECRET_KEY" }, 500);
+      return json(req, { error: "Missing STRIPE_SECRET_KEY" }, 500);
     }
 
     // Fail-closed: Connect onboarding mode follows STRIPE_SECRET_KEY.
@@ -99,7 +95,7 @@ serve(async (req) => {
         ? "test"
         : "unknown";
     if (stripeMode !== "live" && !allowTestConnect) {
-      return json(
+      return json(req, 
         {
           error: "stripe_secret_key_must_be_live",
           message:
@@ -113,7 +109,7 @@ serve(async (req) => {
 
     const authHeader = getAuthHeader(req);
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return json({ error: "Missing Authorization Bearer token" }, 401);
+      return json(req, { error: "Missing Authorization Bearer token" }, 401);
     }
 
     const stripe = new Stripe(stripeKey, {
@@ -130,7 +126,7 @@ serve(async (req) => {
 
     const { data: userData, error: uErr } = await supabaseAuth.auth.getUser();
     if (uErr || !userData?.user) {
-      return json({ error: "Not authenticated", details: uErr?.message ?? null }, 401);
+      return json(req, { error: "Not authenticated", details: uErr?.message ?? null }, 401);
     }
 
     const userId = userData.user.id;
@@ -139,7 +135,7 @@ serve(async (req) => {
     const role = body?.role;
 
     if (role !== "driver" && role !== "restaurant") {
-      return json({ error: "Invalid role. Must be 'driver' or 'restaurant'." }, 400);
+      return json(req, { error: "Invalid role. Must be 'driver' or 'restaurant'." }, 400);
     }
 
     // Service role client (bypass RLS)
@@ -157,7 +153,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (pErr) {
-      return json({ error: "Profile read failed", details: pErr.message }, 400);
+      return json(req, { error: "Profile read failed", details: pErr.message }, 400);
     }
 
     let accountId: string | null = (prof as any)?.stripe_account_id ?? null;
@@ -193,7 +189,7 @@ serve(async (req) => {
           .update(clearPayload)
           .eq("user_id", userId);
         if (clearErr) {
-          return json(
+          return json(req, 
             {
               error: "Failed to clear stale Stripe Connect account id",
               details: clearErr.message,
@@ -227,7 +223,7 @@ serve(async (req) => {
         .eq("user_id", userId);
 
       if (upErr) {
-        return json({ error: "Profile update failed", details: upErr.message }, 400);
+        return json(req, { error: "Profile update failed", details: upErr.message }, 400);
       }
     }
 
@@ -239,7 +235,7 @@ serve(async (req) => {
       type: "account_onboarding",
     });
 
-    return json({
+    return json(req, {
       ok: true,
       role,
       user_id: userId,
@@ -252,6 +248,6 @@ serve(async (req) => {
     });
   } catch (e: any) {
     console.error("create_connect_account fatal:", e);
-    return json({ error: e?.message ?? "Server error" }, 500);
+    return json(req, { error: e?.message ?? "Server error" }, 500);
   }
 });

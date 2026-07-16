@@ -27,8 +27,16 @@ assert(
   "absolute url blocked",
 );
 assert(
-  sanitizeInternalRedirectPath("/auth/callback?next=//x") === "/auth/callback?next=//x",
-  "query preserved for same-origin path",
+  sanitizeInternalRedirectPath("/auth/callback?next=//x") === "/auth/callback",
+  "nested open redirect stripped from query",
+);
+assert(
+  sanitizeInternalRedirectPath("/%2f%2fevil.com") === "/dashboard",
+  "encoded protocol-relative blocked",
+);
+assert(
+  sanitizeInternalRedirectPath("/orders?tab=1") === "/orders?tab=1",
+  "safe query preserved",
 );
 
 assert(isEmailVerificationRequired() === false, "email verification off by default");

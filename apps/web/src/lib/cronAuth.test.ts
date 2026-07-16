@@ -21,7 +21,7 @@ const prevNode = env.NODE_ENV;
 const prevVercel = env.VERCEL_ENV;
 
 try {
-  env.CRON_SECRET = "super-secret-cron";
+  env.CRON_SECRET = "test-cron-value";
   env.NODE_ENV = "production";
   delete env.VERCEL_ENV;
 
@@ -31,14 +31,14 @@ try {
 
   test("cron auth accepts bearer CRON_SECRET", () => {
     assert.equal(
-      isAuthorizedCronRequest(fakeReq({ authorization: "Bearer super-secret-cron" })),
+      isAuthorizedCronRequest(fakeReq({ authorization: "Bearer test-cron-value" })),
       true
     );
   });
 
   test("cron auth accepts x-cron-secret", () => {
     assert.equal(
-      isAuthorizedCronRequest(fakeReq({ "x-cron-secret": "super-secret-cron" })),
+      isAuthorizedCronRequest(fakeReq({ "x-cron-secret": "test-cron-value" })),
       true
     );
   });

@@ -5,13 +5,8 @@ import {
   getEdgeSecretKey,
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-cron-secret",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 const SUPABASE_URL = getEdgeSupabaseUrl();
 const SUPABASE_SERVICE_ROLE_KEY = getEdgeSecretKey();
@@ -20,20 +15,20 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET")!;
 // URL publique des Edge Functions (prod)
 const FUNCTIONS_BASE = `${SUPABASE_URL}/functions/v1`;
 
-function json(data: unknown, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
 Deno.serve(async (req) => {
   // CORS preflight
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: buildCorsHeaders(req) });
 
   // Canonical payouts: Vercel /api/admin/process-payouts (Sunday cron).
   if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
-    return json({
+    return json(req, {
       ok: true,
       disabled: true,
       handler: "vercel",
@@ -42,19 +37,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (req.method !== "POST") return json({ error: "Use POST" }, 405);
+    if (req.method !== "POST") return json(req, { error: "Use POST" }, 405);
 
     if (!SUPABASE_SERVICE_ROLE_KEY) {
-      return json({ error: "Missing Supabase secret key" }, 500);
+      return json(req, { error: "Missing Supabase secret key" }, 500);
     }
     if (!CRON_SECRET) {
-      return json({ error: "Missing CRON_SECRET" }, 500);
+      return json(req, { error: "Missing CRON_SECRET" }, 500);
     }
 
     // ✅ petite barrière: le CRON doit envoyer x-cron-secret
     const provided = req.headers.get("x-cron-secret") ?? "";
     if (provided !== CRON_SECRET) {
-      return json({ error: "Forbidden (bad cron secret)" }, 403);
+      return json(req, { error: "Forbidden (bad cron secret)" }, 403);
     }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -70,7 +65,7 @@ Deno.serve(async (req) => {
     if (rErr) throw rErr;
 
     if (!restaurants || restaurants.length === 0) {
-      return json({ ok: true, message: "No restaurants to payout", count: 0 });
+      return json(req, { ok: true, message: "No restaurants to payout", count: 0 });
     }
 
     // 2) Boucle payout
@@ -100,7 +95,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({
+    return json(req, {
       ok: true,
       message: "Weekly restaurant payouts done",
       count: restaurants.length,
@@ -108,6 +103,6 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     console.log("weekly_restaurant_payout error:", e?.message ?? e);
-    return json({ error: e?.message ?? "Unknown error" }, 500);
+    return json(req, { error: e?.message ?? "Unknown error" }, 500);
   }
 });

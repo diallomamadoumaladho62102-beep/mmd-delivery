@@ -2,18 +2,16 @@ import { NextRequest } from "next/server";
 import {
   buildLocationPhotoPath,
   computeLocationConfidenceScore,
-  extensionFromContentType,
   fetchOwnedLocationPoint,
   mmdLocationJson,
   parseUuid,
   requireMmdLocationApiUser,
   type LocationPointRow,
 } from "@/lib/mmdLocationCore";
+import { resolveLocationPhotoContent } from "@/lib/uploadSecurity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 type PhotoBody = {
   image_base64?: string;
@@ -76,27 +74,25 @@ export async function POST(
       return mmdLocationJson({ error: "image_base64 is required" }, 400);
     }
 
-    const contentType = String(body.content_type ?? "image/jpeg").trim().toLowerCase();
-    if (!contentType.startsWith("image/")) {
-      return mmdLocationJson({ error: "content_type must be an image type" }, 400);
-    }
-
     const buffer = decodeBase64Image(imageBase64);
-    if (buffer.length > MAX_PHOTO_BYTES) {
-      return mmdLocationJson({ error: "Image exceeds 5 MB limit" }, 400);
+    const resolved = resolveLocationPhotoContent({
+      claimedMime: body.content_type,
+      buffer,
+    });
+    if (resolved.ok === false) {
+      return mmdLocationJson({ error: resolved.error }, 400);
     }
 
-    const ext = extensionFromContentType(contentType);
     const photoPath = buildLocationPhotoPath({
       ownerUserId: auth.user.id,
       locationId,
-      ext,
+      ext: resolved.ext,
     });
 
     const { error: uploadError } = await auth.supabaseAdmin.storage
       .from("location-attachments")
       .upload(photoPath, buffer, {
-        contentType,
+        contentType: resolved.mime,
         upsert: true,
       });
 

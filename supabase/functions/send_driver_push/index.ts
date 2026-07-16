@@ -14,36 +14,31 @@ import {
   getEdgeSecretKeyOptional,
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-api-key, x-cron-secret",
-};
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
 const EXPECTED_ROLE = "driver";
 
-function json(body: Record<string, unknown>, status = 200) {
+function json(req: Request, body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: buildCorsHeaders(req) });
   }
 
   if (req.method !== "POST") {
-    return json({ ok: false, error: "Method not allowed" }, 405);
+    return json(req, { ok: false, error: "Method not allowed" }, 405);
   }
 
   try {
     assertInternalPushCaller(req);
   } catch (authResponse) {
     if (authResponse instanceof Response) return authResponse;
-    return json({ ok: false, error: "Unauthorized" }, 401);
+    return json(req, { ok: false, error: "Unauthorized" }, 401);
   }
 
   try {
@@ -58,19 +53,19 @@ serve(async (req: Request) => {
 
     if (!serviceKey || !supabaseUrl) {
       console.error("[send_driver_push] missing Supabase env");
-      return json({ ok: false, error: "Server misconfigured" }, 500);
+      return json(req, { ok: false, error: "Server misconfigured" }, 500);
     }
 
     if (!pushKey && !String(Deno.env.get("CRON_SECRET") ?? "").trim()) {
       console.error("[send_driver_push] missing PUSH_API_KEY or CRON_SECRET");
-      return json({ ok: false, error: "Server misconfigured" }, 500);
+      return json(req, { ok: false, error: "Server misconfigured" }, 500);
     }
 
     let payload;
     try {
       payload = parseSecurePushBody(await req.json(), EXPECTED_ROLE);
     } catch (e) {
-      return json(
+      return json(req, 
         { ok: false, error: e instanceof Error ? e.message : "Invalid payload" },
         400,
       );
@@ -83,7 +78,7 @@ serve(async (req: Request) => {
     try {
       await assertPushTargetInContext(admin, payload);
     } catch (e) {
-      return json(
+      return json(req, 
         {
           ok: false,
           error: e instanceof Error ? e.message : "Forbidden context",
@@ -103,11 +98,11 @@ serve(async (req: Request) => {
         user_id: payload.user_id,
         message: tokenError.message,
       });
-      return json({ ok: false, error: "Token lookup failed" }, 500);
+      return json(req, { ok: false, error: "Token lookup failed" }, 500);
     }
 
     if (!tokens?.length) {
-      return json({ ok: false, error: "No push tokens found" }, 404);
+      return json(req, { ok: false, error: "No push tokens found" }, 404);
     }
 
     const messages = tokens.map((tokenRow: { expo_push_token: string }) => ({
@@ -142,11 +137,11 @@ serve(async (req: Request) => {
       sent_at: expoResponse.ok ? new Date().toISOString() : null,
     });
 
-    return json({ ok: true, sent: messages.length, expo: expoResult });
+    return json(req, { ok: true, sent: messages.length, expo: expoResult });
   } catch (error) {
     console.error("[send_driver_push] unhandled", {
       message: error instanceof Error ? error.message : String(error),
     });
-    return json({ ok: false, error: "Internal server error" }, 500);
+    return json(req, { ok: false, error: "Internal server error" }, 500);
   }
 });

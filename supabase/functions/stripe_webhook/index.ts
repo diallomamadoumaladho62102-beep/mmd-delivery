@@ -6,29 +6,21 @@ import {
   getEdgeSecretKeyOptional,
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
+import { webhookHeaders } from "../_shared/cors.ts";
 
 type Json = Record<string, unknown>;
 
 function json(data: Json, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: webhookHeaders(),
   });
 }
 
 function preflight() {
   return new Response(null, {
     status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "stripe-signature, content-type",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Cache-Control": "no-store",
-    },
+    headers: { "Cache-Control": "no-store" },
   });
 }
 

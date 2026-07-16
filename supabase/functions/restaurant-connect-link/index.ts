@@ -6,14 +6,8 @@ import {
   getEdgeSecretKey,
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
-// --- CORS ---
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
 // --- ENV ---
 const SUPABASE_URL = getEdgeSupabaseUrl();
@@ -43,10 +37,10 @@ function assertStripeConnectSecretOrThrow() {
   }
 }
 
-function json(data: unknown, status = 200) {
+function json(req: Request, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -96,12 +90,12 @@ async function stripePOST(path: string, body: Record<string, string>) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: buildCorsHeaders(req) });
   }
 
   try {
     if (req.method !== "POST") {
-      return json({ error: "Use POST" }, 405);
+      return json(req, { error: "Use POST" }, 405);
     }
 
     assertStripeConnectSecretOrThrow();
@@ -113,7 +107,7 @@ Deno.serve(async (req) => {
       : null;
 
     if (!token) {
-      return json({ error: "Missing Authorization Bearer token" }, 401);
+      return json(req, { error: "Missing Authorization Bearer token" }, 401);
     }
 
     const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -125,7 +119,7 @@ Deno.serve(async (req) => {
       await supabaseAuth.auth.getUser();
 
     if (userErr || !userData?.user) {
-      return json({ error: "Unauthorized" }, 401);
+      return json(req, { error: "Unauthorized" }, 401);
     }
 
     const userId = userData.user.id;
@@ -175,7 +169,7 @@ Deno.serve(async (req) => {
 
     if (profErr) throw profErr;
     if (!profile) {
-      return json(
+      return json(req, 
         { error: "Restaurant profile introuvable pour cet utilisateur." },
         404
       );
@@ -238,12 +232,12 @@ Deno.serve(async (req) => {
       type: "account_onboarding",
     });
 
-    return json({
+    return json(req, {
       url: link.url,
       stripe_account_id: stripeAccountId,
     });
   } catch (e: any) {
     console.log("restaurant-connect-link error:", e);
-    return json({ error: e?.message ?? "Unknown error" }, 500);
+    return json(req, { error: e?.message ?? "Unknown error" }, 500);
   }
 });

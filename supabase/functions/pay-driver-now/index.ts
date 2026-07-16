@@ -1,3 +1,4 @@
+import { buildCorsHeaders } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.25.0?target=deno&deno-std=0.224.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
@@ -9,17 +10,11 @@ import {
 
 type Json = Record<string, unknown>;
 
-const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, Authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
 
-function json(body: Json, status = 200) {
+function json(req: Request, body: Json, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -39,7 +34,7 @@ function isDriverRole(role: string | null | undefined) {
 
 serve(async (req) => {
   if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
-    return json({
+    return json(req, {
       ok: false,
       disabled: true,
       message:
@@ -48,12 +43,12 @@ serve(async (req) => {
   }
 
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: buildCorsHeaders(req) });
   }
 
   try {
     if (req.method !== "POST") {
-      return json({ error: "Method not allowed" }, 405);
+      return json(req, { error: "Method not allowed" }, 405);
     }
 
     let supabaseUrl = "";
@@ -67,7 +62,7 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
 
     if (!supabaseUrl || !supabaseAnon || !supabaseService) {
-      return json(
+      return json(req, 
         {
           error: "Missing Supabase env vars",
         },
@@ -76,12 +71,12 @@ serve(async (req) => {
     }
 
     if (!stripeKey) {
-      return json({ error: "Missing STRIPE_SECRET_KEY" }, 500);
+      return json(req, { error: "Missing STRIPE_SECRET_KEY" }, 500);
     }
 
     const authHeader = getAuthHeader(req);
     if (!authHeader.startsWith("Bearer ")) {
-      return json({ error: "Missing Authorization Bearer token" }, 401);
+      return json(req, { error: "Missing Authorization Bearer token" }, 401);
     }
 
     const supabaseAuth = createClient(supabaseUrl, supabaseAnon, {
@@ -91,7 +86,7 @@ serve(async (req) => {
 
     const { data: userData, error: userErr } = await supabaseAuth.auth.getUser();
     if (userErr || !userData?.user) {
-      return json(
+      return json(req, 
         { error: "Not authenticated", details: userErr?.message ?? null },
         401,
       );
@@ -103,7 +98,7 @@ serve(async (req) => {
     const bodyDriverId = String(body?.driver_id ?? "").trim();
 
     if (bodyDriverId && bodyDriverId !== driverUserId) {
-      return json(
+      return json(req, 
         {
           error: "Forbidden",
           message: "driver_id body parameter is not accepted",
@@ -114,11 +109,11 @@ serve(async (req) => {
 
     const cur = String(body?.currency ?? "USD").trim().toUpperCase();
     if (!/^[A-Z]{3}$/.test(cur)) {
-      return json({ error: "Invalid currency" }, 400);
+      return json(req, { error: "Invalid currency" }, 400);
     }
 
     if (cur !== "USD") {
-      return json({ error: "Unsupported currency" }, 400);
+      return json(req, { error: "Unsupported currency" }, 400);
     }
 
     const supabase = createClient(supabaseUrl, supabaseService, {
@@ -132,11 +127,11 @@ serve(async (req) => {
       .maybeSingle();
 
     if (roleErr) {
-      return json({ error: "Profile read failed", details: roleErr.message }, 400);
+      return json(req, { error: "Profile read failed", details: roleErr.message }, 400);
     }
 
     if (!isDriverRole((profileRow as { role?: string } | null)?.role)) {
-      return json({ error: "Forbidden", message: "Driver role required" }, 403);
+      return json(req, { error: "Forbidden", message: "Driver role required" }, 403);
     }
 
     const { data: prof, error: profErr } = await supabase
@@ -146,19 +141,19 @@ serve(async (req) => {
       .maybeSingle();
 
     if (profErr) {
-      return json({ error: profErr.message }, 400);
+      return json(req, { error: profErr.message }, 400);
     }
 
     if (!prof) {
-      return json({ error: "Driver profile not found" }, 404);
+      return json(req, { error: "Driver profile not found" }, 404);
     }
 
     if (!prof.stripe_account_id) {
-      return json({ error: "Driver has no stripe_account_id" }, 400);
+      return json(req, { error: "Driver has no stripe_account_id" }, 400);
     }
 
     if (prof.stripe_onboarded === false) {
-      return json({ error: "Driver not onboarded" }, 400);
+      return json(req, { error: "Driver not onboarded" }, 400);
     }
 
     const { data: prep, error: prepErr } = await supabase.rpc(
@@ -172,9 +167,9 @@ serve(async (req) => {
     if (prepErr) {
       const message = prepErr.message ?? "Cash out failed";
       if (message.includes("cashout_rate_limited")) {
-        return json({ error: message }, 429);
+        return json(req, { error: message }, 429);
       }
-      return json({ error: message }, 400);
+      return json(req, { error: message }, 400);
     }
 
     const row = Array.isArray(prep) ? prep[0] : prep;
@@ -184,7 +179,7 @@ serve(async (req) => {
     const payoutId = (row as { payout_id?: unknown } | null)?.payout_id;
 
     if (!payoutId || !Number.isFinite(payoutAmount) || payoutAmount <= 0) {
-      return json({
+      return json(req, {
         ok: true,
         message: "Nothing to pay",
         payout_amount: 0,
@@ -193,7 +188,7 @@ serve(async (req) => {
 
     const amountCents = Math.round(payoutAmount * 100);
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      return json({ error: "Invalid payout amount" }, 400);
+      return json(req, { error: "Invalid payout amount" }, 400);
     }
 
     const stripe = new Stripe(stripeKey, {
@@ -224,7 +219,7 @@ serve(async (req) => {
     });
 
     if (finErr) {
-      return json(
+      return json(req, 
         {
           error: "Stripe payout created but DB finalize failed",
           details: finErr.message,
@@ -235,7 +230,7 @@ serve(async (req) => {
       );
     }
 
-    return json({
+    return json(req, {
       ok: true,
       payout_id: payoutId,
       stripe_payout_id: payout.id,
@@ -245,6 +240,6 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("[pay-driver-now] fatal:", e);
-    return json({ error: getErrorMessage(e) }, 500);
+    return json(req, { error: getErrorMessage(e) }, 500);
   }
 });

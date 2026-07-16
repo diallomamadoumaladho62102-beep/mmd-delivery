@@ -2,31 +2,25 @@
 // Canonical flow: Stripe webhook (Next.js or Edge) + mark_order_paid RPC.
 // Mobile: poll orders.payment_status after checkout (apps/mobile/src/lib/stripe.ts).
 
-const CORS_HEADERS: Record<string, string> = {
-  "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, Authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { buildCorsHeaders } from "../_shared/cors.ts";
 
-function json(status: number, body: Record<string, unknown>) {
+function json(req: Request, status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: CORS_HEADERS,
+    headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return json(200, { ok: true });
+    return json(req, 200, { ok: true });
   }
 
   if (req.method !== "POST") {
-    return json(405, { error: "Method Not Allowed" });
+    return json(req, 405, { error: "Method Not Allowed" });
   }
 
-  return json(410, {
+  return json(req, 410, {
     ok: false,
     error: "confirm_checkout_session_disabled",
     message:
