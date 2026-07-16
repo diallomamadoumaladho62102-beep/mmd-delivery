@@ -8,6 +8,7 @@
  */
 import type { CoordinatePoint } from "./coordinates";
 import type { NavigationRouteStep } from "./navigationService";
+import type { NavigationLane } from "./navigationLanes";
 import {
   formatManeuverDistanceLabel,
   resolveNavigationLocale,
@@ -43,6 +44,7 @@ export type RouteManeuver = {
   streetName: string;
   point: CoordinatePoint | null;
   isArrival: boolean;
+  lanes?: NavigationLane[];
 };
 
 export type ActiveManeuverSelection = {
@@ -132,6 +134,7 @@ export function buildManeuverList(
       streetName: (step.roadName?.trim() || fallbackStreetName(step.instruction)).trim(),
       point: step.maneuverPoint ?? null,
       isArrival: kind === "arrive",
+      lanes: step.lanes,
     };
   });
 }

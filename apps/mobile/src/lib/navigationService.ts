@@ -10,6 +10,7 @@ import {
   type MapboxMaxSpeedRaw,
   type RouteSpeedLimitSegment,
 } from "./navigationSpeedLimit";
+import { parseMapboxLanes, type NavigationLane } from "./navigationLanes";
 
 export type RoutePoint = CoordinatePoint;
 
@@ -40,6 +41,8 @@ export type NavigationRouteStep = {
   maneuverAlongRouteMeters?: number;
   /** Mapbox pre-localized voice prompts for this step, when available. */
   voicePrompts?: NavigationVoicePrompt[];
+  /** Lane guidance for the approach to this step's maneuver, when available. */
+  lanes?: NavigationLane[];
 };
 
 export type NavigationRoute = {
@@ -121,6 +124,7 @@ function parseSteps(rawSteps: unknown[]): NavigationRouteStep[] {
         distance?: number;
         duration?: number;
         voiceInstructions?: unknown;
+        intersections?: unknown;
       };
 
       const instruction = String(item?.maneuver?.instruction || "").trim();
@@ -144,6 +148,7 @@ function parseSteps(rawSteps: unknown[]): NavigationRouteStep[] {
         maneuverPoint: parseManeuverPoint(item.maneuver?.location),
         maneuverAlongRouteMeters: alongRouteMeters,
         voicePrompts: parseVoicePrompts(item.voiceInstructions),
+        lanes: parseMapboxLanes(item.intersections),
       };
 
       alongRouteMeters += distanceMeters;

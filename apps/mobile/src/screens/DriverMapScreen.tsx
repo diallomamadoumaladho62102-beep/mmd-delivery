@@ -92,7 +92,6 @@ import {
   resolveNavigationStatusBanner,
 } from "../components/driver/DriverNavigationStatusBanner";
 import { DriverNavigationRouteLayers } from "../components/driver/DriverNavigationRouteLayers";
-import { DriverNavigationStreetBubbleLabel } from "../components/driver/DriverNavigationStreetBubble";
 import { DriverNavigationAlertPill } from "../components/driver/DriverNavigationAlertPill";
 import { DriverNavigationSafetyPanel } from "../components/driver/DriverNavigationSafetyPanel";
 import { DriverNavigationSafetyMarkers } from "../components/driver/DriverNavigationSafetyMarkers";
@@ -102,7 +101,6 @@ import { useDriverTripHistory } from "../hooks/useDriverTripHistory";
 import {
   estimateRemainingMinutes,
   getMonotonicRouteProgress,
-  getRoutePointAhead,
   resolveDriverNavigationBearing,
 } from "../lib/navigationProgress";
 import {
@@ -498,6 +496,7 @@ export default function DriverMapScreen() {
         secondaryTitle: secondary?.rawInstruction,
         secondaryManeuverType: secondary?.kind,
         secondaryDistanceMeters: secondaryDistanceMeters ?? undefined,
+        lanes: active.lanes,
       };
     }
 
@@ -740,26 +739,6 @@ export default function DriverMapScreen() {
     },
     [camera, selectRouteIndex],
   );
-
-  const maneuverBubblePoint = useMemo(() => {
-    if (!instruction || !navigationPoint || !activeRouteGeometry) return null;
-
-    const maneuverDistance = instruction.maneuverDistanceMeters ?? 0;
-    const aheadMeters = Math.min(
-      Math.max(maneuverDistance * 0.95, 80),
-      650,
-    );
-
-    return getRoutePointAhead(
-      activeRouteGeometry,
-      navigationPoint,
-      aheadMeters,
-    );
-  }, [
-    activeRouteGeometry,
-    instruction,
-    navigationPoint,
-  ]);
 
   useEffect(() => {
     if (previewMode) return;
@@ -1152,20 +1131,6 @@ export default function DriverMapScreen() {
               bearing={vehicleBearing}
               followMode={camera.mode === "follow"}
             />
-          )}
-
-          {maneuverBubblePoint && instruction && navigationActive && (
-            <Mapbox.PointAnnotation
-              id="driver-navigation-maneuver-bubble"
-              coordinate={[
-                maneuverBubblePoint.longitude,
-                maneuverBubblePoint.latitude,
-              ]}
-              anchor={{ x: 0.5, y: 1 }}
-              selected
-            >
-              <DriverNavigationStreetBubbleLabel streetName={instruction.title} />
-            </Mapbox.PointAnnotation>
           )}
 
           {navigationActive && projectedSafetyEvents.length > 0 && (

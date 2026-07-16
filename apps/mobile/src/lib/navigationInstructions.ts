@@ -1,5 +1,6 @@
 import type { NavigationRouteStep } from "./navigationService";
 import type { NavigationStage } from "./driverNavigation/types";
+import type { NavigationLane } from "./navigationLanes";
 import {
   formatManeuverDistanceLabel,
   resolveNavigationLocale,
@@ -16,6 +17,7 @@ export type NavigationInstruction = {
   secondaryTitle?: string;
   secondaryManeuverType?: string;
   secondaryDistanceMeters?: number;
+  lanes?: NavigationLane[];
 };
 
 export function formatNavigationDistance(
