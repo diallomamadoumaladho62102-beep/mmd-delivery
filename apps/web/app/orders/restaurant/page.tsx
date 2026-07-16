@@ -371,7 +371,7 @@ export default function RestaurantOrdersDashboardPage() {
 
                     <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700">
                       <Link
-                        href={`/orders/${order.id}`}
+                        href={`/orders/${order.id}/restaurant`}
                         className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                       >
                         Détails de la commande
@@ -434,7 +434,7 @@ export default function RestaurantOrdersDashboardPage() {
 
                     <div className="flex flex-wrap items-center gap-2 text-xs text-gray-700">
                       <Link
-                        href={`/orders/${order.id}`}
+                        href={`/orders/${order.id}/restaurant`}
                         className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50"
                       >
                         Voir la commande

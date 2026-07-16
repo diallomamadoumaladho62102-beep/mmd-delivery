@@ -40,6 +40,8 @@ type Item = {
   currency: string;
   image_url: string | null;
   is_available: boolean;
+  stock_qty?: number | null;
+  options_json?: unknown;
   position: number | null;
   created_at?: string;
   updated_at?: string;
@@ -83,6 +85,59 @@ function moneyToCents(v: string) {
   if (!Number.isFinite(n) || n <= 0) return 0;
 
   return Math.round(n * 100);
+}
+
+function moneyToCentsAllowZero(v: string) {
+  const normalized = String(v ?? "").trim().replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return Number.NaN;
+
+  const n = Number(normalized);
+  if (!Number.isFinite(n) || n < 0) return Number.NaN;
+
+  return Math.round(n * 100);
+}
+
+function parseStockQty(raw: string): number | null {
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) return null;
+  if (!/^\d+$/.test(trimmed)) return Number.NaN;
+  return Number(trimmed);
+}
+
+function serializeOptionsText(raw: unknown): string {
+  if (!Array.isArray(raw) || raw.length === 0) return "";
+  return raw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") return "";
+      const row = entry as Record<string, unknown>;
+      const name = String(row.name ?? "").trim();
+      const cents = Number(row.price_cents ?? 0);
+      if (!name || !Number.isFinite(cents)) return "";
+      return `${name}:${(cents / 100).toFixed(2)}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function parseOptionsText(raw: string): Array<{ id: string; name: string; price_cents: number }> {
+  const lines = String(raw ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return lines.map((line) => {
+    const [namePart, pricePart] = line.split(":").map((part) => part.trim());
+    const name = cleanText(namePart || "", 80);
+    const priceCents = moneyToCentsAllowZero(pricePart || "0");
+    if (!name || Number.isNaN(priceCents)) {
+      throw new Error(`Option invalide: ${line}`);
+    }
+    return {
+      id: name.toLowerCase().replace(/\s+/g, "-"),
+      name,
+      price_cents: priceCents,
+    };
+  });
 }
 
 function centsToMoneyString(cents: number | null | undefined) {
@@ -148,6 +203,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     currency: "USD",
     image_url: "",
     is_available: true,
+    stock_qty: "",
+    options_text: "",
     position: "",
   });
 
@@ -162,6 +219,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     currency: "USD",
     image_url: "",
     is_available: true,
+    stock_qty: "",
+    options_text: "",
     position: "",
   });
 
@@ -531,6 +590,24 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
     const position =
       newItem.position.trim() !== "" ? Number(newItem.position) : items.length + 1;
 
+    const stockQty = parseStockQty(newItem.stock_qty);
+    if (Number.isNaN(stockQty as any)) {
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.items.invalidStock", "Stock invalide (nombre entier ou vide).")
+      );
+    }
+
+    let optionsJson: Array<{ id: string; name: string; price_cents: number }> = [];
+    try {
+      optionsJson = parseOptionsText(newItem.options_text);
+    } catch (error: any) {
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        error?.message ?? t("restaurant.menu.items.invalidOptions", "Options invalides.")
+      );
+    }
+
     const payload: Partial<Item> & any = {
       restaurant_user_id: restaurantUserId,
       category_id: selectedCategoryId,
@@ -540,6 +617,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       currency: normalizeCurrency(newItem.currency),
       image_url: newItem.image_url.trim() ? newItem.image_url.trim() : null,
       is_available: Boolean(newItem.is_available),
+      stock_qty: stockQty,
+      options_json: optionsJson,
       position: Number.isFinite(position) ? position : items.length + 1,
     };
 
@@ -558,6 +637,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
         currency: "USD",
         image_url: "",
         is_available: true,
+        stock_qty: "",
+        options_text: "",
         position: "",
       });
 
@@ -653,6 +734,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       currency: it.currency ?? "USD",
       image_url: it.image_url ?? "",
       is_available: Boolean(it.is_available),
+      stock_qty: it.stock_qty != null ? String(it.stock_qty) : "",
+      options_text: serializeOptionsText(it.options_json),
       position: it.position != null ? String(it.position) : "",
     });
     setEditOpen(true);
@@ -695,6 +778,24 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
 
     const position = editForm.position.trim() !== "" ? Number(editForm.position) : null;
 
+    const stockQty = parseStockQty(editForm.stock_qty);
+    if (Number.isNaN(stockQty as any)) {
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        t("restaurant.menu.items.invalidStock", "Stock invalide (nombre entier ou vide).")
+      );
+    }
+
+    let optionsJson: Array<{ id: string; name: string; price_cents: number }> = [];
+    try {
+      optionsJson = parseOptionsText(editForm.options_text);
+    } catch (error: any) {
+      return Alert.alert(
+        t("restaurant.menu.alerts.errorTitle", "Erreur"),
+        error?.message ?? t("restaurant.menu.items.invalidOptions", "Options invalides.")
+      );
+    }
+
     const payload: any = {
       category_id: selectedCategoryId,
       name,
@@ -703,6 +804,8 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
       currency: normalizeCurrency(editForm.currency),
       image_url: editForm.image_url.trim() ? editForm.image_url.trim() : null,
       is_available: Boolean(editForm.is_available),
+      stock_qty: stockQty,
+      options_json: optionsJson,
       position: Number.isFinite(position as any) ? position : null,
       updated_at: new Date().toISOString(),
     };
@@ -1071,6 +1174,34 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
           style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
         />
 
+        <Text style={{ marginTop: 6 }}>
+          {t("restaurant.menu.items.stockLabel", "Stock (vide = illimité)")}
+        </Text>
+        <TextInput
+          value={newItem.stock_qty}
+          onChangeText={(v) => setNewItem((s) => ({ ...s, stock_qty: v }))}
+          keyboardType="number-pad"
+          placeholder={t("restaurant.menu.items.stockPlaceholder", "ex: 12")}
+          style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
+        />
+
+        <Text style={{ marginTop: 6 }}>
+          {t(
+            "restaurant.menu.items.optionsLabel",
+            "Options / suppléments (une par ligne: Nom:1.50)"
+          )}
+        </Text>
+        <TextInput
+          value={newItem.options_text}
+          onChangeText={(v) => setNewItem((s) => ({ ...s, options_text: v }))}
+          multiline
+          placeholder={t(
+            "restaurant.menu.items.optionsPlaceholder",
+            "Extra fromage:1.50\nSans oignon:0.00"
+          )}
+          style={{ borderWidth: 1, borderRadius: 10, padding: 10, minHeight: 72 }}
+        />
+
         <View
           style={{
             flexDirection: "row",
@@ -1260,6 +1391,34 @@ export default function RestaurantMenuScreen({ navigation }: Props) {
               keyboardType="number-pad"
               placeholder={t("restaurant.menu.items.positionPlaceholder", "ex: 1")}
               style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
+            />
+
+            <Text style={{ marginTop: 10 }}>
+              {t("restaurant.menu.items.stockLabel", "Stock (vide = illimité)")}
+            </Text>
+            <TextInput
+              value={editForm.stock_qty}
+              onChangeText={(v) => setEditForm((s) => ({ ...s, stock_qty: v }))}
+              keyboardType="number-pad"
+              placeholder={t("restaurant.menu.items.stockPlaceholder", "ex: 12")}
+              style={{ borderWidth: 1, borderRadius: 10, padding: 10 }}
+            />
+
+            <Text style={{ marginTop: 10 }}>
+              {t(
+                "restaurant.menu.items.optionsLabel",
+                "Options / suppléments (une par ligne: Nom:1.50)"
+              )}
+            </Text>
+            <TextInput
+              value={editForm.options_text}
+              onChangeText={(v) => setEditForm((s) => ({ ...s, options_text: v }))}
+              multiline
+              placeholder={t(
+                "restaurant.menu.items.optionsPlaceholder",
+                "Extra fromage:1.50\nSans oignon:0.00"
+              )}
+              style={{ borderWidth: 1, borderRadius: 10, padding: 10, minHeight: 72 }}
             />
 
             <View

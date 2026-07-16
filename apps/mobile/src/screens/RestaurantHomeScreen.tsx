@@ -25,6 +25,7 @@ import {
 import { useIsFocused, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { useRestaurantPlatformFeatures } from "../hooks/useRestaurantPlatformFeatures";
+import { toUserFacingError } from "../lib/userFacingError";
 import MarketScopePill from "../components/market/MarketScopePill";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import {
@@ -59,6 +60,8 @@ type RestaurantProfileLite = {
   address?: string | null;
   status?: string | null;
   is_accepting_orders?: boolean | null;
+  is_busy?: boolean | null;
+  opening_hours?: Record<string, { open?: string; close?: string }> | null;
   location_lat?: number | string | null;
   location_lng?: number | string | null;
 };
@@ -632,6 +635,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [statsLoading, setStatsLoading] = useState(false);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [restaurantOnline, setRestaurantOnline] = useState(true);
+  const [restaurantBusy, setRestaurantBusy] = useState(false);
   const [mapOrders, setMapOrders] = useState<RestaurantMapOrder[]>([]);
   const [nearbyDrivers, setNearbyDrivers] = useState<NearbyDriver[]>([]);
   const [restaurantCoordinate, setRestaurantCoordinate] =
@@ -790,7 +794,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
     try {
       const { data, error } = await supabase
         .from("restaurant_profiles")
-        .select("restaurant_name,address,status,is_accepting_orders,location_lat,location_lng")
+        .select("restaurant_name,address,status,is_accepting_orders,is_busy,opening_hours,location_lat,location_lng")
         .eq("user_id", uid)
         .maybeSingle();
 
@@ -828,10 +832,11 @@ export function RestaurantHomeScreen({ navigation }: any) {
       }
 
       if (typeof profile?.is_accepting_orders === "boolean") {
-        setRestaurantOnline(profile.is_accepting_orders);
+        setRestaurantOnline(profile.is_accepting_orders && profile.is_busy !== true);
       } else {
         setRestaurantOnline(false);
       }
+      setRestaurantBusy(profile?.is_busy === true);
     } catch (e) {
       console.log("Restaurant profile load exception:", e);
     }
@@ -865,6 +870,8 @@ export function RestaurantHomeScreen({ navigation }: any) {
           .from("restaurant_profiles")
           .update({
             is_accepting_orders: nextValue,
+            // Going online clears busy; going offline keeps busy false as well.
+            is_busy: false,
             updated_at: nowIso,
           })
           .eq("user_id", restaurantUserId);
@@ -882,6 +889,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
         }
 
         setRestaurantOnline(nextValue);
+        setRestaurantBusy(false);
       } catch (e: any) {
         Alert.alert(
           t("common.errorTitle", "Error"),
@@ -897,6 +905,70 @@ export function RestaurantHomeScreen({ navigation }: any) {
     },
     [restaurantUserId, refreshRestaurantPlatformFeatures, t]
   );
+
+  const handleToggleBusy = useCallback(() => {
+    if (profileNeedsSetup || !restaurantUserId || !restaurantOnline) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        t(
+          "restaurant.dashboard.busyRequiresOnline",
+          "Passez en ligne avant d'activer le mode occupé.",
+        ),
+      );
+      return;
+    }
+
+    const nextBusy = !restaurantBusy;
+    Alert.alert(
+      nextBusy
+        ? t("restaurant.dashboard.busyTitle", "Mode occupé")
+        : t("restaurant.dashboard.busyOffTitle", "Fin du mode occupé"),
+      nextBusy
+        ? t(
+            "restaurant.dashboard.busyConfirm",
+            "Suspendre les nouvelles commandes tout en restant ouvert ?",
+          )
+        : t(
+            "restaurant.dashboard.busyOffConfirm",
+            "Reprendre les nouvelles commandes ?",
+          ),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("common.yes", "Yes"),
+          onPress: () => {
+            void (async () => {
+              try {
+                setAvailabilityLoading(true);
+                const { error } = await supabase
+                  .from("restaurant_profiles")
+                  .update({
+                    is_busy: nextBusy,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("user_id", restaurantUserId);
+                if (error) throw error;
+                setRestaurantBusy(nextBusy);
+              } catch (e: unknown) {
+                Alert.alert(
+                  t("common.errorTitle", "Error"),
+                  toUserFacingError(
+                    e,
+                    t(
+                      "restaurant.dashboard.availabilityUpdateFailed",
+                      "Unable to change restaurant status.",
+                    ),
+                  ),
+                );
+              } finally {
+                setAvailabilityLoading(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [profileNeedsSetup, restaurantBusy, restaurantOnline, restaurantUserId, t]);
 
   const handleToggleAvailability = useCallback(() => {
     if (profileNeedsSetup) {
@@ -1579,10 +1651,40 @@ export function RestaurantHomeScreen({ navigation }: any) {
         </Mapbox.MapView>
 
         <StatusPill
-          online={profileNeedsSetup ? false : restaurantOnline}
+          online={profileNeedsSetup ? false : restaurantOnline && !restaurantBusy}
           loading={availabilityLoading}
           onPress={handleToggleAvailability}
         />
+
+        {!profileNeedsSetup && restaurantOnline ? (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handleToggleBusy}
+            disabled={availabilityLoading}
+            style={{
+              position: "absolute",
+              top: 88,
+              right: 16,
+              zIndex: 30,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 16,
+              backgroundColor: restaurantBusy
+                ? "rgba(180,83,9,0.94)"
+                : "rgba(15,23,42,0.88)",
+              borderWidth: 1,
+              borderColor: restaurantBusy
+                ? "rgba(251,191,36,0.55)"
+                : "rgba(148,163,184,0.35)",
+            }}
+          >
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>
+              {restaurantBusy
+                ? t("restaurant.dashboard.busyOn", "Occupé")
+                : t("restaurant.dashboard.busyOff", "Mode occupé")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
 
         {profileNeedsSetup && (
           <TouchableOpacity

@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type CancelRole = "client" | "driver" | "restaurant";
-type CancelRefund = "FULL" | "NONE" | "NOT_APPLICABLE";
+type CancelRefund = "FULL" | "NONE" | "NOT_APPLICABLE" | "REQUIRED";
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -634,13 +634,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const stripeRefund = await refundStripePayment({
-        order,
-        supabaseAdmin,
-        orderId,
-        reason,
-      });
-
+      // Phase 4: restaurant cancel/reject marks refund as required without moving
+      // Live Stripe money here. Admin cancel-refund remains the money-movement path.
       const eventType =
         status === "pending" ? "restaurant_reject" : "restaurant_cancel";
 
@@ -661,7 +656,9 @@ export async function POST(req: NextRequest) {
         metadata: {
           source: "api/orders/cancel",
           role: "restaurant",
-          refund: stripeRefund,
+          refund: "REQUIRED",
+          refund_status: "full_refund_required",
+          stripe_refund_deferred: true,
           at: canceledAt,
         },
       });
@@ -672,13 +669,17 @@ export async function POST(req: NextRequest) {
 
       return successResponse({
         by: "restaurant",
-        refund: "FULL",
+        refund: "REQUIRED",
         status: "canceled",
-        stripeRefund,
+        stripeRefund: {
+          refunded: false,
+          deferred: true,
+          refundId: null,
+        },
         message:
           status === "pending"
-            ? "Order refused by restaurant. Full refund processed."
-            : "Order cancelled by restaurant. Full refund processed.",
+            ? "Commande refusée. Remboursement complet à traiter (aucun mouvement Stripe immédiat)."
+            : "Commande annulée. Remboursement complet à traiter (aucun mouvement Stripe immédiat).",
       });
     }
 

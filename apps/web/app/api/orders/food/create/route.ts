@@ -13,6 +13,7 @@ import {
   isDeliverySharePctError,
 } from "@/lib/deliveryShareApiError";
 import { createFoodOrderServerSide } from "@/lib/foodOrderService";
+import { assertRestaurantCanAcceptOrders } from "@/lib/restaurantAcceptGate";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
@@ -41,22 +42,21 @@ export async function POST(req: NextRequest) {
       lng: fields.dropoffLng,
     });
 
-    const { data: restaurantProfile, error: restaurantError } = await auth.supabaseAdmin
-      .from("restaurant_profiles")
-      .select("user_id, restaurant_name, status, is_accepting_orders")
-      .eq("user_id", fields.restaurantUserId)
-      .maybeSingle();
-
-    if (restaurantError || !restaurantProfile) {
-      return mmdLocationJson({ ok: false, error: "restaurant_not_found" }, 404);
+    const restaurantGate = await assertRestaurantCanAcceptOrders(
+      auth.supabaseAdmin,
+      fields.restaurantUserId,
+    );
+    if (restaurantGate.ok === false) {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: restaurantGate.error,
+          message: restaurantGate.message,
+        },
+        restaurantGate.httpStatus,
+      );
     }
-
-    if (
-      restaurantProfile.status !== "approved" ||
-      restaurantProfile.is_accepting_orders !== true
-    ) {
-      return mmdLocationJson({ ok: false, error: "restaurant_not_accepting_orders" }, 403);
-    }
+    const restaurantProfile = restaurantGate.profile;
 
     const result = await createFoodOrderServerSide({
       supabaseAdmin: auth.supabaseAdmin,

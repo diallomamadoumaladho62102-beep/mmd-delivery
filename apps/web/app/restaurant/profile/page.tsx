@@ -20,6 +20,7 @@ type RestaurantProfileRow = {
   instagram: string | null;
   facebook: string | null;
   restaurant_logo_url: string | null;
+  cover_image_url: string | null;
   offers_delivery: boolean;
   offers_pickup: boolean;
   offers_dine_in: boolean;
@@ -101,6 +102,8 @@ export default function RestaurantProfilePage() {
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [taxFile, setTaxFile] = useState<File | null>(null);
   const [idFile, setIdFile] = useState<File | null>(null);
@@ -111,7 +114,7 @@ export default function RestaurantProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingDoc, setUploadingDoc] = useState<RestaurantDocType | "logo" | null>(null);
+  const [uploadingDoc, setUploadingDoc] = useState<RestaurantDocType | "logo" | "cover" | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -120,6 +123,12 @@ export default function RestaurantProfilePage() {
       if (logoPreview) URL.revokeObjectURL(logoPreview);
     };
   }, [logoPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
 
   useEffect(() => {
     let cancelled = false;
@@ -220,6 +229,7 @@ export default function RestaurantProfilePage() {
         instagram: rpRow?.instagram ?? "",
         facebook: rpRow?.facebook ?? "",
         restaurant_logo_url: rpRow?.restaurant_logo_url ?? null,
+        cover_image_url: (rpRow as any)?.cover_image_url ?? null,
         offers_delivery:
           rpRow?.offers_delivery === undefined ? true : !!rpRow.offers_delivery,
         offers_pickup:
@@ -312,6 +322,33 @@ export default function RestaurantProfilePage() {
     try {
       const ext = getFileExtension(file);
       const path = `restaurants/${userId}/logo.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, {
+          contentType: file.type || (ext === "png" ? "image/png" : "image/jpeg"),
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error(uploadError);
+        setErr(uploadError.message);
+        return null;
+      }
+
+      return getLogoPublicUrl(path);
+    } finally {
+      setUploadingDoc(null);
+    }
+  }
+
+  async function uploadCover(file: File): Promise<string | null> {
+    if (!userId) return null;
+    setUploadingDoc("cover");
+
+    try {
+      const ext = getFileExtension(file);
+      const path = `restaurants/${userId}/cover.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
@@ -428,10 +465,16 @@ export default function RestaurantProfilePage() {
       }
 
       let nextLogoUrl = profile.restaurant_logo_url;
+      let nextCoverUrl = profile.cover_image_url;
 
       if (logoFile) {
         const uploadedLogoUrl = await uploadLogo(logoFile);
         if (uploadedLogoUrl) nextLogoUrl = uploadedLogoUrl;
+      }
+
+      if (coverFile) {
+        const uploadedCoverUrl = await uploadCover(coverFile);
+        if (uploadedCoverUrl) nextCoverUrl = uploadedCoverUrl;
       }
 
       const payload = {
@@ -450,17 +493,36 @@ export default function RestaurantProfilePage() {
         instagram: profile.instagram || null,
         facebook: profile.facebook || null,
         restaurant_logo_url: nextLogoUrl,
+        cover_image_url: nextCoverUrl,
         offers_delivery: profile.offers_delivery,
         offers_pickup: profile.offers_pickup,
         offers_dine_in: profile.offers_dine_in,
         opening_hours: openingHours,
-        status: "pending",
+        // Never force an approved/suspended restaurant back to pending on ordinary edits.
+        // Self-write SQL guard also locks admin statuses; keep payload consistent.
         updated_at: new Date().toISOString(),
+      };
+
+      const { data: existingProfile } = await supabase
+        .from("restaurant_profiles")
+        .select("status")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const existingStatus = String(existingProfile?.status ?? "").toLowerCase();
+      const payloadWithStatus = {
+        ...payload,
+        status:
+          existingStatus === "approved" ||
+          existingStatus === "suspended" ||
+          existingStatus === "disabled"
+            ? existingStatus
+            : "pending",
       };
 
       const { error } = await supabase
         .from("restaurant_profiles")
-        .upsert(payload, { onConflict: "user_id" });
+        .upsert(payloadWithStatus, { onConflict: "user_id" });
 
       if (error) throw new Error(error.message);
 
@@ -489,10 +551,15 @@ export default function RestaurantProfilePage() {
 
       setDocs(newDocs);
       setLogoFile(null);
+      setCoverFile(null);
       setLicenseFile(null);
       setTaxFile(null);
       setIdFile(null);
-      setProfile({ ...profile, restaurant_logo_url: nextLogoUrl });
+      setProfile({
+        ...profile,
+        restaurant_logo_url: nextLogoUrl,
+        cover_image_url: nextCoverUrl,
+      });
 
       if (!hadUploadError) {
         setOk("Profil restaurant enregistré avec succès ✅");
@@ -511,6 +578,12 @@ export default function RestaurantProfilePage() {
     if (logoPreview) URL.revokeObjectURL(logoPreview);
     setLogoFile(file);
     setLogoPreview(file ? URL.createObjectURL(file) : null);
+  }
+
+  function handleCoverChange(file: File | null) {
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+    setCoverFile(file);
+    setCoverPreview(file ? URL.createObjectURL(file) : null);
   }
 
   if (loading || !profile) {
@@ -690,6 +763,36 @@ export default function RestaurantProfilePage() {
             />
           </div>
           {uploadingDoc === "logo" && <p className="text-xs text-gray-500">Upload logo en cours…</p>}
+        </div>
+
+        <div className="space-y-3 border-t pt-4">
+          <h2 className="text-lg font-semibold">Image de couverture</h2>
+          <p className="text-sm text-gray-600">
+            Bannière affichée aux clients. Stockée sur le profil restaurant (`cover_image_url`).
+          </p>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-2xl border bg-gray-50 text-xl font-black text-gray-400">
+              {coverPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={coverPreview} alt="Aperçu couverture" className="h-full w-full object-cover" />
+              ) : profile.cover_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.cover_image_url} alt="Couverture restaurant" className="h-full w-full object-cover" />
+              ) : (
+                "Couverture"
+              )}
+            </div>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                handleCoverChange(event.target.files?.[0] ?? null)
+              }
+            />
+          </div>
+          {uploadingDoc === "cover" && <p className="text-xs text-gray-500">Upload couverture en cours…</p>}
         </div>
 
         <div className="space-y-3 border-t pt-4">

@@ -61,8 +61,86 @@ type RestaurantItemRow = {
   category: string | null;
   price_cents: number | null;
   is_available: boolean | null;
+  stock_qty?: number | null;
+  options_json?: unknown;
   restaurant_user_id: string;
 };
+
+type MenuOptionCatalogEntry = {
+  id: string;
+  name: string;
+  price_cents: number;
+};
+
+export function parseMenuOptionsCatalog(raw: unknown): MenuOptionCatalogEntry[] {
+  if (!Array.isArray(raw)) return [];
+
+  const out: MenuOptionCatalogEntry[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const row = entry as Record<string, unknown>;
+    const name = String(row.name ?? "").trim();
+    const id = String(row.id ?? name).trim();
+    const priceCents = Number(row.price_cents ?? row.priceCents ?? 0);
+    if (!id || !name || !Number.isFinite(priceCents) || priceCents < 0) continue;
+    out.push({ id, name, price_cents: Math.round(priceCents) });
+  }
+  return out;
+}
+
+export function resolveSelectedMenuOptionExtras(
+  catalogRaw: unknown,
+  selectedRaw: unknown,
+): { extrasCents: number; selected: MenuOptionCatalogEntry[] } {
+  const catalog = parseMenuOptionsCatalog(catalogRaw);
+  if (selectedRaw == null) {
+    return { extrasCents: 0, selected: [] };
+  }
+
+  const selectedKeys: string[] = [];
+  if (Array.isArray(selectedRaw)) {
+    for (const entry of selectedRaw) {
+      if (typeof entry === "string") {
+        const key = entry.trim();
+        if (key) selectedKeys.push(key);
+        continue;
+      }
+      if (entry && typeof entry === "object") {
+        const row = entry as Record<string, unknown>;
+        const key = String(row.id ?? row.name ?? "").trim();
+        if (key) selectedKeys.push(key);
+      }
+    }
+  } else if (typeof selectedRaw === "object") {
+    for (const [key, enabled] of Object.entries(selectedRaw as Record<string, unknown>)) {
+      if (enabled) selectedKeys.push(key);
+    }
+  }
+
+  if (selectedKeys.length === 0) {
+    return { extrasCents: 0, selected: [] };
+  }
+
+  if (catalog.length === 0) {
+    throw new Error("Ce produit n’accepte pas d’options.");
+  }
+
+  const byId = new Map(catalog.map((entry) => [entry.id, entry]));
+  const byName = new Map(catalog.map((entry) => [entry.name.toLowerCase(), entry]));
+  const selected: MenuOptionCatalogEntry[] = [];
+  let extrasCents = 0;
+
+  for (const key of selectedKeys) {
+    const match = byId.get(key) ?? byName.get(key.toLowerCase());
+    if (!match) {
+      throw new Error(`Option invalide: ${key}`);
+    }
+    selected.push(match);
+    extrasCents += match.price_cents;
+  }
+
+  return { extrasCents, selected };
+}
 
 type ComputeOrderPricingRow = {
   config_key: string;
@@ -190,7 +268,7 @@ export async function loadRestaurantMenuLines(
 
   const { data, error } = await supabaseAdmin
     .from("restaurant_items")
-    .select("id, name, category, price_cents, is_available, restaurant_user_id")
+    .select("id, name, category, price_cents, is_available, stock_qty, options_json, restaurant_user_id")
     .eq("restaurant_user_id", restaurantUserId)
     .in("id", itemIds);
 
@@ -209,12 +287,26 @@ export async function loadRestaurantMenuLines(
     const itemId = String(line.item_id).trim();
     const fresh = byId.get(itemId);
 
-    if (!fresh || fresh.is_available === false) {
+    if (!fresh || fresh.is_available !== true) {
       throw new Error(`Plat indisponible: ${itemId}`);
     }
 
+    if (fresh.stock_qty != null && Number(fresh.stock_qty) <= 0) {
+      throw new Error(`Plat en rupture de stock: ${fresh.name || itemId}`);
+    }
+
     const quantity = toFiniteFoodNumber(line.quantity);
-    const unitPrice = roundFoodMoney(toFiniteFoodNumber(fresh.price_cents) / 100);
+
+    if (fresh.stock_qty != null && quantity > Number(fresh.stock_qty)) {
+      throw new Error(`Stock insuffisant pour ${fresh.name || itemId}`);
+    }
+
+    const baseUnitPrice = roundFoodMoney(toFiniteFoodNumber(fresh.price_cents) / 100);
+    const { extrasCents, selected } = resolveSelectedMenuOptionExtras(
+      fresh.options_json,
+      line.options,
+    );
+    const unitPrice = roundFoodMoney(baseUnitPrice + extrasCents / 100);
 
     if (unitPrice < 0) {
       throw new Error(`Prix invalide pour ${fresh.name}`);
@@ -227,7 +319,7 @@ export async function loadRestaurantMenuLines(
       quantity,
       unit_price: unitPrice,
       line_total: roundFoodMoney(unitPrice * quantity),
-      options: line.options ?? null,
+      options: selected.length > 0 ? selected : line.options ?? null,
     });
   }
 
@@ -247,7 +339,7 @@ export async function computeFoodTaxAmount(
     .select("tax_rate, applies_to, tax_name")
     .eq("country_code", code)
     .eq("active", true)
-    .in("applies_to", ["food", "ride"]);
+    .eq("applies_to", "food");
 
   if (error) {
     console.warn("[foodOrderServerPricing] taxi_country_taxes lookup failed", error.message);
@@ -259,9 +351,7 @@ export async function computeFoodTaxAmount(
     tax_name: string;
   }>;
 
-  const foodRows = rows.filter((row) => row.applies_to === "food");
-  const rideRows = rows.filter((row) => row.applies_to === "ride");
-  const selected = foodRows.length > 0 ? foodRows : rideRows;
+  const selected = rows;
 
   if (selected.length > 0) {
     const taxRatePct = selected.reduce(
@@ -269,9 +359,11 @@ export async function computeFoodTaxAmount(
       0
     );
     const tax = roundFoodMoney(safeSubtotal * (taxRatePct / 100));
-    const source =
-      foodRows.length > 0 ? "taxi_country_taxes:food" : "taxi_country_taxes:ride";
-    return { tax, taxRatePct: roundFoodMoney(taxRatePct), taxSource: source };
+    return {
+      tax,
+      taxRatePct: roundFoodMoney(taxRatePct),
+      taxSource: "taxi_country_taxes:food",
+    };
   }
 
   if (code === "US") {

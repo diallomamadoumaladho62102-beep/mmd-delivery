@@ -38,8 +38,8 @@ export async function uploadMenuItemImage(
   if (uploadError) throw uploadError;
 
   const { error: dbError } = await supabase
-    .from("restaurant_menu_items")
-    .update({ image_path: path })
+    .from("restaurant_items")
+    .update({ image_url: path, updated_at: new Date().toISOString() })
     .eq("id", menuItemId);
 
   if (dbError) throw dbError;

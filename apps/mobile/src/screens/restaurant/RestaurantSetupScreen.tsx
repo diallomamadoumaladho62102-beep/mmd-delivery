@@ -148,6 +148,8 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
   const [description, setDescription] = useState("");
   const [logoLocalUri, setLogoLocalUri] = useState<string | null>(null);
   const [logoPath, setLogoPath] = useState<string | null>(null);
+  const [coverLocalUri, setCoverLocalUri] = useState<string | null>(null);
+  const [coverPath, setCoverPath] = useState<string | null>(null);
 
   const [offersDelivery, setOffersDelivery] = useState(true);
   const [offersPickup, setOffersPickup] = useState(true);
@@ -164,6 +166,11 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     [logoLocalUri, logoPath]
   );
 
+  const coverPreview = useMemo(
+    () => coverLocalUri || resolveStorageUrl(AVATARS_BUCKET, coverPath),
+    [coverLocalUri, coverPath]
+  );
+
   useEffect(() => {
     let alive = true;
 
@@ -178,7 +185,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         const { data, error } = await supabase
           .from("restaurant_profiles")
           .select(
-            "restaurant_name, phone, address, city, postal_code, cuisine_type, description, offers_delivery, offers_pickup, offers_dine_in, avatar_url, logo_url"
+            "restaurant_name, phone, address, city, postal_code, cuisine_type, description, offers_delivery, offers_pickup, offers_dine_in, avatar_url, logo_url, cover_image_url, status"
           )
           .eq("user_id", user.id)
           .maybeSingle();
@@ -198,6 +205,7 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         setOffersPickup(Boolean(row.offers_pickup ?? true));
         setOffersDineIn(Boolean(row.offers_dine_in ?? false));
         setLogoPath(row.logo_url ?? row.avatar_url ?? null);
+        setCoverPath(row.cover_image_url ?? null);
       } catch (error) {
         console.log("RestaurantSetup load existing profile ignored:", error);
       }
@@ -238,7 +246,8 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        toUserFacingError(err, "Impossible de choisir le logo.")
+        toUserFacingError(err, "Impossible de choisir le logo."
+)
       );
     }
   }
@@ -267,6 +276,67 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     return filePath;
   }
 
+  async function pickRestaurantCover() {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          t("restaurant.setup.alerts.permissionTitle", "Permission"),
+          t(
+            "restaurant.setup.alerts.permissionPhotosCover",
+            "Autorise l’accès aux photos pour choisir la couverture du restaurant."
+          )
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.85,
+      });
+
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      setCoverLocalUri(result.assets[0].uri);
+    } catch (err: unknown) {
+      Alert.alert(
+        t("restaurant.setup.alerts.errorTitle", "Erreur"),
+        toUserFacingError(err, "Impossible de choisir la couverture.")
+      );
+    }
+  }
+
+  async function uploadRestaurantCoverIfNeeded(userId: string) {
+    if (!coverLocalUri) return coverPath;
+
+    const filePath = `restaurants/${userId}/cover.jpg`;
+
+    const base64 = await FileSystem.readAsStringAsync(coverLocalUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const bytes = base64ToUint8Array(base64);
+
+    const { error } = await supabase.storage
+      .from(AVATARS_BUCKET)
+      .upload(filePath, bytes, {
+        contentType: "image/jpeg",
+        upsert: true,
+        cacheControl: "3600",
+      });
+
+    if (error) {
+      throw new Error(
+        toUserFacingError(error, "Une action temporairement impossible s'est produite. Veuillez réessayer.")
+      );
+    }
+
+    return resolveStorageUrl(AVATARS_BUCKET, filePath) ?? filePath;
+  }
+
   async function pickDocument(docType: DocType) {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -291,7 +361,8 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        toUserFacingError(err, "Impossible de choisir le document.")
+        toUserFacingError(err, "Impossible de choisir le document."
+)
       );
     }
   }
@@ -412,6 +483,21 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
 
       const geocoded = await geocodeRestaurantAddress(fullAddress);
       const finalLogoPath = await uploadRestaurantLogoIfNeeded(user.id);
+      const finalCoverUrl = await uploadRestaurantCoverIfNeeded(user.id);
+
+      const { data: existingProfile } = await supabase
+        .from("restaurant_profiles")
+        .select("status")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const existingStatus = String((existingProfile as any)?.status ?? "").toLowerCase();
+      const nextStatus =
+        existingStatus === "approved" ||
+        existingStatus === "suspended" ||
+        existingStatus === "disabled"
+          ? existingStatus
+          : "pending";
 
       const payload = {
         user_id: user.id,
@@ -425,13 +511,22 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         description: cleanText(description) || null,
         avatar_url: finalLogoPath ?? null,
         logo_url: finalLogoPath ?? null,
+        cover_image_url: finalCoverUrl ?? null,
         location_lat: geocoded.latitude,
         location_lng: geocoded.longitude,
-        opening_hours: null,
+        opening_hours: {
+          monday: { open: "09:00", close: "22:00" },
+          tuesday: { open: "09:00", close: "22:00" },
+          wednesday: { open: "09:00", close: "22:00" },
+          thursday: { open: "09:00", close: "22:00" },
+          friday: { open: "09:00", close: "22:00" },
+          saturday: { open: "09:00", close: "22:00" },
+          sunday: { open: "09:00", close: "22:00" },
+        },
         offers_delivery: offersDelivery,
         offers_pickup: offersPickup,
         offers_dine_in: offersDineIn,
-        status: "pending" as const,
+        status: nextStatus,
         updated_at: new Date().toISOString(),
       };
 
@@ -459,6 +554,8 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
 
       setLogoPath(finalLogoPath ?? null);
       setLogoLocalUri(null);
+      setCoverPath(finalCoverUrl ?? null);
+      setCoverLocalUri(null);
 
       await uploadSelectedDocuments(user.id);
 
@@ -474,7 +571,8 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
     } catch (err: unknown) {
       Alert.alert(
         t("restaurant.setup.alerts.errorTitle", "Erreur"),
-        toUserFacingError(err, "Erreur inconnue")
+        toUserFacingError(err, "Erreur inconnue"
+)
       );
     } finally {
       setLoading(false);
@@ -578,6 +676,70 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
         </View>
+      </View>
+
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: "#CBD5E1",
+          borderRadius: 16,
+          padding: 14,
+          backgroundColor: "#F8FAFC",
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            height: 120,
+            borderRadius: 12,
+            backgroundColor: "#E2E8F0",
+            overflow: "hidden",
+            alignItems: "center",
+            justifyContent: "center",
+            borderWidth: 1,
+            borderColor: "#CBD5E1",
+          }}
+        >
+          {coverPreview ? (
+            <Image
+              source={{ uri: coverPreview }}
+              style={{ width: "100%", height: 120 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={{ color: "#64748B", fontWeight: "700" }}>
+              {t("restaurant.setup.cover.placeholder", "Couverture")}
+            </Text>
+          )}
+        </View>
+        <Text style={{ color: "#0F172A", fontWeight: "900", fontSize: 15, marginTop: 12 }}>
+          {t("restaurant.setup.cover.title", "Image de couverture")}
+        </Text>
+        <Text style={{ color: "#475569", marginTop: 4, fontWeight: "600" }}>
+          {t(
+            "restaurant.setup.cover.subtitle",
+            "Bannière affichée aux clients sur la fiche restaurant."
+          )}
+        </Text>
+        <TouchableOpacity
+          disabled={loading}
+          onPress={pickRestaurantCover}
+          style={{
+            alignSelf: "flex-start",
+            marginTop: 10,
+            paddingVertical: 9,
+            paddingHorizontal: 12,
+            borderRadius: 10,
+            backgroundColor: "#0F172A",
+            opacity: loading ? 0.6 : 1,
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "900" }}>
+            {coverPreview
+              ? t("restaurant.setup.cover.change", "Changer la couverture")
+              : t("restaurant.setup.cover.add", "Ajouter une couverture")}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <Text>{t("restaurant.setup.fields.restaurantName", "Nom du restaurant")}</Text>

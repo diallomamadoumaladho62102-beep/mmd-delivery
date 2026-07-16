@@ -13,6 +13,7 @@ import {
   isDeliverySharePctError,
 } from "@/lib/deliveryShareApiError";
 import { quoteFoodOrderServerSide } from "@/lib/foodOrderService";
+import { assertRestaurantCanAcceptOrders } from "@/lib/restaurantAcceptGate";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 
 export const runtime = "nodejs";
@@ -40,6 +41,21 @@ export async function POST(req: NextRequest) {
       lat: fields.dropoffLat,
       lng: fields.dropoffLng,
     });
+
+    const restaurantGate = await assertRestaurantCanAcceptOrders(
+      auth.supabaseAdmin,
+      fields.restaurantUserId,
+    );
+    if (restaurantGate.ok === false) {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: restaurantGate.error,
+          message: restaurantGate.message,
+        },
+        restaurantGate.httpStatus,
+      );
+    }
 
     const pricing = await quoteFoodOrderServerSide({
       supabaseAdmin: auth.supabaseAdmin,

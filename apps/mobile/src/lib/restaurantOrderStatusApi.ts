@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./apiBase";
 import { supabase } from "./supabase";
+import { toUserFacingError } from "./userFacingError";
 
 export type RestaurantStatusUpdate = "accepted" | "prepared" | "ready";
 
@@ -34,7 +35,9 @@ export async function postRestaurantOrderStatus(params: {
   const out = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(out?.error ?? `Impossible de mettre à jour le statut (${res.status})`);
+    throw new Error(
+      toUserFacingError(out, `Impossible de mettre à jour le statut (${res.status})`),
+    );
   }
 
   return out as {
@@ -73,7 +76,9 @@ export async function postRestaurantOrderReject(params: { orderId: string }) {
   const out = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(out?.error ?? `Impossible de refuser la commande (${res.status})`);
+    throw new Error(
+      toUserFacingError(out, `Impossible de refuser la commande (${res.status})`),
+    );
   }
 
   return out as {

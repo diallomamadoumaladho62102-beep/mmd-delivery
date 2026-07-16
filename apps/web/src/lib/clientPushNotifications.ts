@@ -168,7 +168,7 @@ export async function notifyClientOrderCancelled(params: {
   supabaseAdmin: SupabaseClient;
   userIds: Array<string | null | undefined>;
   orderId: string;
-  refund: "FULL" | "NONE" | "NOT_APPLICABLE";
+  refund: "FULL" | "NONE" | "NOT_APPLICABLE" | "REQUIRED";
 }): Promise<void> {
   const userIds = dedupeStrings(params.userIds);
   const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
@@ -176,7 +176,7 @@ export async function notifyClientOrderCancelled(params: {
   if (tokens.length === 0) return;
 
   const body =
-    params.refund === "FULL"
+    params.refund === "FULL" || params.refund === "REQUIRED"
       ? "Votre commande a été annulée. Un remboursement est en cours."
       : "Votre commande a été annulée.";
 
