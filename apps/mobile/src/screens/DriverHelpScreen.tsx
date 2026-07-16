@@ -14,12 +14,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { APP_COLORS } from "../theme/appTheme";
 
 const BG = "#020617";
 const CARD = "rgba(15,23,42,0.82)";
 const CARD_DEEP = "rgba(2,6,23,0.72)";
 const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = "#A78BFA";
+const PURPLE = APP_COLORS.accent;
 const BLUE = "#60A5FA";
 const ORANGE = "#F97316";
 const RED = "#F87171";

@@ -6,7 +6,6 @@ import {
   StatusBar,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,6 +13,11 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import {
+  UiEmptyState,
+  UiErrorState,
+  UiLoadingState,
+} from "../../components/ui/UiStates";
 import {
   fetchMarketplaceSellers,
   type MarketplaceSeller,
@@ -23,6 +27,7 @@ import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
 import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "MarketplaceHome">;
 
@@ -104,7 +109,7 @@ export default function MarketplaceHomeScreen() {
       />
 
       {!loading && !error && sellers.length > 0 ? (
-        <Text style={{ color: "#CBD5E1" }}>
+        <Text style={{ color: APP_COLORS.textSubtle }}>
           {t("marketplace.home.openCount", "{{open}} open · {{total}} shops", {
             open: openCount,
             total: sellers.length,
@@ -116,7 +121,7 @@ export default function MarketplaceHomeScreen() {
         onPress={() => navigation.navigate("SellerGate" as never)}
         style={{ alignSelf: "flex-start", marginBottom: 8 }}
       >
-        <Text style={{ color: "#A78BFA" }}>
+        <Text style={{ color: APP_COLORS.accent }}>
           {t("marketplace.home.sellCta", "Sell on MMD →")}
         </Text>
       </TouchableOpacity>
@@ -124,7 +129,7 @@ export default function MarketplaceHomeScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bgElevated }} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <ScreenHeader
         title={t("marketplace.home.title", "Marketplace")}
@@ -143,13 +148,13 @@ export default function MarketplaceHomeScreen() {
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator color="#A78BFA" />
+            <UiLoadingState />
           ) : error ? (
-            <Text style={{ color: "#FCA5A5" }}>{error}</Text>
+            <UiErrorState title={error} />
           ) : (
-            <Text style={{ color: "#CBD5E1" }}>
-              {t("marketplace.home.emptyOpen", "No approved shops in your area yet.")}
-            </Text>
+            <UiEmptyState
+              title={t("marketplace.home.emptyOpen", "No approved shops in your area yet.")}
+            />
           )
         }
         renderItem={({ item: seller }) => {
@@ -168,7 +173,7 @@ export default function MarketplaceHomeScreen() {
                 })
               }
               style={{
-                backgroundColor: isOpen ? "rgba(124,58,237,0.15)" : "rgba(15,23,42,0.8)",
+                backgroundColor: isOpen ? APP_COLORS.accentSoft : "rgba(15,23,42,0.8)",
                 borderColor: isOpen ? "rgba(196,181,253,0.25)" : "rgba(100,116,139,0.35)",
                 borderWidth: 1,
                 borderRadius: 16,
@@ -177,12 +182,12 @@ export default function MarketplaceHomeScreen() {
               }}
             >
               <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
-                <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "600", flex: 1 }}>
+                <Text style={{ color: APP_COLORS.text, fontSize: 18, fontWeight: "600", flex: 1 }}>
                   {seller.business_name}
                 </Text>
                 <Text
                   style={{
-                    color: isOpen ? "#86EFAC" : "#FCA5A5",
+                    color: isOpen ? APP_COLORS.success : APP_COLORS.danger,
                     fontWeight: "700",
                     fontSize: 12,
                     alignSelf: "flex-start",
@@ -193,13 +198,13 @@ export default function MarketplaceHomeScreen() {
                     : t("marketplace.home.shopClosed", "Closed")}
                 </Text>
               </View>
-              <Text style={{ color: "#CBD5E1", marginTop: 4 }}>
+              <Text style={{ color: APP_COLORS.textSubtle, marginTop: 4 }}>
                 {seller.city}, {seller.country_code}
               </Text>
-              <Text style={{ color: "#94A3B8", marginTop: 4 }} numberOfLines={2}>
+              <Text style={{ color: APP_COLORS.textMuted, marginTop: 4 }} numberOfLines={2}>
                 {seller.address}
               </Text>
-              <Text style={{ color: "#94A3B8", marginTop: 6 }}>
+              <Text style={{ color: APP_COLORS.textMuted, marginTop: 6 }}>
                 {t("marketplace.home.productCount", "{{count}} products available", {
                   count: productCount,
                 })}

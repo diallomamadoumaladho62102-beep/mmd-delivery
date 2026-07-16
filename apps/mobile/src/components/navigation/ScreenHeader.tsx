@@ -7,8 +7,10 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { useSafeBackNavigation } from "../../navigation/navigationBack";
+import { APP_COLORS, APP_HIT } from "../../theme/appTheme";
 
 export type ScreenHeaderVariant = "dark" | "light";
 
@@ -21,15 +23,16 @@ export type ScreenHeaderProps = {
   rightSlot?: ReactNode;
   variant?: ScreenHeaderVariant;
   style?: ViewStyle;
+  backAccessibilityLabel?: string;
 };
 
 const VARIANTS = {
   dark: {
-    title: "#F8FAFC",
-    subtitle: "#94A3B8",
+    title: APP_COLORS.text,
+    subtitle: APP_COLORS.textMuted,
     backBorder: "rgba(148,163,184,0.18)",
     backBg: "rgba(15,23,42,0.72)",
-    backText: "#F8FAFC",
+    backText: APP_COLORS.text,
   },
   light: {
     title: "#0F172A",
@@ -49,20 +52,17 @@ export default function ScreenHeader({
   rightSlot,
   variant = "dark",
   style,
+  backAccessibilityLabel,
 }: ScreenHeaderProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const safeBack = useSafeBackNavigation(fallbackRoute);
   const palette = VARIANTS[variant];
   const handleBack = onBack ?? safeBack;
+  const backLabel = backAccessibilityLabel ?? t("common.back", "Back");
 
   return (
-    <View
-      style={[
-        styles.wrapper,
-        { paddingTop: Math.max(insets.top, 8) },
-        style,
-      ]}
-    >
+    <View style={[styles.wrapper, { paddingTop: Math.max(insets.top, 8) }, style]}>
       <View style={styles.row}>
         {showBack ? (
           <TouchableOpacity
@@ -76,26 +76,21 @@ export default function ScreenHeader({
             ]}
             activeOpacity={0.85}
             accessibilityRole="button"
-            accessibilityLabel="Retour"
+            accessibilityLabel={backLabel}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={[styles.backIcon, { color: palette.backText }]}>‹</Text>
           </TouchableOpacity>
         ) : (
-          <View style={styles.sideSpacer} />
+          <View style={styles.sideSpacer} accessibilityElementsHidden />
         )}
 
-        <View style={styles.titleBlock}>
-          <Text
-            style={[styles.title, { color: palette.title }]}
-            numberOfLines={1}
-          >
+        <View style={styles.titleBlock} accessibilityRole="header">
+          <Text style={[styles.title, { color: palette.title }]} numberOfLines={1}>
             {title}
           </Text>
           {subtitle ? (
-            <Text
-              style={[styles.subtitle, { color: palette.subtitle }]}
-              numberOfLines={2}
-            >
+            <Text style={[styles.subtitle, { color: palette.subtitle }]} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
@@ -117,14 +112,14 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   row: {
-    minHeight: 56,
+    minHeight: APP_HIT.comfortable,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: APP_HIT.min,
+    height: APP_HIT.min,
     borderRadius: 22,
     borderWidth: 1,
     alignItems: "center",
@@ -153,12 +148,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   rightSlot: {
-    minWidth: 44,
+    minWidth: APP_HIT.min,
     alignItems: "flex-end",
     justifyContent: "center",
   },
   sideSpacer: {
-    width: 44,
-    height: 44,
+    width: APP_HIT.min,
+    height: APP_HIT.min,
   },
 });

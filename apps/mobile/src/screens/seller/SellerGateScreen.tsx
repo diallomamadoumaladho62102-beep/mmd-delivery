@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, Text } from "react-native";
 import { supabase } from "../../lib/supabase";
 import { loadOwnSeller, requireSellerPlatformEnabled } from "../../lib/sellerApi";
 import { useTranslation } from "react-i18next";
+import { UiLoadingState } from "../../components/ui/UiStates";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = { navigation: any };
 
@@ -66,11 +68,11 @@ export default function SellerGateScreen({ navigation }: Props) {
   }, [navigation, t]);
 
   return (
-    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: APP_COLORS.bg }}>
       {message ? (
-        <Text style={{ color: "#CBD5E1", textAlign: "center" }}>{message}</Text>
+        <Text style={{ color: APP_COLORS.textSubtle, textAlign: "center" }}>{message}</Text>
       ) : (
-        <ActivityIndicator size="large" color="#A78BFA" />
+        <UiLoadingState />
       )}
     </View>
   );

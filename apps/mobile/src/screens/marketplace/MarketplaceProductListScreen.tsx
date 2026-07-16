@@ -5,7 +5,6 @@ import {
   ScrollView,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
   TextInput,
   View,
@@ -14,6 +13,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import {
+  UiEmptyState,
+  UiErrorState,
+  UiLoadingState,
+} from "../../components/ui/UiStates";
 import {
   addMarketplaceFavorite,
   fetchMarketplaceFavorites,
@@ -24,6 +28,7 @@ import {
 } from "../../lib/marketplaceApi";
 import { useTranslation } from "react-i18next";
 import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductList">;
 
@@ -112,7 +117,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
   const listHeader = (
     <View style={{ gap: 12, marginBottom: 12 }}>
       {!sellerIsOpen ? (
-        <Text style={{ color: "#FCA5A5", marginBottom: 8 }}>
+        <Text style={{ color: APP_COLORS.danger, marginBottom: 8 }}>
           {t("marketplace.products.shopClosed", "This shop is currently closed.")}
         </Text>
       ) : null}
@@ -123,13 +128,13 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
         placeholder={t("marketplace.products.search", "Search products")}
         placeholderTextColor="#64748B"
         style={{
-          backgroundColor: "#111827",
+          backgroundColor: APP_COLORS.surface,
           borderWidth: 1,
-          borderColor: "#334155",
+          borderColor: APP_COLORS.borderMuted,
           borderRadius: 12,
           paddingHorizontal: 14,
           paddingVertical: 12,
-          color: "#F8FAFC",
+          color: APP_COLORS.text,
         }}
       />
 
@@ -139,13 +144,13 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
             <TouchableOpacity
               onPress={() => setCategoryFilter(null)}
               style={{
-                backgroundColor: categoryFilter == null ? "#7C3AED" : "#1F2937",
+                backgroundColor: categoryFilter == null ? APP_COLORS.accentStrong : APP_COLORS.border,
                 paddingHorizontal: 12,
                 paddingVertical: 8,
                 borderRadius: 999,
               }}
             >
-              <Text style={{ color: "#F8FAFC", fontSize: 12 }}>
+              <Text style={{ color: APP_COLORS.text, fontSize: 12 }}>
                 {t("marketplace.products.allCategories", "All")}
               </Text>
             </TouchableOpacity>
@@ -154,13 +159,13 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
                 key={category}
                 onPress={() => setCategoryFilter(category)}
                 style={{
-                  backgroundColor: categoryFilter === category ? "#7C3AED" : "#1F2937",
+                  backgroundColor: categoryFilter === category ? APP_COLORS.accentStrong : APP_COLORS.border,
                   paddingHorizontal: 12,
                   paddingVertical: 8,
                   borderRadius: 999,
                 }}
               >
-                <Text style={{ color: "#F8FAFC", fontSize: 12 }}>{category}</Text>
+                <Text style={{ color: APP_COLORS.text, fontSize: 12 }}>{category}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -178,7 +183,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
         }
         style={{
           alignSelf: "flex-start",
-          backgroundColor: "#6D28D9",
+          backgroundColor: APP_COLORS.accentStrong,
           paddingHorizontal: 14,
           paddingVertical: 10,
           borderRadius: 10,
@@ -186,7 +191,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
           opacity: sellerIsOpen ? 1 : 0.5,
         }}
       >
-        <Text style={{ color: "#FFF" }}>
+        <Text style={{ color: APP_COLORS.onAccent }}>
           {t("marketplace.products.openCart", "Open cart / draft")}
         </Text>
       </TouchableOpacity>
@@ -194,7 +199,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bgElevated }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={sellerName}
         subtitle={t("marketplace.products.subtitle", "Browse active products")}
@@ -212,23 +217,23 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator color="#A78BFA" />
+            <UiLoadingState />
           ) : error ? (
-            <Text style={{ color: "#FCA5A5" }}>{error}</Text>
+            <UiErrorState title={error} />
           ) : (
-            <Text style={{ color: "#CBD5E1" }}>
-              {t("marketplace.products.empty", "No active products.")}
-            </Text>
+            <UiEmptyState
+              title={t("marketplace.products.empty", "No active products.")}
+            />
           )
         }
         renderItem={({ item: product }) => (
           <View
             style={{
               borderWidth: 1,
-              borderColor: "#334155",
+              borderColor: APP_COLORS.borderMuted,
               borderRadius: 14,
               padding: 14,
-              backgroundColor: "#111827",
+              backgroundColor: APP_COLORS.surface,
               gap: 8,
             }}
           >
@@ -243,10 +248,10 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
                 })
               }
             >
-              <Text style={{ color: "#F8FAFC", fontSize: 17, fontWeight: "600" }}>
+              <Text style={{ color: APP_COLORS.text, fontSize: 17, fontWeight: "600" }}>
                 {product.title}
               </Text>
-              <Text style={{ color: "#94A3B8", marginTop: 4 }} numberOfLines={2}>
+              <Text style={{ color: APP_COLORS.textMuted, marginTop: 4 }} numberOfLines={2}>
                 {product.description || product.category}
               </Text>
               <Text style={{ color: "#C4B5FD", marginTop: 8 }}>
@@ -254,7 +259,7 @@ export default function MarketplaceProductListScreen({ navigation, route }: Prop
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => void toggleFavorite(product)}>
-              <Text style={{ color: favoriteIds.has(product.id) ? "#FCD34D" : "#94A3B8" }}>
+              <Text style={{ color: favoriteIds.has(product.id) ? APP_COLORS.warning : APP_COLORS.textMuted }}>
                 {favoriteIds.has(product.id)
                   ? t("marketplace.products.favorited", "★ Favorited")
                   : t("marketplace.products.favorite", "☆ Favorite")}

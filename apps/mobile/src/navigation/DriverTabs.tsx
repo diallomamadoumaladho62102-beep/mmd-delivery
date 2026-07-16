@@ -7,6 +7,7 @@ import { DriverHomeScreen } from "../screens/DriverHomeScreen";
 import { DriverRevenueScreen } from "../screens/DriverRevenueScreen";
 import { DriverInboxScreen } from "../screens/DriverInboxScreen";
 import { DriverMenuScreen } from "../screens/DriverMenuScreen";
+import { APP_COLORS } from "../theme/appTheme";
 
 export type DriverTabParamList = {
   DriverHomeTab: undefined;
@@ -45,8 +46,8 @@ export function DriverTabs() {
         },
 
         // ✅ Couleurs
-        tabBarActiveTintColor: "#A78BFA",
-        tabBarInactiveTintColor: "#94A3B8",
+        tabBarActiveTintColor: APP_COLORS.accent,
+        tabBarInactiveTintColor: APP_COLORS.textMuted,
 
         // ✅ Texte
         tabBarLabelStyle: {

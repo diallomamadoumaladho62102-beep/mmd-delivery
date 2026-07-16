@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   Linking,
 } from "react-native";
@@ -14,6 +13,7 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { UiEmptyState, UiLoadingState } from "../../components/ui/UiStates";
 import {
   fetchMarketplaceDraft,
   fetchMarketplaceLiveCheckoutCapabilities,
@@ -34,7 +34,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
-import { rowDirection, textAlignStart } from "../../i18n/rtl";
+import { rowDirection } from "../../i18n/rtl";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = {
   route: RouteProp<RootStackParamList, "MarketplaceCart">;
@@ -236,7 +237,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
   const checkoutEnabled = Boolean(draft?.checkout_shadow?.checkout_enabled);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bgElevated }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("marketplace.cart.title", "Marketplace draft")}
         subtitle={sellerName}
@@ -246,11 +247,11 @@ export default function MarketplaceCartScreen({ route }: Props) {
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }}>
 
         {loading ? (
-          <ActivityIndicator color="#A78BFA" />
+          <UiLoadingState />
         ) : !draft || !(draft.items ?? []).length ? (
-          <Text style={{ color: "#CBD5E1" }}>
-            {t("marketplace.cart.empty", "Your draft cart is empty.")}
-          </Text>
+          <UiEmptyState
+            title={t("marketplace.cart.empty", "Your draft cart is empty.")}
+          />
         ) : (
           <>
             {(draft.items ?? []).map((item) => (
@@ -258,14 +259,14 @@ export default function MarketplaceCartScreen({ route }: Props) {
                 key={item.id}
                 style={{
                   borderWidth: 1,
-                  borderColor: "#334155",
+                  borderColor: APP_COLORS.borderMuted,
                   borderRadius: 12,
                   padding: 12,
-                  backgroundColor: "#111827",
+                  backgroundColor: APP_COLORS.surface,
                 }}
               >
-                <Text style={{ color: "#F8FAFC", fontWeight: "600" }}>{item.title}</Text>
-                <Text style={{ color: "#94A3B8", marginTop: 4 }}>
+                <Text style={{ color: APP_COLORS.text, fontWeight: "600" }}>{item.title}</Text>
+                <Text style={{ color: APP_COLORS.textMuted, marginTop: 4 }}>
                   {item.quantity} × {formatMarketplaceMoney(item.price_cents, item.currency)}
                 </Text>
               </View>
@@ -274,17 +275,17 @@ export default function MarketplaceCartScreen({ route }: Props) {
             <View
               style={{
                 borderWidth: 1,
-                borderColor: "#334155",
+                borderColor: APP_COLORS.borderMuted,
                 borderRadius: 12,
                 padding: 12,
                 gap: 8,
-                backgroundColor: "#111827",
+                backgroundColor: APP_COLORS.surface,
               }}
             >
-              <Text style={{ color: "#F8FAFC", fontWeight: "600" }}>
+              <Text style={{ color: APP_COLORS.text, fontWeight: "600" }}>
                 {t("marketplace.cart.dropoffTitle", "Delivery dropoff")}
               </Text>
-              <Text style={{ color: dropoffAddress ? "#CBD5E1" : "#64748B" }}>
+              <Text style={{ color: dropoffAddress ? APP_COLORS.textSubtle : "#64748B" }}>
                 {dropoffAddress ||
                   t(
                     "marketplace.cart.dropoffPlaceholder",
@@ -328,7 +329,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
                   opacity: savingLocation || !dropoffLocationId ? 0.6 : 1,
                 }}
               >
-                <Text style={{ color: "#FFF", fontWeight: "600" }}>
+                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "600" }}>
                   {savingLocation
                     ? t("marketplace.cart.savingLocation", "Saving location…")
                     : t("marketplace.cart.applyDropoff", "Apply dropoff to draft")}
@@ -372,13 +373,13 @@ export default function MarketplaceCartScreen({ route }: Props) {
                   {t("marketplace.cart.deliveryShadowTitle", "Estimated delivery (shadow)")}
                 </Text>
                 {draft.estimated_distance_miles != null ? (
-                  <Text style={{ color: "#CBD5E1" }}>
+                  <Text style={{ color: APP_COLORS.textSubtle }}>
                     {Number(draft.estimated_distance_miles).toFixed(1)} mi ·{" "}
                     {Math.round(Number(draft.estimated_minutes ?? 0))} min
                   </Text>
                 ) : null}
                 {draft.delivery_quote_shadow?.customer_delivery_total_cents != null ? (
-                  <Text style={{ color: "#94A3B8" }}>
+                  <Text style={{ color: APP_COLORS.textMuted }}>
                     {t("marketplace.cart.deliveryShadowFee", "Delivery quote shadow")}:{" "}
                     {formatMarketplaceMoney(
                       draft.delivery_quote_shadow.customer_delivery_total_cents,
@@ -413,7 +414,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
                 opacity: checkingOut ? 0.7 : 1,
               }}
             >
-              <Text style={{ color: "#FFF", fontWeight: "700" }}>
+              <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
                 {checkingOut
                   ? t("marketplace.cart.processing", "Processing…")
                   : checkoutEnabled
@@ -428,14 +429,14 @@ export default function MarketplaceCartScreen({ route }: Props) {
                 disabled={checkingOut}
                 onPress={() => void handleLiveCheckout()}
                 style={{
-                  backgroundColor: "#7C3AED",
+                  backgroundColor: APP_COLORS.accentStrong,
                   padding: 14,
                   borderRadius: 12,
                   alignItems: "center",
                   opacity: checkingOut ? 0.7 : 1,
                 }}
               >
-                <Text style={{ color: "#FFF", fontWeight: "700" }}>
+                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
                   {t("marketplace.cart.payLive", "Pay Marketplace Order")}
                 </Text>
               </TouchableOpacity>
@@ -458,10 +459,10 @@ function Line({
 }) {
   return (
     <View style={{ flexDirection: rowDirection(), justifyContent: "space-between" }}>
-      <Text style={{ color: bold ? "#F8FAFC" : "#94A3B8", fontWeight: bold ? "700" : "400" }}>
+      <Text style={{ color: bold ? APP_COLORS.text : APP_COLORS.textMuted, fontWeight: bold ? "700" : "400" }}>
         {label}
       </Text>
-      <Text style={{ color: bold ? "#C4B5FD" : "#CBD5E1", fontWeight: bold ? "700" : "400" }}>
+      <Text style={{ color: bold ? "#C4B5FD" : APP_COLORS.textSubtle, fontWeight: bold ? "700" : "400" }}>
         {value}
       </Text>
     </View>

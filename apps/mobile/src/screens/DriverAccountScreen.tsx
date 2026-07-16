@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DriverAccountCard } from "../components/DriverAccountCard";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { toUserFacingError } from "../lib/userFacingError";
+import { APP_COLORS } from "../theme/appTheme";
 
 const LOCALE_KEY = "mmd_locale_driver";
 
@@ -33,7 +34,7 @@ const BG = "#020617";
 const CARD = "rgba(15,23,42,0.88)";
 const CARD_SOFT = "rgba(2,6,23,0.74)";
 const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = "#A78BFA";
+const PURPLE = APP_COLORS.accent;
 const PURPLE_DARK = "#8B5CF6";
 const GREEN = "#22C55E";
 const RED = "#FCA5A5";

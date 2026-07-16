@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
   Switch,
   Alert,
@@ -11,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { UiLoadingState } from "../../components/ui/UiStates";
 import {
   loadOwnSeller,
   loadSellerDashboardCounts,
@@ -20,6 +20,7 @@ import {
 import { sellerStatusLabel, type SellerRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = { navigation: any };
 
@@ -102,7 +103,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bg }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("seller.dashboard.title", "Seller Dashboard")}
         fallbackRoute="SellerDashboard"
@@ -111,29 +112,29 @@ export default function SellerDashboardScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16 }}>
 
         {loading ? (
-          <ActivityIndicator color="#A78BFA" />
+          <UiLoadingState />
         ) : (
           <>
             <View
               style={{
-                backgroundColor: "#111827",
+                backgroundColor: APP_COLORS.surface,
                 borderRadius: 16,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: "#1F2937",
+                borderColor: APP_COLORS.border,
               }}
             >
-              <Text style={{ color: "#CBD5E1", marginBottom: 4 }}>
+              <Text style={{ color: APP_COLORS.textSubtle, marginBottom: 4 }}>
                 {seller?.business_name ?? "—"}
               </Text>
-              <Text style={{ color: "#94A3B8", marginBottom: 8 }}>
+              <Text style={{ color: APP_COLORS.textMuted, marginBottom: 8 }}>
                 {sellerStatusLabel(seller?.status ?? "pending")}
               </Text>
               <Text style={{ color: "#E2E8F0" }}>
                 {statusMessage(seller?.status ?? "pending", t)}
               </Text>
               {!platformOk ? (
-                <Text style={{ color: "#FCA5A5", marginTop: 8 }}>
+                <Text style={{ color: APP_COLORS.danger, marginTop: 8 }}>
                   {t(
                     "seller.dashboard.platformOff",
                     "Seller services are disabled in your region."
@@ -145,11 +146,11 @@ export default function SellerDashboardScreen({ navigation }: Props) {
             {seller && canToggleShop ? (
               <View
                 style={{
-                  backgroundColor: "#111827",
+                  backgroundColor: APP_COLORS.surface,
                   borderRadius: 16,
                   padding: 16,
                   borderWidth: 1,
-                  borderColor: "#1F2937",
+                  borderColor: APP_COLORS.border,
                   flexDirection: rowDirection(),
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -157,10 +158,10 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
+                  <Text style={{ color: APP_COLORS.text, fontWeight: "700" }}>
                     {t("seller.dashboard.shopOpenTitle", "Shop open to clients")}
                   </Text>
-                  <Text style={{ color: "#94A3B8", marginTop: 4 }}>
+                  <Text style={{ color: APP_COLORS.textMuted, marginTop: 4 }}>
                     {seller.is_accepting_orders
                       ? t("seller.dashboard.shopOpenOn", "Clients can browse your active products.")
                       : t("seller.dashboard.shopOpenOff", "Your shop is closed to new client orders.")}
@@ -172,8 +173,8 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                   onValueChange={(value) => {
                     void onToggleShopOpen(value);
                   }}
-                  trackColor={{ false: "#475569", true: "#7C3AED" }}
-                  thumbColor="#F8FAFC"
+                  trackColor={{ false: "#475569", true: APP_COLORS.accentStrong }}
+                  thumbColor={APP_COLORS.text}
                 />
               </View>
             ) : null}
@@ -188,7 +189,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("SellerProducts")}
               style={buttonStyle(!canManageProducts)}
             >
-              <Text style={{ color: "#fff", fontWeight: "700" }}>
+              <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
                 {t("seller.actions.products", "Manage products")}
               </Text>
             </TouchableOpacity>
@@ -198,7 +199,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("SellerOnboarding", { mode: "edit" })}
               style={buttonStyle(!seller, true)}
             >
-              <Text style={{ color: "#fff", fontWeight: "700" }}>
+              <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
                 {t("seller.actions.editProfile", "Edit business profile")}
               </Text>
             </TouchableOpacity>
@@ -207,7 +208,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
               onPress={() => navigation.navigate("SellerOrders")}
               style={buttonStyle(false, true)}
             >
-              <Text style={{ color: "#fff", fontWeight: "700" }}>
+              <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
                 {t("seller.actions.orders", "View orders")}
               </Text>
             </TouchableOpacity>
@@ -223,22 +224,22 @@ function StatCard({ label, value }: { label: string; value: number }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: "#111827",
+        backgroundColor: APP_COLORS.surface,
         borderRadius: 14,
         padding: 14,
         borderWidth: 1,
-        borderColor: "#1F2937",
+        borderColor: APP_COLORS.border,
       }}
     >
-      <Text style={{ color: "#94A3B8", fontSize: 12 }}>{label}</Text>
-      <Text style={{ color: "#F8FAFC", fontSize: 24, fontWeight: "800" }}>{value}</Text>
+      <Text style={{ color: APP_COLORS.textMuted, fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: APP_COLORS.text, fontSize: 24, fontWeight: "800" }}>{value}</Text>
     </View>
   );
 }
 
 function buttonStyle(disabled: boolean, secondary = false) {
   return {
-    backgroundColor: secondary ? "#334155" : disabled ? "#4C1D95" : "#7C3AED",
+    backgroundColor: secondary ? APP_COLORS.borderMuted : disabled ? "#4C1D95" : APP_COLORS.accentStrong,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center" as const,

@@ -14,6 +14,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { APP_COLORS } from "../theme/appTheme";
 
 type OrderRow = {
   id: string;
@@ -38,7 +39,7 @@ const BG = "#020617";
 const CARD = "rgba(15,23,42,0.78)";
 const CARD_DEEP = "rgba(2,6,23,0.72)";
 const BORDER = "rgba(148,163,184,0.14)";
-const PURPLE = "#A78BFA";
+const PURPLE = APP_COLORS.accent;
 const BLUE = "#60A5FA";
 const GREEN = "#22C55E";
 const TEXT = "#F8FAFC";

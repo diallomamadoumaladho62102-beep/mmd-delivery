@@ -20,6 +20,8 @@ import { useClientPlatformFeatures } from "../../hooks/useClientPlatformFeatures
 import { resolveMarketScopeFromFeatures } from "../../lib/marketScope";
 import MarketScopeCard from "../../components/market/MarketScopeCard";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { UiLoadingState } from "../../components/ui/UiStates";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = { navigation: any; route?: { params?: { mode?: "edit" } } };
 
@@ -149,7 +151,7 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bg }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={
           editMode
@@ -169,7 +171,7 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
       />
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 14 }}>
         {hydrating ? (
-          <ActivityIndicator color="#A78BFA" />
+          <UiLoadingState />
         ) : (
           <>
             {!editMode ? (
@@ -198,19 +200,19 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
               ] as const
             ).map(([label, value, setter, multiline]) => (
               <View key={label}>
-                <Text style={{ color: "#CBD5E1", marginBottom: 6 }}>{label}</Text>
+                <Text style={{ color: APP_COLORS.textSubtle, marginBottom: 6 }}>{label}</Text>
                 <TextInput
                   value={value}
                   onChangeText={setter}
                   autoCapitalize="none"
                   multiline={multiline}
                   style={{
-                    backgroundColor: "#111827",
+                    backgroundColor: APP_COLORS.surface,
                     borderRadius: 12,
                     padding: 14,
-                    color: "#F8FAFC",
+                    color: APP_COLORS.text,
                     borderWidth: 1,
-                    borderColor: "#1F2937",
+                    borderColor: APP_COLORS.border,
                     minHeight: multiline ? 88 : undefined,
                   }}
                 />
@@ -221,7 +223,7 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
               onPress={submit}
               disabled={loading || (!editMode && !market.scopeResolved)}
               style={{
-                backgroundColor: "#7C3AED",
+                backgroundColor: APP_COLORS.accentStrong,
                 padding: 16,
                 borderRadius: 14,
                 alignItems: "center",
@@ -229,9 +231,9 @@ export default function SellerOnboardingScreen({ navigation, route }: Props) {
               }}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={APP_COLORS.onAccent} />
               ) : (
-                <Text style={{ color: "#fff", fontWeight: "800" }}>
+                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "800" }}>
                   {editMode
                     ? t("seller.onboarding.save", "Save profile")
                     : t("seller.onboarding.submit", "Submit application")}

@@ -5,13 +5,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { UiEmptyState, UiLoadingState } from "../../components/ui/UiStates";
 import {
   addMarketplaceFavorite,
   fetchMarketplaceDraft,
@@ -24,6 +24,7 @@ import {
 } from "../../lib/marketplaceApi";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = NativeStackScreenProps<RootStackParamList, "MarketplaceProductDetails">;
 
@@ -131,7 +132,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bgElevated }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={product?.title ?? t("marketplace.details.title", "Product")}
         fallbackRoute="MarketplaceHome"
@@ -139,14 +140,14 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
       />
       <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8, gap: 16 }}>
         {loading ? (
-          <ActivityIndicator color="#A78BFA" />
+          <UiLoadingState />
         ) : !product ? (
-          <Text style={{ color: "#FCA5A5" }}>
-            {t("marketplace.details.notFound", "Product not found.")}
-          </Text>
+          <UiEmptyState
+            title={t("marketplace.details.notFound", "Product not found.")}
+          />
         ) : (
           <>
-            <Text style={{ color: "#CBD5E1" }}>{product.description}</Text>
+            <Text style={{ color: APP_COLORS.textSubtle }}>{product.description}</Text>
             <Text style={{ color: "#C4B5FD", fontSize: 18 }}>
               {formatMarketplaceMoney(
                 product.promo_price_cents != null &&
@@ -157,33 +158,33 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
               )}
             </Text>
             {product.stock_qty != null ? (
-              <Text style={{ color: "#94A3B8" }}>
+              <Text style={{ color: APP_COLORS.textMuted }}>
                 {t("marketplace.details.stock", "Stock")}: {product.stock_qty}
               </Text>
             ) : null}
 
             <View style={{ flexDirection: rowDirection(), alignItems: "center", gap: 12 }}>
-              <Text style={{ color: "#94A3B8" }}>
+              <Text style={{ color: APP_COLORS.textMuted }}>
                 {t("marketplace.details.quantity", "Quantity")}
               </Text>
               <TouchableOpacity
                 onPress={() => setQuantity((value) => Math.max(1, value - 1))}
                 style={qtyButtonStyle}
               >
-                <Text style={{ color: "#FFF", fontSize: 18 }}>-</Text>
+                <Text style={{ color: APP_COLORS.onAccent, fontSize: 18 }}>-</Text>
               </TouchableOpacity>
-              <Text style={{ color: "#F8FAFC", fontSize: 18, minWidth: 28, textAlign: "center" }}>
+              <Text style={{ color: APP_COLORS.text, fontSize: 18, minWidth: 28, textAlign: "center" }}>
                 {quantity}
               </Text>
               <TouchableOpacity
                 onPress={() => setQuantity((value) => value + 1)}
                 style={qtyButtonStyle}
               >
-                <Text style={{ color: "#FFF", fontSize: 18 }}>+</Text>
+                <Text style={{ color: APP_COLORS.onAccent, fontSize: 18 }}>+</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={{ color: "#94A3B8" }}>
+            <Text style={{ color: APP_COLORS.textMuted }}>
               {t("marketplace.details.lineTotal", "Line total")}: {totalLabel}
             </Text>
 
@@ -191,7 +192,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
               disabled={favoriteBusy}
               onPress={() => void toggleFavorite()}
               style={{
-                backgroundColor: favorited ? "#334155" : "#1E293B",
+                backgroundColor: favorited ? APP_COLORS.borderMuted : "#1E293B",
                 padding: 12,
                 borderRadius: 12,
                 alignItems: "center",
@@ -209,14 +210,14 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
               disabled={saving}
               onPress={() => void addToDraft()}
               style={{
-                backgroundColor: "#6D28D9",
+                backgroundColor: APP_COLORS.accentStrong,
                 padding: 14,
                 borderRadius: 12,
                 alignItems: "center",
                 opacity: saving ? 0.7 : 1,
               }}
             >
-              <Text style={{ color: "#FFF", fontWeight: "600" }}>
+              <Text style={{ color: APP_COLORS.onAccent, fontWeight: "600" }}>
                 {saving
                   ? t("marketplace.details.saving", "Saving draft…")
                   : t("marketplace.details.addToDraft", "Add to draft cart")}
@@ -230,7 +231,7 @@ export default function MarketplaceProductDetailsScreen({ navigation, route }: P
 }
 
 const qtyButtonStyle = {
-  backgroundColor: "#334155",
+  backgroundColor: APP_COLORS.borderMuted,
   width: 36,
   height: 36,
   borderRadius: 8,

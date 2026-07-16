@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   AppState,
 } from "react-native";
@@ -15,6 +14,7 @@ import { formatMoney, type SellerOrderRow } from "../../lib/sellerTypes";
 import { updateMarketplaceSellerOrderStatus } from "../../lib/marketplaceApi";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { UiEmptyState, UiLoadingState } from "../../components/ui/UiStates";
 import { toUserFacingError } from "../../lib/userFacingError";
 import { rowDirection } from "../../i18n/rtl";
 import {
@@ -23,6 +23,7 @@ import {
 } from "../../lib/supabaseRealtime";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = { navigation: any };
 
@@ -129,7 +130,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bg }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("seller.orders.title", "Marketplace Orders")}
         subtitle={t(
@@ -141,7 +142,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
       />
 
       {loading ? (
-        <ActivityIndicator color="#A78BFA" />
+        <UiLoadingState />
       ) : (
         <FlatList
           data={orders}
@@ -149,36 +150,37 @@ export default function SellerOrdersScreen({ navigation }: Props) {
           {...MARKETPLACE_LIST_PERF}
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
-            <Text style={{ color: "#94A3B8", textAlign: "center", marginTop: 24 }}>
-              {t("seller.orders.empty", "No marketplace orders yet.")}
-            </Text>
+            <UiEmptyState
+              title={t("seller.orders.empty", "No marketplace orders yet.")}
+              style={{ marginTop: 24 }}
+            />
           }
           renderItem={({ item }) => {
             const actions = actionsFor(item.status);
             return (
               <View
                 style={{
-                  backgroundColor: "#111827",
+                  backgroundColor: APP_COLORS.surface,
                   borderRadius: 14,
                   padding: 14,
                   borderWidth: 1,
-                  borderColor: "#1F2937",
+                  borderColor: APP_COLORS.border,
                   gap: 8,
                 }}
               >
-                <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>
+                <Text style={{ color: APP_COLORS.text, fontWeight: "700" }}>
                   #{item.id.slice(0, 8)} · {item.status}
                 </Text>
-                <Text style={{ color: "#94A3B8" }}>
+                <Text style={{ color: APP_COLORS.textMuted }}>
                   {formatMoney(item.total_cents, item.currency)}
                 </Text>
                 {item.refund_status ? (
-                  <Text style={{ color: "#FCD34D", fontSize: 12 }}>
+                  <Text style={{ color: APP_COLORS.warning, fontSize: 12 }}>
                     {t("seller.orders.refundStatus", "Refund")}: {item.refund_status}
                   </Text>
                 ) : null}
                 {item.notes ? (
-                  <Text style={{ color: "#CBD5E1" }}>{item.notes}</Text>
+                  <Text style={{ color: APP_COLORS.textSubtle }}>{item.notes}</Text>
                 ) : null}
                 {actions.length > 0 ? (
                   <View style={{ flexDirection: rowDirection(), flexWrap: "wrap", gap: 8 }}>
@@ -188,14 +190,14 @@ export default function SellerOrdersScreen({ navigation }: Props) {
                         disabled={busyId === item.id}
                         onPress={() => void applyStatus(item, action)}
                         style={{
-                          backgroundColor: action === "refused" ? "#7F1D1D" : "#4C1D95",
+                          backgroundColor: action === "refused" ? APP_COLORS.dangerStrong : "#4C1D95",
                           paddingHorizontal: 12,
                           paddingVertical: 8,
                           borderRadius: 8,
                           opacity: busyId === item.id ? 0.6 : 1,
                         }}
                       >
-                        <Text style={{ color: "#FFF", fontWeight: "600", textTransform: "capitalize" }}>
+                        <Text style={{ color: APP_COLORS.onAccent, fontWeight: "600", textTransform: "capitalize" }}>
                           {action === "accepted"
                             ? t("seller.orders.accept", "Accept")
                             : action === "refused"

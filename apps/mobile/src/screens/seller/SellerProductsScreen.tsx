@@ -22,7 +22,9 @@ import { formatMoney, type SellerProductRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
+import { UiEmptyState, UiLoadingState } from "../../components/ui/UiStates";
 import { MARKETPLACE_LIST_PERF } from "../../lib/listPerf";
+import { APP_COLORS } from "../../theme/appTheme";
 
 type Props = { navigation: any };
 
@@ -201,20 +203,20 @@ export default function SellerProductsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#030712" }} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: APP_COLORS.bg }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={t("seller.products.title", "Products")}
         fallbackRoute="SellerDashboard"
         variant="dark"
         rightSlot={
           <TouchableOpacity onPress={openCreate}>
-            <Text style={{ color: "#A78BFA", fontSize: 24, fontWeight: "700" }}>+</Text>
+            <Text style={{ color: APP_COLORS.accent, fontSize: 24, fontWeight: "700" }}>+</Text>
           </TouchableOpacity>
         }
       />
 
       {loading ? (
-        <ActivityIndicator color="#A78BFA" style={{ marginTop: 24 }} />
+        <UiLoadingState style={{ marginTop: 24 }} />
       ) : (
         <FlatList
           data={products}
@@ -222,34 +224,35 @@ export default function SellerProductsScreen({ navigation }: Props) {
           {...MARKETPLACE_LIST_PERF}
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
-            <Text style={{ color: "#94A3B8", textAlign: "center", marginTop: 24 }}>
-              {t("seller.products.empty", "No products yet.")}
-            </Text>
+            <UiEmptyState
+              title={t("seller.products.empty", "No products yet.")}
+              style={{ marginTop: 24 }}
+            />
           }
           renderItem={({ item }) => (
             <View
               style={{
-                backgroundColor: "#111827",
+                backgroundColor: APP_COLORS.surface,
                 borderRadius: 14,
                 padding: 14,
                 borderWidth: 1,
-                borderColor: "#1F2937",
+                borderColor: APP_COLORS.border,
               }}
             >
-              <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>{item.title}</Text>
-              <Text style={{ color: "#94A3B8", marginVertical: 4 }}>
+              <Text style={{ color: APP_COLORS.text, fontWeight: "700" }}>{item.title}</Text>
+              <Text style={{ color: APP_COLORS.textMuted, marginVertical: 4 }}>
                 {formatMoney(item.price_cents, item.currency)} · {item.category}
                 {item.stock_qty != null ? ` · stock ${item.stock_qty}` : ""}
               </Text>
-              <Text style={{ color: "#CBD5E1" }} numberOfLines={2}>
+              <Text style={{ color: APP_COLORS.textSubtle }} numberOfLines={2}>
                 {item.description}
               </Text>
               <View style={{ flexDirection: rowDirection(), gap: 10, marginTop: 10 }}>
                 <TouchableOpacity onPress={() => openEdit(item)}>
-                  <Text style={{ color: "#A78BFA" }}>{t("common.edit", "Edit")}</Text>
+                  <Text style={{ color: APP_COLORS.accent }}>{t("common.edit", "Edit")}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => void toggleActive(item)}>
-                  <Text style={{ color: item.active ? "#FCA5A5" : "#86EFAC" }}>
+                  <Text style={{ color: item.active ? APP_COLORS.danger : APP_COLORS.success }}>
                     {item.active
                       ? t("seller.products.deactivate", "Deactivate")
                       : t("seller.products.activate", "Activate")}
@@ -262,9 +265,9 @@ export default function SellerProductsScreen({ navigation }: Props) {
       )}
 
       <Modal visible={modalOpen} animationType="slide" transparent>
-        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
-          <View style={{ backgroundColor: "#111827", padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 10 }}>
-            <Text style={{ color: "#F8FAFC", fontSize: 18, fontWeight: "700" }}>
+        <View style={{ flex: 1, backgroundColor: APP_COLORS.overlay, justifyContent: "flex-end" }}>
+          <View style={{ backgroundColor: APP_COLORS.surface, padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, gap: 10 }}>
+            <Text style={{ color: APP_COLORS.text, fontSize: 18, fontWeight: "700" }}>
               {draft.id
                 ? t("seller.products.editTitle", "Edit product")
                 : t("seller.products.createTitle", "New product")}
@@ -305,8 +308,8 @@ export default function SellerProductsScreen({ navigation }: Props) {
                   key === "description"
                 }
                 style={{
-                  backgroundColor: "#0F172A",
-                  color: "#F8FAFC",
+                  backgroundColor: APP_COLORS.surfaceAlt,
+                  color: APP_COLORS.text,
                   borderRadius: 10,
                   paddingHorizontal: 12,
                   paddingVertical: 10,
@@ -316,14 +319,14 @@ export default function SellerProductsScreen({ navigation }: Props) {
               />
             ))}
             <View style={{ flexDirection: rowDirection(), alignItems: "center", justifyContent: "space-between" }}>
-              <Text style={{ color: "#CBD5E1" }}>{t("seller.products.active", "Active")}</Text>
+              <Text style={{ color: APP_COLORS.textSubtle }}>{t("seller.products.active", "Active")}</Text>
               <Switch value={draft.active} onValueChange={(active) => setDraft((d) => ({ ...d, active }))} />
             </View>
             <TouchableOpacity
               onPress={() => void save()}
               disabled={saving}
               style={{
-                backgroundColor: "#7C3AED",
+                backgroundColor: APP_COLORS.accentStrong,
                 borderRadius: 12,
                 paddingVertical: 12,
                 alignItems: "center",
@@ -331,13 +334,13 @@ export default function SellerProductsScreen({ navigation }: Props) {
               }}
             >
               {saving ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={APP_COLORS.onAccent} />
               ) : (
-                <Text style={{ color: "#fff", fontWeight: "700" }}>{t("common.save", "Save")}</Text>
+                <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>{t("common.save", "Save")}</Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setModalOpen(false)}>
-              <Text style={{ color: "#94A3B8", textAlign: "center" }}>{t("common.cancel", "Cancel")}</Text>
+              <Text style={{ color: APP_COLORS.textMuted, textAlign: "center" }}>{t("common.cancel", "Cancel")}</Text>
             </TouchableOpacity>
           </View>
         </View>
