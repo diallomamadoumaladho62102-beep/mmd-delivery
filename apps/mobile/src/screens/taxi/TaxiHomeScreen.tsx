@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StatusBar,
   ScrollView,
@@ -17,6 +18,8 @@ import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { toUserFacingError } from "../../lib/userFacingError";
 import {
   quoteTaxiRide,
+  type TaxiReturnMode,
+  type TaxiTripMode,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
 import TaxiCountryPicker from "../../components/taxi/TaxiCountryPicker";
@@ -114,21 +117,13 @@ export default function TaxiHomeScreen() {
   const [currencyCode, setCurrencyCode] = useState(market.currencyCode);
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [tripMode, setTripMode] = useState<TaxiTripMode>("one_way");
+  const [returnMode, setReturnMode] = useState<TaxiReturnMode>("immediate");
+  const [returnWaitMinutes, setReturnWaitMinutes] = useState("15");
+  const [returnScheduledAt, setReturnScheduledAt] = useState("");
   const [proximity, setProximity] = useState<{ lat: number; lng: number } | null>(
     null
   );
-
-  useEffect(() => {
-    void getFreshPosition({ timeoutMs: 5000, preferLastKnown: true }).then((pos) => {
-      if (
-        Number.isFinite(pos.latitude) &&
-        Number.isFinite(pos.longitude) &&
-        (pos.state === "fresh" || pos.state === "cached" || pos.state === "weak_accuracy")
-      ) {
-        setProximity({ lat: pos.latitude, lng: pos.longitude });
-      }
-    });
-  }, []);
 
   const handleUseMyGps = useCallback(async () => {
     setGpsLoading(true);
@@ -163,6 +158,37 @@ export default function TaxiHomeScreen() {
       setGpsLoading(false);
     }
   }, [t]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const pos = await getFreshPosition({ timeoutMs: 8000, preferLastKnown: true });
+        if (cancelled) return;
+        if (
+          Number.isFinite(pos.latitude) &&
+          Number.isFinite(pos.longitude) &&
+          (pos.state === "fresh" || pos.state === "cached" || pos.state === "weak_accuracy")
+        ) {
+          setProximity({ lat: pos.latitude, lng: pos.longitude });
+          setPickup((current) => {
+            if (current.trim()) return current;
+            void reverseGeocode(pos.latitude, pos.longitude).then((geo) => {
+              if (cancelled) return;
+              setPickup((still) => (still.trim() ? still : geo.fullAddress));
+              setPickupLocationId((id) => (id.trim() ? id : ""));
+            });
+            return current;
+          });
+        }
+      } catch {
+        // Auto GPS fill is best-effort.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handlePickupLocation = useCallback(
     (location: Parameters<typeof applyMmdLocationSelection>[0]) => {
@@ -249,6 +275,7 @@ export default function TaxiHomeScreen() {
 
     setLoading(true);
     try {
+      const waitMinutes = Math.round(Number(returnWaitMinutes));
       const result = await quoteTaxiRide({
         pickupAddress: pickupAddress || undefined,
         dropoffAddress: dropoffAddress || undefined,
@@ -256,6 +283,16 @@ export default function TaxiHomeScreen() {
         dropoffLocationId: dropoffLocationId.trim() || undefined,
         vehicleClass,
         countryCode: activeCountryCode,
+        tripMode,
+        returnMode: tripMode === "round_trip" ? returnMode : undefined,
+        returnWaitMinutes:
+          tripMode === "round_trip" && returnMode === "wait"
+            ? waitMinutes
+            : undefined,
+        returnScheduledAt:
+          tripMode === "round_trip" && returnMode === "scheduled"
+            ? returnScheduledAt.trim() || undefined
+            : undefined,
       });
 
       if (!result?.ok) {
@@ -279,6 +316,16 @@ export default function TaxiHomeScreen() {
         countryResolution: result.country_resolution,
         quote: result.quote,
         route: result.route,
+        tripMode,
+        returnMode: tripMode === "round_trip" ? returnMode : undefined,
+        returnWaitMinutes:
+          tripMode === "round_trip" && returnMode === "wait"
+            ? waitMinutes
+            : undefined,
+        returnScheduledAt:
+          tripMode === "round_trip" && returnMode === "scheduled"
+            ? returnScheduledAt.trim() || undefined
+            : undefined,
       });
     } catch (e: unknown) {
       const message = toUserFacingError(
@@ -456,6 +503,96 @@ export default function TaxiHomeScreen() {
                 : t("taxi.home.pinDropoff", "Pin exact dropoff on map")}
             </Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Text style={{ color: "#CBD5E1", fontWeight: "600" }}>
+            {t("taxi.home.tripMode", "Trip type")}
+          </Text>
+          <View style={{ flexDirection: rowDirection(), gap: 10 }}>
+            {(
+              [
+                ["one_way", t("taxi.home.oneWay", "One way")],
+                ["round_trip", t("taxi.home.roundTrip", "Round trip")],
+              ] as const
+            ).map(([key, label]) => {
+              const selected = tripMode === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => setTripMode(key)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: selected ? "#38BDF8" : "#334155",
+                    backgroundColor: selected
+                      ? "rgba(56,189,248,0.12)"
+                      : "rgba(15,23,42,0.8)",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: selected ? "#E0F2FE" : "#CBD5E1", fontWeight: "700" }}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {tripMode === "round_trip" ? (
+            <View style={{ gap: 8 }}>
+              {(
+                [
+                  ["immediate", t("taxi.home.returnImmediate", "Return immediately")],
+                  ["wait", t("taxi.home.returnWait", "Wait at destination")],
+                  ["scheduled", t("taxi.home.returnScheduled", "Scheduled return")],
+                ] as const
+              ).map(([key, label]) => {
+                const selected = returnMode === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => setReturnMode(key)}
+                    style={{
+                      padding: 12,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: selected ? "#38BDF8" : "#334155",
+                      backgroundColor: selected
+                        ? "rgba(56,189,248,0.12)"
+                        : "rgba(15,23,42,0.8)",
+                    }}
+                  >
+                    <Text style={{ color: selected ? "#E0F2FE" : "#CBD5E1" }}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {returnMode === "wait" ? (
+                <TextInput
+                  value={returnWaitMinutes}
+                  onChangeText={setReturnWaitMinutes}
+                  keyboardType="number-pad"
+                  placeholder={t("taxi.home.waitMinutes", "Wait minutes (5–180)")}
+                  placeholderTextColor="#64748B"
+                  style={inputStyle}
+                />
+              ) : null}
+              {returnMode === "scheduled" ? (
+                <TextInput
+                  value={returnScheduledAt}
+                  onChangeText={setReturnScheduledAt}
+                  autoCapitalize="none"
+                  placeholder={t(
+                    "taxi.home.returnScheduledAt",
+                    "Return time (ISO, e.g. 2026-07-16T18:00:00Z)",
+                  )}
+                  placeholderTextColor="#64748B"
+                  style={inputStyle}
+                />
+              ) : null}
+            </View>
+          ) : null}
         </View>
 
         <View style={{ gap: 10 }}>

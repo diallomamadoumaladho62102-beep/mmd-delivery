@@ -5,6 +5,7 @@ import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
 import { fireTaxiRideDispatchedTransactional } from "@/lib/transactionalDispatchNotify";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { notifyDriverVehicleEvent } from "@/lib/driverPushNotifications";
+import { notifyClientTaxiRideAccepted } from "@/lib/clientPushNotifications";
 import {
   TAXI_ACCEPT_REASON_MESSAGES,
   type TaxiAcceptRejectReason,
@@ -143,6 +144,23 @@ export async function POST(req: NextRequest) {
       await fireTaxiRideDispatchedTransactional({
         supabaseAdmin: auth.supabaseAdmin,
         taxiRideId,
+      });
+
+      const { data: rideRow } = await auth.supabaseAdmin
+        .from("taxi_rides")
+        .select("client_user_id")
+        .eq("id", taxiRideId)
+        .maybeSingle();
+
+      await notifyClientTaxiRideAccepted({
+        supabaseAdmin: auth.supabaseAdmin,
+        userIds: [rideRow?.client_user_id],
+        taxiRideId,
+      }).catch((err) => {
+        console.log(
+          "[taxi accept] client push error:",
+          err instanceof Error ? err.message : err,
+        );
       });
     }
 

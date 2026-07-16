@@ -33,6 +33,7 @@ import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
+import { notifyTaxiOfferPushReceived } from "../lib/taxiPushEvents";
 import {
   getDriverOnlineStatus,
   setDriverOnlineStatus,
@@ -1746,6 +1747,33 @@ export function DriverHomeScreen() {
               table: "delivery_request_driver_offers",
               filter: `driver_id=eq.${driverId}`,
               callback: () => scheduleDriverOrdersRefresh(0),
+            },
+            {
+              event: "INSERT",
+              table: "taxi_offers",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => {
+                notifyTaxiOfferPushReceived();
+                scheduleDriverOrdersRefresh(0);
+              },
+            },
+            {
+              event: "UPDATE",
+              table: "taxi_offers",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => {
+                notifyTaxiOfferPushReceived();
+                scheduleDriverOrdersRefresh(0);
+              },
+            },
+            {
+              event: "DELETE",
+              table: "taxi_offers",
+              filter: `driver_id=eq.${driverId}`,
+              callback: () => {
+                notifyTaxiOfferPushReceived();
+                scheduleDriverOrdersRefresh(0);
+              },
             },
           ],
           (status) => {

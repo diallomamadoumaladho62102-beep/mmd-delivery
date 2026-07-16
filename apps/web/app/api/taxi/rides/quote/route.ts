@@ -11,6 +11,14 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import { validateRouteClaimsServer } from "@/lib/geoTrust";
+import {
+  buildRoundTripRouteInput,
+  normalizeReturnScheduledAt,
+  normalizeReturnWaitMinutes,
+  normalizeTaxiReturnMode,
+  normalizeTaxiTripMode,
+} from "@/lib/taxiTripMode";
+import { resolveTaxiAddressConfig } from "@/lib/taxiAddressConfig";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +43,14 @@ type Body = {
   stops?: { address?: string; lat?: number; lng?: number }[];
   sharedRide?: boolean;
   shared_ride?: boolean;
+  tripMode?: string;
+  trip_mode?: string;
+  returnMode?: string;
+  return_mode?: string;
+  returnWaitMinutes?: number;
+  return_wait_minutes?: number;
+  returnScheduledAt?: string;
+  return_scheduled_at?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -71,17 +87,40 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: locationInput.error }, locationInput.status);
     }
 
+    const tripMode = normalizeTaxiTripMode(body.tripMode ?? body.trip_mode);
+    const returnMode = normalizeTaxiReturnMode(
+      tripMode,
+      body.returnMode ?? body.return_mode,
+    );
+    const returnWaitMinutes = normalizeReturnWaitMinutes(
+      returnMode,
+      body.returnWaitMinutes ?? body.return_wait_minutes,
+    );
+    const returnScheduledAt = normalizeReturnScheduledAt(
+      returnMode,
+      body.returnScheduledAt ?? body.return_scheduled_at,
+    );
+
+    if (returnMode === "scheduled" && !returnScheduledAt) {
+      return taxiJson({ ok: false, error: "return_scheduled_at_required" }, 400);
+    }
+
     let route;
     try {
-      route = await resolveTaxiMultiStopRoute({
-        pickupAddress: locationInput.pickupAddress,
-        dropoffAddress: locationInput.dropoffAddress,
-        pickupLat: locationInput.pickupLat,
-        pickupLng: locationInput.pickupLng,
-        dropoffLat: locationInput.dropoffLat,
-        dropoffLng: locationInput.dropoffLng,
-        stops: body.stops,
-      });
+      route = await resolveTaxiMultiStopRoute(
+        buildRoundTripRouteInput(
+          {
+            pickupAddress: locationInput.pickupAddress,
+            dropoffAddress: locationInput.dropoffAddress,
+            pickupLat: locationInput.pickupLat,
+            pickupLng: locationInput.pickupLng,
+            dropoffLat: locationInput.dropoffLat,
+            dropoffLng: locationInput.dropoffLng,
+            stops: body.stops,
+          },
+          tripMode,
+        ),
+      );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : ROUTE_UNAVAILABLE;
       if (message === "distance_too_far") {
@@ -226,9 +265,22 @@ export async function POST(req: NextRequest) {
       shared_ride: sharedRide,
     });
 
+    const { data: countryRow } = await auth.supabaseAdmin
+      .from("taxi_countries")
+      .select("metadata")
+      .eq("country_code", countryCode)
+      .maybeSingle();
+
+    const addressConfig = resolveTaxiAddressConfig(countryCode, countryRow?.metadata);
+
     return taxiJson({
       ok: true,
       country_resolution: countryResult.resolution,
+      address_config: addressConfig,
+      trip_mode: tripMode,
+      return_mode: returnMode,
+      return_wait_minutes: returnWaitMinutes,
+      return_scheduled_at: returnScheduledAt,
       quote: {
         ...quoteWithServiceFee,
         ...priceSnapshot,

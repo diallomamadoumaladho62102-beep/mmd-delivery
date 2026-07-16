@@ -17,6 +17,7 @@ import {
   acceptTaxiOffer,
   arriveTaxiPickup,
   arriveTaxiStop,
+  cancelTaxiRideByDriver,
   completeTaxiRide,
   completeTaxiStop,
   fetchActiveTaxiRide,
@@ -28,6 +29,7 @@ import {
   type TaxiDriverFeatures,
 } from "../../lib/taxiDriverApi";
 import { subscribeTaxiOfferPushRefresh } from "../../lib/taxiPushEvents";
+import { getFreshPosition } from "../../lib/locationPermissionState";
 import { DriverWaitTimerPanel } from "./DriverWaitTimerPanel";
 import { TaxiSafetyRecordingPanel } from "../taxi/TaxiSafetyRecordingPanel";
 import {
@@ -238,12 +240,40 @@ export function DriverTaxiPanel({ isOnline }: Props) {
 
     setActionId(rideId);
     try {
-      if (action === "arrive") await arriveTaxiPickup(rideId);
-      if (action === "start") await startTaxiRide(rideId);
-      if (action === "complete") await completeTaxiRide(rideId);
+      if (action === "arrive" || action === "complete") {
+        const pos = await getFreshPosition({ timeoutMs: 8000 });
+        if (
+          pos.state !== "fresh" &&
+          pos.state !== "cached" &&
+          pos.state !== "weak_accuracy"
+        ) {
+          throw new Error("GPS required to confirm arrival or completion.");
+        }
+        const coords = { lat: pos.latitude, lng: pos.longitude };
+        if (action === "arrive") await arriveTaxiPickup(rideId, coords);
+        if (action === "complete") await completeTaxiRide(rideId, coords);
+      } else {
+        await startTaxiRide(rideId);
+      }
       await refresh();
     } catch (e: unknown) {
       Alert.alert("Taxi", toUserFacingError(e, "Action failed"));
+    } finally {
+      actionLockRef.current = false;
+      setActionId(null);
+    }
+  }
+
+  async function handleDriverCancel() {
+    const rideId = String(activeRide?.id ?? "");
+    if (!rideId || actionLockRef.current) return;
+    actionLockRef.current = true;
+    setActionId(rideId);
+    try {
+      await cancelTaxiRideByDriver(rideId);
+      await refresh();
+    } catch (e: unknown) {
+      Alert.alert("Taxi", toUserFacingError(e, "Cancel failed"));
     } finally {
       actionLockRef.current = false;
       setActionId(null);
@@ -368,6 +398,13 @@ export function DriverTaxiPanel({ isOnline }: Props) {
               />
             ) : null}
 
+            {status === "accepted" ? (
+              <LifecycleBtn
+                label="Arrive at pickup"
+                loading={actionId === rideId}
+                onPress={() => lifecycle("arrive")}
+              />
+            ) : null}
             {status === "driver_arrived" ? (
               <LifecycleBtn
                 label="Start ride"
@@ -381,6 +418,30 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                 loading={actionId === rideId}
                 onPress={() => lifecycle("complete")}
               />
+            ) : null}
+            {status === "accepted" || status === "driver_arrived" ? (
+              <TouchableOpacity
+                style={styles.rejectBtn}
+                disabled={actionId === rideId}
+                onPress={() => {
+                  Alert.alert(
+                    "Cancel ride",
+                    "Cancel this taxi ride? Payment refund (if any) is handled by admin.",
+                    [
+                      { text: "Keep ride", style: "cancel" },
+                      {
+                        text: "Cancel ride",
+                        style: "destructive",
+                        onPress: () => void handleDriverCancel(),
+                      },
+                    ],
+                  );
+                }}
+              >
+                <Text style={styles.rejectText}>
+                  {actionId === rideId ? "…" : "Cancel ride"}
+                </Text>
+              </TouchableOpacity>
             ) : null}
           </View>
         ) : null}

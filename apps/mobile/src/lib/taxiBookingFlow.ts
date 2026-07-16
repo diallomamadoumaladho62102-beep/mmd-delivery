@@ -2,6 +2,9 @@
  * Pure taxi booking flow helpers — quote before create (no orphan quoted rides).
  */
 
+/** Max intermediate stops between pickup and final dropoff. */
+export const MAX_TAXI_STOPS = 5;
+
 export type TaxiStopInput = {
   address: string;
   lat?: number;
@@ -38,7 +41,22 @@ export function normalizeOrderedStops(stops: Array<string | TaxiStopInput>): Tax
         ...(Number.isFinite(lng) ? { lng } : {}),
       };
     })
-    .filter((s): s is TaxiStopInput => s != null);
+    .filter((s): s is TaxiStopInput => s != null)
+    .slice(0, MAX_TAXI_STOPS);
+}
+
+/**
+ * Reorder stops by moving the item at fromIndex to toIndex (stable clamp).
+ */
+export function reorderStops<T>(stops: T[], fromIndex: number, toIndex: number): T[] {
+  if (!Array.isArray(stops) || stops.length === 0) return [];
+  const from = Math.max(0, Math.min(stops.length - 1, Math.round(fromIndex)));
+  const to = Math.max(0, Math.min(stops.length - 1, Math.round(toIndex)));
+  if (from === to) return stops.slice();
+  const next = stops.slice();
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
 }
 
 /**

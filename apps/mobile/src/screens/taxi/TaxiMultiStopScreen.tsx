@@ -6,6 +6,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -20,8 +21,12 @@ import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { AddressAutocomplete } from "../../components/location/AddressAutocomplete";
 import {
   buildMultiStopQuoteNavigationParams,
+  MAX_TAXI_STOPS,
+  normalizeOrderedStops,
+  reorderStops,
   shouldCreateRideBeforePayment,
 } from "../../lib/taxiBookingFlow";
+import { rowDirection } from "../../i18n/rtl";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiMultiStop">;
 
@@ -31,10 +36,25 @@ export default function TaxiMultiStopScreen() {
   const { features, loading: scopeLoading } = useClientPlatformFeatures();
   const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
   const [pickup, setPickup] = useState("");
-  const [stop1, setStop1] = useState("");
-  const [stop2, setStop2] = useState("");
+  const [stops, setStops] = useState<string[]>([""]);
   const [dropoff, setDropoff] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function updateStop(index: number, value: string) {
+    setStops((prev) => prev.map((stop, i) => (i === index ? value : stop)));
+  }
+
+  function addStop() {
+    setStops((prev) => (prev.length >= MAX_TAXI_STOPS ? prev : [...prev, ""]));
+  }
+
+  function removeStop(index: number) {
+    setStops((prev) => (prev.length <= 1 ? [""] : prev.filter((_, i) => i !== index)));
+  }
+
+  function moveStop(index: number, direction: -1 | 1) {
+    setStops((prev) => reorderStops(prev, index, index + direction));
+  }
 
   async function handleQuote() {
     if (!market.scopeResolved || !market.countryCode) {
@@ -57,15 +77,12 @@ export default function TaxiMultiStopScreen() {
     setLoading(true);
     try {
       const countryCode = market.countryCode;
-      const stops = [stop1, stop2]
-        .map((value) => value.trim())
-        .filter(Boolean)
-        .map((address) => ({ address }));
+      const normalizedStops = normalizeOrderedStops(stops);
 
       const result = await quoteTaxiRide({
         pickupAddress: pickup.trim(),
         dropoffAddress: dropoff.trim(),
-        stops,
+        stops: normalizedStops,
         vehicleClass: "standard",
         countryCode,
       });
@@ -78,8 +95,8 @@ export default function TaxiMultiStopScreen() {
         vehicleClass: "standard",
         countryCode,
         quote: result.quote,
-        route: { ...result.route, stops: result.route?.stops ?? stops },
-        stops,
+        route: { ...result.route, stops: result.route?.stops ?? normalizedStops },
+        stops: normalizedStops,
       });
 
       navigation.navigate("TaxiQuote", params);
@@ -114,20 +131,86 @@ export default function TaxiMultiStopScreen() {
           placeholder={t("taxi.quote.pickup", "Pickup")}
           country={market.countryCode || undefined}
         />
-        <AddressAutocomplete
-          value={stop1}
-          onChangeText={setStop1}
-          onSelect={(place) => setStop1(place.fullAddress)}
-          placeholder={t("taxi.multiStop.stop1", "Stop 1 (optional)")}
-          country={market.countryCode || undefined}
-        />
-        <AddressAutocomplete
-          value={stop2}
-          onChangeText={setStop2}
-          onSelect={(place) => setStop2(place.fullAddress)}
-          placeholder={t("taxi.multiStop.stop2", "Stop 2 (optional)")}
-          country={market.countryCode || undefined}
-        />
+        {stops.map((stop, index) => (
+          <View key={`stop-${index}`} style={{ gap: 8 }}>
+            <AddressAutocomplete
+              value={stop}
+              onChangeText={(text) => updateStop(index, text)}
+              onSelect={(place) => updateStop(index, place.fullAddress)}
+              placeholder={t("taxi.multiStop.stopN", "Stop {{n}} (optional)", {
+                n: index + 1,
+              })}
+              country={market.countryCode || undefined}
+            />
+            <View style={{ flexDirection: rowDirection(), gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => moveStop(index, -1)}
+                disabled={index === 0}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: "#334155",
+                  alignItems: "center",
+                  opacity: index === 0 ? 0.4 : 1,
+                }}
+              >
+                <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+                  {t("taxi.multiStop.moveUp", "Up")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => moveStop(index, 1)}
+                disabled={index >= stops.length - 1}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: "#334155",
+                  alignItems: "center",
+                  opacity: index >= stops.length - 1 ? 0.4 : 1,
+                }}
+              >
+                <Text style={{ color: "#E2E8F0", fontWeight: "700" }}>
+                  {t("taxi.multiStop.moveDown", "Down")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => removeStop(index)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: "#7F1D1D",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#FCA5A5", fontWeight: "700" }}>
+                  {t("taxi.multiStop.remove", "Remove")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+        {stops.length < MAX_TAXI_STOPS ? (
+          <TouchableOpacity
+            onPress={addStop}
+            style={{
+              paddingVertical: 12,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#334155",
+              alignItems: "center",
+            }}
+          >
+            <Text style={{ color: "#93C5FD", fontWeight: "700" }}>
+              {t("taxi.multiStop.addStop", "Add stop")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         <AddressAutocomplete
           value={dropoff}
           onChangeText={setDropoff}
@@ -149,7 +232,11 @@ export default function TaxiMultiStopScreen() {
           )}
         </TouchableOpacity>
         <Text style={{ color: "#64748B", textAlign: "center" }}>
-          {t("taxi.multiStop.pricingNote", "Pricing uses total route distance/duration.")}
+          {t(
+            "taxi.multiStop.pricingNote",
+            "Pricing uses total route distance/duration. Up to {{max}} stops.",
+            { max: MAX_TAXI_STOPS },
+          )}
         </Text>
       </ScrollView>
     </SafeAreaView>

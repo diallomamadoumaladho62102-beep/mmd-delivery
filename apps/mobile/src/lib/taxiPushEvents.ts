@@ -25,12 +25,33 @@ export function extractTaxiPushPayload(data: unknown): {
 } {
   const record = (data ?? {}) as Record<string, unknown>;
   const type = String(record.type ?? "").trim();
-  const taxiRideId = String(
+  let taxiRideId = String(
     record.taxiRideId ?? record.taxi_ride_id ?? ""
   ).trim();
+
+  if (!taxiRideId && type === "driver_arrived") {
+    const entityType = String(
+      record.entity_type ?? record.entityType ?? "",
+    )
+      .trim()
+      .toLowerCase();
+    if (entityType.includes("taxi")) {
+      taxiRideId = String(
+        record.entity_id ?? record.entityId ?? "",
+      ).trim();
+    }
+  }
 
   return {
     type,
     taxiRideId: taxiRideId || null,
   };
+}
+
+export function isClientTaxiPushType(type: string): boolean {
+  return (
+    type === "ride_accepted" ||
+    type === "taxi_ride_cancelled" ||
+    type === "driver_arrived"
+  );
 }

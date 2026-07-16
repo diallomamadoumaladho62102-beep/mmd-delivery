@@ -27,6 +27,7 @@ import {
   type MmdLocationPoint,
   type MmdZone,
 } from "../../lib/mmdLocationApi";
+import { defaultTaxiAddressConfig } from "../../lib/taxiAddressConfig";
 
 const DEFAULT_GN_CENTER = {
   latitude: 9.6412,
@@ -106,15 +107,25 @@ export default function MMDLocationPicker({
   }
 
   const scopedCountryCode = countryCode.trim().toUpperCase();
+  const addressConfig = useMemo(
+    () => defaultTaxiAddressConfig(scopedCountryCode),
+    [scopedCountryCode],
+  );
+  const structuredMode = addressConfig.structured_address_mode;
+  const requireLandmark = addressConfig.landmark_prompt_required;
+  const requirePinConfirm = addressConfig.manual_pin_confirmation_required;
   const initialCenter = defaultCenterForCountry(scopedCountryCode);
 
   const [regionName, setRegionName] = useState("Conakry");
   const [prefectureName, setPrefectureName] = useState("Conakry");
-  const [cityName, setCityName] = useState("Conakry");
+  const [cityName, setCityName] = useState(structuredMode ? "" : "Conakry");
   const [communeName, setCommuneName] = useState("");
   const [quartierName, setQuartierName] = useState("");
+  const [streetNumber, setStreetNumber] = useState("");
+  const [postalCode, setPostalCode] = useState("");
   const [formattedAddress, setFormattedAddress] = useState("");
   const [directionsText, setDirectionsText] = useState("");
+  const [pinConfirmed, setPinConfirmed] = useState(!requirePinConfirm);
   const [landmarkQuery, setLandmarkQuery] = useState("");
   const [landmarks, setLandmarks] = useState<MmdLandmark[]>([]);
   const [zones, setZones] = useState<MmdZone[]>([]);
@@ -131,8 +142,21 @@ export default function MMDLocationPicker({
   const [loadingLandmarks, setLoadingLandmarks] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const directionsValid = directionsText.trim().length >= 8;
-  const canSave = directionsValid && Number.isFinite(pinLat) && Number.isFinite(pinLng);
+  const directionsValid =
+    structuredMode || directionsText.trim().length >= 8;
+  const structuredValid =
+    !structuredMode ||
+    (Boolean(cityName.trim()) &&
+      (!addressConfig.street_number_required || Boolean(streetNumber.trim())) &&
+      (!addressConfig.postal_code_required || Boolean(postalCode.trim())));
+  const landmarkValid = !requireLandmark || Boolean(selectedLandmark) || directionsValid;
+  const canSave =
+    Number.isFinite(pinLat) &&
+    Number.isFinite(pinLng) &&
+    structuredValid &&
+    landmarkValid &&
+    (!requirePinConfirm || pinConfirmed) &&
+    (structuredMode ? true : directionsValid);
 
   const mapCenter = useMemo(
     () => [pinLng, pinLat] as [number, number],
@@ -233,6 +257,7 @@ export default function MMDLocationPicker({
     setPinLng(coords[0]);
     setPinLat(coords[1]);
     setLocationSource("pin");
+    if (requirePinConfirm) setPinConfirmed(false);
   }
 
   async function handlePickPhoto() {
@@ -263,7 +288,11 @@ export default function MMDLocationPicker({
     if (!canSave) {
       Alert.alert(
         "Missing information",
-        "Move the pin on the map and describe your exact location (minimum 8 characters)."
+        structuredMode
+          ? "Enter street number, city, and postal code, then place the pin."
+          : requirePinConfirm
+            ? "Confirm the map pin and add landmark or directions so the driver can find you."
+            : "Move the pin on the map and describe your exact location (minimum 8 characters).",
       );
       return;
     }
@@ -278,6 +307,14 @@ export default function MMDLocationPicker({
         photoPayload = { uri: photoUri, mime: photoMime, base64 };
       }
 
+      const structuredFormatted = [
+        streetNumber.trim(),
+        cityName.trim(),
+        postalCode.trim(),
+      ]
+        .filter(Boolean)
+        .join(", ");
+
       const location = await saveMmdLocationWithOptionalPhoto({
         input: {
           country_code: scopedCountryCode,
@@ -286,7 +323,10 @@ export default function MMDLocationPicker({
           city_name: cityName.trim() || undefined,
           commune_name: communeName.trim() || undefined,
           quartier_name: quartierName.trim() || undefined,
-          formatted_address: formattedAddress.trim() || undefined,
+          formatted_address:
+            formattedAddress.trim() ||
+            (structuredMode ? structuredFormatted : undefined) ||
+            undefined,
           directions_text: directionsText.trim(),
           geocoded_lat: gpsLat,
           geocoded_lng: gpsLng,
@@ -323,8 +363,11 @@ export default function MMDLocationPicker({
       </View>
 
       <Text style={{ color: "#64748B", fontSize: 13 }}>
-        Tap the map to place your exact pin. Describe the place so the driver can find you even
-        without a street number.
+        {structuredMode
+          ? "Enter your street number, city, and ZIP, then place the pin on the exact entrance."
+          : requirePinConfirm
+            ? "Tap the map to place your pin, confirm it, and add a landmark or directions so the driver can find you."
+            : "Tap the map to place your exact pin. Describe the place so the driver can find you even without a street number."}
       </Text>
 
       <View style={{ height: 240, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: "#334155" }}>
@@ -391,7 +434,27 @@ export default function MMDLocationPicker({
         </Text>
       )}
 
-      {zones.length > 0 ? (
+      {requirePinConfirm ? (
+        <TouchableOpacity
+          onPress={() => setPinConfirmed(true)}
+          style={{
+            backgroundColor: pinConfirmed ? "rgba(34,197,94,0.15)" : "#1E293B",
+            borderRadius: 12,
+            paddingVertical: 12,
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: pinConfirmed ? "#22C55E" : "#F59E0B",
+          }}
+        >
+          <Text style={{ color: pinConfirmed ? "#86EFAC" : "#FDE68A", fontWeight: "700" }}>
+            {pinConfirmed
+              ? "Pin confirmed"
+              : "Confirm pin location"}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {zones.length > 0 && !structuredMode ? (
         <View style={{ gap: 8 }}>
           <FieldLabel>{`Zone (${scopedCountryCode})`}</FieldLabel>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -419,6 +482,45 @@ export default function MMDLocationPicker({
         </View>
       ) : null}
 
+      {structuredMode ? (
+        <View style={{ gap: 10 }}>
+          <View>
+            <FieldLabel>Street number *</FieldLabel>
+            <FieldInput
+              value={streetNumber}
+              onChangeText={setStreetNumber}
+              placeholder="123"
+              keyboardType="numbers-and-punctuation"
+            />
+          </View>
+          <View>
+            <FieldLabel>City *</FieldLabel>
+            <FieldInput
+              value={cityName}
+              onChangeText={setCityName}
+              placeholder="New York"
+            />
+          </View>
+          <View>
+            <FieldLabel>ZIP / Postal code *</FieldLabel>
+            <FieldInput
+              value={postalCode}
+              onChangeText={setPostalCode}
+              placeholder="10001"
+              autoCapitalize="characters"
+            />
+          </View>
+          <View>
+            <FieldLabel>Street / place name (optional)</FieldLabel>
+            <FieldInput
+              value={formattedAddress}
+              onChangeText={setFormattedAddress}
+              placeholder="Main St / building name"
+            />
+          </View>
+        </View>
+      ) : (
+        <>
       <View style={{ flexDirection: "row", gap: 10 }}>
         <View style={{ flex: 1 }}>
           <FieldLabel>Commune</FieldLabel>
@@ -431,7 +533,7 @@ export default function MMDLocationPicker({
       </View>
 
       <View>
-        <FieldLabel>Landmark search</FieldLabel>
+        <FieldLabel>{requireLandmark ? "Landmark search *" : "Landmark search"}</FieldLabel>
         <FieldInput
           value={landmarkQuery}
           onChangeText={(text) => {
@@ -493,6 +595,8 @@ export default function MMDLocationPicker({
           </Text>
         ) : null}
       </View>
+        </>
+      )}
 
       <View style={{ gap: 8 }}>
         <FieldLabel>Photo of the place (recommended)</FieldLabel>

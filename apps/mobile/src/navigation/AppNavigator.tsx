@@ -115,7 +115,11 @@ import {
   navigateToDriverMission,
 } from "../lib/driverMissionPush";
 import { notifyDriverMissionPushReceived } from "../lib/driverMissionPushEvents";
-import { notifyTaxiOfferPushReceived } from "../lib/taxiPushEvents";
+import {
+  extractTaxiPushPayload,
+  isClientTaxiPushType,
+  notifyTaxiOfferPushReceived,
+} from "../lib/taxiPushEvents";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -226,6 +230,10 @@ export type RootStackParamList = {
     preferElectricOrHybrid?: boolean;
     clientPreferences?: Record<string, boolean>;
     ambiancePreference?: "quiet" | "music" | "conversation" | "none";
+    tripMode?: "one_way" | "round_trip";
+    returnMode?: "immediate" | "wait" | "scheduled";
+    returnWaitMinutes?: number;
+    returnScheduledAt?: string;
   };
   TaxiRideTracking: { rideId: string };
   TaxiHistory: undefined;
@@ -439,17 +447,33 @@ export function AppNavigator({
       }
     }
 
+    function handleClientTaxiPush(data: unknown) {
+      const payload = extractTaxiPushPayload(data);
+      if (!isClientTaxiPushType(payload.type)) return;
+      if (payload.type === "driver_arrived" && !payload.taxiRideId) return;
+      if (payload.taxiRideId && navReady()) {
+        navRef.current?.navigate("TaxiRideTracking", {
+          rideId: payload.taxiRideId,
+        });
+      }
+    }
+
+    function handleNotificationData(data: unknown) {
+      handleDriverMissionPush(data);
+      handleClientTaxiPush(data);
+    }
+
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
-      handleDriverMissionPush(notification.request.content.data);
+      handleNotificationData(notification.request.content.data);
     });
 
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
-      handleDriverMissionPush(response.notification.request.content.data);
+      handleNotificationData(response.notification.request.content.data);
     });
 
     void Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) {
-        handleDriverMissionPush(response.notification.request.content.data);
+        handleNotificationData(response.notification.request.content.data);
       }
     });
 

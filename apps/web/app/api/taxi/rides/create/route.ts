@@ -23,6 +23,13 @@ import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
 import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
 import { validateRouteClaimsServer } from "@/lib/geoTrust";
+import {
+  buildRoundTripRouteInput,
+  normalizeReturnScheduledAt,
+  normalizeReturnWaitMinutes,
+  normalizeTaxiReturnMode,
+  normalizeTaxiTripMode,
+} from "@/lib/taxiTripMode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -69,6 +76,14 @@ type Body = {
   client_preferences?: Partial<TaxiClientPreferences> & Record<string, unknown>;
   ambiancePreference?: TaxiAmbiancePreference;
   ambiance_preference?: TaxiAmbiancePreference;
+  tripMode?: string;
+  trip_mode?: string;
+  returnMode?: string;
+  return_mode?: string;
+  returnWaitMinutes?: number;
+  return_wait_minutes?: number;
+  returnScheduledAt?: string;
+  return_scheduled_at?: string;
 };
 
 function parseClientPreferences(body: Body): {
@@ -176,17 +191,40 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: locationInput.error }, locationInput.status);
     }
 
+    const tripMode = normalizeTaxiTripMode(body.tripMode ?? body.trip_mode);
+    const returnMode = normalizeTaxiReturnMode(
+      tripMode,
+      body.returnMode ?? body.return_mode,
+    );
+    const returnWaitMinutes = normalizeReturnWaitMinutes(
+      returnMode,
+      body.returnWaitMinutes ?? body.return_wait_minutes,
+    );
+    const returnScheduledAt = normalizeReturnScheduledAt(
+      returnMode,
+      body.returnScheduledAt ?? body.return_scheduled_at,
+    );
+
+    if (returnMode === "scheduled" && !returnScheduledAt) {
+      return taxiJson({ ok: false, error: "return_scheduled_at_required" }, 400);
+    }
+
     let route;
     try {
-      route = await resolveTaxiMultiStopRoute({
-        pickupAddress: locationInput.pickupAddress,
-        dropoffAddress: locationInput.dropoffAddress,
-        pickupLat: locationInput.pickupLat,
-        pickupLng: locationInput.pickupLng,
-        dropoffLat: locationInput.dropoffLat,
-        dropoffLng: locationInput.dropoffLng,
-        stops: body.stops,
-      });
+      route = await resolveTaxiMultiStopRoute(
+        buildRoundTripRouteInput(
+          {
+            pickupAddress: locationInput.pickupAddress,
+            dropoffAddress: locationInput.dropoffAddress,
+            pickupLat: locationInput.pickupLat,
+            pickupLng: locationInput.pickupLng,
+            dropoffLat: locationInput.dropoffLat,
+            dropoffLng: locationInput.dropoffLng,
+            stops: body.stops,
+          },
+          tripMode,
+        ),
+      );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Route resolution failed";
       if (message === "distance_too_far") {
@@ -459,6 +497,10 @@ export async function POST(req: NextRequest) {
             ? "business"
             : "personal",
         business_approval_status: businessApprovalStatus,
+        trip_mode: tripMode,
+        return_mode: returnMode,
+        return_wait_minutes: returnWaitMinutes,
+        return_scheduled_at: returnScheduledAt,
       })
       .select("*")
       .single();

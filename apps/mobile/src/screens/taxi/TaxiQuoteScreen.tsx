@@ -83,7 +83,9 @@ export default function TaxiQuoteScreen() {
   const [businessAccounts, setBusinessAccounts] = useState<
     { member_id: string; account?: { id: string; name: string } | null }[]
   >([]);
-  const [quoteState, setQuoteState] = useState(params.quote);
+  const [quoteState, setQuoteState] = useState<Record<string, unknown> | null>(
+    params.quote ?? null,
+  );
   const [sharedDiscountCents, setSharedDiscountCents] = useState(0);
   const [pickupAddress, setPickupAddress] = useState(params.pickupAddress);
   const [dropoffAddress, setDropoffAddress] = useState(params.dropoffAddress);
@@ -189,6 +191,10 @@ export default function TaxiQuoteScreen() {
       countryCode,
       sharedRide,
       stops: rideStops,
+      tripMode: params.tripMode,
+      returnMode: params.returnMode,
+      returnWaitMinutes: params.returnWaitMinutes,
+      returnScheduledAt: params.returnScheduledAt,
     })
       .then((result) => {
         if (cancelled || requestId !== quoteRequestIdRef.current) return;
@@ -202,7 +208,7 @@ export default function TaxiQuoteScreen() {
       })
       .catch(() => {
         if (cancelled || requestId !== quoteRequestIdRef.current) return;
-        setQuoteState(params.quote);
+        setQuoteState(null);
         setSharedDiscountCents(0);
       });
     return () => {
@@ -216,6 +222,10 @@ export default function TaxiQuoteScreen() {
     pickupLocationId,
     dropoffLocationId,
     params.vehicleClass,
+    params.tripMode,
+    params.returnMode,
+    params.returnWaitMinutes,
+    params.returnScheduledAt,
     rideStops,
   ]);
 
@@ -293,7 +303,7 @@ export default function TaxiQuoteScreen() {
   }
 
   async function handleConfirmAndPay() {
-    if (paying || payingRef.current) return;
+    if (paying || payingRef.current || !quoteState) return;
     const pickupLat = Number(routeInfo?.pickupLat);
     const pickupLng = Number(routeInfo?.pickupLng);
     const dropoffLat = Number(routeInfo?.dropoffLat);
@@ -339,6 +349,10 @@ export default function TaxiQuoteScreen() {
           businessRide && businessAccountId ? businessAccountId : undefined,
         businessTripType: businessRide && businessAccountId ? "business" : "personal",
         stops: rideStops,
+        tripMode: params.tripMode,
+        returnMode: params.returnMode,
+        returnWaitMinutes: params.returnWaitMinutes,
+        returnScheduledAt: params.returnScheduledAt,
       });
 
       if (!created?.ok || !created?.ride?.id) {
@@ -714,20 +728,23 @@ export default function TaxiQuoteScreen() {
 
         <TouchableOpacity
           onPress={handleConfirmAndPay}
-          disabled={paying}
+          disabled={paying || !quoteState}
           style={{
             marginTop: 12,
-            backgroundColor: "#22C55E",
+            backgroundColor: quoteState ? "#22C55E" : "#475569",
             paddingVertical: 16,
             borderRadius: 16,
             alignItems: "center",
+            opacity: quoteState ? 1 : 0.6,
           }}
         >
           {paying ? (
             <ActivityIndicator color="#052e16" />
           ) : (
             <Text style={{ color: "#052e16", fontWeight: "800", fontSize: 16 }}>
-              {t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })}
+              {quoteState
+                ? t("taxi.quote.confirmPayTotal", "Confirm & pay {{total}}", { total })
+                : t("taxi.quote.quoteUnavailable", "Estimate unavailable — check addresses")}
             </Text>
           )}
         </TouchableOpacity>

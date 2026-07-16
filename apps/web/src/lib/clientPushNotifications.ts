@@ -323,3 +323,62 @@ export async function notifyClientWaitFinalWarning(params: {
 
   await sendExpoPushMessages(messages);
 }
+
+export async function notifyClientTaxiRideAccepted(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  taxiRideId: string;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const data = {
+    type: "ride_accepted",
+    taxi_ride_id: params.taxiRideId,
+    taxiRideId: params.taxiRideId,
+  };
+
+  const messages = tokens.map((to) => ({
+    to,
+    sound: resolvePushSound(data.type),
+    title: "Chauffeur trouvé",
+    body: "Un chauffeur a accepté votre course. Suivez-le en direct.",
+    data,
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+}
+
+export async function notifyClientTaxiRideCancelled(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  taxiRideId: string;
+  refund: "REQUIRED" | "NONE";
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const data = {
+    type: "taxi_ride_cancelled",
+    taxi_ride_id: params.taxiRideId,
+    taxiRideId: params.taxiRideId,
+    refund: params.refund,
+  };
+
+  const messages = tokens.map((to) => ({
+    to,
+    sound: resolvePushSound("order_cancelled"),
+    title: "Course annulée",
+    body:
+      params.refund === "REQUIRED"
+        ? "Votre course a été annulée. Un remboursement est en cours de traitement."
+        : "Votre course a été annulée.",
+    data,
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+}

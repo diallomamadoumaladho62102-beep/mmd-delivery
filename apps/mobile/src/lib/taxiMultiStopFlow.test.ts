@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import {
   buildMultiStopQuoteNavigationParams,
+  MAX_TAXI_STOPS,
   normalizeOrderedStops,
+  reorderStops,
   shouldCreateRideBeforePayment,
 } from "./taxiBookingFlow";
 
@@ -18,6 +20,19 @@ function testStopsOrderPreserved() {
   );
   assert.equal(stops[2].lat, 1);
   assert.equal(stops[2].lng, 2);
+}
+
+function testMaxStopsCapped() {
+  const many = Array.from({ length: MAX_TAXI_STOPS + 3 }, (_, i) => `Stop ${i + 1}`);
+  const stops = normalizeOrderedStops(many);
+  assert.equal(stops.length, MAX_TAXI_STOPS);
+}
+
+function testReorderStops() {
+  const stops = ["A", "B", "C", "D"];
+  assert.deepEqual(reorderStops(stops, 0, 2), ["B", "C", "A", "D"]);
+  assert.deepEqual(reorderStops(stops, 3, 1), ["A", "D", "B", "C"]);
+  assert.deepEqual(reorderStops(stops, 1, 1), ["A", "B", "C", "D"]);
 }
 
 function testQuoteBeforeCreateInvariant() {
@@ -41,6 +56,8 @@ function testBuildNavParams() {
 }
 
 testStopsOrderPreserved();
+testMaxStopsCapped();
+testReorderStops();
 testQuoteBeforeCreateInvariant();
 testBuildNavParams();
 

@@ -75,6 +75,9 @@ export type TaxiVehicleClass =
   | "wheelchair_accessible"
   | "premium";
 
+export type TaxiTripMode = "one_way" | "round_trip";
+export type TaxiReturnMode = "immediate" | "wait" | "scheduled";
+
 export type TaxiQuoteInput = {
   pickupAddress?: string;
   dropoffAddress?: string;
@@ -91,6 +94,10 @@ export type TaxiQuoteInput = {
   sharedRide?: boolean;
   premiumDriverOnly?: boolean;
   preferElectricOrHybrid?: boolean;
+  tripMode?: TaxiTripMode;
+  returnMode?: TaxiReturnMode;
+  returnWaitMinutes?: number;
+  returnScheduledAt?: string;
 };
 
 export function quoteTaxiRide(input: TaxiQuoteInput) {
@@ -108,6 +115,10 @@ export function quoteTaxiRide(input: TaxiQuoteInput) {
     countryCode: requireCountryCode(input.countryCode),
     stops: input.stops,
     sharedRide: input.sharedRide ?? false,
+    tripMode: input.tripMode,
+    returnMode: input.returnMode,
+    returnWaitMinutes: input.returnWaitMinutes,
+    returnScheduledAt: input.returnScheduledAt,
   });
 }
 
@@ -153,6 +164,10 @@ export function createTaxiRide(
     ambiancePreference: input.ambiancePreference ?? "none",
     businessAccountId: input.businessAccountId,
     businessTripType: input.businessTripType ?? "personal",
+    tripMode: input.tripMode,
+    returnMode: input.returnMode,
+    returnWaitMinutes: input.returnWaitMinutes,
+    returnScheduledAt: input.returnScheduledAt,
   });
 }
 
@@ -166,6 +181,14 @@ export function fetchTaxiRide(rideId: string) {
 
 export function cancelTaxiRide(rideId: string) {
   return taxiPost("/api/taxi/rides/cancel", { taxi_ride_id: rideId });
+}
+
+/** Driver-initiated cancel (accepted / driver_arrived). */
+export function cancelTaxiRideByDriver(rideId: string, reason?: string) {
+  return taxiPost("/api/taxi/rides/driver-cancel", {
+    taxi_ride_id: rideId,
+    reason: reason ?? "driver_cancelled",
+  });
 }
 
 export async function startTaxiCheckout(taxiRideId: string) {

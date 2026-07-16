@@ -57,16 +57,39 @@ export function rejectTaxiOffer(offerId: string) {
   return taxiPost("/api/taxi/offers/reject", { taxi_offer_id: offerId });
 }
 
-export function arriveTaxiPickup(rideId: string) {
-  return taxiPost("/api/taxi/rides/arrive", { taxi_ride_id: rideId });
+export function arriveTaxiPickup(
+  rideId: string,
+  coords?: { lat: number; lng: number },
+) {
+  return taxiPost("/api/taxi/rides/arrive", {
+    taxi_ride_id: rideId,
+    ...(coords
+      ? { lat: coords.lat, lng: coords.lng }
+      : {}),
+  });
 }
 
 export function startTaxiRide(rideId: string) {
   return taxiPost("/api/taxi/rides/start", { taxi_ride_id: rideId });
 }
 
-export function completeTaxiRide(rideId: string) {
-  return taxiPost("/api/taxi/rides/complete", { taxi_ride_id: rideId });
+export function completeTaxiRide(
+  rideId: string,
+  coords?: { lat: number; lng: number },
+) {
+  return taxiPost("/api/taxi/rides/complete", {
+    taxi_ride_id: rideId,
+    ...(coords
+      ? { lat: coords.lat, lng: coords.lng }
+      : {}),
+  });
+}
+
+export function cancelTaxiRideByDriver(rideId: string, reason?: string) {
+  return taxiPost("/api/taxi/rides/driver-cancel", {
+    taxi_ride_id: rideId,
+    reason: reason ?? "driver_cancelled",
+  });
 }
 
 export function arriveTaxiStop(rideId: string, stopOrder: number) {
