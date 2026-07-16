@@ -19,6 +19,7 @@ export type SendEmailInput = {
   to: string;
   subject: string;
   body: string;
+  html?: string;
 };
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -175,6 +176,7 @@ export async function sendAdminEmail(
       to: [input.to],
       subject: input.subject,
       text: input.body,
+      ...(input.html ? { html: input.html } : {}),
     }),
     cache: "no-store",
   });
