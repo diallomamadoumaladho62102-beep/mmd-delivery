@@ -153,7 +153,7 @@ async function main() {
 
     assert.equal(result.ok, true);
     assert.ok(result.job);
-    assert.equal(result.job?.status, "dispatch_ready");
+    assert.equal(result.job?.status, "dispatch_pending");
     assert.equal(result.job?.live_dispatch_enabled, false);
     assert.equal(result.job?.drivers_notified, false);
     assert.equal(state.jobs.length, 1);

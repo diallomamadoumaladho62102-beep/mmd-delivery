@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout";
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 import { prepareMarketplaceSellerPayoutAfterPayment } from "@/lib/marketplacePayoutService";
+import { notifyMarketplaceSellerNewPaidOrder } from "@/lib/marketplacePushNotifications";
 import {
   requirePaymentIntentSucceeded,
   assertSettlementMatchesExpectation,
@@ -185,6 +186,28 @@ export async function handleMarketplaceStripePayment(params: {
       payoutError instanceof Error ? payoutError.message : payoutError
     );
   });
+
+  void (async () => {
+    try {
+      const { data: seller } = await supabaseAdmin
+        .from("sellers")
+        .select("user_id")
+        .eq("id", row.seller_id)
+        .maybeSingle();
+      if (seller?.user_id) {
+        await notifyMarketplaceSellerNewPaidOrder({
+          supabaseAdmin,
+          sellerUserId: String(seller.user_id),
+          orderId: sellerOrderId,
+        });
+      }
+    } catch (notifyError) {
+      console.warn(
+        "[marketplace-stripe-webhook] seller notify failed:",
+        notifyError instanceof Error ? notifyError.message : notifyError
+      );
+    }
+  })();
 
   return { ok: true };
 }

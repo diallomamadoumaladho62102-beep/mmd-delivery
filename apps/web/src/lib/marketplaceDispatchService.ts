@@ -118,9 +118,10 @@ async function resolveDispatchLiveForOrder(
   return flags.marketplace_dispatch_live_enabled;
 }
 
-function resolveInitialJobStatus(): MarketplaceDeliveryJobStatus {
-  // Paid marketplace orders enter the driver pool as ready; live_dispatch_enabled stays env-gated.
-  return "dispatch_ready";
+export function resolveInitialJobStatus(
+  liveEnabled: boolean
+): MarketplaceDeliveryJobStatus {
+  return liveEnabled ? "dispatch_ready" : "dispatch_pending";
 }
 
 export async function prepareMarketplaceDeliveryJob(
@@ -215,7 +216,7 @@ export async function prepareMarketplaceDeliveryJob(
       dropoff_location_id: order.dropoff_location_id ?? dropoffPoint?.id ?? null,
       pickup_address: formatLocationAddress(pickupPoint, order.seller_pickup_address),
       dropoff_address: formatLocationAddress(dropoffPoint, null),
-      status: resolveInitialJobStatus(),
+      status: resolveInitialJobStatus(liveEnabled),
       estimated_distance_miles: estimatedDistanceMiles,
       estimated_minutes: estimatedMinutes,
       driver_earning_cents: driverEarningCents,

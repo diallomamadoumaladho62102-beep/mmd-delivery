@@ -169,6 +169,53 @@ async function loadDeliveryJobForPayout(
   return data as DeliveryJobPayoutSource | null;
 }
 
+/**
+ * Logical wallet credit for a paid/delivered marketplace order.
+ * No Stripe transfer ids — executeMarketplacePayouts remains a stub.
+ */
+export async function ensureMarketplaceSellerWalletEntry(
+  supabaseAdmin: SupabaseClient,
+  params: {
+    sellerId: string;
+    sellerOrderId: string;
+    amountCents: number;
+    currency: string;
+    orderStatus?: string | null;
+  }
+): Promise<{ ok: true; created: boolean; entry_id?: string } | { ok: false; error: string }> {
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("marketplace_seller_wallet_entries")
+    .select("id")
+    .eq("seller_order_id", params.sellerOrderId)
+    .eq("entry_type", "order_credit")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) return { ok: false, error: existingError.message };
+  if (existing) return { ok: true, created: false, entry_id: String(existing.id) };
+
+  const { data: inserted, error: insertError } = await supabaseAdmin
+    .from("marketplace_seller_wallet_entries")
+    .insert({
+      seller_id: params.sellerId,
+      seller_order_id: params.sellerOrderId,
+      entry_type: "order_credit",
+      amount_cents: Math.max(0, Math.round(params.amountCents)),
+      currency: params.currency,
+      status: "pending",
+      metadata: {
+        source: "prepare_marketplace_seller_payout",
+        order_status: params.orderStatus ?? null,
+        stripe_transfer: false,
+      },
+    })
+    .select("id")
+    .maybeSingle();
+
+  if (insertError) return { ok: false, error: insertError.message };
+  return { ok: true, created: true, entry_id: inserted?.id ? String(inserted.id) : undefined };
+}
+
 export async function prepareMarketplaceSellerPayout(
   supabaseAdmin: SupabaseClient,
   params: { sellerOrderId: string; source?: string }
@@ -189,6 +236,12 @@ export async function prepareMarketplaceSellerPayout(
 
   if (existingError) return { ok: false, error: existingError.message };
   if (existing) {
+    await ensureMarketplaceSellerWalletEntry(supabaseAdmin, {
+      sellerId: String(existing.seller_id),
+      sellerOrderId,
+      amountCents: Number(existing.seller_net_amount_cents ?? 0),
+      currency: String(existing.currency ?? "USD").toUpperCase(),
+    });
     return {
       ok: true,
       payout: existing as MarketplaceSellerPayoutRow,
@@ -252,6 +305,21 @@ export async function prepareMarketplaceSellerPayout(
     payout_live_enabled: liveEnabled,
     source,
   });
+
+  try {
+    await ensureMarketplaceSellerWalletEntry(supabaseAdmin, {
+      sellerId: order.seller_id,
+      sellerOrderId,
+      amountCents: amounts.seller_net_amount_cents,
+      currency: String(order.currency ?? "USD").toUpperCase(),
+      orderStatus: order.status,
+    });
+  } catch (walletError) {
+    console.warn("[marketplace-payout] wallet ledger write skipped", {
+      sellerOrderId,
+      error: walletError instanceof Error ? walletError.message : String(walletError),
+    });
+  }
 
   return { ok: true, payout: inserted as MarketplaceSellerPayoutRow };
 }

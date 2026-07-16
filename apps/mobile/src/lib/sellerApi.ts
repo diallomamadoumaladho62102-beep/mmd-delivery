@@ -19,7 +19,13 @@ export async function requireSellerPlatformEnabled(): Promise<{
 }
 
 const SELLER_SELECT =
-  "id,user_id,business_name,country_code,city,address,phone,region_code,mmd_zone_id,status,is_accepting_orders,review_notes,created_at,updated_at";
+  "id,user_id,business_name,country_code,city,address,phone,region_code,mmd_zone_id,status,is_accepting_orders,logo_url,cover_image_url,document_urls,review_notes,created_at,updated_at";
+
+const PRODUCT_SELECT =
+  "id,seller_id,title,description,price_cents,currency,category,image_paths,active,stock_qty,options_json,variants_json,promo_price_cents,created_at,updated_at";
+
+const ORDER_SELECT =
+  "id,seller_id,client_user_id,status,currency,total_cents,country_code,region_code,notes,refund_status,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,dispatch_shadow,created_at";
 
 export async function loadOwnSeller(): Promise<SellerRow | null> {
   const { data: session } = await supabase.auth.getSession();
@@ -42,6 +48,9 @@ export async function upsertSellerOnboarding(input: {
   city: string;
   address: string;
   phone: string;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  document_urls?: string[];
 }): Promise<SellerRow> {
   const { data: session } = await supabase.auth.getSession();
   const userId = session.session?.user?.id;
@@ -54,6 +63,9 @@ export async function upsertSellerOnboarding(input: {
     city: input.city.trim(),
     address: input.address.trim(),
     phone: input.phone.trim(),
+    logo_url: input.logo_url?.trim() || null,
+    cover_image_url: input.cover_image_url?.trim() || null,
+    document_urls: input.document_urls ?? [],
     status: "pending" as const,
     updated_at: new Date().toISOString(),
   };
@@ -68,12 +80,40 @@ export async function upsertSellerOnboarding(input: {
   return data as SellerRow;
 }
 
+export async function updateSellerProfile(input: {
+  sellerId: string;
+  business_name: string;
+  city: string;
+  address: string;
+  phone: string;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  document_urls?: string[];
+}): Promise<SellerRow> {
+  const { data, error } = await supabase
+    .from("sellers")
+    .update({
+      business_name: input.business_name.trim(),
+      city: input.city.trim(),
+      address: input.address.trim(),
+      phone: input.phone.trim(),
+      logo_url: input.logo_url?.trim() || null,
+      cover_image_url: input.cover_image_url?.trim() || null,
+      document_urls: input.document_urls ?? [],
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.sellerId)
+    .select(SELLER_SELECT)
+    .single();
+
+  if (error) throw error;
+  return data as SellerRow;
+}
+
 export async function loadSellerProducts(sellerId: string): Promise<SellerProductRow[]> {
   const { data, error } = await supabase
     .from("seller_products")
-    .select(
-      "id,seller_id,title,description,price_cents,currency,category,image_paths,active,created_at,updated_at"
-    )
+    .select(PRODUCT_SELECT)
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false });
 
@@ -92,6 +132,10 @@ export async function saveSellerProduct(
     category: string;
     image_paths?: string[];
     active: boolean;
+    stock_qty?: number | null;
+    options_json?: unknown;
+    variants_json?: unknown;
+    promo_price_cents?: number | null;
   }
 ): Promise<SellerProductRow> {
   const row = {
@@ -103,6 +147,16 @@ export async function saveSellerProduct(
     category: product.category.trim() || "general",
     image_paths: product.image_paths ?? [],
     active: product.active,
+    stock_qty:
+      product.stock_qty == null || product.stock_qty === undefined
+        ? null
+        : Math.max(0, Math.round(Number(product.stock_qty))),
+    options_json: product.options_json ?? [],
+    variants_json: product.variants_json ?? [],
+    promo_price_cents:
+      product.promo_price_cents == null || product.promo_price_cents === undefined
+        ? null
+        : Math.max(0, Math.round(Number(product.promo_price_cents))),
     updated_at: new Date().toISOString(),
   };
 
@@ -112,9 +166,7 @@ export async function saveSellerProduct(
       .update(row)
       .eq("id", product.id)
       .eq("seller_id", sellerId)
-      .select(
-        "id,seller_id,title,description,price_cents,currency,category,image_paths,active,created_at,updated_at"
-      )
+      .select(PRODUCT_SELECT)
       .single();
     if (error) throw error;
     return data as SellerProductRow;
@@ -123,9 +175,7 @@ export async function saveSellerProduct(
   const { data, error } = await supabase
     .from("seller_products")
     .insert(row)
-    .select(
-      "id,seller_id,title,description,price_cents,currency,category,image_paths,active,created_at,updated_at"
-    )
+    .select(PRODUCT_SELECT)
     .single();
 
   if (error) throw error;
@@ -149,9 +199,7 @@ export async function toggleSellerProductActive(
 export async function loadSellerOrders(sellerId: string): Promise<SellerOrderRow[]> {
   const { data, error } = await supabase
     .from("seller_orders")
-    .select(
-      "id,seller_id,client_user_id,status,currency,total_cents,country_code,region_code,notes,delivery_status_shadow,delivery_quote_shadow,estimated_distance_miles,estimated_minutes,driver_earning_shadow_cents,dispatch_shadow,created_at"
-    )
+    .select(ORDER_SELECT)
     .eq("seller_id", sellerId)
     .order("created_at", { ascending: false });
 

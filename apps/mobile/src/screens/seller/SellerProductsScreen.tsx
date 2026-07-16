@@ -30,9 +30,13 @@ type ProductDraft = {
   title: string;
   description: string;
   price: string;
+  promoPrice: string;
   currency: string;
   category: string;
   imageUrl: string;
+  stockQty: string;
+  optionsText: string;
+  variantsText: string;
   active: boolean;
 };
 
@@ -40,9 +44,13 @@ const EMPTY_DRAFT: ProductDraft = {
   title: "",
   description: "",
   price: "",
+  promoPrice: "",
   currency: "USD",
   category: "general",
   imageUrl: "",
+  stockQty: "",
+  optionsText: "",
+  variantsText: "",
   active: true,
 };
 
@@ -92,14 +100,27 @@ export default function SellerProductsScreen({ navigation }: Props) {
   };
 
   const openEdit = (product: SellerProductRow) => {
+    const options = Array.isArray(product.options_json)
+      ? (product.options_json as unknown[]).map(String).join("\n")
+      : "";
+    const variants = Array.isArray(product.variants_json)
+      ? (product.variants_json as unknown[]).map(String).join("\n")
+      : "";
     setDraft({
       id: product.id,
       title: product.title,
       description: product.description,
       price: String((product.price_cents / 100).toFixed(2)),
+      promoPrice:
+        product.promo_price_cents == null
+          ? ""
+          : String((product.promo_price_cents / 100).toFixed(2)),
       currency: product.currency,
       category: product.category,
       imageUrl: product.image_paths?.[0] ?? "",
+      stockQty: product.stock_qty == null ? "" : String(product.stock_qty),
+      optionsText: options,
+      variantsText: variants,
       active: product.active,
     });
     setModalOpen(true);
@@ -113,6 +134,36 @@ export default function SellerProductsScreen({ navigation }: Props) {
       return;
     }
 
+    const promoRaw = draft.promoPrice.trim();
+    const promoPriceCents =
+      promoRaw === "" ? null : Math.round(Number(promoRaw) * 100);
+    if (promoRaw !== "" && (!Number.isFinite(promoPriceCents) || (promoPriceCents ?? 0) < 0)) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        t("seller.products.invalidPromo", "Invalid promo price")
+      );
+      return;
+    }
+
+    const stockRaw = draft.stockQty.trim();
+    const stockQty =
+      stockRaw === ""
+        ? null
+        : Math.max(0, Math.round(Number(stockRaw)));
+    if (stockRaw !== "" && !Number.isFinite(stockQty)) {
+      Alert.alert(t("common.errorTitle", "Error"), t("seller.products.invalidStock", "Invalid stock quantity"));
+      return;
+    }
+
+    const options_json = draft.optionsText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const variants_json = draft.variantsText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
     try {
       setSaving(true);
       await saveSellerProduct(sellerId, {
@@ -120,10 +171,14 @@ export default function SellerProductsScreen({ navigation }: Props) {
         title: draft.title,
         description: draft.description,
         price_cents: priceCents,
+        promo_price_cents: promoPriceCents,
         currency: draft.currency,
         category: draft.category,
         image_paths: draft.imageUrl.trim() ? [draft.imageUrl.trim()] : [],
         active: draft.active,
+        stock_qty: stockQty,
+        options_json,
+        variants_json,
       });
       setModalOpen(false);
       await refresh();
@@ -182,6 +237,7 @@ export default function SellerProductsScreen({ navigation }: Props) {
               <Text style={{ color: "#F8FAFC", fontWeight: "700" }}>{item.title}</Text>
               <Text style={{ color: "#94A3B8", marginVertical: 4 }}>
                 {formatMoney(item.price_cents, item.currency)} · {item.category}
+                {item.stock_qty != null ? ` · stock ${item.stock_qty}` : ""}
               </Text>
               <Text style={{ color: "#CBD5E1" }} numberOfLines={2}>
                 {item.description}
@@ -216,8 +272,12 @@ export default function SellerProductsScreen({ navigation }: Props) {
                 ["title", draft.title, (v: string) => setDraft((d) => ({ ...d, title: v }))],
                 ["description", draft.description, (v: string) => setDraft((d) => ({ ...d, description: v }))],
                 ["price", draft.price, (v: string) => setDraft((d) => ({ ...d, price: v }))],
+                ["promoPrice", draft.promoPrice, (v: string) => setDraft((d) => ({ ...d, promoPrice: v }))],
                 ["currency", draft.currency, (v: string) => setDraft((d) => ({ ...d, currency: v }))],
                 ["category", draft.category, (v: string) => setDraft((d) => ({ ...d, category: v }))],
+                ["stockQty", draft.stockQty, (v: string) => setDraft((d) => ({ ...d, stockQty: v }))],
+                ["optionsText", draft.optionsText, (v: string) => setDraft((d) => ({ ...d, optionsText: v }))],
+                ["variantsText", draft.variantsText, (v: string) => setDraft((d) => ({ ...d, variantsText: v }))],
                 ["imageUrl", draft.imageUrl, (v: string) => setDraft((d) => ({ ...d, imageUrl: v }))],
               ] as const
             ).map(([key, value, onChangeText]) => (
@@ -225,14 +285,31 @@ export default function SellerProductsScreen({ navigation }: Props) {
                 key={key}
                 value={value}
                 onChangeText={onChangeText}
-                placeholder={key}
+                placeholder={
+                  key === "optionsText"
+                    ? "options (one per line)"
+                    : key === "variantsText"
+                      ? "variants (one per line)"
+                      : key === "stockQty"
+                        ? "stock qty (optional)"
+                        : key === "promoPrice"
+                          ? "promo price (optional)"
+                          : key
+                }
                 placeholderTextColor="#64748B"
+                multiline={
+                  key === "optionsText" ||
+                  key === "variantsText" ||
+                  key === "description"
+                }
                 style={{
                   backgroundColor: "#0F172A",
                   color: "#F8FAFC",
                   borderRadius: 10,
                   paddingHorizontal: 12,
                   paddingVertical: 10,
+                  minHeight:
+                    key === "optionsText" || key === "variantsText" ? 72 : undefined,
                 }}
               />
             ))}

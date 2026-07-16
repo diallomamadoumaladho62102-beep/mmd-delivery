@@ -28,6 +28,7 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
   const state = {
     sellerPayouts: [] as Record<string, unknown>[],
     driverPayouts: [] as Record<string, unknown>[],
+    walletEntries: [] as Record<string, unknown>[],
     orders: [
       {
         id: "order-paid-1",
@@ -55,41 +56,70 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 
+  function chainEq(table: string, filters: Record<string, unknown> = {}) {
+    const api: Record<string, unknown> = {
+      eq: (col: string, val: unknown) => chainEq(table, { ...filters, [col]: val }),
+      limit: () => api,
+      maybeSingle: async () => {
+        if (table === "marketplace_seller_wallet_entries") {
+          const row =
+            state.walletEntries.find((entry) =>
+              Object.entries(filters).every(([k, v]) => entry[k] === v)
+            ) ?? null;
+          return { data: row, error: null };
+        }
+        if (table === "marketplace_seller_payouts") {
+          return {
+            data:
+              state.sellerPayouts.find((r) =>
+                Object.entries(filters).every(([k, v]) => r[k] === v)
+              ) ?? null,
+            error: null,
+          };
+        }
+        if (table === "marketplace_driver_payouts") {
+          return {
+            data:
+              state.driverPayouts.find((r) =>
+                Object.entries(filters).every(([k, v]) => r[k] === v)
+              ) ?? null,
+            error: null,
+          };
+        }
+        if (table === "seller_orders") {
+          return {
+            data:
+              state.orders.find((r) =>
+                Object.entries(filters).every(([k, v]) => r[k] === v)
+              ) ?? null,
+            error: null,
+          };
+        }
+        if (table === "marketplace_delivery_jobs") {
+          return {
+            data:
+              state.jobs.find((r) =>
+                Object.entries(filters).every(([k, v]) => r[k] === v)
+              ) ?? null,
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+    };
+    return api;
+  }
+
   const from = (table: string) => ({
-    select: (_cols: string) => ({
-      eq: (col: string, val: string) => ({
-        maybeSingle: async () => {
-          if (table === "marketplace_seller_payouts") {
-            return {
-              data: state.sellerPayouts.find((r) => r[col] === val) ?? null,
-              error: null,
-            };
-          }
-          if (table === "marketplace_driver_payouts") {
-            return {
-              data: state.driverPayouts.find((r) => r[col] === val) ?? null,
-              error: null,
-            };
-          }
-          if (table === "seller_orders") {
-            return {
-              data: state.orders.find((r) => r[col] === val) ?? null,
-              error: null,
-            };
-          }
-          if (table === "marketplace_delivery_jobs") {
-            return {
-              data: state.jobs.find((r) => r[col] === val) ?? null,
-              error: null,
-            };
-          }
-          return { data: null, error: null };
-        },
-      }),
-    }),
+    select: (_cols: string) => chainEq(table),
     insert: (payload: Record<string, unknown>) => ({
       select: (_cols: string) => ({
         maybeSingle: async () => {
+          if (table === "marketplace_seller_wallet_entries") {
+            const row = { id: "wallet-1", ...payload };
+            state.walletEntries.push(row);
+            return { data: row, error: null };
+          }
           if (table === "marketplace_seller_payouts") {
             const row = { id: "seller-payout-1", ...payload };
             state.sellerPayouts.push(row);

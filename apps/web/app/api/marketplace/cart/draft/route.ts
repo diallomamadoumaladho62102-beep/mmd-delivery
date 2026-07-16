@@ -16,6 +16,7 @@ type DraftBody = {
   notes?: string | null;
   pickup_location_id?: string | null;
   dropoff_location_id?: string | null;
+  replace_items?: boolean;
 };
 
 export async function POST(req: NextRequest) {
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest) {
       countryCode: auth.scope.country_code ?? null,
       pickupLocationId: body.pickup_location_id ?? null,
       dropoffLocationId: body.dropoff_location_id ?? null,
+      replace_items: body.replace_items === true,
     });
 
     return mmdLocationJson({ ok: true, order });

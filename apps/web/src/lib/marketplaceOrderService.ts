@@ -61,7 +61,62 @@ type ProductRow = {
   price_cents: number;
   currency: string;
   active: boolean;
+  stock_qty?: number | null;
+  promo_price_cents?: number | null;
 };
+
+export type MarketplaceDraftMergeItem = {
+  product_id: string;
+  quantity: number;
+};
+
+/**
+ * Merge draft cart items by product_id.
+ * Incoming quantities overwrite matching products; products only in existing stay.
+ * With replaceItems=true, only incoming items are kept.
+ */
+export function mergeMarketplaceDraftItems(
+  existing: MarketplaceDraftMergeItem[],
+  incoming: MarketplaceDraftMergeItem[],
+  replaceItems = false
+): MarketplaceDraftMergeItem[] {
+  if (replaceItems) {
+    return incoming
+      .map((item) => ({
+        product_id: item.product_id,
+        quantity: Math.max(1, Math.round(item.quantity)),
+      }))
+      .filter((item) => item.product_id);
+  }
+
+  const byProduct = new Map<string, number>();
+  for (const item of existing) {
+    if (!item.product_id) continue;
+    byProduct.set(item.product_id, Math.max(1, Math.round(item.quantity)));
+  }
+  for (const item of incoming) {
+    if (!item.product_id) continue;
+    byProduct.set(item.product_id, Math.max(1, Math.round(item.quantity)));
+  }
+
+  return [...byProduct.entries()].map(([product_id, quantity]) => ({
+    product_id,
+    quantity,
+  }));
+}
+
+export function resolveMarketplaceUnitPriceCents(product: {
+  price_cents: number;
+  promo_price_cents?: number | null;
+}): number {
+  const base = Math.max(0, Math.round(Number(product.price_cents) || 0));
+  const promo =
+    product.promo_price_cents == null
+      ? null
+      : Math.max(0, Math.round(Number(product.promo_price_cents) || 0));
+  if (promo != null && promo < base) return promo;
+  return base;
+}
 
 export async function loadApprovedSellerProducts(
   supabaseAdmin: SupabaseClient,
@@ -75,7 +130,7 @@ export async function loadApprovedSellerProducts(
   let query = supabaseAdmin
     .from("seller_products")
     .select(
-      "id,seller_id,title,description,price_cents,currency,category,image_paths,active,created_at,updated_at"
+      "id,seller_id,title,description,price_cents,currency,category,image_paths,active,stock_qty,options_json,promo_price_cents,created_at,updated_at"
     )
     .eq("active", true)
     .order("created_at", { ascending: false })
@@ -104,16 +159,27 @@ export async function loadApprovedSellerProducts(
 
 async function assertApprovedSeller(
   supabaseAdmin: SupabaseClient,
-  sellerId: string
+  sellerId: string,
+  opts?: { requireAcceptingOrders?: boolean }
 ) {
   const { data, error } = await supabaseAdmin
     .from("sellers")
-    .select("id,business_name,country_code,city,status")
+    .select("id,business_name,country_code,city,status,is_accepting_orders")
     .eq("id", sellerId)
     .eq("status", "approved")
     .maybeSingle();
 
   if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  if (
+    opts?.requireAcceptingOrders &&
+    Object.prototype.hasOwnProperty.call(data, "is_accepting_orders") &&
+    data.is_accepting_orders === false
+  ) {
+    throw new Error("Seller is not accepting orders");
+  }
+
   return data;
 }
 
@@ -237,12 +303,17 @@ export async function upsertMarketplaceDraftOrder(
     notes?: string | null;
     pickupLocationId?: string | null;
     dropoffLocationId?: string | null;
+    replace_items?: boolean;
   }
 ): Promise<MarketplaceOrderRow> {
-  const productIds = params.items.map((item) => item.product_id);
-  if (productIds.length === 0) {
+  if (params.items.length === 0 && !params.replace_items) {
     throw new Error("Cart is empty");
   }
+
+  const seller = await assertApprovedSeller(supabaseAdmin, params.sellerId, {
+    requireAcceptingOrders: true,
+  });
+  if (!seller) throw new Error("Seller not available");
 
   if (params.pickupLocationId) {
     await assertClientOwnsLocationPoint(
@@ -262,46 +333,8 @@ export async function upsertMarketplaceDraftOrder(
     );
   }
 
-  const { data: products, error: productsError } = await supabaseAdmin
-    .from("seller_products")
-    .select("id,seller_id,title,price_cents,currency,active")
-    .in("id", productIds)
-    .eq("seller_id", params.sellerId)
-    .eq("active", true);
-
-  if (productsError) throw new Error(productsError.message);
-
-  const productMap = new Map(
-    ((products as ProductRow[]) ?? []).map((product) => [product.id, product])
-  );
-
-  const lineItems = params.items.map((item) => {
-    const product = productMap.get(item.product_id);
-    if (!product) throw new Error(`Invalid product: ${item.product_id}`);
-    const quantity = Math.max(1, Math.round(item.quantity));
-    return {
-      product_id: product.id,
-      title: product.title,
-      price_cents: product.price_cents,
-      quantity,
-      currency: product.currency,
-    };
-  });
-
-  const serviceFeeConfig = await loadMarketplaceServiceFeeConfig(supabaseAdmin, {
-    countryCode: params.countryCode ?? undefined,
-  });
-
-  const shadow = computeMarketplaceCheckoutShadow(
-    lineItems.map((item) => ({
-      price_cents: item.price_cents,
-      quantity: item.quantity,
-    })),
-    { serviceFeeConfig }
-  );
-
-  const currency = lineItems[0]?.currency ?? "USD";
   let orderId = params.orderId ?? null;
+  let existingItems: MarketplaceDraftMergeItem[] = [];
 
   if (orderId) {
     const { data: existing, error: existingError } = await supabaseAdmin
@@ -332,6 +365,75 @@ export async function upsertMarketplaceDraftOrder(
 
     orderId = existingDraft?.id ?? null;
   }
+
+  if (orderId && !params.replace_items) {
+    const { data: existingRows, error: existingItemsError } = await supabaseAdmin
+      .from("seller_order_items")
+      .select("product_id,quantity")
+      .eq("order_id", orderId);
+
+    if (existingItemsError) throw new Error(existingItemsError.message);
+    existingItems = ((existingRows ?? []) as Array<{ product_id: string | null; quantity: number }>)
+      .filter((row) => row.product_id)
+      .map((row) => ({
+        product_id: String(row.product_id),
+        quantity: Number(row.quantity) || 1,
+      }));
+  }
+
+  const mergedItems = mergeMarketplaceDraftItems(
+    existingItems,
+    params.items,
+    Boolean(params.replace_items)
+  );
+
+  if (mergedItems.length === 0) {
+    throw new Error("Cart is empty");
+  }
+
+  const productIds = mergedItems.map((item) => item.product_id);
+  const { data: products, error: productsError } = await supabaseAdmin
+    .from("seller_products")
+    .select("id,seller_id,title,price_cents,currency,active,stock_qty,promo_price_cents")
+    .in("id", productIds)
+    .eq("seller_id", params.sellerId)
+    .eq("active", true);
+
+  if (productsError) throw new Error(productsError.message);
+
+  const productMap = new Map(
+    ((products as ProductRow[]) ?? []).map((product) => [product.id, product])
+  );
+
+  const lineItems = mergedItems.map((item) => {
+    const product = productMap.get(item.product_id);
+    if (!product) throw new Error(`Invalid product: ${item.product_id}`);
+    const quantity = Math.max(1, Math.round(item.quantity));
+    if (product.stock_qty != null && product.stock_qty < quantity) {
+      throw new Error(`Insufficient stock for product: ${product.title}`);
+    }
+    return {
+      product_id: product.id,
+      title: product.title,
+      price_cents: resolveMarketplaceUnitPriceCents(product),
+      quantity,
+      currency: product.currency,
+    };
+  });
+
+  const serviceFeeConfig = await loadMarketplaceServiceFeeConfig(supabaseAdmin, {
+    countryCode: params.countryCode ?? undefined,
+  });
+
+  const shadow = computeMarketplaceCheckoutShadow(
+    lineItems.map((item) => ({
+      price_cents: item.price_cents,
+      quantity: item.quantity,
+    })),
+    { serviceFeeConfig }
+  );
+
+  const currency = lineItems[0]?.currency ?? "USD";
 
   const orderPayload = {
     seller_id: params.sellerId,
@@ -432,13 +534,56 @@ export async function runMarketplaceCheckoutShadow(
     throw new Error("Draft order not found");
   }
 
+  const items = order.items ?? [];
+  if (items.length === 0) {
+    throw new Error("Cart is empty");
+  }
+
+  const productIds = items
+    .map((item) => item.product_id)
+    .filter((id): id is string => Boolean(id));
+
+  const { data: products, error: productsError } = await supabaseAdmin
+    .from("seller_products")
+    .select("id,price_cents,promo_price_cents,active,stock_qty")
+    .in("id", productIds)
+    .eq("seller_id", order.seller_id)
+    .eq("active", true);
+
+  if (productsError) throw new Error(productsError.message);
+
+  const productMap = new Map(
+    ((products as ProductRow[]) ?? []).map((product) => [product.id, product])
+  );
+
+  for (const item of items) {
+    const productId = item.product_id;
+    if (!productId) throw new Error("Order item missing product");
+    const product = productMap.get(productId);
+    if (!product) throw new Error(`Invalid product: ${productId}`);
+    if (product.stock_qty != null && product.stock_qty < item.quantity) {
+      throw new Error(`Insufficient stock for product: ${item.title}`);
+    }
+
+    const livePrice = resolveMarketplaceUnitPriceCents(product);
+    if (livePrice !== item.price_cents) {
+      const { error: priceError } = await supabaseAdmin
+        .from("seller_order_items")
+        .update({ price_cents: livePrice })
+        .eq("id", item.id)
+        .eq("order_id", order.id);
+      if (priceError) throw new Error(priceError.message);
+      item.price_cents = livePrice;
+    }
+  }
+
   const serviceFeeConfig = await loadMarketplaceServiceFeeConfig(supabaseAdmin, {
     countryCode: order.country_code ?? undefined,
     region: order.region_code ?? undefined,
   });
 
   const shadow = computeMarketplaceCheckoutShadow(
-    (order.items ?? []).map((item) => ({
+    items.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
     })),

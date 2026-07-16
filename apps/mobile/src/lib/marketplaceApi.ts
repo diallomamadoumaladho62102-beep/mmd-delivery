@@ -30,6 +30,10 @@ export type MarketplaceProduct = {
   category: string;
   image_paths: string[] | null;
   active: boolean;
+  stock_qty?: number | null;
+  options_json?: unknown;
+  variants_json?: unknown;
+  promo_price_cents?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -192,6 +196,7 @@ export async function saveMarketplaceDraft(
     sellerCountryCode?: string | null;
     locationCountryCode?: string | null;
     manualCountryCode?: string | null;
+    replaceItems?: boolean;
   }
 ): Promise<MarketplaceOrderDraft> {
   const scope: MarketplaceScopeInput = {
@@ -211,6 +216,7 @@ export async function saveMarketplaceDraft(
         notes: input.notes ?? null,
         pickup_location_id: input.pickupLocationId ?? null,
         dropoff_location_id: input.dropoffLocationId ?? null,
+        replace_items: input.replaceItems === true,
       }),
     },
     scope
@@ -266,6 +272,72 @@ export async function runMarketplaceCheckout(
     },
     scope
   );
+}
+
+export async function fetchMarketplaceFavorites(
+  scope?: MarketplaceScopeInput,
+  sellerId?: string
+): Promise<Array<{ product_id: string; seller_id: string }>> {
+  const path = await buildMarketplacePath(
+    "/api/marketplace/favorites",
+    { seller_id: sellerId },
+    scope
+  );
+  const body = await marketplaceFetch(path, undefined, scope);
+  return body.items ?? [];
+}
+
+export async function addMarketplaceFavorite(input: {
+  productId: string;
+  sellerId: string;
+  sellerCountryCode?: string | null;
+}): Promise<void> {
+  const scope: MarketplaceScopeInput = { sellerCountryCode: input.sellerCountryCode };
+  const path = await buildMarketplacePath("/api/marketplace/favorites", {}, scope);
+  await marketplaceFetch(
+    path,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        product_id: input.productId,
+        seller_id: input.sellerId,
+      }),
+    },
+    scope
+  );
+}
+
+export async function removeMarketplaceFavorite(input: {
+  productId: string;
+  sellerCountryCode?: string | null;
+}): Promise<void> {
+  const scope: MarketplaceScopeInput = { sellerCountryCode: input.sellerCountryCode };
+  const path = await buildMarketplacePath(
+    "/api/marketplace/favorites",
+    { product_id: input.productId },
+    scope
+  );
+  await marketplaceFetch(path, { method: "DELETE" }, scope);
+}
+
+export async function updateMarketplaceSellerOrderStatus(input: {
+  orderId: string;
+  status: "accepted" | "refused" | "preparing" | "ready" | "out_for_delivery";
+  cancelReason?: string;
+}): Promise<{
+  order: Record<string, unknown>;
+  stripe_refund_deferred?: boolean;
+  message?: string;
+}> {
+  const path = await buildMarketplacePath("/api/marketplace/orders/seller-status", {});
+  return marketplaceFetch(path, {
+    method: "POST",
+    body: JSON.stringify({
+      order_id: input.orderId,
+      status: input.status,
+      cancel_reason: input.cancelReason ?? null,
+    }),
+  });
 }
 
 export function formatMarketplaceMoney(cents: number, currency = "USD"): string {

@@ -12,6 +12,9 @@ export type SellerRow = {
   mmd_zone_id: string | null;
   status: SellerStatus;
   is_accepting_orders: boolean;
+  logo_url?: string | null;
+  cover_image_url?: string | null;
+  document_urls?: unknown;
   review_notes: string | null;
   created_at: string;
   updated_at: string;
@@ -27,6 +30,10 @@ export type SellerProductRow = {
   category: string;
   image_paths: string[] | null;
   active: boolean;
+  stock_qty?: number | null;
+  options_json?: unknown;
+  variants_json?: unknown;
+  promo_price_cents?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -41,6 +48,7 @@ export type SellerOrderRow = {
   country_code: string | null;
   region_code: string | null;
   notes: string | null;
+  refund_status?: string | null;
   delivery_status_shadow?: string | null;
   delivery_quote_shadow?: {
     customer_delivery_total_cents?: number;

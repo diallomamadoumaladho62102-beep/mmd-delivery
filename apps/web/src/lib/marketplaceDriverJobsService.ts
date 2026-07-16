@@ -113,6 +113,7 @@ export async function listMarketplaceJobsForDriver(
     .from("marketplace_delivery_jobs")
     .select(JOB_SELECT)
     .eq("status", "dispatch_ready")
+    .eq("live_dispatch_enabled", true)
     .is("assigned_driver_id", null)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -198,12 +199,24 @@ export async function acceptMarketplaceJobForDriver(
     })
     .eq("id", params.jobId)
     .eq("status", "dispatch_ready")
+    .eq("live_dispatch_enabled", true)
     .is("assigned_driver_id", null)
     .select(JOB_SELECT)
     .maybeSingle();
 
   if (error) return { ok: false, error: error.message };
-  if (!data) return { ok: false, error: "job_not_available" };
+  if (!data) {
+    const { data: existing } = await supabaseAdmin
+      .from("marketplace_delivery_jobs")
+      .select("id,live_dispatch_enabled,status,assigned_driver_id")
+      .eq("id", params.jobId)
+      .maybeSingle();
+
+    if (existing && existing.live_dispatch_enabled !== true) {
+      return { ok: false, error: "live_dispatch_disabled" };
+    }
+    return { ok: false, error: "job_not_available" };
+  }
 
   return { ok: true, job: mapJobRow(data as Record<string, unknown>) };
 }

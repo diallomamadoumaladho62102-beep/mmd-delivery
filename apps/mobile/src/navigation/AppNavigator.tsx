@@ -162,7 +162,7 @@ export type RootStackParamList = {
   RestaurantMenu: undefined;
 
   SellerGate: undefined;
-  SellerOnboarding: undefined;
+  SellerOnboarding: { mode?: "edit" } | undefined;
   SellerDashboard: undefined;
   SellerProducts: undefined;
   SellerOrders: undefined;
@@ -179,6 +179,7 @@ export type RootStackParamList = {
     sellerName: string;
     productId: string;
     sellerCountryCode?: string;
+    orderId?: string;
   };
   MarketplaceCart: {
     sellerId: string;

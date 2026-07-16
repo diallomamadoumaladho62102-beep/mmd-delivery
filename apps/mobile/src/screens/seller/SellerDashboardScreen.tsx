@@ -194,6 +194,16 @@ export default function SellerDashboardScreen({ navigation }: Props) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              disabled={!seller}
+              onPress={() => navigation.navigate("SellerOnboarding", { mode: "edit" })}
+              style={buttonStyle(!seller, true)}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700" }}>
+                {t("seller.actions.editProfile", "Edit business profile")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => navigation.navigate("SellerOrders")}
               style={buttonStyle(false, true)}
             >

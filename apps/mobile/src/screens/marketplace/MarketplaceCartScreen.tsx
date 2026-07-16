@@ -199,6 +199,16 @@ export default function MarketplaceCartScreen({ route }: Props) {
 
   async function handleLiveCheckout() {
     if (!draft?.id) return;
+    if (liveCheckoutEnabled !== true) {
+      Alert.alert(
+        t("marketplace.cart.errorTitle", "Cart error"),
+        t(
+          "marketplace.cart.liveDisabled",
+          "Live marketplace payment is not enabled. Use shadow checkout."
+        )
+      );
+      return;
+    }
     try {
       setCheckingOut(true);
       const refreshed = dropoffLocationId
@@ -412,7 +422,8 @@ export default function MarketplaceCartScreen({ route }: Props) {
               </Text>
             </TouchableOpacity>
 
-            {liveCheckoutEnabled ? (
+            {/* Live Pay only when server reports liveCheckoutEnabled===true — never call live checkout otherwise */}
+            {liveCheckoutEnabled === true ? (
               <TouchableOpacity
                 disabled={checkingOut}
                 onPress={() => void handleLiveCheckout()}
