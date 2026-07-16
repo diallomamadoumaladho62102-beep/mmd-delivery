@@ -130,7 +130,7 @@ export async function loadApprovedSellerProducts(
   let query = supabaseAdmin
     .from("seller_products")
     .select(
-      "id,seller_id,title,description,price_cents,currency,category,image_paths,active,stock_qty,options_json,promo_price_cents,created_at,updated_at"
+      "id,seller_id,title,description,price_cents,currency,category,image_paths,active,stock_qty,options_json,variants_json,promo_price_cents,created_at,updated_at"
     )
     .eq("active", true)
     .order("created_at", { ascending: false })
