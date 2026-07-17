@@ -76,6 +76,8 @@ export type AdminPermission =
   | "communication.chats"
   | "communication.calls"
   | "communication.notify"
+  | "loyalty.read"
+  | "loyalty.manage"
   | "audit.read"
   | "supervision.read";
 
@@ -143,6 +145,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "communication.chats",
     "communication.calls",
     "communication.notify",
+    "loyalty.read",
+    "loyalty.manage",
     "audit.read",
     "supervision.read",
   ]),
@@ -185,6 +189,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "communication.chats",
     "communication.calls",
     "communication.notify",
+    "loyalty.read",
+    "loyalty.manage",
     "supervision.read",
   ]),
   finance: new Set<AdminPermission>([
@@ -214,6 +220,8 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_market_metrics.read",
     "taxi_business.read",
     "taxi_business.manage",
+    "loyalty.read",
+    "loyalty.manage",
     "audit.read",
     "supervision.read",
   ]),
@@ -229,6 +237,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "communication.chats",
     "communication.calls",
     "communication.notify",
+    "loyalty.read",
     "supervision.read",
   ]),
   review: new Set<AdminPermission>([

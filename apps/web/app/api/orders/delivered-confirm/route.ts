@@ -5,6 +5,7 @@ import { notifyOrderDeliveredTransactional } from "@/lib/transactionalOutbound";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
+import { awardFoodOrderLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import { MMD_PUSH_SOUNDS } from "@/lib/mmdPushSounds";
 import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
 
@@ -760,6 +761,8 @@ export async function POST(req: NextRequest) {
         message: getErrorMessage(transactionalErr),
       });
     }
+
+    await awardFoodOrderLoyalty(supabaseAdmin, orderId);
 
     return json({
       ok: true,

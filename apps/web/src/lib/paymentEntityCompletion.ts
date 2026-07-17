@@ -8,6 +8,7 @@ import { scheduleDeliveryRequestDispatch, getDispatchSiteOrigin } from "@/lib/sc
 import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 import { recordInboundPaymentWalletEntries } from "@/lib/inboundWalletBridge";
+import { awardMarketplaceOrderLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import type { PaymentEntityType, PaymentTransactionRow } from "@/lib/paymentTypes";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { initializeTaxiRidePreferenceDispatch } from "@/lib/taxiPreferenceDispatch";
@@ -192,6 +193,9 @@ async function completeSellerOrderPayment(
     sellerOrderId: orderId,
     source: `local-payment:${transaction.provider}`,
   });
+
+  void awardMarketplaceOrderLoyalty(supabaseAdmin, orderId);
+
   return { ok: true };
 }
 

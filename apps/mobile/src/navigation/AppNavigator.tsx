@@ -124,6 +124,8 @@ export type RootStackParamList = {
     targetRole?: "restaurant" | "driver" | "admin" | "";
   };
 
+  LoyaltyHub: { role?: "client" | "driver" } | undefined;
+
   MmdAi:
     | {
         initialPrompt?: string;
@@ -568,6 +570,7 @@ export function AppNavigator({
       r === "ClientDeliveryRequestDetails" ||
       r === "ClientInbox" ||
       r === "ClientChat" ||
+      r === "LoyaltyHub" ||
       r === "MmdAi" ||
       r === "ClientProfile" ||
       (__DEV__ ? r === "LocationPickerTest" : false) ||
@@ -607,6 +610,7 @@ export function AppNavigator({
       r === "DriverIdentityVerification" ||
       r === "DriverProfile" ||
       r === "DriverReferrals" ||
+      r === "LoyaltyHub" ||
       r === "DriverOpportunities" ||
       r === "DriverAccount" ||
       r === "DriverHelp" ||
@@ -1247,6 +1251,11 @@ export function AppNavigator({
         <Stack.Screen
           name="TaxiChat"
           getComponent={() => require("../screens/taxi/TaxiChatScreen").default}
+        />
+
+        <Stack.Screen
+          name="LoyaltyHub"
+          getComponent={() => require("../screens/LoyaltyScreen").default}
         />
 
         <Stack.Screen

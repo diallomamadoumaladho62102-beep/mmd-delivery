@@ -147,6 +147,16 @@ export function canManageTaxiRides(role: UserRole | null): boolean {
   return hasPermission(role, "taxi_rides.manage");
 }
 
+export function canReadLoyalty(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "loyalty.read");
+}
+
+export function canManageLoyalty(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "loyalty.manage");
+}
+
 export function canWriteTaxiPricing(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "taxi_pricing.write");

@@ -4,6 +4,7 @@ import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout"
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 import { prepareMarketplaceSellerPayoutAfterPayment } from "@/lib/marketplacePayoutService";
 import { notifyMarketplaceSellerNewPaidOrder } from "@/lib/marketplacePushNotifications";
+import { awardMarketplaceOrderLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 import {
   requirePaymentIntentSucceeded,
   assertSettlementMatchesExpectation,
@@ -186,6 +187,8 @@ export async function handleMarketplaceStripePayment(params: {
       payoutError instanceof Error ? payoutError.message : payoutError
     );
   });
+
+  void awardMarketplaceOrderLoyalty(supabaseAdmin, sellerOrderId);
 
   void (async () => {
     try {

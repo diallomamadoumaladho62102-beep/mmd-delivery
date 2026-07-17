@@ -7,6 +7,7 @@ import {
   assertTaxiDropoffProximity,
   parseRequiredTaxiGps,
 } from "@/lib/taxiProximityGate";
+import { awardTaxiRideLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,6 +95,8 @@ export async function POST(req: NextRequest) {
         distance_meters: proximity.distanceMeters,
       },
     });
+
+    await awardTaxiRideLoyalty(auth.supabaseAdmin, rideId);
 
     return taxiJson({
       ok: true,

@@ -1016,7 +1016,9 @@ export function ClientHomeScreen() {
         onNavigateInbox={() => navigation.navigate("ClientInbox" as never)}
         onNavigateProfile={() => navigation.navigate("ClientProfile" as never)}
         onNavigateOrders={handleOpenFeaturedOrder}
-        onNavigateRewards={() => navigation.navigate("TaxiLoyalty" as never)}
+        onNavigateRewards={() =>
+          navigation.navigate("LoyaltyHub", { role: "client" })
+        }
         onNavigateAi={() =>
           navigation.navigate("MmdAi", { source: "home_tab" })
         }

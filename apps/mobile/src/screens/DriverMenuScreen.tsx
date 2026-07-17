@@ -550,6 +550,13 @@ export function DriverMenuScreen() {
 
         <MenuItem
           icon="gift"
+          label={t("driver.menu.loyalty", "Fidélité MMD")}
+          subtitle={t("driver.menu.loyalty_sub", "Points, Crédit MMD et conversion")}
+          onPress={() => navigation.navigate("LoyaltyHub", { role: "driver" })}
+        />
+
+        <MenuItem
+          icon="gift"
           label={t("driver.menu.referrals", "Referrals")}
           subtitle={t("driver.menu.referrals_sub", "Invite drivers and earn rewards")}
           onPress={() => navigation.navigate("DriverReferrals")}
