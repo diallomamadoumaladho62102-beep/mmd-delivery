@@ -86,41 +86,26 @@ function resolveCountryCode(
   });
 }
 
+const WAIT_LATE_FEE_SELECT_WITH_COUNTRY =
+  "id,driver_id,client_user_id,created_by,user_id,client_id,currency,country_code,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,wait_fee_amount_cents,wait_fee_status,wait_fee_currency,driver_arrived_at,manual_arrival_required,driver_distance_to_target_meters,wait_timer_started_at,free_wait_minutes,leave_at_door";
+
+// `orders` has no country_code column; infer from coords via resolveOrderPlatformCountry.
+const WAIT_LATE_FEE_SELECT_ORDER =
+  "id,driver_id,client_user_id,created_by,user_id,client_id,currency,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,wait_fee_amount_cents,wait_fee_status,wait_fee_currency,driver_arrived_at,manual_arrival_required,driver_distance_to_target_meters,wait_timer_started_at,free_wait_minutes,leave_at_door";
+
 async function loadWaitLateFeeRow(
   supabaseAdmin: SupabaseClient,
   entityType: WaitTimerEntityType,
   entityId: string
 ): Promise<WaitLateFeeRow | null> {
   const table = tableForEntity(entityType);
-  // `orders` has no country_code column; infer from coords. Other entities keep it.
-  const countrySelect = entityType === "order" ? "" : "country_code,";
+  const select =
+    entityType === "order"
+      ? WAIT_LATE_FEE_SELECT_ORDER
+      : WAIT_LATE_FEE_SELECT_WITH_COUNTRY;
   const { data, error } = await supabaseAdmin
     .from(table)
-    .select(
-      `
-      id,
-      driver_id,
-      client_user_id,
-      created_by,
-      user_id,
-      client_id,
-      currency,
-      ${countrySelect}
-      pickup_lat,
-      pickup_lng,
-      dropoff_lat,
-      dropoff_lng,
-      wait_fee_amount_cents,
-      wait_fee_status,
-      wait_fee_currency,
-      driver_arrived_at,
-      manual_arrival_required,
-      driver_distance_to_target_meters,
-      wait_timer_started_at,
-      free_wait_minutes,
-      leave_at_door
-`
-    )
+    .select(select)
     .eq("id", entityId)
     .maybeSingle();
 
