@@ -5,7 +5,7 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe } from "@/lib/stripe";
-import { scheduleDeliveryRequestDispatch } from "@/lib/scheduleDeliveryRequestDispatch";
+import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
 import { notifyClientDeliveryRequestPaid } from "@/lib/clientPushNotifications";
 import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
 import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
@@ -611,10 +611,18 @@ export async function POST(req: NextRequest) {
       return json({ error: commissions.error }, 500);
     }
 
-    scheduleDeliveryRequestDispatch({
-      origin: req.nextUrl.origin,
-      deliveryRequestId: deliveryRequest.id,
-    });
+    try {
+      await triggerDeliveryRequestDispatch({
+        supabase: supabaseAdmin,
+        deliveryRequestId: deliveryRequest.id,
+        wave: 1,
+      });
+    } catch (e) {
+      console.log(
+        "[confirm-delivery-request-paid] dispatch trigger failed:",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
 
     await notifyClientDeliveryRequestPaid({
       supabaseAdmin,

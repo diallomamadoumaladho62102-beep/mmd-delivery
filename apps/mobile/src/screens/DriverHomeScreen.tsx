@@ -356,7 +356,7 @@ const DRIVER_BOTTOM_TAB_CLEARANCE = Platform.select({
 
 const DRIVER_BOTTOM_PANEL_OFFSET =
   (DRIVER_BOTTOM_TAB_CLEARANCE ?? 64) + (DRIVER_BOTTOM_NAV_SAFE_OFFSET ?? 28);
-const MAX_VISIBLE_ORDER_MILES = 5;
+const MAX_VISIBLE_ORDER_MILES = 15;
 const CARD_BG = "rgba(15,23,42,0.92)";
 const CARD_BORDER = "rgba(148,163,184,0.16)";
 const PURPLE = "#8B5CF6";
@@ -1509,21 +1509,21 @@ export function DriverHomeScreen() {
           const hasPickupCoordinates = pickupLat != null && pickupLng != null;
           const isDeliveryRequest = o.source_table === "delivery_requests";
           const isMarketplaceJob = o.source_table === "marketplace_delivery_jobs";
-          let withinFiveMiles = false;
+          let withinDispatchMiles = false;
 
           if (driverLocation && hasPickupCoordinates) {
             const distance = milesBetween(driverLocation.lat, driverLocation.lng, pickupLat, pickupLng);
-            withinFiveMiles = distance <= MAX_VISIBLE_ORDER_MILES;
+            withinDispatchMiles = distance <= MAX_VISIBLE_ORDER_MILES;
           }
 
           // Production safety:
           // orders must have pickup coordinates for nearby filtering.
           // delivery_requests without coordinates are still shown so paid customer requests are not hidden.
           if (isDeliveryRequest || isMarketplaceJob) {
-            return statusVisible && (!driverLocation || !hasPickupCoordinates || withinFiveMiles);
+            return statusVisible && (!driverLocation || !hasPickupCoordinates || withinDispatchMiles);
           }
 
-          return statusVisible && hasPickupCoordinates && (!driverLocation || withinFiveMiles);
+          return statusVisible && hasPickupCoordinates && (!driverLocation || withinDispatchMiles);
         });
 
         const myList = [...myOrderList, ...myDeliveryList, ...marketplaceMineList];

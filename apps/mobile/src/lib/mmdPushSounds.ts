@@ -58,6 +58,9 @@ export const MMD_EXPO_SOUND_FILES = Object.values(MMD_PUSH_SOUNDS);
 /** Android notification channel for restaurant kitchen alerts. */
 export const RESTAURANT_ORDERS_PUSH_CHANNEL = "restaurant-orders";
 
+/** Android notification channel for driver mission / Delivery offers. */
+export const DRIVER_MISSION_PUSH_CHANNEL = "driver-missions";
+
 export function resolvePushSound(dataType?: string | null): string {
   const type = String(dataType ?? "").trim().toLowerCase();
 

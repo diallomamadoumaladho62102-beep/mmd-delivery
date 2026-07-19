@@ -20,14 +20,34 @@ export async function filterDriverIdsByServicePreference(
     return new Set(driverIds);
   }
 
-  return new Set(
-    (data ?? [])
-      .filter((row) => {
-        if (service === "food") return row.food_delivery_enabled === true;
-        if (service === "package") return row.package_delivery_enabled === true;
-        return row.taxi_rides_enabled === true;
-      })
-      .map((row) => String(row.driver_user_id ?? ""))
-      .filter(Boolean),
-  );
+  const prefsByDriver = new Map<
+    string,
+    {
+      food_delivery_enabled?: boolean | null;
+      package_delivery_enabled?: boolean | null;
+      taxi_rides_enabled?: boolean | null;
+    }
+  >();
+  for (const row of data ?? []) {
+    const id = String(row.driver_user_id ?? "").trim();
+    if (id) prefsByDriver.set(id, row);
+  }
+
+  const allowed = new Set<string>();
+  for (const driverId of driverIds) {
+    const prefs = prefsByDriver.get(driverId);
+    // Missing prefs row: allow (opt-out only when explicitly disabled).
+    if (!prefs) {
+      allowed.add(driverId);
+      continue;
+    }
+    const enabled =
+      service === "food"
+        ? prefs.food_delivery_enabled === true
+        : service === "package"
+          ? prefs.package_delivery_enabled === true
+          : prefs.taxi_rides_enabled === true;
+    if (enabled) allowed.add(driverId);
+  }
+  return allowed;
 }

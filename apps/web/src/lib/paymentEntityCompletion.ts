@@ -4,7 +4,7 @@ import {
 } from "@/lib/clientPushNotifications";
 import { completeFoodOrderAfterPayment } from "@/lib/foodOrderPaymentCompletion";
 import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
-import { scheduleDeliveryRequestDispatch, getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
+import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
 import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 import { recordInboundPaymentWalletEntries } from "@/lib/inboundWalletBridge";
@@ -118,9 +118,17 @@ async function completeDeliveryRequestPayment(
     return { ok: false, error: commissions.error };
   }
 
-  const origin = getDispatchSiteOrigin();
-  if (origin) {
-    scheduleDeliveryRequestDispatch({ origin, deliveryRequestId });
+  try {
+    await triggerDeliveryRequestDispatch({
+      supabase: supabaseAdmin,
+      deliveryRequestId,
+      wave: 1,
+    });
+  } catch (e) {
+    console.log(
+      "[completeDeliveryRequestPayment] dispatch trigger failed:",
+      e instanceof Error ? e.message : String(e),
+    );
   }
   await notifyClientDeliveryRequestPaid({
     supabaseAdmin,

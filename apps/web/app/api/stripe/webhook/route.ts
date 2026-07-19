@@ -16,10 +16,7 @@ import {
   ensureOrderCommissionsReady,
   refreshCommissionsForDeliveryRequest,
 } from "@/lib/refreshOrderCommissions";
-import {
-  getDispatchSiteOrigin,
-  scheduleDeliveryRequestDispatch,
-} from "@/lib/scheduleDeliveryRequestDispatch";
+import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
 import { stripeEventNeedsReprocessing } from "@/lib/stripeWebhookReprocess";
 import {
   syncStripeChargeRefunded,
@@ -2134,12 +2131,17 @@ await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
     paymentIntentId,
   });
 
-  const dispatchOriginCheckout = getDispatchSiteOrigin();
-  if (dispatchOriginCheckout) {
-    scheduleDeliveryRequestDispatch({
-      origin: dispatchOriginCheckout,
+  try {
+    await triggerDeliveryRequestDispatch({
+      supabase: supabaseAdmin,
       deliveryRequestId,
+      wave: 1,
     });
+  } catch (e) {
+    console.log(
+      "⚠️ WEBHOOK: delivery request dispatch trigger failed",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 
 return json({
@@ -2870,12 +2872,17 @@ await enqueueDeliveryPaidFailOpen({
   paymentIntentId,
 });
 
-  const dispatchOriginPi = getDispatchSiteOrigin();
-  if (dispatchOriginPi) {
-    scheduleDeliveryRequestDispatch({
-      origin: dispatchOriginPi,
+  try {
+    await triggerDeliveryRequestDispatch({
+      supabase: supabaseAdmin,
       deliveryRequestId,
+      wave: 1,
     });
+  } catch (e) {
+    console.log(
+      "⚠️ WEBHOOK PI: delivery request dispatch trigger failed",
+      e instanceof Error ? e.message : String(e),
+    );
   }
 
 return json({

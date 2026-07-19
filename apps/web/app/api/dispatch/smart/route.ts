@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_COOLDOWN_SECONDS = 60;
-const MAX_DISPATCH_MILES = 5;
+const MAX_DISPATCH_MILES = 15;
 const AUTO_RETRY_DELAY_MS = 20_000;
 
 const DISPATCH_WAVES: Record<number, { maxDrivers: number; maxMiles: number }> = {

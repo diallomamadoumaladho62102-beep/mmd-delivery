@@ -70,13 +70,15 @@ export async function findDeliveryRequestsNeedingDispatchRetry(
       throw new Error(offersError.message);
     }
 
-    const lastWave = Number(offers?.[0]?.wave ?? 0);
-    const lastWaveAt =
-      offers?.[0]?.created_at ??
+    const offerWave = Number(offers?.[0]?.wave ?? 0);
+    const wave1StartedAt =
       (request as { dispatch_wave_1_started_at?: string | null })
-        .dispatch_wave_1_started_at ??
-      request.updated_at ??
-      null;
+        .dispatch_wave_1_started_at ?? null;
+    // If wave-1 locked with zero offers, treat lastWave as 1 so retry advances to wave 2.
+    const lastWave =
+      offerWave > 0 ? offerWave : wave1StartedAt ? 1 : 0;
+    const lastWaveAt =
+      offers?.[0]?.created_at ?? wave1StartedAt ?? request.updated_at ?? null;
 
     if (lastWave >= 3) continue;
     if (!lastWaveAt || lastWaveAt > cutoffIso) continue;

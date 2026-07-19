@@ -13,7 +13,7 @@ import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWalletBridge";
 import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
 import { ensureOrderCommissionsReady } from "@/lib/refreshOrderCommissions";
-import { scheduleDeliveryRequestDispatch } from "@/lib/scheduleDeliveryRequestDispatch";
+import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
 import { notifyClientDeliveryRequestPaid } from "@/lib/clientPushNotifications";
 
 export const runtime = "nodejs";
@@ -642,10 +642,18 @@ export async function POST(req: NextRequest) {
       return json({ error: commissions.error }, 500);
     }
 
-    scheduleDeliveryRequestDispatch({
-      origin: req.nextUrl.origin,
-      deliveryRequestId: deliveryRequest.id,
-    });
+    try {
+      await triggerDeliveryRequestDispatch({
+        supabase: supabaseAdmin,
+        deliveryRequestId: deliveryRequest.id,
+        wave: 1,
+      });
+    } catch (e) {
+      console.log(
+        "[mark-delivery-request-paid] dispatch trigger failed:",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
 
     await notifyClientDeliveryRequestPaid({
       supabaseAdmin,

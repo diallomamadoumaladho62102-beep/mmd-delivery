@@ -52,7 +52,11 @@ import {
   startRestaurantOrderAlertService,
   stopRestaurantOrderAlertService,
 } from "../lib/restaurantOrderAlertService";
-import { handleDriverMissionPushAlert } from "../lib/driverMissionAlertService";
+import {
+  handleDriverMissionPushAlert,
+  startDriverMissionAlertService,
+  stopDriverMissionAlertService,
+} from "../lib/driverMissionAlertService";
 import { RestaurantOrderAlertBanner } from "../components/RestaurantOrderAlertBanner";
 
 export type RootStackParamList = {
@@ -813,12 +817,14 @@ export function AppNavigator({
         const status = await getDriverStatus(uid);
 
         if (status === "suspended" || status === "disabled") {
+          await stopDriverMissionAlertService();
           await supabase.auth.signOut();
           resetTo("DriverAuth");
           return;
         }
 
         if (status === "approved") {
+          void startDriverMissionAlertService(uid);
           if (isInDriverArea(cur) && cur !== "DriverOnboarding") return;
           resetTo("DriverTabs");
           return;
@@ -1022,16 +1028,29 @@ export function AppNavigator({
         const uid = data.session?.user?.id ?? null;
         if (!alive || !uid) {
           await stopRestaurantOrderAlertService();
+          await stopDriverMissionAlertService();
           return;
         }
         const role = await resolveUserRole(uid);
         if (role === "restaurant") {
+          await stopDriverMissionAlertService();
           await startRestaurantOrderAlertService(uid);
           return;
         }
+        if (role === "driver") {
+          await stopRestaurantOrderAlertService();
+          const status = await getDriverStatus(uid);
+          if (status === "approved") {
+            await startDriverMissionAlertService(uid);
+          } else {
+            await stopDriverMissionAlertService();
+          }
+          return;
+        }
         await stopRestaurantOrderAlertService();
+        await stopDriverMissionAlertService();
       } catch (error) {
-        console.log("[restaurantOrderAlert] sync failed", error);
+        console.log("[roleAlertServices] sync failed", error);
       }
     };
 
@@ -1047,6 +1066,7 @@ export function AppNavigator({
       } catch {}
       void unsubscribeSupabaseChannel(profileChannel);
       void stopRestaurantOrderAlertService();
+      void stopDriverMissionAlertService();
     };
   }, [openResetPassword, scheduleSync, resolveUserRole]);
 
