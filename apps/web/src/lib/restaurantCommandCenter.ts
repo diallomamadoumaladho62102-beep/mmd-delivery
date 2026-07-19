@@ -252,7 +252,7 @@ export async function getRestaurantCommandCenter(params: {
     supabase
       .from("orders")
       .select(
-        "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,accepted_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,dispatched_at"
+        "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,restaurant_prepared_at,paid_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
       )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
@@ -271,7 +271,7 @@ export async function getRestaurantCommandCenter(params: {
     supabase
       .from("orders")
       .select(
-        "id,status,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,accepted_at,ready_at,items_json,restaurant_net_amount"
+        "id,status,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,restaurant_prepared_at,paid_at,ready_at,items_json,restaurant_net_amount"
       )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
@@ -286,7 +286,7 @@ export async function getRestaurantCommandCenter(params: {
     supabase
       .from("orders")
       .select(
-        "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,dispatched_at,accepted_at"
+        "id,status,kind,payment_status,total,subtotal,tax,currency,created_at,client_id,client_user_id,items_json,ready_at,restaurant_prepared_at,paid_at,restaurant_accept_expires_at,driver_id,eta_minutes,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
       )
       .eq("kind", "food")
       .eq("restaurant_id", restaurantUserId)
@@ -570,7 +570,7 @@ export async function getRestaurantCommandCenter(params: {
     if (
       status === "dispatched" &&
       row.driver_id &&
-      minutesAgo(String(row.dispatched_at ?? row.ready_at ?? "")) >= ATTENTION_READY_WAIT_MINUTES
+      minutesAgo(String(row.ready_at ?? row.created_at ?? "")) >= ATTENTION_READY_WAIT_MINUTES
     ) {
       const card = buildDriverCard(row);
       if (card?.distanceMeters != null && card.distanceMeters > DRIVER_ARRIVED_METERS) {
@@ -579,7 +579,7 @@ export async function getRestaurantCommandCenter(params: {
           orderLabel: label,
           reasonKey: "restaurant.commandCenter.attention.driverLate",
           reasonParams: {
-            minutes: minutesAgo(String(row.dispatched_at ?? row.ready_at ?? "")),
+            minutes: minutesAgo(String(row.ready_at ?? row.created_at ?? "")),
           },
           status,
         });
@@ -617,7 +617,9 @@ export async function getRestaurantCommandCenter(params: {
   const prepDurations = todayPaidRows
     .filter((row) => isCompletedOrderStatus(row.status))
     .map((row) => {
-      const accepted = String(row.accepted_at ?? "");
+      const accepted = String(
+        row.accepted_at ?? row.restaurant_prepared_at ?? row.paid_at ?? "",
+      );
       const ready = String(row.ready_at ?? "");
       if (!accepted || !ready) return null;
       const ms = new Date(ready).getTime() - new Date(accepted).getTime();

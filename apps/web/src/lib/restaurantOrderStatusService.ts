@@ -143,6 +143,7 @@ export async function transitionRestaurantOrderStatus(
   };
 
   if (nextStatus === "accepted") {
+    // Optional columns (added by 20260719180000); omitted on retry if missing in prod.
     updatePayload.restaurant_accepted_at = nowIso;
     updatePayload.accepted_at = nowIso;
     if (estimatedPrepMinutes != null && estimatedPrepMinutes > 0) {
@@ -162,15 +163,40 @@ export async function transitionRestaurantOrderStatus(
     updatePayload.ready_at = nowIso;
   }
 
-  const { data: updated, error: updateError } = await supabaseAdmin
-    .from("orders")
-    .update(updatePayload)
-    .eq("id", orderId)
-    .eq("kind", "food")
-    .eq("payment_status", "paid")
-    .eq("status", order.status)
-    .select("id,status,driver_id,restaurant_user_id,client_user_id,created_by")
-    .maybeSingle();
+  const selectCols =
+    "id,status,driver_id,restaurant_user_id,client_user_id,created_by";
+
+  async function attemptUpdate(payload: Record<string, unknown>) {
+    return supabaseAdmin
+      .from("orders")
+      .update(payload)
+      .eq("id", orderId)
+      .eq("kind", "food")
+      .eq("payment_status", "paid")
+      .eq("status", order.status)
+      .select(selectCols)
+      .maybeSingle();
+  }
+
+  let { data: updated, error: updateError } = await attemptUpdate(updatePayload);
+
+  // Production may lag migrations for accept timestamps / prep estimate cols.
+  if (updateError && /42703|column .* does not exist/i.test(updateError.message)) {
+    const fallback: Record<string, unknown> = {
+      status: nextStatus,
+      updated_at: nowIso,
+    };
+    if (nextStatus === "accepted" && markAutoAccepted) {
+      fallback.auto_accepted = true;
+    }
+    if (nextStatus === "prepared") {
+      fallback.restaurant_prepared_at = nowIso;
+    }
+    if (nextStatus === "ready") {
+      fallback.ready_at = nowIso;
+    }
+    ({ data: updated, error: updateError } = await attemptUpdate(fallback));
+  }
 
   if (updateError) {
     return { ok: false, error: updateError.message, httpStatus: 500 };

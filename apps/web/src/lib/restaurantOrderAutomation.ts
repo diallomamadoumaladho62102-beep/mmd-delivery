@@ -340,6 +340,29 @@ export async function tryAutoAcceptPaidFoodOrder(
   };
 }
 
+const RESTAURANT_ACCEPT_WINDOW_MS = 10 * 60 * 1000;
+
+async function ensureRestaurantAcceptWindow(
+  supabaseAdmin: SupabaseClient,
+  orderId: string,
+): Promise<void> {
+  const expiresAt = new Date(Date.now() + RESTAURANT_ACCEPT_WINDOW_MS).toISOString();
+  const { error } = await supabaseAdmin
+    .from("orders")
+    .update({ restaurant_accept_expires_at: expiresAt })
+    .eq("id", orderId)
+    .eq("kind", "food")
+    .eq("payment_status", "paid")
+    .is("restaurant_accept_expires_at", null);
+
+  if (error) {
+    console.log(
+      "[restaurantOrderAutomation] accept window update failed:",
+      error.message,
+    );
+  }
+}
+
 export async function runFoodOrderPaymentSideEffects(
   supabaseAdmin: SupabaseClient,
   input: {
@@ -356,6 +379,11 @@ export async function runFoodOrderPaymentSideEffects(
     .maybeSingle();
 
   if (!order || String(order.payment_status ?? "").toLowerCase() !== "paid") return;
+
+  // Kitchen accept countdown must start at payment time, not checkout draft creation.
+  if (String(order.kind ?? "").toLowerCase() === "food") {
+    await ensureRestaurantAcceptWindow(supabaseAdmin, input.orderId);
+  }
 
   if (input.notifyRestaurant !== false) {
     await notifyRestaurantNewPaidOrder({
