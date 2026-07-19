@@ -9,6 +9,7 @@ import {
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
 import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
+import { awardDeliveryRequestLoyalty } from "@/lib/loyalty/loyaltyAccrual";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -156,6 +157,9 @@ export async function POST(req: NextRequest) {
       deliveryRequestId: requestId,
       proofPhotoUrl,
     });
+
+    // Fire-and-forget; RPC is idempotent. Never block delivery confirmation.
+    void awardDeliveryRequestLoyalty(supabaseAdmin, requestId);
 
     let payout: Record<string, unknown> = { attempted: false };
 

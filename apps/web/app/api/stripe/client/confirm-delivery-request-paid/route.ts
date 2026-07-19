@@ -627,7 +627,7 @@ export async function POST(req: NextRequest) {
     });
 
     try {
-      const { enqueuePaymentSucceeded } = await import(
+      const { enqueuePaymentSucceeded, processFinancePendingBatch } = await import(
         "@/lib/finance/financeEvents"
       );
       await enqueuePaymentSucceeded({
@@ -640,6 +640,7 @@ export async function POST(req: NextRequest) {
         countryCode: resolveDeliveryRequestPlatformCountry(deliveryRequest),
         paymentIntentId: paymentIntentIdForBridge ?? undefined,
       });
+      await processFinancePendingBatch(supabaseAdmin, 50);
     } catch (e) {
       console.warn(
         "[finance] delivery_paid enqueue fail-open",

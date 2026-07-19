@@ -533,7 +533,7 @@ async function enqueueDeliveryPaidFailOpen(params: {
   paymentIntentId: string | null;
 }): Promise<void> {
   try {
-    const { enqueuePaymentSucceeded } = await import(
+    const { enqueuePaymentSucceeded, processFinancePendingBatch } = await import(
       "@/lib/finance/financeEvents"
     );
     await enqueuePaymentSucceeded({
@@ -550,6 +550,9 @@ async function enqueueDeliveryPaidFailOpen(params: {
       countryCode: resolveDeliveryRequestPlatformCountry(params.deliveryRequest),
       paymentIntentId: params.paymentIntentId ?? undefined,
     });
+    // Food settlement processes the batch inline; Delivery must too —
+    // /api/cron/process-finance is not scheduled in vercel.json.
+    await processFinancePendingBatch(params.supabaseAdmin, 50);
   } catch (e) {
     console.warn(
       "[finance] delivery_paid enqueue fail-open",
