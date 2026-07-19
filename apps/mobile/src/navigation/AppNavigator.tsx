@@ -52,6 +52,7 @@ import {
   startRestaurantOrderAlertService,
   stopRestaurantOrderAlertService,
 } from "../lib/restaurantOrderAlertService";
+import { handleDriverMissionPushAlert } from "../lib/driverMissionAlertService";
 import { RestaurantOrderAlertBanner } from "../components/RestaurantOrderAlertBanner";
 
 export type RootStackParamList = {
@@ -371,6 +372,8 @@ export function AppNavigator({
       const payload = extractDriverMissionPushPayload(data);
       if (!isDriverMissionPushType(payload.type)) return;
 
+      // Long-ring globally (foreground / any screen) — not tied to DriverHome focus.
+      handleDriverMissionPushAlert(data);
       notifyDriverMissionPushReceived(payload.type);
       if (payload.type === "taxi_offer_dispatch") {
         notifyTaxiOfferPushReceived();

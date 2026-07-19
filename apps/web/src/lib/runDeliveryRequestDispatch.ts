@@ -132,6 +132,26 @@ export async function runDeliveryRequestDispatch(params: {
   }
 
   if (!isDispatchableDeliveryRequest(request)) {
+    await supabase.from("notification_logs").insert({
+      user_id: request.client_user_id ?? request.created_by ?? null,
+      role: "driver",
+      title: "Delivery dispatch skipped",
+      body: "Delivery request is not dispatchable",
+      data: {
+        type: "delivery_request_dispatch",
+        delivery_request_id: deliveryRequestId,
+        wave,
+        reason: "not_dispatchable",
+        payment_status: request.payment_status ?? null,
+        status: request.status ?? null,
+        has_driver: Boolean(request.driver_id),
+        notified: 0,
+      },
+      status: "failed",
+      error_message: "not_dispatchable",
+      dedup_key: `delivery_request_dispatch:${deliveryRequestId}:wave:${wave}:not_dispatchable`,
+      sent_at: null,
+    });
     return {
       ok: true,
       deliveryRequestId,
@@ -214,6 +234,24 @@ export async function runDeliveryRequestDispatch(params: {
   );
 
   if (driverIds.length === 0) {
+    await supabase.from("notification_logs").insert({
+      user_id: request.client_user_id ?? request.created_by ?? null,
+      role: "driver",
+      title: "Delivery dispatch skipped",
+      body: "No fresh driver locations found",
+      data: {
+        type: "delivery_request_dispatch",
+        delivery_request_id: deliveryRequestId,
+        wave,
+        reason: "no_fresh_driver_locations",
+        candidates: 0,
+        notified: 0,
+      },
+      status: "failed",
+      error_message: "no_fresh_driver_locations",
+      dedup_key: `delivery_request_dispatch:${deliveryRequestId}:wave:${wave}:no_locations`,
+      sent_at: null,
+    });
     return {
       ok: true,
       deliveryRequestId,
@@ -274,6 +312,24 @@ export async function runDeliveryRequestDispatch(params: {
     .slice(0, maxDrivers) as { driverId: string; distanceMiles: number }[];
 
   if (candidates.length === 0) {
+    await supabase.from("notification_logs").insert({
+      user_id: request.client_user_id ?? request.created_by ?? null,
+      role: "driver",
+      title: "Delivery dispatch skipped",
+      body: "No nearby online drivers available",
+      data: {
+        type: "delivery_request_dispatch",
+        delivery_request_id: deliveryRequestId,
+        wave,
+        reason: "no_nearby_online_drivers",
+        candidates: 0,
+        notified: 0,
+      },
+      status: "failed",
+      error_message: "no_nearby_online_drivers",
+      dedup_key: `delivery_request_dispatch:${deliveryRequestId}:wave:${wave}:no_candidates`,
+      sent_at: null,
+    });
     return {
       ok: true,
       deliveryRequestId,
@@ -340,7 +396,13 @@ export async function runDeliveryRequestDispatch(params: {
     })
   );
 
-  void (await sendExpoPush(messages));
+  let pushError: string | null = null;
+  try {
+    await sendExpoPush(messages);
+  } catch (e: unknown) {
+    pushError = e instanceof Error ? e.message : String(e);
+    console.log("[runDeliveryRequestDispatch] expo push failed:", pushError);
+  }
 
   const offerStats = await createDriverDeliveryRequestOffers({
     supabase,
@@ -349,14 +411,63 @@ export async function runDeliveryRequestDispatch(params: {
     wave,
   });
 
+  // Persist audit rows (parity with restaurant push) so Delivery alerts are provable.
+  const dedupBase = `delivery_request_dispatch:${deliveryRequestId}:wave:${wave}`;
+  if (uniqueTokens.length === 0) {
+    await supabase.from("notification_logs").insert({
+      user_id: selectedDriverIds[0] ?? request.client_user_id ?? null,
+      role: "driver",
+      title: "Nouvelle livraison disponible",
+      body: "Dispatch sans token push chauffeur.",
+      data: {
+        type: "delivery_request_dispatch",
+        delivery_request_id: deliveryRequestId,
+        wave,
+        candidates: candidates.length,
+        notified: 0,
+      },
+      status: "failed",
+      error_message: pushError ?? "no_tokens",
+      dedup_key: `${dedupBase}:no_tokens`,
+      sent_at: null,
+    });
+  } else {
+    const nowIso = new Date().toISOString();
+    await supabase.from("notification_logs").insert(
+      uniqueTokens.map(
+        (tokenRow: { expo_push_token: string; user_id: string }) => ({
+          user_id: tokenRow.user_id,
+          role: "driver",
+          title: "Nouvelle livraison disponible",
+          body: payout
+            ? `Demande proche • Gain estimé ${Number(payout).toFixed(2)} USD`
+            : "Une demande de livraison proche est disponible.",
+          data: {
+            type: "delivery_request_dispatch",
+            delivery_request_id: deliveryRequestId,
+            wave,
+            expo_token_suffix: String(tokenRow.expo_push_token).slice(-8),
+          },
+          status: pushError ? "failed" : "sent",
+          error_message: pushError,
+          dedup_key: `${dedupBase}:${tokenRow.user_id}`,
+          sent_at: pushError ? null : nowIso,
+        }),
+      ),
+    );
+  }
+
   return {
     ok: true,
     deliveryRequestId,
     wave,
-    notified: messages.length,
+    notified: pushError ? 0 : messages.length,
     candidates: candidates.length,
     offerStats,
-    message:
-      messages.length > 0 ? "Dispatch sent" : "Offers created without push tokens",
+    message: pushError
+      ? `Push failed: ${pushError}`
+      : messages.length > 0
+        ? "Dispatch sent"
+        : "Offers created without push tokens",
   };
 }

@@ -15,8 +15,9 @@ export async function filterDriverIdsByServicePreference(
     .in("driver_user_id", driverIds);
 
   if (error) {
+    // Fail open: a prefs table outage must not silently suppress all dispatch pushes.
     console.log("driver_service_preferences filter error:", error.message);
-    return new Set();
+    return new Set(driverIds);
   }
 
   return new Set(

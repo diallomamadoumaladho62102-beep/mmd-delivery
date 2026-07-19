@@ -24,6 +24,38 @@ function isMobilePushRole(value: unknown): value is MobilePushRole {
   return typeof value === "string" && MOBILE_PUSH_ROLES.includes(value as MobilePushRole);
 }
 
+/** Android channels must exist at process start, not only on Driver screens. */
+export async function ensureAndroidPushChannels(): Promise<void> {
+  if (Platform.OS !== "android") return;
+
+  await Notifications.setNotificationChannelAsync("default", {
+    name: "default",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: "#FF231F7C",
+  });
+
+  await Notifications.setNotificationChannelAsync("driver-missions", {
+    name: "Missions chauffeur",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 400, 200, 400, 200, 400],
+    lightColor: "#2563EB",
+    sound: "mmd_signature_driver_60s.wav",
+    enableVibrate: true,
+    bypassDnd: false,
+  });
+
+  await Notifications.setNotificationChannelAsync(RESTAURANT_ORDERS_PUSH_CHANNEL, {
+    name: "Commandes restaurant",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 400, 200, 400, 200, 400],
+    lightColor: "#DC2626",
+    sound: MMD_PUSH_SOUNDS.restaurantRing,
+    enableVibrate: true,
+    bypassDnd: false,
+  });
+}
+
 export function setupNotifications(): void {
   if (handlerInstalled) return;
 
@@ -37,6 +69,10 @@ export function setupNotifications(): void {
       shouldShowBanner: true,
       shouldShowList: true,
     }),
+  });
+
+  void ensureAndroidPushChannels().catch((error) => {
+    console.log("❌ ensureAndroidPushChannels error:", error);
   });
 }
 
@@ -54,37 +90,7 @@ export async function getExpoPushToken(): Promise<string | null> {
 
     if (!granted) return null;
 
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#FF231F7C",
-      });
-
-      await Notifications.setNotificationChannelAsync("driver-missions", {
-        name: "Missions chauffeur",
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 400, 200, 400, 200, 400],
-        lightColor: "#2563EB",
-        sound: "mmd_signature_driver_60s.wav",
-        enableVibrate: true,
-        bypassDnd: false,
-      });
-
-      await Notifications.setNotificationChannelAsync(
-        RESTAURANT_ORDERS_PUSH_CHANNEL,
-        {
-          name: "Commandes restaurant",
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 400, 200, 400, 200, 400],
-          lightColor: "#DC2626",
-          sound: MMD_PUSH_SOUNDS.restaurantRing,
-          enableVibrate: true,
-          bypassDnd: false,
-        },
-      );
-    }
+    await ensureAndroidPushChannels();
 
     const projectId =
       (Constants as any)?.expoConfig?.extra?.eas?.projectId ??

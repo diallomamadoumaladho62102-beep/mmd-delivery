@@ -924,9 +924,17 @@ export function DriverHomeScreen() {
 
   const stopSound = useCallback(async () => {
     try {
-      await mmdAudio.stopLongRing();
+      const { stopDriverMissionAlert } = await import(
+        "../lib/driverMissionAlertService"
+      );
+      await stopDriverMissionAlert();
     } catch (e) {
       console.log("stopSound error:", e);
+      try {
+        await mmdAudio.stopLongRing();
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 

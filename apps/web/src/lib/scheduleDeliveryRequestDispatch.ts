@@ -31,7 +31,22 @@ export function scheduleDeliveryRequestDispatch(params: {
     method: "POST",
     headers,
     body: JSON.stringify({ deliveryRequestId, wave: 1 }),
-  }).catch((err) => {
-    console.log("[scheduleDeliveryRequestDispatch] async trigger failed:", err);
-  });
+  })
+    .then(async (res) => {
+      const body = await res.json().catch(() => null);
+      console.log("[scheduleDeliveryRequestDispatch] response", {
+        delivery_request_id: deliveryRequestId,
+        http: res.status,
+        ok: body?.ok ?? null,
+        notified: body?.notified ?? null,
+        candidates: body?.candidates ?? null,
+        message: body?.message ?? body?.error ?? null,
+      });
+    })
+    .catch((err) => {
+      console.log(
+        "[scheduleDeliveryRequestDispatch] async trigger failed:",
+        err,
+      );
+    });
 }

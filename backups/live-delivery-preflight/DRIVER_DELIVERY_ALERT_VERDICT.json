@@ -1,0 +1,114 @@
+{
+  "audited_at": "2026-07-19T22:00:00.000Z",
+  "delivery_request_id": "4aac2906-ad6b-4acf-83fe-7806917961a2",
+  "paid_at": "2026-07-19T21:28:43.496+00:00",
+  "driver": {
+    "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+    "email": "diallomamadoumaladho62102@gmail.com",
+    "associated_as": "delivery_requests.driver_id (final assignee; no delivery_request_driver_offers row)",
+    "is_online_at_audit": true,
+    "status": "approved",
+    "package_delivery_enabled_profile": true
+  },
+  "tokens": {
+    "active_role": "driver",
+    "platforms_normalized": ["ios"],
+    "app_version_on_device": "1.0.0",
+    "token_masked_example": "ExponentPushTo…Ud6kg]",
+    "note": "Full Expo tokens exist in user_push_tokens; not printed here."
+  },
+  "server_trigger_expected": {
+    "event": "payment completion → scheduleDeliveryRequestDispatch → POST /api/dispatch/delivery-request → runDeliveryRequestDispatch wave=1",
+    "type": "delivery_request_dispatch",
+    "channel": "driver-missions"
+  },
+  "dispatch_evidence": {
+    "dispatch_wave_1_started_at": null,
+    "delivery_request_driver_offers": [],
+    "notification_logs_for_this_dr": 0,
+    "notification_logs_driver_related_at_incident": 0,
+    "only_historical_driver_log": {
+      "id": "338e3a1d-9d8c-4225-8ebd-2ea539af53f6",
+      "title": "Test MMD Delivery",
+      "created_at": "2026-05-29T04:41:50.738665+00:00",
+      "status": "sent"
+    },
+    "expo_ticket": null,
+    "expo_receipt": null,
+    "dedup_hit": false,
+    "interpretation": "Wave 1 lock never set → runDeliveryRequestDispatch never completed past the wave-1 lock for this DR. No Expo send occurred for this mission. Dedup cannot apply without a send attempt."
+  },
+  "driver_eligibility_geometry": {
+    "pickup": { "lat": 40.674, "lng": -73.611, "label": "Baldwin" },
+    "driver_location_near_incident": { "lat": 40.662, "lng": -73.891 },
+    "distance_miles": 14.73,
+    "max_dispatch_miles": 5,
+    "in_radius": false,
+    "market_note": "Even if wave-1 had run with this geometry, this driver would be filtered out (notified:0)."
+  },
+  "android_channel_audit": {
+    "channel_id": "driver-missions",
+    "importance": "MAX",
+    "sound": "mmd_signature_driver_60s.wav",
+    "vibration": true,
+    "priority_on_push_message": "high",
+    "created_at_app_start_before_fix": false,
+    "created_at_app_start_after_fix": true,
+    "incident_device_platform": "ios",
+    "note": "Incident tokens are iOS; Android channel config is not the root cause of this specific miss."
+  },
+  "mobile_long_ring_audit": {
+    "before_fix": "Dependent on DriverHomeScreen activeOffer + isOnline; AppNavigator only navigated / notified refresh",
+    "after_fix": "handleDriverMissionPushAlert starts mmdAudio.startLongRing('driver') globally on mission push types",
+    "stop_conditions": "accept / refuse / expire via stopDriverMissionAlert from DriverHomeScreen.stopSound",
+    "foreground_bg_lock_other_page": {
+      "foreground_any_page_after_fix": "long-ring starts on push handler",
+      "background_locked": "depends on OS push sound; iOS push uses short bundled sound, long-ring is in-app",
+      "requires_push_delivery": true
+    }
+  },
+  "installed_app": {
+    "app_version": "1.0.0",
+    "contains_this_fix": false,
+    "classification_D": true
+  },
+  "classification": {
+    "primary": "A",
+    "labels": {
+      "A": "notification serveur non envoyée",
+      "B": "push envoyé mais non reçu",
+      "C": "push reçu sans son",
+      "D": "ancienne application installée ne contenant pas le correctif"
+    },
+    "secondary": ["D"],
+    "not_proven": ["B", "C"],
+    "rationale": "Zero wave lock, zero offers, zero notification_logs for this DR → A. Device still on 1.0.0 without global driver alert service → D also blocks validation even after server send is fixed."
+  },
+  "verdicts": {
+    "DELIVERY_BACKEND": "READY",
+    "DRIVER_DELIVERY_ALERT": "BLOCKED"
+  },
+  "blocked": {
+    "exact_cause": "No Delivery wave-1 dispatch push was executed for DR 4aac2906… (dispatch_wave_1_started_at null, 0 offers, 0 notification_logs). Concurrent product gaps: driver ~14.7mi outside 5mi radius; long-ring previously tied to DriverHomeScreen; Android channels previously only ensured inside getExpoPushToken; dispatch wrote no audit rows.",
+    "files_fixed": [
+      "apps/web/src/lib/runDeliveryRequestDispatch.ts",
+      "apps/web/src/lib/scheduleDeliveryRequestDispatch.ts",
+      "apps/web/src/lib/driverServiceDispatchFilter.ts",
+      "apps/mobile/src/lib/driverMissionAlertService.ts",
+      "apps/mobile/src/lib/notifications.ts",
+      "apps/mobile/src/navigation/AppNavigator.tsx",
+      "apps/mobile/src/screens/DriverHomeScreen.tsx"
+    ],
+    "validatable_without_build": [
+      "notification_logs rows on next paid Delivery dispatch (skip / send / no_tokens / no_candidates)",
+      "Vercel logs for [scheduleDeliveryRequestDispatch] response (http, notified, candidates)",
+      "dispatch_wave_1_started_at + delivery_request_driver_offers after payment",
+      "prefs filter fail-open behavior on DB error"
+    ],
+    "requires_unique_final_build": [
+      "Global driver long-ring on push (driverMissionAlertService)",
+      "Android channel creation at setupNotifications / app start",
+      "Foreground ring when not on DriverHomeScreen"
+    ]
+  }
+}
