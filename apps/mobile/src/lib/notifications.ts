@@ -4,6 +4,10 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import * as Device from "expo-device";
 import { supabase } from "./supabase";
+import {
+  MMD_PUSH_SOUNDS,
+  RESTAURANT_ORDERS_PUSH_CHANNEL,
+} from "./mmdPushSounds";
 
 let handlerInstalled = false;
 
@@ -67,6 +71,19 @@ export async function getExpoPushToken(): Promise<string | null> {
         enableVibrate: true,
         bypassDnd: false,
       });
+
+      await Notifications.setNotificationChannelAsync(
+        RESTAURANT_ORDERS_PUSH_CHANNEL,
+        {
+          name: "Commandes restaurant",
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 400, 200, 400, 200, 400],
+          lightColor: "#DC2626",
+          sound: MMD_PUSH_SOUNDS.restaurantRing,
+          enableVibrate: true,
+          bypassDnd: false,
+        },
+      );
     }
 
     const projectId =

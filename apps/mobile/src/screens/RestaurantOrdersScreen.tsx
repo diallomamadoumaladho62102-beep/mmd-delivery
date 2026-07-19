@@ -12,7 +12,6 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { mmdAudio } from "../lib/mmdAudio";
 import { supabase } from "../lib/supabase";
 import {
   subscribePostgresChannel,
@@ -367,7 +366,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
   }, []);
 
   useEffect(() => {
-    void mmdAudio.init();
   }, []);
 
   useEffect(() => {
@@ -447,13 +445,9 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     };
   }, [navigation]);
 
-  const stopRepeatRinging = useCallback(() => {
-    void mmdAudio.stopLongRing();
-  }, []);
-
-  const startRepeatRinging = useCallback(() => {
-    void mmdAudio.startLongRing("restaurant");
-  }, []);
+  // Long-ring / alerts are owned by global restaurantOrderAlertService
+  // (works on every restaurant screen + push foreground). Do not start/stop
+  // mmdAudio here or leaving this page would silence the kitchen alarm.
 
   const isPendingValid = useCallback((o: Order) => {
     if (o.status !== "pending") return false;
@@ -475,13 +469,9 @@ export function RestaurantOrdersScreen({ navigation }: any) {
 
   const applyRingingState = useCallback(
     async (rows: Order[]) => {
-      const hasPendingValid = computeHasPendingValid(rows);
-      hasPendingValidRef.current = hasPendingValid;
-
-      if (hasPendingValid) startRepeatRinging();
-      else stopRepeatRinging();
+      hasPendingValidRef.current = computeHasPendingValid(rows);
     },
-    [computeHasPendingValid, startRepeatRinging, stopRepeatRinging]
+    [computeHasPendingValid]
   );
 
   const fetchOrders = useCallback(
@@ -626,7 +616,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           });
         }
 
-        stopRepeatRinging();
         void fetchOrders({ silent: true });
       } catch (e: any) {
         Alert.alert(
@@ -635,7 +624,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         );
       }
     },
-    [fetchOrders, restaurantUserId, stopRepeatRinging, t]
+    [fetchOrders, restaurantUserId, t]
   );
 
   const confirmAccept = useCallback(
@@ -689,8 +678,6 @@ export function RestaurantOrdersScreen({ navigation }: any) {
           style: "destructive",
           onPress: async () => {
             try {
-              stopRepeatRinging();
-
               await clearSelectedRole();
 
               const { error } = await supabase.auth.signOut();
@@ -717,7 +704,7 @@ export function RestaurantOrdersScreen({ navigation }: any) {
         },
       ]
     );
-  }, [navigation, stopRepeatRinging, t]);
+  }, [navigation, t]);
 
   useEffect(() => {
     if (!restaurantUserId) return;
@@ -757,13 +744,11 @@ export function RestaurantOrdersScreen({ navigation }: any) {
     const sub = AppState.addEventListener("change", (s: AppStateStatus) => {
       if (s === "active") {
         void fetchOrders({ silent: true });
-      } else {
-        stopRepeatRinging();
       }
     });
 
     return () => sub.remove();
-  }, [fetchOrders, stopRepeatRinging]);
+  }, [fetchOrders]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -772,24 +757,11 @@ export function RestaurantOrdersScreen({ navigation }: any) {
       forceTick((x) => x + 1);
 
       const currentOrders = ordersRef.current ?? [];
-      const hasValid = computeHasPendingValid(currentOrders);
-
-      if (hasPendingValidRef.current !== hasValid) {
-        hasPendingValidRef.current = hasValid;
-        if (hasValid) startRepeatRinging();
-        else stopRepeatRinging();
-      }
+      hasPendingValidRef.current = computeHasPendingValid(currentOrders);
     }, 5000);
 
     return () => clearInterval(id);
-  }, [computeHasPendingValid, startRepeatRinging, stopRepeatRinging]);
-
-  useEffect(() => {
-    return () => {
-      stopRepeatRinging();
-      void mmdAudio.stopLongRing();
-    };
-  }, [stopRepeatRinging]);
+  }, [computeHasPendingValid]);
 
   const statusLabel = useCallback(
     (s: OrderStatus) => {

@@ -93,13 +93,25 @@ export function resolvePushSound(dataType?: string | null): string {
   }
 }
 
+/** Normalize stored platform strings like "iOS 26.2.1" / "Android 14". */
+export function normalizePushPlatform(
+  platform?: string | null,
+): "ios" | "android" | "unknown" {
+  const os = String(platform ?? "").trim().toLowerCase();
+  if (os.startsWith("ios") || os.includes("iphone") || os.includes("ipad")) {
+    return "ios";
+  }
+  if (os.startsWith("android")) return "android";
+  return "unknown";
+}
+
 /** Platform-aware sound for Expo push (iOS bundles exclude >30s files). */
 export function resolvePushSoundForPlatform(
   dataType?: string | null,
   platform?: string | null,
 ): string {
   const type = String(dataType ?? "").trim().toLowerCase();
-  const os = String(platform ?? "").trim().toLowerCase();
+  const os = normalizePushPlatform(platform);
 
   if (os === "ios") {
     switch (type) {
@@ -126,6 +138,7 @@ export function resolvePushSoundForPlatform(
 }
 
 export const DRIVER_MISSION_PUSH_CHANNEL = "driver-missions";
+export const RESTAURANT_ORDERS_PUSH_CHANNEL = "restaurant-orders";
 
 /** All custom sounds registered in Expo config. */
 export const MMD_EXPO_SOUND_FILES = Object.values(MMD_PUSH_SOUNDS);

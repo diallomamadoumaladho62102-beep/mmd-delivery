@@ -1,5 +1,5 @@
 import * as React from "react";
-import { AppState } from "react-native";
+import { AppState, View } from "react-native";
 import * as Linking from "expo-linking";
 import {
   CANONICAL_APP_SCHEME,
@@ -47,6 +47,12 @@ import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
+import {
+  handleRestaurantNewOrderPush,
+  startRestaurantOrderAlertService,
+  stopRestaurantOrderAlertService,
+} from "../lib/restaurantOrderAlertService";
+import { RestaurantOrderAlertBanner } from "../components/RestaurantOrderAlertBanner";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -386,11 +392,31 @@ export function AppNavigator({
       }
     }
 
+    function handleRestaurantOrderPush(data: unknown) {
+      if (!data || typeof data !== "object") return;
+      const payload = data as Record<string, unknown>;
+      const type = String(payload.type ?? "").trim().toLowerCase();
+      if (type !== "restaurant_new_order") return;
+
+      const orderId = String(
+        payload.order_id ?? payload.orderId ?? "",
+      ).trim();
+      if (!orderId) return;
+
+      // Foreground / open app: start local long-ring + banner (idempotent by order_id).
+      void handleRestaurantNewOrderPush(orderId);
+
+      if (navReady()) {
+        navRef.current?.navigate("RestaurantOrders");
+      }
+    }
+
     function handleNotificationData(data: unknown) {
       if (navigateFromCommunicationPush(navRef.current as any, data)) {
         void syncAppBadgeFromServer();
         return;
       }
+      handleRestaurantOrderPush(data);
       handleDriverMissionPush(data);
       handleClientTaxiPush(data);
       void syncAppBadgeFromServer();
@@ -813,6 +839,7 @@ export function AppNavigator({
         const restaurantStatus = await getRestaurantStatus(uid);
 
         if (!isRestaurantOrderEligible(restaurantStatus)) {
+          await stopRestaurantOrderAlertService();
           if (cur !== "RestaurantGate" && cur !== "RestaurantSetup") {
             resetTo("RestaurantGate");
           }
@@ -822,11 +849,14 @@ export function AppNavigator({
         const ok = await isRestaurantProfileComplete(uid);
 
         if (!ok) {
+          await stopRestaurantOrderAlertService();
           if (cur !== "RestaurantGate" && cur !== "RestaurantSetup") {
             resetTo("RestaurantGate");
           }
           return;
         }
+
+        void startRestaurantOrderAlertService(uid);
 
         if (isInRestaurantArea(cur)) return;
         resetTo("RestaurantCommandCenter");
@@ -983,6 +1013,27 @@ export function AppNavigator({
 
     void subscribeDriverProfile();
 
+    const syncRestaurantAlert = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const uid = data.session?.user?.id ?? null;
+        if (!alive || !uid) {
+          await stopRestaurantOrderAlertService();
+          return;
+        }
+        const role = await resolveUserRole(uid);
+        if (role === "restaurant") {
+          await startRestaurantOrderAlertService(uid);
+          return;
+        }
+        await stopRestaurantOrderAlertService();
+      } catch (error) {
+        console.log("[restaurantOrderAlert] sync failed", error);
+      }
+    };
+
+    void syncRestaurantAlert();
+
     return () => {
       alive = false;
       try {
@@ -992,10 +1043,12 @@ export function AppNavigator({
         appStateSub?.remove?.();
       } catch {}
       void unsubscribeSupabaseChannel(profileChannel);
+      void stopRestaurantOrderAlertService();
     };
-  }, [openResetPassword, scheduleSync]);
+  }, [openResetPassword, scheduleSync, resolveUserRole]);
 
   return (
+    <View style={{ flex: 1 }}>
     <NavigationContainer
       ref={navRef}
       onReady={() => {
@@ -1512,5 +1565,12 @@ export function AppNavigator({
         />
       </Stack.Navigator>
     </NavigationContainer>
+    <RestaurantOrderAlertBanner
+      onPressOrder={(orderId) => {
+        if (!navReady()) return;
+        navRef.current?.navigate("RestaurantOrderDetails", { orderId });
+      }}
+    />
+    </View>
   );
 }

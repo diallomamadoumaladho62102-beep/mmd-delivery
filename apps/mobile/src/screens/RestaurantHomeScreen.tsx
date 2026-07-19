@@ -14,7 +14,6 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import { mmdAudio } from "../lib/mmdAudio";
 import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
 import { supabase } from "../lib/supabase";
@@ -1275,21 +1274,8 @@ export function RestaurantHomeScreen({ navigation }: any) {
     }).start();
   }, [liveOrder, liveOrderAnim]);
 
-  useEffect(() => {
-    void mmdAudio.init();
-  }, []);
-
-  const startRestaurantRing = useCallback(async () => {
-    try {
-      await mmdAudio.startLongRing("restaurant");
-    } catch {}
-  }, []);
-
-  const stopRestaurantRing = useCallback(async () => {
-    try {
-      await mmdAudio.stopLongRing();
-    } catch {}
-  }, []);
+  // Kitchen long-ring is owned by global restaurantOrderAlertService.
+  // This screen only updates the live map UI; do not gate ring on isFocused.
 
   useEffect(() => {
     if (checkingAuth || !activeRestaurantId) return;
@@ -1308,7 +1294,6 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
           if (
             restaurantOnline &&
-            isFocused &&
             row?.status === "pending" &&
             isFoodOrder &&
             isPaid
@@ -1324,7 +1309,6 @@ export function RestaurantHomeScreen({ navigation }: any) {
               created_at: (row.created_at as string | null) ?? null,
               total: Number.isFinite(Number(row.total)) ? Number(row.total) : null,
             });
-            await startRestaurantRing();
           }
 
           refreshLiveMap();
@@ -1341,10 +1325,6 @@ export function RestaurantHomeScreen({ navigation }: any) {
             String(row?.payment_status ?? "").trim().toLowerCase() === "paid";
 
           if (!isFoodOrder || !isPaid) return;
-
-          if (row?.status && row.status !== "pending") {
-            void stopRestaurantRing();
-          }
 
           setLiveOrder((current): RestaurantMapOrder | null => {
             if (!current || current.id !== String(row?.id ?? "")) {
@@ -1373,20 +1353,11 @@ export function RestaurantHomeScreen({ navigation }: any) {
       void unsubscribeSupabaseChannel(channel);
     };
   }, [
-    isFocused,
     checkingAuth,
-    startRestaurantRing,
-    stopRestaurantRing,
     activeRestaurantId,
     refreshLiveMap,
     restaurantOnline,
   ]);
-
-  useEffect(() => {
-    return () => {
-      void stopRestaurantRing();
-    };
-  }, [stopRestaurantRing]);
 
   const avatarLetter = useMemo(() => {
     const raw = String(restaurantName || "").trim();
