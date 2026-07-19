@@ -27,6 +27,12 @@ import {
   evaluateServerRoute,
   validateLocationClaimServer,
 } from "@/lib/geoTrust";
+import { resolveMmdPlusCheckoutBenefits } from "@/lib/mmdPlus/mmdPlusEngine";
+import {
+  isLikelyFirstOrder,
+  resolveMarketingOffers,
+  userHasActiveMmdPlus,
+} from "@/lib/marketing/marketingEngine";
 
 type ComputeOrderPricingRow = {
   config_key: string;
@@ -67,6 +73,7 @@ export type DeliveryRequestPricingInput = {
   countryCode: string;
   promoCode?: string | null;
   subtotal?: number;
+  clientUserId?: string | null;
 };
 
 export type DeliveryRequestPricingResult = {
@@ -89,6 +96,8 @@ export type DeliveryRequestPricingResult = {
   promoDiscountAmount: number;
   discounts: number;
   subtotalAfterDiscount: number;
+  marketingDiscountAmount: number;
+  marketingDeliveryDiscountAmount: number;
   total: number;
   totalCents: number;
   distanceMiles: number;
@@ -193,6 +202,7 @@ export async function computeDeliveryRequestPricing(
     countryCode,
     promoCode,
     subtotal = 0,
+    clientUserId,
   } = input;
 
   validateCoordinates(pickupLat, pickupLng, "Pickup");
@@ -324,12 +334,74 @@ export async function computeDeliveryRequestPricing(
   const deliveryDiscountAmount = roundPlatformMoney(
     toFiniteNumber(pricingRow.delivery_discount_amount)
   );
-  const subtotalAfterDiscount = roundPlatformMoney(
+  const subtotalAfterPromo = roundPlatformMoney(
     toFiniteNumber(pricingRow.subtotal_after_discount, safeSubtotal)
   );
-  const deliveryFeeAfterDiscount = roundPlatformMoney(
+  const deliveryFeeAfterPromo = roundPlatformMoney(
     toFiniteNumber(pricingRow.delivery_fee_after_discount, rawDeliveryFee)
   );
+
+  let deliveryFeeAfterDiscount = deliveryFeeAfterPromo;
+  let subtotalAfterDiscount = subtotalAfterPromo;
+  let marketingOrderDiscount = 0;
+  let marketingFeeDiscount = 0;
+  let mmdPlusDeliveryDiscount = 0;
+  let mmdPlusOrderDiscount = 0;
+
+  if (clientUserId) {
+    try {
+      const [hasPlus, firstOrder] = await Promise.all([
+        userHasActiveMmdPlus(supabaseAdmin, clientUserId),
+        isLikelyFirstOrder(supabaseAdmin, clientUserId, "delivery"),
+      ]);
+      const marketing = await resolveMarketingOffers(supabaseAdmin, {
+        userId: clientUserId,
+        service: "delivery",
+        subtotalCents: Math.round(subtotalAfterPromo * 100),
+        deliveryFeeCents: Math.round(deliveryFeeAfterPromo * 100),
+        promoCode: promoCode ?? null,
+        countryCode: platformCountry,
+        hasMmdPlus: hasPlus,
+        isFirstOrder: firstOrder,
+      });
+      if (marketing.ok || !marketing.fail_closed) {
+        marketingOrderDiscount = roundPlatformMoney(
+          (marketing.order_discount_cents || 0) / 100
+        );
+        marketingFeeDiscount = roundPlatformMoney(
+          (marketing.delivery_fee_discount_cents || 0) / 100
+        );
+        deliveryFeeAfterDiscount = roundPlatformMoney(
+          Math.max(0, deliveryFeeAfterPromo - marketingFeeDiscount)
+        );
+        subtotalAfterDiscount = roundPlatformMoney(
+          Math.max(0, subtotalAfterPromo - marketingOrderDiscount)
+        );
+      }
+    } catch (e) {
+      console.warn(
+        "[marketing] delivery pricing fail-open",
+        e instanceof Error ? e.message : e
+      );
+    }
+
+    const mmd = await resolveMmdPlusCheckoutBenefits(supabaseAdmin, {
+      userId: clientUserId,
+      service: "delivery",
+      subtotalCents: Math.round(subtotalAfterDiscount * 100),
+      deliveryFeeCents: Math.round(deliveryFeeAfterDiscount * 100),
+    });
+    mmdPlusDeliveryDiscount = roundPlatformMoney(
+      (mmd.delivery_fee_discount_cents || 0) / 100
+    );
+    mmdPlusOrderDiscount = roundPlatformMoney((mmd.order_discount_cents || 0) / 100);
+    deliveryFeeAfterDiscount = roundPlatformMoney(
+      Math.max(0, deliveryFeeAfterDiscount - mmdPlusDeliveryDiscount)
+    );
+    subtotalAfterDiscount = roundPlatformMoney(
+      Math.max(0, subtotalAfterDiscount - mmdPlusOrderDiscount)
+    );
+  }
 
   const taxResult = await computeFoodTaxAmount(
     supabaseAdmin,
@@ -348,7 +420,14 @@ export async function computeDeliveryRequestPricing(
     deliveryFeeAfterDiscount,
   });
   const serviceFeeResult = computeClientServiceFee(serviceFeeConfig, serviceFeeBase);
-  const discounts = roundPlatformMoney(promoDiscountAmount + deliveryDiscountAmount);
+  const discounts = roundPlatformMoney(
+    promoDiscountAmount +
+      deliveryDiscountAmount +
+      marketingOrderDiscount +
+      marketingFeeDiscount +
+      mmdPlusDeliveryDiscount +
+      mmdPlusOrderDiscount
+  );
   const total = roundPlatformMoney(
     subtotalAfterDiscount +
       taxResult.tax +
@@ -377,6 +456,8 @@ export async function computeDeliveryRequestPricing(
     promoDiscountAmount,
     discounts,
     subtotalAfterDiscount,
+    marketingDiscountAmount: marketingOrderDiscount,
+    marketingDeliveryDiscountAmount: marketingFeeDiscount,
     total,
     totalCents,
     distanceMiles: safeDistanceMiles,

@@ -82,6 +82,7 @@ export async function createFoodOrderServerSide(
     dropoffLng,
     countryCode,
     promoCode,
+    clientUserId: clientId,
   });
 
   const pickupCode = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -154,6 +155,74 @@ export async function createFoodOrderServerSide(
 
   const orderId = String(data.id);
 
+  // Phase 7.1: systematic marketing reserve after entity creation.
+  try {
+    const { reserveAndAttachMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    const { userHasActiveMmdPlus, isLikelyFirstOrder } = await import(
+      "@/lib/marketing/marketingEngine"
+    );
+    const [hasPlus, firstOrder] = await Promise.all([
+      userHasActiveMmdPlus(supabaseAdmin, clientId),
+      isLikelyFirstOrder(supabaseAdmin, clientId, "food"),
+    ]);
+    const marketingAttach = await reserveAndAttachMarketing(supabaseAdmin, {
+      kind: "food",
+      entityId: orderId,
+      userId: clientId,
+      subtotalCents: Math.round(pricing.subtotal * 100),
+      deliveryFeeCents: Math.round(pricing.deliveryFeeRaw * 100),
+      promoCode: promoCode ?? pricing.promoCodeApplied ?? null,
+      countryCode: countryCode ?? pricing.countryCode ?? null,
+      partnerUserId: restaurantUserId,
+      hasMmdPlus: hasPlus,
+      isFirstOrder: firstOrder,
+    });
+    if (!marketingAttach.ok && marketingAttach.fail_closed) {
+      await supabaseAdmin.from("order_members").delete().eq("order_id", orderId);
+      await supabaseAdmin.from("orders").delete().eq("id", orderId);
+      throw new Error(
+        marketingAttach.error ?? "Impossible de réserver la promotion"
+      );
+    }
+    // Fail-closed for money: strip any marketing discount that was not reserved.
+    if (
+      !marketingAttach.marketing_reservation_id &&
+      (pricing.marketingDiscountAmount > 0 ||
+        pricing.marketingDeliveryDiscountAmount > 0)
+    ) {
+      const { applyStripUnreservedMarketingDiscount } = await import(
+        "@/lib/marketing/stripUnreservedMarketingDiscount"
+      );
+      await applyStripUnreservedMarketingDiscount(supabaseAdmin, {
+        kind: "food",
+        entityId: orderId,
+        marketingOrderDiscount: pricing.marketingDiscountAmount,
+        marketingDeliveryDiscount: pricing.marketingDeliveryDiscountAmount,
+        discounts: pricing.discounts,
+        deliveryFee: pricing.deliveryFee,
+        total: pricing.total,
+        subtotalCents: Math.round(pricing.subtotal * 100),
+        deliveryFeeCents: Math.round(pricing.deliveryFee * 100),
+        totalCents: Math.round(pricing.total * 100),
+        tax: pricing.tax,
+        serviceFee: pricing.serviceFee,
+      });
+    }
+  } catch (e) {
+    if (
+      e instanceof Error &&
+      /Impossible de réserver|marketing_reserve|fail_closed/i.test(e.message)
+    ) {
+      throw e;
+    }
+    console.warn(
+      "[marketing] food reserve fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
+
   await supabaseAdmin.from("order_members").upsert(
     [
       { order_id: orderId, user_id: clientId, role: "client" },
@@ -181,6 +250,25 @@ export async function createFoodOrderServerSide(
       serviceFee: pricing.serviceFee,
     },
   });
+
+  // Phase 4: freeze the winning commission rule once at order creation.
+  // refresh_order_commissions will honour this snapshot for platform/restaurant rates.
+  const { snapshotOrderCommission } = await import("@/lib/commission/commissionEngine");
+  const snap = await snapshotOrderCommission(supabaseAdmin, {
+    orderKind: "food",
+    orderId,
+    partnerType: "restaurant",
+    partnerUserId: restaurantUserId,
+    service: "food",
+    currency: pricing.currency,
+    countryCode: countryCode ?? pricing.countryCode ?? null,
+  });
+  if (!snap.ok) {
+    console.error("[commission-engine] food snapshot failed (continuing with pricing_config)", {
+      order_id: orderId,
+      error: snap.error,
+    });
+  }
 
   const { data: commissionData, error: commissionErr } = await supabaseAdmin.rpc(
     "refresh_order_commissions",
@@ -210,6 +298,10 @@ type StoredOrderRow = {
   kind: string | null;
   order_type: string | null;
   restaurant_user_id: string | null;
+  created_by?: string | null;
+  client_id?: string | null;
+  client_user_id?: string | null;
+  user_id?: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
   pickup_lat: number | null;
@@ -257,7 +349,7 @@ export async function validateFoodOrderBeforeCheckout(
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "id, kind, order_type, restaurant_user_id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, subtotal, tax, total, grand_total, total_cents, currency, delivery_fee, items_json, promo_code_applied"
+      "id, kind, order_type, restaurant_user_id, created_by, client_id, client_user_id, user_id, pickup_address, dropoff_address, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, subtotal, tax, total, grand_total, total_cents, currency, delivery_fee, items_json, promo_code_applied"
     )
     .eq("id", orderId)
     .maybeSingle<StoredOrderRow>();
@@ -294,6 +386,8 @@ export async function validateFoodOrderBeforeCheckout(
     dropoffLng: toFiniteFoodNumber(data.dropoff_lng),
     countryCode,
     promoCode: data.promo_code_applied,
+    clientUserId:
+      data.client_user_id ?? data.client_id ?? data.user_id ?? data.created_by ?? null,
   });
 
   const storedTotal = roundFoodMoney(

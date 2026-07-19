@@ -189,6 +189,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "taxi_promotions.read",
   },
   {
+    href: "/admin/loyalty",
+    title: "Fidélité MMD",
+    description: "Programme fidélité unifié — points, Crédit MMD, campagnes, parrainage",
+    permission: "loyalty.read",
+  },
+  {
     href: "/admin/taxi-loyalty",
     title: "Taxi Loyalty",
     description: "Programme fidélité taxi — consultation et ajustements",

@@ -185,13 +185,29 @@ export default function AdminControlCenter() {
 
           {role && hasPermission(role, "commissions.read") ? (
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-base font-semibold text-slate-900">
-                  Commissions récentes
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Vue finance / super admin des commissions calculées.
-                </p>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">
+                    Commissions récentes
+                  </h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Vue finance / super admin des commissions calculées.
+                  </p>
+                </div>
+                <a
+                  href="/admin/commission-engine"
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Moteur de commissions
+                </a>
+                {role && hasPermission(role, "analytics.read") ? (
+                  <a
+                    href="/admin/analytics"
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    Analytics
+                  </a>
+                ) : null}
               </div>
               <AdminCommissionsTable />
             </section>

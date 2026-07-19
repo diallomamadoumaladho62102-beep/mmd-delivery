@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { notifyClientOrderCreated } from "@/lib/clientPushNotifications";
 import { runFoodOrderPaymentSideEffects } from "@/lib/restaurantOrderAutomation";
 import { notifyOrderConfirmationEmail } from "@/lib/transactionalEmails";
+import { captureEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 
 export async function completeFoodOrderAfterPayment(
   supabaseAdmin: SupabaseClient,
@@ -36,4 +37,20 @@ export async function completeFoodOrderAfterPayment(
     notifyClientPaid: false,
     notifyRestaurant: true,
   });
+
+  // Crédit MMD: finalize any reserved store-credit now that the order is paid.
+  await captureEntityCredit(supabaseAdmin, "food_order", input.orderId);
+
+  // Phase 7.1: capture marketing reservation once (idempotent).
+  try {
+    const { captureEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await captureEntityMarketing(supabaseAdmin, "food", input.orderId);
+  } catch (e) {
+    console.warn(
+      "[marketing] food capture fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
 }

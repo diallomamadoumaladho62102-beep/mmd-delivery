@@ -21,6 +21,18 @@ if (
   );
 }
 
+// Phase 10: never allow Live Stripe secrets on Preview/local (prevents real charges).
+if (
+  !isVercelProductionRuntime &&
+  stripeSecretKey &&
+  stripeSecretKey.startsWith("sk_live_")
+) {
+  throw new Error(
+    "[MMD] Non-production forbids STRIPE_SECRET_KEY=sk_live_*. " +
+      "Use sk_test_* on Preview/local. Live keys require VERCEL_ENV=production.",
+  );
+}
+
 export const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2023-10-16",
 });

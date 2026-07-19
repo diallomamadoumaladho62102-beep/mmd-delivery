@@ -10,6 +10,8 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { stripe, webhookSecret } from "@/lib/stripe";
+import { handleSubscriptionStripeEvent } from "@/lib/subscriptions/stripeSubscriptionWebhook";
+import { handleMmdPlusStripeEvent } from "@/lib/mmdPlus/stripeMmdPlusWebhook";
 import {
   ensureOrderCommissionsReady,
   refreshCommissionsForDeliveryRequest,
@@ -95,6 +97,7 @@ type OrderRow = {
   total: number | null;
   grand_total: number | null;
   total_cents: number | null;
+  net_charge_cents?: number | null;
   currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
@@ -110,6 +113,7 @@ type DeliveryRequestRow = {
   payment_status: string | null;
   total: number | null;
   total_cents: number | null;
+  net_charge_cents?: number | null;
   currency: string | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
@@ -120,12 +124,12 @@ type DeliveryRequestRow = {
 
 type MinimalOrderForAmount = Pick<
   OrderRow,
-  "total" | "grand_total" | "total_cents" | "currency"
+  "total" | "grand_total" | "total_cents" | "net_charge_cents" | "currency"
 >;
 
 type MinimalDeliveryRequestForAmount = Pick<
   DeliveryRequestRow,
-  "total" | "total_cents" | "currency"
+  "total" | "total_cents" | "net_charge_cents" | "currency"
 >;
 
 type OrderLookupResult = {
@@ -266,6 +270,13 @@ const HANDLED_EVENT_TYPES = new Set([
   "payment_intent.payment_failed",
   "charge.refunded",
   "refund.updated",
+  // Phase 5 — Stripe Billing subscriptions
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "invoice.paid",
+  "invoice.payment_succeeded",
+  "invoice.payment_failed",
 ]);
 
 function asErrorLike(value: unknown): GenericErrorLike | null {
@@ -413,6 +424,14 @@ function toPositiveNumber(value: unknown): number | null {
 }
 
 function resolveOrderAmountCents(order: MinimalOrderForAmount): number | null {
+  // Crédit MMD: when a net charge was frozen at checkout, the customer was
+  // charged the net — verify against it (never above the gross).
+  const netCharge = toPositiveNumber(order.net_charge_cents);
+  const grossForNet = toPositiveNumber(order.total_cents);
+  if (netCharge != null && (grossForNet == null || netCharge <= grossForNet)) {
+    return Math.round(netCharge);
+  }
+
   const totalCents = toPositiveNumber(order.total_cents);
   if (totalCents != null) return Math.round(totalCents);
 
@@ -428,6 +447,12 @@ function resolveOrderAmountCents(order: MinimalOrderForAmount): number | null {
 function resolveDeliveryRequestAmountCents(
   deliveryRequest: MinimalDeliveryRequestForAmount
 ): number | null {
+  const netCharge = toPositiveNumber(deliveryRequest.net_charge_cents);
+  const grossForNet = toPositiveNumber(deliveryRequest.total_cents);
+  if (netCharge != null && (grossForNet == null || netCharge <= grossForNet)) {
+    return Math.round(netCharge);
+  }
+
   const totalCents = toPositiveNumber(deliveryRequest.total_cents);
   if (totalCents != null) return Math.round(totalCents);
 
@@ -512,7 +537,7 @@ async function loadOrderForPaymentCheck(
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "id, payment_status, total, grand_total, total_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, user_id, country_code, kind"
+      "id, payment_status, total, grand_total, total_cents, net_charge_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, user_id, country_code, kind"
     )
     .eq("id", orderId)
     .maybeSingle<OrderRow>();
@@ -530,7 +555,7 @@ async function loadDeliveryRequestForPaymentCheck(
   const { data, error } = await supabaseAdmin
     .from("delivery_requests")
     .select(
-      "id, payment_status, total, total_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, country_code"
+      "id, payment_status, total, total_cents, net_charge_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, country_code"
     )
     .eq("id", deliveryRequestId)
     .maybeSingle<DeliveryRequestRow>();
@@ -2869,7 +2894,54 @@ export async function POST(req: NextRequest) {
       event.type === "checkout.session.completed" ||
       event.type === "checkout.session.async_payment_succeeded"
     ) {
+      // Phase 6: MMD+ client subscriptions, then Phase 5 partner subscriptions.
+      const mmdPlusCheckout = await handleMmdPlusStripeEvent(supabaseAdmin, event);
+      if (mmdPlusCheckout.handled) {
+        return json({
+          received: true,
+          type: event.type,
+          ok: true,
+          mmd_plus: mmdPlusCheckout.result ?? {},
+        });
+      }
+      const subResult = await handleSubscriptionStripeEvent(supabaseAdmin, event);
+      if (subResult.handled) {
+        return json({
+          received: true,
+          type: event.type,
+          ok: true,
+          subscriptions: subResult.result ?? {},
+        });
+      }
       return await handleCheckoutCompletedLikeEvent(supabaseAdmin, event);
+    }
+
+    if (
+      event.type === "customer.subscription.created" ||
+      event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted" ||
+      event.type === "invoice.paid" ||
+      event.type === "invoice.payment_succeeded" ||
+      event.type === "invoice.payment_failed"
+    ) {
+      const mmdPlusResult = await handleMmdPlusStripeEvent(supabaseAdmin, event);
+      if (mmdPlusResult.handled) {
+        return json({
+          received: true,
+          type: event.type,
+          ok: true,
+          handled: true,
+          mmd_plus: mmdPlusResult.result ?? {},
+        });
+      }
+      const subResult = await handleSubscriptionStripeEvent(supabaseAdmin, event);
+      return json({
+        received: true,
+        type: event.type,
+        ok: true,
+        handled: subResult.handled,
+        subscriptions: subResult.result ?? {},
+      });
     }
 
     if (event.type === "payment_intent.succeeded") {

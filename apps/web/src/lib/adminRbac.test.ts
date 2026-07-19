@@ -48,6 +48,15 @@ test("support can view but not manage payouts or pricing", () => {
   assert.equal(hasPermission("support", "pricing.read"), false);
 });
 
+test("support finance is lookup-only (no global P&L)", () => {
+  assert.equal(hasPermission("support", "finance.transactions.lookup"), true);
+  assert.equal(hasPermission("support", "finance.read"), false);
+  assert.equal(hasPermission("support", "finance.export"), false);
+  assert.equal(hasPermission("support", "finance.transactions.read"), false);
+  assert.equal(hasPermission("finance", "finance.read"), true);
+  assert.equal(hasPermission("finance", "finance.transactions.lookup"), true);
+});
+
 test("review admin is limited to driver/restaurant manage", () => {
   assert.equal(hasPermission("review", "users.drivers.manage"), true);
   assert.equal(hasPermission("review", "users.restaurants.manage"), true);

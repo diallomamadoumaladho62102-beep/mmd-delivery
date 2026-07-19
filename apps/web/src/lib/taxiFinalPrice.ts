@@ -7,6 +7,8 @@ export type TaxiFinalPriceSnapshot = {
   promo_discount_cents: number;
   loyalty_discount_cents: number;
   shared_discount_cents: number;
+  mmd_credit_cents: number;
+  mmd_plus_discount_cents: number;
   total_discount_cents: number;
   total_cents: number;
 };
@@ -21,6 +23,9 @@ export function calculateTaxiFinalPriceSnapshot(input: {
   promo_discount_cents?: number;
   loyalty_discount_cents?: number;
   shared_discount_cents?: number;
+  mmd_credit_cents?: number;
+  /** MMD+ order discount — cumulative with loyalty / promo / credit. */
+  mmd_plus_discount_cents?: number;
   shared_ride?: boolean;
 }): TaxiFinalPriceSnapshot {
   const subtotal_cents = Math.max(0, Math.round(Number(input.subtotal_cents ?? 0)));
@@ -53,9 +58,21 @@ export function calculateTaxiFinalPriceSnapshot(input: {
     0,
     Math.round(Number(input.loyalty_discount_cents ?? 0))
   );
+  const mmd_credit_cents = Math.max(
+    0,
+    Math.round(Number(input.mmd_credit_cents ?? 0))
+  );
+  const mmd_plus_discount_cents = Math.max(
+    0,
+    Math.round(Number(input.mmd_plus_discount_cents ?? 0))
+  );
 
   const total_discount_cents =
-    promo_discount_cents + loyalty_discount_cents + shared_discount_cents;
+    promo_discount_cents +
+    loyalty_discount_cents +
+    shared_discount_cents +
+    mmd_credit_cents +
+    mmd_plus_discount_cents;
   const total_cents = Math.max(0, gross_total_cents - total_discount_cents);
 
   return {
@@ -65,6 +82,8 @@ export function calculateTaxiFinalPriceSnapshot(input: {
     promo_discount_cents,
     loyalty_discount_cents,
     shared_discount_cents,
+    mmd_credit_cents,
+    mmd_plus_discount_cents,
     total_discount_cents,
     total_cents,
   };
@@ -89,6 +108,9 @@ export type TaxiRidePriceFields = {
   discount_cents?: number | null;
   loyalty_discount_cents?: number | null;
   shared_discount_cents?: number | null;
+  mmd_credit_applied_cents?: number | null;
+  /** Optional runtime/DB field for MMD+ taxi discount. */
+  mmd_plus_discount_cents?: number | null;
   total_cents?: number | null;
 };
 
@@ -110,6 +132,8 @@ export function snapshotFromRideRow(ride: TaxiRidePriceFields): TaxiFinalPriceSn
     promo_discount_cents: Number(ride.discount_cents ?? 0),
     loyalty_discount_cents: Number(ride.loyalty_discount_cents ?? 0),
     shared_discount_cents: Number(ride.shared_discount_cents ?? 0),
+    mmd_credit_cents: Number(ride.mmd_credit_applied_cents ?? 0),
+    mmd_plus_discount_cents: Number(ride.mmd_plus_discount_cents ?? 0),
   });
 }
 

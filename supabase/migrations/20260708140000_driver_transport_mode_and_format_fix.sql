@@ -1,6 +1,159 @@
 -- Fix PostgreSQL format() bug (%.1f is invalid) and add server-side transport mode changes.
 begin;
 
+-- Empty-DB bootstrap: vehicle eligibility tables are created later in
+-- 20260728120000; this migration historically assumed they already existed.
+create table if not exists public.vehicle_category_rules (
+  id uuid primary key default gen_random_uuid(),
+  country_code text,
+  city text,
+  category text not null,
+  max_vehicle_age_years integer not null default 10,
+  min_passenger_seats integer not null default 4,
+  requires_air_conditioning boolean not null default false,
+  requires_wheelchair_equipment boolean not null default false,
+  requires_wheelchair_admin_verified boolean not null default false,
+  min_driver_rating numeric,
+  allowed_vehicle_types text[],
+  requires_inspection_approved boolean not null default true,
+  requires_insurance_approved boolean not null default true,
+  requires_registration_approved boolean not null default true,
+  requires_admin_approval boolean not null default false,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (country_code, city, category)
+);
+
+create table if not exists public.driver_vehicles (
+  id uuid primary key default gen_random_uuid(),
+  driver_user_id uuid not null references auth.users (id) on delete cascade,
+  vehicle_make text,
+  vehicle_model text,
+  vehicle_year integer,
+  vehicle_color text,
+  license_plate text,
+  seats_count integer not null default 4,
+  vehicle_type text,
+  has_air_conditioning boolean not null default false,
+  wheelchair_accessible boolean not null default false,
+  wheelchair_equipment_verified boolean not null default false,
+  child_seat_available boolean,
+  luggage_capacity text,
+  inspection_status text not null default 'pending',
+  insurance_status text not null default 'pending',
+  registration_status text not null default 'pending',
+  vehicle_active boolean not null default true,
+  admin_review_status text not null default 'pending_review',
+  admin_review_notes text,
+  review_requested_at timestamptz,
+  is_primary boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.vehicle_category_eligibility (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid not null references public.driver_vehicles (id) on delete cascade,
+  driver_user_id uuid not null references auth.users (id) on delete cascade,
+  category text not null,
+  status text not null default 'not_eligible',
+  reason_code text,
+  reason_message text,
+  admin_approved boolean not null default false,
+  admin_suspended boolean not null default false,
+  computed_at timestamptz not null default now(),
+  evaluated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (vehicle_id, category)
+);
+
+create or replace function public.resolve_vehicle_category_rule(
+  p_category text,
+  p_country text,
+  p_city text
+)
+returns public.vehicle_category_rules
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_rule public.vehicle_category_rules;
+begin
+  select * into v_rule
+  from public.vehicle_category_rules
+  where is_active = true
+    and category = p_category
+    and country_code is not distinct from nullif(upper(trim(coalesce(p_country, ''))), '')
+    and city is not distinct from nullif(lower(trim(coalesce(p_city, ''))), '')
+  limit 1;
+
+  if found then
+    return v_rule;
+  end if;
+
+  select * into v_rule
+  from public.vehicle_category_rules
+  where is_active = true
+    and category = p_category
+    and country_code is null
+    and city is null
+  limit 1;
+
+  return v_rule;
+end;
+$$;
+
+-- Helpers used below; also defined in 20260720120000 (idempotent create or replace).
+create or replace function public.is_active_order_for_tracking(p_status text)
+returns boolean
+language sql
+immutable
+as $$
+  select lower(coalesce(p_status, '')) in (
+    'preparing',
+    'ready',
+    'dispatched',
+    'picked_up',
+    'in_transit',
+    'out_for_delivery'
+  );
+$$;
+
+create or replace function public.is_active_delivery_request_for_tracking(p_status text)
+returns boolean
+language sql
+immutable
+as $$
+  select lower(coalesce(p_status, '')) in (
+    'dispatched',
+    'picked_up',
+    'in_transit'
+  );
+$$;
+
+-- Stub until 20260729120000 replaces with full taxi mission check.
+create or replace function public.driver_has_active_taxi_ride(p_user_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.taxi_rides tr
+    where tr.driver_id = p_user_id
+      and lower(coalesce(tr.status, '')) in (
+        'paid', 'dispatching', 'dispatched', 'accepted',
+        'in_progress', 'arriving', 'started', 'driver_arrived'
+      )
+  );
+$$;
+
 create or replace function public.driver_has_active_food_or_package_mission(p_user_id uuid)
 returns boolean
 language sql

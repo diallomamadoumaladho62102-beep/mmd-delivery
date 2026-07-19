@@ -58,7 +58,7 @@ type DeliveryJobPayoutSource = {
   platform_margin_cents: number;
 };
 
-const MARKETPLACE_SELLER_COMMISSION_BPS = 500; // 5% of subtotal
+const MARKETPLACE_SELLER_COMMISSION_BPS = 500; // 5% of subtotal (legacy fallback)
 
 function roundCents(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -72,19 +72,38 @@ function isSellerOrderPaid(order: SellerOrderPayoutSource): boolean {
 export function calculateSellerMarketplacePayout(order: {
   subtotal_cents?: number | null;
   service_fee_cents?: number | null;
+  /** When provided (Phase 4 snapshot), overrides the hardcoded 5% BPS. */
+  platform_rate_pct?: number | null;
+  platform_fixed_fee_cents?: number | null;
+  platform_fee_credit_cents?: number | null;
 }): {
   gross_amount_cents: number;
   platform_fee_cents: number;
   seller_net_amount_cents: number;
 } {
   const gross = roundCents(Number(order.subtotal_cents ?? 0));
-  const commissionFromSubtotal = roundCents(
-    (gross * MARKETPLACE_SELLER_COMMISSION_BPS) / 10_000
-  );
-  const platformFee =
-    commissionFromSubtotal > 0
-      ? commissionFromSubtotal
-      : roundCents(Number(order.service_fee_cents ?? 0));
+
+  let platformFee: number;
+  if (
+    order.platform_rate_pct != null &&
+    Number.isFinite(Number(order.platform_rate_pct))
+  ) {
+    const fromRate = roundCents((gross * Number(order.platform_rate_pct)) / 100);
+    const withFixed = fromRate + roundCents(Number(order.platform_fixed_fee_cents ?? 0));
+    platformFee = Math.max(
+      0,
+      withFixed - roundCents(Number(order.platform_fee_credit_cents ?? 0))
+    );
+  } else {
+    const commissionFromSubtotal = roundCents(
+      (gross * MARKETPLACE_SELLER_COMMISSION_BPS) / 10_000
+    );
+    platformFee =
+      commissionFromSubtotal > 0
+        ? commissionFromSubtotal
+        : roundCents(Number(order.service_fee_cents ?? 0));
+  }
+
   const sellerNet = Math.max(0, gross - platformFee);
 
   return {
@@ -255,7 +274,53 @@ export async function prepareMarketplaceSellerPayout(
     return { ok: true, skipped: "order_not_paid" };
   }
 
-  const amounts = calculateSellerMarketplacePayout(order);
+  // Prefer Phase-4 frozen snapshot; if missing (legacy orders), create one then use it.
+  let ratePct: number | null = null;
+  let fixedFee = 0;
+  let feeCredit = 0;
+  try {
+    const { loadCommissionSnapshot, snapshotOrderCommission } = await import(
+      "@/lib/commission/commissionEngine"
+    );
+    let snap = await loadCommissionSnapshot(supabaseAdmin, "marketplace", sellerOrderId);
+    if (!snap) {
+      const { data: sellerRow } = await supabaseAdmin
+        .from("sellers")
+        .select("user_id, country_code, city")
+        .eq("id", order.seller_id)
+        .maybeSingle();
+      if (sellerRow?.user_id) {
+        const created = await snapshotOrderCommission(supabaseAdmin, {
+          orderKind: "marketplace",
+          orderId: sellerOrderId,
+          partnerType: "seller",
+          partnerUserId: String(sellerRow.user_id),
+          service: "marketplace",
+          currency: order.currency ?? "USD",
+          countryCode: sellerRow.country_code ?? sellerCountryCode(order),
+          city: sellerRow.city ?? null,
+        });
+        if (created.ok) snap = created;
+      }
+    }
+    if (snap?.ok) {
+      ratePct = snap.rate_pct;
+      fixedFee = snap.fixed_fee_cents;
+      feeCredit = snap.fee_credit_cents;
+    }
+  } catch (e) {
+    console.warn("[marketplace-payout] commission snapshot lookup failed", {
+      sellerOrderId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  const amounts = calculateSellerMarketplacePayout({
+    ...order,
+    platform_rate_pct: ratePct,
+    platform_fixed_fee_cents: fixedFee,
+    platform_fee_credit_cents: feeCredit,
+  });
   if (amounts.gross_amount_cents <= 0) {
     return { ok: true, skipped: "zero_gross_amount" };
   }

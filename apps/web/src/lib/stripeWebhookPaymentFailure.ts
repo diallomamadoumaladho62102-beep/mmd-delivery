@@ -12,6 +12,7 @@ import {
   isTaxiStripeModule,
   pickTaxiRideIdFromMetadata,
 } from "@/lib/taxiStripeWebhook";
+import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 
 export const STRIPE_WEBHOOK_FAILURE_EVENT_TYPES = [
   "checkout.session.expired",
@@ -219,6 +220,30 @@ async function markCorePaymentFailure(
 
   if (!updated) {
     return { updated: [], skipped: ["update_noop"] };
+  }
+
+  // Crédit MMD: release the still-held reservation on failed/expired payment.
+  await releaseEntityCredit(
+    supabaseAdmin,
+    table === "orders" ? "food_order" : "delivery_request",
+    rowId,
+  );
+
+  try {
+    const { releaseEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await releaseEntityMarketing(
+      supabaseAdmin,
+      table === "orders" ? "food" : "delivery",
+      rowId,
+      "payment_failed_or_expired"
+    );
+  } catch (e) {
+    console.warn(
+      "[marketing] release on payment failure fail-open",
+      e instanceof Error ? e.message : e
+    );
   }
 
   return { updated: [rowId], skipped: [] };

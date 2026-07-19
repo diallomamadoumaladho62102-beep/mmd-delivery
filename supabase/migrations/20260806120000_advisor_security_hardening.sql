@@ -6,6 +6,7 @@
 --
 -- No financial data mutation. service_role continues to bypass RLS.
 -- Rollback notes: docs/production/SUPABASE_ADVISOR_FINAL_AUDIT.md
+-- Empty-DB safe: policy blocks skip when target relation is absent.
 
 begin;
 
@@ -13,133 +14,154 @@ begin;
 -- 1) ERROR — taxi_preference_stats
 -- ---------------------------------------------------------------------------
 
-alter table public.taxi_preference_stats enable row level security;
+do $taxi_pref$
+begin
+  if to_regclass('public.taxi_preference_stats') is null then
+    return;
+  end if;
 
-drop policy if exists taxi_preference_stats_staff_select on public.taxi_preference_stats;
-create policy taxi_preference_stats_staff_select
-  on public.taxi_preference_stats
-  for select
-  to authenticated
-  using (public.is_staff_user(auth.uid()));
+  alter table public.taxi_preference_stats enable row level security;
 
-drop policy if exists taxi_preference_stats_staff_write on public.taxi_preference_stats;
-create policy taxi_preference_stats_staff_write
-  on public.taxi_preference_stats
-  for all
-  to authenticated
-  using (public.is_staff_user(auth.uid()))
-  with check (public.is_staff_user(auth.uid()));
+  drop policy if exists taxi_preference_stats_staff_select on public.taxi_preference_stats;
+  create policy taxi_preference_stats_staff_select
+    on public.taxi_preference_stats
+    for select
+    to authenticated
+    using (public.is_staff_user(auth.uid()));
+
+  drop policy if exists taxi_preference_stats_staff_write on public.taxi_preference_stats;
+  create policy taxi_preference_stats_staff_write
+    on public.taxi_preference_stats
+    for all
+    to authenticated
+    using (public.is_staff_user(auth.uid()))
+    with check (public.is_staff_user(auth.uid()));
+end;
+$taxi_pref$;
 
 -- ---------------------------------------------------------------------------
 -- 2) Suggestions — tables with RLS on and zero policies
 -- ---------------------------------------------------------------------------
 
--- commission_settings: staff read; writes via service_role
-drop policy if exists commission_settings_staff_select on public.commission_settings;
-create policy commission_settings_staff_select
-  on public.commission_settings
-  for select
-  to authenticated
-  using (public.is_staff_user(auth.uid()));
+do $policies$
+begin
+  if to_regclass('public.commission_settings') is not null then
+    drop policy if exists commission_settings_staff_select on public.commission_settings;
+    create policy commission_settings_staff_select
+      on public.commission_settings
+      for select
+      to authenticated
+      using (public.is_staff_user(auth.uid()));
+  end if;
 
--- driver rewards: owner + staff
-drop policy if exists driver_reward_accounts_select_own on public.driver_reward_accounts;
-create policy driver_reward_accounts_select_own
-  on public.driver_reward_accounts
-  for select
-  to authenticated
-  using (driver_id = auth.uid() or public.is_staff_user(auth.uid()));
+  if to_regclass('public.driver_reward_accounts') is not null then
+    drop policy if exists driver_reward_accounts_select_own on public.driver_reward_accounts;
+    create policy driver_reward_accounts_select_own
+      on public.driver_reward_accounts
+      for select
+      to authenticated
+      using (driver_id = auth.uid() or public.is_staff_user(auth.uid()));
 
-drop policy if exists driver_reward_accounts_staff_write on public.driver_reward_accounts;
-create policy driver_reward_accounts_staff_write
-  on public.driver_reward_accounts
-  for all
-  to authenticated
-  using (public.is_staff_user(auth.uid()))
-  with check (public.is_staff_user(auth.uid()));
+    drop policy if exists driver_reward_accounts_staff_write on public.driver_reward_accounts;
+    create policy driver_reward_accounts_staff_write
+      on public.driver_reward_accounts
+      for all
+      to authenticated
+      using (public.is_staff_user(auth.uid()))
+      with check (public.is_staff_user(auth.uid()));
+  end if;
 
-drop policy if exists driver_reward_history_select_own on public.driver_reward_history;
-create policy driver_reward_history_select_own
-  on public.driver_reward_history
-  for select
-  to authenticated
-  using (driver_id = auth.uid() or public.is_staff_user(auth.uid()));
+  if to_regclass('public.driver_reward_history') is not null then
+    drop policy if exists driver_reward_history_select_own on public.driver_reward_history;
+    create policy driver_reward_history_select_own
+      on public.driver_reward_history
+      for select
+      to authenticated
+      using (driver_id = auth.uid() or public.is_staff_user(auth.uid()));
 
-drop policy if exists driver_reward_history_staff_write on public.driver_reward_history;
-create policy driver_reward_history_staff_write
-  on public.driver_reward_history
-  for all
-  to authenticated
-  using (public.is_staff_user(auth.uid()))
-  with check (public.is_staff_user(auth.uid()));
+    drop policy if exists driver_reward_history_staff_write on public.driver_reward_history;
+    create policy driver_reward_history_staff_write
+      on public.driver_reward_history
+      for all
+      to authenticated
+      using (public.is_staff_user(auth.uid()))
+      with check (public.is_staff_user(auth.uid()));
+  end if;
 
--- notification_logs / payment_webhook_events: staff read only (writes via service_role)
-drop policy if exists notification_logs_staff_select on public.notification_logs;
-create policy notification_logs_staff_select
-  on public.notification_logs
-  for select
-  to authenticated
-  using (public.is_staff_user(auth.uid()));
+  if to_regclass('public.notification_logs') is not null then
+    drop policy if exists notification_logs_staff_select on public.notification_logs;
+    create policy notification_logs_staff_select
+      on public.notification_logs
+      for select
+      to authenticated
+      using (public.is_staff_user(auth.uid()));
+  end if;
 
-drop policy if exists payment_webhook_events_staff_select on public.payment_webhook_events;
-create policy payment_webhook_events_staff_select
-  on public.payment_webhook_events
-  for select
-  to authenticated
-  using (public.is_staff_user(auth.uid()));
+  if to_regclass('public.payment_webhook_events') is not null then
+    drop policy if exists payment_webhook_events_staff_select on public.payment_webhook_events;
+    create policy payment_webhook_events_staff_select
+      on public.payment_webhook_events
+      for select
+      to authenticated
+      using (public.is_staff_user(auth.uid()));
+  end if;
 
--- taxi business ride policies: members of the business + staff
-drop policy if exists taxi_business_ride_policies_member_select
-  on public.taxi_business_ride_policies;
-create policy taxi_business_ride_policies_member_select
-  on public.taxi_business_ride_policies
-  for select
-  to authenticated
-  using (
-    public.is_staff_user(auth.uid())
-    or exists (
-      select 1
-      from public.taxi_business_members m
-      where m.business_account_id = taxi_business_ride_policies.business_account_id
-        and m.user_id = auth.uid()
-        and m.active = true
-    )
-  );
+  if to_regclass('public.taxi_business_ride_policies') is not null then
+    drop policy if exists taxi_business_ride_policies_member_select
+      on public.taxi_business_ride_policies;
+    create policy taxi_business_ride_policies_member_select
+      on public.taxi_business_ride_policies
+      for select
+      to authenticated
+      using (
+        public.is_staff_user(auth.uid())
+        or exists (
+          select 1
+          from public.taxi_business_members m
+          where m.business_account_id = taxi_business_ride_policies.business_account_id
+            and m.user_id = auth.uid()
+            and m.active = true
+        )
+      );
 
-drop policy if exists taxi_business_ride_policies_staff_write
-  on public.taxi_business_ride_policies;
-create policy taxi_business_ride_policies_staff_write
-  on public.taxi_business_ride_policies
-  for all
-  to authenticated
-  using (public.is_staff_user(auth.uid()))
-  with check (public.is_staff_user(auth.uid()));
+    drop policy if exists taxi_business_ride_policies_staff_write
+      on public.taxi_business_ride_policies;
+    create policy taxi_business_ride_policies_staff_write
+      on public.taxi_business_ride_policies
+      for all
+      to authenticated
+      using (public.is_staff_user(auth.uid()))
+      with check (public.is_staff_user(auth.uid()));
+  end if;
 
--- shared ride matches: staff + participants of related rides
-drop policy if exists taxi_shared_ride_matches_staff_select
-  on public.taxi_shared_ride_matches;
-create policy taxi_shared_ride_matches_staff_select
-  on public.taxi_shared_ride_matches
-  for select
-  to authenticated
-  using (
-    public.is_staff_user(auth.uid())
-    or exists (
-      select 1
-      from public.taxi_rides tr
-      where tr.id = taxi_shared_ride_matches.candidate_taxi_ride_id
-        and (tr.client_user_id = auth.uid() or tr.driver_id = auth.uid())
-    )
-  );
+  if to_regclass('public.taxi_shared_ride_matches') is not null then
+    drop policy if exists taxi_shared_ride_matches_staff_select
+      on public.taxi_shared_ride_matches;
+    create policy taxi_shared_ride_matches_staff_select
+      on public.taxi_shared_ride_matches
+      for select
+      to authenticated
+      using (
+        public.is_staff_user(auth.uid())
+        or exists (
+          select 1
+          from public.taxi_rides tr
+          where tr.id = taxi_shared_ride_matches.candidate_taxi_ride_id
+            and (tr.client_user_id = auth.uid() or tr.driver_id = auth.uid())
+        )
+      );
 
-drop policy if exists taxi_shared_ride_matches_staff_write
-  on public.taxi_shared_ride_matches;
-create policy taxi_shared_ride_matches_staff_write
-  on public.taxi_shared_ride_matches
-  for all
-  to authenticated
-  using (public.is_staff_user(auth.uid()))
-  with check (public.is_staff_user(auth.uid()));
+    drop policy if exists taxi_shared_ride_matches_staff_write
+      on public.taxi_shared_ride_matches;
+    create policy taxi_shared_ride_matches_staff_write
+      on public.taxi_shared_ride_matches
+      for all
+      to authenticated
+      using (public.is_staff_user(auth.uid()))
+      with check (public.is_staff_user(auth.uid()));
+  end if;
+end;
+$policies$;
 
 -- ---------------------------------------------------------------------------
 -- 3) Freeze search_path on public functions that lack it

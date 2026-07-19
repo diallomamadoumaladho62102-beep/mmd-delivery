@@ -4,6 +4,8 @@ import { isMarketplaceCheckoutLiveEnabled } from "@/lib/marketplaceLiveCheckout"
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 import { prepareMarketplaceSellerPayoutAfterPayment } from "@/lib/marketplacePayoutService";
 import { notifyMarketplaceSellerNewPaidOrder } from "@/lib/marketplacePushNotifications";
+import { awardMarketplaceOrderLoyalty } from "@/lib/loyalty/loyaltyAccrual";
+import { awardSellerOrderPerformance } from "@/lib/loyalty/marketplaceLoyaltyHooks";
 import {
   requirePaymentIntentSucceeded,
   assertSettlementMatchesExpectation,
@@ -187,6 +189,23 @@ export async function handleMarketplaceStripePayment(params: {
     );
   });
 
+  void awardMarketplaceOrderLoyalty(supabaseAdmin, sellerOrderId);
+  void awardSellerOrderPerformance(supabaseAdmin, sellerOrderId);
+
+  void (async () => {
+    try {
+      const { captureEntityMarketing } = await import(
+        "@/lib/marketing/marketingCheckoutLifecycle"
+      );
+      await captureEntityMarketing(supabaseAdmin, "marketplace", sellerOrderId);
+    } catch (e) {
+      console.warn(
+        "[marketing] marketplace stripe capture fail-open",
+        e instanceof Error ? e.message : e
+      );
+    }
+  })();
+
   void (async () => {
     try {
       const { data: seller } = await supabaseAdmin
@@ -299,6 +318,23 @@ export async function handleMarketplaceCheckoutSessionExpired(params: {
     paymentIntentId,
     source,
   });
+
+  try {
+    const { releaseEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await releaseEntityMarketing(
+      supabaseAdmin,
+      "marketplace",
+      sellerOrderId,
+      "checkout_session_expired"
+    );
+  } catch (e) {
+    console.warn(
+      "[marketing] marketplace release fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
 
   return {
     ok: true,

@@ -55,6 +55,8 @@ type OrderRow = {
   subtotal: number | null;
   kind: string | null;
   order_type: string | null;
+  net_charge_cents: number | null;
+  mmd_credit_applied_cents: number | null;
 };
 
 type GenericErrorLike = {
@@ -367,7 +369,7 @@ export async function POST(req: NextRequest) {
     const { data, error: ordErr } = await supabaseAdmin
       .from("orders")
       .select(
-        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, kind, order_type, subtotal, tax, delivery_fee, service_fee, service_fee_cents"
+        "id, created_by, client_user_id, client_id, user_id, total, grand_total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, kind, order_type, subtotal, tax, delivery_fee, service_fee, service_fee_cents, net_charge_cents, mmd_credit_applied_cents"
       )
       .eq("id", requestedOrderId)
       .single();
@@ -694,10 +696,22 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid order amount" }, 400);
     }
 
-    const amountCents =
+    const grossAmountCents =
       Number.isFinite(Number(order.total_cents)) && Number(order.total_cents) > 0
         ? Math.round(Number(order.total_cents))
         : toCentsFromDollars(chargeAmountDollars);
+
+    // Crédit MMD: charge the net when a valid reservation was applied. The gross
+    // (total_cents) is preserved for commissions/payouts; only what Stripe
+    // charges is reduced. Fully backward-compatible: net is used only when set,
+    // positive, and not greater than the gross.
+    const netChargeCandidate = Number(order.net_charge_cents);
+    const amountCents =
+      Number.isFinite(netChargeCandidate) &&
+      netChargeCandidate > 0 &&
+      netChargeCandidate <= grossAmountCents
+        ? Math.round(netChargeCandidate)
+        : grossAmountCents;
 
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
       logSupabaseError(

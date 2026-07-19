@@ -247,6 +247,20 @@ export default function ClientHomePage() {
               Marketplace — bientôt disponible dans votre zone
             </div>
           )}
+
+          <Link
+            href="/mmd-plus"
+            className="inline-flex w-full items-center justify-center rounded-full bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-400 transition"
+          >
+            MMD+ — Abonnement Premium
+          </Link>
+
+          <Link
+            href="/promotions"
+            className="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-400 transition"
+          >
+            Promotions & coupons
+          </Link>
         </div>
 
         {/* TITRE HISTORIQUE */}

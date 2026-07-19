@@ -33,6 +33,7 @@ type DeliveryRequestRow = {
   client_user_id: string | null;
   total: number | null;
   total_cents: number | null;
+  net_charge_cents: number | null;
   currency: string | null;
   status: string | null;
   payment_status: string | null;
@@ -358,7 +359,7 @@ export async function POST(req: NextRequest) {
     const { data, error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
       .select(
-        "id, created_by, client_user_id, total, total_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, title, pickup_lat, pickup_lng, subtotal, tax, delivery_fee, service_fee, service_fee_cents"
+        "id, created_by, client_user_id, total, total_cents, net_charge_cents, currency, status, payment_status, stripe_session_id, stripe_payment_intent_id, expires_at, title, pickup_lat, pickup_lng, subtotal, tax, delivery_fee, service_fee, service_fee_cents"
       )
       .eq("id", requestedId)
       .single();
@@ -645,11 +646,22 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid delivery request amount" }, 400);
     }
 
-    const amountCents =
+    const grossAmountCents =
       Number.isFinite(Number(request.total_cents)) &&
       Number(request.total_cents) > 0
         ? Math.round(Number(request.total_cents))
         : toCentsFromDollars(chargeAmountDollars);
+
+    // Crédit MMD: charge the frozen net when a reservation was applied. Gross
+    // (total_cents) stays authoritative for payouts/commissions. Backward-safe:
+    // net is used only when set, positive, and not greater than the gross.
+    const netChargeCandidate = Number(request.net_charge_cents);
+    const amountCents =
+      Number.isFinite(netChargeCandidate) &&
+      netChargeCandidate > 0 &&
+      netChargeCandidate <= grossAmountCents
+        ? Math.round(netChargeCandidate)
+        : grossAmountCents;
 
     if (!Number.isFinite(amountCents) || amountCents <= 0) {
       logSupabaseError(

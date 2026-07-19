@@ -39,6 +39,35 @@ export type AdminPermission =
   | "payouts.read"
   | "payouts.retry"
   | "commissions.read"
+  | "commissions.manage"
+  | "subscriptions.read"
+  | "subscriptions.manage"
+  | "mmd_plus.read"
+  | "mmd_plus.manage"
+  | "marketing.read"
+  | "marketing.manage"
+  | "marketing.finance"
+  | "marketing.support"
+  | "marketing.export"
+  | "analytics.read"
+  | "analytics.finance"
+  | "analytics.export"
+  | "analytics.manage"
+  | "finance.read"
+  | "finance.transactions.read"
+  | "finance.transactions.lookup"
+  | "finance.partners.read"
+  | "finance.reconciliation.manage"
+  | "finance.adjustments.create"
+  | "finance.adjustments.approve"
+  | "finance.periods.manage"
+  | "finance.reports.read"
+  | "finance.export"
+  | "finance.import"
+  | "finance.tax.manage"
+  | "finance.accounts.manage"
+  | "finance.disputes.manage"
+  | "finance.audit.read"
   | "pricing.read"
   | "pricing.write"
   | "taxi_rides.read"
@@ -76,6 +105,12 @@ export type AdminPermission =
   | "communication.chats"
   | "communication.calls"
   | "communication.notify"
+  | "loyalty.read"
+  | "loyalty.manage"
+  | "loyalty.restaurant.read"
+  | "loyalty.restaurant.manage"
+  | "loyalty.marketplace.read"
+  | "loyalty.marketplace.manage"
   | "audit.read"
   | "supervision.read";
 
@@ -106,6 +141,35 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "payouts.read",
     "payouts.retry",
     "commissions.read",
+    "commissions.manage",
+    "subscriptions.read",
+    "subscriptions.manage",
+    "mmd_plus.read",
+    "mmd_plus.manage",
+    "marketing.read",
+    "marketing.manage",
+    "marketing.finance",
+    "marketing.support",
+    "marketing.export",
+    "analytics.read",
+    "analytics.finance",
+    "analytics.export",
+    "analytics.manage",
+    "finance.read",
+    "finance.transactions.read",
+    "finance.transactions.lookup",
+    "finance.partners.read",
+    "finance.reconciliation.manage",
+    "finance.adjustments.create",
+    "finance.adjustments.approve",
+    "finance.periods.manage",
+    "finance.reports.read",
+    "finance.export",
+    "finance.import",
+    "finance.tax.manage",
+    "finance.accounts.manage",
+    "finance.disputes.manage",
+    "finance.audit.read",
     "pricing.read",
     "pricing.write",
     "taxi_rides.read",
@@ -143,6 +207,12 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "communication.chats",
     "communication.calls",
     "communication.notify",
+    "loyalty.read",
+    "loyalty.manage",
+    "loyalty.restaurant.read",
+    "loyalty.restaurant.manage",
+    "loyalty.marketplace.read",
+    "loyalty.marketplace.manage",
     "audit.read",
     "supervision.read",
   ]),
@@ -185,6 +255,20 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "communication.chats",
     "communication.calls",
     "communication.notify",
+    "loyalty.read",
+    "loyalty.manage",
+    "loyalty.restaurant.read",
+    "loyalty.restaurant.manage",
+    "loyalty.marketplace.read",
+    "loyalty.marketplace.manage",
+    "marketing.read",
+    "marketing.manage",
+    "marketing.support",
+    "analytics.read",
+    "analytics.export",
+    "finance.read",
+    "finance.transactions.read",
+    "finance.partners.read",
     "supervision.read",
   ]),
   finance: new Set<AdminPermission>([
@@ -194,6 +278,33 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "payouts.read",
     "payouts.retry",
     "commissions.read",
+    "commissions.manage",
+    "subscriptions.read",
+    "subscriptions.manage",
+    "mmd_plus.read",
+    "mmd_plus.manage",
+    "marketing.read",
+    "marketing.finance",
+    "marketing.export",
+    "analytics.read",
+    "analytics.finance",
+    "analytics.export",
+    "analytics.manage",
+    "finance.read",
+    "finance.transactions.read",
+    "finance.transactions.lookup",
+    "finance.partners.read",
+    "finance.reconciliation.manage",
+    "finance.adjustments.create",
+    "finance.adjustments.approve",
+    "finance.periods.manage",
+    "finance.reports.read",
+    "finance.export",
+    "finance.import",
+    "finance.tax.manage",
+    "finance.accounts.manage",
+    "finance.disputes.manage",
+    "finance.audit.read",
     "taxi_pricing.read",
     "taxi_payouts.read",
     "taxi_payouts.manage",
@@ -214,6 +325,10 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "taxi_market_metrics.read",
     "taxi_business.read",
     "taxi_business.manage",
+    "loyalty.read",
+    "loyalty.manage",
+    "loyalty.restaurant.read",
+    "loyalty.marketplace.read",
     "audit.read",
     "supervision.read",
   ]),
@@ -229,6 +344,14 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "communication.chats",
     "communication.calls",
     "communication.notify",
+    "loyalty.read",
+    "loyalty.restaurant.read",
+    "loyalty.marketplace.read",
+    "marketing.read",
+    "marketing.support",
+    "analytics.read",
+    // Support: transaction lookup only — no global P&L / ledger / exports.
+    "finance.transactions.lookup",
     "supervision.read",
   ]),
   review: new Set<AdminPermission>([
@@ -239,6 +362,10 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "users.restaurants.manage",
     "users.sellers.read",
     "users.sellers.manage",
+    "finance.read",
+    "finance.reports.read",
+    "finance.export",
+    "finance.audit.read",
   ]),
 };
 

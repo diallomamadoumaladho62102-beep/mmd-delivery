@@ -17,6 +17,17 @@ create table if not exists public.orders (
 
   -- statuses
   payment_status text default 'unpaid',
+  status text,
+  kind text,
+  type text,
+
+  -- participants (required by later RLS / commission migrations on empty DB)
+  client_id uuid,
+  client_user_id uuid,
+  created_by uuid,
+  driver_id uuid,
+  restaurant_id uuid,
+  restaurant_user_id uuid,
 
   -- stripe refs
   stripe_session_id text,
@@ -29,6 +40,16 @@ create table if not exists public.orders (
 -- optional helpful index
 create index if not exists orders_payment_status_idx
   on public.orders(payment_status);
+
+alter table public.orders add column if not exists status text;
+alter table public.orders add column if not exists kind text;
+alter table public.orders add column if not exists type text;
+alter table public.orders add column if not exists client_id uuid;
+alter table public.orders add column if not exists client_user_id uuid;
+alter table public.orders add column if not exists created_by uuid;
+alter table public.orders add column if not exists driver_id uuid;
+alter table public.orders add column if not exists restaurant_id uuid;
+alter table public.orders add column if not exists restaurant_user_id uuid;
 
 -- 2) stripe_webhook_events audit table used by auditEvent()
 create table if not exists public.stripe_webhook_events (
