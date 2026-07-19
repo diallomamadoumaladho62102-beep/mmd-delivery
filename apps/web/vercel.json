@@ -11,14 +11,6 @@
     {
       "path": "/api/cron/daily-ops",
       "schedule": "30 5 * * *"
-    },
-    {
-      "path": "/api/cron/process-finance",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/cron/retry-delivery-request-dispatch",
-      "schedule": "*/2 * * * *"
     }
   ]
 }
