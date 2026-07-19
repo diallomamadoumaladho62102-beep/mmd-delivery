@@ -150,12 +150,13 @@ export async function buildFinancePayloadFromSnapshot(params: {
         amount_cents: amount,
         gross_cents: amount,
         tax_cents: n(row.tax_cents) || majorToCents(row.tax),
-        service_fee_cents: n(row.service_fee_cents),
+        service_fee_cents:
+          n(row.service_fee_cents) || majorToCents(row.service_fee),
         delivery_fee_cents:
           n(row.delivery_fee_cents) || majorToCents(row.delivery_fee),
-        commission_cents: n(row.commission_cents),
-        driver_cents: majorToCents(row.driver_pay),
-        promotion_mmd_cents: majorToCents(row.discounts),
+        commission_cents: 0,
+        driver_cents: majorToCents(row.driver_delivery_payout),
+        promotion_mmd_cents: 0,
         mmd_credit_cents: n(row.mmd_credit_applied_cents),
         currency: String(row.currency ?? "USD").toUpperCase(),
         country_code: resolveDeliveryRequestPlatformCountry(row),

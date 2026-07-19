@@ -12,8 +12,9 @@ export const DELIVERY_REQUEST_PAYMENT_CHECK_SELECT =
 export const DELIVERY_REQUEST_CONFIRM_PAID_SELECT =
   "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, total_cents, total, currency, pickup_lat, pickup_lng";
 
+/** Columns verified present on production delivery_requests (no discounts/driver_pay/commission_cents). */
 export const DELIVERY_REQUEST_FINANCE_SNAPSHOT_SELECT =
-  "id,total,total_cents,tax,tax_cents,service_fee_cents,delivery_fee,delivery_fee_cents,discounts,currency,client_user_id,driver_pay,commission_cents,mmd_credit_applied_cents,pickup_lat,pickup_lng";
+  "id,total,total_cents,tax,tax_cents,service_fee,service_fee_cents,delivery_fee,delivery_fee_cents,currency,client_user_id,driver_delivery_payout,mmd_credit_applied_cents,pickup_lat,pickup_lng,subtotal";
 
 /** Throws if a SELECT string still requires the non-existent delivery_requests.country_code. */
 export function assertDeliveryRequestSelectOmitsCountryCode(select: string): void {
