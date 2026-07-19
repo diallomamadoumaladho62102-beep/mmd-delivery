@@ -1,0 +1,204 @@
+{
+  "audited_at": "2026-07-19T22:41:33.982Z",
+  "mode": "controlled_dispatch_proof_no_stripe_charge",
+  "production_deploy": "mmd-delivery-dmatqdx73",
+  "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+  "amount_cents": 570,
+  "driver": {
+    "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+    "distance_miles": 0.65,
+    "max_dispatch_miles_expected": 15,
+    "in_radius": true
+  },
+  "dispatch_http": 200,
+  "dispatch_response": {
+    "ok": true,
+    "deliveryRequestId": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+    "wave": 1,
+    "maxMiles": 15,
+    "notified": 5,
+    "candidates": 1,
+    "offerStats": {
+      "created": 1,
+      "refreshed": 0,
+      "skipped": 0
+    },
+    "expoTickets": [
+      {
+        "status": "ok",
+        "id": "019f7c8a-a9d5-757a-bfac-9b41f6407686"
+      },
+      {
+        "status": "ok",
+        "id": "019f7c8a-a9db-77cc-91a3-d1feef2d5fc8"
+      },
+      {
+        "status": "ok",
+        "id": "019f7c8a-aa01-774b-a3f3-b55da16fc95c"
+      },
+      {
+        "status": "ok",
+        "id": "019f7c8a-a9d3-7535-94dd-f2384105cd5f"
+      },
+      {
+        "status": "ok",
+        "id": "019f7c8a-a9db-77cc-91a3-d499c85bbaf7"
+      }
+    ],
+    "expoReceipts": {
+      "019f7c8a-a9d3-7535-94dd-f2384105cd5f": {
+        "status": "ok"
+      },
+      "019f7c8a-a9d5-757a-bfac-9b41f6407686": {
+        "status": "ok"
+      },
+      "019f7c8a-a9db-77cc-91a3-d1feef2d5fc8": {
+        "status": "error",
+        "message": "The recipient device is not registered with FCM.",
+        "messageEnum": 7,
+        "messageParamValues": [],
+        "details": {
+          "error": "DeviceNotRegistered",
+          "errorCodeEnum": 3,
+          "sentAt": 1784500890
+        },
+        "__debug": {}
+      },
+      "019f7c8a-a9db-77cc-91a3-d499c85bbaf7": {
+        "status": "ok"
+      },
+      "019f7c8a-aa01-774b-a3f3-b55da16fc95c": {
+        "status": "ok"
+      }
+    },
+    "message": "Dispatch sent"
+  },
+  "delivery_request": {
+    "id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+    "status": "pending",
+    "payment_status": "paid",
+    "driver_id": null,
+    "dispatch_wave_1_started_at": "2026-07-19T22:41:29.551+00:00",
+    "paid_at": "2026-07-19T22:41:28.397+00:00"
+  },
+  "offers_count": 1,
+  "offers": [
+    {
+      "id": "29e351df-5330-4a5b-a4ba-03c91200d171",
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "status": "pending",
+      "wave": 1,
+      "distance_miles": 0.65,
+      "expires_at": "2026-07-19T22:42:29.764+00:00",
+      "created_at": "2026-07-19T22:41:29.764+00:00"
+    }
+  ],
+  "notification_logs_count": 6,
+  "notification_logs": [
+    {
+      "id": "7a7e6d8b-40f7-4aef-b8bd-9ebbc4a9c7d5",
+      "status": "sent",
+      "error_message": null,
+      "sent_at": "2026-07-19T22:41:29.998+00:00",
+      "created_at": "2026-07-19T22:41:31.886448+00:00",
+      "provider": "expo",
+      "expo_ticket_id": "019f7c8a-a9db-77cc-91a3-d499c85bbaf7",
+      "expo_ticket_status": "ok",
+      "expo_receipt_status": "ok",
+      "expo_token_masked": "ExponentPushTo…Ig9KC]",
+      "reason": null,
+      "max_miles": 15,
+      "distance_miles": 0.65
+    },
+    {
+      "id": "c6c3ea4f-d517-4440-b903-d8f10e5d3f1f",
+      "status": "sent",
+      "error_message": null,
+      "sent_at": "2026-07-19T22:41:29.998+00:00",
+      "created_at": "2026-07-19T22:41:31.85466+00:00",
+      "provider": "expo",
+      "expo_ticket_id": "019f7c8a-a9d3-7535-94dd-f2384105cd5f",
+      "expo_ticket_status": "ok",
+      "expo_receipt_status": "ok",
+      "expo_token_masked": "ExponentPushTo…Ud6kg]",
+      "reason": null,
+      "max_miles": 15,
+      "distance_miles": 0.65
+    },
+    {
+      "id": "c335df80-ecdd-41ac-8aa5-4e3f3d3b75a1",
+      "status": "sent",
+      "error_message": null,
+      "sent_at": "2026-07-19T22:41:29.998+00:00",
+      "created_at": "2026-07-19T22:41:31.793238+00:00",
+      "provider": "expo",
+      "expo_ticket_id": "019f7c8a-aa01-774b-a3f3-b55da16fc95c",
+      "expo_ticket_status": "ok",
+      "expo_receipt_status": "ok",
+      "expo_token_masked": "ExponentPushTo…B6FGE]",
+      "reason": null,
+      "max_miles": 15,
+      "distance_miles": 0.65
+    },
+    {
+      "id": "ef63293e-8b20-4a7c-a30b-e0f690e9571e",
+      "status": "failed",
+      "error_message": "The recipient device is not registered with FCM.",
+      "sent_at": null,
+      "created_at": "2026-07-19T22:41:31.760353+00:00",
+      "provider": "expo",
+      "expo_ticket_id": "019f7c8a-a9db-77cc-91a3-d1feef2d5fc8",
+      "expo_ticket_status": "ok",
+      "expo_receipt_status": "error",
+      "expo_token_masked": "ExponentPushTo…na69B]",
+      "reason": null,
+      "max_miles": 15,
+      "distance_miles": 0.65
+    },
+    {
+      "id": "eafadfe1-96c1-46e1-a4ca-de5768f50dae",
+      "status": "sent",
+      "error_message": null,
+      "sent_at": "2026-07-19T22:41:29.998+00:00",
+      "created_at": "2026-07-19T22:41:31.704185+00:00",
+      "provider": "expo",
+      "expo_ticket_id": "019f7c8a-a9d5-757a-bfac-9b41f6407686",
+      "expo_ticket_status": "ok",
+      "expo_receipt_status": "ok",
+      "expo_token_masked": "ExponentPushTo…uajpZ]",
+      "reason": null,
+      "max_miles": 15,
+      "distance_miles": 0.65
+    },
+    {
+      "id": "5bc375bc-947c-44bb-9e14-cd2e5cae359c",
+      "status": "failed",
+      "error_message": "not_dispatchable",
+      "sent_at": null,
+      "created_at": "2026-07-19T22:41:29.151861+00:00",
+      "provider": "expo",
+      "expo_ticket_id": null,
+      "expo_ticket_status": null,
+      "expo_receipt_status": null,
+      "expo_token_masked": null,
+      "reason": "not_dispatchable",
+      "max_miles": 15,
+      "distance_miles": null
+    }
+  ],
+  "checks": {
+    "wave1_set": true,
+    "paid": true,
+    "offers_ok": true,
+    "logs_ok": true,
+    "ticket_ok": true,
+    "receipt_recorded": true,
+    "notified_gt_0": true,
+    "max_miles_15": true,
+    "candidates_gt_0": true
+  },
+  "verdict": {
+    "DELIVERY_BACKEND": "READY",
+    "DRIVER_DELIVERY_ALERT": "READY"
+  }
+}
