@@ -52,7 +52,11 @@ import {
   ORDER_PAYMENT_CHECK_SELECT,
   ORDER_POST_PAID_SELECT,
 } from "@/lib/orderPaymentSelect";
-import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { DELIVERY_REQUEST_PAYMENT_CHECK_SELECT } from "@/lib/deliveryRequestPaymentSelect";
+import {
+  resolveDeliveryRequestPlatformCountry,
+  resolveOrderPlatformCountry,
+} from "@/lib/platformCountryResolver";
 import {
   assertSettlementMatchesExpectation,
   isPaymentSettlementFailure,
@@ -127,7 +131,8 @@ type DeliveryRequestRow = {
   stripe_payment_intent_id: string | null;
   client_user_id?: string | null;
   created_by?: string | null;
-  country_code?: string | null;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
 };
 
 type MinimalOrderForAmount = Pick<
@@ -510,6 +515,7 @@ async function requireDeliveryRequestWalletBridge(params: {
       paymentIntentId: params.paymentIntentId,
       deliveryRequest: params.deliveryRequest,
       source: params.source,
+      countryCode: resolveDeliveryRequestPlatformCountry(params.deliveryRequest),
     },
   );
 
@@ -518,6 +524,38 @@ async function requireDeliveryRequestWalletBridge(params: {
   }
 
   return { ok: true };
+}
+
+async function enqueueDeliveryPaidFailOpen(params: {
+  supabaseAdmin: SupabaseClient;
+  deliveryRequest: DeliveryRequestRow;
+  deliveryRequestId: string;
+  paymentIntentId: string | null;
+}): Promise<void> {
+  try {
+    const { enqueuePaymentSucceeded } = await import(
+      "@/lib/finance/financeEvents"
+    );
+    await enqueuePaymentSucceeded({
+      supabaseAdmin: params.supabaseAdmin,
+      entityType: "delivery_request",
+      entityId: params.deliveryRequestId,
+      vertical: "delivery",
+      amountCents: Number(
+        params.deliveryRequest.net_charge_cents ??
+          params.deliveryRequest.total_cents ??
+          0,
+      ),
+      currency: params.deliveryRequest.currency ?? "USD",
+      countryCode: resolveDeliveryRequestPlatformCountry(params.deliveryRequest),
+      paymentIntentId: params.paymentIntentId ?? undefined,
+    });
+  } catch (e) {
+    console.warn(
+      "[finance] delivery_paid enqueue fail-open",
+      e instanceof Error ? e.message : e,
+    );
+  }
 }
 
 function walletBridgeFailureResponse(
@@ -560,9 +598,7 @@ async function loadDeliveryRequestForPaymentCheck(
 ): Promise<DeliveryRequestLookupResult> {
   const { data, error } = await supabaseAdmin
     .from("delivery_requests")
-    .select(
-      "id, payment_status, total, total_cents, net_charge_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, country_code"
-    )
+    .select(DELIVERY_REQUEST_PAYMENT_CHECK_SELECT)
     .eq("id", deliveryRequestId)
     .maybeSingle<DeliveryRequestRow>();
 
@@ -2088,6 +2124,13 @@ console.log("✅ WEBHOOK PI: order released to drivers", {
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
 
+  await enqueueDeliveryPaidFailOpen({
+    supabaseAdmin,
+    deliveryRequest,
+    deliveryRequestId,
+    paymentIntentId,
+  });
+
   const dispatchOriginCheckout = getDispatchSiteOrigin();
   if (dispatchOriginCheckout) {
     scheduleDeliveryRequestDispatch({
@@ -2816,6 +2859,13 @@ await persistStripeFeeSnapshot({
 });
 
 await refreshCommissionsForDeliveryRequest(supabaseAdmin, deliveryRequestId);
+
+await enqueueDeliveryPaidFailOpen({
+  supabaseAdmin,
+  deliveryRequest,
+  deliveryRequestId,
+  paymentIntentId,
+});
 
   const dispatchOriginPi = getDispatchSiteOrigin();
   if (dispatchOriginPi) {

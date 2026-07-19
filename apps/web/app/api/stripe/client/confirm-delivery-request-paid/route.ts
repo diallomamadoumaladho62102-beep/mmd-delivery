@@ -16,6 +16,8 @@ import {
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWalletBridge";
 import { toUserFacingError } from "@/lib/userFacingError";
+import { DELIVERY_REQUEST_CONFIRM_PAID_SELECT } from "@/lib/deliveryRequestPaymentSelect";
+import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +38,6 @@ type DeliveryRequestRow = {
   total_cents: number | null;
   total: number | null;
   currency: string | null;
-  country_code?: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
 };
@@ -372,9 +373,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error: reqErr } = await supabaseAdmin
       .from("delivery_requests")
-      .select(
-        "id, created_by, client_user_id, payment_status, stripe_payment_intent_id, stripe_session_id, paid_at, total_cents, total, currency, country_code, pickup_lat, pickup_lng"
-      )
+      .select(DELIVERY_REQUEST_CONFIRM_PAID_SELECT)
       .eq("id", requestedId)
       .single();
 
@@ -432,6 +431,8 @@ export async function POST(req: NextRequest) {
             paymentIntentId: paymentIntentIdForBridge,
             deliveryRequest,
             source: "confirm-delivery-request-paid:already_paid",
+            countryCode:
+              resolveDeliveryRequestPlatformCountry(deliveryRequest),
           },
         );
         if (walletBridge.ok === false) {
@@ -512,6 +513,7 @@ export async function POST(req: NextRequest) {
           paymentIntentId: paymentIntentIdForBridge,
           deliveryRequest,
           source: "confirm-delivery-request-paid",
+          countryCode: resolveDeliveryRequestPlatformCountry(deliveryRequest),
         },
       );
       if (walletBridge.ok === false) {
@@ -623,6 +625,27 @@ export async function POST(req: NextRequest) {
       ],
       deliveryRequestId: deliveryRequest.id,
     });
+
+    try {
+      const { enqueuePaymentSucceeded } = await import(
+        "@/lib/finance/financeEvents"
+      );
+      await enqueuePaymentSucceeded({
+        supabaseAdmin,
+        entityType: "delivery_request",
+        entityId: deliveryRequest.id,
+        vertical: "delivery",
+        amountCents: Number(deliveryRequest.total_cents ?? 0),
+        currency: deliveryRequest.currency ?? "USD",
+        countryCode: resolveDeliveryRequestPlatformCountry(deliveryRequest),
+        paymentIntentId: paymentIntentIdForBridge ?? undefined,
+      });
+    } catch (e) {
+      console.warn(
+        "[finance] delivery_paid enqueue fail-open",
+        e instanceof Error ? e.message : e,
+      );
+    }
 
     return json({
       ok: true,
