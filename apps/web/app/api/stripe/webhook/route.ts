@@ -49,6 +49,11 @@ import {
   bridgeStripeWalletFromPaidOrder,
 } from "@/lib/stripeInboundWalletBridge";
 import {
+  ORDER_PAYMENT_CHECK_SELECT,
+  ORDER_POST_PAID_SELECT,
+} from "@/lib/orderPaymentSelect";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import {
   assertSettlementMatchesExpectation,
   isPaymentSettlementFailure,
   requirePaymentIntentSucceeded,
@@ -104,8 +109,11 @@ type OrderRow = {
   client_user_id?: string | null;
   created_by?: string | null;
   user_id?: string | null;
-  country_code?: string | null;
   kind?: string | null;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
+  dropoff_lat?: number | null;
+  dropoff_lng?: number | null;
 };
 
 type DeliveryRequestRow = {
@@ -536,9 +544,7 @@ async function loadOrderForPaymentCheck(
 ): Promise<OrderLookupResult> {
   const { data, error } = await supabaseAdmin
     .from("orders")
-    .select(
-      "id, payment_status, total, grand_total, total_cents, net_charge_cents, currency, stripe_session_id, stripe_payment_intent_id, client_user_id, created_by, user_id, country_code, kind"
-    )
+    .select(ORDER_PAYMENT_CHECK_SELECT)
     .eq("id", orderId)
     .maybeSingle<OrderRow>();
 
@@ -1768,9 +1774,7 @@ async function handleCheckoutCompletedLikeEvent(
 
     const { data: paidOrder } = await supabaseAdmin
       .from("orders")
-      .select(
-        "id,kind,client_user_id,created_by,total_cents,total,grand_total,currency,country_code"
-      )
+      .select(ORDER_POST_PAID_SELECT)
       .eq("id", orderId)
       .maybeSingle();
 
@@ -1784,6 +1788,26 @@ async function handleCheckoutCompletedLikeEvent(
         kind: paidOrder.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
+      try {
+        const { enqueuePaymentSucceeded } = await import(
+          "@/lib/finance/financeEvents"
+        );
+        await enqueuePaymentSucceeded({
+          supabaseAdmin,
+          entityType: "order",
+          entityId: orderId,
+          vertical: "food",
+          amountCents: Number(paidOrder.total_cents ?? 0),
+          currency: paidOrder.currency ?? "USD",
+          countryCode: resolveOrderPlatformCountry(paidOrder),
+          paymentIntentId,
+        });
+      } catch (e) {
+        console.warn(
+          "[finance] food_paid enqueue fail-open",
+          e instanceof Error ? e.message : e
+        );
+      }
     }
 
     return json({
@@ -2459,9 +2483,7 @@ async function handlePaymentIntentSucceeded(
 
     const { data: paidOrderPi } = await supabaseAdmin
       .from("orders")
-      .select(
-        "id,kind,client_user_id,created_by,total_cents,total,grand_total,currency,country_code"
-      )
+      .select(ORDER_POST_PAID_SELECT)
       .eq("id", orderId)
       .maybeSingle();
 
@@ -2475,6 +2497,26 @@ async function handlePaymentIntentSucceeded(
         kind: paidOrderPi.kind,
         dispatchOrigin: getDispatchSiteOrigin(),
       });
+      try {
+        const { enqueuePaymentSucceeded } = await import(
+          "@/lib/finance/financeEvents"
+        );
+        await enqueuePaymentSucceeded({
+          supabaseAdmin,
+          entityType: "order",
+          entityId: orderId,
+          vertical: "food",
+          amountCents: Number(paidOrderPi.total_cents ?? 0),
+          currency: paidOrderPi.currency ?? "USD",
+          countryCode: resolveOrderPlatformCountry(paidOrderPi),
+          paymentIntentId,
+        });
+      } catch (e) {
+        console.warn(
+          "[finance] food_paid enqueue fail-open",
+          e instanceof Error ? e.message : e
+        );
+      }
     }
 
     return json({

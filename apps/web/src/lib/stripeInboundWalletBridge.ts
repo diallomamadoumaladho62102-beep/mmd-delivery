@@ -8,6 +8,7 @@ import {
   isPaymentSettlementFailure,
   requirePaymentIntentSucceeded,
 } from "@/lib/requirePaymentIntentSucceeded";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 
 export type StripeInboundWalletInput = {
   paymentIntentId: string;
@@ -177,7 +178,10 @@ export async function bridgeStripeWalletFromPaidOrder(
       total?: number | null;
       grand_total?: number | null;
       currency?: string | null;
-      country_code?: string | null;
+      pickup_lat?: number | null;
+      pickup_lng?: number | null;
+      dropoff_lat?: number | null;
+      dropoff_lng?: number | null;
     };
     source: string;
     countryCode?: string | null;
@@ -202,7 +206,8 @@ export async function bridgeStripeWalletFromPaidOrder(
     entityId: input.order.id,
     userId,
     orderId: input.order.id,
-    countryCode: input.countryCode ?? String(input.order.country_code ?? "US"),
+    countryCode:
+      input.countryCode ?? resolveOrderPlatformCountry(input.order) ?? "US",
     amountCents,
     currency: input.order.currency ?? "usd",
     source: input.source,

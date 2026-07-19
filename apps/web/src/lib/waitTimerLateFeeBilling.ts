@@ -92,6 +92,8 @@ async function loadWaitLateFeeRow(
   entityId: string
 ): Promise<WaitLateFeeRow | null> {
   const table = tableForEntity(entityType);
+  // `orders` has no country_code column; infer from coords. Other entities keep it.
+  const countrySelect = entityType === "order" ? "" : "country_code,";
   const { data, error } = await supabaseAdmin
     .from(table)
     .select(
@@ -103,7 +105,7 @@ async function loadWaitLateFeeRow(
       user_id,
       client_id,
       currency,
-      country_code,
+      ${countrySelect}
       pickup_lat,
       pickup_lng,
       dropoff_lat,
@@ -117,7 +119,7 @@ async function loadWaitLateFeeRow(
       wait_timer_started_at,
       free_wait_minutes,
       leave_at_door
-    `
+`
     )
     .eq("id", entityId)
     .maybeSingle();

@@ -9,6 +9,8 @@ import {
   isPaymentSettlementFailure,
   requirePaymentIntentSucceeded,
 } from "@/lib/requirePaymentIntentSucceeded";
+import { ORDER_PAYMENT_CHECK_SELECT } from "@/lib/orderPaymentSelect";
+import { finalizeFoodStripeSettlementAfterMarkPaid } from "@/lib/finalizeFoodStripeSettlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -330,6 +332,48 @@ export async function POST(req: NextRequest) {
 
     const paymentIntentId = settled.payment_intent_id;
 
+    // Refuse refunded / non-succeeded charges before writing paid.
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, {
+      expand: ["latest_charge"],
+    });
+    if (String(pi.status).toLowerCase() !== "succeeded") {
+      return json(
+        {
+          ok: false,
+          error: "payment_intent_not_succeeded",
+          payment_intent_id: paymentIntentId,
+          pi_status: pi.status,
+        },
+        409
+      );
+    }
+    const latestCharge =
+      typeof pi.latest_charge === "object" && pi.latest_charge
+        ? pi.latest_charge
+        : null;
+    if (latestCharge && latestCharge.refunded === true) {
+      return json(
+        {
+          ok: false,
+          error: "payment_intent_refunded",
+          payment_intent_id: paymentIntentId,
+        },
+        409
+      );
+    }
+    const { data: orderFull, error: orderFullErr } = await supabaseAdmin
+      .from("orders")
+      .select(ORDER_PAYMENT_CHECK_SELECT)
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (orderFullErr || !orderFull) {
+      logSupabaseError("[sync-session] load order for finalize failed", orderFullErr, {
+        order_id: orderId,
+      });
+      return json({ error: orderFullErr?.message ?? "order_load_failed" }, 500);
+    }
+
     const { data: rpcData, error: rpcErr } = await supabaseAdmin.rpc(
       "mark_order_paid",
       {
@@ -350,6 +394,31 @@ export async function POST(req: NextRequest) {
       return json({ error: rpcErr.message }, 500);
     }
 
+    const finalize = await finalizeFoodStripeSettlementAfterMarkPaid({
+      supabaseAdmin,
+      orderId,
+      paymentIntentId,
+      sessionId,
+      order: orderFull,
+      source: "admin:sync-session",
+      runWalletBridge: true,
+      processFinanceBatch: true,
+    });
+
+    if (finalize.wallet && finalize.wallet.ok === false) {
+      return json(
+        {
+          ok: false,
+          error: "wallet_ledger_bridge_failed",
+          details: finalize.wallet.error,
+          order_id: orderId,
+          payment_intent_id: paymentIntentId,
+          mark_order_paid: true,
+        },
+        500
+      );
+    }
+
     const finalOrder = await getOrderForSync(supabaseAdmin, orderId);
 
     return json({
@@ -363,7 +432,10 @@ export async function POST(req: NextRequest) {
       session_status: sessionStatus,
       order_status: finalOrder?.status ?? null,
       order_payment_status: finalOrder?.payment_status ?? null,
+      amount_cents: pi.amount,
+      currency: pi.currency,
       rpcData,
+      finalize,
     });
   } catch (e: unknown) {
     const status = e instanceof AdminAccessError ? e.status : 500;

@@ -1,4 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ORDER_FINANCE_SNAPSHOT_SELECT } from "@/lib/orderPaymentSelect";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 
 export type FinanceSnapshotPayload = {
   amount_cents: number;
@@ -88,9 +90,7 @@ export async function buildFinancePayloadFromSnapshot(params: {
     if (vertical === "food") {
       const { data } = await supabaseAdmin
         .from("orders")
-        .select(
-          "id,total,total_cents,tax,tax_cents,taxes_cents,service_fee_cents,delivery_fee_cents,delivery_pay,discounts,promo_discount_amount,currency,country_code,restaurant_user_id,client_user_id,items_subtotal,subtotal_cents,mmd_credit_applied_cents,commission_cents,platform_fee_cents"
-        )
+        .select(ORDER_FINANCE_SNAPSHOT_SELECT)
         .eq("id", entityId)
         .maybeSingle();
       if (!data) return base;
@@ -120,7 +120,7 @@ export async function buildFinancePayloadFromSnapshot(params: {
         promotion_mmd_cents: majorToCents(row.promo_discount_amount) || majorToCents(row.discounts),
         mmd_credit_cents: n(row.mmd_credit_applied_cents),
         currency: String(row.currency ?? "USD").toUpperCase(),
-        country_code: row.country_code ? String(row.country_code) : null,
+        country_code: resolveOrderPlatformCountry(row),
         partner_user_id: row.restaurant_user_id
           ? String(row.restaurant_user_id)
           : null,

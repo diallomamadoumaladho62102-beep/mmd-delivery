@@ -19,6 +19,8 @@ import {
   evaluateStripeSettlement,
   assertSettlementMatchesExpectation,
 } from "@/lib/requirePaymentIntentSucceeded";
+import { ORDER_CONFIRM_PAID_SELECT } from "@/lib/orderPaymentSelect";
+import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +42,6 @@ type OrderRow = {
   total: number | null;
   grand_total: number | null;
   currency: string | null;
-  country_code?: string | null;
   pickup_lat: number | null;
   pickup_lng: number | null;
   dropoff_lat: number | null;
@@ -348,9 +349,7 @@ export async function POST(req: NextRequest) {
 
     const { data: order, error: ordErr } = await supabaseAdmin
       .from("orders")
-      .select(
-        "id, stripe_session_id, stripe_payment_intent_id, payment_status, client_user_id, created_by, kind, total_cents, total, grand_total, currency, country_code, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng"
-      )
+      .select(ORDER_CONFIRM_PAID_SELECT)
       .eq("id", orderId)
       .single<OrderRow>();
 
@@ -559,6 +558,27 @@ export async function POST(req: NextRequest) {
         dispatchOrigin: req.nextUrl.origin,
       });
 
+      try {
+        const { enqueuePaymentSucceeded } = await import(
+          "@/lib/finance/financeEvents"
+        );
+        await enqueuePaymentSucceeded({
+          supabaseAdmin,
+          entityType: "order",
+          entityId: orderId,
+          vertical: "food",
+          amountCents: Number(order.total_cents ?? 0),
+          currency: order.currency ?? "USD",
+          countryCode: resolveOrderPlatformCountry(order),
+          paymentIntentId: paymentIntentIdOnOrder,
+        });
+      } catch (e) {
+        console.warn(
+          "[finance] confirm-paid food_paid enqueue fail-open",
+          e instanceof Error ? e.message : e
+        );
+      }
+
       return json({
         ok: true,
         orderId,
@@ -759,6 +779,27 @@ export async function POST(req: NextRequest) {
       kind: order.kind,
       dispatchOrigin: req.nextUrl.origin,
     });
+
+    try {
+      const { enqueuePaymentSucceeded } = await import(
+        "@/lib/finance/financeEvents"
+      );
+      await enqueuePaymentSucceeded({
+        supabaseAdmin,
+        entityType: "order",
+        entityId: orderId,
+        vertical: "food",
+        amountCents: Number(order.total_cents ?? 0),
+        currency: order.currency ?? "USD",
+        countryCode: resolveOrderPlatformCountry(order),
+        paymentIntentId,
+      });
+    } catch (e) {
+      console.warn(
+        "[finance] confirm-paid food_paid enqueue fail-open",
+        e instanceof Error ? e.message : e
+      );
+    }
 
     return json({
       ok: true,
