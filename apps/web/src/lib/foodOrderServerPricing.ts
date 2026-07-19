@@ -24,6 +24,14 @@ import {
 } from "@/lib/clientServiceFee";
 import { loadFoodServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 import {
+  resolveMmdPlusCheckoutBenefits,
+} from "@/lib/mmdPlus/mmdPlusEngine";
+import {
+  isLikelyFirstOrder,
+  resolveMarketingOffers,
+  userHasActiveMmdPlus,
+} from "@/lib/marketing/marketingEngine";
+import {
   assertNoClientFoodPricingFields,
   currencyForPlatformCountry,
   FOOD_LEGACY_TAX_RATE,
@@ -183,6 +191,8 @@ export type FoodOrderPricingInput = {
   dropoffLng: number;
   countryCode: string;
   promoCode?: string | null;
+  /** Client applying MMD+ benefits (optional — fail-open if absent). */
+  clientUserId?: string | null;
 };
 
 export type FoodOrderPricingResult = {
@@ -202,6 +212,10 @@ export type FoodOrderPricingResult = {
   deliveryFeeRaw: number;
   deliveryFee: number;
   deliveryDiscountAmount: number;
+  marketingDiscountAmount: number;
+  marketingDeliveryDiscountAmount: number;
+  mmdPlusDeliveryDiscountAmount: number;
+  mmdPlusOrderDiscountAmount: number;
   promoCodeApplied: string | null;
   promoTypeApplied: string | null;
   promoValueApplied: number | null;
@@ -459,6 +473,7 @@ export async function computeFoodOrderPricing(
     dropoffLng,
     countryCode,
     promoCode,
+    clientUserId,
   } = input;
 
   if (!restaurantUserId) {
@@ -640,14 +655,86 @@ export async function computeFoodOrderPricing(
   const subtotalAfterDiscount = roundFoodMoney(
     toFiniteFoodNumber(pricingRow.subtotal_after_discount, subtotal)
   );
-  const deliveryFeeAfterDiscount = roundFoodMoney(
+  const deliveryFeeAfterPromo = roundFoodMoney(
     toFiniteFoodNumber(pricingRow.delivery_fee_after_discount, rawDeliveryFee)
   );
+
+  // Phase 7 marketing (auto + optional code) — before MMD+, fail-open unless code fails closed.
+  let marketingDiscountAmount = 0;
+  let marketingDeliveryDiscountAmount = 0;
+  let deliveryAfterMarketing = deliveryFeeAfterPromo;
+  let subtotalAfterMarketing = subtotalAfterDiscount;
+
+  if (clientUserId) {
+    try {
+      const [hasPlus, firstOrder] = await Promise.all([
+        userHasActiveMmdPlus(supabaseAdmin, clientUserId),
+        isLikelyFirstOrder(supabaseAdmin, clientUserId, "food"),
+      ]);
+      const marketing = await resolveMarketingOffers(supabaseAdmin, {
+        userId: clientUserId,
+        service: "food",
+        subtotalCents: Math.round(subtotalAfterDiscount * 100),
+        deliveryFeeCents: Math.round(deliveryFeeAfterPromo * 100),
+        promoCode: promoCode ?? null,
+        countryCode: platformCountry,
+        partnerUserId: restaurantUserId,
+        hasMmdPlus: hasPlus,
+        isFirstOrder: firstOrder,
+      });
+      if (marketing.ok || !marketing.fail_closed) {
+        marketingDiscountAmount = roundFoodMoney(
+          (marketing.order_discount_cents || 0) / 100
+        );
+        marketingDeliveryDiscountAmount = roundFoodMoney(
+          (marketing.delivery_fee_discount_cents || 0) / 100
+        );
+        deliveryAfterMarketing = roundFoodMoney(
+          Math.max(0, deliveryFeeAfterPromo - marketingDeliveryDiscountAmount)
+        );
+        subtotalAfterMarketing = roundFoodMoney(
+          Math.max(0, subtotalAfterDiscount - marketingDiscountAmount)
+        );
+      }
+    } catch (e) {
+      console.warn(
+        "[marketing] food pricing fail-open",
+        e instanceof Error ? e.message : e
+      );
+    }
+  }
+
+  // MMD+ benefits (config-driven) — cumulative with promos/marketing; never throws.
+  let mmdPlusDeliveryDiscountAmount = 0;
+  let mmdPlusOrderDiscountAmount = 0;
+  let deliveryFeeAfterDiscount = deliveryAfterMarketing;
+  let subtotalForTotals = subtotalAfterMarketing;
+
+  if (clientUserId) {
+    const mmd = await resolveMmdPlusCheckoutBenefits(supabaseAdmin, {
+      userId: clientUserId,
+      service: "food",
+      subtotalCents: Math.round(subtotalAfterMarketing * 100),
+      deliveryFeeCents: Math.round(deliveryAfterMarketing * 100),
+    });
+    mmdPlusDeliveryDiscountAmount = roundFoodMoney(
+      (mmd.delivery_fee_discount_cents || 0) / 100
+    );
+    mmdPlusOrderDiscountAmount = roundFoodMoney(
+      (mmd.order_discount_cents || 0) / 100
+    );
+    deliveryFeeAfterDiscount = roundFoodMoney(
+      Math.max(0, deliveryAfterMarketing - mmdPlusDeliveryDiscountAmount)
+    );
+    subtotalForTotals = roundFoodMoney(
+      Math.max(0, subtotalAfterMarketing - mmdPlusOrderDiscountAmount)
+    );
+  }
 
   const taxResult = await computeFoodTaxAmount(
     supabaseAdmin,
     platformCountry,
-    subtotalAfterDiscount
+    subtotalForTotals
   );
 
   const serviceFeeConfig = await loadFoodServiceFeeConfig(supabaseAdmin, {
@@ -657,13 +744,20 @@ export async function computeFoodOrderPricing(
     lng: dropoffLng,
   });
   const serviceFeeBase = computeServiceFeeBaseAmount({
-    subtotalAfterDiscount,
+    subtotalAfterDiscount: subtotalForTotals,
     deliveryFeeAfterDiscount,
   });
   const serviceFeeResult = computeClientServiceFee(serviceFeeConfig, serviceFeeBase);
-  const discounts = roundFoodMoney(promoDiscountAmount + deliveryDiscountAmount);
+  const discounts = roundFoodMoney(
+    promoDiscountAmount +
+      deliveryDiscountAmount +
+      marketingDiscountAmount +
+      marketingDeliveryDiscountAmount +
+      mmdPlusDeliveryDiscountAmount +
+      mmdPlusOrderDiscountAmount
+  );
   const total = roundFoodMoney(
-    subtotalAfterDiscount +
+    subtotalForTotals +
       taxResult.tax +
       deliveryFeeAfterDiscount +
       serviceFeeResult.serviceFee
@@ -687,6 +781,10 @@ export async function computeFoodOrderPricing(
     deliveryFeeRaw: rawDeliveryFee,
     deliveryFee: deliveryFeeAfterDiscount,
     deliveryDiscountAmount,
+    marketingDiscountAmount,
+    marketingDeliveryDiscountAmount,
+    mmdPlusDeliveryDiscountAmount,
+    mmdPlusOrderDiscountAmount,
     promoCodeApplied: pricingRow.promo_code_applied ?? null,
     promoTypeApplied: pricingRow.promo_type_applied ?? null,
     promoValueApplied:
@@ -695,7 +793,7 @@ export async function computeFoodOrderPricing(
         : null,
     promoDiscountAmount,
     discounts,
-    subtotalAfterDiscount,
+    subtotalAfterDiscount: subtotalForTotals,
     total,
     totalCents,
     distanceMiles: safeDistanceMiles,

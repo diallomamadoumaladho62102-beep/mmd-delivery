@@ -51,6 +51,7 @@ export async function createDeliveryRequestServerSide(
     countryCode: input.countryCode,
     promoCode: input.promoCode,
     subtotal: 0,
+    clientUserId: input.clientId,
   });
 
   const pickupCode = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -102,9 +103,80 @@ export async function createDeliveryRequestServerSide(
     throw new Error(error.message);
   }
 
+  const deliveryRequestId = String(data.id);
+
+  // Phase 7.1: systematic marketing reserve for Delivery.
+  try {
+    const { reserveAndAttachMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    const { userHasActiveMmdPlus, isLikelyFirstOrder } = await import(
+      "@/lib/marketing/marketingEngine"
+    );
+    const [hasPlus, firstOrder] = await Promise.all([
+      userHasActiveMmdPlus(input.supabaseAdmin, input.clientId),
+      isLikelyFirstOrder(input.supabaseAdmin, input.clientId, "delivery"),
+    ]);
+    const marketingAttach = await reserveAndAttachMarketing(input.supabaseAdmin, {
+      kind: "delivery",
+      entityId: deliveryRequestId,
+      userId: input.clientId,
+      subtotalCents: Math.round(Number(pricing.subtotal ?? 0) * 100),
+      deliveryFeeCents: Math.round(Number(pricing.deliveryFee ?? 0) * 100),
+      promoCode: input.promoCode ?? null,
+      countryCode: input.countryCode ?? null,
+      hasMmdPlus: hasPlus,
+      isFirstOrder: firstOrder,
+    });
+    if (!marketingAttach.ok && marketingAttach.fail_closed) {
+      await input.supabaseAdmin
+        .from("delivery_requests")
+        .delete()
+        .eq("id", deliveryRequestId);
+      throw new Error(
+        marketingAttach.error ?? "Impossible de réserver la promotion"
+      );
+    }
+    // Fail-closed for money: strip unreserved marketing discounts from persisted totals.
+    if (
+      !marketingAttach.marketing_reservation_id &&
+      (pricing.marketingDiscountAmount > 0 ||
+        pricing.marketingDeliveryDiscountAmount > 0)
+    ) {
+      const { applyStripUnreservedMarketingDiscount } = await import(
+        "@/lib/marketing/stripUnreservedMarketingDiscount"
+      );
+      await applyStripUnreservedMarketingDiscount(input.supabaseAdmin, {
+        kind: "delivery",
+        entityId: deliveryRequestId,
+        marketingOrderDiscount: pricing.marketingDiscountAmount,
+        marketingDeliveryDiscount: pricing.marketingDeliveryDiscountAmount,
+        discounts: pricing.discounts,
+        deliveryFee: pricing.deliveryFee,
+        total: pricing.total,
+        subtotalCents: Math.round(Number(pricing.subtotal ?? 0) * 100),
+        deliveryFeeCents: Math.round(Number(pricing.deliveryFee ?? 0) * 100),
+        totalCents: pricing.totalCents,
+        tax: pricing.tax,
+        serviceFee: pricing.serviceFee,
+      });
+    }
+  } catch (e) {
+    if (
+      e instanceof Error &&
+      /Impossible de réserver|marketing_reserve|fail_closed/i.test(e.message)
+    ) {
+      throw e;
+    }
+    console.warn(
+      "[marketing] delivery reserve fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
+
   return {
     ...pricing,
-    deliveryRequestId: String(data.id),
+    deliveryRequestId,
   };
 }
 
@@ -161,6 +233,7 @@ export async function validateDeliveryRequestBeforeCheckout(
     countryCode,
     promoCode: null,
     subtotal: toFiniteNumber(data.subtotal),
+    clientUserId: data.client_user_id ?? data.created_by ?? null,
   });
 
   const storedTotal = roundPlatformMoney(

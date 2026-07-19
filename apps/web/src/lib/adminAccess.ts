@@ -157,6 +157,96 @@ export function canManageLoyalty(role: UserRole | null): boolean {
   return hasPermission(role, "loyalty.manage");
 }
 
+export function canReadCommissions(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "commissions.read");
+}
+
+export function canManageCommissions(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "commissions.manage");
+}
+
+export function canReadSubscriptions(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "subscriptions.read");
+}
+
+export function canManageSubscriptions(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "subscriptions.manage");
+}
+
+export function canReadMmdPlus(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "mmd_plus.read");
+}
+
+export function canManageMmdPlus(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "mmd_plus.manage");
+}
+
+export function canReadMarketing(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "marketing.read");
+}
+
+export function canManageMarketing(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "marketing.manage");
+}
+
+export function canFinanceMarketing(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "marketing.finance");
+}
+
+export function canReadAnalytics(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "analytics.read");
+}
+
+export function canFinanceAnalytics(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "analytics.finance");
+}
+
+export function canExportAnalytics(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "analytics.export");
+}
+
+export function canManageAnalytics(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "analytics.manage");
+}
+
+export function canReadFinance(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "finance.read");
+}
+
+export function canExportFinance(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "finance.export");
+}
+
+export function canManageFinancePeriods(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "finance.periods.manage");
+}
+
+export function canCreateFinanceAdjustments(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "finance.adjustments.create");
+}
+
+export function canApproveFinanceAdjustments(role: UserRole | null): boolean {
+  if (!role) return false;
+  return hasPermission(role, "finance.adjustments.approve");
+}
+
 export function canWriteTaxiPricing(role: UserRole | null): boolean {
   if (!role) return false;
   return hasPermission(role, "taxi_pricing.write");

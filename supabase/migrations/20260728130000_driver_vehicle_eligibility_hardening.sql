@@ -80,6 +80,8 @@ create index if not exists idx_vehicle_category_eligibility_eligible
 -- 3) Resolve vehicle category rule (country + city aware)
 -- ---------------------------------------------------------------------------
 
+drop function if exists public.resolve_vehicle_category_rule(text, text, text);
+
 create or replace function public.resolve_vehicle_category_rule(
   p_category text,
   p_country_code text default null,

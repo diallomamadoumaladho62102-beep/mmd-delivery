@@ -13,6 +13,12 @@ alter table public.restaurant_profiles
 alter table public.restaurant_profiles
   add column if not exists cover_image_url text;
 
+alter table public.restaurant_profiles
+  add column if not exists status text;
+
+alter table public.restaurant_profiles
+  add column if not exists user_id uuid;
+
 alter table public.restaurant_items
   add column if not exists stock_qty integer;
 

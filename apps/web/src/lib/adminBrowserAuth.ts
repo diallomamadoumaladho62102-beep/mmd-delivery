@@ -85,6 +85,16 @@ export async function adminFetch(
   });
 }
 
+/** Fetch + JSON parse for admin API bodies (avoids confusing HTTP Response with JSON). */
+export async function adminFetchJson(
+  input: string,
+  init?: RequestInit
+): Promise<{ httpOk: boolean; status: number; body: Record<string, unknown> }> {
+  const res = await adminFetch(input, init);
+  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  return { httpOk: res.ok, status: res.status, body };
+}
+
 export async function resolveBrowserStaffSession(): Promise<ResolvedStaffSession | null> {
   try {
     const token = await waitForBrowserSession();

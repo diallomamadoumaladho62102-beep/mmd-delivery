@@ -69,3 +69,9 @@ ios/
 
 
 .tmp-pg-diag/
+
+# Local web probe artifacts
+apps/web/.tmp/
+apps/web/.env.twilio-audit
+dependabot-alerts.json
+dependabot-crit-high.json

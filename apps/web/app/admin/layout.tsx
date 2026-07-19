@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import AdminGate from "@/components/AdminGate";
+import AdminShell from "@/components/AdminShell";
 
 export default function AdminSectionLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -11,5 +12,14 @@ export default function AdminSectionLayout({ children }: { children: ReactNode }
     return <>{children}</>;
   }
 
-  return <AdminGate requiredPermission="hub.access">{children}</AdminGate>;
+  // Hub already has a dense control-center chrome — keep gate only.
+  if (pathname === "/admin") {
+    return <AdminGate requiredPermission="hub.access">{children}</AdminGate>;
+  }
+
+  return (
+    <AdminGate requiredPermission="hub.access">
+      <AdminShell>{children}</AdminShell>
+    </AdminGate>
+  );
 }

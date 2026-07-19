@@ -5,6 +5,12 @@ import {
 } from "@/lib/marketplaceCheckout";
 import { persistMarketplaceDeliveryShadow } from "@/lib/marketplaceDeliveryShadow";
 import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
+import { resolveMmdPlusCheckoutBenefits } from "@/lib/mmdPlus/mmdPlusEngine";
+import {
+  isLikelyFirstOrder,
+  resolveMarketingOffers,
+  userHasActiveMmdPlus,
+} from "@/lib/marketing/marketingEngine";
 
 export type MarketplaceDraftItemInput = {
   product_id: string;
@@ -425,13 +431,68 @@ export async function upsertMarketplaceDraftOrder(
     countryCode: params.countryCode ?? undefined,
   });
 
-  const shadow = computeMarketplaceCheckoutShadow(
+  const shadowBase = computeMarketplaceCheckoutShadow(
     lineItems.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
     })),
     { serviceFeeConfig }
   );
+
+  const [hasPlus, firstOrder] = await Promise.all([
+    userHasActiveMmdPlus(supabaseAdmin, params.clientUserId),
+    isLikelyFirstOrder(supabaseAdmin, params.clientUserId, "marketplace"),
+  ]);
+  const marketing = await resolveMarketingOffers(supabaseAdmin, {
+    userId: params.clientUserId,
+    service: "marketplace",
+    subtotalCents: shadowBase.subtotal_cents,
+    deliveryFeeCents: shadowBase.delivery_fee_cents,
+    countryCode: params.countryCode ?? null,
+    partnerUserId: params.sellerId,
+    hasMmdPlus: hasPlus,
+    isFirstOrder: firstOrder,
+  });
+  const marketingOrder =
+    marketing.ok || !marketing.fail_closed ? marketing.order_discount_cents : 0;
+  const marketingFee =
+    marketing.ok || !marketing.fail_closed
+      ? marketing.delivery_fee_discount_cents
+      : 0;
+
+  const mmdPlus = await resolveMmdPlusCheckoutBenefits(supabaseAdmin, {
+    userId: params.clientUserId,
+    service: "marketplace",
+    subtotalCents: Math.max(0, shadowBase.subtotal_cents - marketingOrder),
+    deliveryFeeCents: Math.max(0, shadowBase.delivery_fee_cents - marketingFee),
+  });
+  const deliveryFeeCents = Math.max(
+    0,
+    shadowBase.delivery_fee_cents -
+      marketingFee -
+      mmdPlus.delivery_fee_discount_cents
+  );
+  const subtotalCents = Math.max(
+    0,
+    shadowBase.subtotal_cents - marketingOrder - mmdPlus.order_discount_cents
+  );
+  const shadow = {
+    ...shadowBase,
+    subtotal_cents: subtotalCents,
+    delivery_fee_cents: deliveryFeeCents,
+    total_cents:
+      subtotalCents + deliveryFeeCents + shadowBase.service_fee_cents,
+    marketing: {
+      order_discount_cents: marketingOrder,
+      delivery_fee_discount_cents: marketingFee,
+      applied: marketing.applied,
+    },
+    mmd_plus: {
+      delivery_fee_discount_cents: mmdPlus.delivery_fee_discount_cents,
+      order_discount_cents: mmdPlus.order_discount_cents,
+      active: mmdPlus.active,
+    },
+  };
 
   const currency = lineItems[0]?.currency ?? "USD";
 
@@ -582,7 +643,7 @@ export async function runMarketplaceCheckoutShadow(
     region: order.region_code ?? undefined,
   });
 
-  const shadow = computeMarketplaceCheckoutShadow(
+  const shadowBase = computeMarketplaceCheckoutShadow(
     items.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
@@ -592,6 +653,80 @@ export async function runMarketplaceCheckoutShadow(
       serviceFeeConfig,
     }
   );
+
+  const [hasPlusPreview, firstOrderPreview] = order.client_user_id
+    ? await Promise.all([
+        userHasActiveMmdPlus(supabaseAdmin, order.client_user_id),
+        isLikelyFirstOrder(supabaseAdmin, order.client_user_id, "marketplace"),
+      ])
+    : [false, false];
+  const marketing = order.client_user_id
+    ? await resolveMarketingOffers(supabaseAdmin, {
+        userId: order.client_user_id,
+        service: "marketplace",
+        subtotalCents: shadowBase.subtotal_cents,
+        deliveryFeeCents: shadowBase.delivery_fee_cents,
+        countryCode: order.country_code ?? null,
+        partnerUserId: order.seller_id,
+        hasMmdPlus: hasPlusPreview,
+        isFirstOrder: firstOrderPreview,
+      })
+    : {
+        ok: true,
+        order_discount_cents: 0,
+        delivery_fee_discount_cents: 0,
+        cashback_cents: 0,
+        points_bonus: 0,
+        applied: [] as Array<Record<string, unknown>>,
+        rejected: [] as Array<Record<string, unknown>>,
+      };
+  const marketingOrder =
+    marketing.ok || !("fail_closed" in marketing && marketing.fail_closed)
+      ? marketing.order_discount_cents
+      : 0;
+  const marketingFee =
+    marketing.ok || !("fail_closed" in marketing && marketing.fail_closed)
+      ? marketing.delivery_fee_discount_cents
+      : 0;
+
+  const mmdPlus = order.client_user_id
+    ? await resolveMmdPlusCheckoutBenefits(supabaseAdmin, {
+        userId: order.client_user_id,
+        service: "marketplace",
+        subtotalCents: Math.max(0, shadowBase.subtotal_cents - marketingOrder),
+        deliveryFeeCents: Math.max(0, shadowBase.delivery_fee_cents - marketingFee),
+      })
+    : null;
+  const deliveryFeeCents = Math.max(
+    0,
+    shadowBase.delivery_fee_cents -
+      marketingFee -
+      (mmdPlus?.delivery_fee_discount_cents ?? 0)
+  );
+  const subtotalCents = Math.max(
+    0,
+    shadowBase.subtotal_cents -
+      marketingOrder -
+      (mmdPlus?.order_discount_cents ?? 0)
+  );
+  const shadow = {
+    ...shadowBase,
+    subtotal_cents: subtotalCents,
+    delivery_fee_cents: deliveryFeeCents,
+    total_cents: subtotalCents + deliveryFeeCents + shadowBase.service_fee_cents,
+    marketing: {
+      order_discount_cents: marketingOrder,
+      delivery_fee_discount_cents: marketingFee,
+      applied: marketing.applied,
+    },
+    mmd_plus: mmdPlus
+      ? {
+          delivery_fee_discount_cents: mmdPlus.delivery_fee_discount_cents,
+          order_discount_cents: mmdPlus.order_discount_cents,
+          active: mmdPlus.active,
+        }
+      : undefined,
+  };
 
   const nextStatus = shadow.checkout_enabled ? "pending_checkout" : "draft";
 
@@ -614,6 +749,90 @@ export async function runMarketplaceCheckoutShadow(
     .eq("status", "draft");
 
   if (error) throw new Error(error.message);
+
+  // Phase 7.1: reserve when checkout becomes financially engaging.
+  if (nextStatus === "pending_checkout") {
+    try {
+      const { reserveAndAttachMarketing } = await import(
+        "@/lib/marketing/marketingCheckoutLifecycle"
+      );
+      const { userHasActiveMmdPlus, isLikelyFirstOrder } = await import(
+        "@/lib/marketing/marketingEngine"
+      );
+      const [hasPlus, firstOrder] = await Promise.all([
+        userHasActiveMmdPlus(supabaseAdmin, params.clientUserId),
+        isLikelyFirstOrder(supabaseAdmin, params.clientUserId, "marketplace"),
+      ]);
+      const marketingAttach = await reserveAndAttachMarketing(supabaseAdmin, {
+        kind: "marketplace",
+        entityId: order.id,
+        userId: params.clientUserId,
+        subtotalCents: Number(shadowBase.subtotal_cents ?? shadow.subtotal_cents ?? 0),
+        deliveryFeeCents: Number(
+          shadowBase.delivery_fee_cents ?? shadow.delivery_fee_cents ?? 0
+        ),
+        countryCode: order.country_code ?? null,
+        partnerUserId: order.seller_id,
+        hasMmdPlus: hasPlus,
+        isFirstOrder: firstOrder,
+      });
+      if (!marketingAttach.ok && marketingAttach.fail_closed) {
+        await supabaseAdmin
+          .from("seller_orders")
+          .update({
+            status: "draft",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", order.id);
+        throw new Error(
+          marketingAttach.error ?? "Impossible de réserver la promotion"
+        );
+      }
+      // Enrich checkout snapshot with funding breakdown (immutable at capture).
+      const fundingShadow = {
+        ...shadow,
+        marketing_reservation_id: marketingAttach.marketing_reservation_id,
+        marketing_discount_cents: marketingAttach.marketing_discount_cents,
+        marketing_campaign_ids: marketingAttach.marketing_campaign_ids,
+        financial_snapshot: {
+          engine: "marketing_v1",
+          mmd_funded_cents: Math.max(
+            0,
+            Number(
+              marketingAttach.reserve.resolve?.applied?.[0]?.mmd_funded_cents ??
+                marketingAttach.marketing_discount_cents
+            )
+          ),
+          partner_funded_cents: Math.max(
+            0,
+            Number(
+              marketingAttach.reserve.resolve?.applied?.[0]?.partner_funded_cents ?? 0
+            )
+          ),
+          client_paid_cents: shadow.total_cents,
+          reserved_at: new Date().toISOString(),
+        },
+      };
+      await supabaseAdmin
+        .from("seller_orders")
+        .update({
+          checkout_shadow: fundingShadow,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", order.id);
+    } catch (e) {
+      if (
+        e instanceof Error &&
+        /Impossible de réserver|marketing_reserve|fail_closed/i.test(e.message)
+      ) {
+        throw e;
+      }
+      console.warn(
+        "[marketing] marketplace reserve fail-open",
+        e instanceof Error ? e.message : e
+      );
+    }
+  }
 
   const refreshed = await getClientDraftOrder(supabaseAdmin, {
     clientUserId: params.clientUserId,

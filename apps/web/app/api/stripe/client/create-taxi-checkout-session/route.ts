@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,subtotal_cents,service_fee_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
+        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,subtotal_cents,service_fee_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,mmd_credit_applied_cents,mmd_plus_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
       )
       .eq("id", taxiRideId)
       .maybeSingle();

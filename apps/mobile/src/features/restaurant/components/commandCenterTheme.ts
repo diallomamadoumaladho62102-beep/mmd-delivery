@@ -1,13 +1,14 @@
 import { Platform, ViewStyle } from "react-native";
+import { APP_COLORS } from "../../../theme/appTheme";
 
 export const CC = {
-  bg: "#030712",
-  bgElevated: "#0B0F1A",
+  bg: APP_COLORS.bg,
+  bgElevated: APP_COLORS.bgElevated,
   glass: "rgba(255,255,255,0.06)",
   glassBorder: "rgba(167,139,250,0.22)",
   glassBorderGold: "rgba(245,158,11,0.28)",
-  purple: "#7C3AED",
-  purpleLight: "#A78BFA",
+  purple: APP_COLORS.accentStrong,
+  purpleLight: APP_COLORS.accent,
   purpleGlow: "rgba(124,58,237,0.35)",
   purpleDeep: "rgba(76,29,149,0.55)",
   gold: "#FBBF24",
@@ -20,7 +21,7 @@ export const CC = {
   blueDim: "rgba(96,165,250,0.14)",
   orange: "#FB923C",
   orangeDim: "rgba(251,146,60,0.14)",
-  textPrimary: "#F8FAFC",
+  textPrimary: APP_COLORS.text,
   textSecondary: "rgba(226,232,240,0.72)",
   textMuted: "rgba(148,163,184,0.92)",
   heroGlowGold: "rgba(251,191,36,0.14)",

@@ -8,8 +8,10 @@ import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { resolveTaxiPickupCity } from "@/lib/taxiCityDetection";
 import {
   assertTaxiQuotePriceMatches,
+  calculateTaxiFinalPriceSnapshot,
   snapshotFromRideRow,
 } from "@/lib/taxiFinalPrice";
+import { resolveMmdPlusCheckoutBenefits } from "@/lib/mmdPlus/mmdPlusEngine";
 import {
   applyTaxiServiceFeeToQuote,
   mergeTaxiServiceFeeIntoQuote,
@@ -383,6 +385,23 @@ export async function POST(req: NextRequest) {
     }
     const quoteGrossCents = Math.round(Number(quoteWithServiceFee.total_cents ?? 0));
 
+    const mmdPlusBenefits = await resolveMmdPlusCheckoutBenefits(auth.supabaseAdmin, {
+      userId: auth.user.id,
+      service: "taxi",
+      subtotalCents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
+      deliveryFeeCents: 0,
+    });
+    const mmdPlusDiscountCents = Math.max(0, mmdPlusBenefits.order_discount_cents || 0);
+    const pricedSnapshot = calculateTaxiFinalPriceSnapshot({
+      subtotal_cents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
+      tax_cents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
+      gross_total_cents: Math.round(
+        Number(quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0)
+      ),
+      mmd_plus_discount_cents: mmdPlusDiscountCents,
+    });
+    const netTotalCents = pricedSnapshot.total_cents;
+
     let businessMemberId: string | null = null;
     let businessApprovalStatus = "not_required";
 
@@ -474,8 +493,10 @@ export async function POST(req: NextRequest) {
         service_fee_pct: quoteWithServiceFee.service_fee_pct ?? 0,
         service_fee_enabled: quoteWithServiceFee.service_fee_enabled === true,
         service_fee_fixed_cents: quoteWithServiceFee.service_fee_fixed_cents ?? 0,
-        total_cents: quoteWithServiceFee.total_cents ?? 0,
-        gross_total_cents: quoteWithServiceFee.gross_total_cents ?? 0,
+        total_cents: netTotalCents,
+        gross_total_cents:
+          quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0,
+        mmd_plus_discount_cents: mmdPlusDiscountCents,
         passenger_count: passengerCount,
         client_notes: clientNotes || null,
         payment_status: "unpaid",
@@ -531,7 +552,79 @@ export async function POST(req: NextRequest) {
     }
 
     let promotionResult: Record<string, unknown> | null = null;
-    if (promoCode) {
+    let marketingReserveResult: Record<string, unknown> | null = null;
+
+    // Phase 7.1: marketing reserve is the primary promo path for Taxi.
+    try {
+      const { reserveAndAttachMarketing } = await import(
+        "@/lib/marketing/marketingCheckoutLifecycle"
+      );
+      const { userHasActiveMmdPlus, isLikelyFirstOrder } = await import(
+        "@/lib/marketing/marketingEngine"
+      );
+      const [hasPlus, firstOrder] = await Promise.all([
+        userHasActiveMmdPlus(auth.supabaseAdmin, auth.user.id),
+        isLikelyFirstOrder(auth.supabaseAdmin, auth.user.id, "taxi"),
+      ]);
+      const marketingAttach = await reserveAndAttachMarketing(auth.supabaseAdmin, {
+        kind: "taxi",
+        entityId: String(ride.id),
+        userId: auth.user.id,
+        subtotalCents: Number(quoteWithServiceFee.subtotal_cents ?? 0),
+        deliveryFeeCents: 0,
+        promoCode: promoCode || null,
+        countryCode,
+        city: pickupCity,
+        hasMmdPlus: hasPlus,
+        isFirstOrder: firstOrder,
+      });
+      marketingReserveResult = marketingAttach as unknown as Record<string, unknown>;
+      if (!marketingAttach.ok && marketingAttach.fail_closed) {
+        await auth.supabaseAdmin.from("taxi_rides").delete().eq("id", ride.id);
+        return taxiJson(
+          {
+            ok: false,
+            error: marketingAttach.error ?? "Impossible de réserver la promotion",
+          },
+          400
+        );
+      }
+      if (marketingAttach.marketing_discount_cents > 0) {
+        const nextTotal = Math.max(
+          0,
+          Number(netTotalCents) - marketingAttach.marketing_discount_cents
+        );
+        await auth.supabaseAdmin
+          .from("taxi_rides")
+          .update({
+            total_cents: nextTotal,
+            marketing_discount_cents: marketingAttach.marketing_discount_cents,
+            marketing_reservation_id: marketingAttach.marketing_reservation_id,
+            marketing_campaign_ids: marketingAttach.marketing_campaign_ids,
+          })
+          .eq("id", ride.id);
+        promotionResult = {
+          ok: true,
+          source: "marketing",
+          discount_cents: marketingAttach.marketing_discount_cents,
+          reservation_id: marketingAttach.marketing_reservation_id,
+        };
+      }
+    } catch (e) {
+      console.warn(
+        "[marketing] taxi reserve fail-open",
+        e instanceof Error ? e.message : e
+      );
+    }
+
+    // Legacy taxi_promotions only if marketing did not apply a discount.
+    if (
+      promoCode &&
+      !(
+        promotionResult &&
+        Number((promotionResult as { discount_cents?: number }).discount_cents ?? 0) > 0
+      )
+    ) {
       const { data: promoData, error: promoError } = await auth.supabaseAdmin.rpc(
         "apply_taxi_promotion_to_ride",
         {
@@ -546,10 +639,18 @@ export async function POST(req: NextRequest) {
 
       const promoObj = (promoData ?? {}) as Record<string, unknown>;
       if (promoObj.ok === false) {
-        return taxiJson({ ok: false, ...promoObj }, 400);
+        const msg = String(promoObj.error ?? promoObj.message ?? "");
+        if (msg === "promo_handled_by_marketing_engine") {
+          // Marketing owns the code; keep fail-open unless client required it.
+          if (!marketingReserveResult) {
+            return taxiJson({ ok: false, ...promoObj }, 400);
+          }
+        } else {
+          return taxiJson({ ok: false, ...promoObj }, 400);
+        }
+      } else {
+        promotionResult = promoObj;
       }
-
-      promotionResult = promoObj;
     }
 
     let rewardResult: Record<string, unknown> | null = null;

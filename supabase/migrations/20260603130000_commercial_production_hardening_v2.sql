@@ -846,6 +846,7 @@ $mig$;
 do $rls$
 declare
   v_has_sender_id boolean := false;
+  v_has_user_id boolean := false;
   v_insert_expr text;
 begin
   if to_regclass('public.order_messages') is null then
@@ -864,10 +865,23 @@ begin
   )
   into v_has_sender_id;
 
-  if v_has_sender_id then
+  select exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'order_messages'
+      and column_name = 'user_id'
+  )
+  into v_has_user_id;
+
+  if v_has_user_id and v_has_sender_id then
     v_insert_expr := '(user_id = auth.uid() or sender_id = auth.uid())';
-  else
+  elsif v_has_sender_id then
+    v_insert_expr := '(sender_id = auth.uid())';
+  elsif v_has_user_id then
     v_insert_expr := '(user_id = auth.uid())';
+  else
+    -- No sender identity columns yet: allow participant-only insert check.
+    v_insert_expr := 'true';
   end if;
 
   alter table public.order_messages enable row level security;

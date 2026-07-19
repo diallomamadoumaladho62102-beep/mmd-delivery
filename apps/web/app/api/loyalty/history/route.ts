@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { normalizeLoyaltyRole } from "@/lib/loyalty/loyaltyUserApi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +10,7 @@ export async function GET(req: NextRequest) {
     const auth = await requireTaxiApiUser(req);
     if (auth.ok === false) return auth.response;
 
+    const role = normalizeLoyaltyRole(req.nextUrl.searchParams.get("role"));
     const limit = Math.min(
       100,
       Math.max(1, Number(req.nextUrl.searchParams.get("limit") ?? 50) || 50)
@@ -21,6 +23,7 @@ export async function GET(req: NextRequest) {
           "id, delta_points, balance_after, entry_type, reference_type, reference_id, description, created_at"
         )
         .eq("user_id", auth.user.id)
+        .eq("role", role)
         .order("created_at", { ascending: false })
         .limit(limit),
       auth.supabaseAdmin

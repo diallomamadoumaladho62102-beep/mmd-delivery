@@ -27,6 +27,46 @@
     {
       "path": "/api/cron/vehicle-eligibility-refresh",
       "schedule": "5 0 * * *"
+    },
+    {
+      "path": "/api/cron/expire-loyalty-credit",
+      "schedule": "40 5 * * *"
+    },
+    {
+      "path": "/api/cron/expire-restaurant-benefits",
+      "schedule": "50 5 * * *"
+    },
+    {
+      "path": "/api/cron/expire-marketplace-benefits",
+      "schedule": "55 5 * * *"
+    },
+    {
+      "path": "/api/cron/expire-commission-rules",
+      "schedule": "10 6 * * *"
+    },
+    {
+      "path": "/api/cron/expire-subscriptions",
+      "schedule": "20 6 * * *"
+    },
+    {
+      "path": "/api/cron/expire-mmd-plus",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/expire-marketing",
+      "schedule": "40 6 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-analytics",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/process-finance",
+      "schedule": "25 * * * *"
+    },
+    {
+      "path": "/api/cron/recognize-finance-revenue",
+      "schedule": "35 * * * *"
     }
   ]
 }

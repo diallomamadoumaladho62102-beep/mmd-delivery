@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import Stripe from "stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
+import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import {
   assertClientOwnsTaxiRide,
   getProfileRole,
@@ -123,6 +124,10 @@ export async function POST(req: NextRequest) {
         409
       );
     }
+
+    // Crédit MMD: free a still-held reservation (no-op once captured; the refund
+    // path re-credits captured amounts on paid rides).
+    await releaseEntityCredit(auth.supabaseAdmin, "taxi_ride", rideId);
 
     let stripeRefund: unknown = null;
 

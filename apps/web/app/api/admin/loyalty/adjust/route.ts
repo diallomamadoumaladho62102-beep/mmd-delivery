@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { buildLoyaltySummary } from "@/lib/loyalty/loyaltyUserApi";
+import { buildLoyaltySummary, normalizeLoyaltyRole } from "@/lib/loyalty/loyaltyUserApi";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
       return json({ ok: false, error: "Missing or invalid userId" }, 400);
     }
 
-    const summary = await buildLoyaltySummary(supabase, userId);
+    const role = normalizeLoyaltyRole(request.nextUrl.searchParams.get("role"));
+    const summary = await buildLoyaltySummary(supabase, userId, role);
     return json({ ok: true, summary });
   } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
 
     const userId = String(body.user_id ?? body.userId ?? "").trim();
     const kind = String(body.kind ?? "points").trim();
+    const role = normalizeLoyaltyRole(body.role);
     const reason =
       typeof body.reason === "string" ? body.reason.trim().slice(0, 500) : null;
 
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
         request,
       });
 
-      const summary = await buildLoyaltySummary(supabase, userId);
+      const summary = await buildLoyaltySummary(supabase, userId, role);
       return json({ ok: true, result, summary });
     }
 
@@ -84,6 +86,7 @@ export async function POST(request: NextRequest) {
       p_user_id: userId,
       p_delta_points: deltaPoints,
       p_reason: reason,
+      p_role: role,
     });
     if (error) return json({ ok: false, error: error.message }, 500);
     const result = (data ?? {}) as Record<string, unknown>;
@@ -95,11 +98,11 @@ export async function POST(request: NextRequest) {
       action: "loyalty_points_adjusted",
       targetType: "loyalty_account",
       targetId: userId,
-      metadata: { delta_points: deltaPoints, reason, result },
+      metadata: { delta_points: deltaPoints, role, reason, result },
       request,
     });
 
-    const summary = await buildLoyaltySummary(supabase, userId);
+    const summary = await buildLoyaltySummary(supabase, userId, role);
     return json({ ok: true, result, summary });
   } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;

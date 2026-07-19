@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
 import { notifyOrderCancelledEmail } from "@/lib/transactionalEmails";
+import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 import {
@@ -461,12 +462,20 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        const stripeRefund = await refundStripePayment({
-          order,
-          supabaseAdmin,
-          orderId,
-          reason,
-        });
+        // Crédit MMD: free a still-held reservation (no-op once captured; the
+        // refund path re-credits captured amounts on paid orders).
+        await releaseEntityCredit(supabaseAdmin, "food_order", orderId);
+        try {
+          const { releaseEntityMarketing } = await import(
+            "@/lib/marketing/marketingCheckoutLifecycle"
+          );
+          await releaseEntityMarketing(supabaseAdmin, "food", orderId, reason);
+        } catch (e) {
+          console.warn(
+            "[marketing] release on cancel fail-open",
+            e instanceof Error ? e.message : e
+          );
+        }
 
         await insertClientCancelEvent({
           supabaseAdmin,
@@ -475,7 +484,7 @@ export async function POST(req: NextRequest) {
           reason,
           userId: user.id,
           refund: "FULL",
-          stripeRefund,
+          stripeRefund: null,
         });
 
         await notifyClientAfterCancel({
@@ -497,7 +506,7 @@ export async function POST(req: NextRequest) {
           by: "client",
           refund: "FULL",
           status: "canceled",
-          stripeRefund,
+          stripeRefund: null,
           message: "Client cancelled before restaurant acceptance.",
         });
       }
@@ -528,6 +537,22 @@ export async function POST(req: NextRequest) {
             },
             409
           );
+        }
+
+        // Crédit MMD: free a still-held reservation (no-op once captured).
+        await releaseEntityCredit(supabaseAdmin, "food_order", orderId);
+        try {
+          const { releaseEntityMarketing } = await import(
+            "@/lib/marketing/marketingCheckoutLifecycle"
+          );
+          await releaseEntityMarketing(
+            supabaseAdmin,
+            "food",
+            orderId,
+            "client_cancelled_after_restaurant_accept"
+          );
+        } catch {
+          /* fail-open */
         }
 
         await insertClientCancelEvent({

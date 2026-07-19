@@ -17,8 +17,11 @@ import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 
 type ApprovedSellerRow = {
   id: string;
+  user_id: string;
   status: string;
   business_name: string;
+  country_code: string | null;
+  city: string | null;
 };
 
 function normalizeCurrency(value: unknown): string {
@@ -51,7 +54,7 @@ async function assertApprovedSeller(
 ): Promise<ApprovedSellerRow> {
   const { data, error } = await supabaseAdmin
     .from("sellers")
-    .select("id,status,business_name")
+    .select("id,user_id,status,business_name,country_code,city")
     .eq("id", sellerId)
     .eq("status", "approved")
     .maybeSingle();
@@ -147,6 +150,25 @@ export async function prepareMarketplaceLiveCheckoutOrder(
   const totals = await assertActiveOrderProducts(supabaseAdmin, order);
 
   if (totals.total_cents <= 0) throw new Error("Invalid order total");
+
+  // Phase 4: freeze marketplace commission at checkout (write-once).
+  const { snapshotOrderCommission } = await import("@/lib/commission/commissionEngine");
+  const snap = await snapshotOrderCommission(supabaseAdmin, {
+    orderKind: "marketplace",
+    orderId: order.id,
+    partnerType: "seller",
+    partnerUserId: seller.user_id,
+    service: "marketplace",
+    currency: order.currency ?? "USD",
+    countryCode: seller.country_code ?? order.country_code ?? null,
+    city: seller.city ?? null,
+  });
+  if (!snap.ok) {
+    console.error("[commission-engine] marketplace snapshot failed", {
+      seller_order_id: order.id,
+      error: snap.error,
+    });
+  }
 
   return { order, totals, seller };
 }

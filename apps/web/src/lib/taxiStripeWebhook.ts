@@ -12,6 +12,7 @@ import {
   requirePaymentIntentSucceeded,
   assertSettlementMatchesExpectation,
 } from "@/lib/requirePaymentIntentSucceeded";
+import { captureEntityCredit, releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 
 type TaxiRidePaymentRow = {
   id: string;
@@ -277,6 +278,21 @@ export async function handleTaxiStripePayment(params: {
     return { ok: true, already_paid: true };
   }
 
+  // Crédit MMD: finalize the reserved store-credit now that the ride is paid.
+  await captureEntityCredit(supabaseAdmin, "taxi_ride", taxiRideId);
+
+  try {
+    const { captureEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await captureEntityMarketing(supabaseAdmin, "taxi", taxiRideId);
+  } catch (e) {
+    console.warn(
+      "[marketing] taxi stripe capture fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
+
   await logTaxiEventServer(supabaseAdmin, {
     rideId: taxiRideId,
     eventType: "ride_paid_webhook",
@@ -423,6 +439,26 @@ async function markTaxiPaymentFailure(params: {
       ok: true,
       sync: { updated: [], skipped: ["update_noop"] },
     };
+  }
+
+  // Crédit MMD: release the still-held reservation on failed/expired payment.
+  await releaseEntityCredit(supabaseAdmin, "taxi_ride", taxiRideId);
+
+  try {
+    const { releaseEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await releaseEntityMarketing(
+      supabaseAdmin,
+      "taxi",
+      taxiRideId,
+      `taxi_payment_${targetPaymentStatus}`
+    );
+  } catch (e) {
+    console.warn(
+      "[marketing] taxi release fail-open",
+      e instanceof Error ? e.message : e
+    );
   }
 
   console.log("[taxi-stripe-webhook] ride payment failure synced", {

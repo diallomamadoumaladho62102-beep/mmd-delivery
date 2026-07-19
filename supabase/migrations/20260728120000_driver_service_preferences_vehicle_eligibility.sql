@@ -185,6 +185,17 @@ create table if not exists public.vehicle_category_eligibility (
   unique (vehicle_id, category)
 );
 
+alter table public.vehicle_category_eligibility
+  add column if not exists admin_approved boolean not null default false;
+alter table public.vehicle_category_eligibility
+  add column if not exists admin_suspended boolean not null default false;
+alter table public.vehicle_category_eligibility
+  add column if not exists reason_code text;
+alter table public.vehicle_category_eligibility
+  add column if not exists reason_message text;
+alter table public.vehicle_category_eligibility
+  add column if not exists computed_at timestamptz not null default now();
+
 create index if not exists idx_vehicle_category_eligibility_driver
   on public.vehicle_category_eligibility (driver_user_id, category, status);
 
@@ -276,6 +287,8 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 7) Recalculate vehicle category eligibility
 -- ---------------------------------------------------------------------------
+
+drop function if exists public.recalculate_vehicle_category_eligibility(uuid);
 
 create or replace function public.recalculate_vehicle_category_eligibility(p_vehicle_id uuid)
 returns void

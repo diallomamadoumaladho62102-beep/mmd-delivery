@@ -73,13 +73,21 @@ on conflict (code) do nothing;
 -- ---------------------------------------------------------------------------
 -- 3) Loyalty accounts + append-only ledger
 -- ---------------------------------------------------------------------------
+-- Multi-role loyalty: one SEPARATE account per (user_id, role). A person who is
+-- both e.g. a client and a driver has two independent accounts and balances;
+-- there is NEVER any transfer of points between roles. The 'restaurant' and
+-- 'seller' roles are reserved here so their programs can be added later without
+-- schema churn (their campaigns/rewards are intentionally out of scope for now).
 create table if not exists public.loyalty_accounts (
-  user_id uuid primary key references public.profiles (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  role text not null default 'client'
+    check (role in ('client', 'driver', 'restaurant', 'seller')),
   points_balance integer not null default 0 check (points_balance >= 0),
   lifetime_points integer not null default 0 check (lifetime_points >= 0),
   tier_code text not null default 'bronze',
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (user_id, role)
 );
 
 drop trigger if exists trg_loyalty_accounts_updated_at on public.loyalty_accounts;
@@ -90,6 +98,8 @@ for each row execute function public.taxi_set_updated_at();
 create table if not exists public.loyalty_ledger (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
+  role text not null default 'client'
+    check (role in ('client', 'driver', 'restaurant', 'seller')),
   delta_points integer not null,
   balance_after integer not null check (balance_after >= 0),
   entry_type text not null check (
@@ -172,9 +182,12 @@ create unique index if not exists mmd_credit_ledger_idempotency_uq
 -- 5) Referral codes + referral records
 -- ---------------------------------------------------------------------------
 create table if not exists public.loyalty_referral_codes (
-  user_id uuid primary key references public.profiles (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  role text not null default 'client'
+    check (role in ('client', 'driver', 'restaurant', 'seller')),
   code text not null unique,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  primary key (user_id, role)
 );
 
 create table if not exists public.loyalty_referrals (
@@ -182,7 +195,8 @@ create table if not exists public.loyalty_referrals (
   referrer_user_id uuid not null references public.profiles (id) on delete cascade,
   referred_user_id uuid not null references public.profiles (id) on delete cascade,
   code text not null,
-  audience text not null default 'client' check (audience in ('client', 'driver')),
+  audience text not null default 'client'
+    check (audience in ('client', 'driver', 'restaurant', 'seller')),
   status text not null default 'pending' check (status in ('pending', 'rewarded', 'void')),
   rewarded_at timestamptz,
   created_at timestamptz not null default now(),

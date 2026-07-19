@@ -38,7 +38,10 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Account / wallet bootstrap
 -- ---------------------------------------------------------------------------
-create or replace function public.mmd_loyalty_ensure_account(p_user_id uuid)
+create or replace function public.mmd_loyalty_ensure_account(
+  p_user_id uuid,
+  p_role text default 'client'
+)
 returns void
 language plpgsql
 security definer
@@ -48,9 +51,9 @@ begin
   if p_user_id is null then
     return;
   end if;
-  insert into public.loyalty_accounts (user_id)
-  values (p_user_id)
-  on conflict (user_id) do nothing;
+  insert into public.loyalty_accounts (user_id, role)
+  values (p_user_id, coalesce(p_role, 'client'))
+  on conflict (user_id, role) do nothing;
 end;
 $$;
 
@@ -82,7 +85,8 @@ create or replace function public.mmd_loyalty_accrue(
   p_idempotency_key text,
   p_description text default null,
   p_actor_user_id uuid default null,
-  p_metadata jsonb default '{}'::jsonb
+  p_metadata jsonb default '{}'::jsonb,
+  p_role text default 'client'
 )
 returns jsonb
 language plpgsql
@@ -95,6 +99,8 @@ declare
   v_new_balance integer;
   v_new_lifetime integer;
   v_tier text;
+  v_tier_current text;
+  v_role text := coalesce(p_role, 'client');
 begin
   if p_user_id is null then
     return jsonb_build_object('ok', false, 'error', 'missing_user');
@@ -109,23 +115,31 @@ begin
     return jsonb_build_object('ok', true, 'already_awarded', true);
   end if;
 
-  perform public.mmd_loyalty_ensure_account(p_user_id);
+  perform public.mmd_loyalty_ensure_account(p_user_id, v_role);
 
-  select points_balance, lifetime_points
-    into v_balance, v_lifetime
+  -- Balance is scoped to (user_id, role): no cross-role transfer is possible.
+  select points_balance, lifetime_points, tier_code
+    into v_balance, v_lifetime, v_tier_current
   from public.loyalty_accounts
-  where user_id = p_user_id
+  where user_id = p_user_id and role = v_role
   for update;
 
   v_new_balance := greatest(0, v_balance + p_points);
   v_new_lifetime := v_lifetime + greatest(0, p_points);
-  v_tier := public.mmd_loyalty_tier_for(v_new_lifetime);
+  -- Client/driver use the shared lifetime-points ladder. Restaurant/seller tiers
+  -- are performance-based and recomputed by their own engine, so accrual must
+  -- NOT clobber their tier_code here.
+  if v_role in ('client', 'driver') then
+    v_tier := public.mmd_loyalty_tier_for(v_new_lifetime);
+  else
+    v_tier := coalesce(v_tier_current, 'standard');
+  end if;
 
   insert into public.loyalty_ledger (
-    user_id, delta_points, balance_after, entry_type, reference_type,
+    user_id, role, delta_points, balance_after, entry_type, reference_type,
     reference_id, description, idempotency_key, actor_user_id, metadata
   ) values (
-    p_user_id, p_points, v_new_balance, p_entry_type, p_reference_type,
+    p_user_id, v_role, p_points, v_new_balance, p_entry_type, p_reference_type,
     p_reference_id, p_description, p_idempotency_key, p_actor_user_id,
     coalesce(p_metadata, '{}'::jsonb)
   );
@@ -135,10 +149,11 @@ begin
       lifetime_points = v_new_lifetime,
       tier_code = v_tier,
       updated_at = now()
-  where user_id = p_user_id;
+  where user_id = p_user_id and role = v_role;
 
   return jsonb_build_object(
-    'ok', true, 'balance', v_new_balance, 'lifetime', v_new_lifetime, 'tier', v_tier
+    'ok', true, 'balance', v_new_balance, 'lifetime', v_new_lifetime,
+    'tier', v_tier, 'role', v_role
   );
 exception when unique_violation then
   return jsonb_build_object('ok', true, 'already_awarded', true);
@@ -354,7 +369,8 @@ $$;
 create or replace function public.mmd_convert_points(
   p_user_id uuid,
   p_blocks integer default 1,
-  p_idempotency_key text default null
+  p_idempotency_key text default null,
+  p_role text default 'client'
 )
 returns jsonb
 language plpgsql
@@ -369,12 +385,19 @@ declare
   v_expires timestamptz;
   v_key text;
   v_deduct jsonb;
+  v_role text := coalesce(p_role, 'client');
 begin
   if p_user_id is null then
     return jsonb_build_object('ok', false, 'error', 'missing_user');
   end if;
   if p_blocks is null or p_blocks < 1 then
     return jsonb_build_object('ok', false, 'error', 'invalid_blocks');
+  end if;
+  -- Points -> Crédit MMD conversion is only for client/driver roles. Restaurant
+  -- and seller programs use professional benefits (added in a later phase) and
+  -- must never mint spendable client credit.
+  if v_role not in ('client', 'driver') then
+    return jsonb_build_object('ok', false, 'error', 'role_not_convertible');
   end if;
 
   select * into v_settings from public.loyalty_settings where singleton = true;
@@ -386,11 +409,11 @@ begin
   v_credit := v_settings.conversion_credit_cents::bigint * p_blocks;
   v_key := coalesce(p_idempotency_key, gen_random_uuid()::text);
 
-  perform public.mmd_loyalty_ensure_account(p_user_id);
+  perform public.mmd_loyalty_ensure_account(p_user_id, v_role);
 
   select points_balance into v_balance
   from public.loyalty_accounts
-  where user_id = p_user_id
+  where user_id = p_user_id and role = v_role
   for update;
 
   if coalesce(v_balance, 0) < v_needed then
@@ -401,7 +424,7 @@ begin
   v_deduct := public.mmd_loyalty_accrue(
     p_user_id, -v_needed, 'conversion', 'conversion', v_key,
     'convert:' || v_key, 'Conversion points vers Crédit MMD', p_user_id,
-    jsonb_build_object('blocks', p_blocks, 'credit_cents', v_credit)
+    jsonb_build_object('blocks', p_blocks, 'credit_cents', v_credit), v_role
   );
 
   if coalesce((v_deduct ->> 'already_awarded')::boolean, false) then
@@ -435,7 +458,8 @@ create or replace function public.mmd_loyalty_admin_adjust(
   p_admin_user_id uuid,
   p_user_id uuid,
   p_delta_points integer,
-  p_reason text default null
+  p_reason text default null,
+  p_role text default 'client'
 )
 returns jsonb
 language plpgsql
@@ -450,7 +474,7 @@ begin
     p_user_id, p_delta_points, 'admin_adjust', 'admin', null,
     'admin-adjust:' || gen_random_uuid()::text,
     coalesce(p_reason, 'Ajustement administrateur'), p_admin_user_id,
-    jsonb_build_object('reason', p_reason)
+    jsonb_build_object('reason', p_reason), coalesce(p_role, 'client')
   );
 end;
 $$;
@@ -545,7 +569,10 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Referral: codes, apply-on-signup, reward-on-first-order
 -- ---------------------------------------------------------------------------
-create or replace function public.mmd_loyalty_get_or_create_code(p_user_id uuid)
+create or replace function public.mmd_loyalty_get_or_create_code(
+  p_user_id uuid,
+  p_role text default 'client'
+)
 returns text
 language plpgsql
 security definer
@@ -554,12 +581,15 @@ as $$
 declare
   v_code text;
   v_try integer := 0;
+  v_role text := coalesce(p_role, 'client');
 begin
   if p_user_id is null then
     return null;
   end if;
 
-  select code into v_code from public.loyalty_referral_codes where user_id = p_user_id;
+  select code into v_code
+  from public.loyalty_referral_codes
+  where user_id = p_user_id and role = v_role;
   if v_code is not null then
     return v_code;
   end if;
@@ -568,14 +598,16 @@ begin
     v_try := v_try + 1;
     v_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8));
     begin
-      insert into public.loyalty_referral_codes (user_id, code) values (p_user_id, v_code);
+      insert into public.loyalty_referral_codes (user_id, role, code)
+      values (p_user_id, v_role, v_code);
       return v_code;
     exception when unique_violation then
       if v_try >= 5 then
         -- extremely unlikely; fall back to a longer code
         v_code := upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12));
-        insert into public.loyalty_referral_codes (user_id, code) values (p_user_id, v_code)
-        on conflict (user_id) do update set code = excluded.code;
+        insert into public.loyalty_referral_codes (user_id, role, code)
+        values (p_user_id, v_role, v_code)
+        on conflict (user_id, role) do update set code = excluded.code;
         return v_code;
       end if;
     end;
@@ -659,12 +691,12 @@ begin
     perform public.mmd_loyalty_accrue(
       v_ref.referred_user_id, v_points, 'referral', 'referral', v_ref.id::text,
       'referral:' || v_ref.id::text || ':referred', 'Bonus parrainage (filleul)',
-      null, jsonb_build_object('role', 'referred')
+      null, jsonb_build_object('side', 'referred'), v_ref.audience
     );
     perform public.mmd_loyalty_accrue(
       v_ref.referrer_user_id, v_points, 'referral', 'referral', v_ref.id::text,
       'referral:' || v_ref.id::text || ':referrer', 'Bonus parrainage (parrain)',
-      null, jsonb_build_object('role', 'referrer')
+      null, jsonb_build_object('side', 'referrer'), v_ref.audience
     );
   end if;
 
@@ -713,7 +745,7 @@ begin
     v_bonus := public.mmd_campaign_apply('client', 'taxi', v_ctx, v_base);
     perform public.mmd_loyalty_accrue(
       v_ride.client_user_id, v_base + v_bonus, 'taxi', 'taxi_ride', p_ride_id::text,
-      'taxi:' || p_ride_id::text || ':client', 'Course taxi terminée', null, v_ctx
+      'taxi:' || p_ride_id::text || ':client', 'Course taxi terminée', null, v_ctx, 'client'
     );
     perform public.mmd_process_referral(v_ride.client_user_id);
   end if;
@@ -722,7 +754,7 @@ begin
     v_bonus := public.mmd_campaign_apply('driver', 'taxi', v_ctx, v_base);
     perform public.mmd_loyalty_accrue(
       v_ride.driver_id, v_base + v_bonus, 'taxi', 'taxi_ride', p_ride_id::text,
-      'taxi:' || p_ride_id::text || ':driver', 'Course taxi terminée', null, v_ctx
+      'taxi:' || p_ride_id::text || ':driver', 'Course taxi terminée', null, v_ctx, 'driver'
     );
     perform public.mmd_process_referral(v_ride.driver_id);
   end if;
@@ -775,7 +807,7 @@ begin
     v_bonus := public.mmd_campaign_apply('client', 'marketplace', v_ctx, v_base);
     perform public.mmd_loyalty_accrue(
       v_client, v_base + v_bonus, 'order', 'marketplace_order', p_seller_order_id::text,
-      'mp:' || p_seller_order_id::text || ':client', 'Commande marketplace terminée', null, v_ctx
+      'mp:' || p_seller_order_id::text || ':client', 'Commande marketplace terminée', null, v_ctx, 'client'
     );
     perform public.mmd_process_referral(v_client);
   end if;
@@ -835,7 +867,7 @@ begin
     v_bonus := public.mmd_campaign_apply('client', 'food', v_ctx, v_base);
     perform public.mmd_loyalty_accrue(
       v_client, v_base + v_bonus, 'order', 'food_order', p_order_id::text,
-      'food:' || p_order_id::text || ':client', 'Livraison terminée', null, v_ctx
+      'food:' || p_order_id::text || ':client', 'Livraison terminée', null, v_ctx, 'client'
     );
     perform public.mmd_process_referral(v_client);
   end if;
@@ -844,7 +876,7 @@ begin
     v_bonus := public.mmd_campaign_apply('driver', 'food', v_ctx, v_base);
     perform public.mmd_loyalty_accrue(
       v_driver, v_base + v_bonus, 'order', 'food_order', p_order_id::text,
-      'food:' || p_order_id::text || ':driver', 'Livraison terminée', null, v_ctx
+      'food:' || p_order_id::text || ':driver', 'Livraison terminée', null, v_ctx, 'driver'
     );
     perform public.mmd_process_referral(v_driver);
   end if;
@@ -901,7 +933,7 @@ begin
     v_bonus := public.mmd_campaign_apply('client', 'delivery', v_ctx, v_base);
     perform public.mmd_loyalty_accrue(
       v_client, v_base + v_bonus, 'order', 'delivery_request', p_request_id::text,
-      'delivery:' || p_request_id::text || ':client', 'Livraison terminée', null, v_ctx
+      'delivery:' || p_request_id::text || ':client', 'Livraison terminée', null, v_ctx, 'client'
     );
     perform public.mmd_process_referral(v_client);
   end if;
@@ -910,7 +942,7 @@ begin
     v_bonus := public.mmd_campaign_apply('driver', 'delivery', v_ctx, v_base);
     perform public.mmd_loyalty_accrue(
       v_driver, v_base + v_bonus, 'order', 'delivery_request', p_request_id::text,
-      'delivery:' || p_request_id::text || ':driver', 'Livraison terminée', null, v_ctx
+      'delivery:' || p_request_id::text || ':driver', 'Livraison terminée', null, v_ctx, 'driver'
     );
     perform public.mmd_process_referral(v_driver);
   end if;
@@ -923,17 +955,17 @@ $$;
 -- Grants — service_role only (Next.js API authenticates then calls as service)
 -- ---------------------------------------------------------------------------
 revoke all on function public.mmd_loyalty_tier_for(integer) from public;
-revoke all on function public.mmd_loyalty_ensure_account(uuid) from public;
+revoke all on function public.mmd_loyalty_ensure_account(uuid, text) from public;
 revoke all on function public.mmd_credit_ensure_wallet(uuid) from public;
-revoke all on function public.mmd_loyalty_accrue(uuid, integer, text, text, text, text, text, uuid, jsonb) from public;
+revoke all on function public.mmd_loyalty_accrue(uuid, integer, text, text, text, text, text, uuid, jsonb, text) from public;
 revoke all on function public.mmd_credit_add(uuid, bigint, text, text, text, text, timestamptz, text, uuid) from public;
 revoke all on function public.mmd_credit_spend(uuid, bigint, text, text, text, text) from public;
 revoke all on function public.mmd_credit_expire_due() from public;
-revoke all on function public.mmd_convert_points(uuid, integer, text) from public;
-revoke all on function public.mmd_loyalty_admin_adjust(uuid, uuid, integer, text) from public;
+revoke all on function public.mmd_convert_points(uuid, integer, text, text) from public;
+revoke all on function public.mmd_loyalty_admin_adjust(uuid, uuid, integer, text, text) from public;
 revoke all on function public.mmd_credit_admin_adjust(uuid, uuid, bigint, text) from public;
 revoke all on function public.mmd_campaign_apply(text, text, jsonb, integer) from public;
-revoke all on function public.mmd_loyalty_get_or_create_code(uuid) from public;
+revoke all on function public.mmd_loyalty_get_or_create_code(uuid, text) from public;
 revoke all on function public.mmd_loyalty_apply_referral_code(uuid, text, text) from public;
 revoke all on function public.mmd_process_referral(uuid) from public;
 revoke all on function public.mmd_accrue_taxi_ride(uuid) from public;
@@ -942,17 +974,17 @@ revoke all on function public.mmd_accrue_food_order(uuid) from public;
 revoke all on function public.mmd_accrue_delivery_request(uuid) from public;
 
 grant execute on function public.mmd_loyalty_tier_for(integer) to service_role;
-grant execute on function public.mmd_loyalty_ensure_account(uuid) to service_role;
+grant execute on function public.mmd_loyalty_ensure_account(uuid, text) to service_role;
 grant execute on function public.mmd_credit_ensure_wallet(uuid) to service_role;
-grant execute on function public.mmd_loyalty_accrue(uuid, integer, text, text, text, text, text, uuid, jsonb) to service_role;
+grant execute on function public.mmd_loyalty_accrue(uuid, integer, text, text, text, text, text, uuid, jsonb, text) to service_role;
 grant execute on function public.mmd_credit_add(uuid, bigint, text, text, text, text, timestamptz, text, uuid) to service_role;
 grant execute on function public.mmd_credit_spend(uuid, bigint, text, text, text, text) to service_role;
 grant execute on function public.mmd_credit_expire_due() to service_role;
-grant execute on function public.mmd_convert_points(uuid, integer, text) to service_role;
-grant execute on function public.mmd_loyalty_admin_adjust(uuid, uuid, integer, text) to service_role;
+grant execute on function public.mmd_convert_points(uuid, integer, text, text) to service_role;
+grant execute on function public.mmd_loyalty_admin_adjust(uuid, uuid, integer, text, text) to service_role;
 grant execute on function public.mmd_credit_admin_adjust(uuid, uuid, bigint, text) to service_role;
 grant execute on function public.mmd_campaign_apply(text, text, jsonb, integer) to service_role;
-grant execute on function public.mmd_loyalty_get_or_create_code(uuid) to service_role;
+grant execute on function public.mmd_loyalty_get_or_create_code(uuid, text) to service_role;
 grant execute on function public.mmd_loyalty_apply_referral_code(uuid, text, text) to service_role;
 grant execute on function public.mmd_process_referral(uuid) to service_role;
 grant execute on function public.mmd_accrue_taxi_ride(uuid) to service_role;

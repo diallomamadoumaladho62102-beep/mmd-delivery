@@ -9,6 +9,8 @@ import { syncPaidDeliveryRequestOrder } from "@/lib/deliveryRequestService";
 import { prepareMarketplaceDeliveryJobAfterPayment } from "@/lib/marketplaceDispatchService";
 import { recordInboundPaymentWalletEntries } from "@/lib/inboundWalletBridge";
 import { awardMarketplaceOrderLoyalty } from "@/lib/loyalty/loyaltyAccrual";
+import { awardSellerOrderPerformance } from "@/lib/loyalty/marketplaceLoyaltyHooks";
+import { captureEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import type { PaymentEntityType, PaymentTransactionRow } from "@/lib/paymentTypes";
 import { runTaxiRideDispatch } from "@/lib/runTaxiRideDispatch";
 import { initializeTaxiRidePreferenceDispatch } from "@/lib/taxiPreferenceDispatch";
@@ -126,6 +128,20 @@ async function completeDeliveryRequestPayment(
     deliveryRequestId,
   });
 
+  await captureEntityCredit(supabaseAdmin, "delivery_request", deliveryRequestId);
+
+  try {
+    const { captureEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await captureEntityMarketing(supabaseAdmin, "delivery", deliveryRequestId);
+  } catch (e) {
+    console.warn(
+      "[marketing] delivery capture fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
+
   return { ok: true };
 }
 
@@ -156,6 +172,20 @@ async function completeTaxiRidePayment(
       ride.pickup_city ? String(ride.pickup_city) : null,
     );
     await runTaxiRideDispatch({ supabase: supabaseAdmin, taxiRideId: rideId });
+  }
+
+  await captureEntityCredit(supabaseAdmin, "taxi_ride", rideId);
+
+  try {
+    const { captureEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await captureEntityMarketing(supabaseAdmin, "taxi", rideId);
+  } catch (e) {
+    console.warn(
+      "[marketing] taxi capture fail-open",
+      e instanceof Error ? e.message : e
+    );
   }
 
   return { ok: true };
@@ -195,6 +225,19 @@ async function completeSellerOrderPayment(
   });
 
   void awardMarketplaceOrderLoyalty(supabaseAdmin, orderId);
+  void awardSellerOrderPerformance(supabaseAdmin, orderId);
+
+  try {
+    const { captureEntityMarketing } = await import(
+      "@/lib/marketing/marketingCheckoutLifecycle"
+    );
+    await captureEntityMarketing(supabaseAdmin, "marketplace", orderId);
+  } catch (e) {
+    console.warn(
+      "[marketing] marketplace capture fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
 
   return { ok: true };
 }
@@ -238,6 +281,41 @@ export async function applyTransactionStatusUpdate(
         walletErr instanceof Error
           ? `wallet_ledger_bridge_failed: ${walletErr.message}`
           : "wallet_ledger_bridge_failed"
+      );
+    }
+
+    // Phase 9: enqueue finance consolidation (async, fail-open).
+    try {
+      const { enqueuePaymentSucceeded } = await import(
+        "@/lib/finance/financeEvents"
+      );
+      const vertical =
+        updated.entity_type === "order"
+          ? "food"
+          : updated.entity_type === "delivery_request"
+            ? "delivery"
+            : updated.entity_type === "taxi_ride"
+              ? "taxi"
+              : updated.entity_type === "seller_order"
+                ? "marketplace"
+                : null;
+      if (vertical) {
+        void enqueuePaymentSucceeded({
+          supabaseAdmin,
+          entityType: String(updated.entity_type),
+          entityId: String(updated.entity_id),
+          vertical,
+          amountCents: Number(updated.amount_cents ?? 0),
+          currency: updated.currency ?? "USD",
+          paymentIntentId: updated.external_reference
+            ? String(updated.external_reference)
+            : String(updated.id),
+        });
+      }
+    } catch (e) {
+      console.warn(
+        "[finance] payment enqueue fail-open",
+        e instanceof Error ? e.message : e
       );
     }
   }

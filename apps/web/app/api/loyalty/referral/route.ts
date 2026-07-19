@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getProfileRole, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
-import { ensureReferralCode } from "@/lib/loyalty/loyaltyUserApi";
+import { ensureReferralCode, normalizeLoyaltyRole } from "@/lib/loyalty/loyaltyUserApi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
     const auth = await requireTaxiApiUser(req);
     if (auth.ok === false) return auth.response;
 
-    const code = await ensureReferralCode(auth.supabaseAdmin, auth.user.id);
+    const role = normalizeLoyaltyRole(req.nextUrl.searchParams.get("role"));
+    const code = await ensureReferralCode(auth.supabaseAdmin, auth.user.id, role);
 
     const { data: referrals } = await auth.supabaseAdmin
       .from("loyalty_referrals")

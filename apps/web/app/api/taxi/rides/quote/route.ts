@@ -6,7 +6,13 @@ import { logTechnicalError, toUserFacingError } from "@/lib/userFacingError";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { applyTaxiServiceFeeToQuote, mergeTaxiServiceFeeIntoQuote } from "@/lib/taxiServiceFee";
-import { snapshotFromQuoteRpc } from "@/lib/taxiFinalPrice";
+import { snapshotFromQuoteRpc, calculateTaxiFinalPriceSnapshot } from "@/lib/taxiFinalPrice";
+import { resolveMmdPlusCheckoutBenefits } from "@/lib/mmdPlus/mmdPlusEngine";
+import {
+  isLikelyFirstOrder,
+  resolveMarketingOffers,
+  userHasActiveMmdPlus,
+} from "@/lib/marketing/marketingEngine";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
@@ -261,9 +267,45 @@ export async function POST(req: NextRequest) {
 
     const sharedRide =
       body.sharedRide === true || body.shared_ride === true;
-    const priceSnapshot = snapshotFromQuoteRpc(quoteWithServiceFee, {
+    let priceSnapshot = snapshotFromQuoteRpc(quoteWithServiceFee, {
       shared_ride: sharedRide,
     });
+
+    const [hasPlus, firstRide] = await Promise.all([
+      userHasActiveMmdPlus(auth.supabaseAdmin, auth.user.id),
+      isLikelyFirstOrder(auth.supabaseAdmin, auth.user.id, "taxi"),
+    ]);
+    const marketing = await resolveMarketingOffers(auth.supabaseAdmin, {
+      userId: auth.user.id,
+      service: "taxi",
+      subtotalCents: priceSnapshot.subtotal_cents,
+      deliveryFeeCents: 0,
+      hasMmdPlus: hasPlus,
+      isFirstOrder: firstRide,
+      countryCode,
+    });
+    const marketingDiscount =
+      marketing.ok || !marketing.fail_closed ? marketing.order_discount_cents : 0;
+
+    const mmdPlus = await resolveMmdPlusCheckoutBenefits(auth.supabaseAdmin, {
+      userId: auth.user.id,
+      service: "taxi",
+      subtotalCents: Math.max(0, priceSnapshot.subtotal_cents - marketingDiscount),
+      deliveryFeeCents: 0,
+    });
+    if (marketingDiscount > 0 || mmdPlus.order_discount_cents > 0) {
+      priceSnapshot = calculateTaxiFinalPriceSnapshot({
+        subtotal_cents: priceSnapshot.subtotal_cents,
+        tax_cents: priceSnapshot.tax_cents,
+        gross_total_cents: priceSnapshot.gross_total_cents,
+        promo_discount_cents: priceSnapshot.promo_discount_cents,
+        loyalty_discount_cents: priceSnapshot.loyalty_discount_cents,
+        shared_discount_cents: priceSnapshot.shared_discount_cents,
+        mmd_credit_cents: priceSnapshot.mmd_credit_cents,
+        mmd_plus_discount_cents:
+          mmdPlus.order_discount_cents + marketingDiscount,
+      });
+    }
 
     const { data: countryRow } = await auth.supabaseAdmin
       .from("taxi_countries")

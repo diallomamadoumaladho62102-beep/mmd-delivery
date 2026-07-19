@@ -10,6 +10,7 @@
     "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
     "test:security": "node scripts/secret-scan.mjs && pnpm --dir apps/web test:security",
     "test:performance": "pnpm --dir apps/web test:performance && node scripts/bundle-size-report.mjs",
+    "test:ui": "pnpm --dir apps/mobile test:ui && pnpm --dir apps/web test:ui",
     "lighthouse:smoke": "node scripts/lighthouse-smoke.mjs",
     "audit:deps": "node scripts/dependency-audit.mjs",
     "android": "expo run:android",
@@ -65,7 +66,7 @@
   "pnpm": {
     "overrides": {
       "expo-keep-awake": "~15.0.8",
-      "undici": ">=6.27.0",
+      "undici": "6.23.0",
       "next": ">=16.2.6",
       "ws": ">=8.21.0",
       "tar": ">=7.5.11",

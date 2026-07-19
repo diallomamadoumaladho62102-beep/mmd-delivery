@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   DEFAULT_LOYALTY_SETTINGS,
   DEFAULT_LOYALTY_TIERS,
+  MIN_RESIDUAL_CHARGE_CENTS,
   canConvert,
+  computeCreditApplication,
   convertibleBlocks,
   creditCentsForBlocks,
   formatCredit,
@@ -115,4 +117,60 @@ test("parseLoyaltySettings coerces invalid validity to 0 and clamps minimums", (
 test("DEFAULT tiers are ordered and start at bronze/0", () => {
   assert.equal(DEFAULT_LOYALTY_TIERS[0].code, "bronze");
   assert.equal(DEFAULT_LOYALTY_TIERS[0].minLifetimePoints, 0);
+});
+
+// --- Crédit MMD at checkout: pure application math -------------------------
+
+test("computeCreditApplication mode none applies nothing", () => {
+  const r = computeCreditApplication({ grossCents: 5000, availableCents: 9999, mode: "none" });
+  assert.equal(r.appliedCents, 0);
+  assert.equal(r.netCents, 5000);
+});
+
+test("computeCreditApplication max leaves the residual charge", () => {
+  const r = computeCreditApplication({ grossCents: 5000, availableCents: 9999, mode: "max" });
+  assert.equal(r.appliedCents, 5000 - MIN_RESIDUAL_CHARGE_CENTS);
+  assert.equal(r.netCents, MIN_RESIDUAL_CHARGE_CENTS);
+});
+
+test("computeCreditApplication max is bounded by available balance", () => {
+  const r = computeCreditApplication({ grossCents: 5000, availableCents: 1200, mode: "max" });
+  assert.equal(r.appliedCents, 1200);
+  assert.equal(r.netCents, 3800);
+});
+
+test("computeCreditApplication partial clamps to requested, available and max", () => {
+  assert.equal(
+    computeCreditApplication({ grossCents: 5000, availableCents: 9999, mode: "partial", requestedCents: 1000 }).appliedCents,
+    1000,
+  );
+  assert.equal(
+    computeCreditApplication({ grossCents: 5000, availableCents: 700, mode: "partial", requestedCents: 1000 }).appliedCents,
+    700,
+  );
+  // requested beyond the residual-capped max is clamped
+  assert.equal(
+    computeCreditApplication({ grossCents: 5000, availableCents: 9999, mode: "partial", requestedCents: 9999 }).appliedCents,
+    5000 - MIN_RESIDUAL_CHARGE_CENTS,
+  );
+});
+
+test("computeCreditApplication never returns a negative net and stays integer", () => {
+  const r = computeCreditApplication({ grossCents: 30, availableCents: 9999, mode: "max" });
+  // gross below residual => nothing applicable, net stays gross, never negative
+  assert.equal(r.appliedCents, 0);
+  assert.equal(r.netCents, 30);
+  assert.ok(Number.isInteger(r.appliedCents) && Number.isInteger(r.netCents));
+});
+
+test("computeCreditApplication truncates fractional inputs to integer cents", () => {
+  const r = computeCreditApplication({
+    grossCents: 5000.9,
+    availableCents: 1000.9,
+    mode: "partial",
+    requestedCents: 999.9,
+  });
+  assert.ok(Number.isInteger(r.appliedCents));
+  assert.ok(Number.isInteger(r.netCents));
+  assert.equal(r.appliedCents, 999);
 });

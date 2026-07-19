@@ -138,6 +138,52 @@ export function formatCredit(cents: number, currency = "USD"): string {
 }
 
 /**
+ * Minimum residual charge (minor units) that must remain after applying credit,
+ * so a normal Stripe payment always occurs. Full (100%) coverage would require a
+ * separate no-charge settlement path and is intentionally out of scope here.
+ */
+export const MIN_RESIDUAL_CHARGE_CENTS = 50;
+
+export type CreditMode = "none" | "partial" | "max";
+
+/**
+ * Compute how much MMD credit can be applied to a checkout and the resulting
+ * net charge — pure, integer-only, never negative, never below the residual.
+ *
+ * - `appliedCents` is clamped by: requested amount, available balance, and the
+ *   maximum the gross can absorb while keeping `netCents >= minResidualCents`.
+ * - `netCents = grossCents - appliedCents` and is always `>= minResidualCents`
+ *   when `grossCents >= minResidualCents`.
+ */
+export function computeCreditApplication(input: {
+  grossCents: number;
+  availableCents: number;
+  mode: CreditMode;
+  requestedCents?: number;
+  minResidualCents?: number;
+}): { appliedCents: number; netCents: number; maxApplicableCents: number } {
+  const gross = Math.max(0, Math.trunc(Number(input.grossCents) || 0));
+  const available = Math.max(0, Math.trunc(Number(input.availableCents) || 0));
+  const minResidual = Math.max(
+    0,
+    Math.trunc(Number(input.minResidualCents ?? MIN_RESIDUAL_CHARGE_CENTS) || 0)
+  );
+  const maxApplicable = Math.max(0, gross - minResidual);
+
+  let requested = 0;
+  if (input.mode === "max") {
+    requested = maxApplicable;
+  } else if (input.mode === "partial") {
+    requested = Math.max(0, Math.trunc(Number(input.requestedCents) || 0));
+  } else {
+    requested = 0;
+  }
+
+  const applied = Math.min(requested, available, maxApplicable);
+  return { appliedCents: applied, netCents: gross - applied, maxApplicableCents: maxApplicable };
+}
+
+/**
  * Normalize a raw settings row (snake_case from Supabase) into typed settings,
  * falling back to defaults for any missing/invalid field.
  */

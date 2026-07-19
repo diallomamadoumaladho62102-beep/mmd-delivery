@@ -125,6 +125,8 @@ export type RootStackParamList = {
   };
 
   LoyaltyHub: { role?: "client" | "driver" } | undefined;
+  MmdPlus: undefined;
+  Promotions: undefined;
 
   MmdAi:
     | {
@@ -571,6 +573,8 @@ export function AppNavigator({
       r === "ClientInbox" ||
       r === "ClientChat" ||
       r === "LoyaltyHub" ||
+      r === "MmdPlus" ||
+      r === "Promotions" ||
       r === "MmdAi" ||
       r === "ClientProfile" ||
       (__DEV__ ? r === "LocationPickerTest" : false) ||
@@ -1256,6 +1260,14 @@ export function AppNavigator({
         <Stack.Screen
           name="LoyaltyHub"
           getComponent={() => require("../screens/LoyaltyScreen").default}
+        />
+        <Stack.Screen
+          name="MmdPlus"
+          getComponent={() => require("../screens/MmdPlusScreen").default}
+        />
+        <Stack.Screen
+          name="Promotions"
+          getComponent={() => require("../screens/PromotionsScreen").default}
         />
 
         <Stack.Screen

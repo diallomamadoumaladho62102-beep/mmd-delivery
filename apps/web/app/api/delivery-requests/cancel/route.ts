@@ -7,6 +7,7 @@ import {
 } from "@/lib/deliveryRequestDriver";
 import { notifyClientDeliveryRequestCancelled } from "@/lib/clientPushNotifications";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
+import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -296,6 +297,24 @@ export async function POST(req: NextRequest) {
 
     if (updateError) {
       return json({ error: updateError.message }, 500);
+    }
+
+    if (updatedRequest) {
+      // Crédit MMD: free a still-held reservation (no-op once captured).
+      await releaseEntityCredit(supabaseAdmin, "delivery_request", requestId);
+      try {
+        const { releaseEntityMarketing } = await import(
+          "@/lib/marketing/marketingCheckoutLifecycle"
+        );
+        await releaseEntityMarketing(
+          supabaseAdmin,
+          "delivery",
+          requestId,
+          "delivery_request_cancelled"
+        );
+      } catch {
+        /* fail-open */
+      }
     }
 
     if (!updatedRequest) {

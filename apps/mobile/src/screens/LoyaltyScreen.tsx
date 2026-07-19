@@ -52,7 +52,8 @@ export default function LoyaltyScreen() {
   const route = useRoute();
   const { t } = useTranslation();
   const params = (route.params ?? {}) as { role?: "client" | "driver" };
-  const fallbackRoute = params.role === "driver" ? "DriverTabs" : "ClientHome";
+  const role: "client" | "driver" = params.role === "driver" ? "driver" : "client";
+  const fallbackRoute = role === "driver" ? "DriverTabs" : "ClientHome";
 
   const [summary, setSummary] = useState<LoyaltySummary | null>(null);
   const [points, setPoints] = useState<LoyaltyPointsEntry[]>([]);
@@ -68,9 +69,9 @@ export default function LoyaltyScreen() {
     setLoading(true);
     try {
       const [summaryRes, historyRes, referralRes] = await Promise.all([
-        fetchLoyaltySummary(),
-        fetchLoyaltyHistory(),
-        fetchLoyaltyReferral(),
+        fetchLoyaltySummary(role),
+        fetchLoyaltyHistory(role),
+        fetchLoyaltyReferral(role),
       ]);
       setSummary(summaryRes);
       setPoints(historyRes.points);
@@ -86,7 +87,7 @@ export default function LoyaltyScreen() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, role]);
 
   useEffect(() => {
     void load();
@@ -103,11 +104,11 @@ export default function LoyaltyScreen() {
     summary.settings.enabled &&
     summary.points_balance >= summary.settings.conversion_points;
 
-  const handleConvert = useCallback(async () => {
-    if (!summary || !canConvert) return;
+  const doConvert = useCallback(async () => {
+    if (!summary || !canConvert || converting) return;
     setConverting(true);
     try {
-      const { summary: next } = await convertLoyaltyPoints(1);
+      const { summary: next } = await convertLoyaltyPoints(1, role);
       setSummary(next);
       await load();
       Alert.alert(
@@ -122,7 +123,27 @@ export default function LoyaltyScreen() {
     } finally {
       setConverting(false);
     }
-  }, [summary, canConvert, load, t]);
+  }, [summary, canConvert, converting, load, t, role]);
+
+  const handleConvert = useCallback(() => {
+    if (!summary || !canConvert || converting) return;
+    // Confirmation before an irreversible points -> credit conversion.
+    Alert.alert(
+      t("loyalty.confirmTitle", "Convertir mes points"),
+      t(
+        "loyalty.confirmMessage",
+        "Convertir {{points}} points en {{amount}} de Crédit MMD ? Cette action est définitive.",
+        {
+          points: summary.settings.conversion_points,
+          amount: formatCredit(summary.settings.conversion_credit_cents, summary.currency),
+        },
+      ),
+      [
+        { text: t("common.cancel", "Annuler"), style: "cancel" },
+        { text: t("loyalty.confirm", "Confirmer"), onPress: () => void doConvert() },
+      ],
+    );
+  }, [summary, canConvert, converting, doConvert, t]);
 
   const handleShare = useCallback(async () => {
     if (!referralLink) return;
@@ -182,11 +203,54 @@ export default function LoyaltyScreen() {
               </Text>
             </View>
 
+            {role === "client" ? (
+              <>
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => navigation.navigate("MmdPlus")}
+                >
+                  <Text style={styles.muted}>MMD+</Text>
+                  <Text style={styles.soft}>
+                    {t(
+                      "loyalty.mmdPlusCta",
+                      "Abonnement Premium — avantages Food, Delivery, Taxi et Marketplace",
+                    )}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() => navigation.navigate("Promotions")}
+                >
+                  <Text style={styles.muted}>Promotions</Text>
+                  <Text style={styles.soft}>
+                    {t(
+                      "loyalty.promotionsCta",
+                      "Codes promo, coupons et offres automatiques",
+                    )}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+
             <View style={styles.card}>
               <Text style={styles.muted}>{t("loyalty.credit", "Crédit MMD")}</Text>
               <Text style={styles.bigValue}>
                 {formatCredit(summary.credit_cents, summary.currency)}
               </Text>
+              {summary.available_credit_cents !== summary.credit_cents ? (
+                <Text style={styles.soft}>
+                  {t("loyalty.availableCredit", "Disponible : {{amount}}", {
+                    amount: formatCredit(summary.available_credit_cents, summary.currency),
+                  })}
+                </Text>
+              ) : null}
+              {summary.next_credit_expiry ? (
+                <Text style={styles.soft}>
+                  {t("loyalty.creditExpiry", "Expire le {{date}}", {
+                    date: new Date(summary.next_credit_expiry).toLocaleDateString(),
+                  })}
+                </Text>
+              ) : null}
               <Text style={styles.soft}>
                 {t(
                   "loyalty.conversionRate",
