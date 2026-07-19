@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   DELIVERY_REQUEST_CONFIRM_PAID_SELECT,
+  DELIVERY_REQUEST_FINANCE_SNAPSHOT_SELECT,
   DELIVERY_REQUEST_PAYMENT_CHECK_SELECT,
   assertDeliveryRequestSelectOmitsCountryCode,
 } from "./deliveryRequestPaymentSelect";
@@ -49,6 +50,13 @@ test("delivery request country resolves without country_code column", () => {
     pickup_lng: -73.610676,
   });
   assert.equal(country, "US");
+});
+
+test("finance snapshot SELECT omits country_code", () => {
+  assertDeliveryRequestSelectOmitsCountryCode(
+    DELIVERY_REQUEST_FINANCE_SNAPSHOT_SELECT,
+  );
+  assert.match(DELIVERY_REQUEST_FINANCE_SNAPSHOT_SELECT, /pickup_lat/);
 });
 
 console.log("deliveryRequestPaymentSelect.test.ts: all passed");

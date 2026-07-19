@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ORDER_FINANCE_SNAPSHOT_SELECT } from "@/lib/orderPaymentSelect";
-import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { DELIVERY_REQUEST_FINANCE_SNAPSHOT_SELECT } from "@/lib/deliveryRequestPaymentSelect";
+import {
+  resolveDeliveryRequestPlatformCountry,
+  resolveOrderPlatformCountry,
+} from "@/lib/platformCountryResolver";
 
 export type FinanceSnapshotPayload = {
   amount_cents: number;
@@ -131,9 +135,7 @@ export async function buildFinancePayloadFromSnapshot(params: {
     if (vertical === "delivery") {
       const { data } = await supabaseAdmin
         .from("delivery_requests")
-        .select(
-          "id,total,total_cents,tax,tax_cents,service_fee_cents,delivery_fee,delivery_fee_cents,discounts,currency,country_code,client_user_id,driver_pay,commission_cents,mmd_credit_applied_cents"
-        )
+        .select(DELIVERY_REQUEST_FINANCE_SNAPSHOT_SELECT)
         .eq("id", entityId)
         .maybeSingle();
       if (!data) return base;
@@ -156,7 +158,7 @@ export async function buildFinancePayloadFromSnapshot(params: {
         promotion_mmd_cents: majorToCents(row.discounts),
         mmd_credit_cents: n(row.mmd_credit_applied_cents),
         currency: String(row.currency ?? "USD").toUpperCase(),
-        country_code: row.country_code ? String(row.country_code) : null,
+        country_code: resolveDeliveryRequestPlatformCountry(row),
         snapshot: row,
       };
     }

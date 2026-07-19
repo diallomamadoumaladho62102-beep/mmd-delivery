@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
-import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import {
+  resolveDeliveryRequestPlatformCountry,
+  resolveOrderPlatformCountry,
+} from "@/lib/platformCountryResolver";
 import { createLateFeePaymentTransaction } from "@/lib/paymentTransactionService";
 import { appendWalletLedgerEntry } from "@/lib/payoutTransactionService";
 import type { PaymentEntityType } from "@/lib/paymentTypes";
@@ -78,6 +81,13 @@ function resolveCountryCode(
     });
     if (fromOrder) return fromOrder;
   }
+  if (entityType === "delivery_request") {
+    return resolveDeliveryRequestPlatformCountry({
+      currency: row.currency,
+      pickup_lat: row.pickup_lat ?? null,
+      pickup_lng: row.pickup_lng ?? null,
+    });
+  }
   return inferPlatformCountryCode({
     countryCode: row.country_code ?? null,
     lat: row.dropoff_lat ?? row.pickup_lat ?? null,
@@ -92,7 +102,7 @@ async function loadWaitLateFeeRow(
   entityId: string
 ): Promise<WaitLateFeeRow | null> {
   // Split by table so PostgREST/TS select parsers stay valid.
-  // `orders` has no country_code; other wait-timer entities do.
+  // `orders` and `delivery_requests` have no country_code; taxi_rides does.
   if (entityType === "order") {
     const { data, error } = await supabaseAdmin
       .from("orders")
@@ -105,10 +115,20 @@ async function loadWaitLateFeeRow(
     return (data as unknown as WaitLateFeeRow | null) ?? null;
   }
 
-  const table =
-    entityType === "delivery_request" ? "delivery_requests" : "taxi_rides";
+  if (entityType === "delivery_request") {
+    const { data, error } = await supabaseAdmin
+      .from("delivery_requests")
+      .select(
+        "id,driver_id,client_user_id,created_by,user_id,client_id,currency,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,wait_fee_amount_cents,wait_fee_status,wait_fee_currency,driver_arrived_at,manual_arrival_required,driver_distance_to_target_meters,wait_timer_started_at,free_wait_minutes,leave_at_door"
+      )
+      .eq("id", entityId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data as unknown as WaitLateFeeRow | null) ?? null;
+  }
+
   const { data, error } = await supabaseAdmin
-    .from(table)
+    .from("taxi_rides")
     .select(
       "id,driver_id,client_user_id,created_by,user_id,client_id,currency,country_code,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,wait_fee_amount_cents,wait_fee_status,wait_fee_currency,driver_arrived_at,manual_arrival_required,driver_distance_to_target_meters,wait_timer_started_at,free_wait_minutes,leave_at_door"
     )
