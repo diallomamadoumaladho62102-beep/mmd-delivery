@@ -34,7 +34,8 @@ for pair in \
   "loyalty:supabase/tests/mmd_loyalty_finalization.test.sql" \
   "marketing:supabase/tests/mmd_marketing_finalization.test.sql" \
   "finance:supabase/tests/mmd_finance_center.test.sql" \
-  "phase10:supabase/tests/mmd_phase_10_stabilization.test.sql"
+  "phase10:supabase/tests/mmd_phase_10_stabilization.test.sql" \
+  "cron_consolidation:supabase/tests/mmd_cron_consolidation.test.sql"
 do
   name="${pair%%:*}"
   file="${pair#*:}"
