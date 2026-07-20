@@ -8,6 +8,7 @@ import {
   parseRequiredTaxiGps,
 } from "@/lib/taxiProximityGate";
 import { awardTaxiRideLoyalty } from "@/lib/loyalty/loyaltyAccrual";
+import { notifyClientTaxiRideCompleted } from "@/lib/clientPushNotifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     const { data: rideBeforeComplete } = await auth.supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,status,client_preferences,ambiance_preference,country_code,vehicle_class,assigned_fuel_type,prefer_electric_or_hybrid,dropoff_lat,dropoff_lng",
+        "id,status,client_user_id,created_by,client_preferences,ambiance_preference,country_code,vehicle_class,assigned_fuel_type,prefer_electric_or_hybrid,dropoff_lat,dropoff_lng",
       )
       .eq("id", rideId)
       .maybeSingle();
@@ -97,6 +98,22 @@ export async function POST(req: NextRequest) {
     });
 
     await awardTaxiRideLoyalty(auth.supabaseAdmin, rideId);
+
+    try {
+      await notifyClientTaxiRideCompleted({
+        supabaseAdmin: auth.supabaseAdmin,
+        userIds: [
+          (rideBeforeComplete as { client_user_id?: string | null }).client_user_id,
+          (rideBeforeComplete as { created_by?: string | null }).created_by,
+        ],
+        taxiRideId: rideId,
+      });
+    } catch (e) {
+      console.warn(
+        "[taxi complete] client push fail-open",
+        e instanceof Error ? e.message : e,
+      );
+    }
 
     return taxiJson({
       ok: true,

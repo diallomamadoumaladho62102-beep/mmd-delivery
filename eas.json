@@ -14,6 +14,7 @@
       }
     },
     "preview": {
+      "channel": "preview",
       "distribution": "internal",
       "environment": "production",
       "env": {
@@ -24,6 +25,7 @@
       }
     },
     "android-smoke": {
+      "channel": "preview",
       "distribution": "internal",
       "environment": "production",
       "autoIncrement": true,
@@ -38,6 +40,7 @@
       }
     },
     "ios-simulator": {
+      "channel": "preview",
       "distribution": "internal",
       "environment": "production",
       "ios": {
@@ -51,6 +54,7 @@
       }
     },
     "production": {
+      "channel": "production",
       "autoIncrement": true,
       "environment": "production",
       "android": {

@@ -351,6 +351,33 @@ export async function notifyClientTaxiRideAccepted(params: {
   await sendExpoPushMessages(messages);
 }
 
+export async function notifyClientTaxiRideCompleted(params: {
+  supabaseAdmin: SupabaseClient;
+  userIds: Array<string | null | undefined>;
+  taxiRideId: string;
+}): Promise<void> {
+  const userIds = dedupeStrings(params.userIds);
+  const tokens = await loadClientExpoTokens(params.supabaseAdmin, userIds);
+  if (tokens.length === 0) return;
+
+  const data = {
+    type: "taxi_ride_completed",
+    taxi_ride_id: params.taxiRideId,
+    taxiRideId: params.taxiRideId,
+  };
+
+  const messages = tokens.map((to) => ({
+    to,
+    sound: resolvePushSound("delivery_completed"),
+    title: "Course terminée",
+    body: "Votre course est terminée. Merci d’avoir voyagé avec MMD.",
+    data,
+    priority: "high",
+  }));
+
+  await sendExpoPushMessages(messages);
+}
+
 export async function notifyClientTaxiRideCancelled(params: {
   supabaseAdmin: SupabaseClient;
   userIds: Array<string | null | undefined>;
