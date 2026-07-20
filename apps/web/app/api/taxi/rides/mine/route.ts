@@ -6,6 +6,7 @@ import {
   taxiJson,
 } from "@/lib/taxiApi";
 import { enrichTaxiRidesIdentification } from "@/lib/taxiRideClientIdentification";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,11 +19,13 @@ export async function GET(req: NextRequest) {
     const role = await getProfileRole(auth.supabaseAdmin, auth.user.id);
     const limit = Math.min(Number(req.nextUrl.searchParams.get("limit") ?? 50), 100);
 
-    let query = auth.supabaseAdmin
-      .from("taxi_rides")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(limit);
+    let query = applyLiveTripFilters(
+      auth.supabaseAdmin
+        .from("taxi_rides")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+    );
 
     if (!isStaffRole(role)) {
       query = query.eq("client_user_id", auth.user.id);

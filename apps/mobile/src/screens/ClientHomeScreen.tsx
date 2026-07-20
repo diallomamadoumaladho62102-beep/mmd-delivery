@@ -11,6 +11,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -588,32 +589,25 @@ export function ClientHomeScreen() {
 
     const [ordersRes, requestsClientRes, requestsCreatedRes, taxiRes] =
       await Promise.all([
-      supabase
-        .from("orders")
-        .select(orderSelect)
+      applyLiveTripFilters(supabase.from("orders").select(orderSelect))
         .or(
           `client_user_id.eq.${userId},client_id.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`
         )
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
-      supabase
-        .from("delivery_requests")
-        .select(drSelect)
+      applyLiveTripFilters(supabase.from("delivery_requests").select(drSelect))
         .eq("client_user_id", userId)
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
-      supabase
-        .from("delivery_requests")
-        .select(drSelect)
+      applyLiveTripFilters(supabase.from("delivery_requests").select(drSelect))
         .eq("created_by", userId)
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
-      supabase
-        .from("taxi_rides")
-        .select(
+      applyLiveTripFilters(
+        supabase.from("taxi_rides").select(
           `
             id,
             status,
@@ -628,7 +622,8 @@ export function ClientHomeScreen() {
             hidden_from_user,
             archived_at
           `,
-        )
+        ),
+      )
         .eq("client_user_id", userId)
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),

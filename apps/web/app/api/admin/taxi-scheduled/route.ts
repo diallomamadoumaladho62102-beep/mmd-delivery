@@ -7,6 +7,7 @@ import {
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { dispatchDueTaxiScheduledRide } from "@/lib/taxiScheduledDispatch";
+import { isLiveVisibleTrip } from "@/lib/tripVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,10 @@ export async function GET(request: NextRequest) {
           dropoff_address,
           total_cents,
           currency,
-          client_user_id
+          client_user_id,
+          is_test,
+          archived_at,
+          hidden_from_user
         )
       `
       )
@@ -40,7 +44,14 @@ export async function GET(request: NextRequest) {
       .limit(100);
 
     if (error) return json({ ok: false, error: error.message }, 500);
-    return json({ ok: true, items: data ?? [] });
+
+    const items = (data ?? []).filter((row) => {
+      const ride = (row as { taxi_rides?: Record<string, unknown> | null }).taxi_rides;
+      if (!ride) return true;
+      return isLiveVisibleTrip(ride);
+    });
+
+    return json({ ok: true, items });
   } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;
     return json(

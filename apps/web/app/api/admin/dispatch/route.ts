@@ -8,6 +8,7 @@ import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildDispatchInternalHeaders } from "@/lib/dispatchInternalAuth";
 import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -31,12 +32,14 @@ export async function GET(request: NextRequest) {
         .select("id, order_id, next_wave, run_at, status, created_at")
         .order("run_at", { ascending: true })
         .limit(50),
-      supabase
-        .from("orders")
-        .select("id, status, kind, driver_id, payment_status, created_at")
-        .in("status", ["pending", "ready", "dispatched"])
-        .order("created_at", { ascending: false })
-        .limit(50),
+      applyLiveTripFilters(
+        supabase
+          .from("orders")
+          .select("id, status, kind, driver_id, payment_status, created_at")
+          .in("status", ["pending", "ready", "dispatched"])
+          .order("created_at", { ascending: false })
+          .limit(50)
+      ),
     ]);
 
     return json({

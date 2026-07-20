@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -21,18 +22,22 @@ export async function GET(request: NextRequest) {
       pendingDispatch,
       recentWebhooks,
     ] = await Promise.all([
-      supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["pending", "accepted", "prepared", "ready"]),
+      applyLiveTripFilters(
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .in("status", ["pending", "accepted", "prepared", "ready"])
+      ),
       supabase
         .from("driver_profiles")
         .select("user_id", { count: "exact", head: true })
         .eq("is_online", true),
-      supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .neq("payment_status", "paid"),
+      applyLiveTripFilters(
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .neq("payment_status", "paid")
+      ),
       supabase
         .from("order_payouts")
         .select("id", { count: "exact", head: true })

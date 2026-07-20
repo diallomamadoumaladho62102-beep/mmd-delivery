@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import { startStripeOnboarding } from "../utils/stripe";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
@@ -817,9 +818,9 @@ export function DriverProfileScreen() {
 
   const loadStatsFromOrders = useCallback(async (uid: string) => {
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("status")
+      const { data, error } = await applyLiveTripFilters(
+        supabase.from("orders").select("status"),
+      )
         .eq("driver_id", uid)
         .limit(2000);
 

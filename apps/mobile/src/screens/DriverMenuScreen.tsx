@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import { startStripeOnboarding } from "../utils/stripe";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { APP_COLORS } from "../theme/appTheme";
@@ -296,9 +297,9 @@ export function DriverMenuScreen() {
         const fromISO = startOfWeekMonday(now).toISOString();
         const toISO = endOfDay(now).toISOString();
 
-        const { data, error } = await supabase
-          .from("orders")
-          .select("tip_cents, created_at")
+        const { data, error } = await applyLiveTripFilters(
+          supabase.from("orders").select("tip_cents, created_at"),
+        )
           .eq("driver_id", uid)
           .eq("status", "delivered")
           .gte("created_at", fromISO)

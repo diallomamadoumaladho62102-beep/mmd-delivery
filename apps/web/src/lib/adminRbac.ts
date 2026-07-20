@@ -112,7 +112,8 @@ export type AdminPermission =
   | "loyalty.marketplace.read"
   | "loyalty.marketplace.manage"
   | "audit.read"
-  | "supervision.read";
+  | "supervision.read"
+  | "test_records.read";
 
 const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
   admin: new Set<AdminPermission>([
@@ -215,6 +216,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "loyalty.marketplace.manage",
     "audit.read",
     "supervision.read",
+    "test_records.read",
   ]),
   ops: new Set<AdminPermission>([
     "hub.access",

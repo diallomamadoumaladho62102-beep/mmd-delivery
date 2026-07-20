@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { PDFDocument, StandardFonts, rgb, PDFFont } from "pdf-lib";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -370,35 +371,37 @@ export async function GET(req: NextRequest) {
     let orders: OrderRow[] = [];
 
     try {
-      const resp = await supabaseAdmin
-        .from("orders")
-        .select(
-          [
-            "id",
-            "created_at",
-            "delivered_confirmed_at",
-            "status",
-            "payment_status",
-            "currency",
-            "restaurant_id",
-            "restaurant_name",
-            "pickup_address",
-            "dropoff_address",
-            "subtotal_cents",
-            "tax_cents",
-            "delivery_fee_cents",
-            "total_cents",
-            "subtotal",
-            "tax",
-            "delivery_fee",
-            "total",
-            "tip",
-            "tip_cents",
-            "driver_delivery_payout",
-            "platform_delivery_fee",
-            "paid_at",
-          ].join(",")
-        )
+      const resp = await applyLiveTripFilters(
+        supabaseAdmin
+          .from("orders")
+          .select(
+            [
+              "id",
+              "created_at",
+              "delivered_confirmed_at",
+              "status",
+              "payment_status",
+              "currency",
+              "restaurant_id",
+              "restaurant_name",
+              "pickup_address",
+              "dropoff_address",
+              "subtotal_cents",
+              "tax_cents",
+              "delivery_fee_cents",
+              "total_cents",
+              "subtotal",
+              "tax",
+              "delivery_fee",
+              "total",
+              "tip",
+              "tip_cents",
+              "driver_delivery_payout",
+              "platform_delivery_fee",
+              "paid_at",
+            ].join(",")
+          ),
+      )
         .eq("driver_id", driverId)
         .eq("status", "delivered")
         .eq("payment_status", "paid")

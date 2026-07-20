@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { filterRowsByLiveTripParent } from "@/lib/tripVisibility";
 
 export async function getFinanceDashboard(
   supabase: SupabaseClient,
@@ -103,13 +104,17 @@ export async function listJournalEntries(
       "id,accounting_date,event_type,source_type,source_id,vertical,currency,status,description,idempotency_key,posted_at,created_at"
     )
     .order("accounting_date", { ascending: false })
-    .limit(Math.min(params.limit ?? 50, 200));
+    .limit(Math.min(params.limit ?? 50, 400));
   if (params.status) q = q.eq("status", params.status);
   if (params.from) q = q.gte("accounting_date", params.from);
   if (params.to) q = q.lte("accounting_date", params.to);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  const filtered = await filterRowsByLiveTripParent(
+    supabase,
+    (data ?? []) as Record<string, unknown>[]
+  );
+  return filtered.slice(0, Math.min(params.limit ?? 50, 200));
 }
 
 export async function listFinanceAccounts(supabase: SupabaseClient) {
@@ -125,15 +130,20 @@ export async function listSourceEvents(
   supabase: SupabaseClient,
   params?: { status?: string; limit?: number }
 ) {
+  const limit = Math.min(params?.limit ?? 50, 200);
   let q = supabase
     .from("finance_source_events")
     .select(
       "id,source_type,source_id,event_type,status,attempts,last_error,vertical,currency,journal_entry_id,idempotency_key,created_at,processed_at"
     )
     .order("created_at", { ascending: false })
-    .limit(Math.min(params?.limit ?? 50, 200));
+    .limit(Math.min(limit * 2, 400));
   if (params?.status) q = q.eq("status", params.status);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return data ?? [];
+  const filtered = await filterRowsByLiveTripParent(
+    supabase,
+    (data ?? []) as Record<string, unknown>[]
+  );
+  return filtered.slice(0, limit);
 }

@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type RangeKey = "week" | "today" | "month";
@@ -199,11 +200,13 @@ export function DriverRevenueDetailsScreen() {
         if (!aliveRef.alive) return;
         setDriverId(uid);
 
-        const { data: orderRows, error: ordersError } = await supabase
-          .from("orders")
-          .select(
-            "id, created_at, status, driver_id, driver_delivery_payout, tip_cents, kind, restaurant_name"
-          )
+        const { data: orderRows, error: ordersError } = await applyLiveTripFilters(
+          supabase
+            .from("orders")
+            .select(
+              "id, created_at, status, driver_id, driver_delivery_payout, tip_cents, kind, restaurant_name"
+            ),
+        )
           .eq("driver_id", uid)
           .eq("status", "delivered")
           .gte("created_at", fromISO)
@@ -212,9 +215,11 @@ export function DriverRevenueDetailsScreen() {
 
         if (ordersError) throw ordersError;
 
-        const { data: deliveryRequestRows, error: deliveryRequestsError } = await supabase
-          .from("delivery_requests")
-          .select("id, created_at, status, driver_id, driver_delivery_payout, kind")
+        const { data: deliveryRequestRows, error: deliveryRequestsError } = await applyLiveTripFilters(
+          supabase
+            .from("delivery_requests")
+            .select("id, created_at, status, driver_id, driver_delivery_payout, kind"),
+        )
           .eq("driver_id", uid)
           .eq("status", "delivered")
           .gte("created_at", fromISO)

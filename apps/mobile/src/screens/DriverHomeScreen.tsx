@@ -29,6 +29,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
@@ -1195,9 +1196,11 @@ export function DriverHomeScreen() {
         .eq("user_id", driverId)
         .maybeSingle();
 
-      const { data: todayOrders, error: todayOrdersError } = await supabase
-        .from("orders")
-        .select("id, status, updated_at, created_at, driver_delivery_payout")
+      const { data: todayOrders, error: todayOrdersError } = await applyLiveTripFilters(
+        supabase
+          .from("orders")
+          .select("id, status, updated_at, created_at, driver_delivery_payout"),
+      )
         .eq("driver_id", driverId)
         .eq("status", "delivered")
         .gte("updated_at", todayStartIso)
@@ -1206,9 +1209,11 @@ export function DriverHomeScreen() {
 
       if (todayOrdersError) throw todayOrdersError;
 
-      const { data: todayRequests, error: todayRequestsError } = await supabase
-        .from("delivery_requests")
-        .select("id, status, updated_at, created_at, driver_delivery_payout")
+      const { data: todayRequests, error: todayRequestsError } = await applyLiveTripFilters(
+        supabase
+          .from("delivery_requests")
+          .select("id, status, updated_at, created_at, driver_delivery_payout"),
+      )
         .eq("driver_id", driverId)
         .eq("status", "delivered")
         .gte("updated_at", todayStartIso)
@@ -1271,15 +1276,16 @@ export function DriverHomeScreen() {
         );
 
         const { data: offeredOrders, error: offeredOrdersError } = orderOfferIds.length
-          ? await supabase
-              .from("orders")
-              .select(
-                `id, kind, status, created_at,
+          ? await applyLiveTripFilters(
+              supabase
+                .from("orders")
+                .select(
+                  `id, kind, status, created_at,
                  restaurant_name, pickup_address, dropoff_address,
                  distance_miles, delivery_fee, driver_delivery_payout, total,
                  pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
-              )
-              .in("id", orderOfferIds)
+                ),
+            ).in("id", orderOfferIds)
           : { data: [], error: null };
 
         if (offeredOrdersError) throw offeredOrdersError;
@@ -1321,16 +1327,17 @@ export function DriverHomeScreen() {
         );
 
         const { data: offeredDeliveryRequests, error: offeredDeliveryRequestsError } = deliveryOfferIds.length
-          ? await supabase
-              .from("delivery_requests")
-              .select(
-                `id,status,payment_status,driver_id,created_at,updated_at,
+          ? await applyLiveTripFilters(
+              supabase
+                .from("delivery_requests")
+                .select(
+                  `id,status,payment_status,driver_id,created_at,updated_at,
                  pickup_address,dropoff_address,
                  pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
                  distance_miles,eta_minutes,delivery_fee,total,currency,
                  driver_delivery_payout,platform_fee`,
-              )
-              .in("id", deliveryOfferIds)
+                ),
+            ).in("id", deliveryOfferIds)
           : { data: [], error: null };
 
         if (offeredDeliveryRequestsError) throw offeredDeliveryRequestsError;
@@ -1367,14 +1374,16 @@ export function DriverHomeScreen() {
         // 1) Commandes disponibles depuis orders.
         // orders.kind est un enum : errand | food | pickup_dropoff.
         // On ne met jamais "delivery" ici, car delivery existe dans delivery_requests.
-        const { data: available, error: availableError } = await supabase
-          .from("orders")
-          .select(
-            `id, kind, status, created_at,
+        const { data: available, error: availableError } = await applyLiveTripFilters(
+          supabase
+            .from("orders")
+            .select(
+              `id, kind, status, created_at,
              restaurant_name, pickup_address, dropoff_address,
              distance_miles, delivery_fee, driver_delivery_payout, total,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
-          )
+            ),
+        )
           .in("status", ["pending", "ready"])
           .is("driver_id", null)
           .order("created_at", { ascending: false });
@@ -1383,15 +1392,17 @@ export function DriverHomeScreen() {
 
         // 2) Demandes MMD Delivery disponibles depuis delivery_requests.
         // Ces demandes sont séparées de orders et doivent être chargées séparément.
-        const { data: deliveryAvailable, error: deliveryAvailableError } = await supabase
-          .from("delivery_requests")
-          .select(
-            `id,status,payment_status,driver_id,created_at,updated_at,
+        const { data: deliveryAvailable, error: deliveryAvailableError } = await applyLiveTripFilters(
+          supabase
+            .from("delivery_requests")
+            .select(
+              `id,status,payment_status,driver_id,created_at,updated_at,
              pickup_address,dropoff_address,
              pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
              distance_miles,eta_minutes,delivery_fee,total,currency,
              driver_delivery_payout,platform_fee`
-          )
+            ),
+        )
           .in("status", ["pending", "paid_pending", "processing_pending"])
           .eq("payment_status", "paid")
           .is("driver_id", null)
@@ -1400,14 +1411,16 @@ export function DriverHomeScreen() {
         if (deliveryAvailableError) throw deliveryAvailableError;
 
         // 3) Commandes orders déjà assignées au driver.
-        const { data: mine, error: mineError } = await supabase
-          .from("orders")
-          .select(
-            `id, kind, status, created_at,
+        const { data: mine, error: mineError } = await applyLiveTripFilters(
+          supabase
+            .from("orders")
+            .select(
+              `id, kind, status, created_at,
              restaurant_name, pickup_address, dropoff_address,
              distance_miles, delivery_fee, driver_delivery_payout, total,
              pickup_lat, pickup_lng, dropoff_lat, dropoff_lng`,
-          )
+            ),
+        )
           .eq("driver_id", driverId)
           .not("status", "in", '("delivered","canceled")')
           .order("created_at", { ascending: false });
@@ -1415,15 +1428,17 @@ export function DriverHomeScreen() {
         if (mineError) throw mineError;
 
         // 4) Demandes delivery_requests déjà assignées au driver.
-        const { data: myDeliveryRequests, error: myDeliveryRequestsError } = await supabase
-          .from("delivery_requests")
-          .select(
-            `id,status,payment_status,driver_id,created_at,updated_at,
+        const { data: myDeliveryRequests, error: myDeliveryRequestsError } = await applyLiveTripFilters(
+          supabase
+            .from("delivery_requests")
+            .select(
+              `id,status,payment_status,driver_id,created_at,updated_at,
              pickup_address,dropoff_address,
              pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,
              distance_miles,eta_minutes,delivery_fee,total,currency,
              driver_delivery_payout,platform_fee`
-          )
+            ),
+        )
           .eq("driver_id", driverId)
           .not("status", "in", '("delivered","canceled")')
           .order("created_at", { ascending: false });

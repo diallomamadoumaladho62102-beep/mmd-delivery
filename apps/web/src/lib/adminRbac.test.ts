@@ -21,6 +21,14 @@ test("super admin has all critical permissions", () => {
   assert.equal(hasPermission("admin", "pricing.write"), true);
   assert.equal(hasPermission("admin", "users.admins.manage"), true);
   assert.equal(hasPermission("admin", "payouts.retry"), true);
+  assert.equal(hasPermission("admin", "test_records.read"), true);
+});
+
+test("non-founder staff cannot read archived/test catalog", () => {
+  assert.equal(hasPermission("ops", "test_records.read"), false);
+  assert.equal(hasPermission("finance", "test_records.read"), false);
+  assert.equal(hasPermission("support", "test_records.read"), false);
+  assert.equal(hasPermission("review", "test_records.read"), false);
 });
 
 test("ops cannot modify pricing or admins", () => {

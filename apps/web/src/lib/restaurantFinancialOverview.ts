@@ -3,6 +3,7 @@ import {
   getRestaurantCommissionRate,
   getRestaurantTaxSummary,
 } from "@/lib/restaurantTax";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 type GenericRow = Record<string, unknown>;
 
@@ -79,11 +80,13 @@ export async function getRestaurantFinancialOverview(params: {
   const chartStart = startOfUtcDay(new Date());
   chartStart.setUTCDate(chartStart.getUTCDate() - 6);
 
-  const { data: recentOrders, error: ordersError } = await supabase
-    .from("orders")
-    .select(
-      "id, created_at, status, payment_status, restaurant_id, restaurant_user_id, subtotal, total, restaurant_net_amount, currency"
-    )
+  const { data: recentOrders, error: ordersError } = await applyLiveTripFilters(
+    supabase
+      .from("orders")
+      .select(
+        "id, created_at, status, payment_status, restaurant_id, restaurant_user_id, subtotal, total, restaurant_net_amount, currency"
+      ),
+  )
     .gte("created_at", chartStart.toISOString())
     .eq("payment_status", "paid");
 
@@ -125,11 +128,13 @@ export async function getRestaurantFinancialOverview(params: {
     });
   }
 
-  const { data: payoutRows, error: payoutError } = await supabase
-    .from("orders")
-    .select(
-      "id, restaurant_net_amount, restaurant_paid_out_at, restaurant_id, restaurant_user_id"
-    )
+  const { data: payoutRows, error: payoutError } = await applyLiveTripFilters(
+    supabase
+      .from("orders")
+      .select(
+        "id, restaurant_net_amount, restaurant_paid_out_at, restaurant_id, restaurant_user_id"
+      ),
+  )
     .eq("payment_status", "paid")
     .eq("restaurant_paid_out", true)
     .order("restaurant_paid_out_at", { ascending: false })
@@ -139,11 +144,13 @@ export async function getRestaurantFinancialOverview(params: {
     throw new Error(payoutError.message || "Failed to load payout history");
   }
 
-  const { data: pendingRows, error: pendingError } = await supabase
-    .from("orders")
-    .select(
-      "id, restaurant_net_amount, restaurant_paid_out, restaurant_id, restaurant_user_id"
-    )
+  const { data: pendingRows, error: pendingError } = await applyLiveTripFilters(
+    supabase
+      .from("orders")
+      .select(
+        "id, restaurant_net_amount, restaurant_paid_out, restaurant_id, restaurant_user_id"
+      ),
+  )
     .eq("payment_status", "paid")
     .or("restaurant_paid_out.is.null,restaurant_paid_out.eq.false")
     .in("status", ["delivered", "completed"]);

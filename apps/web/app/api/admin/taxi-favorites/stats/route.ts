@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +38,12 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.favorite_count - a.favorite_count)
       .slice(0, 20);
 
-    const { count: ridesWithPreferred, error: rideError } = await supabase
-      .from("taxi_rides")
-      .select("*", { count: "exact", head: true })
-      .not("preferred_driver_id", "is", null);
+    const { count: ridesWithPreferred, error: rideError } = await applyLiveTripFilters(
+      supabase
+        .from("taxi_rides")
+        .select("*", { count: "exact", head: true })
+        .not("preferred_driver_id", "is", null)
+    );
 
     if (rideError) return json({ ok: false, error: rideError.message }, 500);
 

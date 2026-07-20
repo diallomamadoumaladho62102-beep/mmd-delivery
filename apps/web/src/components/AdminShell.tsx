@@ -16,6 +16,7 @@ const NAV = [
   { href: "/admin/marketing", label: "Marketing" },
   { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/finance", label: "Finance" },
+  { href: "/admin/test-records", label: "Test Records" },
 ] as const;
 
 export default function AdminShell({

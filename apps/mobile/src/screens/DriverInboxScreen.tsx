@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { APP_COLORS } from "../theme/appTheme";
 
@@ -163,9 +164,9 @@ export function DriverInboxScreen() {
       const INBOX_ORDER_LIMIT = 50;
       const INBOX_MESSAGE_LIMIT = 120;
 
-      const { data: inProgress, error: e1 } = await supabase
-        .from("orders")
-        .select(baseSelect)
+      const { data: inProgress, error: e1 } = await applyLiveTripFilters(
+        supabase.from("orders").select(baseSelect),
+      )
         .eq("driver_id", uid)
         .neq("status", "delivered")
         .order("created_at", { ascending: false })
@@ -173,9 +174,9 @@ export function DriverInboxScreen() {
 
       if (e1) throw e1;
 
-      const { data: delivered7d, error: e2 } = await supabase
-        .from("orders")
-        .select(baseSelect)
+      const { data: delivered7d, error: e2 } = await applyLiveTripFilters(
+        supabase.from("orders").select(baseSelect),
+      )
         .eq("driver_id", uid)
         .eq("status", "delivered")
         .gte("created_at", fromISO)

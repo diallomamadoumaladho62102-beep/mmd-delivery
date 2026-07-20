@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (status) query = query.eq("status", status);
+
+    query = applyLiveTripFilters(query);
 
     const { data, error } = await query;
 

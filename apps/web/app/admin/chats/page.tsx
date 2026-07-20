@@ -10,6 +10,7 @@ import {
   ORDER_MESSAGE_SELECT,
 } from "@/lib/orderMessages";
 import { normalizeUserRole } from "@/lib/roles";
+import { isLiveVisibleTrip } from "@/lib/tripVisibility";
 
 type ChatRole = "client" | "driver" | "restaurant" | "admin";
 
@@ -21,6 +22,9 @@ type OrderRow = {
   client_user_id: string | null;
   driver_id: string | null;
   restaurant_id: string | null;
+  is_test?: boolean | null;
+  archived_at?: string | null;
+  hidden_from_user?: boolean | null;
 };
 
 type MessageRow = {
@@ -182,13 +186,13 @@ export default function AdminChatsPage() {
       const { data: ordersRaw, error: ordersError } = await supabase
         .from("orders")
         .select(
-          "id, status, created_at, client_id, client_user_id, driver_id, restaurant_id"
+          "id, status, created_at, client_id, client_user_id, driver_id, restaurant_id, is_test, archived_at, hidden_from_user"
         )
         .in("id", orderIds);
 
       if (ordersError) throw new Error(ordersError.message);
 
-      const orders = (ordersRaw ?? []) as OrderRow[];
+      const orders = ((ordersRaw ?? []) as OrderRow[]).filter(isLiveVisibleTrip);
 
       const profileIds = Array.from(
         new Set(

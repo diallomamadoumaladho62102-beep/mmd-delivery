@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { applyLiveTripFilters } from "./tripVisibility";
 
 export type TaxiEarningsByCurrency = {
   currency: string;
@@ -31,9 +32,11 @@ function emptyBucket(currency: string): TaxiEarningsByCurrency {
 export async function loadTaxiDriverEarnings(
   driverId: string
 ): Promise<TaxiEarningsSummary> {
-  const { data: rides, error: ridesErr } = await supabase
-    .from("taxi_rides")
-    .select("id, driver_payout_cents, currency, status")
+  const { data: rides, error: ridesErr } = await applyLiveTripFilters(
+    supabase
+      .from("taxi_rides")
+      .select("id, driver_payout_cents, currency, status"),
+  )
     .eq("driver_id", driverId)
     .eq("status", "completed");
 

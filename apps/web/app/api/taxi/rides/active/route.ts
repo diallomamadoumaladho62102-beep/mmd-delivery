@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 
 import { formatClientPreferencesForDriver } from "@/lib/taxiClientPreferences";
+import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,10 +14,11 @@ export async function GET(req: NextRequest) {
     const auth = await requireTaxiApiUser(req);
     if (auth.ok === false) return auth.response;
 
-    const { data, error } = await auth.supabaseAdmin
-      .from("taxi_rides")
-      .select(
-        `
+    const { data, error } = await applyLiveTripFilters(
+      auth.supabaseAdmin
+        .from("taxi_rides")
+        .select(
+          `
         *,
         taxi_ride_stops (
           id,
@@ -27,7 +29,8 @@ export async function GET(req: NextRequest) {
           status
         )
       `
-      )
+        ),
+    )
       .eq("driver_id", auth.user.id)
       .in("status", ACTIVE_STATUSES)
       .order("updated_at", { ascending: false })

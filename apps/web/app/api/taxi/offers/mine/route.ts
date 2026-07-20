@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { formatClientPreferencesForDriver } from "@/lib/taxiClientPreferences";
+import { isLiveVisibleTrip } from "@/lib/tripVisibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,6 +67,9 @@ export async function GET(req: NextRequest) {
           preferences_client_message,
           preferences_unmet,
           preferences_dispatch_stage,
+          is_test,
+          hidden_from_user,
+          archived_at,
           taxi_ride_stops (
             id,
             stop_order,
@@ -86,7 +90,17 @@ export async function GET(req: NextRequest) {
       return taxiJson({ ok: false, error: error.message }, 500);
     }
 
-    const offers = (data ?? []).map((offer) => enrichOffer(offer as Record<string, unknown>));
+    const offers = (data ?? [])
+      .map((offer) => enrichOffer(offer as Record<string, unknown>))
+      .filter((offer) => {
+        const ride = offer.taxi_rides as Record<string, unknown> | null;
+        if (!ride) return false;
+        return isLiveVisibleTrip({
+          is_test: ride.is_test as boolean | null | undefined,
+          hidden_from_user: ride.hidden_from_user as boolean | null | undefined,
+          archived_at: ride.archived_at as string | null | undefined,
+        });
+      });
     for (const offer of offers) {
       const ride = offer.taxi_rides as Record<string, unknown> | null;
       const sharedRideId = ride?.shared_ride_id;
