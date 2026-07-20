@@ -1,0 +1,308 @@
+{
+  "audited_at": "2026-07-20T06:54:00.715Z",
+  "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+  "api_base": "https://www.mmddelivery.com",
+  "verdict": "DELIVERY COMPLETION NOTIFICATIONS — READY",
+  "full_flow_verdict": "DELIVERY FULL FLOW — READY",
+  "blockers": [],
+  "proofs": {
+    "already_delivered_calls": {
+      "call1_http": 200,
+      "call1_already_delivered": true,
+      "call2_http": 200,
+      "call2_client_skipped": "dedup",
+      "call2_driver_skipped": "dedup"
+    },
+    "notification_logs": [
+      {
+        "id": "6bbe2b44-fe01-42cd-9f04-1e59373729a3",
+        "role": "client",
+        "title": "Livraison terminée",
+        "status": "sent",
+        "dedup_key": "delivery_request_delivered_client:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "created_at": "2026-07-20T06:53:54.322625+00:00",
+        "expo_ticket_id": "019f7e4d-72dc-74fa-9f93-674974d2a4f9",
+        "expo_ticket_status": "ok",
+        "expo_receipt_status": "ok",
+        "event_type": "delivery_request_delivered_client"
+      },
+      {
+        "id": "6605cbb0-edff-4626-8bf6-02d3011136da",
+        "role": "driver",
+        "title": "Mission terminée",
+        "status": "sent",
+        "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "created_at": "2026-07-20T06:53:56.062109+00:00",
+        "expo_ticket_id": "019f7e4d-79a0-7231-a53b-89cf7e8466a4",
+        "expo_ticket_status": "ok",
+        "expo_receipt_status": "ok",
+        "event_type": "delivery_request_delivered_driver"
+      },
+      {
+        "id": "7895902f-f38a-4fe6-b53c-4afa1bc7758f",
+        "role": "driver",
+        "title": "Mission terminée",
+        "status": "failed",
+        "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "created_at": "2026-07-20T06:53:56.062109+00:00",
+        "expo_ticket_id": "019f7e4d-79a5-76af-945e-a83c957a25c2",
+        "expo_ticket_status": "ok",
+        "expo_receipt_status": "error",
+        "event_type": "delivery_request_delivered_driver"
+      },
+      {
+        "id": "1b7eea21-d9ad-46af-80b3-df1ae38a8485",
+        "role": "driver",
+        "title": "Mission terminée",
+        "status": "sent",
+        "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "created_at": "2026-07-20T06:53:56.062109+00:00",
+        "expo_ticket_id": "019f7e4d-799f-766d-856c-88521cb298c1",
+        "expo_ticket_status": "ok",
+        "expo_receipt_status": "ok",
+        "event_type": "delivery_request_delivered_driver"
+      },
+      {
+        "id": "47520b28-fa60-42d5-82b3-4f1b32cdb5a1",
+        "role": "driver",
+        "title": "Mission terminée",
+        "status": "sent",
+        "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "created_at": "2026-07-20T06:53:56.062109+00:00",
+        "expo_ticket_id": "019f7e4d-79a0-7231-a53b-87dd533e322e",
+        "expo_ticket_status": "ok",
+        "expo_receipt_status": "ok",
+        "event_type": "delivery_request_delivered_driver"
+      },
+      {
+        "id": "cb97a14e-513d-4bee-a7b8-f6ee9088c588",
+        "role": "driver",
+        "title": "Mission terminée",
+        "status": "sent",
+        "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "created_at": "2026-07-20T06:53:56.062109+00:00",
+        "expo_ticket_id": "019f7e4d-79a5-76af-945e-ad8c6fec2343",
+        "expo_ticket_status": "ok",
+        "expo_receipt_status": "ok",
+        "event_type": "delivery_request_delivered_driver"
+      }
+    ],
+    "client_sent": 1,
+    "driver_sent": 4,
+    "expo_tickets": {
+      "client": true,
+      "driver": true
+    },
+    "expo_receipts": {
+      "client": true,
+      "driver": true
+    },
+    "no_double_push": true,
+    "finance_loyalty_commissions_unchanged": true,
+    "push_tokens_present": 110
+  },
+  "steps": [
+    {
+      "step": "baseline",
+      "completion_logs_before": 0,
+      "status": "delivered"
+    },
+    {
+      "step": "delivered_confirm_1",
+      "http": 200,
+      "body": {
+        "ok": true,
+        "already_delivered": true,
+        "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "completion_notifications": {
+          "client": {
+            "sent": 1,
+            "logs": 1
+          },
+          "driver": {
+            "sent": 4,
+            "logs": 5
+          }
+        }
+      }
+    },
+    {
+      "step": "logs_after_call_1",
+      "count": 6,
+      "logs": [
+        {
+          "id": "6bbe2b44-fe01-42cd-9f04-1e59373729a3",
+          "role": "client",
+          "title": "Livraison terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_client:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:54.322625+00:00",
+          "expo_ticket_id": "019f7e4d-72dc-74fa-9f93-674974d2a4f9",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_client"
+        },
+        {
+          "id": "6605cbb0-edff-4626-8bf6-02d3011136da",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a0-7231-a53b-89cf7e8466a4",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "7895902f-f38a-4fe6-b53c-4afa1bc7758f",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "failed",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a5-76af-945e-a83c957a25c2",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "error",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "1b7eea21-d9ad-46af-80b3-df1ae38a8485",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-799f-766d-856c-88521cb298c1",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "47520b28-fa60-42d5-82b3-4f1b32cdb5a1",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a0-7231-a53b-87dd533e322e",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "cb97a14e-513d-4bee-a7b8-f6ee9088c588",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a5-76af-945e-ad8c6fec2343",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        }
+      ]
+    },
+    {
+      "step": "delivered_confirm_2",
+      "http": 200,
+      "body": {
+        "ok": true,
+        "already_delivered": true,
+        "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "completion_notifications": {
+          "client": {
+            "sent": 0,
+            "skipped": "dedup",
+            "logs": 0
+          },
+          "driver": {
+            "sent": 0,
+            "skipped": "dedup",
+            "logs": 0
+          }
+        }
+      }
+    },
+    {
+      "step": "logs_after_call_2",
+      "count": 6,
+      "logs": [
+        {
+          "id": "6bbe2b44-fe01-42cd-9f04-1e59373729a3",
+          "role": "client",
+          "title": "Livraison terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_client:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:54.322625+00:00",
+          "expo_ticket_id": "019f7e4d-72dc-74fa-9f93-674974d2a4f9",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_client"
+        },
+        {
+          "id": "6605cbb0-edff-4626-8bf6-02d3011136da",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a0-7231-a53b-89cf7e8466a4",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "7895902f-f38a-4fe6-b53c-4afa1bc7758f",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "failed",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a5-76af-945e-a83c957a25c2",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "error",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "1b7eea21-d9ad-46af-80b3-df1ae38a8485",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-799f-766d-856c-88521cb298c1",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "47520b28-fa60-42d5-82b3-4f1b32cdb5a1",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a0-7231-a53b-87dd533e322e",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        },
+        {
+          "id": "cb97a14e-513d-4bee-a7b8-f6ee9088c588",
+          "role": "driver",
+          "title": "Mission terminée",
+          "status": "sent",
+          "dedup_key": "delivery_request_delivered_driver:1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+          "created_at": "2026-07-20T06:53:56.062109+00:00",
+          "expo_ticket_id": "019f7e4d-79a5-76af-945e-ad8c6fec2343",
+          "expo_ticket_status": "ok",
+          "expo_receipt_status": "ok",
+          "event_type": "delivery_request_delivered_driver"
+        }
+      ]
+    }
+  ],
+  "taxi": "not_started"
+}
