@@ -49,5 +49,10 @@
     "No taxi safety PIN today; safety recording remains. No personal phone in payload.",
     "vehicle_photo unavailable until a vehicle photo upload column/flow exists."
   ],
+  "commits": {
+    "sha": "3934fe2",
+    "deploy": "mmd-delivery-dmcrg3xrv → www.mmddelivery.com",
+    "migration_applied": "20260909130000_taxi_ride_client_identification_snapshot.sql"
+  },
   "taxi_payment": "not_started"
 }
