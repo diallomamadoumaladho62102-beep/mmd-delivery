@@ -5,7 +5,7 @@ import { resolvePushSoundForPlatform, DRIVER_MISSION_PUSH_CHANNEL } from "@/lib/
 import { isElectricSearchActive } from "@/lib/taxiCategoryMatching";
 import { maybeAdvanceTaxiPreferenceStage, initializeTaxiRidePreferenceDispatch } from "@/lib/taxiPreferenceDispatch";
 
-const MAX_DISPATCH_MILES = 5;
+const MAX_DISPATCH_MILES = 15;
 
 const DISPATCH_WAVES: Record<number, { maxDrivers: number; maxMiles: number }> = {
   0: { maxDrivers: 1, maxMiles: MAX_DISPATCH_MILES },
