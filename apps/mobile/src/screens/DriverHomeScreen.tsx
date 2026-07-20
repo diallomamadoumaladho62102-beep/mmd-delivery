@@ -666,6 +666,7 @@ export function DriverHomeScreen() {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [activeOffer, setActiveOffer] = useState<DriverOrder | null>(null);
+  const [hasTaxiActiveOffers, setHasTaxiActiveOffers] = useState(false);
 
   useEffect(() => {
     const out = Boolean(platformFeatures.out_of_service_area);
@@ -772,7 +773,7 @@ export function DriverHomeScreen() {
   }, [isOnline, onlinePulseAnim]);
 
   useEffect(() => {
-    if (isOnline && !activeOffer) {
+    if (isOnline && !activeOffer && !hasTaxiActiveOffers) {
       Animated.spring(sheetOffset, {
         toValue: SHEET_MAX_TRANSLATE_Y,
         damping: 20,
@@ -781,7 +782,19 @@ export function DriverHomeScreen() {
         useNativeDriver: true,
       }).start();
     }
-  }, [activeOffer, isOnline, sheetOffset]);
+  }, [activeOffer, hasTaxiActiveOffers, isOnline, sheetOffset]);
+
+  useEffect(() => {
+    if (!hasTaxiActiveOffers) return;
+    // Collapse sheet immediately when a taxi offer arrives so Accept/Reject stay visible.
+    Animated.spring(sheetOffset, {
+      toValue: SHEET_MAX_TRANSLATE_Y,
+      damping: 22,
+      stiffness: 220,
+      mass: 0.7,
+      useNativeDriver: true,
+    }).start();
+  }, [hasTaxiActiveOffers, sheetOffset]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -2332,7 +2345,7 @@ export function DriverHomeScreen() {
               onAccept={() => handleAccept(activeOffer)}
               t={t}
             />
-          ) : (
+          ) : hasTaxiActiveOffers ? null : (
             <Animated.View
               style={[styles.sheet, { transform: [{ translateY: sheetOffset }] }]}
               {...panResponder.panHandlers}
@@ -2483,9 +2496,19 @@ export function DriverHomeScreen() {
               </View>
             </Animated.View>
           )}
+          {!activeOffer ? (
+            <View
+              pointerEvents="box-none"
+              style={hasTaxiActiveOffers ? styles.offerWrap : styles.taxiPanelHost}
+            >
+              <DriverTaxiPanel
+                isOnline={isOnline}
+                elevated={hasTaxiActiveOffers}
+                onActiveOffersChange={setHasTaxiActiveOffers}
+              />
+            </View>
+          ) : null}
         </View>
-
-        <DriverTaxiPanel isOnline={isOnline} />
       </View>
     </SafeAreaView>
   );
@@ -2950,6 +2973,14 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, marginRight: 6, marginBottom: 6 },
   chipText: { fontSize: 10, fontWeight: "800", maxWidth: 120 },
   bottomArea: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60 },
+  taxiPanelHost: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 70,
+  },
   sheet: {
     width: "100%",
     borderTopLeftRadius: 32,

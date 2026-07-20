@@ -13,8 +13,8 @@ const LONG_RING_CONFIG: Record<
 > = {
   driver: {
     asset: MMD_SOUND_ASSETS.driverRing,
-    maxDurationMs: 60_000,
-    initialVolume: 0.35,
+    maxDurationMs: 90_000,
+    initialVolume: 0.85,
   },
   restaurant: {
     asset: MMD_SOUND_ASSETS.restaurantRing,

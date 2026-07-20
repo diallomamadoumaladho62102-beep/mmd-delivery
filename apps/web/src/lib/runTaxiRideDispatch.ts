@@ -4,6 +4,11 @@ import { TAXI_FAVORITE_DISPATCH_TIMEOUT_SECONDS } from "@/lib/taxiPremiumDispatc
 import { resolvePushSoundForPlatform, DRIVER_MISSION_PUSH_CHANNEL } from "@/lib/mmdPushSounds";
 import { isElectricSearchActive } from "@/lib/taxiCategoryMatching";
 import { maybeAdvanceTaxiPreferenceStage, initializeTaxiRidePreferenceDispatch } from "@/lib/taxiPreferenceDispatch";
+import {
+  maskExpoToken,
+  sendExpoPushWithAudit,
+  type ExpoTicketRow,
+} from "@/lib/expoPushAudit";
 
 const MAX_DISPATCH_MILES = 15;
 
@@ -35,6 +40,96 @@ function isDispatchableTaxiRide(ride: {
   return status === "paid" || status === "dispatching";
 }
 
+async function insertTaxiDispatchLog(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  row: Record<string, unknown>,
+) {
+  const { error } = await supabase.from("notification_logs").insert(row);
+  if (error) {
+    console.log(
+      "[runTaxiRideDispatch] notification_logs insert failed:",
+      error.message,
+    );
+  }
+}
+
+async function sendTaxiOfferPushes(params: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+  taxiRideId: string;
+  wave: number;
+  messages: Record<string, unknown>[];
+  tokenRows: Array<{
+    user_id: string;
+    expo_push_token: string;
+    platform?: string | null;
+  }>;
+  payoutDollars: string | null;
+  distanceByDriver: Map<string, number>;
+}): Promise<{ notified: number; tickets: ExpoTicketRow[] }> {
+  if (params.messages.length === 0) {
+    return { notified: 0, tickets: [] };
+  }
+
+  const pushAudit = await sendExpoPushWithAudit(params.messages, {
+    receiptWaitMs: 1500,
+  });
+  const nowIso = new Date().toISOString();
+  const dedupBase = `taxi_offer_dispatch:${params.taxiRideId}:w${params.wave}`;
+
+  for (let i = 0; i < params.tokenRows.length; i += 1) {
+    const tokenRow = params.tokenRows[i];
+    const ticket = pushAudit.tickets[i] ?? null;
+    const ticketId = ticket?.id ? String(ticket.id) : null;
+    const receipt = ticketId ? pushAudit.receipts[ticketId] ?? null : null;
+    const ticketFailed = String(ticket?.status ?? "") === "error";
+    const receiptFailed = String(receipt?.status ?? "") === "error";
+    const status =
+      !pushAudit.ok || ticketFailed || receiptFailed ? "failed" : "sent";
+
+    await insertTaxiDispatchLog(params.supabase, {
+      user_id: tokenRow.user_id,
+      role: "driver",
+      title: "Nouvelle course taxi disponible 🚕",
+      body: params.payoutDollars
+        ? `Course proche • Gain estimé ${params.payoutDollars} USD`
+        : "Une course taxi proche est disponible.",
+      data: {
+        type: "taxi_offer_dispatch",
+        taxi_ride_id: params.taxiRideId,
+        wave: params.wave,
+        distance_miles: params.distanceByDriver.get(tokenRow.user_id) ?? null,
+        provider: "expo",
+        expo_token_masked: maskExpoToken(tokenRow.expo_push_token),
+        expo_ticket_id: ticketId,
+        expo_ticket_status: ticket?.status ?? null,
+        expo_ticket: ticket,
+        expo_receipt: receipt,
+        expo_receipt_status: receipt?.status ?? null,
+        platform: tokenRow.platform ?? null,
+      },
+      status,
+      error_message:
+        ticket?.message ||
+        receipt?.message ||
+        pushAudit.error ||
+        (status === "failed" ? "push_failed" : null),
+      dedup_key: `${dedupBase}:${tokenRow.user_id}:${ticketId ?? i}`,
+      sent_at: status === "sent" ? nowIso : null,
+    });
+  }
+
+  const notified = pushAudit.ok
+    ? params.tokenRows.filter((_, i) => {
+        const t = pushAudit.tickets[i];
+        return String(t?.status ?? "ok") !== "error";
+      }).length
+    : 0;
+
+  return { notified, tickets: pushAudit.tickets };
+}
+
 function milesBetween(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 3958.8;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -47,28 +142,6 @@ function milesBetween(lat1: number, lng1: number, lat2: number, lng2: number) {
       Math.sin(dLng / 2) ** 2;
 
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-async function sendExpoPush(messages: Record<string, unknown>[]) {
-  if (messages.length === 0) return { ok: true, tickets: [] };
-
-  const res = await fetch("https://exp.host/--/api/v2/push/send", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Accept-Encoding": "gzip, deflate",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(messages),
-  });
-
-  const out = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    throw new Error(out?.errors?.[0]?.message || `Expo push failed ${res.status}`);
-  }
-
-  return out;
 }
 
 export type RunTaxiRideDispatchResult = {
@@ -308,31 +381,41 @@ export async function runTaxiRideDispatch(params: {
     const payoutDollars =
       payoutCents != null ? (payoutCents / 100).toFixed(2) : null;
 
-    const messages = (tokens ?? [])
-      .filter((t: { expo_push_token?: string }) =>
-        String(t.expo_push_token ?? "").startsWith("ExponentPushToken[")
-      )
-      .map((tokenRow: { expo_push_token: string; platform?: string | null }) => ({
-        to: tokenRow.expo_push_token,
-        sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
-        channelId: DRIVER_MISSION_PUSH_CHANNEL,
-        title: "Course favori client ⭐",
-        body: payoutDollars
-          ? `Un client vous a choisi • Gain estimé ${payoutDollars} USD`
-          : "Un client vous a choisi pour sa course taxi.",
-        data: {
-          type: "taxi_offer_dispatch",
-          taxiRideId: ride.id,
-          wave: 0,
-          isFavoriteDispatch: true,
-          screen: "DriverTabs",
-        },
-        priority: "high",
-      }));
+    const tokenRows = (tokens ?? []).filter((t: { expo_push_token?: string }) =>
+      String(t.expo_push_token ?? "").startsWith("ExponentPushToken[")
+    ) as Array<{
+      user_id: string;
+      expo_push_token: string;
+      platform?: string | null;
+    }>;
 
-    if (messages.length > 0) {
-      await sendExpoPush(messages);
-    }
+    const messages = tokenRows.map((tokenRow) => ({
+      to: tokenRow.expo_push_token,
+      sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
+      channelId: DRIVER_MISSION_PUSH_CHANNEL,
+      title: "Course favori client ⭐",
+      body: payoutDollars
+        ? `Un client vous a choisi • Gain estimé ${payoutDollars} USD`
+        : "Un client vous a choisi pour sa course taxi.",
+      data: {
+        type: "taxi_offer_dispatch",
+        taxiRideId: ride.id,
+        wave: 0,
+        isFavoriteDispatch: true,
+        screen: "DriverTabs",
+      },
+      priority: "high",
+    }));
+
+    const pushResult = await sendTaxiOfferPushes({
+      supabase,
+      taxiRideId,
+      wave: 0,
+      messages,
+      tokenRows,
+      payoutDollars,
+      distanceByDriver: new Map([[preferredDriverId, distanceMiles]]),
+    });
 
     await logTaxiEventServer(supabase, {
       rideId: taxiRideId,
@@ -344,8 +427,9 @@ export async function runTaxiRideDispatch(params: {
       metadata: {
         wave: 0,
         preferred_driver_id: preferredDriverId,
-        notified: messages.length,
+        notified: pushResult.notified,
         offerStats,
+        expo_tickets: pushResult.tickets.length,
       },
     });
 
@@ -353,11 +437,11 @@ export async function runTaxiRideDispatch(params: {
       ok: true,
       taxiRideId,
       wave,
-      notified: messages.length,
+      notified: pushResult.notified,
       candidates: 1,
       offerStats,
       message:
-        messages.length > 0
+        pushResult.notified > 0
           ? "Favorite driver dispatch sent"
           : "Favorite offer created without push tokens",
     };
@@ -640,7 +724,7 @@ export async function runTaxiRideDispatch(params: {
 
   const { data: tokens, error: tokensError } = await supabase
     .from("user_push_tokens")
-    .select("user_id,expo_push_token,role")
+    .select("user_id,expo_push_token,role,platform")
     .in("user_id", selectedDriverIds)
     .eq("role", "driver");
 
@@ -661,39 +745,54 @@ export async function runTaxiRideDispatch(params: {
         .filter((t: { expo_push_token?: string }) =>
           String(t.expo_push_token ?? "").startsWith("ExponentPushToken[")
         )
-        .map((t: { expo_push_token: string; user_id: string }) => [
-          String(t.expo_push_token),
-          t,
-        ])
-    ).values()
-  );
+        .map(
+          (t: {
+            expo_push_token: string;
+            user_id: string;
+            platform?: string | null;
+          }) => [String(t.expo_push_token), t],
+        ),
+    ).values(),
+  ) as Array<{
+    user_id: string;
+    expo_push_token: string;
+    platform?: string | null;
+  }>;
 
   const payoutCents = toNumber(ride.driver_payout_cents);
   const payoutDollars =
     payoutCents != null ? (payoutCents / 100).toFixed(2) : null;
 
-  const messages = uniqueTokens.map(
-    (tokenRow: { expo_push_token: string; user_id: string; platform?: string | null }) => ({
-      to: tokenRow.expo_push_token,
-      sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
-      channelId: DRIVER_MISSION_PUSH_CHANNEL,
-      title: "Nouvelle course taxi disponible 🚕",
-      body: payoutDollars
-        ? `Course proche • Gain estimé ${payoutDollars} USD`
-        : "Une course taxi proche est disponible.",
-      data: {
-        type: "taxi_offer_dispatch",
-        taxiRideId: ride.id,
-        wave,
-        screen: "DriverTabs",
-      },
-      priority: "high",
-    })
+  const messages = uniqueTokens.map((tokenRow) => ({
+    to: tokenRow.expo_push_token,
+    sound: resolvePushSoundForPlatform("taxi_offer_dispatch", tokenRow.platform),
+    channelId: DRIVER_MISSION_PUSH_CHANNEL,
+    title: "Nouvelle course taxi disponible 🚕",
+    body: payoutDollars
+      ? `Course proche • Gain estimé ${payoutDollars} USD`
+      : "Une course taxi proche est disponible.",
+    data: {
+      type: "taxi_offer_dispatch",
+      taxiRideId: ride.id,
+      wave,
+      screen: "DriverTabs",
+    },
+    priority: "high",
+  }));
+
+  const distanceByDriver = new Map(
+    candidates.map((c) => [c.driverId, c.distanceMiles] as const),
   );
 
-  if (messages.length > 0) {
-    await sendExpoPush(messages);
-  }
+  const pushResult = await sendTaxiOfferPushes({
+    supabase,
+    taxiRideId,
+    wave,
+    messages,
+    tokenRows: uniqueTokens,
+    payoutDollars,
+    distanceByDriver,
+  });
 
   await logTaxiEventServer(supabase, {
     rideId: taxiRideId,
@@ -705,8 +804,9 @@ export async function runTaxiRideDispatch(params: {
     metadata: {
       wave,
       candidates: candidates.length,
-      notified: messages.length,
+      notified: pushResult.notified,
       offerStats,
+      expo_tickets: pushResult.tickets.length,
     },
   });
 
@@ -714,10 +814,12 @@ export async function runTaxiRideDispatch(params: {
     ok: true,
     taxiRideId,
     wave,
-    notified: messages.length,
+    notified: pushResult.notified,
     candidates: candidates.length,
     offerStats,
     message:
-      messages.length > 0 ? "Taxi dispatch sent" : "Offers created without push tokens",
+      pushResult.notified > 0
+        ? "Taxi dispatch sent"
+        : "Offers created without push tokens",
   };
 }

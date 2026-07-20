@@ -36,6 +36,10 @@ import {
   filterActiveTaxiOffers,
   formatOfferCountdown,
 } from "../../lib/taxiOfferExpiry";
+import {
+  startDriverMissionAlert,
+  stopDriverMissionAlert,
+} from "../../lib/driverMissionAlertService";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -76,13 +80,20 @@ type TaxiOfferRow = {
 
 type Props = {
   isOnline: boolean;
+  /** When true, panel is the primary bottom offer surface (sheet is hidden). */
+  elevated?: boolean;
+  onActiveOffersChange?: (hasActiveOffers: boolean) => void;
 };
 
 function formatOfferRemaining(expiresAt: string, nowMs: number): string {
   return formatOfferCountdown(expiresAt, nowMs);
 }
 
-export function DriverTaxiPanel({ isOnline }: Props) {
+export function DriverTaxiPanel({
+  isOnline,
+  elevated = false,
+  onActiveOffersChange,
+}: Props) {
   const navigation = useNavigation<Nav>();
   const [features, setFeatures] = useState<TaxiDriverFeatures | null>(null);
   const [driverApproved, setDriverApproved] = useState(false);
@@ -94,10 +105,45 @@ export function DriverTaxiPanel({ isOnline }: Props) {
   const [actionId, setActionId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const actionLockRef = useRef(false);
+  const ringingOfferIdsRef = useRef<Set<string>>(new Set());
 
   const taxiEnabled = features?.taxi_enabled === true;
   const showPanel = taxiEnabled && driverApproved;
   const activeOffers = filterActiveTaxiOffers(offers, nowMs);
+
+  useEffect(() => {
+    onActiveOffersChange?.(activeOffers.length > 0);
+  }, [activeOffers.length, onActiveOffersChange]);
+
+  useEffect(() => {
+    if (!showPanel || !isOnline) {
+      ringingOfferIdsRef.current.clear();
+      void stopDriverMissionAlert();
+      return;
+    }
+
+    if (activeOffers.length === 0) {
+      ringingOfferIdsRef.current.clear();
+      void stopDriverMissionAlert();
+      return;
+    }
+
+    for (const offer of activeOffers) {
+      const rideId = String(offer.taxi_ride_id ?? "").trim();
+      if (!rideId || ringingOfferIdsRef.current.has(offer.id)) continue;
+      ringingOfferIdsRef.current.add(offer.id);
+      void startDriverMissionAlert({
+        type: "taxi_offer_dispatch",
+        taxiRideId: rideId,
+        playLocalNotification: true,
+      });
+    }
+
+    const activeIds = new Set(activeOffers.map((o) => o.id));
+    for (const id of Array.from(ringingOfferIdsRef.current)) {
+      if (!activeIds.has(id)) ringingOfferIdsRef.current.delete(id);
+    }
+  }, [activeOffers, isOnline, showPanel]);
 
   const refresh = useCallback(async () => {
     if (!showPanel || !isOnline) {
@@ -184,6 +230,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
           reason.includes("no_longer") ||
           reason.includes("offer_not");
         await refresh();
+        await stopDriverMissionAlert();
         Alert.alert(
           "Taxi",
           takenOrExpired
@@ -196,6 +243,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
         return;
       }
       await refresh();
+      await stopDriverMissionAlert();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       const lower = message.toLowerCase();
@@ -225,6 +273,7 @@ export function DriverTaxiPanel({ isOnline }: Props) {
     try {
       await rejectTaxiOffer(offer.id);
       await refresh();
+      await stopDriverMissionAlert();
     } catch (e: unknown) {
       Alert.alert("Taxi", toUserFacingError(e, "Reject failed"));
     } finally {
@@ -284,8 +333,11 @@ export function DriverTaxiPanel({ isOnline }: Props) {
   const rideId = String(activeRide?.id ?? "");
 
   return (
-    <View pointerEvents="box-none" style={styles.wrap}>
-      <View style={styles.card}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.wrap, elevated ? styles.wrapElevated : null]}
+    >
+      <View style={[styles.card, elevated ? styles.cardElevated : null]}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>🚕 Taxi mode</Text>
           <Text style={styles.badge}>{features?.vehicle_class ?? "standard"}</Text>
@@ -477,10 +529,10 @@ export function DriverTaxiPanel({ isOnline }: Props) {
                         {passenger.dropoff_address}
                       </Text>
                     ))}
-                  <Text style={styles.meta} numberOfLines={1}>
+                  <Text style={styles.meta} numberOfLines={elevated ? 3 : 2}>
                     {ride?.pickup_address ?? "Pickup"}
                   </Text>
-                  <Text style={styles.meta} numberOfLines={1}>
+                  <Text style={styles.meta} numberOfLines={elevated ? 3 : 2}>
                     → {ride?.dropoff_address ?? "Dropoff"}
                   </Text>
                   {offer.expires_at ? (
@@ -571,12 +623,26 @@ const styles = StyleSheet.create({
     bottom: 190,
     zIndex: 30,
   },
+  wrapElevated: {
+    position: "relative",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 80,
+  },
   card: {
     backgroundColor: "rgba(15,23,42,0.94)",
     borderRadius: 18,
     borderWidth: 1,
     borderColor: "rgba(245,158,11,0.35)",
     padding: 14,
+  },
+  cardElevated: {
+    backgroundColor: "rgba(2,6,23,0.97)",
+    borderRadius: 24,
+    borderColor: "rgba(245,158,11,0.45)",
+    padding: 16,
+    maxHeight: undefined,
   },
   headerRow: {
     flexDirection: "row",
@@ -629,19 +695,19 @@ const styles = StyleSheet.create({
   acceptBtn: {
     flex: 1,
     backgroundColor: "#16A34A",
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: "center",
   },
-  acceptText: { color: "#052e16", fontWeight: "800" },
+  acceptText: { color: "#052e16", fontWeight: "800", fontSize: 16 },
   rejectBtn: {
     flex: 1,
     backgroundColor: "#334155",
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: "center",
   },
-  rejectText: { color: "#E2E8F0", fontWeight: "700" },
+  rejectText: { color: "#E2E8F0", fontWeight: "700", fontSize: 15 },
   empty: { color: "#64748B", marginTop: 8, fontSize: 13 },
   prefsBox: {
     marginTop: 8,

@@ -1,4 +1,4 @@
-import { AppState, Platform, type AppStateStatus } from "react-native";
+import { AppState, Platform, Vibration, type AppStateStatus } from "react-native";
 import * as Notifications from "expo-notifications";
 import { mmdAudio } from "./mmdAudio";
 import { isDriverMissionPushType } from "./driverMissionPush";
@@ -11,8 +11,8 @@ import {
 
 /**
  * Global driver mission long-ring — independent of DriverHomeScreen / isFocused.
- * Starts on push OR Realtime offer insert; stops only via stopDriverMissionAlert
- * (accept / decline / expire).
+ * Starts on push OR Realtime offer insert (delivery + taxi); stops only via
+ * stopDriverMissionAlert (accept / decline / expire).
  */
 
 let ringing = false;
@@ -21,10 +21,39 @@ let activeDriverUserId: string | null = null;
 let channel: ReturnType<typeof subscribePostgresChannel> | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let appStateSub: { remove: () => void } | null = null;
+let iosVibrateTimer: ReturnType<typeof setInterval> | null = null;
 const announcedKeys = new Set<string>();
 
 function missionKey(type: string, id: string | null): string {
   return `${type}:${id ?? "unknown"}`;
+}
+
+function startMissionVibration() {
+  try {
+    if (Platform.OS === "android") {
+      Vibration.vibrate([0, 700, 250, 700, 250, 700], true);
+      return;
+    }
+    Vibration.vibrate([0, 500, 200, 500, 200, 500]);
+    if (iosVibrateTimer) clearInterval(iosVibrateTimer);
+    iosVibrateTimer = setInterval(() => {
+      Vibration.vibrate([0, 500, 200, 500]);
+    }, 1800);
+  } catch {
+    /* vibration unavailable */
+  }
+}
+
+function stopMissionVibration() {
+  try {
+    Vibration.cancel();
+  } catch {
+    /* ignore */
+  }
+  if (iosVibrateTimer) {
+    clearInterval(iosVibrateTimer);
+    iosVibrateTimer = null;
+  }
 }
 
 async function setRinging(shouldRing: boolean, key?: string | null) {
@@ -32,15 +61,18 @@ async function setRinging(shouldRing: boolean, key?: string | null) {
     if (ringing && (!key || activeKey === key)) return;
     ringing = true;
     if (key) activeKey = key;
+    startMissionVibration();
     try {
       await mmdAudio.startLongRing("driver");
     } catch (error) {
       console.log("[driverMissionAlert] startLongRing failed", error);
       ringing = false;
       activeKey = null;
+      stopMissionVibration();
     }
     return;
   }
+  stopMissionVibration();
   if (!ringing && !activeKey) {
     try {
       await mmdAudio.stopLongRing();
@@ -95,10 +127,14 @@ export async function startDriverMissionAlert(params: {
   const key = missionKey(params.type, id);
   announcedKeys.add(key);
 
+  const isTaxi = params.type === "taxi_offer_dispatch";
+
   if (params.playLocalNotification !== false) {
     await showLocalMissionNotification({
-      title: "Nouvelle mission disponible",
-      body: "Une livraison proche est disponible.",
+      title: isTaxi ? "Nouvelle course taxi" : "Nouvelle mission disponible",
+      body: isTaxi
+        ? "Une course taxi proche est disponible."
+        : "Une livraison proche est disponible.",
       data: {
         type: params.type,
         deliveryRequestId: params.deliveryRequestId ?? null,
@@ -108,6 +144,7 @@ export async function startDriverMissionAlert(params: {
     });
   }
 
+  // Foreground: always ring + vibrate. Background: OS push channel covers sound.
   if (AppState.currentState === "active") {
     await setRinging(true, key);
   }
@@ -151,7 +188,7 @@ async function fetchPendingDeliveryOffers(driverUserId: string) {
     .limit(10);
 
   if (error) {
-    console.log("[driverMissionAlert] offers fetch failed", error.message);
+    console.log("[driverMissionAlert] delivery offers fetch failed", error.message);
     return;
   }
 
@@ -168,17 +205,48 @@ async function fetchPendingDeliveryOffers(driverUserId: string) {
       playLocalNotification: true,
     });
   }
+}
 
-  const hasPending = (data ?? []).length > 0;
-  if (!hasPending && ringing) {
-    // Do not auto-stop on empty poll — stop only via explicit accept/refuse/expire.
+async function fetchPendingTaxiOffers(driverUserId: string) {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("taxi_offers")
+    .select("id,taxi_ride_id,status,expires_at")
+    .eq("driver_id", driverUserId)
+    .eq("status", "pending")
+    .gt("expires_at", nowIso)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.log("[driverMissionAlert] taxi offers fetch failed", error.message);
+    return;
   }
+
+  for (const row of data ?? []) {
+    const rideId = String(
+      (row as { taxi_ride_id?: string }).taxi_ride_id ?? "",
+    ).trim();
+    if (!rideId) continue;
+    const key = missionKey("taxi_offer_dispatch", rideId);
+    if (announcedKeys.has(key)) continue;
+    await startDriverMissionAlert({
+      type: "taxi_offer_dispatch",
+      taxiRideId: rideId,
+      playLocalNotification: true,
+    });
+  }
+}
+
+async function fetchPendingMissionOffers(driverUserId: string) {
+  await fetchPendingDeliveryOffers(driverUserId);
+  await fetchPendingTaxiOffers(driverUserId);
 }
 
 function onAppStateChange(state: AppStateStatus) {
   if (state === "active") {
     if (activeDriverUserId) {
-      void fetchPendingDeliveryOffers(activeDriverUserId);
+      void fetchPendingMissionOffers(activeDriverUserId);
     }
     if (activeKey) {
       void setRinging(true, activeKey);
@@ -196,7 +264,7 @@ export async function startDriverMissionAlertService(
   if (!uid) return;
 
   if (activeDriverUserId === uid && channel) {
-    void fetchPendingDeliveryOffers(uid);
+    void fetchPendingMissionOffers(uid);
     return;
   }
 
@@ -213,14 +281,22 @@ export async function startDriverMissionAlertService(
         void fetchPendingDeliveryOffers(uid);
       },
     },
+    {
+      event: "*",
+      table: "taxi_offers",
+      filter: `driver_id=eq.${uid}`,
+      callback: () => {
+        void fetchPendingTaxiOffers(uid);
+      },
+    },
   ]);
 
   pollTimer = setInterval(() => {
-    void fetchPendingDeliveryOffers(uid);
-  }, 12000);
+    void fetchPendingMissionOffers(uid);
+  }, 8000);
 
   appStateSub = AppState.addEventListener("change", onAppStateChange);
-  await fetchPendingDeliveryOffers(uid);
+  await fetchPendingMissionOffers(uid);
 }
 
 export async function stopDriverMissionAlertService(opts?: {
