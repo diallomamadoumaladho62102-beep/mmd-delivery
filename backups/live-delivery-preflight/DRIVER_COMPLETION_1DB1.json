@@ -1,0 +1,274 @@
+{
+  "audited_at": "2026-07-20T06:22:38.529Z",
+  "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+  "mode": "official_driver_apis_no_db_status_patch",
+  "note_payment": "This DR was created for dispatch proof and service-marked paid (no new Live Stripe charge per user instruction).",
+  "steps": [
+    {
+      "step": "driver_auth",
+      "ok": true,
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d"
+    },
+    {
+      "step": "initial",
+      "status": "dispatched",
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "offer_statuses": [
+        "accepted"
+      ],
+      "driver_arrived_at": null,
+      "picked_up_at": null,
+      "delivered_at": null
+    },
+    {
+      "step": "accept_already_done",
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "status": "dispatched",
+      "offer": {
+        "id": "29e351df-5330-4a5b-a4ba-03c91200d171",
+        "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+        "status": "accepted",
+        "wave": 1,
+        "distance_miles": 0.65,
+        "expires_at": "2026-07-19T22:42:29.764+00:00",
+        "accepted_at": null,
+        "created_at": "2026-07-19T22:41:29.764+00:00",
+        "updated_at": "2026-07-19T22:42:17.162277+00:00",
+        "driver_price_cents": 456
+      }
+    },
+    {
+      "step": "arrive_wait_timer",
+      "status": 400,
+      "json": {
+        "ok": false,
+        "error": "column delivery_requests.driver_payout_cents does not exist"
+      }
+    },
+    {
+      "step": "wait_timer_status_t0",
+      "status": 400,
+      "json": {
+        "ok": false,
+        "error": "column delivery_requests.driver_payout_cents does not exist"
+      }
+    },
+    {
+      "step": "wait_timer_status_t3s",
+      "status": 400,
+      "json": {
+        "ok": false,
+        "error": "column delivery_requests.driver_payout_cents does not exist"
+      },
+      "free_wait_minutes_expected": 5,
+      "fee_still_zero": true
+    },
+    {
+      "step": "pickup_confirm",
+      "status": 200,
+      "json": {
+        "ok": true,
+        "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+        "linked_order_id": null,
+        "result": {
+          "ok": true,
+          "status": "picked_up",
+          "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7"
+        }
+      }
+    },
+    {
+      "step": "post_pickup",
+      "status": "picked_up",
+      "picked_up_at": "2026-07-20T06:22:37.915964+00:00"
+    },
+    {
+      "step": "delivered_confirm",
+      "status": 400,
+      "json": {
+        "error": "Invalid proof_photo_url"
+      }
+    },
+    {
+      "step": "delivered_confirm_idempotent",
+      "status": 400,
+      "json": {
+        "error": "Invalid proof_photo_url"
+      }
+    }
+  ],
+  "blockers": [
+    {
+      "stage": "arrive",
+      "class": "A",
+      "detail": "wait-timer/arrive did not set driver_arrived_at",
+      "response": {
+        "status": 400,
+        "json": {
+          "ok": false,
+          "error": "column delivery_requests.driver_payout_cents does not exist"
+        }
+      }
+    },
+    {
+      "stage": "deliver",
+      "class": "A",
+      "detail": "delivered-confirm did not reach delivered",
+      "response": {
+        "status": 400,
+        "json": {
+          "error": "Invalid proof_photo_url"
+        }
+      },
+      "status": "picked_up"
+    }
+  ],
+  "free_wait_minutes_observed": 5,
+  "final": {
+    "status": "picked_up",
+    "payment_status": "paid",
+    "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+    "driver_arrived_at": null,
+    "wait_timer_started_at": null,
+    "free_wait_minutes": 5,
+    "wait_fee_status": "none",
+    "wait_fee_amount_cents": 0,
+    "picked_up_at": "2026-07-20T06:22:37.915964+00:00",
+    "delivered_at": null,
+    "driver_delivery_payout": 4.56,
+    "platform_fee": 1.14,
+    "total_cents": 570,
+    "driver_paid_out": false,
+    "refund_status": null,
+    "stripe_pi": null
+  },
+  "offers": [
+    {
+      "id": "29e351df-5330-4a5b-a4ba-03c91200d171",
+      "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "status": "accepted",
+      "wave": 1,
+      "distance_miles": 0.65,
+      "expires_at": "2026-07-19T22:42:29.764+00:00",
+      "accepted_at": null,
+      "created_at": "2026-07-19T22:41:29.764+00:00",
+      "updated_at": "2026-07-19T22:42:17.162277+00:00",
+      "driver_price_cents": 456
+    }
+  ],
+  "linked_orders": {
+    "code": "42703",
+    "details": null,
+    "hint": null,
+    "message": "column orders.delivery_request_id does not exist"
+  },
+  "commissions": [],
+  "journals": [],
+  "delivery_paid_posted": [],
+  "loyalty": {
+    "client_accounts": [
+      {
+        "user_id": "d4f38bfe-b5ca-46ef-a4c4-301c501b3f0e",
+        "role": "client",
+        "points_balance": 2,
+        "lifetime_points": 2
+      }
+    ],
+    "driver_accounts": [
+      {
+        "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+        "role": "driver",
+        "points_balance": 1,
+        "lifetime_points": 1
+      }
+    ],
+    "client_hits_for_dr": [],
+    "driver_hits_for_dr": [],
+    "accrue": null
+  },
+  "notifications": [
+    {
+      "id": "7a7e6d8b-40f7-4aef-b8bd-9ebbc4a9c7d5",
+      "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "role": "driver",
+      "title": "Nouvelle livraison disponible",
+      "status": "sent",
+      "type": "delivery_request_dispatch",
+      "created_at": "2026-07-19T22:41:31.886448+00:00"
+    },
+    {
+      "id": "c6c3ea4f-d517-4440-b903-d8f10e5d3f1f",
+      "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "role": "driver",
+      "title": "Nouvelle livraison disponible",
+      "status": "sent",
+      "type": "delivery_request_dispatch",
+      "created_at": "2026-07-19T22:41:31.85466+00:00"
+    },
+    {
+      "id": "c335df80-ecdd-41ac-8aa5-4e3f3d3b75a1",
+      "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "role": "driver",
+      "title": "Nouvelle livraison disponible",
+      "status": "sent",
+      "type": "delivery_request_dispatch",
+      "created_at": "2026-07-19T22:41:31.793238+00:00"
+    },
+    {
+      "id": "ef63293e-8b20-4a7c-a30b-e0f690e9571e",
+      "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "role": "driver",
+      "title": "Nouvelle livraison disponible",
+      "status": "failed",
+      "type": "delivery_request_dispatch",
+      "created_at": "2026-07-19T22:41:31.760353+00:00"
+    },
+    {
+      "id": "eafadfe1-96c1-46e1-a4ca-de5768f50dae",
+      "user_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+      "role": "driver",
+      "title": "Nouvelle livraison disponible",
+      "status": "sent",
+      "type": "delivery_request_dispatch",
+      "created_at": "2026-07-19T22:41:31.704185+00:00"
+    },
+    {
+      "id": "5bc375bc-947c-44bb-9e14-cd2e5cae359c",
+      "user_id": "d4f38bfe-b5ca-46ef-a4c4-301c501b3f0e",
+      "role": "driver",
+      "title": "Delivery dispatch skipped",
+      "status": "failed",
+      "type": "delivery_request_dispatch",
+      "created_at": "2026-07-19T22:41:29.151861+00:00"
+    }
+  ],
+  "refunds": [
+    {
+      "refund_status": null,
+      "stripe_refund_id": null,
+      "driver_paid_out": false,
+      "driver_payout_id": null
+    }
+  ],
+  "checks": {
+    "offer_accepted": true,
+    "driver_assigned": true,
+    "arrived": false,
+    "free_wait_minutes_5": true,
+    "no_fee_during_free_window": true,
+    "picked_up": true,
+    "delivered_once": false,
+    "deliver_idempotent": false,
+    "loyalty_client_once": false,
+    "loyalty_driver_once": false,
+    "loyalty_client_plus1": false,
+    "loyalty_driver_plus1": false,
+    "commission_driver_456": true,
+    "commission_platform_114": true,
+    "no_auto_payout": true,
+    "no_refund": true,
+    "finance_delivery_paid_posted_once": true,
+    "had_stripe_payment": false
+  },
+  "verdict": "DELIVERY REAL DRIVER COMPLETION — BLOCKED"
+}

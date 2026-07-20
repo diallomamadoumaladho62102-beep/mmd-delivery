@@ -1,0 +1,79 @@
+{
+  "audited_at": "2026-07-20T06:37:30.000Z",
+  "delivery_request_id": "1db1f655-3a46-4de5-8a5a-683d65f6fca7",
+  "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+  "verdict": "DELIVERY REAL DRIVER COMPLETION — READY",
+  "mode": "official_driver_apis_no_db_status_patch",
+  "production_deploy": "mmd-delivery-qcdqapx79",
+  "commits_fixed_during_completion": [
+    {
+      "sha": "fae8cbc",
+      "why": "wait-timer select used missing delivery_requests.driver_payout_cents; delivered-confirm rejected null proof_photo_url"
+    },
+    {
+      "sha": "a21d8c4",
+      "why": "TypeScript cast fix so wait-timer deploy could succeed"
+    }
+  ],
+  "timeline": {
+    "offer_accepted": "status=accepted on offer 29e351df… (driver assigned, DR dispatched)",
+    "picked_up_at": "2026-07-20T06:22:37.915964+00:00",
+    "dropoff_arrived_at": "2026-07-20T06:36:38.246+00:00",
+    "wait_timer_started_at": "2026-07-20T06:36:38.246+00:00",
+    "delivered_at": "2026-07-20T06:36:39.261241+00:00"
+  },
+  "proofs": {
+    "offer": {
+      "id": "29e351df-5330-4a5b-a4ba-03c91200d171",
+      "status": "accepted",
+      "driver_price_cents": 456
+    },
+    "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+    "pickup_code_used": "IYI0VW",
+    "dropoff_code_used": "109607",
+    "wait_timer": {
+      "free_wait_minutes": 5,
+      "wait_fee_cents_at_start": 0,
+      "remaining_free_seconds_at_start": 300,
+      "client_arrived_notified_flag": "2026-07-20T06:36:38.493+00:00"
+    },
+    "loyalty": {
+      "client": {
+        "delta_points": 1,
+        "idempotency_key": "delivery:1db1f655-3a46-4de5-8a5a-683d65f6fca7:client"
+      },
+      "driver": {
+        "delta_points": 1,
+        "idempotency_key": "delivery:1db1f655-3a46-4de5-8a5a-683d65f6fca7:driver"
+      }
+    },
+    "commissions": {
+      "driver_delivery_payout": 4.56,
+      "driver_cents": 456,
+      "platform_fee": 1.14,
+      "platform_cents": 114
+    },
+    "finance": {
+      "stripe_payment_intent_id": null,
+      "delivery_paid_journals": 0,
+      "note": "This DR was service-marked paid for dispatch proof (user forbade new Stripe charge). No delivery_paid journal expected."
+    },
+    "payout": { "driver_paid_out": false, "driver_payout_id": null },
+    "refund": { "refund_status": null, "stripe_refund_id": null },
+    "idempotence": {
+      "second_delivered_confirm_http": 409,
+      "second_delivered_confirm_error": "Request status changed",
+      "final_status_still_delivered_once": true
+    }
+  },
+  "model_clarification": {
+    "pickup_arrival": "Official DR RPC confirm_delivery_request_pickup goes dispatched → picked_up with code; there is no separate pickup-arrival status. Wait timer UI/API for delivery_request activates at dropoff after picked_up (5 free minutes)."
+  },
+  "notifications": {
+    "dispatch_push_logs": 5,
+    "completion_push_in_notification_logs": 0,
+    "wait_timer_client_arrived_flag_set": true,
+    "note": "Completion/mission-finished pushes are not present as notification_logs rows for this DR; loyalty + status completion are proven."
+  },
+  "taxi": "not_started"
+}
