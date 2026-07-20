@@ -59,6 +59,39 @@ export async function refreshFinanceBalances(
   return (data ?? {}) as Record<string, unknown>;
 }
 
+/** Fail-open taxi_paid enqueue + inline batch process (Hobby has no finance cron). */
+export async function enqueueTaxiPaidFailOpen(params: {
+  supabaseAdmin: SupabaseClient;
+  taxiRideId: string;
+  amountCents: number;
+  currency?: string | null;
+  countryCode?: string | null;
+  paymentIntentId?: string | null;
+  commissionCents?: number;
+  partnerCents?: number;
+}): Promise<void> {
+  try {
+    await enqueuePaymentSucceeded({
+      supabaseAdmin: params.supabaseAdmin,
+      entityType: "taxi_ride",
+      entityId: params.taxiRideId,
+      vertical: "taxi",
+      amountCents: params.amountCents,
+      currency: params.currency ?? "USD",
+      countryCode: params.countryCode ?? null,
+      paymentIntentId: params.paymentIntentId ?? undefined,
+      commissionCents: params.commissionCents,
+      partnerCents: params.partnerCents,
+    });
+    await processFinancePendingBatch(params.supabaseAdmin, 50);
+  } catch (e) {
+    console.warn(
+      "[finance] taxi_paid enqueue fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
+}
+
 export async function enqueuePaymentSucceeded(params: {
   supabaseAdmin: SupabaseClient;
   entityType: string;

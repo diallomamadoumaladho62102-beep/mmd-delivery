@@ -142,7 +142,12 @@ export async function runTaxiRideDispatch(params: {
     };
   }
 
-  await supabase.rpc("expire_taxi_electric_search_windows").catch(() => null);
+  // supabase-js rpc() returns a Thenable/builder without .catch — await + try/catch.
+  try {
+    await supabase.rpc("expire_taxi_electric_search_windows");
+  } catch {
+    // best-effort cleanup; never block dispatch
+  }
 
   if (!ride.preferences_stage_until) {
     await initializeTaxiRidePreferenceDispatch(

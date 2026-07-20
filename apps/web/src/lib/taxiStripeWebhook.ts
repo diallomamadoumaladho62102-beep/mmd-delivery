@@ -190,7 +190,8 @@ export async function handleTaxiStripePayment(params: {
     String(row.payment_status ?? "").trim().toLowerCase() === "paid";
 
   // Idempotent replay: ride already paid. Keep the (idempotent) wallet bridge
-  // but do not re-run Stripe verification or re-flip status.
+  // but do not re-run Stripe verification or re-flip status. Still heal finance
+  // (idempotent taxi_paid) in case an earlier confirm marked paid without enqueue.
   if (paymentAlreadyRecorded) {
     if (paymentIntentId) {
       const walletBridge = await bridgeStripeWalletFromPaidTaxiRide(supabaseAdmin, {
@@ -201,6 +202,24 @@ export async function handleTaxiStripePayment(params: {
       if (walletBridge.ok === false) {
         return { ok: false, error: walletBridge.error };
       }
+    }
+    try {
+      const { enqueueTaxiPaidFailOpen } = await import(
+        "@/lib/finance/financeEvents"
+      );
+      await enqueueTaxiPaidFailOpen({
+        supabaseAdmin,
+        taxiRideId,
+        amountCents: rideAmountCents ?? Number(row.total_cents ?? 0),
+        currency: row.currency,
+        countryCode: row.country_code ?? null,
+        paymentIntentId,
+      });
+    } catch (e) {
+      console.warn(
+        "[finance] taxi already_paid taxi_paid enqueue fail-open",
+        e instanceof Error ? e.message : e
+      );
     }
     console.log("[handleTaxiStripePayment] idempotent skip", {
       taxiRideId,
@@ -310,6 +329,25 @@ export async function handleTaxiStripePayment(params: {
       expected_currency: rideCurrency,
     },
   });
+
+  try {
+    const { enqueueTaxiPaidFailOpen } = await import(
+      "@/lib/finance/financeEvents"
+    );
+    await enqueueTaxiPaidFailOpen({
+      supabaseAdmin,
+      taxiRideId,
+      amountCents: rideAmountCents,
+      currency: row.currency,
+      countryCode: row.country_code ?? null,
+      paymentIntentId,
+    });
+  } catch (e) {
+    console.warn(
+      "[finance] taxi webhook taxi_paid enqueue fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
 
   const dispatchOrigin = getDispatchSiteOrigin();
   if (dispatchOrigin) {

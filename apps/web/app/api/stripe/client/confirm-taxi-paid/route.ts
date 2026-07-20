@@ -15,9 +15,50 @@ import {
 } from "@/lib/verifyStripePaidTaxi";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
+import { enqueueTaxiPaidFailOpen } from "@/lib/finance/financeEvents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+async function healTaxiPaidSideEffects(params: {
+  supabaseAdmin: ReturnType<typeof getSupabaseAdminClient>;
+  origin: string;
+  taxiRideId: string;
+  ride: {
+    total_cents?: number | null;
+    currency?: string | null;
+    country_code?: string | null;
+    stripe_payment_intent_id?: string | null;
+    preferred_driver_id?: string | null;
+    is_scheduled?: boolean | null;
+    platform_fee_cents?: number | null;
+    driver_payout_cents?: number | null;
+  };
+  paymentIntentId?: string | null;
+}) {
+  const paymentIntentId =
+    String(params.paymentIntentId ?? "").trim() ||
+    String(params.ride.stripe_payment_intent_id ?? "").trim() ||
+    null;
+
+  await enqueueTaxiPaidFailOpen({
+    supabaseAdmin: params.supabaseAdmin,
+    taxiRideId: params.taxiRideId,
+    amountCents: Number(params.ride.total_cents ?? 0),
+    currency: params.ride.currency ?? "USD",
+    countryCode: params.ride.country_code ?? null,
+    paymentIntentId,
+    commissionCents: Math.round(Number(params.ride.platform_fee_cents ?? 0)),
+    partnerCents: Math.round(Number(params.ride.driver_payout_cents ?? 0)),
+  });
+
+  await scheduleTaxiRideDispatchIfEligible({
+    supabase: params.supabaseAdmin,
+    origin: params.origin,
+    taxiRideId: params.taxiRideId,
+    rideForWave: params.ride,
+  });
+}
 
 type Body = {
   taxiRideId?: string;
@@ -118,7 +159,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,country_code,stripe_session_id,stripe_payment_intent_id,paid_at,preferred_driver_id,is_scheduled"
+        "id,client_user_id,status,payment_status,total_cents,currency,country_code,stripe_session_id,stripe_payment_intent_id,paid_at,preferred_driver_id,is_scheduled,platform_fee_cents,driver_payout_cents,dispatch_wave,driver_id"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -163,11 +204,22 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Idempotent heal: finance taxi_paid + dispatch if still missing after a
+      // prior confirm that marked paid but failed side-effects.
+      await healTaxiPaidSideEffects({
+        supabaseAdmin,
+        origin: req.nextUrl.origin,
+        taxiRideId,
+        ride,
+        paymentIntentId: paymentIntentIdForBridge,
+      });
+
       return taxiJson({
         ok: true,
         already: true,
         taxi_ride_id: taxiRideId,
         payment_status: "paid",
+        healed: true,
       });
     }
 
@@ -270,14 +322,15 @@ export async function POST(req: NextRequest) {
           stripe_session_id: amountCheck.session_id,
         },
       });
-
-      await scheduleTaxiRideDispatchIfEligible({
-        supabase: supabaseAdmin,
-        origin: req.nextUrl.origin,
-        taxiRideId,
-        rideForWave: ride,
-      });
     }
+
+    await healTaxiPaidSideEffects({
+      supabaseAdmin,
+      origin: req.nextUrl.origin,
+      taxiRideId,
+      ride,
+      paymentIntentId: paymentIntentIdForBridge,
+    });
 
     return taxiJson({
       ok: true,
