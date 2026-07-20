@@ -1,0 +1,53 @@
+{
+  "audited_at": "2026-07-20T07:31:12.336Z",
+  "verdict": "TAXI CLIENT DRIVER IDENTIFICATION — READY",
+  "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+  "vehicle_linked": {
+    "id": "ad9472e9-5f37-4225-a849-271b998ca0a2",
+    "make": "Honda",
+    "model": "Accord Sport",
+    "year": 2020,
+    "color": "Gris",
+    "plate": "LTK 1944",
+    "type": "sedan",
+    "active": true,
+    "admin_review_status": "approved",
+    "vehicle_status": "active"
+  },
+  "api_payload_after_accept_simulation": {
+    "driver_name": "Mamadou Maladho Diallo",
+    "driver_photo": "drivers/8c300089-6f16-407a-9be9-6eb75482f73d/avatar.jpg",
+    "driver_rating": null,
+    "driver_trips_count": 20,
+    "vehicle_make": "Honda",
+    "vehicle_model": "Accord Sport",
+    "vehicle_year": 2020,
+    "vehicle_color": "Gris",
+    "vehicle_plate": "LTK 1944",
+    "vehicle_photo": null,
+    "vehicle_label": "Honda Accord Sport gris"
+  },
+  "api_payload_before_assign": {
+    "driver_name": null,
+    "vehicle_plate": null
+  },
+  "client_screen": "apps/mobile/src/screens/taxi/TaxiRideTrackingScreen.tsx",
+  "history_screen": "apps/mobile/src/screens/taxi/TaxiHistoryScreen.tsx",
+  "map_and_eta": "LiveTripMap + LiveEtaBanner",
+  "plate_visible": "fontSize 28 / fontWeight 900 — Plaque LTK 1944",
+  "snapshot_columns_ready": true,
+  "profile": {
+    "status": "approved",
+    "is_online": true,
+    "transport_mode": "car",
+    "active_vehicle_id": "ad9472e9-5f37-4225-a849-271b998ca0a2"
+  },
+  "blockers": [],
+  "notes": [
+    "Client screen: TaxiRideTrackingScreen — large plate, Honda Accord Sport gris, Call (masked), Message, Share; map+ETA already present.",
+    "Shared RN screen covers Android + iOS; no build/OTA in this step.",
+    "No taxi safety PIN today; safety recording remains. No personal phone in payload.",
+    "vehicle_photo unavailable until a vehicle photo upload column/flow exists."
+  ],
+  "taxi_payment": "not_started"
+}

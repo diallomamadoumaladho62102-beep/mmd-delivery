@@ -67,6 +67,10 @@ export default function TaxiHistoryScreen() {
               const active = !["completed", "canceled"].includes(
                 String(item.status ?? "").toLowerCase()
               );
+              const plate = String(
+                item.vehicle_plate ?? item.vehicle_plate_snapshot ?? "",
+              ).trim();
+              const label = String(item.vehicle_label ?? "").trim();
 
               return (
                 <TouchableOpacity
@@ -88,6 +92,12 @@ export default function TaxiHistoryScreen() {
                     {String(item.pickup_address ?? "")} →{" "}
                     {String(item.dropoff_address ?? "")}
                   </Text>
+                  {label || plate ? (
+                    <Text style={{ color: "#FBBF24", marginTop: 6, fontWeight: "700" }}>
+                      {label || "—"}
+                      {plate ? ` · ${plate}` : ""}
+                    </Text>
+                  ) : null}
                   <Text style={{ color: "#FDE68A", marginTop: 6, fontWeight: "700" }}>
                     {formatTaxiCents(item.total_cents, String(item.currency ?? "USD"))}
                   </Text>

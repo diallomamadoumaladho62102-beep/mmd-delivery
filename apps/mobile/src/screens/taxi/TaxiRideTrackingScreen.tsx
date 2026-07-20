@@ -9,6 +9,8 @@ import {
   ScrollView,
   AppState,
   type AppStateStatus,
+  Image,
+  Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -35,6 +37,7 @@ import { LiveTripMap } from "../../components/tracking/LiveTripMap";
 import { LiveEtaBanner } from "../../components/tracking/LiveEtaBanner";
 import { toCoordinatePoint } from "../../lib/coordinates";
 import { resolveEtaEndpoints } from "../../lib/liveTripTracking";
+import { startMaskedCall } from "../../lib/maskedCall";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiRideTracking">;
 type TrackingRoute = RouteProp<RootStackParamList, "TaxiRideTracking">;
@@ -50,6 +53,54 @@ const CANCELABLE = new Set([
 const PAYMENT_PENDING = new Set(["pending_payment", "processing"]);
 const PAID_PAYMENT = new Set(["paid", "refunded"]);
 const ACTIVE_SAFETY_STATUSES = new Set(["accepted", "driver_arrived", "in_progress"]);
+const SHOW_DRIVER_ID_STATUSES = new Set([
+  "accepted",
+  "driver_arrived",
+  "in_progress",
+  "completed",
+]);
+
+function readIdentification(ride: Record<string, unknown> | null) {
+  if (!ride?.driver_id) return null;
+  const nested =
+    ride.identification && typeof ride.identification === "object"
+      ? (ride.identification as Record<string, unknown>)
+      : null;
+  const plate = String(
+    nested?.vehicle_plate ?? ride.vehicle_plate ?? ride.vehicle_plate_snapshot ?? "",
+  ).trim();
+  const label = String(
+    nested?.vehicle_label ?? ride.vehicle_label ?? "",
+  ).trim();
+  const make = String(nested?.vehicle_make ?? ride.vehicle_make ?? "").trim();
+  const model = String(nested?.vehicle_model ?? ride.vehicle_model ?? "").trim();
+  const color = String(nested?.vehicle_color ?? ride.vehicle_color ?? "").trim();
+  const yearRaw = nested?.vehicle_year ?? ride.vehicle_year;
+  const year = Number(yearRaw);
+  const composedLabel = [make, model].filter(Boolean).join(" ");
+  return {
+    driverName: String(
+      nested?.driver_name ?? ride.driver_name ?? ride.driver_display_name ?? "",
+    ).trim(),
+    driverPhoto: String(
+      nested?.driver_photo ?? ride.driver_photo ?? ride.driver_photo_url ?? "",
+    ).trim(),
+    driverRating: Number(nested?.driver_rating ?? ride.driver_rating),
+    driverTrips: Number(nested?.driver_trips_count ?? ride.driver_trips_count),
+    vehicleLabel:
+      label ||
+      (composedLabel
+        ? color
+          ? `${composedLabel} ${color.toLowerCase()}`
+          : composedLabel
+        : ""),
+    vehiclePlate: plate,
+    vehicleYear: Number.isFinite(year) && year > 0 ? year : null,
+    vehiclePhoto: String(
+      nested?.vehicle_photo ?? ride.vehicle_photo ?? "",
+    ).trim(),
+  };
+}
 
 export default function TaxiRideTrackingScreen() {
   const navigation = useNavigation<Nav>();
@@ -63,6 +114,7 @@ export default function TaxiRideTrackingScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [calling, setCalling] = useState(false);
   const mountedRef = useRef(true);
 
   const { location: liveDriver } = useLiveDriverLocation(
@@ -271,9 +323,62 @@ export default function TaxiRideTrackingScreen() {
   const durationMinutes = Number(ride?.duration_minutes);
   const distanceMiles = Number(ride?.distance_miles);
   const hasLiveDriver = Boolean(driverCoord);
+  const identification = useMemo(() => readIdentification(ride), [ride]);
+  const showDriverCard =
+    Boolean(ride?.driver_id) && SHOW_DRIVER_ID_STATUSES.has(status);
 
   async function handleRetryPayment() {
     await load();
+  }
+
+  async function handleCallDriver() {
+    if (!ride?.driver_id || calling) return;
+    setCalling(true);
+    try {
+      await startMaskedCall({
+        orderId: rideId,
+        callerRole: "client",
+        targetRole: "driver",
+        sourceTable: "taxi_rides",
+      });
+    } catch (e: unknown) {
+      Alert.alert(
+        t("taxi.ride.callTitle", "Call driver"),
+        e instanceof Error
+          ? e.message
+          : t("taxi.ride.callFailed", "Unable to start a masked call right now."),
+      );
+    } finally {
+      setCalling(false);
+    }
+  }
+
+  async function handleShareRide() {
+    const plate = identification?.vehiclePlate || "—";
+    const label = identification?.vehicleLabel || "—";
+    const name = identification?.driverName || "—";
+    const eta =
+      liveEta.eta?.etaMinutes != null
+        ? `${Math.round(liveEta.eta.etaMinutes)} min`
+        : "—";
+    try {
+      await Share.share({
+        message: t(
+          "taxi.ride.shareMessage",
+          "MMD Taxi — {{name}} · {{vehicle}} · Plate {{plate}} · ETA {{eta}}\nPickup: {{pickup}}\nDropoff: {{dropoff}}",
+          {
+            name,
+            vehicle: label,
+            plate,
+            eta,
+            pickup: String(ride?.pickup_address ?? "—"),
+            dropoff: String(ride?.dropoff_address ?? "—"),
+          },
+        ),
+      });
+    } catch (e: unknown) {
+      console.log("[TaxiRideTracking] share failed", e);
+    }
   }
 
   async function handleCancel() {
@@ -499,6 +604,119 @@ export default function TaxiRideTrackingScreen() {
             </Text>
           ) : null}
 
+          {showDriverCard && identification ? (
+            <View
+              style={{
+                marginTop: 14,
+                padding: 14,
+                borderRadius: 14,
+                backgroundColor: "rgba(245,158,11,0.1)",
+                borderWidth: 1,
+                borderColor: "rgba(245,158,11,0.45)",
+              }}
+            >
+              <View style={{ flexDirection: rowDirection(), gap: 12, alignItems: "center" }}>
+                {identification.driverPhoto ? (
+                  <Image
+                    source={{ uri: identification.driverPhoto }}
+                    style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#1E293B" }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 28,
+                      backgroundColor: "#1E293B",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#F8FAFC", fontWeight: "800", fontSize: 18 }}>
+                      {(identification.driverName || "?").slice(0, 1).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      color: "#F8FAFC",
+                      fontWeight: "800",
+                      fontSize: 17,
+                      textAlign: textAlignStart(),
+                    }}
+                  >
+                    {identification.driverName ||
+                      t("taxi.ride.driverFallback", "Your driver")}
+                  </Text>
+                  {Number.isFinite(identification.driverRating) &&
+                  identification.driverRating > 0 ? (
+                    <Text style={{ color: "#FDE68A", marginTop: 2, textAlign: textAlignStart() }}>
+                      {t("taxi.ride.driverRating", "★ {{rating}}", {
+                        rating: identification.driverRating.toFixed(1),
+                      })}
+                      {Number.isFinite(identification.driverTrips) &&
+                      identification.driverTrips > 0
+                        ? t("taxi.ride.driverTrips", " · {{count}} trips", {
+                            count: Math.trunc(identification.driverTrips),
+                          })
+                        : ""}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+
+              <Text
+                style={{
+                  color: "#FBBF24",
+                  fontWeight: "800",
+                  fontSize: 18,
+                  marginTop: 14,
+                  textAlign: textAlignStart(),
+                }}
+              >
+                {identification.vehicleLabel ||
+                  t("taxi.ride.vehicleFallback", "Vehicle assigned")}
+              </Text>
+              {identification.vehicleYear ? (
+                <Text style={{ color: "#CBD5E1", marginTop: 2, textAlign: textAlignStart() }}>
+                  {t("taxi.ride.vehicleYear", "Year {{year}}", {
+                    year: identification.vehicleYear,
+                  })}
+                </Text>
+              ) : null}
+
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontWeight: "900",
+                  fontSize: 28,
+                  letterSpacing: 1.5,
+                  marginTop: 10,
+                  textAlign: textAlignStart(),
+                }}
+              >
+                {t("taxi.ride.plateLabel", "Plaque {{plate}}", {
+                  plate: identification.vehiclePlate || "—",
+                })}
+              </Text>
+
+              {identification.vehiclePhoto ? (
+                <Image
+                  source={{ uri: identification.vehiclePhoto }}
+                  style={{
+                    width: "100%",
+                    height: 120,
+                    borderRadius: 12,
+                    marginTop: 12,
+                    backgroundColor: "#1E293B",
+                  }}
+                  resizeMode="cover"
+                />
+              ) : null}
+            </View>
+          ) : null}
+
           {ride?.driver_id && ACTIVE_SAFETY_STATUSES.has(status) ? (
             <TaxiSafetyRecordingPanel
               rideId={rideId}
@@ -507,19 +725,42 @@ export default function TaxiRideTrackingScreen() {
             />
           ) : null}
 
-          <View style={{ flexDirection: rowDirection(), gap: 10, marginTop: 16 }}>
+          <View style={{ flexDirection: rowDirection(), gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+            {showDriverCard ? (
+              <TouchableOpacity
+                onPress={() => void handleCallDriver()}
+                disabled={calling}
+                style={[actionBtn("#059669"), { minWidth: "30%", flexGrow: 1 }]}
+              >
+                <Text style={actionText}>
+                  {calling
+                    ? t("taxi.ride.calling", "Calling…")
+                    : t("taxi.ride.call", "Call")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
               onPress={() => navigation.navigate("TaxiChat", { rideId })}
-              style={actionBtn("#2563EB")}
+              style={[actionBtn("#2563EB"), { minWidth: "30%", flexGrow: 1 }]}
             >
-              <Text style={actionText}>{t("taxi.ride.chat", "Chat")}</Text>
+              <Text style={actionText}>{t("taxi.ride.chat", "Message")}</Text>
             </TouchableOpacity>
+
+            {showDriverCard ? (
+              <TouchableOpacity
+                onPress={() => void handleShareRide()}
+                style={[actionBtn("#7C3AED"), { minWidth: "30%", flexGrow: 1 }]}
+              >
+                <Text style={actionText}>{t("taxi.ride.share", "Share")}</Text>
+              </TouchableOpacity>
+            ) : null}
 
             {canCancel ? (
               <TouchableOpacity
                 onPress={handleCancel}
                 disabled={cancelling}
-                style={actionBtn("#7F1D1D")}
+                style={[actionBtn("#7F1D1D"), { minWidth: "30%", flexGrow: 1 }]}
               >
                 <Text style={actionText}>
                   {cancelling ? "…" : t("taxi.ride.cancel", "Cancel")}

@@ -5,6 +5,7 @@ import {
   requireTaxiApiUser,
   taxiJson,
 } from "@/lib/taxiApi";
+import { enrichTaxiRideIdentification } from "@/lib/taxiRideClientIdentification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,7 +75,17 @@ export async function GET(req: NextRequest, context: RouteContext) {
       .eq("taxi_ride_id", rideId)
       .maybeSingle();
 
-    return taxiJson({ ok: true, ride, stops: stops ?? [], scheduled });
+    const enrichedRide = await enrichTaxiRideIdentification(
+      auth.supabaseAdmin,
+      ride as Record<string, unknown>,
+    );
+
+    return taxiJson({
+      ok: true,
+      ride: enrichedRide,
+      stops: stops ?? [],
+      scheduled,
+    });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
     return taxiJson({ ok: false, error: message }, 500);
