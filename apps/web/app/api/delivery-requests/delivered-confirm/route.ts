@@ -10,6 +10,7 @@ import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { chargeWaitLateFeeIfEligible } from "@/lib/waitTimerLateFeeBilling";
 import { normalizeDeliveryProofPhotoUrl } from "@/lib/deliveryProofUrl";
 import { awardDeliveryRequestLoyalty } from "@/lib/loyalty/loyaltyAccrual";
+import { notifyDeliveryRequestCompleted } from "@/lib/deliveryCompletionNotifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,31 @@ function getAdminClient() {
     (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!,
     { auth: { persistSession: false } }
   );
+}
+
+async function safeNotifyDeliveryCompleted(
+  supabaseAdmin: ReturnType<typeof getAdminClient>,
+  requestId: string,
+  row: {
+    client_user_id?: string | null;
+    created_by?: string | null;
+    driver_id?: string | null;
+  },
+) {
+  try {
+    return await notifyDeliveryRequestCompleted({
+      supabaseAdmin,
+      deliveryRequestId: requestId,
+      clientUserIds: [row.client_user_id, row.created_by],
+      driverUserId: row.driver_id,
+    });
+  } catch (err) {
+    console.error("[delivery-request delivered-confirm] completion notify failed", {
+      delivery_request_id: requestId,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
 }
 
 async function triggerDriverPayoutForOrder(req: NextRequest, orderId: string) {
@@ -80,7 +106,7 @@ export async function POST(req: NextRequest) {
     const { data: requestGate, error: requestGateErr } = await supabaseAdmin
       .from("delivery_requests")
       .select(
-        "id,currency,pickup_lat,pickup_lng,leave_at_door,completion_reason,dropoff_photo_url"
+        "id,currency,pickup_lat,pickup_lng,leave_at_door,completion_reason,dropoff_photo_url,client_user_id,created_by,driver_id,status"
       )
       .eq("id", requestId)
       .maybeSingle();
@@ -149,7 +175,30 @@ export async function POST(req: NextRequest) {
     const result = (data ?? null) as DeliveryRequestRpcResult | null;
 
     if (!result?.ok) {
-      const mapped = mapDeliveryRpcError(result?.error ?? result?.message ?? "");
+      const errCode = String(result?.error ?? result?.message ?? "");
+      // Already delivered: still run completion notifications (idempotent dedup).
+      // Does not re-run loyalty, payout, or late-fee billing.
+      if (errCode === "invalid_status") {
+        const { data: current } = await supabaseAdmin
+          .from("delivery_requests")
+          .select("id,status,client_user_id,created_by,driver_id")
+          .eq("id", requestId)
+          .maybeSingle();
+        if (String(current?.status ?? "").toLowerCase() === "delivered") {
+          const completion_notifications = await safeNotifyDeliveryCompleted(
+            supabaseAdmin,
+            requestId,
+            current ?? requestGate,
+          );
+          return json({
+            ok: true,
+            already_delivered: true,
+            delivery_request_id: requestId,
+            completion_notifications,
+          });
+        }
+      }
+      const mapped = mapDeliveryRpcError(errCode);
       return json({ error: mapped.message }, mapped.status);
     }
 
@@ -187,6 +236,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Completion pushes after confirm; fail-open (delivery already committed).
+    const completion_notifications = await safeNotifyDeliveryCompleted(
+      supabaseAdmin,
+      requestId,
+      requestGate,
+    );
+
     return json({
       ok: true,
       delivery_request_id: requestId,
@@ -194,6 +250,7 @@ export async function POST(req: NextRequest) {
       result,
       payout,
       late_fee_billing: lateFeeBilling,
+      completion_notifications,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Server error";
