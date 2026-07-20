@@ -92,23 +92,24 @@ export async function POST(req: NextRequest) {
       return json({ error: "Delivery request not found" }, 404);
     }
 
+    // Code-based handoff: proof photo is optional (same as pickup-confirm).
+    // leave_at_door still requires a validated proof URL when completing that way.
     let proofPhotoUrl: string | null = null;
-    try {
-      if (
-        requestGate.leave_at_door === true &&
-        String(requestGate.completion_reason ?? "").toLowerCase() === "left_at_door"
-      ) {
-        const fromBody = String(body.proof_photo_url ?? "").trim();
-        const fromDeposit = String(requestGate.dropoff_photo_url ?? "").trim();
-        proofPhotoUrl = normalizeDeliveryProofPhotoUrl(fromBody || fromDeposit, {
+    const leaveAtDoor =
+      requestGate.leave_at_door === true &&
+      String(requestGate.completion_reason ?? "").toLowerCase() === "left_at_door";
+    const rawProof = String(body.proof_photo_url ?? "").trim();
+    const fromDeposit = String(requestGate.dropoff_photo_url ?? "").trim();
+    const candidate = leaveAtDoor ? rawProof || fromDeposit : rawProof;
+    if (candidate) {
+      try {
+        proofPhotoUrl = normalizeDeliveryProofPhotoUrl(candidate, {
           orderId: requestId,
         });
-      } else {
-        proofPhotoUrl = normalizeDeliveryProofPhotoUrl(body.proof_photo_url, {
-          orderId: requestId,
-        });
+      } catch {
+        return json({ error: "Invalid proof_photo_url" }, 400);
       }
-    } catch {
+    } else if (leaveAtDoor) {
       return json({ error: "Invalid proof_photo_url" }, 400);
     }
 

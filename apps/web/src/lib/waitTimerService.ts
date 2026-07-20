@@ -32,7 +32,7 @@ function tableForEntity(entityType: WaitTimerEntityType) {
   }
 }
 
-const ENTITY_SELECT = `
+const ENTITY_SELECT_BASE = `
   id,
   status,
   driver_id,
@@ -60,11 +60,18 @@ const ENTITY_SELECT = `
   dropoff_lat,
   dropoff_lng,
   total_cents,
-  driver_payout_cents,
   client_user_id,
   created_by,
   user_id
 `;
+
+/** Orders/taxi use driver_payout_cents; Delivery Requests use driver_delivery_payout (dollars). */
+function selectForEntity(entityType: WaitTimerEntityType): string {
+  if (entityType === "delivery_request") {
+    return `${ENTITY_SELECT_BASE}, driver_delivery_payout`;
+  }
+  return `${ENTITY_SELECT_BASE}, driver_payout_cents`;
+}
 
 export async function logWaitTimerEvent(
   supabaseAdmin: SupabaseClient,
@@ -124,14 +131,31 @@ export async function loadWaitTimerEntity(
   const table = tableForEntity(entityType);
   const { data, error } = await supabaseAdmin
     .from(table)
-    .select(ENTITY_SELECT)
+    .select(selectForEntity(entityType))
     .eq("id", entityId)
     .maybeSingle();
 
   if (error) return { error: error.message };
   if (!data) return { error: "entity_not_found" };
 
-  const row = data as WaitTimerRow & {
+  const raw = data as WaitTimerRow & {
+    client_user_id?: string | null;
+    created_by?: string | null;
+    user_id?: string | null;
+    driver_delivery_payout?: number | null;
+    driver_payout_cents?: number | null;
+  };
+
+  // Normalize Delivery Request payout dollars → cents for shared wait-timer math.
+  const row = {
+    ...raw,
+    driver_payout_cents:
+      raw.driver_payout_cents != null
+        ? Number(raw.driver_payout_cents)
+        : raw.driver_delivery_payout != null
+          ? Math.round(Number(raw.driver_delivery_payout) * 100)
+          : null,
+  } as WaitTimerRow & {
     client_user_id?: string | null;
     created_by?: string | null;
     user_id?: string | null;
