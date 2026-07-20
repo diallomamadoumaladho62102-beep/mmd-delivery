@@ -1,0 +1,81 @@
+{
+  "audited_at": "2026-07-20T07:22:00.000Z",
+  "verdict": "TAXI DRIVER VEHICLE SETUP — READY",
+  "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+  "driver_email": "diallomamadoumaladho62102@gmail.com",
+  "method": {
+    "create": "POST /api/driver/vehicles (idempotent by plate LTK 1944)",
+    "approve": "service_role mirror of PATCH /api/admin/driver-vehicles approve_vehicle + rpc recalculate_vehicle_category_eligibility",
+    "active": "POST /api/driver/vehicles/active",
+    "taxi_enabled_blocker_fix": "migration 20260909120000_fix_taxi_driver_features_service_role.sql (applied linked prod) — admin/service_role can set taxi_enabled",
+    "taxi_features": "PATCH taxi_driver_features.taxi_enabled=true",
+    "online": "PATCH /api/driver/online after admin/test documents_required=false + payout_enabled=true (car online gate)"
+  },
+  "vehicle": {
+    "id": "ad9472e9-5f37-4225-a849-271b998ca0a2",
+    "make": "Honda",
+    "model": "Accord Sport",
+    "year": 2020,
+    "color": "Gris",
+    "plate": "LTK 1944",
+    "seats": 4,
+    "type": "sedan",
+    "admin_review_status": "approved",
+    "vehicle_status": "active",
+    "vehicle_active": true,
+    "inspection_status": "approved",
+    "insurance_status": "approved",
+    "registration_status": "approved",
+    "standard_category": "eligible"
+  },
+  "profile": {
+    "status": "approved",
+    "is_online": true,
+    "transport_mode": "car",
+    "active_vehicle_id": "ad9472e9-5f37-4225-a849-271b998ca0a2"
+  },
+  "capabilities": {
+    "Delivery_bike_path": {
+      "food_delivery_enabled": true,
+      "package_delivery_enabled": true,
+      "note": "Delivery dispatch does not require transport_mode=bike; prefs remain enabled. Bike mode remains switchable via change_driver_transport_mode when no active mission."
+    },
+    "Taxi_car_path": {
+      "taxi_rides_enabled": true,
+      "taxi_driver_features_enabled": true,
+      "transport_mode": "car",
+      "active_vehicle": "Honda Accord Sport / LTK 1944"
+    }
+  },
+  "eligibility": {
+    "is_taxi_driver_eligible": true,
+    "is_driver_taxi_category_eligible": true,
+    "driver_can_go_online": true
+  },
+  "radius": {
+    "taxi_code_max_miles": 5,
+    "user_requested_miles": 15,
+    "driver_location": { "lat": 40.68, "lng": -73.62 },
+    "distance_miles_from_baldwin_ref": 0.645,
+    "within_5_miles": true,
+    "within_15_miles": true,
+    "note": "Production taxi dispatch (runTaxiRideDispatch) uses 5-mile waves, not 15. Driver is inside both."
+  },
+  "idempotency": {
+    "plate_match_count": 1,
+    "replay_safe": true
+  },
+  "before_public_launch_required": [
+    "Upload/verify real license, insurance, and registration documents (current vehicle doc statuses are admin/test approved)",
+    "Confirm Stripe Connect / payout readiness before enabling real taxi payouts (payout_enabled was set true only to satisfy car online gate; no payout executed)",
+    "Confirm comfort/xl categories separately if needed (2020 vehicle: standard eligible; comfort blocked by age rule)"
+  ],
+  "no_taxi_ride_created": true,
+  "no_checkout_created": true,
+  "no_charge": true,
+  "commits": {
+    "migration": "20260909120000_fix_taxi_driver_features_service_role.sql",
+    "deploy": "DB migration applied via supabase db query --linked; no mobile build/OTA; web redeploy not required for this data setup"
+  },
+  "taxi_preflight": "not_started"
+}
