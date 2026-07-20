@@ -254,11 +254,49 @@ export async function setDriverActiveVehicle(vehicleId: string): Promise<string>
 }
 
 export async function setDriverOnlineViaApi(isOnline: boolean): Promise<boolean> {
+  // Prefer DB RPC so ONLINE works even when the store build still expects a
+  // client-side write (self-write guard no longer freezes is_online).
+  const { data, error } = await supabase.rpc("set_driver_online", {
+    p_online: isOnline,
+  });
+
+  if (!error && data && typeof data === "object") {
+    const row = data as {
+      ok?: boolean;
+      is_online?: boolean;
+      error?: string;
+      message?: string;
+    };
+    if (row.ok === true) {
+      return row.is_online === true;
+    }
+    if (row.ok === false) {
+      const err = new Error(
+        toUserFacingError(
+          { error: row.error, message: row.message },
+          "Impossible de changer le statut pour le moment.",
+        ),
+      );
+      (err as Error & { code?: string }).code = String(row.error ?? "");
+      throw err;
+    }
+  }
+
+  // Fallback HTTP API (older schemas without the RPC).
+  if (error) {
+    logTechnicalError("driver.online.rpc", error, { isOnline });
+  }
+
   const body = await authFetch("/api/driver/online", {
     method: "PATCH",
     body: JSON.stringify({ is_online: isOnline }),
   });
-  return body.is_online === true;
+  if (Boolean(body.is_online) === Boolean(isOnline)) {
+    return body.is_online === true;
+  }
+
+  const status = await fetchDriverOnlineStatus();
+  return status.is_online === true;
 }
 
 export async function fetchDriverOnlineStatus(): Promise<{
