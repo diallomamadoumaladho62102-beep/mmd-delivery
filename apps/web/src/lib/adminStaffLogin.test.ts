@@ -57,4 +57,23 @@ test("rejects suspended staff accounts", () => {
   }
 });
 
+test("founder demoted to restaurant still gets Super Admin staff login", () => {
+  const result = evaluateStaffLoginAccess({
+    role: "restaurant",
+    accountStatus: "active",
+    isFounder: true,
+  });
+  assert.equal(result.allowed, true);
+  if (result.allowed) assert.equal(result.role, "admin");
+});
+
+test("non-founder restaurant still denied staff login", () => {
+  const result = evaluateStaffLoginAccess({
+    role: "restaurant",
+    accountStatus: "active",
+    isFounder: false,
+  });
+  assert.equal(result.allowed, false);
+});
+
 console.log("adminStaffLogin tests passed");

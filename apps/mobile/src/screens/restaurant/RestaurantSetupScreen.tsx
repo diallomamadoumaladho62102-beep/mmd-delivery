@@ -536,17 +536,38 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
 
       if (profileError) throw new Error(profileError.message);
 
-      const { error: baseProfileError } = await supabase.from("profiles").upsert(
-        {
-          id: user.id,
-          role: "restaurant",
-          full_name: name,
-          phone: restaurantPhone,
-          avatar_url: finalLogoPath ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "id" }
-      );
+      // Never overwrite staff/founder roles — upserting role:'restaurant' was
+      // demoting the official founder (is_founder stayed true, admin locked out).
+      const { data: existingBaseProfile } = await supabase
+        .from("profiles")
+        .select("role, is_founder")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const existingRole = String(
+        (existingBaseProfile as { role?: string } | null)?.role ?? "",
+      ).toLowerCase();
+      const isFounder =
+        (existingBaseProfile as { is_founder?: boolean } | null)?.is_founder ===
+        true;
+      const isStaffOrFounder =
+        isFounder ||
+        ["admin", "ops", "finance", "support", "review"].includes(existingRole);
+
+      const profileSyncPayload: Record<string, unknown> = {
+        id: user.id,
+        full_name: name,
+        phone: restaurantPhone,
+        avatar_url: finalLogoPath ?? null,
+        updated_at: new Date().toISOString(),
+      };
+      if (!isStaffOrFounder) {
+        profileSyncPayload.role = "restaurant";
+      }
+
+      const { error: baseProfileError } = await supabase
+        .from("profiles")
+        .upsert(profileSyncPayload, { onConflict: "id" });
 
       if (baseProfileError) {
         console.log("RestaurantSetup profiles sync ignored:", baseProfileError);

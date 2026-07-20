@@ -42,11 +42,17 @@ export async function requireRestaurantWebSession(options?: {
 
   const { data: prof } = await supabase
     .from("profiles")
-    .select("role, account_status")
+    .select("role, account_status, is_founder")
     .eq("id", userId)
     .maybeSingle();
 
-  if (prof?.role !== "restaurant") {
+  const isRestaurantRole = prof?.role === "restaurant";
+  const isFounderAdmin =
+    prof?.is_founder === true || prof?.role === "admin";
+
+  // Founder keeps profiles.role='admin' but may still operate a restaurant
+  // profile without creating a duplicate auth user.
+  if (!isRestaurantRole && !isFounderAdmin) {
     redirect("/choose-role");
   }
 

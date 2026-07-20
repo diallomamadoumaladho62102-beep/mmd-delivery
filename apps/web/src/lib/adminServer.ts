@@ -26,7 +26,7 @@ import {
   canRetryPayout,
   staffHasPermission,
 } from "@/lib/adminAccess";
-import { isStaffRole } from "@/lib/adminRbac";
+import { effectiveStaffRole, isStaffRole } from "@/lib/adminRbac";
 import type { AdminPermission } from "@/lib/adminRbac";
 import { type UserRole } from "@/lib/roles";
 
@@ -34,6 +34,7 @@ export type AdminSession = {
   userId: string;
   role: UserRole;
   accountStatus: string;
+  isFounder: boolean;
 };
 
 export class AdminAccessError extends Error {
@@ -44,12 +45,6 @@ export class AdminAccessError extends Error {
     this.name = "AdminAccessError";
     this.status = status;
   }
-}
-
-function normalizeRole(value: unknown): UserRole | null {
-  return typeof value === "string" && value.trim().length > 0
-    ? (value as UserRole)
-    : null;
 }
 
 function getSupabaseUrlLocal(): string {
@@ -131,14 +126,18 @@ export async function resolveAdminSession(
 
   const { data: profile, error } = await supabaseAdmin
     .from("profiles")
-    .select("id, role, account_status")
+    .select("id, role, account_status, is_founder")
     .eq("id", user.id)
     .maybeSingle();
 
   if (error) throw new AdminAccessError(error.message, 500);
   if (!profile) throw new AdminAccessError("Profile not found", 403);
 
-  const role = normalizeRole(profile.role);
+  const isFounder = profile.is_founder === true;
+  const role = effectiveStaffRole({
+    role: profile.role,
+    isFounder,
+  });
   if (!role) throw new AdminAccessError("Forbidden", 403);
 
   const accountStatus = String(profile.account_status ?? "active");
@@ -151,7 +150,7 @@ export async function resolveAdminSession(
     throw new AdminAccessError("Account is suspended or disabled", 403);
   }
 
-  return { userId: user.id, role, accountStatus };
+  return { userId: user.id, role, accountStatus, isFounder };
 }
 
 async function assertPermission(

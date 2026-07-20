@@ -513,12 +513,18 @@ export function AppNavigator({
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, is_founder")
         .eq("id", uid)
         .maybeSingle();
 
       if (!error) {
         const dbRole = normalizeAppRole((data as any)?.role);
+        const isFounder = (data as any)?.is_founder === true;
+        // Founder/admin keeps profiles.role='admin' but may operate any public
+        // surface via selected role (single auth user, no duplicates).
+        if ((isFounder || dbRole === "admin") && selectedRole) {
+          return selectedRole;
+        }
         if (dbRole) return dbRole;
       } else {
         console.log("profiles role check error:", error);

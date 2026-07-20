@@ -8,9 +8,13 @@ import AdminMmdAiSummary from "@/components/admin/AdminMmdAiSummary";
 import AdminRefundBackfillPanel from "@/components/AdminRefundBackfillPanel";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 import { ADMIN_HUB_LINKS } from "@/lib/adminHubLinks";
-import { hasPermission, roleDisplayName } from "@/lib/adminRbac";
+import {
+  effectiveStaffRole,
+  hasPermission,
+  roleDisplayName,
+} from "@/lib/adminRbac";
 import { supabase } from "@/lib/supabaseBrowser";
-import { normalizeUserRole, type UserRole } from "@/lib/roles";
+import { type UserRole } from "@/lib/roles";
 
 type OverviewMetrics = {
   pending_orders: number;
@@ -36,14 +40,18 @@ export default function AdminControlCenter() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("role, is_founder")
         .eq("id", uid)
         .maybeSingle();
 
       if (!alive) return;
-      setRole(normalizeUserRole(profile?.role));
+      const effectiveRole = effectiveStaffRole({
+        role: profile?.role,
+        isFounder: profile?.is_founder === true,
+      });
+      setRole(effectiveRole);
 
-      if (!hasPermission(normalizeUserRole(profile?.role), "supervision.read")) {
+      if (!effectiveRole || !hasPermission(effectiveRole, "supervision.read")) {
         return;
       }
 

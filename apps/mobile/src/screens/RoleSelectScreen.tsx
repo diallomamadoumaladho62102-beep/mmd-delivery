@@ -45,7 +45,7 @@ export function RoleSelectScreen() {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, is_founder")
       .eq("id", userId)
       .maybeSingle();
 
@@ -62,8 +62,10 @@ export function RoleSelectScreen() {
     }
 
     const realRole = normalizeProfileRole((profile as any)?.role);
+    const isFounder = (profile as any)?.is_founder === true;
+    const canUseAnyPublicRole = isFounder || realRole === "admin";
 
-    if (realRole && realRole !== selectedRole) {
+    if (realRole && realRole !== selectedRole && !canUseAnyPublicRole) {
       Alert.alert(
         t("roleSelect.wrongRoleTitle", "Compte déjà connecté"),
         t(
@@ -104,7 +106,9 @@ export function RoleSelectScreen() {
       return;
     }
 
-    const roleToUse = realRole ?? selectedRole;
+    const roleToUse = canUseAnyPublicRole
+      ? selectedRole
+      : (realRole ?? selectedRole);
 
     if (roleToUse === "client") {
       navigation.navigate("ClientHome");

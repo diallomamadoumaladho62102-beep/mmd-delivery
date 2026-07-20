@@ -1,7 +1,7 @@
 import { accountStatusBlockMessage, isAccountActive } from "@/lib/accountStatus";
 import { canAccessAdminDashboard } from "@/lib/adminAccess";
-import { isStaffRole } from "@/lib/adminRbac";
-import { normalizeUserRole, type UserRole } from "@/lib/roles";
+import { effectiveStaffRole } from "@/lib/adminRbac";
+import type { UserRole } from "@/lib/roles";
 
 export const STAFF_LOGIN_DENIED_MESSAGE =
   "Ce compte n'a pas accès à l'administration MMD Delivery.";
@@ -35,14 +35,14 @@ export function mapSupabaseSignInError(message: string): string {
 export function evaluateStaffLoginAccess(params: {
   role: unknown;
   accountStatus?: unknown;
+  isFounder?: boolean | null;
 }): StaffLoginAccessResult {
-  const role = normalizeUserRole(params.role);
+  const role = effectiveStaffRole({
+    role: params.role,
+    isFounder: params.isFounder,
+  });
 
   if (!role) {
-    return { allowed: false, message: STAFF_LOGIN_DENIED_MESSAGE };
-  }
-
-  if (!isStaffRole(role)) {
     return { allowed: false, message: STAFF_LOGIN_DENIED_MESSAGE };
   }
 

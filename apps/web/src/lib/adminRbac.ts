@@ -378,6 +378,18 @@ export function isSuperAdmin(role: UserRole): boolean {
   return role === SUPER_ADMIN_ROLE;
 }
 
+/**
+ * Founder flag is the durable Super Admin signal. Even if profiles.role was
+ * incorrectly demoted (e.g. to restaurant), is_founder still grants admin.
+ */
+export function effectiveStaffRole(params: {
+  role: unknown;
+  isFounder?: boolean | null;
+}): StaffRole | null {
+  if (params.isFounder === true) return SUPER_ADMIN_ROLE;
+  return normalizeStaffRole(params.role);
+}
+
 export function canStaffAccessHub(role: UserRole): boolean {
   return isStaffRole(role) && hasPermission(role, "hub.access");
 }

@@ -46,6 +46,7 @@ export default function AdminStaffLoginPanel() {
     const access = evaluateStaffLoginAccess({
       role: body.role,
       accountStatus: body.accountStatus,
+      isFounder: body.isFounder === true,
     });
 
     if (access.allowed) {
@@ -105,6 +106,7 @@ export default function AdminStaffLoginPanel() {
     return evaluateStaffLoginAccess({
       role: body.role,
       accountStatus: body.accountStatus,
+      isFounder: body.isFounder === true,
     });
   };
 

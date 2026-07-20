@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       userId: session.userId,
       role: session.role,
       accountStatus: session.accountStatus,
+      isFounder: session.isFounder,
     });
   } catch (error) {
     const status = error instanceof AdminAccessError ? error.status : 500;

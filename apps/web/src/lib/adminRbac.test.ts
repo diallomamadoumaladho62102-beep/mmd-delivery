@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
-import { hasPermission, isSuperAdmin, STAFF_ROLES } from "./adminRbac";
+import {
+  effectiveStaffRole,
+  hasPermission,
+  isSuperAdmin,
+  STAFF_ROLES,
+} from "./adminRbac";
 
 function test(name: string, fn: () => void) {
   try {
@@ -67,6 +72,25 @@ test("review admin is limited to driver/restaurant manage", () => {
 test("staff roles are closed set", () => {
   assert.equal(STAFF_ROLES.length, 5);
   assert.equal(hasPermission("client", "hub.access"), false);
+});
+
+test("founder flag elevates demoted restaurant role to Super Admin", () => {
+  assert.equal(
+    effectiveStaffRole({ role: "restaurant", isFounder: true }),
+    "admin",
+  );
+  assert.equal(
+    effectiveStaffRole({ role: "client", isFounder: true }),
+    "admin",
+  );
+  assert.equal(
+    effectiveStaffRole({ role: "restaurant", isFounder: false }),
+    null,
+  );
+  assert.equal(
+    effectiveStaffRole({ role: "ops", isFounder: false }),
+    "ops",
+  );
 });
 
 console.log("adminRbac tests passed");

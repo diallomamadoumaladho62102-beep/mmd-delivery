@@ -1,8 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { canReadPricing } from "@/lib/adminAccess";
-import { hasPermission, type AdminPermission } from "@/lib/adminRbac";
-import { normalizeUserRole, type UserRole } from "@/lib/roles";
+import {
+  effectiveStaffRole,
+  hasPermission,
+  type AdminPermission,
+} from "@/lib/adminRbac";
+import { type UserRole } from "@/lib/roles";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 function getAdminClient() {
@@ -31,11 +35,14 @@ export async function requireStaffPageAccess(
   const admin = getAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("role")
+    .select("role, is_founder")
     .eq("id", user.id)
     .maybeSingle();
 
-  const role = normalizeUserRole(profile?.role);
+  const role = effectiveStaffRole({
+    role: profile?.role,
+    isFounder: profile?.is_founder === true,
+  });
 
   if (!role || !hasPermission(role, permission ?? "hub.access")) {
     redirect("/admin");
@@ -59,11 +66,14 @@ export async function requirePricingPageAccess(): Promise<{
   const admin = getAdminClient();
   const { data: profile } = await admin
     .from("profiles")
-    .select("role")
+    .select("role, is_founder")
     .eq("id", user.id)
     .maybeSingle();
 
-  const role = normalizeUserRole(profile?.role);
+  const role = effectiveStaffRole({
+    role: profile?.role,
+    isFounder: profile?.is_founder === true,
+  });
 
   if (!role || !canReadPricing(role)) redirect("/admin");
 
