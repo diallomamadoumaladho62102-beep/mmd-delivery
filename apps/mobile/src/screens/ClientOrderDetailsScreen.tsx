@@ -2416,26 +2416,23 @@ export function ClientOrderDetailsScreen() {
                       const finalTipDollars = tipCustom.trim() ? tipFromInput : tipDollars;
                       const tip_cents = Math.max(0, Math.round((finalTipDollars || 0) * 100));
 
-                      const { error: tipErr } = await supabase
-                        .from("orders")
-                        .update({ tip_cents })
-                        .eq("id", order.id)
-                        .eq("status", "delivered")
-                        .or(`client_id.eq.${uid},client_user_id.eq.${uid},user_id.eq.${uid}`);
-                      if (tipErr) throw tipErr;
-
-                      const { error: ratingErr } = await supabase
-                        .from("order_ratings")
-                        .upsert(
-                          {
-                            order_id: order.id,
-                            rater_id: uid,
-                            rating,
-                            comment: comment.trim() ? comment.trim().slice(0, 800) : null,
-                          },
-                          { onConflict: "order_id,rater_id" }
+                      // Official RPC: rating independent of tip; tip_cents only;
+                      // never rewrites paid grand_total / total_cents.
+                      const { data: reviewResult, error: reviewErr } = await supabase.rpc(
+                        "submit_order_review_and_tip",
+                        {
+                          p_order_id: order.id,
+                          p_rating: rating,
+                          p_comment: comment.trim() ? comment.trim().slice(0, 800) : null,
+                          p_tip_cents: tip_cents,
+                        }
+                      );
+                      if (reviewErr) throw reviewErr;
+                      if (!reviewResult || (reviewResult as { ok?: boolean }).ok !== true) {
+                        throw new Error(
+                          ts("client.orderDetails.reviewSaveError", "Unable to save your review.")
                         );
-                      if (ratingErr) throw ratingErr;
+                      }
 
                       setAlreadyRated(true);
                       await fetchOrder();
