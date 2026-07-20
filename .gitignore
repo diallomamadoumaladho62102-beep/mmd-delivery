@@ -69,9 +69,24 @@ ios/
 
 
 .tmp-pg-diag/
+.tmp/
 
 # Local web probe artifacts
 apps/web/.tmp/
+apps/web/Backups/
 apps/web/.env.twilio-audit
+apps/web/scripts/_tmp-*
+apps/web/scripts/_audit-*
+apps/web/scripts/live-*-*.mjs
+apps/web/scripts/delivery-quote-preflight.mjs
+apps/web/scripts/phase-prod-*.mjs
+apps/web/scripts/verify-*-preflight.mjs
 dependabot-alerts.json
 dependabot-crit-high.json
+
+# Local live-preflight / schema dumps (never commit)
+backups/
+docs/phase-integrate-e2e-report.txt
+scripts/phase-*.sh
+scripts/phase-*.mjs
+scripts/stripe-prod-*.cjs
