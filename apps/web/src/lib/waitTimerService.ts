@@ -138,12 +138,13 @@ export async function loadWaitTimerEntity(
   if (error) return { error: error.message };
   if (!data) return { error: "entity_not_found" };
 
-  const raw = data as WaitTimerRow & {
+  const raw = data as unknown as {
     client_user_id?: string | null;
     created_by?: string | null;
     user_id?: string | null;
     driver_delivery_payout?: number | null;
     driver_payout_cents?: number | null;
+    [key: string]: unknown;
   };
 
   // Normalize Delivery Request payout dollars → cents for shared wait-timer math.
@@ -155,7 +156,7 @@ export async function loadWaitTimerEntity(
         : raw.driver_delivery_payout != null
           ? Math.round(Number(raw.driver_delivery_payout) * 100)
           : null,
-  } as WaitTimerRow & {
+  } as unknown as WaitTimerRow & {
     client_user_id?: string | null;
     created_by?: string | null;
     user_id?: string | null;
