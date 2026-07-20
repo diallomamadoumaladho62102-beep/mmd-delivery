@@ -14,6 +14,7 @@ import {
   DRIVER_MISSION_PUSH_CHANNEL,
   resolvePushSoundForPlatform,
 } from "@/lib/mmdPushSounds";
+import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionCapacity";
 
 const DISPATCH_WAVES = DELIVERY_REQUEST_DISPATCH_WAVES;
 
@@ -112,7 +113,7 @@ export async function runDeliveryRequestDispatch(params: {
   const { data: request, error: requestError } = await supabase
     .from("delivery_requests")
     .select(
-      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,created_by,client_user_id,dispatch_wave_1_started_at",
+      "id,payment_status,status,driver_id,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,pickup_address,dropoff_address,delivery_fee,driver_delivery_payout,total,eta_minutes,created_by,client_user_id,dispatch_wave_1_started_at",
     )
     .eq("id", deliveryRequestId)
     .maybeSingle();
@@ -344,7 +345,7 @@ export async function runDeliveryRequestDispatch(params: {
     "package",
   );
 
-  const candidates = (locations ?? [])
+  const nearbyCandidates = (locations ?? [])
     .map((loc: { driver_id: string; lat: unknown; lng: unknown }) => {
       const driverId = String(loc.driver_id);
       if (!profileByUserId.has(driverId) || !serviceEnabledDriverIds.has(driverId)) {
@@ -368,8 +369,22 @@ export async function runDeliveryRequestDispatch(params: {
       (a, b) =>
         (a as { distanceMiles: number }).distanceMiles -
         (b as { distanceMiles: number }).distanceMiles,
-    )
-    .slice(0, maxDrivers) as { driverId: string; distanceMiles: number }[];
+    ) as { driverId: string; distanceMiles: number }[];
+
+  const dropoffLat = toNumber(request.dropoff_lat);
+  const dropoffLng = toNumber(request.dropoff_lng);
+  const capacityFiltered = await filterDeliveryCandidatesByCapacityAndRoute({
+    supabase,
+    candidates: nearbyCandidates,
+    newPickup: { lat: pickupLat, lng: pickupLng as number },
+    newDropoff:
+      dropoffLat != null && dropoffLng != null
+        ? { lat: dropoffLat, lng: dropoffLng }
+        : null,
+    newKind: "package",
+  });
+
+  const candidates = capacityFiltered.eligible.slice(0, maxDrivers);
 
   if (candidates.length === 0) {
     await insertDispatchLog(supabase, {

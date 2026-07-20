@@ -20,7 +20,7 @@ import { V4, V4_RADIUS, V4_SHADOW, v4Styles } from "./clientHomeTheme";
 
 export type ClientHomeItem = {
   id: string;
-  kind: "restaurant_order" | "delivery_request";
+  kind: "restaurant_order" | "delivery_request" | "taxi_ride";
   status: string;
   payment_status: string | null;
   created_at: string | null;
@@ -279,7 +279,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
     onNavigateAi();
   }, [onNavigateAi]);
 
-  const recentItems = items.slice(0, 4);
+  const recentItems = items;
   const locationLine = displayLocation || formatScopeLocation(scopeLabel) || ts("client.home.v4.yourArea", "Your area");
   const areaCardLine = formatScopeLocation(scopeLabel) || locationLine;
   const showRecentUnavailable = recentActivityUnavailable && !loading && recentItems.length === 0;
@@ -650,8 +650,10 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
           {loading ? (
             <ActivityIndicator color={V4.green} size="small" />
           ) : (
-            <Pressable onPress={onNavigateOrders}>
-              <Text style={styles.viewAll}>{ts("client.home.v4.viewAll", "See all ›")}</Text>
+            <Pressable onPress={onNavigateOrders} testID="client-home-view-order-history">
+              <Text style={styles.viewAll}>
+                {ts("client.home.v4.viewOrderHistory", "View order history ›")}
+              </Text>
             </Pressable>
           )}
         </View>
@@ -850,7 +852,13 @@ function RecentRow({
   return (
     <PressCard style={styles.recentRow} onPress={onPress}>
       <View style={styles.recentIcon}>
-        <Text style={styles.recentIconText}>{item.kind === "restaurant_order" ? "FD" : "DL"}</Text>
+        <Text style={styles.recentIconText}>
+          {item.kind === "restaurant_order"
+            ? "FD"
+            : item.kind === "taxi_ride"
+              ? "TX"
+              : "DL"}
+        </Text>
       </View>
       <View style={styles.recentBody}>
         <Text style={styles.recentTitle} numberOfLines={1}>

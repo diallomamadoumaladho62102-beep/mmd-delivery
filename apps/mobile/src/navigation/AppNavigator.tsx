@@ -129,6 +129,7 @@ export type RootStackParamList = {
   ClientRestaurantMenu: { restaurantId: string; restaurantName: string };
   ClientOrderDetails: { orderId: string };
   ClientDeliveryRequestDetails: { requestId: string };
+  ClientOrderHistory: undefined;
   ClientInbox: undefined;
   ClientChat: {
     orderId: string;
@@ -608,6 +609,7 @@ export function AppNavigator({
       r === "ClientRestaurantList" ||
       r === "ClientRestaurantMenu" ||
       r === "ClientOrderDetails" ||
+      r === "ClientOrderHistory" ||
       r === "ClientDeliveryRequestDetails" ||
       r === "ClientInbox" ||
       r === "ClientChat" ||
@@ -1250,6 +1252,12 @@ export function AppNavigator({
           getComponent={() =>
             require("../screens/ClientOrderDetailsScreen")
               .ClientOrderDetailsScreen
+          }
+        />
+        <Stack.Screen
+          name="ClientOrderHistory"
+          getComponent={() =>
+            require("../screens/ClientOrderHistoryScreen").default
           }
         />
         <Stack.Screen

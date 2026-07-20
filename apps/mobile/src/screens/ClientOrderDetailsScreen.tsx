@@ -2265,7 +2265,7 @@ export function ClientOrderDetailsScreen() {
 
                 {alreadyRated ? (
                   <Text style={{ color: "#22C55E", marginTop: 10, fontWeight: "900" }}>
-                    ✅ {ts("client.orderDetails.alreadyRated", "Thanks! You already rated this delivery.")}
+                    ✅ {ts("client.orderDetails.alreadyRated", "Review submitted")}
                   </Text>
                 ) : (
                   <Text style={{ color: "#94A3B8", marginTop: 10, fontSize: 12, lineHeight: 16 }}>
@@ -2273,9 +2273,16 @@ export function ClientOrderDetailsScreen() {
                   </Text>
                 )}
 
+                {Number(order.tip_cents ?? 0) > 0 ? (
+                  <Text style={{ color: "#22C55E", marginTop: 8, fontWeight: "700" }}>
+                    {ts("client.orderDetails.tipAlreadyGiven", "Tip already given")}: $
+                    {(Number(order.tip_cents) / 100).toFixed(2)}
+                  </Text>
+                ) : null}
+
                 <Stars disabled={alreadyRated} />
 
-                {!alreadyRated && (
+                {!alreadyRated && Number(order.tip_cents ?? 0) === 0 && (
                   <View
                     style={{
                       marginTop: 12,

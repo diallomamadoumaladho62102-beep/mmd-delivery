@@ -11,6 +11,7 @@ import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
 import { resolvePushSoundForPlatform, DRIVER_MISSION_PUSH_CHANNEL } from "@/lib/mmdPushSounds";
 import { filterDriverIdsByServicePreference } from "@/lib/driverServiceDispatchFilter";
+import { filterDeliveryCandidatesByCapacityAndRoute } from "@/lib/driverMissionCapacity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -438,9 +439,26 @@ export async function POST(req: NextRequest) {
       .filter(Boolean)
       .sort((a: any, b: any) => a.priorityScore - b.priorityScore);
 
-    const candidates = allCandidates
-      .filter((c: any) => !c.skippedByCooldown)
-      .slice(0, maxDrivers);
+    const cooldownFiltered = allCandidates
+      .filter((c: any) => !c.skippedByCooldown);
+
+    const dropoffLat = toNumber(order.dropoff_lat);
+    const dropoffLng = toNumber(order.dropoff_lng);
+    const capacityFiltered = await filterDeliveryCandidatesByCapacityAndRoute({
+      supabase,
+      candidates: cooldownFiltered as Array<{
+        driverId: string;
+        distanceMiles: number;
+      }>,
+      newPickup: { lat: pickupLat, lng: pickupLng as number },
+      newDropoff:
+        dropoffLat != null && dropoffLng != null
+          ? { lat: dropoffLat, lng: dropoffLng }
+          : null,
+      newKind: orderKind === "food" ? "food" : "package",
+    });
+
+    const candidates = capacityFiltered.eligible.slice(0, maxDrivers);
 
     if (candidates.length === 0) {
       await recordDispatchAttempt({

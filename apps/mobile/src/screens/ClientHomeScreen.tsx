@@ -26,19 +26,20 @@ import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { ClientHomeV4View } from "../components/client/home/ClientHomeV4View";
 import { v4Styles } from "../components/client/home/clientHomeTheme";
 import { registerUserPushToken } from "../lib/notifications";
+import {
+  computeClientOrderStats,
+  isClientActiveStatus,
+  isClientCancelledStatus,
+  isClientCompletedStatus,
+  isVisibleClientTrip,
+  selectClientHomeDisplayItems,
+} from "../lib/clientOrderDisplay";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientHome">;
 
-type OrderStatus =
-  | "pending"
-  | "accepted"
-  | "prepared"
-  | "ready"
-  | "dispatched"
-  | "delivered"
-  | "canceled";
+type OrderStatus = string;
 
-type ItemKind = "restaurant_order" | "delivery_request";
+type ItemKind = "restaurant_order" | "delivery_request" | "taxi_ride";
 
 type ClientItem = {
   id: string;
@@ -55,6 +56,9 @@ type ClientItem = {
   delivery_fee: number | null;
   stripe_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  is_test?: boolean | null;
+  hidden_from_user?: boolean | null;
+  archived_at?: string | null;
 };
 
 type OrderRowDb = {
@@ -74,6 +78,9 @@ type OrderRowDb = {
   stripe_payment_intent_id?: unknown;
   client_user_id?: unknown;
   created_by?: unknown;
+  is_test?: unknown;
+  hidden_from_user?: unknown;
+  archived_at?: unknown;
 };
 
 type DeliveryRequestRowDb = {
@@ -92,6 +99,24 @@ type DeliveryRequestRowDb = {
   stripe_payment_intent_id?: unknown;
   client_user_id?: unknown;
   created_by?: unknown;
+  is_test?: unknown;
+  hidden_from_user?: unknown;
+  archived_at?: unknown;
+};
+
+type TaxiRideRowDb = {
+  id?: unknown;
+  status?: unknown;
+  payment_status?: unknown;
+  created_at?: unknown;
+  updated_at?: unknown;
+  pickup_address?: unknown;
+  dropoff_address?: unknown;
+  distance_miles?: unknown;
+  total_cents?: unknown;
+  is_test?: unknown;
+  hidden_from_user?: unknown;
+  archived_at?: unknown;
 };
 
 type ErrorState =
@@ -102,25 +127,19 @@ type ErrorState =
       params?: Record<string, unknown>;
     };
 
-const FETCH_LIMIT = 10;
+const FETCH_LIMIT = 50;
 const DEFAULT_CLIENT_NAME = "Client";
 
 function isInProgress(status: OrderStatus) {
-  return (
-    status === "pending" ||
-    status === "accepted" ||
-    status === "prepared" ||
-    status === "ready" ||
-    status === "dispatched"
-  );
+  return isClientActiveStatus(status);
 }
 
 function isDelivered(status: OrderStatus) {
-  return status === "delivered";
+  return isClientCompletedStatus(status);
 }
 
 function isCanceled(status: OrderStatus) {
-  return status === "canceled";
+  return isClientCancelledStatus(status);
 }
 
 function orderStatusLabelForCard(
@@ -216,6 +235,7 @@ function formatCompactDateTime(iso: string | null) {
 }
 
 function recentOrderTitle(item: ClientItem) {
+  if (item.kind === "taxi_ride") return "Taxi ride";
   if (item.kind === "delivery_request") return "Send Package";
   const pickup = item.pickup_address?.split(",")[0]?.trim();
   return pickup || "Restaurant Order";
@@ -235,15 +255,7 @@ function premiumStatusText(
 }
 
 function isValidOrderStatus(value: unknown): value is OrderStatus {
-  return (
-    value === "pending" ||
-    value === "accepted" ||
-    value === "prepared" ||
-    value === "ready" ||
-    value === "dispatched" ||
-    value === "delivered" ||
-    value === "canceled"
-  );
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function toSafeString(value: unknown): string | null {
@@ -293,6 +305,9 @@ function normalizeOrderRows(rows: OrderRowDb[] | null | undefined): ClientItem[]
       delivery_fee: toSafeNumber(row.delivery_fee),
       stripe_session_id: toSafeString(row.stripe_session_id),
       stripe_payment_intent_id: toSafeString(row.stripe_payment_intent_id),
+      is_test: row.is_test === true,
+      hidden_from_user: row.hidden_from_user === true,
+      archived_at: toSafeString(row.archived_at),
     });
   }
 
@@ -326,9 +341,45 @@ function normalizeDeliveryRequestRows(
       delivery_fee: toSafeNumber(row.delivery_fee),
       stripe_session_id: toSafeString(row.stripe_session_id),
       stripe_payment_intent_id: toSafeString(row.stripe_payment_intent_id),
+      is_test: row.is_test === true,
+      hidden_from_user: row.hidden_from_user === true,
+      archived_at: toSafeString(row.archived_at),
     });
   }
 
+  return result;
+}
+
+function normalizeTaxiRideRows(
+  rows: TaxiRideRowDb[] | null | undefined
+): ClientItem[] {
+  if (!Array.isArray(rows)) return [];
+  const result: ClientItem[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    if (typeof row.id !== "string" || !row.id.trim()) continue;
+    if (!isValidOrderStatus(row.status)) continue;
+    const cents = toSafeNumber(row.total_cents);
+    result.push({
+      id: row.id,
+      kind: "taxi_ride",
+      status: String(row.status),
+      payment_status: toSafeString(row.payment_status),
+      created_at: toSafeString(row.created_at),
+      updated_at: toSafeString(row.updated_at),
+      paid_at: null,
+      pickup_address: toSafeString(row.pickup_address),
+      dropoff_address: toSafeString(row.dropoff_address),
+      distance_miles: toSafeNumber(row.distance_miles),
+      total: cents != null ? cents / 100 : null,
+      delivery_fee: null,
+      stripe_session_id: null,
+      stripe_payment_intent_id: null,
+      is_test: row.is_test === true,
+      hidden_from_user: row.hidden_from_user === true,
+      archived_at: toSafeString(row.archived_at),
+    });
+  }
   return result;
 }
 
@@ -490,11 +541,7 @@ export function ClientHomeScreen() {
   );
 
   const fetchAllForUser = useCallback(async (userId: string) => {
-    const [ordersRes, requestsClientRes, requestsCreatedRes] = await Promise.all([
-      supabase
-        .from("orders")
-        .select(
-          `
+    const orderSelect = `
             id,
             kind,
             status,
@@ -509,9 +556,37 @@ export function ClientHomeScreen() {
             delivery_fee,
             stripe_session_id,
             stripe_payment_intent_id,
-            client_user_id
-          `
-        )
+            client_user_id,
+            is_test,
+            hidden_from_user,
+            archived_at
+          `;
+    const drSelect = `
+            id,
+            status,
+            payment_status,
+            created_at,
+            updated_at,
+            paid_at,
+            pickup_address,
+            dropoff_address,
+            distance_miles,
+            total,
+            delivery_fee,
+            stripe_session_id,
+            stripe_payment_intent_id,
+            client_user_id,
+            created_by,
+            is_test,
+            hidden_from_user,
+            archived_at
+          `;
+
+    const [ordersRes, requestsClientRes, requestsCreatedRes, taxiRes] =
+      await Promise.all([
+      supabase
+        .from("orders")
+        .select(orderSelect)
         .or(
           `client_user_id.eq.${userId},client_id.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`
         )
@@ -520,31 +595,20 @@ export function ClientHomeScreen() {
 
       supabase
         .from("delivery_requests")
-        .select(
-          `
-            id,
-            status,
-            payment_status,
-            created_at,
-            updated_at,
-            paid_at,
-            pickup_address,
-            dropoff_address,
-            distance_miles,
-            total,
-            delivery_fee,
-            stripe_session_id,
-            stripe_payment_intent_id,
-            client_user_id,
-            created_by
-          `
-        )
+        .select(drSelect)
         .eq("client_user_id", userId)
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
 
       supabase
         .from("delivery_requests")
+        .select(drSelect)
+        .eq("created_by", userId)
+        .order("created_at", { ascending: false })
+        .limit(FETCH_LIMIT),
+
+      supabase
+        .from("taxi_rides")
         .select(
           `
             id,
@@ -552,62 +616,119 @@ export function ClientHomeScreen() {
             payment_status,
             created_at,
             updated_at,
-            paid_at,
             pickup_address,
             dropoff_address,
             distance_miles,
-            total,
-            delivery_fee,
-            stripe_session_id,
-            stripe_payment_intent_id,
-            client_user_id,
-            created_by
-          `
+            total_cents,
+            is_test,
+            hidden_from_user,
+            archived_at
+          `,
         )
-        .eq("created_by", userId)
+        .eq("client_user_id", userId)
         .order("created_at", { ascending: false })
         .limit(FETCH_LIMIT),
     ]);
 
-    if (ordersRes.error) {
-      console.log("❌ orders error:", ordersRes.error);
+    // If archive columns are not migrated yet, retry without them.
+    const archiveMissing =
+      /archived_at|is_test|hidden_from_user/i.test(
+        String(ordersRes.error?.message ?? ""),
+      ) ||
+      /archived_at|is_test|hidden_from_user/i.test(
+        String(requestsClientRes.error?.message ?? ""),
+      ) ||
+      /archived_at|is_test|hidden_from_user/i.test(
+        String(taxiRes.error?.message ?? ""),
+      );
+
+    let ordersData = ordersRes.data;
+    let ordersError = ordersRes.error;
+    let drClientData = requestsClientRes.data;
+    let drCreatedData = requestsCreatedRes.data;
+    let drError =
+      requestsClientRes.error || requestsCreatedRes.error;
+    let taxiData = taxiRes.data;
+    let taxiError = taxiRes.error;
+
+    if (archiveMissing) {
+      const retry = await Promise.all([
+        supabase
+          .from("orders")
+          .select(
+            `id,kind,status,payment_status,created_at,updated_at,paid_at,pickup_address,dropoff_address,distance_miles,total,delivery_fee,stripe_session_id,stripe_payment_intent_id,client_user_id`,
+          )
+          .or(
+            `client_user_id.eq.${userId},client_id.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`,
+          )
+          .order("created_at", { ascending: false })
+          .limit(FETCH_LIMIT),
+        supabase
+          .from("delivery_requests")
+          .select(
+            `id,status,payment_status,created_at,updated_at,paid_at,pickup_address,dropoff_address,distance_miles,total,delivery_fee,stripe_session_id,stripe_payment_intent_id,client_user_id,created_by`,
+          )
+          .eq("client_user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(FETCH_LIMIT),
+        supabase
+          .from("delivery_requests")
+          .select(
+            `id,status,payment_status,created_at,updated_at,paid_at,pickup_address,dropoff_address,distance_miles,total,delivery_fee,stripe_session_id,stripe_payment_intent_id,client_user_id,created_by`,
+          )
+          .eq("created_by", userId)
+          .order("created_at", { ascending: false })
+          .limit(FETCH_LIMIT),
+        supabase
+          .from("taxi_rides")
+          .select(
+            `id,status,payment_status,created_at,updated_at,pickup_address,dropoff_address,distance_miles,total_cents`,
+          )
+          .eq("client_user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(FETCH_LIMIT),
+      ]);
+      ordersData = retry[0].data;
+      ordersError = retry[0].error;
+      drClientData = retry[1].data;
+      drCreatedData = retry[2].data;
+      drError = retry[1].error || retry[2].error;
+      taxiData = retry[3].data;
+      taxiError = retry[3].error;
     }
 
-    if (requestsClientRes.error) {
-      console.log(
-        "❌ delivery_requests client_user_id error:",
-        requestsClientRes.error
-      );
+    if (ordersError) {
+      console.log("❌ orders error:", ordersError);
     }
 
-    if (requestsCreatedRes.error) {
-      console.log(
-        "❌ delivery_requests created_by error:",
-        requestsCreatedRes.error
-      );
+    if (drError) {
+      console.log("❌ delivery_requests error:", drError);
+    }
+
+    if (taxiError) {
+      console.log("❌ taxi_rides error:", taxiError);
     }
 
     const normalizedOrders = normalizeOrderRows(
-      ordersRes.error
-        ? []
-        : ((ordersRes.data as OrderRowDb[] | null) ?? [])
+      ordersError ? [] : ((ordersData as OrderRowDb[] | null) ?? [])
     );
 
     const normalizedRequests = normalizeDeliveryRequestRows([
-      ...((requestsClientRes.data as DeliveryRequestRowDb[] | null) ?? []),
-      ...((requestsCreatedRes.data as DeliveryRequestRowDb[] | null) ?? []),
+      ...((drClientData as DeliveryRequestRowDb[] | null) ?? []),
+      ...((drCreatedData as DeliveryRequestRowDb[] | null) ?? []),
     ]);
+
+    const normalizedTaxi = normalizeTaxiRideRows(
+      taxiError ? [] : ((taxiData as TaxiRideRowDb[] | null) ?? []),
+    );
 
     const merged = dedupeClientItems([
       ...normalizedOrders,
       ...normalizedRequests,
-    ]);
+      ...normalizedTaxi,
+    ]).filter(isVisibleClientTrip);
 
-    const hadFetchIssue = !!(
-      ordersRes.error ||
-      requestsClientRes.error ||
-      requestsCreatedRes.error
-    );
+    const hadFetchIssue = !!(ordersError || drError || taxiError);
 
     return { items: sortClientItems(merged), hadFetchIssue };
   }, []);
@@ -751,10 +872,11 @@ export function ClientHomeScreen() {
   );
 
   const stats = useMemo(() => {
-    const totalOrders = items.length;
-    const inProgress = items.filter((o) => isInProgress(o.status)).length;
-    const delivered = items.filter((o) => isDelivered(o.status)).length;
-    const canceled = items.filter((o) => isCanceled(o.status)).length;
+    const orderStats = computeClientOrderStats(items);
+    const totalOrders = orderStats.totalOrders;
+    const inProgress = orderStats.active;
+    const delivered = orderStats.completed;
+    const canceled = orderStats.cancelled;
     const now = Date.now();
 
     const last24h = items.filter((o) => {
@@ -797,6 +919,10 @@ export function ClientHomeScreen() {
       last7dDelivered,
       missionTarget,
     };
+  }, [items]);
+
+  const homeDisplayItems = useMemo(() => {
+    return selectClientHomeDisplayItems(items).displayItems;
   }, [items]);
 
   const initials = useMemo(() => {
@@ -882,14 +1008,6 @@ export function ClientHomeScreen() {
 
   const progressBarWidth = progressWidth(stats.points, stats.nextLevelTarget);
 
-  const activeOrder = useMemo(
-    () => items.find((o) => isInProgress(o.status)),
-    [items]
-  );
-  const lastDeliveredOrder = useMemo(
-    () => items.find((o) => isDelivered(o.status)),
-    [items]
-  );
   const greeting = getGreeting(ts);
   const firstName = getFirstName(displayName || DEFAULT_CLIENT_NAME);
 
@@ -901,20 +1019,8 @@ export function ClientHomeScreen() {
   }, [items]);
 
   const handleOpenFeaturedOrder = useCallback(() => {
-    const target = activeOrder ?? lastDeliveredOrder ?? items[0];
-    if (!target?.id) return;
-
-    if (target.kind === "restaurant_order") {
-      navigation.navigate("ClientOrderDetails", {
-        orderId: target.id,
-      });
-      return;
-    }
-
-    (navigation as any).navigate("ClientDeliveryRequestDetails", {
-      requestId: target.id,
-    });
-  }, [activeOrder, items, lastDeliveredOrder, navigation]);
+    navigation.navigate("ClientOrderHistory" as never);
+  }, [navigation]);
 
   const handleOpenRestaurantOrder = useCallback(
     (orderId: string) => {
@@ -962,6 +1068,10 @@ export function ClientHomeScreen() {
         handleOpenRestaurantOrder(item.id);
         return;
       }
+      if (item.kind === "taxi_ride") {
+        navigation.navigate("TaxiRideTracking", { rideId: item.id } as never);
+        return;
+      }
       (navigation as any).navigate("ClientDeliveryRequestDetails", {
         requestId: item.id,
       });
@@ -977,7 +1087,7 @@ export function ClientHomeScreen() {
         ts={ts}
         loading={loading}
         refreshing={refreshing}
-        items={items}
+        items={homeDisplayItems}
         error={error}
         recentActivityUnavailable={recentActivityUnavailable}
         avatarUrl={avatarUrl}

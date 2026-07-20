@@ -9,6 +9,7 @@ import {
   sendExpoPushWithAudit,
   type ExpoTicketRow,
 } from "@/lib/expoPushAudit";
+import { filterTaxiCandidatesByCapacity } from "@/lib/driverMissionCapacity";
 
 const MAX_DISPATCH_MILES = 15;
 
@@ -322,6 +323,21 @@ export async function runTaxiRideDispatch(params: {
         notified: 0,
         candidates: 0,
         message: "Preferred driver not eligible for favorite dispatch",
+      };
+    }
+
+    const { data: capacityOk } = await supabase.rpc(
+      "taxi_driver_can_receive_offer",
+      { p_user_id: preferredDriverId },
+    );
+    if (capacityOk !== true) {
+      return {
+        ok: true,
+        taxiRideId,
+        wave,
+        notified: 0,
+        candidates: 0,
+        message: "Preferred driver at taxi capacity",
       };
     }
 
@@ -698,7 +714,11 @@ export async function runTaxiRideDispatch(params: {
     rankedCandidates.sort((a, b) => a.distanceMiles - b.distanceMiles);
   }
 
-  const candidates = rankedCandidates.slice(0, maxDrivers);
+  const capacityFiltered = await filterTaxiCandidatesByCapacity({
+    supabase,
+    candidates: rankedCandidates,
+  });
+  const candidates = capacityFiltered.eligible.slice(0, maxDrivers);
 
   if (candidates.length === 0) {
     return {
