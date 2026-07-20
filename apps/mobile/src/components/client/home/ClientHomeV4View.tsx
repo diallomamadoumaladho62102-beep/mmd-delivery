@@ -57,6 +57,9 @@ export type ClientHomeV4ViewProps = {
     nextLevelTarget: number;
     inProgress: number;
     delivered: number;
+    conversionLabel?: string;
+    pointsToNext?: number;
+    creditLabel?: string;
   };
   progressBarWidth: `${number}%`;
   menuOpen: boolean;
@@ -76,6 +79,7 @@ export type ClientHomeV4ViewProps = {
   onNavigateProfile: () => void;
   onNavigateOrders: () => void;
   onNavigateRewards: () => void;
+  onNavigateMmdPlus: () => void;
   onNavigateAi: () => void;
   onOpenOrder: (item: ClientHomeItem) => void;
   onOpenChat: (orderId: string) => void;
@@ -211,6 +215,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
     onNavigateProfile,
     onNavigateOrders,
     onNavigateRewards,
+    onNavigateMmdPlus,
     onNavigateAi,
     onOpenOrder,
     onOpenChat,
@@ -613,11 +618,24 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
           <View style={styles.rewardsLeft}>
             <Text style={styles.rewardsEyebrow}>{ts("client.home.rewards.title", "MMD Rewards")}</Text>
             <Text style={styles.rewardsLevel}>
-              {stats.level} {ts("client.home.v4.rewards.member", "Member")}
+              {stats.points} {ts("client.home.v4.rewards.pts", "pts")}
             </Text>
             <Text style={styles.rewardsProgress}>
-              {stats.points} / {stats.nextLevelTarget}{" "}
-              {ts("client.home.v4.rewards.untilNext", "pts until next tier")}
+              {stats.level} {ts("client.home.v4.rewards.member", "Member")}
+              {" · "}
+              {stats.conversionLabel ?? "—"}
+            </Text>
+            {stats.creditLabel ? (
+              <Text style={styles.rewardsProgress}>
+                {ts("client.home.v4.rewards.credit", "Credit")}: {stats.creditLabel}
+              </Text>
+            ) : null}
+            <Text style={styles.rewardsProgress}>
+              {(stats.pointsToNext ?? 0) > 0
+                ? ts("client.home.v4.rewards.untilNext", "{{count}} pts until next tier", {
+                    count: stats.pointsToNext,
+                  })
+                : ts("client.home.v4.rewards.topTier", "Top tier")}
             </Text>
             <View style={styles.progressTrack}>
               <View style={[styles.progressFill, { width: progressBarWidth }]} />
@@ -625,8 +643,28 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
             <Text style={styles.rewardsLink}>{ts("client.home.v4.rewards.view", "View rewards →")}</Text>
           </View>
           <View style={styles.rewardsBadge}>
-            <Text style={styles.rewardsBadgeText}>{stats.level.slice(0, 1)}</Text>
+            <Text style={styles.rewardsBadgeText}>{String(stats.level).slice(0, 1)}</Text>
           </View>
+        </PressCard>
+
+        <PressCard
+          style={styles.mmdPlusCard}
+          onPress={onNavigateMmdPlus}
+          testID="client-home-mmd-plus-card"
+        >
+          <Text style={styles.mmdPlusEyebrow}>MMD+</Text>
+          <Text style={styles.mmdPlusTitle}>
+            {ts("client.home.v4.mmdPlus.title", "Subscription")}
+          </Text>
+          <Text style={styles.mmdPlusSub}>
+            {ts(
+              "client.home.v4.mmdPlus.sub",
+              "Status, benefits, pricing — Join or Manage",
+            )}
+          </Text>
+          <Text style={styles.rewardsLink}>
+            {ts("client.home.v4.mmdPlus.cta", "Open MMD+ →")}
+          </Text>
         </PressCard>
 
         <PressCard style={styles.promoCard} onPress={onNavigateFood} testID="client-home-promo-card">
@@ -1432,6 +1470,18 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     ...V4_SHADOW,
   },
+  mmdPlusCard: {
+    backgroundColor: V4.card,
+    borderRadius: V4_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.45)",
+    padding: 16,
+    marginBottom: 14,
+    ...V4_SHADOW,
+  },
+  mmdPlusEyebrow: { color: "#F59E0B", fontWeight: "800", fontSize: 11 },
+  mmdPlusTitle: { color: V4.textPrimary, fontWeight: "900", fontSize: 20, marginTop: 4 },
+  mmdPlusSub: { color: V4.textSecondary, fontSize: 12, marginTop: 6, fontWeight: "600" },
   rewardsLeft: { flex: 1, paddingRight: 12 },
   rewardsEyebrow: { color: V4.textSecondary, fontWeight: "800", fontSize: 11 },
   rewardsLevel: { color: V4.textPrimary, fontWeight: "900", fontSize: 22, marginTop: 4 },

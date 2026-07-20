@@ -70,6 +70,9 @@ export type LoyaltySummary = {
   lifetime_points: number;
   tier_code: string;
   tier_label: string;
+  next_tier?: { code: string; label: string; min_lifetime_points: number } | null;
+  points_to_next_tier?: number;
+  tier_progress_pct?: number;
   credit_cents: number;
   available_credit_cents: number;
   next_credit_expiry: string | null;

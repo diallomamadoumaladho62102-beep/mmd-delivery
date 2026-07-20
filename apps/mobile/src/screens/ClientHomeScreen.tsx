@@ -34,6 +34,7 @@ import {
   isVisibleClientTrip,
   selectClientHomeDisplayItems,
 } from "../lib/clientOrderDisplay";
+import { fetchLoyaltySummary, type LoyaltySummary } from "../lib/loyaltyApi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientHome">;
 
@@ -465,6 +466,9 @@ export function ClientHomeScreen() {
   const [displayName, setDisplayName] = useState<string>("");
   const [clientUserId, setClientUserId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loyaltySummary, setLoyaltySummary] = useState<LoyaltySummary | null>(
+    null,
+  );
   const { features: platformFeatures, refresh: refreshPlatformFeatures, refreshWithCurrentLocation } =
     useClientPlatformFeatures();
 
@@ -789,13 +793,18 @@ export function ClientHomeScreen() {
           (typeof meta.photo_url === "string" && meta.photo_url) ||
           null;
 
-        const { items: mergedItems, hadFetchIssue } = await fetchAllForUser(user.id);
+        const [{ items: mergedItems, hadFetchIssue }, loyalty] =
+          await Promise.all([
+            fetchAllForUser(user.id),
+            fetchLoyaltySummary("client").catch(() => null),
+          ]);
 
         if (!isMountedRef.current) return;
 
         setDisplayName(String(fullName));
         setAvatarUrl(isValidImageUri(nextAvatar) ? nextAvatar : null);
         setItems(mergedItems);
+        setLoyaltySummary(loyalty);
         setRecentActivityUnavailable(hadFetchIssue && mergedItems.length === 0);
         setClientUserId(user.id);
       } catch (e: unknown) {
@@ -885,16 +894,23 @@ export function ClientHomeScreen() {
       return !Number.isNaN(time) && now - time <= 24 * 60 * 60 * 1000;
     }).length;
 
-    const points = delivered * 10 + inProgress * 2;
-
-    let level: "Bronze" | "Silver" | "Gold" = "Bronze";
-    if (points >= 120) level = "Gold";
-    else if (points >= 50) level = "Silver";
-
+    const points = loyaltySummary?.points_balance ?? 0;
+    const level = loyaltySummary?.tier_label || "Bronze";
+    const lifetime = loyaltySummary?.lifetime_points ?? 0;
     const nextLevelTarget =
-      level === "Bronze" ? 50 : level === "Silver" ? 120 : 200;
-
-    const pointsToNext = Math.max(0, nextLevelTarget - points);
+      loyaltySummary?.next_tier?.min_lifetime_points ??
+      Math.max(lifetime + (loyaltySummary?.points_to_next_tier ?? 0), 1);
+    const pointsToNext = loyaltySummary?.points_to_next_tier ?? 0;
+    const conversionLabel =
+      loyaltySummary != null
+        ? `${loyaltySummary.settings.conversion_points} pts = $${(
+            loyaltySummary.settings.conversion_credit_cents / 100
+          ).toFixed(2)}`
+        : "—";
+    const creditLabel =
+      loyaltySummary != null
+        ? `$${(Math.max(0, loyaltySummary.available_credit_cents) / 100).toFixed(2)}`
+        : undefined;
 
     const last7dDelivered = items.filter((o) => {
       if (!o.created_at) return false;
@@ -918,8 +934,12 @@ export function ClientHomeScreen() {
       pointsToNext,
       last7dDelivered,
       missionTarget,
+      conversionLabel,
+      creditLabel,
+      lifetimePoints: lifetime,
+      tierProgressPct: loyaltySummary?.tier_progress_pct ?? 0,
     };
-  }, [items]);
+  }, [items, loyaltySummary]);
 
   const homeDisplayItems = useMemo(() => {
     return selectClientHomeDisplayItems(items).displayItems;
@@ -1006,7 +1026,14 @@ export function ClientHomeScreen() {
     }
   }, [navigation, ts]);
 
-  const progressBarWidth = progressWidth(stats.points, stats.nextLevelTarget);
+  const progressBarWidth = progressWidth(
+    Math.max(0, 100 - (stats.pointsToNext > 0 ? stats.pointsToNext : 0)),
+    100,
+  );
+  const loyaltyProgressWidth: `${number}%` =
+    stats.tierProgressPct != null
+      ? (`${Math.max(0, Math.min(100, stats.tierProgressPct))}%` as `${number}%`)
+      : progressBarWidth;
 
   const greeting = getGreeting(ts);
   const firstName = getFirstName(displayName || DEFAULT_CLIENT_NAME);
@@ -1103,7 +1130,7 @@ export function ClientHomeScreen() {
         scopeLabel={scopeLabel}
         showUseCurrentLocation={showUseCurrentLocation}
         stats={stats}
-        progressBarWidth={progressBarWidth}
+        progressBarWidth={loyaltyProgressWidth}
         menuOpen={menuOpen}
         currentLang={currentLang}
         onRefresh={() => {
@@ -1129,6 +1156,7 @@ export function ClientHomeScreen() {
         onNavigateRewards={() =>
           navigation.navigate("LoyaltyHub", { role: "client" })
         }
+        onNavigateMmdPlus={() => navigation.navigate("MmdPlus" as never)}
         onNavigateAi={() =>
           navigation.navigate("MmdAi", { source: "home_tab" })
         }

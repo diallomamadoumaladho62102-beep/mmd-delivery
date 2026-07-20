@@ -18,6 +18,9 @@ test("resolveDashboardFallback maps client routes to ClientHome", () => {
   assert.equal(resolveDashboardFallback("ClientProfile"), "ClientHome");
   assert.equal(resolveDashboardFallback("TaxiQuote"), "ClientHome");
   assert.equal(resolveDashboardFallback("MarketplaceCart"), "ClientHome");
+  assert.equal(resolveDashboardFallback("LoyaltyHub"), "ClientHome");
+  assert.equal(resolveDashboardFallback("Promotions"), "ClientHome");
+  assert.equal(resolveDashboardFallback("MmdPlus"), "ClientHome");
 });
 
 test("resolveDashboardFallback maps driver routes to DriverTabs", () => {

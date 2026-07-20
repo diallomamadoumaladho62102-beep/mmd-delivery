@@ -63,10 +63,13 @@ export default function LoyaltyScreen() {
   const [referralCounts, setReferralCounts] = useState({ total: 0, rewarded: 0, pending: 0 });
   const [codeInput, setCodeInput] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
+  const [lastConvertOk, setLastConvertOk] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [summaryRes, historyRes, referralRes] = await Promise.all([
         fetchLoyaltySummary(role),
@@ -80,10 +83,12 @@ export default function LoyaltyScreen() {
       setReferralLink(referralRes.link);
       setReferralCounts(referralRes.counts);
     } catch (e: unknown) {
-      Alert.alert(
-        t("loyalty.title", "Fidélité MMD"),
-        toUserFacingError(e, t("loyalty.loadFailed", "Chargement impossible.")),
+      const msg = toUserFacingError(
+        e,
+        t("loyalty.loadFailed", "Chargement impossible."),
       );
+      setLoadError(msg);
+      Alert.alert(t("loyalty.title", "Fidélité MMD"), msg);
     } finally {
       setLoading(false);
     }
@@ -110,6 +115,7 @@ export default function LoyaltyScreen() {
     try {
       const { summary: next } = await convertLoyaltyPoints(1, role);
       setSummary(next);
+      setLastConvertOk(true);
       await load();
       Alert.alert(
         t("loyalty.title", "Fidélité MMD"),
@@ -188,33 +194,90 @@ export default function LoyaltyScreen() {
         variant="dark"
       />
       <ScrollView contentContainerStyle={styles.scroll}>
-        {loading || !summary ? (
-          <ActivityIndicator color={COLORS.accent} />
+        {loading ? (
+          <ActivityIndicator color={COLORS.accent} testID="loyalty-loading" />
+        ) : loadError || !summary ? (
+          <View style={styles.card} testID="loyalty-error">
+            <Text style={styles.soft}>
+              {loadError ?? t("loyalty.loadFailed", "Chargement impossible.")}
+            </Text>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => void load()}>
+              <Text style={styles.secondaryBtnText}>
+                {t("common.retry", "Retry")}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <>
-            <View style={styles.card}>
-              <Text style={styles.muted}>{t("loyalty.balance", "Points")}</Text>
-              <Text style={styles.bigValue}>{summary.points_balance} pts</Text>
+            <View style={styles.card} testID="loyalty-points-hero">
+              <Text style={styles.muted}>{t("loyalty.balance", "Your points")}</Text>
+              <Text style={styles.bigValue}>{summary.points_balance}</Text>
+              <Text style={styles.valueLine}>
+                {t("loyalty.pointsValue", "{{points}} points = {{amount}}", {
+                  points: summary.settings.conversion_points,
+                  amount: formatCredit(
+                    summary.settings.conversion_credit_cents,
+                    summary.currency,
+                  ),
+                })}
+              </Text>
               <Text style={styles.soft}>
-                {t("loyalty.tierLine", "Niveau {{tier}} • Cumul {{lifetime}} pts", {
+                {t("loyalty.creditBalance", "Credit available: {{amount}}", {
+                  amount: formatCredit(
+                    summary.available_credit_cents,
+                    summary.currency,
+                  ),
+                })}
+              </Text>
+              <Text style={styles.soft}>
+                {t("loyalty.tierLine", "{{tier}} member • {{lifetime}} lifetime pts", {
                   tier: summary.tier_label,
                   lifetime: summary.lifetime_points,
                 })}
+              </Text>
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.max(
+                        0,
+                        Math.min(100, Number(summary.tier_progress_pct ?? 0)),
+                      )}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.soft}>
+                {summary.next_tier
+                  ? t(
+                      "loyalty.tierProgress",
+                      "{{remaining}} pts to {{next}}",
+                      {
+                        remaining: summary.points_to_next_tier ?? 0,
+                        next: summary.next_tier.label,
+                      },
+                    )
+                  : t("loyalty.tierMax", "Top tier reached")}
               </Text>
             </View>
 
             {role === "client" ? (
               <>
                 <TouchableOpacity
-                  style={styles.card}
+                  style={[styles.card, styles.mmdPlusCard]}
                   onPress={() => navigation.navigate("MmdPlus")}
+                  testID="loyalty-mmd-plus-entry"
                 >
-                  <Text style={styles.muted}>MMD+</Text>
+                  <Text style={styles.mmdPlusTitle}>MMD+</Text>
                   <Text style={styles.soft}>
                     {t(
                       "loyalty.mmdPlusCta",
-                      "Abonnement Premium — avantages Food, Delivery, Taxi et Marketplace",
+                      "Subscription — Food, Delivery, Taxi & Marketplace perks",
                     )}
+                  </Text>
+                  <Text style={styles.linkCta}>
+                    {t("loyalty.mmdPlusOpen", "Join / Manage subscription →")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -225,57 +288,71 @@ export default function LoyaltyScreen() {
                   <Text style={styles.soft}>
                     {t(
                       "loyalty.promotionsCta",
-                      "Codes promo, coupons et offres automatiques",
+                      "Promo codes, coupons and automatic offers",
                     )}
                   </Text>
                 </TouchableOpacity>
               </>
             ) : null}
 
-            <View style={styles.card}>
-              <Text style={styles.muted}>{t("loyalty.credit", "Crédit MMD")}</Text>
-              <Text style={styles.bigValue}>
-                {formatCredit(summary.credit_cents, summary.currency)}
+            <View style={styles.card} testID="loyalty-rewards">
+              <Text style={styles.sectionInCard}>
+                {t("loyalty.rewardsTitle", "Available rewards")}
               </Text>
-              {summary.available_credit_cents !== summary.credit_cents ? (
-                <Text style={styles.soft}>
-                  {t("loyalty.availableCredit", "Disponible : {{amount}}", {
-                    amount: formatCredit(summary.available_credit_cents, summary.currency),
-                  })}
+              <View style={styles.rewardRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rewardTitle}>
+                    {t("loyalty.rewardCredit", "MMD Credit")}
+                  </Text>
+                  <Text style={styles.soft}>
+                    {t(
+                      "loyalty.rewardCreditDesc",
+                      "Convert {{points}} points into {{amount}} store credit",
+                      {
+                        points: summary.settings.conversion_points,
+                        amount: formatCredit(
+                          summary.settings.conversion_credit_cents,
+                          summary.currency,
+                        ),
+                      },
+                    )}
+                  </Text>
+                  <Text style={styles.soft}>
+                    {t("loyalty.creditBalance", "Credit balance: {{amount}}", {
+                      amount: formatCredit(summary.credit_cents, summary.currency),
+                    })}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.rewardBtn, (!canConvert || converting) && styles.btnDisabled]}
+                  disabled={!canConvert || converting}
+                  onPress={handleConvert}
+                  testID="loyalty-redeem"
+                >
+                  <Text style={styles.rewardBtnText}>
+                    {converting
+                      ? t("loyalty.converting", "…")
+                      : canConvert
+                        ? t("loyalty.redeem", "Redeem")
+                        : t("loyalty.needMore", "Need more")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {lastConvertOk ? (
+                <Text style={styles.convertOk} testID="loyalty-convert-done">
+                  {t(
+                    "loyalty.convertDone",
+                    "Last conversion completed. Convert again only when you have enough points.",
+                  )}
                 </Text>
               ) : null}
               {summary.next_credit_expiry ? (
                 <Text style={styles.soft}>
-                  {t("loyalty.creditExpiry", "Expire le {{date}}", {
+                  {t("loyalty.creditExpiry", "Credit expires {{date}}", {
                     date: new Date(summary.next_credit_expiry).toLocaleDateString(),
                   })}
                 </Text>
               ) : null}
-              <Text style={styles.soft}>
-                {t(
-                  "loyalty.conversionRate",
-                  "{{points}} pts = {{amount}}",
-                  {
-                    points: summary.settings.conversion_points,
-                    amount: formatCredit(
-                      summary.settings.conversion_credit_cents,
-                      summary.currency,
-                    ),
-                  },
-                )}
-              </Text>
-              <TouchableOpacity
-                style={[styles.primaryBtn, (!canConvert || converting) && styles.btnDisabled]}
-                disabled={!canConvert || converting}
-                onPress={handleConvert}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.primaryBtnText}>
-                  {converting
-                    ? t("loyalty.converting", "Conversion…")
-                    : t("loyalty.convert", "Convertir mes points")}
-                </Text>
-              </TouchableOpacity>
             </View>
 
             <View style={styles.card}>
@@ -324,7 +401,9 @@ export default function LoyaltyScreen() {
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>{t("loyalty.history", "Historique")}</Text>
+            <Text style={styles.sectionTitle}>
+              {t("loyalty.history", "Points history")}
+            </Text>
             {points.length === 0 && credit.length === 0 ? (
               <Text style={styles.emptyText}>
                 {t("loyalty.noActivity", "Aucune activité pour le moment.")}
@@ -373,23 +452,52 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     gap: 6,
   },
+  mmdPlusCard: { borderColor: COLORS.gold },
+  mmdPlusTitle: { color: COLORS.gold, fontWeight: "800", fontSize: 18 },
+  linkCta: { color: COLORS.accent, fontWeight: "800", marginTop: 8 },
   muted: { color: COLORS.textMuted },
   soft: { color: COLORS.textSoft, marginTop: 4 },
-  bigValue: { color: COLORS.textStrong, fontSize: 30, fontWeight: "800" },
+  valueLine: {
+    color: COLORS.gold,
+    fontWeight: "800",
+    fontSize: 15,
+    marginTop: 2,
+  },
+  bigValue: { color: COLORS.textStrong, fontSize: 36, fontWeight: "800" },
+  progressTrack: {
+    marginTop: 12,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: "rgba(148,163,184,0.2)",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: COLORS.accent,
+    borderRadius: 999,
+  },
+  sectionInCard: {
+    color: COLORS.textStrong,
+    fontWeight: "800",
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  rewardRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
+  rewardTitle: { color: COLORS.textStrong, fontWeight: "700", fontSize: 15 },
+  rewardBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  rewardBtnText: { color: "#0B1220", fontWeight: "800", fontSize: 12 },
+  convertOk: { color: "#86EFAC", fontWeight: "700", marginTop: 8, fontSize: 12 },
   code: {
     color: COLORS.gold,
     fontSize: 24,
     fontWeight: "800",
     letterSpacing: 2,
   },
-  primaryBtn: {
-    marginTop: 12,
-    backgroundColor: COLORS.accent,
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  primaryBtnText: { color: "#0B1220", fontWeight: "800" },
   btnDisabled: { opacity: 0.4 },
   secondaryBtn: {
     marginTop: 12,

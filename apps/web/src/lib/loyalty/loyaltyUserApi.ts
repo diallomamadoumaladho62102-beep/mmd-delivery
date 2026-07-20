@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { parseLoyaltySettings, resolveTier, type LoyaltyTierConfig } from "@/lib/loyalty/loyaltyProgram";
+import {
+  nextTier,
+  parseLoyaltySettings,
+  resolveTier,
+  type LoyaltyTierConfig,
+} from "@/lib/loyalty/loyaltyProgram";
 
 /** Shared server helpers for the client/driver loyalty endpoints. */
 
@@ -20,6 +25,12 @@ export type LoyaltySummary = {
   lifetime_points: number;
   tier_code: string;
   tier_label: string;
+  /** Next tier on the lifetime ladder, or null if already at top. */
+  next_tier: { code: string; label: string; min_lifetime_points: number } | null;
+  /** Lifetime points still needed to reach next_tier (0 if maxed). */
+  points_to_next_tier: number;
+  /** 0–100 progress toward next_tier based on lifetime points. */
+  tier_progress_pct: number;
   credit_cents: number;
   available_credit_cents: number;
   next_credit_expiry: string | null;
@@ -107,12 +118,31 @@ export async function buildLoyaltySummary(
   const lifetime = Number(account?.lifetime_points ?? 0);
   const tierList = tiers.length > 0 ? tiers : undefined;
   const tier = resolveTier(lifetime, tierList);
+  const upcoming = nextTier(lifetime, tierList);
+  const currentFloor = tier.minLifetimePoints;
+  const nextFloor = upcoming?.minLifetimePoints ?? currentFloor;
+  const span = Math.max(1, nextFloor - currentFloor);
+  const progressed = Math.min(span, Math.max(0, lifetime - currentFloor));
+  const tierProgressPct = upcoming
+    ? Math.max(0, Math.min(100, Math.round((progressed / span) * 100)))
+    : 100;
 
   return {
     points_balance: Number(account?.points_balance ?? 0),
     lifetime_points: lifetime,
     tier_code: (account?.tier_code as string) || tier.code,
     tier_label: tier.label,
+    next_tier: upcoming
+      ? {
+          code: upcoming.code,
+          label: upcoming.label,
+          min_lifetime_points: upcoming.minLifetimePoints,
+        }
+      : null,
+    points_to_next_tier: upcoming
+      ? Math.max(0, upcoming.minLifetimePoints - lifetime)
+      : 0,
+    tier_progress_pct: tierProgressPct,
     credit_cents: Number(wallet?.balance_cents ?? 0),
     available_credit_cents:
       availableCents != null && Number.isFinite(Number(availableCents))

@@ -1390,17 +1390,8 @@ export function ClientOrderDetailsScreen() {
   const orderShort = compactId(orderId);
   const createdCompact = formatCompactDate(order?.created_at ?? null);
 
-  const loyalty = useMemo(() => {
-    const basePoints = order?.status === "delivered" ? 10 : 0;
-    const ratingBonus = order?.status === "delivered" ? (rating >= 4 ? 5 : 2) : 0;
-    const total = basePoints + ratingBonus;
-    const levelName = total >= 120 ? "Gold" : total >= 50 ? "Silver" : "Bronze";
-    const levelProgress = Math.max(
-      0.05,
-      Math.min(1, total / (levelName === "Bronze" ? 50 : levelName === "Silver" ? 120 : 200))
-    );
-    return { total, levelName, levelProgress };
-  }, [order?.status, rating]);
+  // Account balance / tier live on LoyaltyHub via /api/loyalty/summary.
+  // Do not invent local fake point progress on this screen.
 
   async function copyDropoffCode() {
     if (!order?.dropoff_code) return;
@@ -1922,40 +1913,17 @@ export function ClientOrderDetailsScreen() {
                   🎉 {ts("client.orderDetails.successTitle", "Delivery success")}
                 </Text>
                 <Text style={{ color: "#94A3B8", marginTop: 6, fontSize: 12, lineHeight: 16 }}>
-                  {ts("client.orderDetails.successBody", "You earned loyalty points for completing this order.")}
+                  {ts(
+                    "client.orderDetails.successBody",
+                    "Loyalty points for this order are added to your MMD Rewards balance.",
+                  )}
                 </Text>
-
-                <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "#86EFAC", fontWeight: "900", fontSize: 18 }}>+10</Text>
-                    <Text style={{ color: "#94A3B8", fontSize: 11 }}>{ts("client.orderDetails.points", "points")}</Text>
-                  </View>
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 14 }}>
-                      {ts("client.orderDetails.level", "Level")}: {loyalty.levelName}
-                    </Text>
-                    <View
-                      style={{
-                        height: 6,
-                        borderRadius: 999,
-                        backgroundColor: "rgba(148,163,184,0.12)",
-                        borderWidth: 1,
-                        borderColor: "rgba(148,163,184,0.14)",
-                        marginTop: 8,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <View
-                        style={{
-                          height: 6,
-                          width: `${Math.round(loyalty.levelProgress * 100)}%`,
-                          backgroundColor: "rgba(34,197,94,0.55)",
-                        }}
-                      />
-                    </View>
-                  </View>
-                </View>
+                <Text style={{ color: "#86EFAC", marginTop: 10, fontWeight: "800", fontSize: 13 }}>
+                  {ts(
+                    "client.orderDetails.openRewards",
+                    "Open MMD Rewards to see your real points, credit and tier.",
+                  )}
+                </Text>
               </Card>
             )}
 

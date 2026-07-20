@@ -11,7 +11,9 @@ export function resolveDashboardFallback(
     name.startsWith("Marketplace") ||
     name.startsWith("Mmd") ||
     name.startsWith("MMD") ||
-    name === "DeliveryRequest"
+    name === "DeliveryRequest" ||
+    name === "LoyaltyHub" ||
+    name === "Promotions"
   ) {
     return "ClientHome";
   }

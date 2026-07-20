@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MMD Loyalty + MMD+ UI Preview</title>
+  <style>
+    :root { --bg:#0B1220; --card:#141C2B; --border:#334155; --text:#F8FAFC; --muted:#94A3B8; --soft:#CBD5E1; --accent:#A78BFA; --gold:#F59E0B; --green:#1FAF5A; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:#020617; color:var(--text); padding:24px; }
+    h1 { font-size:18px; margin:0 0 16px; color:var(--muted); }
+    .phones { display:flex; flex-wrap:wrap; gap:28px; justify-content:center; }
+    .phone { width:360px; background:var(--bg); border-radius:28px; border:1px solid #1e293b; padding:18px 16px 28px; box-shadow:0 20px 50px rgba(0,0,0,.45); }
+    .title { font-weight:800; font-size:17px; margin-bottom:14px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:12px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .soft { color:var(--soft); font-size:13px; margin-top:4px; }
+    .big { font-size:36px; font-weight:800; margin:4px 0; }
+    .gold { color:var(--gold); font-weight:800; }
+    .track { height:8px; border-radius:999px; background:rgba(148,163,184,.2); margin-top:12px; overflow:hidden; }
+    .fill { height:100%; width:42%; background:var(--accent); }
+    .btn { display:inline-block; margin-top:12px; background:var(--accent); color:#0B1220; font-weight:800; border-radius:12px; padding:10px 14px; font-size:13px; }
+    .btn-gold { background:var(--gold); }
+    .outline { border:1px solid var(--border); color:var(--text); background:transparent; }
+    .row { display:flex; gap:8px; align-items:center; }
+    .reward-btn { background:var(--accent); color:#0B1220; font-weight:800; border-radius:12px; padding:10px 12px; font-size:12px; white-space:nowrap; }
+    .list { border:1px solid var(--border); border-radius:12px; padding:12px; margin-top:8px; }
+    .section { font-weight:700; color:var(--soft); margin:14px 0 8px; }
+    .feature { color:var(--soft); font-size:13px; margin-top:2px; }
+    .price { color:var(--gold); font-size:18px; font-weight:700; margin:8px 0; }
+    .badge { color:var(--gold); font-weight:800; font-size:11px; text-transform:uppercase; }
+  </style>
+</head>
+<body>
+  <h1>UI preview — Loyalty Hub & MMD+ (mobile layout)</h1>
+  <div class="phones">
+    <div class="phone" id="loyalty">
+      <div class="title">Fidélité MMD</div>
+      <div class="card">
+        <div class="muted">Your points</div>
+        <div class="big">240</div>
+        <div class="gold">100 points = 5.00 USD</div>
+        <div class="soft">Silver member • 240 lifetime pts</div>
+        <div class="track"><div class="fill"></div></div>
+        <div class="soft">260 pts to Gold</div>
+      </div>
+      <div class="card" style="border-color:rgba(245,158,11,.5)">
+        <div class="gold" style="font-size:18px">MMD+</div>
+        <div class="soft">Subscription — Food, Delivery, Taxi & Marketplace perks</div>
+        <div style="color:var(--accent);font-weight:800;margin-top:8px">Join / Manage subscription →</div>
+      </div>
+      <div class="card">
+        <div style="font-weight:800;margin-bottom:6px">Available rewards</div>
+        <div class="row">
+          <div style="flex:1">
+            <div style="font-weight:700">MMD Credit</div>
+            <div class="soft">Convert 100 points into 5.00 USD store credit</div>
+            <div class="soft">Credit balance: 0.00 USD</div>
+          </div>
+          <div class="reward-btn">Redeem</div>
+        </div>
+      </div>
+      <div class="section">Points history</div>
+      <div class="list"><div style="font-weight:700">+1 pts</div><div class="muted">Food order completed</div></div>
+      <div class="list"><div style="font-weight:700">+1 pts</div><div class="muted">Taxi ride completed</div></div>
+    </div>
+
+    <div class="phone" id="mmdplus">
+      <div class="title">MMD+</div>
+      <div class="card">
+        <div class="badge">MMD+</div>
+        <div class="big" style="font-size:22px">No active subscription</div>
+        <div class="soft">One plan for Food, Delivery, Taxi and Marketplace benefits.</div>
+        <div class="btn btn-gold">Join — 9.99 USD/mo</div>
+      </div>
+      <div class="section">Plans & benefits</div>
+      <div class="card">
+        <div style="font-weight:700;font-size:17px">MMD+ Monthly</div>
+        <div class="muted">Priority support, reduced fees, loyalty boost</div>
+        <div class="price">9.99 USD/mois</div>
+        <div class="feature">• Free delivery credits</div>
+        <div class="feature">• Taxi priority matching</div>
+        <div class="feature">• Marketplace perks</div>
+        <div class="btn">Join</div>
+      </div>
+      <div class="card">
+        <div class="badge">Abonnement actuel (example)</div>
+        <div style="font-weight:700;font-size:18px;margin-top:4px">MMD+ · active</div>
+        <div class="muted">9.99 USD · Échéance 20/08/2026</div>
+        <div class="feature">• Free delivery credits</div>
+        <div class="row" style="margin-top:12px">
+          <div class="btn">Manage Subscription</div>
+          <div class="btn outline">Cancel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -132,18 +132,19 @@ export default function MmdPlusScreen() {
             />
           }
         >
-          <View style={styles.hero}>
+          <View style={styles.hero} testID="mmd-plus-hero">
             {current ? (
               <>
-                <Text style={styles.heroLabel}>Abonnement actuel</Text>
+                <Text style={styles.heroLabel}>Current subscription</Text>
                 <Text style={styles.heroTitle}>
                   {current.plan?.name ?? "MMD+"} · {current.status}
+                  {current.cancel_at_period_end ? " · canceling" : ""}
                 </Text>
                 <Text style={styles.muted}>
                   {formatMoney(current.price_cents, current.currency)}
-                  {current.is_trial ? " · Essai" : ""}
+                  {current.is_trial ? " · Trial" : ""}
                   {current.current_period_end
-                    ? ` · Échéance ${new Date(current.current_period_end).toLocaleDateString()}`
+                    ? ` · Renews ${new Date(current.current_period_end).toLocaleDateString()}`
                     : ""}
                 </Text>
                 {(current.features ?? []).map((f) => (
@@ -156,8 +157,9 @@ export default function MmdPlusScreen() {
                     style={styles.btn}
                     disabled={!!busy}
                     onPress={() => void run("portal")}
+                    testID="mmd-plus-manage"
                   >
-                    <Text style={styles.btnText}>Gérer</Text>
+                    <Text style={styles.btnText}>Manage Subscription</Text>
                   </TouchableOpacity>
                   {current.cancel_at_period_end ? (
                     <TouchableOpacity
@@ -165,7 +167,7 @@ export default function MmdPlusScreen() {
                       disabled={!!busy}
                       onPress={() => void run("resume")}
                     >
-                      <Text style={styles.btnOutlineText}>Reprendre</Text>
+                      <Text style={styles.btnOutlineText}>Resume</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
@@ -173,22 +175,38 @@ export default function MmdPlusScreen() {
                       disabled={!!busy}
                       onPress={() => void run("cancel")}
                     >
-                      <Text style={styles.btnOutlineText}>Annuler</Text>
+                      <Text style={styles.btnOutlineText}>Cancel</Text>
                     </TouchableOpacity>
                   )}
                 </View>
               </>
             ) : (
               <>
-                <Text style={styles.heroTitle}>Aucun abonnement actif</Text>
+                <Text style={styles.heroLabel}>MMD+</Text>
+                <Text style={styles.heroTitle}>No active subscription</Text>
                 <Text style={styles.muted}>
-                  Un seul abonnement pour Food, Delivery, Taxi et Marketplace.
+                  One plan for Food, Delivery, Taxi and Marketplace benefits.
                 </Text>
+                {plans[0] ? (
+                  <TouchableOpacity
+                    style={styles.btn}
+                    disabled={!!busy}
+                    onPress={() =>
+                      void run("checkout", { plan_id: plans[0].id })
+                    }
+                    testID="mmd-plus-join"
+                  >
+                    <Text style={styles.btnText}>
+                      Join — {formatMoney(plans[0].price_cents, plans[0].currency)}
+                      /{plans[0].billing_period === "yearly" ? "yr" : "mo"}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </>
             )}
           </View>
 
-          <Text style={styles.section}>Comparer les plans</Text>
+          <Text style={styles.section}>Plans & benefits</Text>
           {plans.length === 0 ? (
             <Text style={styles.muted}>Aucun plan disponible.</Text>
           ) : (
@@ -217,7 +235,11 @@ export default function MmdPlusScreen() {
                     }
                   >
                     <Text style={styles.btnText}>
-                      {isCurrent ? "Plan actuel" : current ? "Changer" : "Souscrire"}
+                      {isCurrent
+                        ? "Current plan"
+                        : current
+                          ? "Change plan"
+                          : "Join"}
                     </Text>
                   </TouchableOpacity>
                 </View>
