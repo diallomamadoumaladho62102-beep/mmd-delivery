@@ -1,0 +1,188 @@
+{
+  "audited_at": "2026-07-20T07:44:03.780Z",
+  "verdict": "TAXI PAYMENT PREFLIGHT — READY",
+  "taxi_ride_id": "8ad69f07-2f12-4a3e-9579-7a6a8333765a",
+  "reused_existing_unpaid_ride": false,
+  "pickup": {
+    "address": "801 Ronald Court, Baldwin, New York 11510, United States",
+    "lat": 40.673897,
+    "lng": -73.610676
+  },
+  "destination": {
+    "address": "771 New Street, Uniondale, Town of Hempstead, Nassau County, New York 11553, United States",
+    "lat": 40.6940815,
+    "lng": -73.5905813
+  },
+  "distance_miles": 2.22,
+  "duration_minutes": 7.5,
+  "fare_detail": {
+    "base_fare_usd": 2.5,
+    "distance_price_usd": 2.55,
+    "time_price_usd": 1.64,
+    "booking_fee_usd": 1,
+    "class_multiplier": 1,
+    "min_fare_usd": 5,
+    "reconstructed_subtotal_before_tax_usd": 7.69,
+    "note": "Reconstructed from taxi_pricing + route distance/duration (RPC aggregates into subtotal_cents).",
+    "subtotal_cents": 769,
+    "tax_cents": 0,
+    "service_fee_cents": 0,
+    "platform_fee_cents": 192,
+    "driver_payout_cents": 577,
+    "discount_cents": 0,
+    "gross_total_cents": 769,
+    "total_cents": 769,
+    "total_usd": "7.69",
+    "currency": "USD"
+  },
+  "vehicle_class": "standard",
+  "driver_eligible": {
+    "driver_id": "8c300089-6f16-407a-9be9-6eb75482f73d",
+    "is_taxi_driver_eligible": true,
+    "is_online": true,
+    "transport_mode": "car",
+    "miles_from_pickup": 0.645391191520029,
+    "within_taxi_dispatch_radius_5mi": true,
+    "taxi_enabled": true
+  },
+  "vehicle_selected": {
+    "id": "ad9472e9-5f37-4225-a849-271b998ca0a2",
+    "make": "Honda",
+    "model": "Accord Sport",
+    "year": 2020,
+    "color": "Gris",
+    "plate": "LTK 1944",
+    "type": "sedan",
+    "active": true,
+    "admin_review_status": "approved"
+  },
+  "before_assignment_identification": {
+    "driver_name": null,
+    "vehicle_plate": null,
+    "null_as_required": true
+  },
+  "stripe_config": {
+    "local_env_key_prefix": "sk_test",
+    "local_env_mode": "test",
+    "production_mode": "live",
+    "production_evidence": "Prior Delivery Live payment on www.mmddelivery.com settled with sk_live + webhook (DR 4aac2906…). Vercel production serves create-taxi-checkout-session with same Stripe live stack.",
+    "currency_expected": "USD",
+    "ride_currency": "USD",
+    "ride_has_stripe_session_id": false,
+    "ride_has_stripe_payment_intent_id": false,
+    "checkout_not_created": true,
+    "idempotency_key_pattern": "taxi_checkout_8ad69f07-2f12-4a3e-9579-7a6a8333765a_{userId}_{stripeUnitAmount}_usd",
+    "metadata_planned": {
+      "metadata_schema_version": "1",
+      "service_type": "taxi",
+      "taxi_ride_id": "8ad69f07-2f12-4a3e-9579-7a6a8333765a",
+      "customer_id": "Stripe customer from client account (created at checkout)",
+      "country": "US",
+      "state": "NY (from pickup / county)"
+    },
+    "webhook_planned": "apps/web/src/lib/taxiStripeWebhook.ts",
+    "confirm_paid_planned": "apps/web/app/api/stripe/client/confirm-taxi-paid/route.ts",
+    "checkout_route": "apps/web/app/api/stripe/client/create-taxi-checkout-session/route.ts"
+  },
+  "post_payment_path": {
+    "finance_taxi_paid_once": "mark_taxi_ride_paid RPC + finance journal (idempotent)",
+    "dispatch": "scheduleTaxiRideDispatchIfEligible → runTaxiRideDispatch (5 mi waves)",
+    "driver_notification": "Expo push via dispatch",
+    "offer": "taxi_offers created for eligible drivers",
+    "accept": "driver_accept_taxi_offer → assigned_vehicle_id + display snapshots",
+    "vehicle_snapshot": "vehicle_plate_snapshot / make / model / color / year frozen",
+    "lifecycle": [
+      "accepted",
+      "driver_arrived",
+      "wait timer",
+      "in_progress",
+      "completed"
+    ],
+    "notifications": "client + driver completion pushes (pattern aligned with delivery)",
+    "loyalty": "client + driver accrual on completion (idempotent keys)",
+    "commissions": "platform_fee_cents / driver_payout_cents on ride",
+    "no_auto_payout": true,
+    "no_auto_refund": true
+  },
+  "wait_cancel_rules": {
+    "client_cancel_before_driver": {
+      "statuses": [
+        "draft",
+        "quoted",
+        "pending_payment",
+        "paid",
+        "dispatching"
+      ],
+      "refund_if_paid": "FULL",
+      "refund_if_unpaid": "NONE",
+      "source": "apps/web/app/api/taxi/rides/cancel/route.ts"
+    },
+    "wait_timer": {
+      "free_minutes": 5,
+      "tier1": "3 min × $0.25",
+      "tier2": "5 min × $0.30",
+      "cap_usd": 2.25,
+      "source": "apps/web/src/lib/waitTimerTypes.ts + waitFeeCalculator.ts"
+    }
+  },
+  "no_checkout_created": true,
+  "no_payment_intent_created": true,
+  "no_charge": true,
+  "food_delivery_untouched": true,
+  "blockers": [],
+  "notes": [
+    "Found 5 other unpaid ride(s); creating one owned by mmddelivery621@gmail.com only if none match.",
+    "Script only wrote taxi_rides via official create API (or reused). No Food/Delivery mutations.",
+    "Official create yields status=quoted + payment_status=unpaid. pending_payment appears only when Checkout starts (not done)."
+  ],
+  "steps": [
+    {
+      "step": "existing_unpaid_scan",
+      "count": 5,
+      "ids": [
+        "64b2617c-b4ba-4f80-92e6-500c629ca176",
+        "ececc2a1-6f89-495c-a86f-0084c0f2d747",
+        "e1065112-0ba3-495e-abc9-d28750aa4a24",
+        "ae2ec1bc-c44a-4ad3-93ce-bc103775bc5c",
+        "3540f613-a22f-4725-ba29-d4d466084a0c"
+      ]
+    },
+    {
+      "step": "client_auth",
+      "client_user_id": "d4f38bfe-b5ca-46ef-a4c4-301c501b3f0e",
+      "email": "mmddelivery621@gmail.com"
+    },
+    {
+      "step": "quote",
+      "http": 200,
+      "ok": true,
+      "total_cents": 769
+    },
+    {
+      "step": "create",
+      "http": 200,
+      "ok": true,
+      "ride_id": "8ad69f07-2f12-4a3e-9579-7a6a8333765a"
+    },
+    {
+      "step": "client_get_ride",
+      "http": 200,
+      "driver_id": null,
+      "driver_name": null,
+      "vehicle_plate": null
+    }
+  ],
+  "ride_row_summary": {
+    "id": "8ad69f07-2f12-4a3e-9579-7a6a8333765a",
+    "status": "quoted",
+    "payment_status": "unpaid",
+    "country_code": "US",
+    "vehicle_class": "standard",
+    "total_cents": 769,
+    "currency": "USD",
+    "driver_id": null,
+    "stripe_session_id": null,
+    "stripe_payment_intent_id": null
+  },
+  "authorization_required": "Await explicit user approval before creating Stripe Live Checkout."
+}
