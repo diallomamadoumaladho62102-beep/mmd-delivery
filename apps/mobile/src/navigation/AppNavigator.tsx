@@ -226,6 +226,7 @@ export type RootStackParamList = {
   DriverVehicles: undefined;
   DriverVehicle: { vehicleId?: string } | undefined;
   DriverBenefits: undefined;
+  DriverHotspots: { lat: number; lng: number; isOnline?: boolean };
 
   RestaurantHome: undefined;
   RestaurantCommandCenter: undefined;
@@ -1498,6 +1499,13 @@ export function AppNavigator({
               .DriverServicesScreen
           }
           options={{ title: "Mes services" }}
+        />
+        <Stack.Screen
+          name="DriverHotspots"
+          getComponent={() =>
+            require("../screens/driver/DriverHotspotsScreen").default
+          }
+          options={{ title: "Demand hotspots" }}
         />
         <Stack.Screen
           name="DriverVehicles"

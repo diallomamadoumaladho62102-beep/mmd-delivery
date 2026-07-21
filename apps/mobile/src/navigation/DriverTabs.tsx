@@ -1,13 +1,12 @@
 import React, { useMemo } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
 
-// Screens
 import { DriverHomeScreen } from "../screens/DriverHomeScreen";
 import { DriverRevenueScreen } from "../screens/DriverRevenueScreen";
 import { DriverInboxScreen } from "../screens/DriverInboxScreen";
 import { DriverMenuScreen } from "../screens/DriverMenuScreen";
-import { APP_COLORS } from "../theme/appTheme";
 
 export type DriverTabParamList = {
   DriverHomeTab: undefined;
@@ -18,13 +17,25 @@ export type DriverTabParamList = {
 
 const Tab = createBottomTabNavigator<DriverTabParamList>();
 
+const TAB_GREEN = "#16A34A";
+const TAB_MUTED = "#64748B";
+
+function tabIcon(
+  routeName: keyof DriverTabParamList,
+  focused: boolean,
+): keyof typeof Ionicons.glyphMap {
+  if (routeName === "DriverHomeTab") return focused ? "home" : "home-outline";
+  if (routeName === "DriverRevenueTab") return focused ? "cash" : "cash-outline";
+  if (routeName === "DriverInboxTab") return focused ? "chatbubble" : "chatbubble-outline";
+  return focused ? "grid" : "grid-outline";
+}
+
 export function DriverTabs() {
   const { t, i18n } = useTranslation();
 
-  // ✅ Remount des tabs quand la langue change
   const tabKey = useMemo(
     () => `driver-tabs-${i18n.language}`,
-    [i18n.language]
+    [i18n.language],
   );
 
   return (
@@ -32,29 +43,35 @@ export function DriverTabs() {
       id="driver-tabs"
       key={tabKey}
       initialRouteName="DriverHomeTab"
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
-
-        // ✅ Style premium sombre MMD
         tabBarStyle: {
-          backgroundColor: "rgba(2,6,23,0.98)",
-          borderTopColor: "rgba(139,92,246,0.22)",
+          backgroundColor: "#FFFFFF",
+          borderTopColor: "#E5E7EB",
           borderTopWidth: 1,
-          height: 72,
-          paddingTop: 8,
-          paddingBottom: 10,
+          height: 64,
+          paddingTop: 6,
+          paddingBottom: 8,
+          elevation: 8,
+          shadowColor: "#0F172A",
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: -2 },
         },
-
-        // ✅ Couleurs
-        tabBarActiveTintColor: APP_COLORS.accent,
-        tabBarInactiveTintColor: APP_COLORS.textMuted,
-
-        // ✅ Texte
+        tabBarActiveTintColor: TAB_GREEN,
+        tabBarInactiveTintColor: TAB_MUTED,
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "800",
+          fontSize: 11,
+          fontWeight: "700",
         },
-      }}
+        tabBarIcon: ({ focused, color, size }) => (
+          <Ionicons
+            name={tabIcon(route.name, focused)}
+            size={size ?? 22}
+            color={color}
+          />
+        ),
+      })}
     >
       <Tab.Screen
         name="DriverHomeTab"

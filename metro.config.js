@@ -8,6 +8,13 @@ config.resolver.blockList = [
   ...(config.resolver.blockList ?? []),
   /.*\/Backups_Terminal\/.*/,
   /.*\\Backups_Terminal\\.*/,
+  // Keep Metro off web/build/cache trees (Windows EACCES on bad junctions).
+  /[\\/]apps[\\/]web[\\/].*/,
+  /[\\/]\.git[\\/].*/,
+  /[\\/]\.next[\\/].*/,
+  /[\\/]supabase[\\/].*/,
+  /[\\/]dependabot[^\\/]*$/,
+  /[\\/]apps[\\/]mobile[\\/]preview[\\/].*/,
 ];
 
 // Help monorepo resolution if needed

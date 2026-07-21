@@ -6,7 +6,6 @@ import React, {
   useMemo,
 } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StatusBar,
@@ -17,14 +16,21 @@ import {
   Platform,
   Animated,
   PanResponder,
-  Image,
   AppState,
   StyleSheet,
   Vibration,
+  Dimensions,
   type AppStateStatus,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MapFloatingButton } from "../components/driver/map/MapFloatingButton";
+import { DriverHomePremiumSheet } from "../components/driver/home/DriverHomePremiumSheet";
+import {
+  DriverHomeServiceModes,
+  type DriverServiceModeKey,
+} from "../components/driver/home/DriverHomeServiceModes";
+import { MmdDriverLocationMarker } from "../components/driver/home/MmdDriverLocationMarker";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
@@ -52,7 +58,15 @@ import {
   fetchDriverServicePreferences,
   hasAnyDriverServiceEnabled,
   setDriverOnlineViaApi,
+  type DriverServicePreferences,
 } from "../lib/driverServicePreferencesApi";
+import {
+  fetchDriverAreaIntelligence,
+  fetchDriverNextReward,
+  type DriverAreaIntelligence,
+  type DriverMarketingNextReward,
+} from "../lib/driverAreaIntelligenceApi";
+import { fetchActiveTaxiRide, formatDriverPayout } from "../lib/taxiDriverApi";
 import {
   fetchDriverIdentityStatus,
   identityBlocksDriverOnline,
@@ -334,9 +348,16 @@ const EMPTY_DRIVER_PERFORMANCE_STATS: DriverPerformanceStats = {
   earningsGoalProgress: 0,
 };
 
+const SHEET_SCREEN_H = Dimensions.get("window").height;
 const SHEET_MIN_TRANSLATE_Y = 0;
-const SHEET_MID_TRANSLATE_Y = 320;
-const SHEET_MAX_TRANSLATE_Y = 580;
+const SHEET_MID_TRANSLATE_Y = Math.round(SHEET_SCREEN_H * 0.30);
+/**
+ * Higher translateY = sheet lower = more Mapbox visible.
+ * ONLINE peek locked low (~30% sheet) so Mapbox stays the hero — matches validated capture.
+ */
+const SHEET_MAX_ONLINE_Y = Math.round(SHEET_SCREEN_H * 0.7);
+const SHEET_MAX_OFFLINE_Y = Math.round(SHEET_SCREEN_H * 0.42);
+const SHEET_MAX_TRANSLATE_Y = SHEET_MAX_ONLINE_Y;
 
 // Bottom sheet production tuning:
  // - FULL WIDTH, no side gap, no bottom visual gap.
@@ -344,15 +365,15 @@ const SHEET_MAX_TRANSLATE_Y = 580;
  // - Device/bottom-tab clearance is kept INSIDE the sheet padding.
  // - This prevents the black panel from floating and leaving an empty space below it.
 const DRIVER_BOTTOM_NAV_SAFE_OFFSET = Platform.select({
-  android: 48,
-  ios: 28,
-  default: 38,
+  android: 36,
+  ios: 22,
+  default: 28,
 });
 
 const DRIVER_BOTTOM_TAB_CLEARANCE = Platform.select({
-  android: 92,
-  ios: 64,
-  default: 78,
+  android: 78,
+  ios: 58,
+  default: 68,
 });
 
 const DRIVER_BOTTOM_PANEL_OFFSET =
@@ -636,6 +657,20 @@ function demandLabel(demand: ZoneDemand) {
   return "Calm";
 }
 
+/** Activity label derived only from real nearby request count (not hardcoded zone tables). */
+function activityFromNearbyRequests(count: number): { label: string; detail: string } {
+  if (count >= 8) {
+    return { label: "High demand", detail: `${count} open requests` };
+  }
+  if (count >= 3) {
+    return { label: "Busy", detail: `${count} open requests` };
+  }
+  if (count >= 1) {
+    return { label: "Moderate", detail: `${count} open request(s)` };
+  }
+  return { label: "Quiet", detail: "No open requests nearby" };
+}
+
 function demandColor(demand: ZoneDemand) {
   if (demand === "very_busy") return ORANGE;
   if (demand === "busy") return PURPLE;
@@ -684,7 +719,12 @@ export function DriverHomeScreen() {
         )
       );
     }
-    if (wasOutOfServiceRef.current === false && out === true && isOnline) {
+    if (
+      wasOutOfServiceRef.current === false &&
+      out === true &&
+      isOnline &&
+      !forceOnlinePreviewRef.current
+    ) {
       void setDriverOnlineStatus(false).then(() => setIsOnline(false)).catch(() => setIsOnline(false));
       Alert.alert(
         platformFeatures.unavailable_title ??
@@ -714,12 +754,23 @@ export function DriverHomeScreen() {
   const [hasLocation, setHasLocation] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [driverHeadingDeg, setDriverHeadingDeg] = useState<number | null>(null);
+  const [driverMoving, setDriverMoving] = useState(false);
   const [zoneStatus, setZoneStatus] = useState<ZoneDemand>("calm");
   const [zoneName, setZoneName] = useState(t("driver.home.zone.current", "Zone actuelle"));
   const [zoneMultiplier, setZoneMultiplier] = useState(1.0);
   const [searchMessageIndex, setSearchMessageIndex] = useState(0);
   const [earningsHidden, setEarningsHidden] = useState(false);
   const [driverStats, setDriverStats] = useState<DriverPerformanceStats>(EMPTY_DRIVER_PERFORMANCE_STATS);
+  const [servicePreferences, setServicePreferences] =
+    useState<DriverServicePreferences | null>(null);
+  const [areaIntel, setAreaIntel] = useState<DriverAreaIntelligence | null>(null);
+  const [mapStyleUrl, setMapStyleUrl] = useState("mapbox://styles/mapbox/streets-v12");
+  const [nextMarketingReward, setNextMarketingReward] =
+    useState<DriverMarketingNextReward | null>(null);
+  const [activeTaxiRide, setActiveTaxiRide] = useState<Record<string, unknown> | null>(
+    null,
+  );
 
   const searchMessages = useMemo(
     () => [
@@ -740,13 +791,18 @@ export function DriverHomeScreen() {
   const mountedRef = useRef(true);
   const restoredOnlineStatusRef = useRef(false);
   const lastOfferIdRef = useRef<string | null>(null);
+  const forceOnlinePreviewRef = useRef(false);
   const locationPermissionRequestRef = useRef<Promise<boolean> | null>(null);
   const locationPermissionDeniedAlertShownRef = useRef(false);
   const searchingAnim = useRef(new Animated.Value(0)).current;
-  const sheetOffset = useRef(new Animated.Value(SHEET_MAX_TRANSLATE_Y)).current;
+  const sheetOffset = useRef(new Animated.Value(SHEET_MAX_OFFLINE_Y)).current;
   const sheetStartOffset = useRef(0);
+  const sheetMaxRef = useRef(SHEET_MAX_OFFLINE_Y);
   const topHudAnim = useRef(new Animated.Value(0)).current;
-  const onlinePulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    sheetMaxRef.current = isOnline ? SHEET_MAX_ONLINE_Y : SHEET_MAX_OFFLINE_Y;
+  }, [isOnline]);
 
   useEffect(() => {
     Animated.timing(topHudAnim, {
@@ -757,39 +813,22 @@ export function DriverHomeScreen() {
   }, [topHudAnim]);
 
   useEffect(() => {
-    if (!isOnline) {
-      onlinePulseAnim.setValue(0);
-      return;
-    }
-
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(onlinePulseAnim, { toValue: 1, duration: 1050, useNativeDriver: true }),
-        Animated.timing(onlinePulseAnim, { toValue: 0, duration: 1050, useNativeDriver: true }),
-      ]),
-    );
-
-    pulse.start();
-    return () => pulse.stop();
-  }, [isOnline, onlinePulseAnim]);
-
-  useEffect(() => {
-    if (isOnline && !activeOffer && !hasTaxiActiveOffers) {
-      Animated.spring(sheetOffset, {
-        toValue: SHEET_MAX_TRANSLATE_Y,
-        damping: 20,
-        stiffness: 190,
-        mass: 0.8,
-        useNativeDriver: true,
-      }).start();
-    }
+    if (activeOffer || hasTaxiActiveOffers) return;
+    const peek = isOnline ? SHEET_MAX_ONLINE_Y : SHEET_MAX_OFFLINE_Y;
+    Animated.spring(sheetOffset, {
+      toValue: peek,
+      damping: 20,
+      stiffness: 190,
+      mass: 0.8,
+      useNativeDriver: true,
+    }).start();
   }, [activeOffer, hasTaxiActiveOffers, isOnline, sheetOffset]);
 
   useEffect(() => {
     if (!hasTaxiActiveOffers) return;
     // Collapse sheet immediately when a taxi offer arrives so Accept/Reject stay visible.
     Animated.spring(sheetOffset, {
-      toValue: SHEET_MAX_TRANSLATE_Y,
+      toValue: sheetMaxRef.current,
       damping: 22,
       stiffness: 220,
       mass: 0.7,
@@ -810,32 +849,36 @@ export function DriverHomeScreen() {
         sheetStartOffset.current =
           typeof currentSheetOffset.__getValue === "function"
             ? currentSheetOffset.__getValue()
-            : SHEET_MAX_TRANSLATE_Y;
+            : sheetMaxRef.current;
       },
 
       onPanResponderMove: (_, gestureState) => {
         const raw = sheetStartOffset.current + gestureState.dy;
         const clamped = Math.max(
           SHEET_MIN_TRANSLATE_Y,
-          Math.min(SHEET_MAX_TRANSLATE_Y, raw),
+          Math.min(sheetMaxRef.current, raw),
         );
         sheetOffset.setValue(clamped);
       },
 
       onPanResponderRelease: (_, gestureState) => {
         const projected = sheetStartOffset.current + gestureState.dy + gestureState.vy * 90;
-        const snapPoints = [
-          SHEET_MIN_TRANSLATE_Y,
-          SHEET_MID_TRANSLATE_Y,
-          SHEET_MAX_TRANSLATE_Y,
-        ];
+        // ONLINE: prefer low peek (map hero). Mid snap only when clearly expanding.
+        const online = sheetMaxRef.current === SHEET_MAX_ONLINE_Y;
+        const snapPoints = online
+          ? [SHEET_MIN_TRANSLATE_Y, sheetMaxRef.current]
+          : [SHEET_MIN_TRANSLATE_Y, SHEET_MID_TRANSLATE_Y, sheetMaxRef.current];
 
         let final = snapPoints.reduce((closest, point) =>
           Math.abs(point - projected) < Math.abs(closest - projected) ? point : closest,
         );
 
         if (gestureState.vy < -0.75) final = SHEET_MIN_TRANSLATE_Y;
-        if (gestureState.vy > 0.75) final = SHEET_MAX_TRANSLATE_Y;
+        if (gestureState.vy > 0.75) final = sheetMaxRef.current;
+        // Bias ONLINE releases toward peek unless user clearly swiped up.
+        if (online && gestureState.vy > -0.35 && projected > sheetMaxRef.current * 0.45) {
+          final = sheetMaxRef.current;
+        }
 
         Animated.spring(sheetOffset, {
           toValue: final,
@@ -910,10 +953,20 @@ export function DriverHomeScreen() {
   }, [availableOrders.length, isOnline, nearestPickupMiles, t, zoneName]);
 
   const applyDriverCoordinates = useCallback(
-    (latitude: number, longitude: number) => {
+    (
+      latitude: number,
+      longitude: number,
+      opts?: { heading?: number | null; speed?: number | null },
+    ) => {
       if (!mountedRef.current) return;
       const zoneInfo = getZoneInfoFromLocation(latitude, longitude);
       setDriverLocation({ lat: latitude, lng: longitude });
+      const heading = opts?.heading;
+      if (heading != null && Number.isFinite(heading) && heading >= 0) {
+        setDriverHeadingDeg(heading);
+      }
+      const speed = opts?.speed;
+      setDriverMoving(speed != null && Number.isFinite(speed) && speed > 0.8);
       setZoneName(zoneInfo.name || t("driver.home.zone.current", "Zone actuelle"));
       setZoneStatus(zoneInfo.demand);
       setZoneMultiplier(zoneInfo.multiplier);
@@ -1155,7 +1208,10 @@ export function DriverHomeScreen() {
           { accuracy: Location.Accuracy.Balanced, timeInterval: 6000, distanceInterval: 20 },
           (pos) => {
             if (cancelled || !mountedRef.current) return;
-            applyDriverCoordinates(pos.coords.latitude, pos.coords.longitude);
+            applyDriverCoordinates(pos.coords.latitude, pos.coords.longitude, {
+              heading: pos.coords.heading,
+              speed: pos.coords.speed,
+            });
           },
         );
         if (cancelled) {
@@ -1892,6 +1948,69 @@ export function DriverHomeScreen() {
     });
   }, [navAny]);
 
+  const premiumJobs = useMemo(() => {
+    const foodDeliveryJobs = myOrders.map((order) => {
+      const kindRaw = String(order.kind ?? "").toLowerCase();
+      const isFood =
+        kindRaw.includes("food") ||
+        kindRaw.includes("restaurant") ||
+        Boolean(order.restaurant_name);
+      return {
+        id: order.id,
+        key: `${order.source_table ?? "orders"}:${order.id}`,
+        kind: (isFood ? "food" : "delivery") as "food" | "delivery",
+        kindLabel: formatKind(order.kind, order.restaurant_name),
+        statusLabel: formatStatus(order.status),
+        pickup: order.pickup_address ?? order.restaurant_name ?? "—",
+        dropoff: order.dropoff_address ?? "—",
+        amountLabel: money(getBestDriverAmount(order)),
+        distanceLabel:
+          order.distance_miles != null
+            ? `${Number(order.distance_miles).toFixed(1)} mi`
+            : "—",
+        etaLabel: null as string | null,
+        onPress: () => handleOpenOrder(order),
+      };
+    });
+
+    if (!activeTaxiRide?.id) return foodDeliveryJobs;
+
+    const rideId = String(activeTaxiRide.id);
+    const payoutCents = Number(
+      activeTaxiRide.driver_payout_cents ?? activeTaxiRide.driver_earnings_cents ?? NaN,
+    );
+    const currency = String(activeTaxiRide.currency ?? "USD");
+    const amountLabel = Number.isFinite(payoutCents)
+      ? formatDriverPayout(payoutCents, currency)
+      : "—";
+    const distanceMiles = Number(activeTaxiRide.distance_miles ?? NaN);
+
+    return [
+      {
+        id: rideId,
+        key: `taxi_rides:${rideId}`,
+        kind: "taxi" as const,
+        kindLabel: "Taxi ride",
+        statusLabel: String(activeTaxiRide.status ?? "active"),
+        pickup: String(activeTaxiRide.pickup_address ?? "—"),
+        dropoff: String(activeTaxiRide.dropoff_address ?? "—"),
+        amountLabel,
+        distanceLabel: Number.isFinite(distanceMiles)
+          ? `${distanceMiles.toFixed(1)} mi`
+          : "—",
+        etaLabel: null as string | null,
+        onPress: () => {
+          hapticLight();
+          navAny.navigate("DriverMap" as never, {
+            orderId: rideId,
+            sourceTable: "taxi_rides",
+          } as never);
+        },
+      },
+      ...foodDeliveryJobs,
+    ];
+  }, [activeTaxiRide, formatKind, formatStatus, handleOpenOrder, myOrders, navAny]);
+
   const handleAccept = useCallback(
     async (offer: DriverOrder) => {
       const orderId = offer.id;
@@ -2180,6 +2299,7 @@ export function DriverHomeScreen() {
       await setDriverProfileOnline(userId, false);
       await setDriverOnlineStatus(false);
       setIsOnline(false);
+      setAreaIntel(null);
       await stopDbGpsTracking();
       await stopSound();
       setActiveOffer(null);
@@ -2206,6 +2326,87 @@ export function DriverHomeScreen() {
     navAny.navigate("DriverInboxTab" as never);
   }, [navAny]);
 
+  const openDriverServices = useCallback(
+    (_mode?: DriverServiceModeKey) => {
+      hapticLight();
+      navAny.navigate("DriverServices" as never);
+    },
+    [navAny],
+  );
+
+  const refreshServicePreferences = useCallback(async () => {
+    try {
+      const result = await fetchDriverServicePreferences();
+      if (!mountedRef.current) return;
+      setServicePreferences(result.preferences);
+    } catch (e) {
+      console.log("driver home service preferences load error:", e);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshServicePreferences();
+    }, [refreshServicePreferences]),
+  );
+
+  const refreshAreaIntelligence = useCallback(async () => {
+    const lat = driverLocation?.lat ?? region.latitude;
+    const lng = driverLocation?.lng ?? region.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    try {
+      const next = await fetchDriverAreaIntelligence({
+        lat,
+        lng,
+        radiusMiles: 5,
+        isOnline,
+      });
+      if (!mountedRef.current) return;
+      setAreaIntel(next);
+    } catch (e) {
+      console.log("area intelligence error:", e);
+    }
+  }, [driverLocation?.lat, driverLocation?.lng, isOnline, region.latitude, region.longitude]);
+
+  const refreshActiveTaxiRide = useCallback(async () => {
+    try {
+      const out = await fetchActiveTaxiRide();
+      if (!mountedRef.current) return;
+      const ride = out?.ride ?? out?.taxi_ride ?? null;
+      setActiveTaxiRide(ride && typeof ride === "object" ? (ride as Record<string, unknown>) : null);
+    } catch {
+      if (mountedRef.current) setActiveTaxiRide(null);
+    }
+  }, []);
+
+  const refreshNextReward = useCallback(async () => {
+    try {
+      const next = await fetchDriverNextReward();
+      if (!mountedRef.current) return;
+      setNextMarketingReward(next);
+    } catch {
+      if (mountedRef.current) setNextMarketingReward(null);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshAreaIntelligence();
+      void refreshActiveTaxiRide();
+      void refreshNextReward();
+    }, [refreshActiveTaxiRide, refreshAreaIntelligence, refreshNextReward]),
+  );
+
+  useEffect(() => {
+    if (!hasLocation) return;
+    void refreshAreaIntelligence();
+    const id = setInterval(() => {
+      void refreshAreaIntelligence();
+      void refreshActiveTaxiRide();
+    }, 45_000);
+    return () => clearInterval(id);
+  }, [hasLocation, isOnline, refreshActiveTaxiRide, refreshAreaIntelligence]);
+
   const centerOnDriver = useCallback(() => {
     hapticLight();
     const latitude = driverLocation?.lat ?? region.latitude;
@@ -2224,6 +2425,80 @@ export function DriverHomeScreen() {
     (cameraRef.current as any)?.setCamera({ heading: 0, animationMode: "easeTo", animationDuration: 450 });
   }, []);
 
+  const centerOnNearestOpenRequest = useCallback(() => {
+    hapticLight();
+    const best = areaIntel?.best_hotspot;
+    if (best) {
+      cameraRef.current?.setCamera({
+        centerCoordinate: [best.lng, best.lat],
+        zoomLevel: 14.5,
+        animationMode: "flyTo",
+        animationDuration: 700,
+      });
+      Animated.spring(sheetOffset, {
+        toValue: sheetMaxRef.current,
+        damping: 22,
+        stiffness: 210,
+        mass: 0.75,
+        useNativeDriver: true,
+      }).start();
+      return;
+    }
+
+    const withPickup = availableOrders.find(
+      (order) =>
+        order.pickup_lat != null &&
+        (order.pickup_lng != null ||
+          (order as any).pickup_lon != null ||
+          (order as any).pickup_longitude != null),
+    );
+    if (!withPickup || withPickup.pickup_lat == null) {
+      Alert.alert(
+        t("driver.home.busyArea.title", "Busy area"),
+        t(
+          "driver.home.busyArea.empty",
+          "No open nearby requests with a pickup location right now.",
+        ),
+      );
+      return;
+    }
+    const lng =
+      withPickup.pickup_lng ??
+      (withPickup as any).pickup_lon ??
+      (withPickup as any).pickup_longitude;
+    cameraRef.current?.setCamera({
+      centerCoordinate: [Number(lng), Number(withPickup.pickup_lat)],
+      zoomLevel: 14.5,
+      animationMode: "flyTo",
+      animationDuration: 700,
+    });
+    Animated.spring(sheetOffset, {
+      toValue: sheetMaxRef.current,
+      damping: 22,
+      stiffness: 210,
+      mass: 0.75,
+      useNativeDriver: true,
+    }).start();
+  }, [areaIntel?.best_hotspot, availableOrders, sheetOffset, t]);
+
+  const viewHotspots = useCallback(() => {
+    hapticLight();
+    const lat = driverLocation?.lat ?? region.latitude;
+    const lng = driverLocation?.lng ?? region.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      Alert.alert(
+        t("driver.home.hotspots.title", "Hotspots"),
+        t("driver.home.hotspots.needGps", "Enable GPS to view demand hotspots."),
+      );
+      return;
+    }
+    navAny.navigate("DriverHotspots" as never, {
+      lat,
+      lng,
+      isOnline,
+    } as never);
+  }, [driverLocation?.lat, driverLocation?.lng, isOnline, navAny, region.latitude, region.longitude, t]);
+
   useEffect(() => {
     return () => {
       void stopSound();
@@ -2232,6 +2507,35 @@ export function DriverHomeScreen() {
 
   const onlineLabel = isOnline ? t("driver.home.online", "ONLINE") : t("driver.home.offline", "OFFLINE");
   const onlineColorBg = isOnline ? GREEN : "#EF4444";
+  const fallbackActivity = activityFromNearbyRequests(availableOrders.length);
+  const marketAreaLabel =
+    driverMarket.scopeResolved && driverMarket.displayLabel
+      ? driverMarket.displayLabel
+      : zoneName;
+  const pointsProgressLabel = (() => {
+    const pts = Math.round(driverStats.points);
+    const next = getNextDriverLevel(driverStats.points);
+    if (next?.minPoints != null) {
+      return `${pts.toLocaleString()} / ${next.minPoints.toLocaleString()} pts`;
+    }
+    return `${pts.toLocaleString()} pts`;
+  })();
+  const nextRewardLabel = nextMarketingReward
+    ? nextMarketingReward.rewardLabel
+    : driverStats.nextLevel
+      ? driverStats.nextLevel
+      : driverStats.level;
+  const liveWaitLabel =
+    areaIntel?.wait_label && areaIntel.wait_label !== "—"
+      ? areaIntel.wait_label
+      : waitRangeText;
+  const liveDemandLabel = areaIntel?.demand_label ?? fallbackActivity.label;
+  const liveDemandDetail = areaIntel
+    ? `${areaIntel.earnings_multiplier.toFixed(1)}x · ${areaIntel.requests_nearby} open`
+    : fallbackActivity.detail;
+  const liveDriversNearby = areaIntel?.drivers_nearby ?? 0;
+  const liveRequestsNearby =
+    areaIntel?.requests_nearby ?? availableOrders.length;
   const offerPickupLng =
     activeOffer?.pickup_lng ??
     (activeOffer as any)?.pickup_lon ??
@@ -2249,24 +2553,25 @@ export function DriverHomeScreen() {
 
   const searchPulseScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.02, 1] });
   const radarInnerScale = searchingAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 1] });
-  const driverPulseScale = onlinePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.18] });
-  const driverPulseOpacity = onlinePulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.62, 0.22] });
   const topHudTranslateY = topHudAnim.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] });
-  const currentDemandColor = demandColor(zoneStatus);
+  /** Incoming taxi offers or an in-progress taxi ride replace the browse sheet (not idle Taxi mode). */
+  const taxiSurfaceActive =
+    hasTaxiActiveOffers || Boolean(activeTaxiRide?.id);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={styles.safe} edges={[]}>
+      <StatusBar barStyle="dark-content" />
       <View style={styles.root}>
         <Mapbox.MapView
           style={styles.map}
-          styleURL="mapbox://styles/mapbox/streets-v12"
-          logoEnabled={false}
+          styleURL={mapStyleUrl}
+          logoEnabled
           attributionEnabled={false}
           compassEnabled={false}
           surfaceView={false}
         >
-          <Mapbox.UserLocation visible={false} showsUserHeadingIndicator />
+          {/* Location updates only — native blue puck fully disabled */}
+          <Mapbox.UserLocation visible={false} />
           <Mapbox.Camera
             ref={cameraRef}
             zoomLevel={13}
@@ -2275,15 +2580,21 @@ export function DriverHomeScreen() {
             animationDuration={800}
           />
 
-          {hasLocation && (
-            <Mapbox.PointAnnotation id="driver-location" coordinate={[Number(region.longitude), Number(region.latitude)]}>
-              <Animated.View style={[styles.driverHalo, { opacity: driverPulseOpacity, transform: [{ scale: driverPulseScale }] }]}>
-                <View style={styles.driverDotOuter}>
-                  <View style={styles.driverDot} />
-                </View>
-              </Animated.View>
-            </Mapbox.PointAnnotation>
-          )}
+          {hasLocation ? (
+            <Mapbox.MarkerView
+              id="driver-location-aurora"
+              coordinate={[Number(region.longitude), Number(region.latitude)]}
+              anchor={{ x: 0.5, y: 0.5 }}
+              allowOverlap
+              allowOverlapWithPuck
+            >
+              <MmdDriverLocationMarker
+                headingDeg={driverHeadingDeg}
+                moving={driverMoving}
+                online={isOnline}
+              />
+            </Mapbox.MarkerView>
+          ) : null}
 
           {activeOffer && hasOfferPickup && (
             <Mapbox.PointAnnotation id="pickup-location" coordinate={[offerPickupLng as number, activeOffer.pickup_lat as number]}>
@@ -2296,59 +2607,206 @@ export function DriverHomeScreen() {
               <View style={styles.dropoffPin}><Text style={styles.pinText}>DROPOFF</Text></View>
             </Mapbox.PointAnnotation>
           )}
+
+          {isOnline && areaIntel?.hotspots?.length ? (
+            <Mapbox.ShapeSource
+              id="home-hotspots"
+              shape={{
+                type: "FeatureCollection",
+                features: areaIntel.hotspots.slice(0, 8).map((h) => ({
+                  type: "Feature" as const,
+                  id: h.id,
+                  properties: {
+                    multiplier: h.multiplier,
+                    radiusOuter: Math.min(42, 18 + h.request_count * 4),
+                    radiusInner: Math.min(22, 8 + h.request_count * 2),
+                    color:
+                      h.demand_level === "very_busy"
+                        ? "#EF4444"
+                        : h.demand_level === "busy"
+                          ? "#F97316"
+                          : h.demand_level === "moderate"
+                            ? "#EAB308"
+                            : "#22C55E",
+                  },
+                  geometry: {
+                    type: "Point" as const,
+                    coordinates: [h.lng, h.lat],
+                  },
+                })),
+              }}
+            >
+              <Mapbox.CircleLayer
+                id="home-hotspot-glow"
+                style={{
+                  circleRadius: ["get", "radiusOuter"],
+                  circleColor: ["get", "color"],
+                  circleOpacity: 0.14,
+                  circleBlur: 0.85,
+                }}
+              />
+              <Mapbox.CircleLayer
+                id="home-hotspot-circles"
+                style={{
+                  circleRadius: ["get", "radiusInner"],
+                  circleColor: ["get", "color"],
+                  circleOpacity: 0.32,
+                  circleBlur: 0.35,
+                }}
+              />
+              <Mapbox.SymbolLayer
+                id="home-hotspot-labels"
+                style={{
+                  textField: ["concat", ["to-string", ["get", "multiplier"]], "x"],
+                  textSize: 11,
+                  textColor: "#0F172A",
+                  textHaloColor: "#FFFFFF",
+                  textHaloWidth: 1.2,
+                  textAllowOverlap: true,
+                }}
+              />
+            </Mapbox.ShapeSource>
+          ) : null}
         </Mapbox.MapView>
 
-        <Animated.View pointerEvents="box-none" style={[styles.topBar, { opacity: topHudAnim, transform: [{ translateY: topHudTranslateY }] }]}>
-          <IconButton icon="menu" onPress={openDriverMenu} />
-          <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 8 }}>
-            <MarketScopePill market={driverMarket} />
+        <Animated.View
+          pointerEvents="box-none"
+          style={[
+            styles.topHud,
+            {
+              // Flush under status bar — compact mockup header.
+              paddingTop: insets.top + 4,
+              opacity: topHudAnim,
+              transform: [{ translateY: topHudTranslateY }],
+            },
+          ]}
+        >
+          <View style={styles.topBar}>
+            <IconButton icon="menu" onPress={openDriverMenu} />
+            <View style={styles.locationSlot}>
+              {driverMarket.scopeResolved ? (
+                <MarketScopePill market={driverMarket} variant="light" />
+              ) : (
+                <View style={styles.locationFallback}>
+                  <Ionicons name="location" size={14} color="#16A34A" />
+                  <Text style={styles.locationFallbackText} numberOfLines={1}>
+                    {marketAreaLabel}
+                  </Text>
+                  <Ionicons name="chevron-down" size={12} color="#9CA3AF" />
+                </View>
+              )}
+            </View>
+            <TouchableOpacity
+              onPress={toggleOnline}
+              activeOpacity={0.9}
+              style={[
+                styles.onlinePill,
+                isOnline ? styles.onlinePillOn : styles.onlinePillOff,
+              ]}
+            >
+              <View
+                style={[
+                  styles.onlineDot,
+                  { backgroundColor: isOnline ? "#22C55E" : "#9CA3AF" },
+                ]}
+              />
+              <Text style={[styles.onlineText, isOnline ? styles.onlineTextOn : null]}>
+                {onlineLabel}
+              </Text>
+              <Text style={[styles.onlineArrow, isOnline ? styles.onlineArrowOn : null]}>
+                ⌄
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={openDriverInbox}
+              activeOpacity={0.85}
+              style={styles.iconButton}
+            >
+              <AppIcon name="bell" />
+              {availableOrders.length > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{availableOrders.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={toggleOnline} activeOpacity={0.9} style={styles.onlinePill}>
-            <View style={[styles.onlineDot, { backgroundColor: onlineColorBg, shadowColor: onlineColorBg }]} />
-            <Text style={styles.onlineText}>{onlineLabel}</Text>
-            <Text style={styles.onlineArrow}>⌄</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={openDriverInbox} activeOpacity={0.85} style={styles.iconButton}>
-            <AppIcon name="bell" />
-            {availableOrders.length > 0 && (
-              <View style={styles.badge}><Text style={styles.badgeText}>{availableOrders.length}</Text></View>
-            )}
-          </TouchableOpacity>
+          <View style={styles.modesWrap}>
+            <DriverHomeServiceModes
+              preferences={servicePreferences}
+              onPressMode={openDriverServices}
+            />
+          </View>
         </Animated.View>
 
+        {isOnline ? (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={viewHotspots}
+            style={[styles.demandPill, { top: insets.top + 98 }]}
+          >
+            <Ionicons name="flame" size={12} color="#EA580C" />
+            <Text style={styles.demandPillText}>Demand</Text>
+            <Ionicons name="chevron-down" size={11} color="#64748B" />
+          </TouchableOpacity>
+        ) : null}
 
         <View
           pointerEvents="box-none"
-          style={[styles.mapFabColumn, { top: Math.max(insets.top, 12) + 72 }]}
+          style={[styles.mapFabColumn, { top: insets.top + 98 }]}
         >
-          <MapFloatingButton
-            icon="compass"
-            caption="N"
-            onPress={resetMapBearing}
-            accessibilityLabel={t("driver.home.map.compass", "Réorienter vers le nord")}
-            scheme="night"
-            compact
-          />
           {hasLocation ? (
             <MapFloatingButton
               icon="locate"
               onPress={centerOnDriver}
               accessibilityLabel={t("driver.home.map.recenter", "Recentrer sur ma position")}
-              scheme="night"
-              style={{ marginTop: 10 }}
+              scheme="day"
+              compact
             />
-          ) : null}
+          ) : (
+            <MapFloatingButton
+              icon="compass"
+              onPress={resetMapBearing}
+              accessibilityLabel={t("driver.home.map.compass", "Réorienter vers le nord")}
+              scheme="day"
+              compact
+            />
+          )}
+          <MapFloatingButton
+            icon="layers"
+            onPress={() =>
+              setMapStyleUrl((prev) =>
+                prev.includes("streets-v12")
+                  ? "mapbox://styles/mapbox/light-v11"
+                  : "mapbox://styles/mapbox/streets-v12",
+              )
+            }
+            accessibilityLabel={t("driver.home.map.layers", "Map layers")}
+            scheme="day"
+            compact
+            state={mapStyleUrl.includes("light-v11") ? "active" : "default"}
+            style={{ marginTop: 8 }}
+          />
+          <MapFloatingButton
+            icon="shield"
+            onPress={() => navigation.navigate("DriverHelp")}
+            accessibilityLabel={t("driver.home.map.safety", "Safety")}
+            scheme="day"
+            compact
+            style={{ marginTop: 8 }}
+          />
         </View>
 
         {gpsLoading && (
           <View style={styles.loadingOverlay}>
-            <ActivityIndicator color="#ffffff" />
-            <Text style={styles.loadingText}>{t("driver.home.gps.locating", "Localisation du chauffeur…")}</Text>
+            <ActivityIndicator color="#0F172A" />
+            <Text style={[styles.loadingText, { color: "#0F172A" }]}>
+              {t("driver.home.gps.locating", "Localisation du chauffeur…")}
+            </Text>
           </View>
         )}
 
-
         <View pointerEvents="box-none" style={styles.bottomArea}>
+          {/* Incoming accept cards stay as temporary overlays (same pattern as Uber request cards). */}
           {activeOffer ? (
             <OfferCard
               offer={activeOffer}
@@ -2360,165 +2818,116 @@ export function DriverHomeScreen() {
               onAccept={() => handleAccept(activeOffer)}
               t={t}
             />
-          ) : hasTaxiActiveOffers ? null : (
+          ) : null}
+
+          {!activeOffer && !taxiSurfaceActive ? (
             <Animated.View
-              style={[styles.sheet, { transform: [{ translateY: sheetOffset }] }]}
+              style={[styles.sheetHost, { transform: [{ translateY: sheetOffset }] }]}
               {...panResponder.panHandlers}
             >
-              <View style={styles.handle} />
-              <View style={styles.sheetStatusRow}>
-                <View style={styles.sheetStatusLeft}>
-                  <View style={[styles.sheetStatusDot, { backgroundColor: currentDemandColor, shadowColor: currentDemandColor }]} />
-                  <Text style={styles.sheetStatusText}>{isOnline ? demandLabel(zoneStatus) : t("driver.home.offline", "OFFLINE")}</Text>
-                </View>
-                <Text style={styles.sheetStatusZone} numberOfLines={1}>{zoneName}</Text>
-              </View>
-
-              {isOnline && (
-                <Animated.View style={[styles.smartCard, styles.sheetSmartCard, { transform: [{ scale: searchPulseScale }] }]}>
-                  <Animated.View style={[styles.logoBox, { transform: [{ scale: radarInnerScale }] }]}>
-                    <Image source={require("../../assets/brand/mmd-logo.png")} style={styles.logo} resizeMode="contain" />
-                  </Animated.View>
-
-                  <View style={styles.smartTextWrap}>
-                    <View style={styles.rowCenter}>
-                      <Text style={styles.smartTitle}>{t("driver.home.smartMode.title", "MMD Smart Mode")}</Text>
-                      <View style={styles.livePill}><Text style={styles.liveText}>{t("driver.home.smartMode.live", "LIVE")}</Text></View>
-                    </View>
-
-                    <Text style={styles.smartSubtitle}>{searchMessages[searchMessageIndex]}</Text>
-
-                    <View style={styles.chipsRow}>
-                      <Chip label={t("driver.home.smartMode.nearby", "Nearby")} color="#93C5FD" bg="rgba(59,130,246,0.13)" />
-                      <Chip label={t("driver.home.smartMode.optimized", "Optimized")} color="#86EFAC" bg="rgba(34,197,94,0.13)" />
-                      <Chip label={`${zoneMultiplier.toFixed(1)}x ${zoneName}`} color="#C4B5FD" bg="rgba(139,92,246,0.13)" />
-                    </View>
-                  </View>
-                </Animated.View>
-              )}
-
-              {isOnline && (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    hapticLight();
-                    navAny.navigate("DriverRevenueTab" as never);
-                  }}
-                  style={styles.sheetEarningsRow}
-                >
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text style={styles.sheetEarningsLabel}>{t("driver.home.earnings.today", "Today's earnings")}</Text>
-                    <Text style={styles.sheetEarningsSub}>
-                      {earningsHidden
-                        ? t("driver.home.earnings.hidden", "{{count}} active delivery(s) · hidden", { count: activeRideCount })
-                        : t("driver.home.earnings.live", "{{count}} active delivery(s) · live total", { count: activeRideCount })}
-                    </Text>
-                  </View>
-
-                  <View style={styles.sheetEarningsRight}>
-                    <View style={{ flexDirection: "row", alignItems: "center" }}>
-                      <Text style={styles.sheetEarningsAmount}>
-                        {earningsHidden ? "••••" : money(todayEarnings)}
-                      </Text>
-
-                      <TouchableOpacity
-                        activeOpacity={0.85}
-                        onPress={(e: any) => {
-                          e?.stopPropagation?.();
-                          hapticLight();
-                          setEarningsHidden((value) => !value);
-                        }}
-                        style={styles.earningsEyeButton}
-                      >
-                        <Text style={styles.earningsEyeText}>
-                          {earningsHidden ? "👁" : "🙈"}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <Text style={styles.sheetEarningsLink}>{t("driver.home.earnings.breakdown", "View")} ›</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              <View style={styles.waitCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.waitMain}>{waitRangeText}</Text>
-                  <Text style={styles.waitTitle}>{waitTitleText}</Text>
-                  <Text style={styles.waitSub}>{waitSubText}</Text>
-                </View>
-                <View style={styles.clockCircle}><Text style={styles.clockText}>◷</Text></View>
-              </View>
-
-              <View style={styles.goalsRow}>
-                <GoalCard
-                  icon="medal"
-                  title={
-                    driverStats.nextLevel
-                      ? `${driverStats.level} → ${driverStats.nextLevel}`
-                      : `${driverStats.level} Driver`
+              <DriverHomePremiumSheet
+                isOnline={isOnline}
+                searchingSubtitle={searchMessages[searchMessageIndex]}
+                smartDispatch={
+                  areaIntel?.smart_dispatch ?? {
+                    status: isOnline ? "quiet" : "offline",
+                    recommendation: searchMessages[searchMessageIndex],
+                    chips: [],
                   }
-                  sub={`${Math.round(driverStats.points).toLocaleString()} pts · ${driverStats.completedTripsTotal} completed`}
-                  progress={driverStats.levelProgress}
-                />
-                <GoalCard
-                  icon="star"
-                  title={t("driver.home.goals.earningsGoal", "Earnings Goal")}
-                  sub={`${money(driverStats.todayEarnings)} of ${money(driverStats.dailyEarningsGoal)} · ${driverStats.completedTripsToday} today`}
-                  progress={driverStats.earningsGoalProgress}
-                />
-              </View>
-
-              <View style={styles.ordersPanel}>
-                <View style={styles.panelHeader}>
-                  <Text style={styles.panelTitle}>{t("driver.home.myOrders.title", "My active deliveries")}</Text>
-                  <TouchableOpacity onPress={() => {
-                    hapticLight();
-                    void fetchDriverOrders(true);
-                  }}>
-                    <Text style={styles.refreshText}>{t("shared.common.refresh", "Refresh")}</Text>
-                  </TouchableOpacity>
-                </View>
-                {loading && <ActivityIndicator color="#FFFFFF" style={{ marginVertical: 8 }} />}
-                {error && <Text style={styles.errorText}>{error}</Text>}
-                {myOrders.length === 0 && !loading ? (
-                  <View style={styles.emptyBox}>
-                    <Text style={styles.emptyTitle}>{t("driver.home.myOrders.emptyTitle", "No active delivery yet.")}</Text>
-                    <Text style={styles.emptySub}>{t("driver.home.myOrders.emptySubtitle", "Accepted trips will appear here.")}</Text>
-                  </View>
-                ) : (
-                  <FlatList
-                    style={styles.ordersScroll}
-                    data={myOrders}
-                    keyExtractor={(order) => `${order.source_table ?? "orders"}:${order.id}`}
-                    renderItem={({ item: order }) => (
-                      <OrderRow
-                        order={order}
-                        onPress={() => handleOpenOrder(order)}
-                        formatStatus={formatStatus}
-                        formatKind={formatKind}
-                        formatDate={formatDate}
-                      />
-                    )}
-                    contentContainerStyle={{ paddingBottom: 10 }}
-                    showsVerticalScrollIndicator={false}
-                    initialNumToRender={6}
-                    maxToRenderPerBatch={8}
-                    windowSize={5}
-                    removeClippedSubviews
-                  />
-                )}
-              </View>
+                }
+                zone={{
+                  areaLabel: marketAreaLabel,
+                  activityLabel: isOnline
+                    ? liveDemandLabel
+                    : t("driver.home.offline", "OFFLINE"),
+                  activityDetail: isOnline ? liveDemandDetail : waitSubText,
+                  driversNearby: liveDriversNearby,
+                  driversDetail: areaIntel?.area.radius_miles != null
+                    ? t("driver.home.driversWithin", "within {{miles}} mi", {
+                        miles: areaIntel.area.radius_miles,
+                      })
+                    : t("driver.home.driversNearbyDetail", "in your area"),
+                  requestsNearby: liveRequestsNearby,
+                  waitRangeLabel: liveWaitLabel,
+                  waitDetail: waitTitleText,
+                  earningsMultiplier: areaIntel?.earnings_multiplier ?? null,
+                }}
+                stats={{
+                  todayEarningsLabel: money(todayEarnings),
+                  tripsToday: driverStats.completedTripsToday,
+                  points: driverStats.points,
+                  level: driverStats.level,
+                  nextLevel: driverStats.nextLevel,
+                  levelProgress: driverStats.levelProgress,
+                  pointsProgressLabel: nextMarketingReward
+                    ? `${nextMarketingReward.progressLabel}`
+                    : pointsProgressLabel,
+                  nextRewardLabel,
+                }}
+                earningsHidden={earningsHidden}
+                onToggleEarningsHidden={() => {
+                  hapticLight();
+                  setEarningsHidden((value) => !value);
+                }}
+                onOpenEarnings={() => {
+                  hapticLight();
+                  if (nextMarketingReward) {
+                    navAny.navigate("DriverOpportunities" as never);
+                    return;
+                  }
+                  navAny.navigate("DriverRevenueTab" as never);
+                }}
+                onViewHotspots={viewHotspots}
+                onViewAllJobs={() => {
+                  hapticLight();
+                  Animated.spring(sheetOffset, {
+                    toValue: SHEET_MIN_TRANSLATE_Y,
+                    useNativeDriver: true,
+                    bounciness: 0,
+                    speed: 18,
+                  }).start();
+                }}
+                onGoBusyArea={centerOnNearestOpenRequest}
+                onGoOffline={() => {
+                  if (isOnline) void toggleOnline();
+                }}
+                onGoOnline={() => {
+                  if (!isOnline) void toggleOnline();
+                }}
+                onForceOnlinePreview={
+                  __DEV__
+                    ? () => {
+                        console.warn("[DEV] Forcing Driver Home ONLINE UI preview");
+                        forceOnlinePreviewRef.current = true;
+                        setIsOnline(true);
+                      }
+                    : undefined
+                }
+                onRefreshJobs={() => {
+                  hapticLight();
+                  void fetchDriverOrders(true);
+                  void refreshActiveTaxiRide();
+                  void refreshAreaIntelligence();
+                }}
+                jobs={premiumJobs}
+                jobsLoading={loading}
+                jobsError={error}
+                searchPulseStyle={{ transform: [{ scale: searchPulseScale }] }}
+                radarPulseStyle={{ transform: [{ scale: radarInnerScale }] }}
+                bottomPadding={DRIVER_BOTTOM_PANEL_OFFSET}
+              />
             </Animated.View>
-          )}
+          ) : null}
+
+          {/* Taxi offer / active-ride overlay only — no idle "Taxi mode" card. */}
           {!activeOffer ? (
             <View
               pointerEvents="box-none"
-              style={hasTaxiActiveOffers ? styles.offerWrap : styles.taxiPanelHost}
+              style={taxiSurfaceActive ? styles.offerWrap : styles.taxiPanelHost}
             >
               <DriverTaxiPanel
                 isOnline={isOnline}
-                elevated={hasTaxiActiveOffers}
+                elevated={taxiSurfaceActive}
                 onActiveOffersChange={setHasTaxiActiveOffers}
               />
             </View>
@@ -2698,43 +3107,66 @@ function OfferCard({
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#020617" },
-  root: { flex: 1, backgroundColor: "#020617" },
+  safe: { flex: 1, backgroundColor: "#E8EEF5" },
+  root: { flex: 1, backgroundColor: "#E8EEF5" },
   map: { flex: 1 },
-  topBar: {
+  topHud: {
     position: "absolute",
-    top: 14,
-    left: 16,
-    right: 16,
-    height: 56,
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 40,
+  },
+  sheetHost: {
+    width: "100%",
+  },
+  topBar: {
+    marginHorizontal: 10,
+    height: 32,
     zIndex: 100,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 6,
   },
-  iconButton: {
-    height: 50,
-    width: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(2,6,23,0.94)",
+  locationSlot: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "stretch",
+  },
+  locationFallback: {
+    minHeight: 32,
+    borderRadius: 999,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 10,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
-    shadowColor: "#000",
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
+    gap: 4,
   },
-  iconText: { color: "#FFFFFF", fontSize: 24, fontWeight: "900" },
-  menuIcon: { width: 22, height: 18, justifyContent: "space-between" },
-  menuLine: { height: 2.4, borderRadius: 999, backgroundColor: "#F8FAFC", width: 22 },
-  menuLineShort: { height: 2.4, borderRadius: 999, backgroundColor: "#F8FAFC", width: 15 },
-  bellIcon: { width: 24, height: 25, alignItems: "center", justifyContent: "center" },
-  bellTop: { width: 7, height: 7, borderRadius: 4, backgroundColor: "transparent", borderWidth: 2, borderColor: "#F8FAFC", marginBottom: -2 },
-  bellBody: { width: 18, height: 15, borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, borderWidth: 2, borderColor: "#F8FAFC" },
-  bellClapper: { width: 6, height: 3, borderRadius: 3, backgroundColor: "#F8FAFC", marginTop: 2 },
+  locationFallbackText: {
+    color: "#0F172A",
+    fontSize: 12,
+    fontWeight: "700",
+    flexShrink: 1,
+  },
+  iconButton: {
+    height: 32,
+    width: 32,
+    borderRadius: 16,
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconText: { color: "#0F172A", fontSize: 24, fontWeight: "900" },
+  menuIcon: { width: 20, height: 14, justifyContent: "space-between" },
+  menuLine: { height: 2, borderRadius: 999, backgroundColor: "#0F172A", width: 20 },
+  menuLineShort: { height: 2, borderRadius: 999, backgroundColor: "#0F172A", width: 14 },
+  bellIcon: { width: 22, height: 22, alignItems: "center", justifyContent: "center" },
+  bellTop: { width: 6, height: 6, borderRadius: 3, backgroundColor: "transparent", borderWidth: 1.8, borderColor: "#0F172A", marginBottom: -2 },
+  bellBody: { width: 16, height: 13, borderTopLeftRadius: 9, borderTopRightRadius: 9, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, borderWidth: 1.8, borderColor: "#0F172A" },
+  bellClapper: { width: 5, height: 2.5, borderRadius: 2, backgroundColor: "#0F172A", marginTop: 1 },
   locateIcon: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
   locateNeedle: { width: 0, height: 0, borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 20, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#020617", transform: [{ rotate: "45deg" }] },
   medalIcon: { width: 30, height: 32, alignItems: "center", justifyContent: "center" },
@@ -2745,44 +3177,77 @@ const styles = StyleSheet.create({
   starGlyph: { color: "#C4B5FD", fontSize: 22, fontWeight: "900", marginTop: -2 },
   badge: {
     position: "absolute",
-    top: -2,
-    right: -2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: PURPLE,
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#DC2626",
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },
+  badgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "900" },
   onlinePill: {
-    minWidth: 158,
-    height: 50,
+    minWidth: 96,
+    height: 32,
     borderRadius: 999,
-    backgroundColor: "rgba(2,6,23,0.94)",
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    paddingHorizontal: 18,
+    paddingHorizontal: 10,
+  },
+  onlinePillOn: {
+    backgroundColor: "#0B1220",
+  },
+  onlinePillOff: {
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(139,92,246,0.28)",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 12,
+    borderColor: "#E5E7EB",
   },
   onlineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 12,
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginRight: 6,
   },
-  onlineText: { color: "#FFFFFF", fontSize: 16, fontWeight: "900", letterSpacing: 0.5 },
-  onlineArrow: { color: "#A78BFA", fontSize: 18, fontWeight: "900", marginLeft: 10, marginTop: -3 },
+  onlineText: { color: "#374151", fontSize: 11, fontWeight: "900", letterSpacing: 0.3 },
+  onlineTextOn: { color: "#FFFFFF" },
+  onlineArrow: { color: "#9CA3AF", fontSize: 11, fontWeight: "900", marginLeft: 4, marginTop: -1 },
+  onlineArrowOn: { color: "#CBD5E1" },
+  modesWrap: {
+    marginTop: 8,
+    marginBottom: 0,
+  },
+  mapFabColumn: {
+    position: "absolute",
+    right: 12,
+    zIndex: 50,
+    alignItems: "center",
+  },
+  demandPill: {
+    position: "absolute",
+    left: 12,
+    zIndex: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  demandPillText: {
+    color: "#0F172A",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   earningsMiniCard: {
     position: "absolute",
     top: 86,
@@ -2811,12 +3276,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: CARD_BORDER,
     zIndex: 80,
-  },
-  mapFabColumn: {
-    position: "absolute",
-    right: 16,
-    zIndex: 80,
-    alignItems: "center",
   },
   compassN: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
   compassArrow: { color: "#93C5FD", fontSize: 12, fontWeight: "900", marginTop: -4 },
@@ -2869,36 +3328,6 @@ const styles = StyleSheet.create({
     zIndex: 70,
   },
   loadingText: { color: "#E5E7EB", marginTop: 8 },
-  driverHalo: {
-    height: 82,
-    width: 82,
-    borderRadius: 41,
-    backgroundColor: "rgba(139,92,246,0.22)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.28)",
-  },
-  driverDotOuter: {
-    height: 38,
-    width: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.92)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: PURPLE,
-    shadowOpacity: 0.42,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  driverDot: {
-    height: 24,
-    width: 24,
-    borderRadius: 12,
-    backgroundColor: PURPLE,
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-  },
   pickupPin: { backgroundColor: "#F97316", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   dropoffPin: { backgroundColor: "#3B82F6", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: "white" },
   pinText: { color: "white", fontWeight: "800", fontSize: 11 },
@@ -2987,7 +3416,7 @@ const styles = StyleSheet.create({
   chipsRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 9 },
   chip: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, marginRight: 6, marginBottom: 6 },
   chipText: { fontSize: 10, fontWeight: "800", maxWidth: 120 },
-  bottomArea: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 60 },
+  bottomArea: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 100 },
   taxiPanelHost: {
     position: "absolute",
     left: 0,

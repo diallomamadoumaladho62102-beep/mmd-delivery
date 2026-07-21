@@ -54,6 +54,7 @@ logcat*.txt
 # Local UI validation captures (never commit)
 docs/screenshots/
 apps/mobile/artifacts/
+apps/mobile/preview/
 
 # Audio dev previews / local legacy backups (production assets live in apps/*/assets|public/sounds)
 docs/audio-proposals/

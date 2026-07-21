@@ -332,6 +332,12 @@ export function DriverTaxiPanel({
   const status = String(activeRide?.status ?? "").toLowerCase();
   const rideId = String(activeRide?.id ?? "");
 
+  // Idle "Taxi mode / STANDARD" card removed from Driver Home.
+  // Panel only surfaces when there is a live offer or active ride.
+  if (!activeRide && activeOffers.length === 0) {
+    return null;
+  }
+
   return (
     <View
       pointerEvents="box-none"
@@ -339,10 +345,14 @@ export function DriverTaxiPanel({
     >
       <View style={[styles.card, elevated ? styles.cardElevated : null]}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>🚕 Taxi mode</Text>
-          <Text style={styles.badge}>{features?.vehicle_class ?? "standard"}</Text>
+          <Text style={styles.title}>
+            {activeRide ? "Active taxi ride" : "Incoming taxi offer"}
+          </Text>
+          {features?.vehicle_class ? (
+            <Text style={styles.badge}>{features.vehicle_class}</Text>
+          ) : null}
           {features?.premium_eligible ? (
-            <Text style={styles.badge}>⭐ Premium</Text>
+            <Text style={styles.badge}>Premium</Text>
           ) : null}
         </View>
 
@@ -350,7 +360,6 @@ export function DriverTaxiPanel({
 
         {activeRide ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Active taxi ride</Text>
             <Text style={styles.meta}>{formatStatus(status)}</Text>
             <Text style={styles.meta} numberOfLines={1}>
               {String(activeRide.pickup_address ?? "")}
