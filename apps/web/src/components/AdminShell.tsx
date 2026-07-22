@@ -14,6 +14,7 @@ const NAV = [
   { href: "/admin/subscriptions", label: "Abonnements" },
   { href: "/admin/mmd-plus", label: "MMD+" },
   { href: "/admin/marketing", label: "Marketing" },
+  { href: "/admin/advertisements", label: "Publicités" },
   { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/finance", label: "Finance" },
   { href: "/admin/test-records", label: "Test Records" },

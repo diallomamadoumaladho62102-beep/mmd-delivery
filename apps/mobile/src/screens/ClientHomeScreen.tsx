@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { SafeAreaView, StatusBar, Alert } from "react-native";
+import { View, StatusBar, Alert } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -24,7 +24,7 @@ import i18n from "../i18n";
 import { formatMoney as formatMoneyLocale } from "../i18n/formatters";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
-import { ClientHomeV4View } from "../components/client/home/ClientHomeV4View";
+import { ClientHomeV4View, resolveClientAdAction } from "../components/client/home/ClientHomeV4View";
 import { v4Styles } from "../components/client/home/clientHomeTheme";
 import { registerUserPushToken } from "../lib/notifications";
 import {
@@ -36,8 +36,192 @@ import {
   selectClientHomeDisplayItems,
 } from "../lib/clientOrderDisplay";
 import { fetchLoyaltySummary, type LoyaltySummary } from "../lib/loyaltyApi";
+import {
+  fetchClientAdvertisements,
+  trackAdvertisementEvent,
+  type ClientAdvertisement,
+} from "../lib/clientAdvertisementsApi";
+import * as Location from "expo-location";
+import { reverseGeocode } from "../lib/reverseGeocode";
+import { getMapboxToken } from "../lib/mapboxConfig";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientHome">;
+
+function looksLikeCoords(value: string) {
+  return /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(value.trim());
+}
+
+function pickAreaLabelFromDevice(
+  place: Location.LocationGeocodedAddress | null | undefined,
+): string | null {
+  if (!place) return null;
+  const candidates = [place.district, place.city, place.subregion, place.name];
+  for (const c of candidates) {
+    const s = String(c || "").trim();
+    if (!s || looksLikeCoords(s)) continue;
+    if (/^\d+\s/.test(s) && /\b(st|street|ave|avenue|rd|road|blvd|drive|dr|ln|lane)\b/i.test(s)) {
+      continue;
+    }
+    return s;
+  }
+  return null;
+}
+
+function pickAreaLabelFromGeocode(fullAddress: string, shortName: string): string | null {
+  const short = String(shortName || "").trim();
+  if (
+    short &&
+    !looksLikeCoords(short) &&
+    !/^\d+\s/.test(short) &&
+    !/\b(st|street|ave|avenue|rd|road|blvd|drive|dr|ln|lane)\b/i.test(short)
+  ) {
+    return short;
+  }
+  const parts = String(fullAddress || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  for (const part of parts) {
+    if (looksLikeCoords(part) || part.length <= 2) continue;
+    if (/^\d+\s/.test(part)) continue;
+    if (/\b(united states|usa|france|guinea|guinée|canada)\b/i.test(part)) continue;
+    return part;
+  }
+  return null;
+}
+
+async function reverseGeocodeAreaViaMapbox(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  const token = getMapboxToken().trim();
+  if (!token) return null;
+  try {
+    const url =
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+      `?access_token=${encodeURIComponent(token)}` +
+      `&types=neighborhood,locality,place,district` +
+      `&limit=5`;
+    const res = await fetch(url);
+    const json = (await res.json().catch(() => null)) as {
+      features?: Array<{
+        text?: string;
+        place_type?: string[];
+        place_name?: string;
+      }>;
+    } | null;
+    if (!res.ok || !Array.isArray(json?.features)) return null;
+
+    const preferred = ["neighborhood", "locality", "place", "district"];
+    for (const type of preferred) {
+      const hit = json.features.find((f) => f.place_type?.includes(type));
+      const name = String(hit?.text || "").trim();
+      if (name && !looksLikeCoords(name)) return name;
+    }
+    const fallback = String(json.features[0]?.text || "").trim();
+    return fallback && !looksLikeCoords(fallback) ? fallback : null;
+  } catch {
+    return null;
+  }
+}
+
+async function reverseGeocodeAreaViaNominatim(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
+      `&lat=${encodeURIComponent(String(lat))}` +
+      `&lon=${encodeURIComponent(String(lng))}` +
+      `&zoom=14&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "MMD-Delivery-Mobile/1.0",
+      },
+    });
+    const json = (await res.json().catch(() => null)) as {
+      address?: Record<string, string>;
+      name?: string;
+    } | null;
+    if (!res.ok || !json?.address) return null;
+    const a = json.address;
+    const candidates = [
+      a.neighbourhood,
+      a.suburb,
+      a.quarter,
+      a.city_district,
+      a.village,
+      a.town,
+      a.city,
+      a.municipality,
+      a.county,
+      a.state_district,
+      json.name,
+    ];
+    for (const c of candidates) {
+      const s = String(c || "").trim();
+      if (s && !looksLikeCoords(s)) return s;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveClientAreaLabel(): Promise<string | null> {
+  try {
+    const permission = await Location.getForegroundPermissionsAsync();
+    if (!permission.granted) {
+      const requested = await Location.requestForegroundPermissionsAsync();
+      if (!requested.granted) {
+        return null;
+      }
+    }
+
+    let coords = (await Location.getLastKnownPositionAsync())?.coords;
+    if (!coords) {
+      try {
+        const current = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        coords = current?.coords;
+      } catch {
+        // GPS may be unavailable (emulator / disabled services)
+      }
+    }
+    if (!coords) {
+      return null;
+    }
+
+    const lat = coords.latitude;
+    const lng = coords.longitude;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    const fromMapbox = await reverseGeocodeAreaViaMapbox(lat, lng);
+    if (fromMapbox) return fromMapbox;
+
+    const fromOsm = await reverseGeocodeAreaViaNominatim(lat, lng);
+    if (fromOsm) return fromOsm;
+
+    try {
+      const places = await Location.reverseGeocodeAsync({
+        latitude: lat,
+        longitude: lng,
+      });
+      const fromDevice = pickAreaLabelFromDevice(places[0]);
+      if (fromDevice) return fromDevice;
+    } catch {
+      // fall through
+    }
+
+    const geo = await reverseGeocode(lat, lng);
+    return pickAreaLabelFromGeocode(geo.fullAddress, geo.shortName);
+  } catch {
+    return null;
+  }
+}
 
 type OrderStatus = string;
 
@@ -440,6 +624,24 @@ function isValidImageUri(uri: string | null) {
   return /^https?:\/\//i.test(uri);
 }
 
+function resolveClientAvatarUrl(
+  value: string | null | undefined,
+  cacheKey?: string | null,
+): string | null {
+  const clean = String(value || "").trim();
+  if (!clean) return null;
+  const bust = cacheKey ? String(cacheKey).replace(/[^\w.-]/g, "").slice(0, 32) : "";
+  const withBust = (url: string) => {
+    if (!bust) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}v=${bust}`;
+  };
+  if (isValidImageUri(clean)) return withBust(clean);
+  const { data } = supabase.storage.from("avatars").getPublicUrl(clean);
+  const url = data?.publicUrl || null;
+  return isValidImageUri(url) ? withBust(url) : null;
+}
+
 export function ClientHomeScreen() {
   const navigation = useNavigation<Nav>();
   const { t, i18n } = useTranslation();
@@ -470,6 +672,9 @@ export function ClientHomeScreen() {
   const [loyaltySummary, setLoyaltySummary] = useState<LoyaltySummary | null>(
     null,
   );
+  const [advertisements, setAdvertisements] = useState<ClientAdvertisement[]>([]);
+  const [areaLabel, setAreaLabel] = useState<string | null>(null);
+  const [profileAreaLabel, setProfileAreaLabel] = useState<string | null>(null);
   const { features: platformFeatures, refresh: refreshPlatformFeatures, refreshWithCurrentLocation } =
     useClientPlatformFeatures();
 
@@ -534,15 +739,26 @@ export function ClientHomeScreen() {
     }
   }, [i18n.language]);
 
+  const refreshAreaLabel = useCallback(async () => {
+    const label = await resolveClientAreaLabel();
+    if (!isMountedRef.current) return;
+    setAreaLabel(label);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       setMenuOpen(false);
       void refreshPlatformFeatures();
+      void refreshAreaLabel();
+      const retry = setTimeout(() => {
+        void refreshAreaLabel();
+      }, 2800);
       void registerUserPushToken("client");
       return () => {
+        clearTimeout(retry);
         setMenuOpen(false);
       };
-    }, [refreshPlatformFeatures])
+    }, [refreshPlatformFeatures, refreshAreaLabel])
   );
 
   const fetchAllForUser = useCallback(async (userId: string) => {
@@ -687,12 +903,12 @@ export function ClientHomeScreen() {
           .order("created_at", { ascending: false })
           .limit(FETCH_LIMIT),
       ]);
-      ordersData = retry[0].data;
+      ordersData = retry[0].data as typeof ordersData;
       ordersError = retry[0].error;
-      drClientData = retry[1].data;
-      drCreatedData = retry[2].data;
+      drClientData = retry[1].data as typeof drClientData;
+      drCreatedData = retry[2].data as typeof drCreatedData;
       drError = retry[1].error || retry[2].error;
-      taxiData = retry[3].data;
+      taxiData = retry[3].data as typeof taxiData;
       taxiError = retry[3].error;
     }
 
@@ -781,25 +997,70 @@ export function ClientHomeScreen() {
           user.email ||
           DEFAULT_CLIENT_NAME;
 
-        const nextAvatar =
+        const metaAvatar =
           (typeof meta.avatar_url === "string" && meta.avatar_url) ||
           (typeof meta.picture === "string" && meta.picture) ||
           (typeof meta.photoURL === "string" && meta.photoURL) ||
           (typeof meta.photo_url === "string" && meta.photo_url) ||
           null;
 
-        const [{ items: mergedItems, hadFetchIssue }, loyalty] =
-          await Promise.all([
-            fetchAllForUser(user.id),
-            fetchLoyaltySummary("client").catch(() => null),
-          ]);
+        const [
+          { items: mergedItems, hadFetchIssue },
+          loyalty,
+          ads,
+          clientProfileRes,
+          baseProfileRes,
+        ] = await Promise.all([
+          fetchAllForUser(user.id),
+          fetchLoyaltySummary("client").catch(() => null),
+          fetchClientAdvertisements({
+            placement: "client_home",
+            country: market.countryCode || null,
+            city: null,
+            language: (i18n.language || "en").split("-")[0],
+            limit: 12,
+          }),
+          supabase
+            .from("client_profiles")
+            .select("avatar_url, full_name, updated_at, city, state, address")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("profiles")
+            .select("avatar_url, full_name, updated_at")
+            .eq("id", user.id)
+            .maybeSingle(),
+        ]);
 
         if (!isMountedRef.current) return;
 
-        setDisplayName(String(fullName));
-        setAvatarUrl(isValidImageUri(nextAvatar) ? nextAvatar : null);
+        const clientRow = clientProfileRes.data as {
+          avatar_url?: string | null;
+          full_name?: string | null;
+          updated_at?: string | null;
+          city?: string | null;
+          state?: string | null;
+          address?: string | null;
+        } | null;
+        const baseRow = baseProfileRes.data as {
+          avatar_url?: string | null;
+          full_name?: string | null;
+          updated_at?: string | null;
+        } | null;
+
+        const profileAvatar = clientRow?.avatar_url ?? baseRow?.avatar_url ?? metaAvatar;
+        const profileName = clientRow?.full_name || baseRow?.full_name || fullName;
+        const avatarCacheKey = clientRow?.updated_at || baseRow?.updated_at || null;
+        const profileCity = String(clientRow?.city || "").trim();
+        if (profileCity) {
+          setProfileAreaLabel(profileCity);
+        }
+
+        setDisplayName(String(profileName));
+        setAvatarUrl(resolveClientAvatarUrl(profileAvatar, avatarCacheKey));
         setItems(mergedItems);
         setLoyaltySummary(loyalty);
+        setAdvertisements(ads);
         setRecentActivityUnavailable(hadFetchIssue && mergedItems.length === 0);
         setClientUserId(user.id);
       } catch (e: unknown) {
@@ -826,7 +1087,7 @@ export function ClientHomeScreen() {
         }
       }
     },
-    [fetchAllForUser, ts]
+    [fetchAllForUser, i18n.language, market.countryCode, ts]
   );
 
   useEffect(() => {
@@ -1102,9 +1363,9 @@ export function ClientHomeScreen() {
   );
 
   return (
-    <SafeAreaView style={v4Styles.safe}>
-      <StatusBar barStyle="light-content" />
-      <SafeAreaProvider>
+    <SafeAreaProvider>
+      <View style={v4Styles.safe}>
+        <StatusBar barStyle="dark-content" />
         <ClientHomeV4View
         ts={ts}
         loading={loading}
@@ -1116,7 +1377,7 @@ export function ClientHomeScreen() {
         initials={initials}
         firstName={firstName}
         greeting={greeting}
-        displayLocation=""
+        displayLocation={scopeLabel || ""}
         spendingAmount={spendingAmount}
         activeOrdersCount={stats.inProgress}
         platformFeatures={platformFeatures}
@@ -1124,15 +1385,44 @@ export function ClientHomeScreen() {
         marketplaceSoonLabel={marketplaceSoonLabel}
         scopeLabel={scopeLabel}
         showUseCurrentLocation={showUseCurrentLocation}
+        areaLabel={areaLabel || profileAreaLabel}
         stats={stats}
         progressBarWidth={loyaltyProgressWidth}
         menuOpen={menuOpen}
         currentLang={currentLang}
+        advertisements={advertisements}
+        onAdImpression={(adId) => {
+          void trackAdvertisementEvent({
+            event: "impression",
+            advertisementId: adId,
+            country: market.countryCode || null,
+            language: currentLang,
+          });
+        }}
+        onAdClick={(ad) => {
+          void trackAdvertisementEvent({
+            event: "click",
+            advertisementId: ad.id,
+            country: market.countryCode || null,
+            language: currentLang,
+          });
+          resolveClientAdAction(ad.button_action, {
+            taxi: () => navigation.navigate("TaxiHome" as never),
+            food: () => navigation.navigate("ClientRestaurantList" as never),
+            delivery: () => navigation.navigate("DeliveryRequest" as never),
+            marketplace: handleNavigateMarketplace,
+            rewards: () =>
+              navigation.navigate("LoyaltyHub", { role: "client" }),
+            mmdPlus: () => navigation.navigate("MmdPlus" as never),
+          });
+        }}
         onRefresh={() => {
           void fetchOrders("refresh");
         }}
         onRefreshLocation={() => {
-          void refreshWithCurrentLocation();
+          void refreshWithCurrentLocation().then(() => {
+            void refreshAreaLabel();
+          });
         }}
         onChangeLang={changeLang}
         onCloseMenu={() => setMenuOpen(false)}
@@ -1155,6 +1445,9 @@ export function ClientHomeScreen() {
         onNavigateAi={() =>
           navigation.navigate("MmdAi", { source: "home_tab" })
         }
+        onNavigateWallet={() =>
+          navigation.navigate("LoyaltyHub", { role: "client" })
+        }
         onOpenOrder={(item) => handleOpenOrderItem(item as ClientItem)}
         onOpenChat={handleOpenChat}
         formatCurrency={formatCurrencyForView}
@@ -1162,8 +1455,8 @@ export function ClientHomeScreen() {
         recentTitle={(item) => recentOrderTitle(item as ClientItem)}
         statusLabel={(item) => premiumStatusText(item as ClientItem, ts)}
         />
-      </SafeAreaProvider>
-    </SafeAreaView>
+      </View>
+    </SafeAreaProvider>
   );
 }
 

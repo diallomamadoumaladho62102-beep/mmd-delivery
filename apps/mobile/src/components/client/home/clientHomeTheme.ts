@@ -1,34 +1,58 @@
 import { Platform, StyleSheet } from "react-native";
 
+/** Official Client Home light theme — mockup reference. */
 export const V4 = {
-  bg: "#050B18",
-  card: "#0B1528",
-  cardSecondary: "#101B33",
-  green: "#00D95F",
-  purple: "#7B61FF",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#AAB3C5",
-  border: "rgba(255,255,255,0.10)",
-  borderGreen: "rgba(0,217,95,0.35)",
-  glass: "rgba(11,21,40,0.88)",
+  bg: "#FFFFFF",
+  surface: "#FFFFFF",
+  card: "#FFFFFF",
+  cardSecondary: "#F8FAFC",
+  mutedBg: "#F8FAFC",
+  green: "#16A34A",
+  greenSoft: "#DCFCE7",
+  greenDark: "#15803D",
+  borderGreen: "rgba(22,163,74,0.35)",
+  purple: "#7C3AED",
+  purpleSoft: "#F3E8FF",
+  yellow: "#EAB308",
+  yellowSoft: "#FEF9C3",
+  taxi: "#CA8A04",
+  food: "#16A34A",
+  delivery: "#7C3AED",
+  marketplace: "#059669",
+  textPrimary: "#0F172A",
+  textSecondary: "#64748B",
+  textSoft: "#94A3B8",
+  border: "#E2E8F0",
+  borderStrong: "#CBD5E1",
+  danger: "#EF4444",
+  searchIcon: "#3B82F6",
 } as const;
 
 export const V4_RADIUS = {
-  sm: 14,
-  md: 22,
-  lg: 28,
-  xl: 32,
+  sm: 12,
+  md: 16,
+  lg: 20,
+  xl: 24,
+  pill: 999,
 } as const;
 
 export const V4_SHADOW = {
-  shadowColor: "#000",
-  shadowOpacity: 0.35,
-  shadowRadius: 20,
-  shadowOffset: { width: 0, height: 12 },
-  elevation: 8,
+  shadowColor: "#0F172A",
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 3,
 } as const;
 
-export const V4_BOTTOM_SAFE = Platform.OS === "android" ? 104 : 88;
+export const V4_SHADOW_SOFT = {
+  shadowColor: "#0F172A",
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 2,
+} as const;
+
+export const V4_BOTTOM_SAFE = Platform.OS === "android" ? 108 : 96;
 
 export const v4Styles = StyleSheet.create({
   safe: {
@@ -40,8 +64,8 @@ export const v4Styles = StyleSheet.create({
     backgroundColor: V4.bg,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: V4_BOTTOM_SAFE + 24,
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: V4_BOTTOM_SAFE + 20,
   },
 });
