@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
   Alert,
@@ -12,10 +11,14 @@ import {
   Easing,
   AppState,
   StyleSheet,
+  useWindowDimensions,
+  Linking,
   Platform,
 } from "react-native";
 import * as KeepAwake from "expo-keep-awake";
 import Mapbox from "@rnmapbox/maps";
+import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
 import {
   subscribePostgresChannel,
@@ -33,6 +36,21 @@ import {
   getMapStyleStreets,
 } from "../lib/mapboxConfig";
 import { registerUserPushToken } from "../lib/notifications";
+import {
+  fetchClientAdvertisements,
+  type ClientAdvertisement,
+} from "../lib/clientAdvertisementsApi";
+import { resolveClientAdAction } from "../components/client/home/ClientHomeV4View";
+import {
+  RestaurantHomeHeader,
+  RestaurantHomeSidebar,
+  RestaurantHomeMapChrome,
+  RH,
+  RH_TABLET_BREAKPOINT,
+  type MapSelection,
+  type RestaurantHomeNavKey,
+  type RestaurantMapStatusFilter,
+} from "../features/restaurant/home";
 
 const FALLBACK_RESTAURANT_ID = "";
 const IS_DEV = typeof __DEV__ !== "undefined" ? __DEV__ : false;
@@ -41,11 +59,16 @@ const DEFAULT_RESTAURANT_COORDINATE: [number, number] = [-73.949997, 40.650002];
 const MAX_VISIBLE_MAP_ORDERS = 12;
 const MAX_NEARBY_DRIVERS = 8;
 const RESTAURANT_ONLINE_KEEP_AWAKE_TAG = "mmd-restaurant-online";
-const BOTTOM_NAV_SAFE_OFFSET = Platform.OS === "android" ? 74 : 40;
-const FLOATING_SIDE_BOTTOM_OFFSET = BOTTOM_NAV_SAFE_OFFSET + 98;
-const SIDE_BUTTON_SIZE = 66;
-const SIDE_BUTTON_MIN_HEIGHT = 68;
-const BOTTOM_BUTTON_MIN_HEIGHT = 72;
+const AVATARS_BUCKET = "avatars";
+
+function resolveStorageUrl(bucket: string, value: string | null | undefined): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const normalized = raw.replace(/^\/+/, "");
+  const { data } = supabase.storage.from(bucket).getPublicUrl(normalized);
+  return data?.publicUrl || null;
+}
 
 type DashboardStats = {
   ordersToday: number;
@@ -63,6 +86,8 @@ type RestaurantProfileLite = {
   opening_hours?: Record<string, { open?: string; close?: string }> | null;
   location_lat?: number | string | null;
   location_lng?: number | string | null;
+  logo_url?: string | null;
+  avatar_url?: string | null;
 };
 
 type RestaurantMapOrder = {
@@ -208,219 +233,52 @@ function statusLabel(status: string | null | undefined) {
   return "Order";
 }
 
-function FloatingBadge({
-  value,
-  bg = "#EF4444",
-}: {
-  value: number | string;
-  bg?: string;
-}) {
-  return (
-    <View
-      style={{
-        position: "absolute",
-        top: -7,
-        right: -7,
-        minWidth: 21,
-        height: 21,
-        borderRadius: 11,
-        paddingHorizontal: 5,
-        backgroundColor: bg,
-        alignItems: "center",
-        justifyContent: "center",
-        borderWidth: 2,
-        borderColor: "#020617",
-        zIndex: 5,
-      }}
-    >
-      <Text style={{ color: "white", fontSize: 11, fontWeight: "900" }}>{value}</Text>
-    </View>
-  );
-}
-
-function MapActionButton({
-  icon,
-  label,
-  onPress,
-  badge,
-  badgeColor,
-  active = false,
-}: {
-  icon: string;
-  label?: string;
-  onPress: () => void;
-  badge?: number | string;
-  badgeColor?: string;
-  active?: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      activeOpacity={0.86}
-      onPress={onPress}
-      style={{
-        width: SIDE_BUTTON_SIZE,
-        minHeight: label ? SIDE_BUTTON_MIN_HEIGHT : 58,
-        borderRadius: 28,
-        backgroundColor: active ? "rgba(15,23,42,0.98)" : "rgba(2,6,23,0.92)",
-        borderWidth: 1.4,
-        borderColor: active ? "rgba(96,165,250,0.78)" : "rgba(148,163,184,0.30)",
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: "#000",
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 7 },
-        elevation: 10,
-      }}
-    >
-      {badge !== undefined && <FloatingBadge value={badge} bg={badgeColor} />}
-      <Text style={{ fontSize: 24 }}>{icon}</Text>
-      {label ? (
-        <Text
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          style={{
-            color: "white",
-            marginTop: 3,
-            fontSize: 10,
-            fontWeight: "900",
-            textAlign: "center",
-            maxWidth: SIDE_BUTTON_SIZE - 8,
-            includeFontPadding: false,
-          }}
-        >
-          {label}
-        </Text>
-      ) : null}
-    </TouchableOpacity>
-  );
-}
-
-function StatusPill({
-  online,
-  loading,
-  onPress,
-}: {
-  online: boolean;
-  loading: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      disabled={loading}
-      onPress={onPress}
-      style={{
-        position: "absolute",
-        top: 16,
-        alignSelf: "center",
-        minWidth: 190,
-        height: 58,
-        borderRadius: 29,
-        backgroundColor: "rgba(2,6,23,0.94)",
-        borderWidth: 1.4,
-        borderColor: "rgba(148,163,184,0.28)",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 22,
-        shadowColor: "#000",
-        shadowOpacity: 0.28,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 8 },
-        elevation: 12,
-        opacity: loading ? 0.7 : 1,
-        zIndex: 20,
-      }}
-    >
-      <View
-        style={{
-          width: 14,
-          height: 14,
-          borderRadius: 7,
-          backgroundColor: online ? "#22C55E" : "#EF4444",
-          marginRight: 12,
-        }}
-      />
-      <Text
-        style={{
-          color: online ? "#22C55E" : "#FCA5A5",
-          fontSize: 22,
-          fontWeight: "900",
-          letterSpacing: 0.6,
-        }}
-      >
-        {loading ? "..." : online ? "ONLINE" : "OFFLINE"}
-      </Text>
-      <Text style={{ color: "#E5E7EB", fontSize: 19, fontWeight: "900", marginLeft: 12 }}>
-        ⌄
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-function BrandMark() {
-  return (
-    <View
-      style={{
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: "rgba(2,6,23,0.96)",
-        borderWidth: 2,
-        borderColor: "#F97316",
-        alignItems: "center",
-        justifyContent: "center",
-        overflow: "hidden",
-        shadowColor: "#F97316",
-        shadowOpacity: 0.35,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 0 },
-        elevation: 8,
-      }}
-    >
-      <Image
-        source={require("../../assets/brand/mmd-logo.png")}
-        style={{ width: 38, height: 38 }}
-        resizeMode="contain"
-      />
-    </View>
-  );
-}
-
 function RestaurantMapPin({ label }: { label: string }) {
   return (
     <View
       style={{
-        width: 82,
-        height: 82,
-        borderRadius: 41,
-        backgroundColor: "rgba(59,130,246,0.18)",
+        width: 56,
+        height: 68,
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
       }}
+      accessibilityLabel={label}
     >
       <View
         style={{
-          width: 54,
-          height: 64,
+          width: 48,
+          height: 48,
+          borderRadius: 16,
+          backgroundColor: "#FACC15",
+          borderWidth: 2.5,
+          borderColor: "#FFFFFF",
           alignItems: "center",
           justifyContent: "center",
+          shadowColor: "#CA8A04",
+          shadowOpacity: 0.35,
+          shadowRadius: 8,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 8,
+          overflow: "hidden",
         }}
       >
-        <BrandMark />
-        <View
-          style={{
-            marginTop: -3,
-            width: 18,
-            height: 18,
-            borderRadius: 9,
-            backgroundColor: "#3B82F6",
-            borderWidth: 3,
-            borderColor: "#FFFFFF",
-          }}
+        <Image
+          source={require("../../assets/brand/mmd-logo.png")}
+          style={{ width: 34, height: 34 }}
+          resizeMode="contain"
         />
       </View>
+      <View
+        style={{
+          marginTop: -2,
+          width: 14,
+          height: 14,
+          borderRadius: 7,
+          backgroundColor: "#EAB308",
+          borderWidth: 2,
+          borderColor: "#FFFFFF",
+        }}
+      />
     </View>
   );
 }
@@ -460,155 +318,92 @@ function OrderMapPin({ status, index }: { status: string | null; index: number }
   );
 }
 
-function DriverMapPin() {
+function DriverMapPin({ active = true }: { active?: boolean }) {
+  const bg = active ? "#16A34A" : "#EF4444";
   return (
     <View
       style={{
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        backgroundColor: "#38BDF8",
-        borderWidth: 2,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: bg,
+        borderWidth: 2.5,
         borderColor: "#FFFFFF",
-        shadowColor: "#38BDF8",
-        shadowOpacity: 0.55,
+        alignItems: "center",
+        justifyContent: "center",
+        shadowColor: bg,
+        shadowOpacity: 0.4,
         shadowRadius: 8,
-        shadowOffset: { width: 0, height: 0 },
+        shadowOffset: { width: 0, height: 2 },
         elevation: 8,
       }}
-    />
-  );
-}
-
-function LegendItem({ label, color }: { label: string; color: string }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 16 }}>
-      <View
-        style={{
-          width: 14,
-          height: 14,
-          borderRadius: 7,
-          backgroundColor: color,
-          marginRight: 8,
-        }}
-      />
-      <Text
-        numberOfLines={1}
-        ellipsizeMode="tail"
-        style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800", maxWidth: 82 }}
-      >
-        {label}
-      </Text>
+    >
+      <Ionicons name="bicycle" size={16} color="#FFFFFF" />
     </View>
   );
 }
-
-function TopLegendPill({
-  items,
-}: {
-  items: Array<{ label: string; color: string }>;
-}) {
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        minHeight: 42,
-        borderRadius: 21,
-        paddingHorizontal: 10,
-        backgroundColor: "rgba(2,6,23,0.90)",
-        borderWidth: 1,
-        borderColor: "rgba(148,163,184,0.28)",
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        shadowColor: "#000",
-        shadowOpacity: 0.22,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 7 },
-        elevation: 10,
-        zIndex: 18,
-      }}
-    >
-      {items.map((item) => (
-        <LegendItem key={item.label} label={item.label} color={item.color} />
-      ))}
-    </View>
-  );
-}
-
-function BottomMapButton({
-  icon,
-  label,
-  onPress,
-  badge,
-  badgeColor,
-}: {
-  icon: string;
-  label: string;
-  onPress: () => void;
-  badge?: number | string;
-  badgeColor?: string;
-}) {
-  return (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      onPress={onPress}
-      style={{
-        flex: 1,
-        minHeight: BOTTOM_BUTTON_MIN_HEIGHT,
-        borderRadius: 20,
-        backgroundColor: "rgba(2,6,23,0.92)",
-        borderWidth: 1.2,
-        borderColor: "rgba(148,163,184,0.30)",
-        alignItems: "center",
-        justifyContent: "center",
-        marginHorizontal: 3,
-        shadowColor: "#000",
-        shadowOpacity: 0.24,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 7 },
-        elevation: 10,
-      }}
-    >
-      {badge !== undefined && <FloatingBadge value={badge} bg={badgeColor} />}
-      <Text style={{ fontSize: 24 }}>{icon}</Text>
-      <Text
-        numberOfLines={1}
-        ellipsizeMode="tail"
-        style={{
-          color: "#FFFFFF",
-          fontSize: 9.5,
-          fontWeight: "900",
-          marginTop: 4,
-          textAlign: "center",
-          maxWidth: 76,
-          includeFontPadding: false,
-        }}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
 
 const restaurantStyles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: RH.bg,
   },
   root: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: RH.bg,
+  },
+  body: {
+    flex: 1,
+    flexDirection: "row",
+  },
+  mapPane: {
+    flex: 1,
+    position: "relative",
   },
   map: {
     flex: 1,
   },
   loadingSafe: {
     flex: 1,
-    backgroundColor: "#020617",
+    backgroundColor: RH.bg,
     alignItems: "center",
     justifyContent: "center",
+  },
+  setupBanner: {
+    position: "absolute",
+    top: 56,
+    left: 12,
+    right: 12,
+    zIndex: 30,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: "#7F1D1D",
+    borderWidth: 1,
+    borderColor: "rgba(248,113,113,0.45)",
+  },
+  liveOrderCard: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    top: 56,
+    zIndex: 35,
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: RH.surface,
+    borderWidth: 1.4,
+    borderColor: "rgba(249,115,22,0.55)",
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 12,
+  },
+  marketWrap: {
+    position: "absolute",
+    left: 12,
+    top: 12,
+    zIndex: 18,
   },
 });
 
@@ -631,6 +426,7 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState("Restaurant");
+  const [restaurantLogoUrl, setRestaurantLogoUrl] = useState<string | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [restaurantOnline, setRestaurantOnline] = useState(true);
@@ -647,6 +443,13 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const [showDrivers, setShowDrivers] = useState(true);
   const [liveOrder, setLiveOrder] = useState<RestaurantMapOrder | null>(null);
   const [orderActionLoading, setOrderActionLoading] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<RestaurantMapStatusFilter>("all");
+  const [mapSelection, setMapSelection] = useState<MapSelection | null>(null);
+  const [sidebarAd, setSidebarAd] = useState<ClientAdvertisement | null>(null);
+  const [sidebarAdLoading, setSidebarAdLoading] = useState(false);
+  const { width: windowWidth } = useWindowDimensions();
+  const isTabletLayout = windowWidth >= RH_TABLET_BREAKPOINT;
   const { features: platformFeatures, refresh: refreshRestaurantPlatformFeatures } =
     useRestaurantPlatformFeatures();
   const restaurantMarket = useMemo(
@@ -791,18 +594,41 @@ export function RestaurantHomeScreen({ navigation }: any) {
 
   const loadRestaurantProfile = useCallback(async (uid: string) => {
     try {
-      const { data, error } = await supabase
+      let data: RestaurantProfileLite | null = null;
+
+      const full = await supabase
         .from("restaurant_profiles")
-        .select("restaurant_name,address,status,is_accepting_orders,is_busy,opening_hours,location_lat,location_lng")
+        .select(
+          "restaurant_name,address,status,is_accepting_orders,is_busy,opening_hours,location_lat,location_lng,logo_url,avatar_url",
+        )
         .eq("user_id", uid)
         .maybeSingle();
 
-      if (error) {
-        console.log("Restaurant profile load error:", error);
-        return;
+      if (full.error) {
+        const msg = String(full.error.message ?? "");
+        // Older DBs may lack logo/avatar columns — fall back without them.
+        if (/logo_url|avatar_url|column/i.test(msg)) {
+          const lite = await supabase
+            .from("restaurant_profiles")
+            .select(
+              "restaurant_name,address,status,is_accepting_orders,is_busy,opening_hours,location_lat,location_lng",
+            )
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (lite.error) {
+            console.log("Restaurant profile load error:", lite.error);
+            return;
+          }
+          data = (lite.data as RestaurantProfileLite | null) ?? null;
+        } else {
+          console.log("Restaurant profile load error:", full.error);
+          return;
+        }
+      } else {
+        data = (full.data as RestaurantProfileLite | null) ?? null;
       }
 
-      const profile = (data as RestaurantProfileLite | null) ?? null;
+      const profile = data;
       const nextName = String(profile?.restaurant_name || "").trim();
       const profileCoordinate = coordinateFromLatLng(
         profile?.location_lat,
@@ -814,6 +640,10 @@ export function RestaurantHomeScreen({ navigation }: any) {
       } else {
         setRestaurantName("Restaurant");
       }
+
+      setRestaurantLogoUrl(
+        resolveStorageUrl(AVATARS_BUCKET, profile?.logo_url ?? profile?.avatar_url ?? null),
+      );
 
       const hasAddress = String(profile?.address || "").trim().length > 0;
       const status = String(profile?.status || "").trim().toLowerCase();
@@ -1022,8 +852,31 @@ export function RestaurantHomeScreen({ navigation }: any) {
   );
 
   const handleOpenMapOrder = useCallback((order: RestaurantMapOrder) => {
-    setLiveOrder(order);
-  }, []);
+    const coords = orderCoordinate(order);
+    const distanceKm = coords
+      ? distanceMilesBetweenCoordinates(restaurantCoordinate, coords) * 1.60934
+      : null;
+    setMapSelection({
+      kind: "order",
+      id: order.id,
+      status: order.status,
+      total: order.total ?? null,
+      createdAt: order.created_at ?? null,
+      distanceKm,
+    });
+  }, [restaurantCoordinate]);
+
+  const handleOpenMapDriver = useCallback(
+    (driver: NearbyDriver & { distanceMiles: number }) => {
+      setMapSelection({
+        kind: "driver",
+        id: driver.driver_id,
+        distanceKm: driver.distanceMiles * 1.60934,
+        updatedAt: driver.updated_at ?? null,
+      });
+    },
+    [],
+  );
 
   const rejectLiveOrder = useCallback(
     async (order: RestaurantMapOrder) => {
@@ -1367,13 +1220,17 @@ export function RestaurantHomeScreen({ navigation }: any) {
   const visibleMapOrders = useMemo(() => {
     return [...mapOrders]
       .filter((order) => orderCoordinate(order) !== null)
+      .filter((order) => {
+        if (statusFilter === "all") return true;
+        return String(order.status ?? "").trim().toLowerCase() === statusFilter;
+      })
       .sort((a, b) => {
         const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
         const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
         return bTime - aTime;
       })
       .slice(0, MAX_VISIBLE_MAP_ORDERS);
-  }, [mapOrders]);
+  }, [mapOrders, statusFilter]);
 
   const visibleDrivers = useMemo(() => {
     return nearbyDrivers
@@ -1442,6 +1299,48 @@ export function RestaurantHomeScreen({ navigation }: any) {
       .filter(Boolean) as Array<{ id: string; coordinates: [number, number][] }>;
   }, [restaurantCoordinate, showRoutes, visibleMapOrders]);
 
+  const orderHitCollection = useMemo(() => {
+    return {
+      type: "FeatureCollection" as const,
+      features: visibleMapOrders
+        .map((order, index) => {
+          const coords = orderCoordinate(order);
+          if (!coords) return null;
+          return {
+            type: "Feature" as const,
+            id: order.id,
+            properties: {
+              orderId: order.id,
+              kind: "order",
+              index: index + 1,
+              color: statusColor(order.status),
+            },
+            geometry: { type: "Point" as const, coordinates: coords },
+          };
+        })
+        .filter(Boolean),
+    };
+  }, [visibleMapOrders]);
+
+  const driverHitCollection = useMemo(() => {
+    return {
+      type: "FeatureCollection" as const,
+      features: visibleDrivers.map((driver) => ({
+        type: "Feature" as const,
+        id: driver.driver_id,
+        properties: {
+          driverId: driver.driver_id,
+          kind: "driver",
+          color: "#0284C7",
+        },
+        geometry: {
+          type: "Point" as const,
+          coordinates: [driver.lng, driver.lat] as [number, number],
+        },
+      })),
+    };
+  }, [visibleDrivers]);
+
   const aiDispatchInsight = useMemo(() => {
     if (!restaurantOnline) {
       return t(
@@ -1487,609 +1386,717 @@ export function RestaurantHomeScreen({ navigation }: any) {
     outputRange: [1, 0.74],
   });
 
+  const headerStatusLabel = useMemo(() => {
+    if (profileNeedsSetup) {
+      return t("restaurant.home.status.setup", "SETUP");
+    }
+    if (restaurantBusy) {
+      return windowWidth < 380
+        ? t("restaurant.home.status.busyShort", "BUSY")
+        : t("restaurant.home.status.busy", "OCCUPÉ");
+    }
+    if (!restaurantOnline) {
+      return windowWidth < 380
+        ? t("restaurant.home.status.offlineShort", "OFF")
+        : t("restaurant.home.status.offline", "HORS LIGNE");
+    }
+    return windowWidth < 380
+      ? t("restaurant.home.status.onlineShort", "ON")
+      : t("restaurant.home.status.online", "EN LIGNE");
+  }, [profileNeedsSetup, restaurantBusy, restaurantOnline, t, windowWidth]);
+
+  const restaurantIdShort = useMemo(() => {
+    const id = String(activeRestaurantId || "").trim();
+    if (!id) return null;
+    return `REST-${id.slice(0, 4).toUpperCase()}`;
+  }, [activeRestaurantId]);
+
+  const loadSidebarAd = useCallback(async () => {
+    try {
+      setSidebarAdLoading(true);
+      const ads = await fetchClientAdvertisements({
+        placement: "restaurant_sidebar",
+        country: restaurantMarket.countryCode || null,
+        language: null,
+        limit: 1,
+      });
+      setSidebarAd(ads[0] ?? null);
+    } catch (e) {
+      console.warn("[restaurant.home.ads]", e);
+      setSidebarAd(null);
+    } finally {
+      setSidebarAdLoading(false);
+    }
+  }, [restaurantMarket.countryCode]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSidebarAd();
+    }, [loadSidebarAd]),
+  );
+
+  const openStatusMenu = useCallback(() => {
+    if (profileNeedsSetup) {
+      navigation.navigate("RestaurantSetup");
+      return;
+    }
+    Alert.alert(
+      t("restaurant.home.status.title", "Statut du restaurant"),
+      t(
+        "restaurant.home.status.subtitle",
+        "Choisissez comment recevoir les commandes.",
+      ),
+      [
+        {
+          text: t("restaurant.home.status.online", "EN LIGNE"),
+          onPress: () => {
+            if (!restaurantOnline || restaurantBusy) {
+              void updateRestaurantAvailability(true);
+            }
+          },
+        },
+        {
+          text: t("restaurant.dashboard.busyOff", "Mode occupé"),
+          onPress: () => {
+            if (!restaurantOnline) {
+              Alert.alert(
+                t("common.errorTitle", "Error"),
+                t(
+                  "restaurant.dashboard.busyRequiresOnline",
+                  "Passez d’abord en ligne pour activer le mode occupé.",
+                ),
+              );
+              return;
+            }
+            handleToggleBusy();
+          },
+        },
+        {
+          text: t("restaurant.home.status.offline", "HORS LIGNE"),
+          style: "destructive",
+          onPress: () => {
+            if (restaurantOnline) {
+              void updateRestaurantAvailability(false);
+            }
+          },
+        },
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+      ],
+    );
+  }, [
+    handleToggleBusy,
+    navigation,
+    profileNeedsSetup,
+    restaurantBusy,
+    restaurantOnline,
+    t,
+    updateRestaurantAvailability,
+  ]);
+
+  const openAccountMenu = useCallback(() => {
+    Alert.alert(
+      restaurantName,
+      restaurantIdShort ? `ID: ${restaurantIdShort}` : undefined,
+      [
+        {
+          text: t("restaurant.home.nav.settings", "Paramètres"),
+          onPress: () => navigation.navigate("RestaurantOrderAutomation"),
+        },
+        {
+          text: t("restaurant.home.account.setup", "Profil restaurant"),
+          onPress: () => navigation.navigate("RestaurantSetup"),
+        },
+        {
+          text: t("restaurant.home.nav.language", "Langue"),
+          onPress: () => navigation.navigate("RestaurantLanguage"),
+        },
+        {
+          text: t("restaurant.home.nav.security", "Sécurité"),
+          onPress: () => navigation.navigate("RestaurantSecurity"),
+        },
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+      ],
+    );
+  }, [navigation, restaurantIdShort, restaurantName, t]);
+
+  const handleSidebarNavigate = useCallback(
+    (key: RestaurantHomeNavKey) => {
+      switch (key) {
+        case "home":
+          break;
+        case "dashboard":
+          navigation.navigate("RestaurantCommandCenter");
+          break;
+        case "orders":
+          navigation.navigate("RestaurantOrders");
+          break;
+        case "menu":
+          navigation.navigate("RestaurantMenu");
+          break;
+        case "drivers":
+          setShowDrivers((v) => !v);
+          break;
+        case "stats":
+          navigation.navigate("RestaurantEarnings");
+          break;
+        case "finance":
+          navigation.navigate("RestaurantFinancialCenter");
+          break;
+        case "tax":
+          navigation.navigate("RestaurantTax");
+          break;
+        case "security":
+          navigation.navigate("RestaurantSecurity");
+          break;
+        case "settings":
+          navigation.navigate("RestaurantOrderAutomation");
+          break;
+        case "language":
+          navigation.navigate("RestaurantLanguage");
+          break;
+        case "heatmap":
+          setShowHeatmap((v) => !v);
+          break;
+        case "dash":
+          Alert.alert(
+            t("restaurant.dashboard.title", "Restaurant Dashboard"),
+            `${t("restaurant.dashboard.ordersToday", "Orders today")}: ${stats.ordersToday}\n` +
+              `${t("restaurant.dashboard.revenueToday", "Revenue today")}: ${formatMoney(stats.revenueToday, stats.currency)}\n` +
+              `${t("restaurant.dashboard.pendingOrders", "Pending orders")}: ${stats.pendingOrders}\n` +
+              `${t("restaurant.dashboard.driversNearby", "Drivers nearby")}: ${visibleDrivers.length}\n` +
+              `${t("restaurant.dashboard.surgeZone", "Surge zone")}: ${surgePoints.length > 0 ? t("common.yes", "Yes") : t("common.no", "No")}`,
+          );
+          break;
+        case "ai":
+          Alert.alert(
+            t("restaurant.dashboard.aiDispatch", "AI Dispatch"),
+            aiDispatchInsight,
+          );
+          break;
+        default:
+          break;
+      }
+    },
+    [
+      aiDispatchInsight,
+      navigation,
+      stats.currency,
+      stats.ordersToday,
+      stats.pendingOrders,
+      stats.revenueToday,
+      surgePoints.length,
+      t,
+      visibleDrivers.length,
+    ],
+  );
+
+  const onSidebarAdAction = useCallback(
+    (ad: ClientAdvertisement) => {
+      resolveClientAdAction(ad.button_action, {
+        taxi: () => {},
+        food: () => navigation.navigate("RestaurantOrders"),
+        delivery: () => navigation.navigate("RestaurantOrders"),
+        marketplace: () => {},
+        rewards: () => navigation.navigate("RestaurantFinancialCenter"),
+        mmdPlus: () => navigation.navigate("RestaurantFinancialCenter"),
+      });
+      const raw = String(ad.button_action ?? "").trim();
+      if (raw.startsWith("http://") || raw.startsWith("https://")) {
+        void Linking.openURL(raw);
+      }
+    },
+    [navigation],
+  );
+
   if (checkingAuth) {
     return (
-      <SafeAreaView style={restaurantStyles.loadingSafe}>
-        <StatusBar barStyle="light-content" />
-        <ActivityIndicator />
-        <Text style={{ color: "white", marginTop: 10 }}>
-          {t("common.loading", "Chargement…")}
-        </Text>
-      </SafeAreaView>
+      <SafeAreaProvider>
+        <View style={restaurantStyles.loadingSafe}>
+          <StatusBar barStyle="dark-content" backgroundColor={RH.bg} translucent={false} />
+          <ActivityIndicator color={RH.green} />
+          <Text style={{ color: RH.text, marginTop: 10 }}>
+            {t("common.loading", "Chargement…")}
+          </Text>
+        </View>
+      </SafeAreaProvider>
     );
   }
 
-  return (
-    <SafeAreaView style={restaurantStyles.safe}>
-      <StatusBar barStyle="light-content" />
+  const onlineForHeader = !profileNeedsSetup && restaurantOnline && !restaurantBusy;
 
-      <View style={restaurantStyles.root}>
-        <Mapbox.MapView
-          style={restaurantStyles.map}
-          styleURL={mapStyleURL || getMapStyleStreets()}
-          logoEnabled={false}
-          attributionEnabled={false}
-          compassEnabled={false}
-          surfaceView={false}
-        >
-          <Mapbox.UserLocation visible={false} showsUserHeadingIndicator />
-          <Mapbox.Camera
-            ref={cameraRef}
-            zoomLevel={zoomLevel}
-            centerCoordinate={restaurantCoordinate}
-            animationMode="flyTo"
-            animationDuration={700}
+  return (
+    <SafeAreaProvider>
+      <View style={restaurantStyles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor={RH.bg} translucent={false} />
+        <View style={restaurantStyles.root}>
+          <RestaurantHomeHeader
+            restaurantName={restaurantName}
+            restaurantIdShort={restaurantIdShort}
+            logoUrl={restaurantLogoUrl}
+            initials={avatarLetter}
+            online={onlineForHeader}
+            busy={restaurantBusy}
+            availabilityLoading={availabilityLoading}
+            notificationCount={stats.pendingOrders}
+            compact={!isTabletLayout}
+            onPressMenu={() => setDrawerOpen(true)}
+            onPressStatus={openStatusMenu}
+            onPressNotifications={() => navigation.navigate("RestaurantOrders")}
+            onPressAccount={openAccountMenu}
+            statusLabel={headerStatusLabel}
+            brandTitle="MMD"
+            brandSubtitle={t("restaurant.home.brandSubtitle", "RESTAURANT")}
           />
 
-          {heatmapPoints.length > 0 && (
-            <Mapbox.ShapeSource
-              id="restaurant-heatmap-source"
-              shape={makePointFeatureCollection(heatmapPoints)}
-            >
-              <Mapbox.CircleLayer
-                id="restaurant-heatmap-layer"
-                style={{
-                  circleRadius: [
-                    "interpolate",
-                    ["linear"],
-                    ["get", "weight"],
-                    1,
-                    18,
-                    12,
-                    54,
-                  ] as any,
-                  circleColor: "#F97316",
-                  circleOpacity: 0.14,
-                  circleBlur: 0.85,
+          <View style={restaurantStyles.body}>
+            {isTabletLayout ? (
+              <RestaurantHomeSidebar
+                permanent
+                open
+                onClose={() => {}}
+                activeKey="home"
+                showDrivers={showDrivers}
+                showHeatmap={showHeatmap}
+                badges={{
+                  pendingOrders: stats.pendingOrders,
+                  ordersToday: stats.ordersToday,
+                  drivers: visibleDrivers.length,
                 }}
+                ad={sidebarAd}
+                adLoading={sidebarAdLoading}
+                adCountry={restaurantMarket.countryCode || null}
+                onAdAction={onSidebarAdAction}
+                onNavigate={handleSidebarNavigate}
+                t={(key, fallback) => t(key, fallback)}
               />
-            </Mapbox.ShapeSource>
-          )}
-
-          {surgePoints.length > 0 && (
-            <Mapbox.ShapeSource
-              id="restaurant-surge-source"
-              shape={makePointFeatureCollection(surgePoints)}
-            >
-              <Mapbox.CircleLayer
-                id="restaurant-surge-layer"
-                style={{
-                  circleRadius: 92,
-                  circleColor: "#EF4444",
-                  circleOpacity: 0.12,
-                  circleStrokeWidth: 2,
-                  circleStrokeColor: "rgba(248,113,113,0.45)",
+            ) : (
+              <RestaurantHomeSidebar
+                permanent={false}
+                open={drawerOpen}
+                onClose={() => setDrawerOpen(false)}
+                activeKey="home"
+                showDrivers={showDrivers}
+                showHeatmap={showHeatmap}
+                badges={{
+                  pendingOrders: stats.pendingOrders,
+                  ordersToday: stats.ordersToday,
+                  drivers: visibleDrivers.length,
                 }}
+                ad={sidebarAd}
+                adLoading={sidebarAdLoading}
+                adCountry={restaurantMarket.countryCode || null}
+                onAdAction={onSidebarAdAction}
+                onNavigate={handleSidebarNavigate}
+                t={(key, fallback) => t(key, fallback)}
               />
-            </Mapbox.ShapeSource>
-          )}
+            )}
 
-          {routeLines.length > 0 && (
-            <Mapbox.ShapeSource
-              id="restaurant-route-lines-source"
-              shape={makeLineFeatureCollection(routeLines)}
-            >
-              <Mapbox.LineLayer
-                id="restaurant-route-lines-layer"
-                style={{
-                  lineColor: "#60A5FA",
-                  lineOpacity: 0.32,
-                  lineWidth: 2.2,
-                  lineDasharray: [2, 2],
-                }}
-              />
-            </Mapbox.ShapeSource>
-          )}
-
-          <Mapbox.PointAnnotation id="restaurant-home-pin" coordinate={restaurantCoordinate}>
-            <RestaurantMapPin label={avatarLetter} />
-          </Mapbox.PointAnnotation>
-
-          {visibleMapOrders.map((order, index) => {
-            const coordinate = orderCoordinate(order);
-            if (!coordinate) return null;
-
-            return (
-              <Mapbox.PointAnnotation
-                key={`restaurant-order-${order.id}`}
-                id={`restaurant-order-${order.id}`}
-                coordinate={coordinate}
+            <View style={restaurantStyles.mapPane}>
+              <Mapbox.MapView
+                style={restaurantStyles.map}
+                styleURL={mapStyleURL || getMapStyleStreets()}
+                logoEnabled={false}
+                attributionEnabled={false}
+                compassEnabled={false}
+                scaleBarEnabled={false}
+                rotateEnabled
+                pitchEnabled={false}
+                scrollEnabled
+                zoomEnabled
+                surfaceView={Platform.OS === "android" ? false : undefined}
               >
-                <TouchableOpacity activeOpacity={0.9} onPress={() => handleOpenMapOrder(order)}>
-                  <Animated.View
+                <Mapbox.UserLocation visible={false} showsUserHeadingIndicator />
+                <Mapbox.Camera
+                  ref={cameraRef}
+                  zoomLevel={zoomLevel}
+                  centerCoordinate={restaurantCoordinate}
+                  animationMode="flyTo"
+                  animationDuration={700}
+                />
+
+                {heatmapPoints.length > 0 && (
+                  <Mapbox.ShapeSource
+                    id="restaurant-heatmap-source"
+                    shape={makePointFeatureCollection(heatmapPoints)}
+                  >
+                    <Mapbox.CircleLayer
+                      id="restaurant-heatmap-layer"
+                      style={{
+                        circleRadius: [
+                          "interpolate",
+                          ["linear"],
+                          ["get", "weight"],
+                          1,
+                          18,
+                          12,
+                          54,
+                        ] as any,
+                        circleColor: "#F97316",
+                        circleOpacity: 0.14,
+                        circleBlur: 0.85,
+                      }}
+                    />
+                  </Mapbox.ShapeSource>
+                )}
+
+                {surgePoints.length > 0 && (
+                  <Mapbox.ShapeSource
+                    id="restaurant-surge-source"
+                    shape={makePointFeatureCollection(surgePoints)}
+                  >
+                    <Mapbox.CircleLayer
+                      id="restaurant-surge-layer"
+                      style={{
+                        circleRadius: 92,
+                        circleColor: "#EF4444",
+                        circleOpacity: 0.12,
+                        circleStrokeWidth: 2,
+                        circleStrokeColor: "rgba(248,113,113,0.45)",
+                      }}
+                    />
+                  </Mapbox.ShapeSource>
+                )}
+
+                {routeLines.length > 0 && (
+                  <Mapbox.ShapeSource
+                    id="restaurant-route-lines-source"
+                    shape={makeLineFeatureCollection(routeLines)}
+                  >
+                    <Mapbox.LineLayer
+                      id="restaurant-route-lines-layer"
+                      style={{
+                        lineColor: "#60A5FA",
+                        lineOpacity: 0.32,
+                        lineWidth: 2.2,
+                        lineDasharray: [2, 2],
+                      }}
+                    />
+                  </Mapbox.ShapeSource>
+                )}
+
+                <Mapbox.ShapeSource
+                  id="restaurant-home-hit"
+                  shape={{
+                    type: "FeatureCollection",
+                    features: [
+                      {
+                        type: "Feature",
+                        id: "restaurant-home",
+                        properties: { kind: "restaurant" },
+                        geometry: {
+                          type: "Point",
+                          coordinates: restaurantCoordinate,
+                        },
+                      },
+                    ],
+                  }}
+                  hitbox={{ width: 72, height: 72 }}
+                  onPress={() =>
+                    setMapSelection({
+                      kind: "restaurant",
+                      id: activeRestaurantId || "restaurant",
+                      name: restaurantName,
+                    })
+                  }
+                >
+                  <Mapbox.CircleLayer
+                    id="restaurant-home-hit-layer"
                     style={{
-                      opacity: pinPulseOpacity,
-                      transform: [{ scale: pinPulseScale }],
+                      circleRadius: 26,
+                      circleColor: "#EAB308",
+                      circleOpacity: 0.001,
+                    }}
+                  />
+                </Mapbox.ShapeSource>
+
+                <Mapbox.MarkerView
+                  id="restaurant-home-pin"
+                  coordinate={restaurantCoordinate}
+                  anchor={{ x: 0.5, y: 1 }}
+                  allowOverlap
+                >
+                  <View pointerEvents="none">
+                    <RestaurantMapPin label={avatarLetter} />
+                  </View>
+                </Mapbox.MarkerView>
+
+                {orderHitCollection.features.length > 0 ? (
+                  <Mapbox.ShapeSource
+                    id="restaurant-orders-interactive"
+                    shape={orderHitCollection}
+                    hitbox={{ width: 64, height: 64 }}
+                    onPress={(event) => {
+                      const feature = event?.features?.[0] as
+                        | { properties?: { orderId?: string } }
+                        | undefined;
+                      const orderId = String(feature?.properties?.orderId ?? "");
+                      const order = visibleMapOrders.find((row) => row.id === orderId);
+                      if (order) handleOpenMapOrder(order);
                     }}
                   >
-                    <OrderMapPin status={order.status} index={index} />
-                  </Animated.View>
+                    <Mapbox.CircleLayer
+                      id="restaurant-orders-halo"
+                      style={{
+                        circleRadius: 22,
+                        circleColor: ["get", "color"] as any,
+                        circleOpacity: 0.22,
+                        circleBlur: 0.55,
+                      }}
+                    />
+                    <Mapbox.CircleLayer
+                      id="restaurant-orders-dot"
+                      style={{
+                        circleRadius: 13,
+                        circleColor: ["get", "color"] as any,
+                        circleOpacity: 1,
+                        circleStrokeWidth: 3,
+                        circleStrokeColor: "#FFFFFF",
+                      }}
+                    />
+                  </Mapbox.ShapeSource>
+                ) : null}
+
+                {showDrivers && driverHitCollection.features.length > 0 ? (
+                  <Mapbox.ShapeSource
+                    id="restaurant-drivers-interactive"
+                    shape={driverHitCollection}
+                    hitbox={{ width: 64, height: 64 }}
+                    onPress={(event) => {
+                      const feature = event?.features?.[0] as
+                        | { properties?: { driverId?: string } }
+                        | undefined;
+                      const driverId = String(feature?.properties?.driverId ?? "");
+                      const driver = visibleDrivers.find((row) => row.driver_id === driverId);
+                      if (driver) handleOpenMapDriver(driver);
+                    }}
+                  >
+                    <Mapbox.CircleLayer
+                      id="restaurant-drivers-halo"
+                      style={{
+                        circleRadius: 20,
+                        circleColor: "#0284C7",
+                        circleOpacity: 0.22,
+                        circleBlur: 0.5,
+                      }}
+                    />
+                    <Mapbox.CircleLayer
+                      id="restaurant-drivers-dot"
+                      style={{
+                        circleRadius: 12,
+                        circleColor: "#0284C7",
+                        circleOpacity: 1,
+                        circleStrokeWidth: 3,
+                        circleStrokeColor: "#FFFFFF",
+                      }}
+                    />
+                  </Mapbox.ShapeSource>
+                ) : null}
+              </Mapbox.MapView>
+
+              <View style={restaurantStyles.marketWrap} pointerEvents="none">
+                <MarketScopePill market={restaurantMarket} />
+              </View>
+
+              <RestaurantHomeMapChrome
+                statusFilter={statusFilter}
+                onChangeStatusFilter={setStatusFilter}
+                selection={mapSelection}
+                onCloseSelection={() => setMapSelection(null)}
+                onOpenSelection={
+                  mapSelection?.kind === "order"
+                    ? () => openRestaurantOrderDetails(mapSelection.id)
+                    : undefined
+                }
+                onZoomIn={() => setZoomLevel((value) => Math.min(16, value + 0.6))}
+                onZoomOut={() => setZoomLevel((value) => Math.max(10, value - 0.6))}
+                onRecenter={() => {
+                  setZoomLevel((value) => (value === 13 ? 13.01 : 13));
+                  cameraRef.current?.setCamera({
+                    centerCoordinate: restaurantCoordinate,
+                    zoomLevel: 13,
+                    animationMode: "flyTo",
+                    animationDuration: 650,
+                  });
+                }}
+                onToggleLayers={() =>
+                  setMapStyleURL((value) =>
+                    value === getMapStyleStreets() ? getMapStyleDark() : getMapStyleStreets(),
+                  )
+                }
+                onRefresh={refreshLiveMap}
+                layersActive={mapStyleURL === getMapStyleDark()}
+                refreshing={statsLoading}
+                formatMoney={(amount) => formatMoney(Number(amount ?? 0), stats.currency)}
+                statusLabel={statusLabel}
+                t={(key, fallback) => t(key, fallback)}
+              />
+
+              {profileNeedsSetup && (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate("RestaurantSetup")}
+                  style={restaurantStyles.setupBanner}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}
+                  >
+                    {t("restaurant.dashboard.setupRequiredTitle", "Profil incomplet")}
+                  </Text>
+                  <Text
+                    numberOfLines={2}
+                    style={{
+                      color: "#FECACA",
+                      fontSize: 10.5,
+                      fontWeight: "700",
+                      marginTop: 3,
+                      lineHeight: 14,
+                    }}
+                  >
+                    {t(
+                      "restaurant.dashboard.setupRequiredBody",
+                      "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne.",
+                    )}
+                  </Text>
                 </TouchableOpacity>
-              </Mapbox.PointAnnotation>
-            );
-          })}
-
-          {showDrivers &&
-            visibleDrivers.map((driver) => (
-              <Mapbox.PointAnnotation
-                key={`restaurant-driver-${driver.driver_id}`}
-                id={`restaurant-driver-${driver.driver_id}`}
-                coordinate={[driver.lng, driver.lat]}
-              >
-                <DriverMapPin />
-              </Mapbox.PointAnnotation>
-            ))}
-        </Mapbox.MapView>
-
-        <StatusPill
-          online={profileNeedsSetup ? false : restaurantOnline && !restaurantBusy}
-          loading={availabilityLoading}
-          onPress={handleToggleAvailability}
-        />
-
-        {!profileNeedsSetup && restaurantOnline ? (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={handleToggleBusy}
-            disabled={availabilityLoading}
-            style={{
-              position: "absolute",
-              top: 88,
-              right: 16,
-              zIndex: 30,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-              borderRadius: 16,
-              backgroundColor: restaurantBusy
-                ? "rgba(180,83,9,0.94)"
-                : "rgba(15,23,42,0.88)",
-              borderWidth: 1,
-              borderColor: restaurantBusy
-                ? "rgba(251,191,36,0.55)"
-                : "rgba(148,163,184,0.35)",
-            }}
-          >
-            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>
-              {restaurantBusy
-                ? t("restaurant.dashboard.busyOn", "Occupé")
-                : t("restaurant.dashboard.busyOff", "Mode occupé")}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {profileNeedsSetup && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate("RestaurantSetup")}
-            style={{
-              position: "absolute",
-              top: 82,
-              left: 16,
-              right: 16,
-              zIndex: 30,
-              paddingHorizontal: 14,
-              paddingVertical: 12,
-              borderRadius: 18,
-              backgroundColor: "rgba(127,29,29,0.94)",
-              borderWidth: 1,
-              borderColor: "rgba(248,113,113,0.45)",
-            }}
-          >
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}
-            >
-              {t("restaurant.dashboard.setupRequiredTitle", "Profil incomplet")}
-            </Text>
-            <Text
-              numberOfLines={2}
-              ellipsizeMode="tail"
-              style={{
-                color: "#FECACA",
-                fontSize: 10.5,
-                fontWeight: "700",
-                marginTop: 3,
-                lineHeight: 14,
-                flexShrink: 1,
-              }}
-            >
-              {t(
-                "restaurant.dashboard.setupRequiredBody",
-                "Complète le nom, l’adresse et les coordonnées GPS du restaurant avant de passer en ligne."
               )}
-            </Text>
-          </TouchableOpacity>
-        )}
 
-        {liveOrder && (
-          <Animated.View
-            style={{
-              position: "absolute",
-              left: 88,
-              right: 88,
-              top: 92,
-              zIndex: 35,
-              opacity: liveOrderAnim,
-              transform: [
-                {
-                  translateY: liveOrderAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-16, 0],
-                  }),
-                },
-              ],
-            }}
-          >
-            <View
-              style={{
-                borderRadius: 24,
-                padding: 14,
-                backgroundColor: "rgba(2,6,23,0.97)",
-                borderWidth: 1.4,
-                borderColor: "rgba(249,115,22,0.72)",
-                shadowColor: "#000",
-                shadowOpacity: 0.34,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 8 },
-                elevation: 16,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <View style={{ flex: 1, paddingRight: 10 }}>
-                  <Text style={{ color: "#FED7AA", fontSize: 12, fontWeight: "900" }}>
-                    {t("restaurant.dashboard.newFoodOrder", "New food order")}
-                  </Text>
-                  <Text style={{ color: "#FFFFFF", fontSize: 19, fontWeight: "900", marginTop: 3 }}>
-                    #{liveOrder.id.slice(0, 8)} · {formatMoney(Number(liveOrder.total ?? 0), stats.currency)}
-                  </Text>
-                  <Text style={{ color: "#94A3B8", fontSize: 11, fontWeight: "700", marginTop: 3 }}>
-                    {statusLabel(liveOrder.status)} · {liveOrder.created_at ? new Date(liveOrder.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Live"}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => setLiveOrder(null)}
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "rgba(15,23,42,0.95)",
-                    borderWidth: 1,
-                    borderColor: "rgba(148,163,184,0.25)",
-                  }}
+              {liveOrder && (
+                <Animated.View
+                  style={[
+                    restaurantStyles.liveOrderCard,
+                    {
+                      opacity: liveOrderAnim,
+                      transform: [
+                        {
+                          translateY: liveOrderAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [-16, 0],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
                 >
-                  <Text style={{ color: "#CBD5E1", fontSize: 18, fontWeight: "900" }}>×</Text>
-                </TouchableOpacity>
-              </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <Text style={{ color: "#C2410C", fontSize: 12, fontWeight: "900" }}>
+                        {t("restaurant.dashboard.newFoodOrder", "New food order")}
+                      </Text>
+                      <Text
+                        style={{
+                          color: RH.text,
+                          fontSize: 18,
+                          fontWeight: "900",
+                          marginTop: 3,
+                        }}
+                      >
+                        #{liveOrder.id.slice(0, 8)} ·{" "}
+                        {formatMoney(Number(liveOrder.total ?? 0), stats.currency)}
+                      </Text>
+                      <Text
+                        style={{
+                          color: RH.textSecondary,
+                          fontSize: 11,
+                          fontWeight: "700",
+                          marginTop: 3,
+                        }}
+                      >
+                        {statusLabel(liveOrder.status)} ·{" "}
+                        {liveOrder.created_at
+                          ? new Date(liveOrder.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "Live"}
+                      </Text>
+                    </View>
 
-              <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-                <TouchableOpacity
-                  activeOpacity={0.88}
-                  disabled={orderActionLoading}
-                  onPress={handleRejectLiveOrder}
-                  style={{
-                    flex: 1,
-                    minHeight: 46,
-                    borderRadius: 999,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "rgba(127,29,29,0.86)",
-                    borderWidth: 1,
-                    borderColor: "rgba(248,113,113,0.45)",
-                    opacity: orderActionLoading ? 0.65 : 1,
-                  }}
-                >
-                  <Text style={{ color: "#FECACA", fontSize: 12, fontWeight: "900" }}>
-                    {t("common.reject", "Reject")}
-                  </Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => setLiveOrder(null)}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 17,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: RH.muted,
+                      }}
+                    >
+                      <Ionicons name="close" size={18} color={RH.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
 
-                <TouchableOpacity
-                  activeOpacity={0.88}
-                  onPress={() => openRestaurantOrderDetails(liveOrder.id)}
-                  style={{
-                    flex: 1,
-                    minHeight: 46,
-                    borderRadius: 999,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "rgba(30,41,59,0.95)",
-                    borderWidth: 1,
-                    borderColor: "rgba(148,163,184,0.28)",
-                  }}
-                >
-                  <Text style={{ color: "#E5E7EB", fontSize: 12, fontWeight: "900" }}>
-                    {t("common.view", "View")}
-                  </Text>
-                </TouchableOpacity>
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                    <TouchableOpacity
+                      activeOpacity={0.88}
+                      disabled={orderActionLoading}
+                      onPress={handleRejectLiveOrder}
+                      style={{
+                        flex: 1,
+                        minHeight: 44,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: RH.dangerSoft,
+                        opacity: orderActionLoading ? 0.65 : 1,
+                      }}
+                    >
+                      <Text style={{ color: RH.danger, fontSize: 12, fontWeight: "900" }}>
+                        {t("common.reject", "Reject")}
+                      </Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                  activeOpacity={0.88}
-                  disabled={orderActionLoading}
-                  onPress={handleAcceptLiveOrder}
-                  style={{
-                    flex: 1,
-                    minHeight: 46,
-                    borderRadius: 999,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "#22C55E",
-                    opacity: orderActionLoading ? 0.65 : 1,
-                  }}
-                >
-                  <Text style={{ color: "#052E16", fontSize: 12, fontWeight: "900" }}>
-                    {orderActionLoading ? "..." : t("common.accept", "Accept")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                    <TouchableOpacity
+                      activeOpacity={0.88}
+                      onPress={() => openRestaurantOrderDetails(liveOrder.id)}
+                      style={{
+                        flex: 1,
+                        minHeight: 44,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: RH.muted,
+                      }}
+                    >
+                      <Text style={{ color: RH.text, fontSize: 12, fontWeight: "900" }}>
+                        {t("common.view", "View")}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.88}
+                      disabled={orderActionLoading}
+                      onPress={handleAcceptLiveOrder}
+                      style={{
+                        flex: 1,
+                        minHeight: 44,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: RH.green,
+                        opacity: orderActionLoading ? 0.65 : 1,
+                      }}
+                    >
+                      <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "900" }}>
+                        {orderActionLoading ? "..." : t("common.accept", "Accept")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              )}
             </View>
-          </Animated.View>
-        )}
-
-        <View
-          style={{
-            position: "absolute",
-            left: 12,
-            top: 92,
-            bottom: FLOATING_SIDE_BOTTOM_OFFSET,
-            justifyContent: "space-between",
-            zIndex: 15,
-          }}
-        >
-          <MapActionButton
-            icon="▦"
-            label="Dash"
-            onPress={() =>
-              Alert.alert(
-                t("restaurant.dashboard.title", "Restaurant Dashboard"),
-                `${t("restaurant.dashboard.ordersToday", "Orders today")}: ${stats.ordersToday}\n` +
-                  `${t("restaurant.dashboard.revenueToday", "Revenue today")}: ${formatMoney(stats.revenueToday, stats.currency)}\n` +
-                  `${t("restaurant.dashboard.pendingOrders", "Pending orders")}: ${stats.pendingOrders}\n` +
-                  `${t("restaurant.dashboard.driversNearby", "Drivers nearby")}: ${visibleDrivers.length}\n` +
-                  `${t("restaurant.dashboard.surgeZone", "Surge zone")}: ${surgePoints.length > 0 ? t("common.yes", "Yes") : t("common.no", "No")}`
-              )
-            }
-          />
-          <MapActionButton
-            icon="👑"
-            label={t("restaurant.commandCenter.dashboard", "Dashboard")}
-            onPress={() => navigation.navigate("RestaurantCommandCenter")}
-          />
-          <MapActionButton
-            icon="📊"
-            label="Stats"
-            badge={stats.ordersToday > 0 ? stats.ordersToday : undefined}
-            badgeColor="#2563EB"
-            onPress={() => navigation.navigate("RestaurantEarnings")}
-          />
-          <MapActionButton
-            icon="💼"
-            label="Finance"
-            onPress={() => navigation.navigate("RestaurantFinancialCenter")}
-          />
-          <MapActionButton
-            icon="📋"
-            label="Orders"
-            badge={stats.pendingOrders > 0 ? stats.pendingOrders : undefined}
-            badgeColor="#EF4444"
-            onPress={() => navigation.navigate("RestaurantOrders")}
-          />
-          <MapActionButton
-            icon="🚘"
-            label="Drivers"
-            badge={visibleDrivers.length > 0 ? visibleDrivers.length : undefined}
-            badgeColor="#2563EB"
-            active={showDrivers}
-            onPress={() => setShowDrivers((value) => !value)}
-          />
-          <MapActionButton
-            icon="◎"
-            label="Heatmap"
-            active={showHeatmap}
-            onPress={() => setShowHeatmap((value) => !value)}
-          />
-          <MapActionButton
-            icon="🧠"
-            label="AI"
-            onPress={() =>
-              Alert.alert(
-                t("restaurant.dashboard.aiDispatch", "AI Dispatch"),
-                aiDispatchInsight
-              )
-            }
-          />
-          <MapActionButton
-            icon="⚙️"
-            label="Settings"
-            onPress={() => navigation.navigate("RestaurantOrderAutomation")}
-          />
-          <MapActionButton
-            icon="👤"
-            label="Account"
-            onPress={() => navigation.navigate("RestaurantLanguage")}
-          />
-          <MapActionButton
-            icon="🌐"
-            label="Language"
-            onPress={() => navigation.navigate("RestaurantLanguage")}
-          />
-        </View>
-
-        <View
-          style={{
-            position: "absolute",
-            right: 12,
-            top: 92,
-            bottom: FLOATING_SIDE_BOTTOM_OFFSET,
-            justifyContent: "space-between",
-            alignItems: "center",
-            zIndex: 15,
-          }}
-        >
-          <MapActionButton
-            icon="🔔"
-            label="Alerts"
-            badge={stats.pendingOrders > 0 ? stats.pendingOrders : undefined}
-            badgeColor="#EF4444"
-            onPress={() => navigation.navigate("RestaurantOrders")}
-          />
-          <MapActionButton
-            icon="⟳"
-            label="Refresh"
-            active={statsLoading}
-            onPress={refreshLiveMap}
-          />
-          <MapActionButton
-            icon="⌖"
-            label="Center"
-            onPress={() => {
-              setZoomLevel((value) => (value === 12 ? 12.01 : 12));
-              cameraRef.current?.setCamera({
-                centerCoordinate: restaurantCoordinate,
-                zoomLevel: 13,
-                animationMode: "flyTo",
-                animationDuration: 650,
-              });
-            }}
-          />
-          <MapActionButton
-            icon="➤"
-            label="Location"
-            onPress={() => {
-              setZoomLevel((value) => (value === 13 ? 13.01 : 13));
-              cameraRef.current?.setCamera({
-                centerCoordinate: restaurantCoordinate,
-                zoomLevel: 14,
-                animationMode: "flyTo",
-                animationDuration: 650,
-              });
-            }}
-          />
-          <MapActionButton
-            icon="▰"
-            label="Layers"
-            active={mapStyleURL === getMapStyleDark()}
-            onPress={() =>
-              setMapStyleURL((value) =>
-                value === getMapStyleStreets() ? getMapStyleDark() : getMapStyleStreets()
-              )
-            }
-          />
-          <View
-            style={{
-              borderRadius: 32,
-              overflow: "hidden",
-              borderWidth: 1.4,
-              borderColor: "rgba(148,163,184,0.30)",
-              backgroundColor: "rgba(2,6,23,0.92)",
-              shadowColor: "#000",
-              shadowOpacity: 0.25,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 7 },
-              elevation: 10,
-            }}
-          >
-            <TouchableOpacity
-              activeOpacity={0.86}
-              onPress={() => setZoomLevel((value) => Math.min(16, value + 0.6))}
-              style={{
-                width: SIDE_BUTTON_SIZE,
-                height: 56,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "white", fontSize: 40, fontWeight: "500" }}>+</Text>
-            </TouchableOpacity>
-            <View style={{ height: 1, backgroundColor: "rgba(148,163,184,0.18)" }} />
-            <TouchableOpacity
-              activeOpacity={0.86}
-              onPress={() => setZoomLevel((value) => Math.max(10, value - 0.6))}
-              style={{
-                width: SIDE_BUTTON_SIZE,
-                height: 56,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Text style={{ color: "white", fontSize: 40, fontWeight: "500", marginTop: -6 }}>
-                −
-              </Text>
-            </TouchableOpacity>
           </View>
-        </View>
-
-        <View style={{ position: "absolute", left: 18, right: 18, top: 58, zIndex: 16, alignItems: "center" }}>
-          <MarketScopePill market={restaurantMarket} />
-        </View>
-
-        <View style={{ position: "absolute", left: 18, right: 18, top: 18, zIndex: 16 }}>
-          <View style={{ position: "absolute", left: 0 }}>
-            <TopLegendPill
-            items={[
-              { label: "Pending", color: "#F97316" },
-              { label: "Accepted", color: "#2563EB" },
-            ]}
-            />
-          </View>
-
-          <View style={{ position: "absolute", right: 0 }}>
-            <TopLegendPill
-              items={[
-                { label: "Ready", color: "#22C55E" },
-                { label: "Surge", color: "#EF4444" },
-              ]}
-            />
-          </View>
-        </View>
-
-        <View
-          style={{
-            position: "absolute",
-            left: 12,
-            right: 12,
-            bottom: BOTTOM_NAV_SAFE_OFFSET,
-            minHeight: 82,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            zIndex: 16,
-          }}
-        >
-          <BottomMapButton
-            icon="📋"
-            label="Orders"
-            badge={stats.pendingOrders > 0 ? stats.pendingOrders : undefined}
-            badgeColor="#EF4444"
-            onPress={() => navigation.navigate("RestaurantOrders")}
-          />
-          <BottomMapButton
-            icon="💲"
-            label="Earnings"
-            onPress={() => navigation.navigate("RestaurantEarnings")}
-          />
-          <BottomMapButton
-            icon="💼"
-            label="Finance"
-            onPress={() => navigation.navigate("RestaurantFinancialCenter")}
-          />
-          <BottomMapButton
-            icon="🧾"
-            label="Tax"
-            onPress={() => navigation.navigate("RestaurantTax")}
-          />
-          <BottomMapButton
-            icon="🔒"
-            label="Security"
-            onPress={() => navigation.navigate("RestaurantSecurity")}
-          />
         </View>
       </View>
-    </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

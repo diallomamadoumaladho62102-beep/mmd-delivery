@@ -338,12 +338,15 @@ function AdvertisementsAdminInner() {
           </label>
           <label className="block">
             <span className={LABEL}>Placement</span>
-            <input
+            <select
               className={INPUT}
               value={form.placement}
               onChange={(e) => setForm((p) => ({ ...p, placement: e.target.value }))}
               disabled={!canEdit}
-            />
+            >
+              <option value="client_home">client_home (Home Client carousel)</option>
+              <option value="restaurant_sidebar">restaurant_sidebar (Restaurant sidebar)</option>
+            </select>
           </label>
           <label className="block">
             <span className={LABEL}>Pays</span>
@@ -374,12 +377,17 @@ function AdvertisementsAdminInner() {
           </label>
           <label className="block">
             <span className={LABEL}>Audience</span>
-            <input
+            <select
               className={INPUT}
               value={form.audience}
               onChange={(e) => setForm((p) => ({ ...p, audience: e.target.value }))}
               disabled={!canEdit}
-            />
+            >
+              <option value="">Toutes / non ciblée</option>
+              <option value="client">client</option>
+              <option value="restaurant">restaurant</option>
+              <option value="driver">driver</option>
+            </select>
           </label>
           <label className="block">
             <span className={LABEL}>Priorité</span>
