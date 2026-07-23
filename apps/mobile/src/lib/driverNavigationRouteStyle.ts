@@ -52,7 +52,7 @@ function interpolatePosition(
   ];
 }
 
-function routeTotalMeters(coords: Position[]): number {
+export function routeTotalMeters(coords: Position[]): number {
   let total = 0;
   for (let i = 0; i < coords.length - 1; i += 1) {
     const start = coordinatePoint(coords[i]);

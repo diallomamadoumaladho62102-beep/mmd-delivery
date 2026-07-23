@@ -70,6 +70,11 @@ export function getMapStyleNavigation(): string {
   return getMapStyleStreets();
 }
 
+/** Light Mapbox style with live traffic congestion coloring. */
+export function getMapStyleTrafficDay(): string {
+  return "mapbox://styles/mapbox/navigation-day-v1";
+}
+
 /** @deprecated Use getMapStyleStreets() for lazy Mapbox access */
 export const MAP_STYLE_STREETS = "mapbox://styles/mapbox/streets-v12";
 

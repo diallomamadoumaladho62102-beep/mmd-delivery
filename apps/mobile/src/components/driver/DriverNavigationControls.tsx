@@ -1,5 +1,10 @@
 import React from "react";
-import { View } from "react-native";
+import {
+  ActionSheetIOS,
+  Alert,
+  Platform,
+  View,
+} from "react-native";
 import type { NavigationRoute } from "../../lib/navigationService";
 import {
   formatRouteAltLabel,
@@ -7,18 +12,19 @@ import {
   type NavigationLocale,
 } from "../../lib/navigationLocale";
 import { MapFloatingButton } from "./map/MapFloatingButton";
-import { NAV_SPACE, type NavColorScheme } from "../../theme/navigationTheme";
+import { NAV_SPACE } from "../../theme/navigationTheme";
 
 type Props = {
   topOffset: number;
   voiceEnabled: boolean;
+  trafficEnabled: boolean;
   navigationPaused: boolean;
   routes: NavigationRoute[];
   selectedRouteIndex: number;
   navLocale: NavigationLocale;
-  scheme?: NavColorScheme;
   onSelectRouteIndex: (index: number) => void;
   onToggleVoice: () => void;
+  onToggleTraffic: () => void;
   onRecenter: () => void;
   onRouteOverview: () => void;
   onOpenOrderDetails: () => void;
@@ -30,30 +36,131 @@ function formatRouteSummary(route: NavigationRoute, locale: NavigationLocale): s
   return `${route.etaMinutes} min · ${formatTripDistance(route.distanceMeters, locale)}`;
 }
 
+function moreLabels(locale: NavigationLocale) {
+  if (locale === "fr") {
+    return {
+      title: "Plus",
+      pause: "Pause",
+      resume: "Reprendre",
+      overview: "Vue d'ensemble",
+      details: "Détails commande",
+      stop: "Arrêter la navigation",
+      cancel: "Annuler",
+      routes: "Itinéraires",
+    };
+  }
+  if (locale === "es") {
+    return {
+      title: "Más",
+      pause: "Pausa",
+      resume: "Reanudar",
+      overview: "Vista general",
+      details: "Detalles del pedido",
+      stop: "Finalizar navegación",
+      cancel: "Cancelar",
+      routes: "Rutas",
+    };
+  }
+  return {
+    title: "More",
+    pause: "Pause",
+    resume: "Resume",
+    overview: "Route overview",
+    details: "Order details",
+    stop: "End navigation",
+    cancel: "Cancel",
+    routes: "Routes",
+  };
+}
+
 /**
- * Premium floating map controls — a single coherent button family (recenter,
- * voice, pause, overview, details, stop + route alternatives) with accessible
- * tactile targets, animated press, clear active/alert states and day/night
- * contrast. Positioned to never collide with the HUD, driver arrow or bottom
- * bar (topOffset is safe-area aware).
+ * Floating map controls — Traffic / Voice / Center / More.
+ * Equal circular targets, safe-area aware. Secondary actions live in More.
  */
 export function DriverNavigationControls({
   topOffset,
   voiceEnabled,
+  trafficEnabled,
   navigationPaused,
   routes,
   selectedRouteIndex,
   navLocale,
-  scheme = "night",
   onSelectRouteIndex,
   onToggleVoice,
+  onToggleTraffic,
   onRecenter,
   onRouteOverview,
   onOpenOrderDetails,
   onTogglePause,
   onStopNavigation,
 }: Props) {
-  const showRouteAlts = routes.length > 1;
+  const labels = moreLabels(navLocale);
+
+  const openMore = () => {
+    const pauseLabel = navigationPaused ? labels.resume : labels.pause;
+    const routeOptions =
+      routes.length > 1
+        ? routes.map((route, index) => {
+            const tag = formatRouteAltLabel(index, navLocale);
+            const selected = index === selectedRouteIndex ? " ✓" : "";
+            return `${tag} · ${formatRouteSummary(route, navLocale)}${selected}`;
+          })
+        : [];
+
+    const options = [
+      pauseLabel,
+      labels.overview,
+      labels.details,
+      ...routeOptions,
+      labels.stop,
+      labels.cancel,
+    ];
+    const stopIndex = options.length - 2;
+    const cancelIndex = options.length - 1;
+    const routeStartIndex = 3;
+
+    const handleIndex = (buttonIndex: number) => {
+      if (buttonIndex === 0) onTogglePause();
+      else if (buttonIndex === 1) onRouteOverview();
+      else if (buttonIndex === 2) onOpenOrderDetails();
+      else if (buttonIndex === stopIndex) onStopNavigation();
+      else if (
+        buttonIndex >= routeStartIndex &&
+        buttonIndex < stopIndex &&
+        routes.length > 1
+      ) {
+        onSelectRouteIndex(buttonIndex - routeStartIndex);
+      }
+    };
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: cancelIndex,
+          destructiveButtonIndex: stopIndex,
+          title: labels.title,
+        },
+        handleIndex,
+      );
+      return;
+    }
+
+    Alert.alert(
+      labels.title,
+      undefined,
+      options.map((label, index) => {
+        if (index === cancelIndex) {
+          return { text: label, style: "cancel" as const };
+        }
+        return {
+          text: label,
+          style: index === stopIndex ? ("destructive" as const) : ("default" as const),
+          onPress: () => handleIndex(index),
+        };
+      }),
+    );
+  };
 
   return (
     <View
@@ -66,67 +173,58 @@ export function DriverNavigationControls({
         gap: NAV_SPACE.sm,
       }}
     >
-      {showRouteAlts
-        ? routes.map((route, index) => {
-            const selected = index === selectedRouteIndex;
-            const label = formatRouteAltLabel(index, navLocale);
-            return (
-              <MapFloatingButton
-                key={`route-alt-${index}`}
-                compact
-                scheme={scheme}
-                state={selected ? "active" : "default"}
-                icon={index === 0 ? "flash" : "navigate-outline"}
-                accessibilityLabel={`${label}, ${formatRouteSummary(route, navLocale)}`}
-                onPress={() => onSelectRouteIndex(index)}
-              />
-            );
-          })
-        : null}
-
       <MapFloatingButton
-        scheme={scheme}
-        icon="locate"
-        accessibilityLabel="Recentrer la carte"
-        onPress={onRecenter}
+        scheme="day"
+        icon="flash"
+        caption={navLocale === "fr" ? "Trafic" : navLocale === "es" ? "Tráfico" : "Traffic"}
+        state={trafficEnabled ? "active" : "default"}
+        accessibilityLabel={
+          trafficEnabled
+            ? navLocale === "fr"
+              ? "Masquer le trafic"
+              : "Hide traffic"
+            : navLocale === "fr"
+              ? "Afficher le trafic"
+              : "Show traffic"
+        }
+        onPress={onToggleTraffic}
       />
 
       <MapFloatingButton
-        scheme={scheme}
+        scheme="day"
         icon={voiceEnabled ? "volume-high" : "volume-mute"}
+        caption={navLocale === "fr" ? "Voix" : navLocale === "es" ? "Voz" : "Voice"}
         state={voiceEnabled ? "active" : "default"}
-        accessibilityLabel={voiceEnabled ? "Couper le son" : "Activer le son"}
+        accessibilityLabel={
+          voiceEnabled
+            ? navLocale === "fr"
+              ? "Couper le son"
+              : "Mute voice"
+            : navLocale === "fr"
+              ? "Activer le son"
+              : "Enable voice"
+        }
         onPress={onToggleVoice}
       />
 
       <MapFloatingButton
-        scheme={scheme}
-        icon={navigationPaused ? "play" : "pause"}
-        state={navigationPaused ? "alert" : "default"}
-        accessibilityLabel={navigationPaused ? "Reprendre la navigation" : "Mettre en pause"}
-        onPress={onTogglePause}
+        scheme="day"
+        icon="locate"
+        caption={
+          navLocale === "fr" ? "Recentrer" : navLocale === "es" ? "Centrar" : "Center"
+        }
+        accessibilityLabel={
+          navLocale === "fr" ? "Recentrer la carte" : "Center on vehicle"
+        }
+        onPress={onRecenter}
       />
 
       <MapFloatingButton
-        scheme={scheme}
-        icon="map-outline"
-        accessibilityLabel="Vue d'ensemble de l'itinéraire"
-        onPress={onRouteOverview}
-      />
-
-      <MapFloatingButton
-        scheme={scheme}
-        icon="list"
-        accessibilityLabel="Détails de la commande"
-        onPress={onOpenOrderDetails}
-      />
-
-      <MapFloatingButton
-        scheme={scheme}
-        icon="close"
-        state="alert"
-        accessibilityLabel="Arrêter la navigation"
-        onPress={onStopNavigation}
+        scheme="day"
+        icon="ellipsis-horizontal"
+        caption={labels.title}
+        accessibilityLabel={labels.title}
+        onPress={openMore}
       />
     </View>
   );

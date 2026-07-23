@@ -45,6 +45,10 @@ export type RouteManeuver = {
   point: CoordinatePoint | null;
   isArrival: boolean;
   lanes?: NavigationLane[];
+  /** Highway exit designation from Mapbox when present (e.g. "398B"). */
+  exitNumber?: string;
+  /** Roundabout exit index from Mapbox `maneuver.exit` when present. */
+  roundaboutExit?: number;
 };
 
 export type ActiveManeuverSelection = {
@@ -67,6 +71,8 @@ function normalizeKind(step: NavigationRouteStep): ManeuverKind {
   if (type.includes("roundabout") || type.includes("rotary")) return "roundabout";
   if (type === "merge") return "merge";
   if (type.includes("exit") || type === "off ramp" || type === "on ramp") {
+    if (modifier.includes("left")) return "fork-left";
+    if (modifier.includes("right")) return "fork-right";
     return "exit";
   }
   if (type === "fork") {
@@ -90,6 +96,11 @@ function normalizeKind(step: NavigationRouteStep): ManeuverKind {
   if (/\b(left|gauche|izquierda)\b/.test(text)) return "turn-left";
   if (/\b(right|droite|derecha)\b/.test(text)) return "turn-right";
   return "continue";
+}
+
+/** Public alias — same Mapbox type/modifier → kind mapping used by the HUD. */
+export function resolveManeuverKind(step: NavigationRouteStep): ManeuverKind {
+  return normalizeKind(step);
 }
 
 function fallbackStreetName(instruction: string): string {
@@ -135,6 +146,8 @@ export function buildManeuverList(
       point: step.maneuverPoint ?? null,
       isArrival: kind === "arrive",
       lanes: step.lanes,
+      exitNumber: step.exitNumber,
+      roundaboutExit: step.roundaboutExit,
     };
   });
 }

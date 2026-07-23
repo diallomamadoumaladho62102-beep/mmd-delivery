@@ -54,12 +54,15 @@ export type VoiceTriggerResult = {
   announcement: VoiceAnnouncement | null;
 };
 
-/** Distance thresholds and their upper tolerance bands (GPS irregularity). */
+/**
+ * Distance thresholds — max 2 announcements per maneuver:
+ * ~500 m then ~150–200 m. Immediate "now" repeats are disabled.
+ */
 export const VOICE_THRESHOLDS = {
   far: 500,
   farBandTop: 550,
-  near: 200,
-  nearBandTop: 230,
+  near: 175,
+  nearBandTop: 210,
   immediate: 45,
   arrival: 60,
 } as const;
@@ -124,16 +127,11 @@ export function evaluateManeuverVoice(params: {
       flags.arrival = true;
       speak("arrival", null, VoicePriority.ImmediateManeuver);
     }
-  } else if (!flags.immediate && distanceMeters <= VOICE_THRESHOLDS.immediate) {
-    // Immediate "now" — also marks the closer buckets as done.
-    flags.immediate = true;
-    flags.a200 = true;
-    flags.a500 = true;
-    speak("immediate", null, VoicePriority.ImmediateManeuver);
   } else if (!flags.a200 && distanceMeters <= VOICE_THRESHOLDS.nearBandTop) {
-    // Entered the 200 m band (fires even if we skipped 500 due to a reroute).
+    // Second (final) announcement ~150–200 m — never repeated after this.
     flags.a200 = true;
     flags.a500 = true;
+    flags.immediate = true;
     speak("200", VOICE_THRESHOLDS.near, VoicePriority.Nav200);
   } else if (
     !flags.a500 &&

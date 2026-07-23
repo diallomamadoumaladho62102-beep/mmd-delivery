@@ -5,7 +5,7 @@
   useRef,
   useState,
 } from "react";
-import { SafeAreaView, View, StatusBar, useColorScheme } from "react-native";
+import { SafeAreaView, View, StatusBar } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";
 import Mapbox from "@rnmapbox/maps";
@@ -18,6 +18,7 @@ import { supabase } from "../lib/supabase";
 import {
   ensureMapboxTokenApplied,
   getMapStyleStreets,
+  getMapStyleTrafficDay,
   isMapboxConfigured,
 } from "../lib/mapboxConfig";
 import {
@@ -84,7 +85,6 @@ import { useRoadSafetyEvents } from "../hooks/useRoadSafetyEvents";
 import { DriverNavigationHud } from "../components/driver/DriverNavigationHud";
 import { DriverNavigationBottomBar } from "../components/driver/DriverNavigationBottomBar";
 import { DriverNavigationControls } from "../components/driver/DriverNavigationControls";
-import { DriverNavigationThenToast } from "../components/driver/DriverNavigationThenToast";
 import { DriverArrivalBanner } from "../components/driver/DriverArrivalBanner";
 import {
   DriverNavigationStatusBanner,
@@ -95,7 +95,7 @@ import { DriverNavigationRouteLayers } from "../components/driver/DriverNavigati
 import { DriverNavigationAlertPill } from "../components/driver/DriverNavigationAlertPill";
 import { DriverNavigationSafetyPanel } from "../components/driver/DriverNavigationSafetyPanel";
 import { DriverNavigationSafetyMarkers } from "../components/driver/DriverNavigationSafetyMarkers";
-import { DriverNavigationVehicleMarker } from "../components/driver/DriverNavigationVehicleMarker";
+import { MmdDriverLocationMarker } from "../components/driver/home/MmdDriverLocationMarker";
 import { DriverMapFallbackStates } from "../components/driver/DriverMapFallbackStates";
 import { useDriverTripHistory } from "../hooks/useDriverTripHistory";
 import {
@@ -239,8 +239,7 @@ export default function DriverMapScreen() {
   const navRoute = useRoute<RouteProp<RootStackParamList, "DriverMap">>();
   const { t, i18n } = useTranslation();
   const safeAreaInsets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const navScheme = colorScheme === "dark" ? "night" : "day";
+  const navScheme = "day" as const;
   const overlayInsets = useMemo(
     () =>
       resolveOverlayInsets({
@@ -329,6 +328,7 @@ export default function DriverMapScreen() {
   const [orderLoading, setOrderLoading] = useState(true);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [trafficEnabled, setTrafficEnabled] = useState(false);
   const [navigationPaused, setNavigationPaused] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
 
@@ -497,6 +497,8 @@ export default function DriverMapScreen() {
         secondaryManeuverType: secondary?.kind,
         secondaryDistanceMeters: secondaryDistanceMeters ?? undefined,
         lanes: active.lanes,
+        exitNumber: active.exitNumber,
+        roundaboutExit: active.roundaboutExit,
       };
     }
 
@@ -681,6 +683,10 @@ export default function DriverMapScreen() {
       }
       return !enabled;
     });
+  }, []);
+
+  const handleToggleTraffic = useCallback(() => {
+    setTrafficEnabled((enabled) => !enabled);
   }, []);
 
   const handleRecenter = useCallback(() => {
@@ -1075,14 +1081,16 @@ export default function DriverMapScreen() {
     );
   }
 
-  const mapStyleURL = getMapStyleStreets();
+  const mapStyleURL = trafficEnabled
+    ? getMapStyleTrafficDay()
+    : getMapStyleStreets();
 
   return (
     <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       <View style={{ flex: 1 }}>
-        {/* MapView aligné sur RestaurantLiveMap : streets-v12 natif, scaleBarEnabled=false uniquement. */}
+        {/* MapView — light Mapbox streets (or traffic-day), never dark. */}
         <Mapbox.MapView
           ref={mapRef}
           style={{ flex: 1 }}
@@ -1122,16 +1130,36 @@ export default function DriverMapScreen() {
               geometry={activeRouteGeometry}
               traveledMeters={routeProgress.traveledMeters}
               layout={camera.screenLayout}
+              maneuverDistanceMeters={
+                instruction?.maneuverDistanceMeters ?? null
+              }
             />
           )}
 
-          {vehicleMarkerPoint && navigationActive && (
-            <DriverNavigationVehicleMarker
-              point={vehicleMarkerPoint}
-              bearing={vehicleBearing}
-              followMode={camera.mode === "follow"}
-            />
-          )}
+          {vehicleMarkerPoint && navigationActive ? (
+            <Mapbox.MarkerView
+              id="driver-nav-aurora"
+              coordinate={[
+                vehicleMarkerPoint.longitude,
+                vehicleMarkerPoint.latitude,
+              ]}
+              anchor={{ x: 0.5, y: 0.5 }}
+              allowOverlap
+              allowOverlapWithPuck
+            >
+              <MmdDriverLocationMarker
+                headingDeg={
+                  camera.mode === "follow" ? 0 : vehicleBearing
+                }
+                moving={
+                  previewSpeedMps != null &&
+                  Number.isFinite(previewSpeedMps) &&
+                  previewSpeedMps > 0.8
+                }
+                online
+              />
+            </Mapbox.MarkerView>
+          ) : null}
 
           {navigationActive && projectedSafetyEvents.length > 0 && (
             <DriverNavigationSafetyMarkers
@@ -1142,7 +1170,12 @@ export default function DriverMapScreen() {
 
         </Mapbox.MapView>
 
-        <DriverNavigationHud visible={!!instruction} instruction={instruction} locale={navLocale} />
+        <DriverNavigationHud
+          visible={!!instruction}
+          instruction={instruction}
+          locale={navLocale}
+          countryCode={trip?.orderCountryCode ?? null}
+        />
 
         <DriverNavigationStatusBanner
           banner={statusBanner}
@@ -1162,13 +1195,14 @@ export default function DriverMapScreen() {
         <DriverNavigationControls
           topOffset={controlsTopOffset}
           voiceEnabled={voiceEnabled}
+          trafficEnabled={trafficEnabled}
           navigationPaused={navigationPaused}
           routes={routes}
           selectedRouteIndex={selectedRouteIndex}
           navLocale={navLocale}
-          scheme={navScheme}
           onSelectRouteIndex={handleSelectRouteIndex}
           onToggleVoice={handleToggleVoice}
+          onToggleTraffic={handleToggleTraffic}
           onRecenter={handleRecenter}
           onRouteOverview={handleRouteOverview}
           onOpenOrderDetails={handleOpenOrderDetails}
@@ -1180,13 +1214,6 @@ export default function DriverMapScreen() {
           alert={navigationAlert}
           bottomOffset={overlayInsets.alertPillBottom}
         />
-
-        {!destinationArrived ? (
-          <DriverNavigationThenToast
-            instruction={instruction}
-            hasSpeedLimit={speedLimitState.postedSpeed != null}
-          />
-        ) : null}
 
         {trip && destinationArrived ? (
           <DriverArrivalBanner
@@ -1206,7 +1233,11 @@ export default function DriverMapScreen() {
             remainingMeters={displayRemainingMeters}
             speedMps={previewSpeedMps}
             postedSpeed={speedLimitState.postedSpeed}
+            postedUnit={speedLimitState.postedUnit}
             isSpeeding={speedLimitState.isSpeeding}
+            locale={navLocale}
+            countryCode={trip.orderCountryCode ?? null}
+            onEndNavigation={handleStopNavigation}
           />
         ) : null}
       </View>

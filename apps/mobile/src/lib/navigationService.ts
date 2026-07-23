@@ -11,6 +11,7 @@ import {
   type RouteSpeedLimitSegment,
 } from "./navigationSpeedLimit";
 import { parseMapboxLanes, type NavigationLane } from "./navigationLanes";
+import { extractMapboxExitNumber } from "./navigationExit";
 
 export type RoutePoint = CoordinatePoint;
 
@@ -29,6 +30,16 @@ export type NavigationRouteStep = {
   maneuverType?: string;
   /** Mapbox `maneuver.modifier` (left, right, slight left, uturn, …). */
   maneuverModifier?: string;
+  /**
+   * Mapbox `maneuver.exit` — roundabout / rotary exit index when provided.
+   * Never invent; omit when Mapbox does not send it.
+   */
+  roundaboutExit?: number;
+  /**
+   * Highway exit designation from Mapbox `exits` / instruction when present
+   * (e.g. "398B", "12"). Never invent.
+   */
+  exitNumber?: string;
   /** `step.name` — road being driven for this step. */
   roadName?: string;
   /** GPS coordinate of the maneuver point (`maneuver.location`). */
@@ -119,12 +130,15 @@ function parseSteps(rawSteps: unknown[]): NavigationRouteStep[] {
           type?: string;
           modifier?: string;
           location?: number[];
+          exit?: number | string;
         };
         name?: string;
         distance?: number;
         duration?: number;
         voiceInstructions?: unknown;
         intersections?: unknown;
+        exits?: string | string[];
+        ref?: string;
       };
 
       const instruction = String(item?.maneuver?.instruction || "").trim();
@@ -134,16 +148,34 @@ function parseSteps(rawSteps: unknown[]): NavigationRouteStep[] {
         return null;
       }
 
+      const maneuverType = item.maneuver?.type
+        ? String(item.maneuver.type).trim().toLowerCase()
+        : undefined;
+      const maneuverModifier = item.maneuver?.modifier
+        ? String(item.maneuver.modifier).trim().toLowerCase()
+        : undefined;
+
+      const roundaboutExitRaw = Number(item.maneuver?.exit);
+      const roundaboutExit =
+        Number.isFinite(roundaboutExitRaw) && roundaboutExitRaw > 0
+          ? Math.round(roundaboutExitRaw)
+          : undefined;
+
+      const exitNumber = extractMapboxExitNumber({
+        exits: item.exits,
+        ref: item.ref,
+        instruction,
+        maneuverType,
+      });
+
       const parsed: NavigationRouteStep = {
         instruction,
         distanceMeters,
         durationSeconds: Math.round(Number(item.duration) || 0),
-        maneuverType: item.maneuver?.type
-          ? String(item.maneuver.type).trim().toLowerCase()
-          : undefined,
-        maneuverModifier: item.maneuver?.modifier
-          ? String(item.maneuver.modifier).trim().toLowerCase()
-          : undefined,
+        maneuverType,
+        maneuverModifier,
+        roundaboutExit,
+        exitNumber: exitNumber || undefined,
         roadName: item.name ? String(item.name).trim() || undefined : undefined,
         maneuverPoint: parseManeuverPoint(item.maneuver?.location),
         maneuverAlongRouteMeters: alongRouteMeters,

@@ -2001,10 +2001,10 @@ export function DriverHomeScreen() {
         etaLabel: null as string | null,
         onPress: () => {
           hapticLight();
-          navAny.navigate("DriverMap" as never, {
+          navAny.navigate("DriverMap", {
             orderId: rideId,
             sourceTable: "taxi_rides",
-          } as never);
+          });
         },
       },
       ...foodDeliveryJobs,
@@ -2492,11 +2492,11 @@ export function DriverHomeScreen() {
       );
       return;
     }
-    navAny.navigate("DriverHotspots" as never, {
+    navAny.navigate("DriverHotspots", {
       lat,
       lng,
       isOnline,
-    } as never);
+    });
   }, [driverLocation?.lat, driverLocation?.lng, isOnline, navAny, region.latitude, region.longitude, t]);
 
   useEffect(() => {

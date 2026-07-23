@@ -62,8 +62,7 @@ assert(r.announcement === null, "no repeat 200");
 
 r = evaluateManeuverVoice({ state, routeVersion: "v1", selection: selection(40), locale: "fr" });
 state = r.state;
-assert(r.announcement?.bucket === "immediate", "immediate fires at 40m");
-assert(r.announcement?.text.startsWith("Maintenant"), "immediate phrase");
+assert(r.announcement === null, "no third immediate announce");
 
 // --- GPS jump 540 -> 470 on FIRST observation still triggers 500 ---
 let jumpState = initVoiceTriggerState();

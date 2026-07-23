@@ -8,8 +8,8 @@
  */
 export const NAV_ICON_SCREEN_RATIO = 0.632;
 
-/** Trip bar (`DriverNavigationBottomBar`: padding 15+13 + ligne ~30 px). */
-export const TRIP_BAR_HEIGHT_RATIO = 80 / 2340;
+/** Trip bar (edge-to-edge footer: content + home-indicator inset). */
+export const TRIP_BAR_HEIGHT_RATIO = 132 / 2340;
 /** Safe area basse (home indicator / barre navigation système). */
 export const SAFE_AREA_BOTTOM_RATIO = 32 / 2340;
 /** Barre trip ETA visible (padding + texte, ref. Pixel 2340). */
@@ -48,8 +48,8 @@ const LOOK_AHEAD_SCREEN_PADDING_RATIO = 100 / 2340;
 /** HUD navigation MMD (capture 1080×2340). */
 const TOP_UI_RATIO = 289 / 2340;
 
-/** Trip bar → bas fenêtre app (conservé pour compat. tests). */
-const TRIP_BAR_BOTTOM_INSET_RATIO =
+/** Trip bar → bas fenêtre app (conservé pour compat. tests / layout ratios). */
+export const TRIP_BAR_BOTTOM_INSET_RATIO =
   TRIP_BAR_HEIGHT_RATIO + SAFE_AREA_BOTTOM_RATIO;
 
 const HORIZONTAL_INSET = 16;
@@ -314,18 +314,29 @@ export const NAV_CAMERA = {
 /** Point de visée légèrement devant l'ancre — regard un peu moins lointain. */
 export const NAV_CAMERA_LOOK_AHEAD_METERS = 28;
 
+/** Official Mapbox Directions route blue. */
 export const NAV_ROUTE_FUTURE = {
-  color: "#48C4E0",
+  color: "#4264FB",
   opacity: 0.98,
-  glowColor: "#48C4E0",
+  glowColor: "#4264FB",
   glowOpacity: 0,
   glowBlur: 0,
 } as const;
 
-export const NAV_ROUTE_TRAVELED = {
-  color: "#2ECC71",
-  opacity: 0.88,
+/** Approach slice just before the next maneuver (real geometry). */
+export const NAV_ROUTE_APPROACH = {
+  color: "#FF9500",
+  opacity: 1,
 } as const;
+
+/** Traveled segment disabled — no green trail behind the vehicle. */
+export const NAV_ROUTE_TRAVELED = {
+  color: "#4264FB",
+  opacity: 0,
+} as const;
+
+/** Length of the yellow/orange approach band before the next turn. */
+export const NAV_ROUTE_APPROACH_METERS = 110;
 
 /** Pointe flèche → cyan (canvas 128, tip y=70, forme 112×58). */
 export const NAV_ARROW_TIP_CANVAS_RATIO = (128 - 70) / 128;

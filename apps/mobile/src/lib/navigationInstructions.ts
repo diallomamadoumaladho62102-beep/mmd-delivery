@@ -6,6 +6,7 @@ import {
   resolveNavigationLocale,
   type NavigationLocale,
 } from "./navigationLocale";
+import { resolveManeuverKind } from "./navigationManeuvers";
 
 export type NavigationInstruction = {
   title: string;
@@ -18,6 +19,10 @@ export type NavigationInstruction = {
   secondaryManeuverType?: string;
   secondaryDistanceMeters?: number;
   lanes?: NavigationLane[];
+  /** Highway exit from Mapbox when present (never invented). */
+  exitNumber?: string;
+  /** Roundabout exit index from Mapbox when present. */
+  roundaboutExit?: number;
 };
 
 export function formatNavigationDistance(
@@ -77,11 +82,6 @@ export function pickNextStep(
   return steps[currentIndex + 1] ?? null;
 }
 
-function inferManeuverType(instruction: string): string | undefined {
-  const token = instruction.split(" ")[0]?.toLowerCase();
-  return token || undefined;
-}
-
 export function extractStreetName(instruction: string): string {
   const trimmed = instruction.trim();
   const patterns = [
@@ -125,12 +125,15 @@ export function buildNavigationInstruction(params: {
       maneuverDistanceMeters,
       distanceMeters: remainingMeters,
       voiceText: `${maneuverDistanceText}. ${currentStep.instruction}.`,
-      maneuverType: inferManeuverType(currentStep.instruction),
+      maneuverType: resolveManeuverKind(currentStep),
       secondaryTitle: secondaryTitle || undefined,
-      secondaryManeuverType: secondaryTitle
-        ? inferManeuverType(secondaryTitle)
+      secondaryManeuverType: nextStep
+        ? resolveManeuverKind(nextStep)
         : undefined,
       secondaryDistanceMeters: nextStep?.distanceMeters,
+      lanes: currentStep.lanes,
+      exitNumber: currentStep.exitNumber,
+      roundaboutExit: currentStep.roundaboutExit,
     };
   }
 

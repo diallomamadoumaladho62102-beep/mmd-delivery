@@ -1,5 +1,30 @@
 export type NavigationLocale = "en" | "fr" | "es";
 
+/** Distance/speed unit system driven by market country, with locale fallback. */
+export type DistanceUnitSystem = "imperial" | "metric";
+
+const IMPERIAL_COUNTRIES = new Set([
+  "US",
+  "USA",
+  "LR",
+  "MM",
+  "GB",
+  "UK",
+]);
+
+export function resolveUnitSystem(
+  countryCode?: string | null,
+  locale?: NavigationLocale,
+): DistanceUnitSystem {
+  const country = String(countryCode ?? "")
+    .trim()
+    .toUpperCase();
+  if (country && IMPERIAL_COUNTRIES.has(country)) return "imperial";
+  if (country && country.length === 2) return "metric";
+  // Locale fallback when country unknown — en → imperial, else metric.
+  return locale === "en" ? "imperial" : "metric";
+}
+
 /** Single language for Mapbox directions + HUD copy (no mixed UI). */
 export function resolveNavigationLocale(appLocale: string): NavigationLocale {
   const base = String(appLocale || "en")
@@ -16,52 +41,122 @@ export function isFrenchNavigationLocale(locale: NavigationLocale): boolean {
   return locale === "fr";
 }
 
-export function formatManeuverDistanceLabel(
+/** Plain distance (no "In/Dans" prefix) for secondary maneuver / trip bar. */
+export function formatNavigationDistancePlain(
   meters: number,
-  locale: NavigationLocale,
+  units: DistanceUnitSystem,
 ): string {
   if (!Number.isFinite(meters)) return "—";
 
-  if (locale === "fr") {
+  if (units === "metric") {
     if (meters < 1000) {
-      const rounded = Math.max(30, Math.round(meters / 10) * 10);
-      return `Dans ${rounded} m`;
+      return `${Math.max(30, Math.round(meters / 10) * 10)} m`;
     }
-    return `Dans ${(meters / 1000).toFixed(1)} km`;
+    return `${(meters / 1000).toFixed(1)} km`;
   }
 
   if (meters < 160) {
-    const feet = Math.max(50, Math.round(meters * 3.28084 / 50) * 50);
-    return `In ${feet} ft`;
+    const feet = Math.max(50, Math.round((meters * 3.28084) / 50) * 50);
+    return `${feet} ft`;
   }
 
   const miles = meters / 1609.344;
-  const value = miles >= 10 ? miles.toFixed(0) : miles.toFixed(1);
-  return `In ${value} mi`;
+  return `${miles.toFixed(miles >= 10 ? 0 : 1)} mi`;
+}
+
+export function formatManeuverDistanceLabel(
+  meters: number,
+  locale: NavigationLocale,
+  units?: DistanceUnitSystem,
+): string {
+  if (!Number.isFinite(meters)) return "—";
+  const system =
+    units ?? (locale === "fr" || locale === "es" ? "metric" : "imperial");
+  const plain = formatNavigationDistancePlain(meters, system);
+
+  if (locale === "fr") return `Dans ${plain}`;
+  if (locale === "es") return `En ${plain}`;
+  return `In ${plain}`;
 }
 
 export function formatTripDistance(
   meters: number,
   locale: NavigationLocale,
+  units?: DistanceUnitSystem,
 ): string {
   if (!Number.isFinite(meters) || meters <= 0) return "—";
+  const system =
+    units ?? (locale === "fr" || locale === "es" ? "metric" : "imperial");
+  return formatNavigationDistancePlain(meters, system);
+}
 
-  if (locale === "fr") {
-    if (meters < 1000) return `${Math.max(50, Math.round(meters / 50) * 50)} m`;
-    return `${(meters / 1000).toFixed(1)} km`;
+/** Speed from m/s → mph or km/h integer string. */
+export function formatSpeedValue(
+  speedMps: number | null,
+  units: DistanceUnitSystem,
+): string {
+  if (speedMps == null || !Number.isFinite(speedMps) || speedMps < 0) return "0";
+  if (units === "imperial") {
+    return `${Math.round(speedMps * 2.236936)}`;
   }
+  return `${Math.round(speedMps * 3.6)}`;
+}
 
-  if (meters < 1600) {
-    return `${Math.max(100, Math.round(meters / 50) * 50)} m`;
+export function speedUnitLabel(units: DistanceUnitSystem): string {
+  return units === "imperial" ? "mph" : "km/h";
+}
+
+/** Convert posted limit (Mapbox may be km/h or mph) to display integer. */
+export function formatPostedSpeedLimit(
+  postedValue: number | null,
+  postedUnit: "km/h" | "mph" | null | undefined,
+  displayUnits: DistanceUnitSystem,
+): string | null {
+  if (postedValue == null || !Number.isFinite(postedValue) || postedValue <= 0) {
+    return null;
   }
-
-  return `${(meters / 1609.344).toFixed(1)} mi`;
+  const asKmh = postedUnit === "mph" ? postedValue * 1.609344 : postedValue;
+  if (displayUnits === "imperial") {
+    return `${Math.round(asKmh / 1.609344)}`;
+  }
+  return `${Math.round(asKmh)}`;
 }
 
 export function formatThenPrefix(locale: NavigationLocale): string {
   if (locale === "fr") return "Puis";
   if (locale === "es") return "Luego";
   return "Then";
+}
+
+/** Highway exit badge — only when Mapbox provided a real exit designation. */
+export function formatExitBadgeLabel(
+  exitNumber: string,
+  locale: NavigationLocale,
+): string {
+  const value = String(exitNumber ?? "").trim();
+  if (!value) return "";
+  if (locale === "fr") return `Sortie ${value}`;
+  if (locale === "es") return `Salida ${value}`;
+  return `Exit ${value}`;
+}
+
+/** Roundabout exit phrase — only when Mapbox provided `maneuver.exit`. */
+export function formatRoundaboutExitLabel(
+  exitIndex: number,
+  locale: NavigationLocale,
+): string {
+  if (!Number.isFinite(exitIndex) || exitIndex <= 0) return "";
+  const n = Math.round(exitIndex);
+  if (locale === "fr") {
+    if (n === 1) return "Prenez la 1re sortie";
+    return `Prenez la ${n}e sortie`;
+  }
+  if (locale === "es") {
+    return `Tome la salida ${n}`;
+  }
+  const ordinal =
+    n === 1 ? "1st" : n === 2 ? "2nd" : n === 3 ? "3rd" : `${n}th`;
+  return `Take the ${ordinal} exit`;
 }
 
 function frenchTurnVerb(maneuverType?: string): string {

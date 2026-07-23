@@ -1,11 +1,10 @@
 import React, { useRef } from "react";
-import { Animated, Pressable, Text, View, type ViewStyle } from "react-native";
+import { Animated, Pressable, Text, type ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
   NAV_ELEVATION,
   NAV_HIT,
   NAV_MOTION,
-  NAV_RADIUS,
   navPalette,
   type NavColorScheme,
 } from "../../../theme/navigationTheme";
@@ -92,7 +91,7 @@ export function MapFloatingButton({
         style={{
           width: size,
           height: size,
-          borderRadius: NAV_RADIUS.lg,
+          borderRadius: size / 2,
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: background,
@@ -109,26 +108,20 @@ export function MapFloatingButton({
         />
       </Pressable>
       {caption ? (
-        <View
+        <Text
           style={{
-            marginTop: 3,
-            paddingHorizontal: 6,
-            paddingVertical: 1,
-            borderRadius: NAV_RADIUS.pill,
-            backgroundColor: palette.surface,
+            marginTop: 4,
+            color: palette.onSurface,
+            fontSize: 10,
+            fontWeight: "700",
+            letterSpacing: 0.1,
+            textShadowColor: "rgba(255,255,255,0.85)",
+            textShadowOffset: { width: 0, height: 0.5 },
+            textShadowRadius: 2,
           }}
         >
-          <Text
-            style={{
-              color: palette.onSurfaceMuted,
-              fontSize: 9,
-              fontWeight: "800",
-              letterSpacing: 0.2,
-            }}
-          >
-            {caption}
-          </Text>
-        </View>
+          {caption}
+        </Text>
       ) : null}
     </Animated.View>
   );
