@@ -95,12 +95,70 @@ const live = identificationFromLiveSources({
     vehicle_year: 2020,
     vehicle_color: "Gris",
     license_plate: "LTK 1944",
+    photo_url: "drivers/8c300089-6f16-407a-9be9-6eb75482f73d/vehicles/ad9472e9-5f37-4225-a849-271b998ca0a2/primary.jpg",
   },
   assignedVehicleId: "ad9472e9-5f37-4225-a849-271b998ca0a2",
 });
 assert.ok(live);
 assert.equal(live!.vehicle_plate, "LTK 1944");
 assert.equal(live!.vehicle_label, "Honda Accord Sport gris");
+
+const prevUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+process.env.NEXT_PUBLIC_SUPABASE_URL = "https://proj.supabase.co";
+const liveWithPhoto = identificationFromLiveSources({
+  driverId: "8c300089-6f16-407a-9be9-6eb75482f73d",
+  vehicle: {
+    id: "ad9472e9-5f37-4225-a849-271b998ca0a2",
+    vehicle_type: "sedan",
+    vehicle_make: "Honda",
+    vehicle_model: "Accord Sport",
+    vehicle_year: 2020,
+    vehicle_color: "Gris",
+    license_plate: "LTK 1944",
+    photo_url:
+      "drivers/8c300089-6f16-407a-9be9-6eb75482f73d/vehicles/ad9472e9-5f37-4225-a849-271b998ca0a2/primary.jpg",
+  },
+  assignedVehicleId: "ad9472e9-5f37-4225-a849-271b998ca0a2",
+});
+assert.ok(liveWithPhoto);
+assert.ok(
+  liveWithPhoto!.vehicle_photo &&
+    liveWithPhoto!.vehicle_photo.includes(
+      "/storage/v1/object/public/avatars/drivers/",
+    ),
+  "vehicle photo path must resolve under public avatars bucket",
+);
+
+const snapWithPhoto = identificationFromSnapshot({
+  driver_id: "8c300089-6f16-407a-9be9-6eb75482f73d",
+  driver_display_name: "Mamadou",
+  vehicle_plate_snapshot: "LTK 1944",
+  vehicle_make_snapshot: "Honda",
+  vehicle_photo_url_snapshot:
+    "drivers/8c300089-6f16-407a-9be9-6eb75482f73d/vehicles/ad9472e9-5f37-4225-a849-271b998ca0a2/primary.jpg",
+});
+assert.ok(snapWithPhoto);
+assert.ok(
+  snapWithPhoto!.vehicle_photo &&
+    snapWithPhoto!.vehicle_photo.includes(
+      "/storage/v1/object/public/avatars/drivers/",
+    ),
+);
+if (prevUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+else process.env.NEXT_PUBLIC_SUPABASE_URL = prevUrl;
+
+const liveNoPhoto = identificationFromLiveSources({
+  driverId: "8c300089-6f16-407a-9be9-6eb75482f73d",
+  vehicle: {
+    id: "ad9472e9-5f37-4225-a849-271b998ca0a2",
+    vehicle_type: "sedan",
+    vehicle_make: "Honda",
+    license_plate: "LTK 1944",
+    photo_url: null,
+  },
+  assignedVehicleId: "ad9472e9-5f37-4225-a849-271b998ca0a2",
+});
+assert.equal(liveNoPhoto!.vehicle_photo, null);
 
 const beforeAssign = applyIdentificationToRide(
   { id: "ride-1", status: "dispatching", driver_id: null },

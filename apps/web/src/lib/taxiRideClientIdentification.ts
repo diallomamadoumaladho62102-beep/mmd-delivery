@@ -47,7 +47,13 @@ function resolvePublicMediaUrl(value: unknown): string | null {
     .replace(/\/$/, "");
   if (!base) return raw;
 
-  // Paths are typically stored as "<bucket>/<object>" or just object in avatars.
+  // Avatar / vehicle object paths are stored without the bucket prefix
+  // (e.g. drivers/{uid}/avatar.jpg or drivers/{uid}/vehicles/{id}/primary.jpg).
+  if (/^(drivers|clients|restaurants)\//i.test(raw)) {
+    return `${base}/storage/v1/object/public/avatars/${raw}`;
+  }
+
+  // Explicit "<bucket>/<object>" paths.
   if (raw.includes("/")) {
     const slash = raw.indexOf("/");
     const bucket = raw.slice(0, slash);
@@ -146,6 +152,7 @@ export function identificationFromLiveSources(params: {
     vehicle_color?: string | null;
     license_plate?: string | null;
     vehicle_type?: string | null;
+    photo_url?: string | null;
     deleted_at?: string | null;
   } | null;
   assignedVehicleId?: string | null;
@@ -194,7 +201,7 @@ export function identificationFromLiveSources(params: {
     vehicle_year: toYear(vehicle?.vehicle_year),
     vehicle_color: color,
     vehicle_plate: plate,
-    vehicle_photo: null,
+    vehicle_photo: resolvePublicMediaUrl(vehicle?.photo_url),
     vehicle_label: formatTaxiVehicleLabel({ make, model, color }),
   };
 }
@@ -302,7 +309,7 @@ export async function enrichTaxiRideIdentification(
         ? supabaseAdmin
             .from("driver_vehicles")
             .select(
-              "id,vehicle_make,vehicle_model,vehicle_year,vehicle_color,license_plate,vehicle_type,deleted_at",
+              "id,vehicle_make,vehicle_model,vehicle_year,vehicle_color,license_plate,vehicle_type,photo_url,deleted_at",
             )
             .eq("id", assignedVehicleId)
             .is("deleted_at", null)

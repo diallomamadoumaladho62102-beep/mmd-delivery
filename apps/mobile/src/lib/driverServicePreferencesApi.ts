@@ -213,11 +213,16 @@ export async function fetchDriverVehiclesList(): Promise<{
   };
 }
 
-export async function addDriverVehicle(patch: Record<string, unknown>): Promise<void> {
-  await authFetch("/api/driver/vehicles", {
+export async function addDriverVehicle(
+  patch: Record<string, unknown>,
+): Promise<{ id: string }> {
+  const body = await authFetch("/api/driver/vehicles", {
     method: "POST",
     body: JSON.stringify(patch),
   });
+  const id = String(body?.vehicle?.id ?? "").trim();
+  if (!id) throw new Error("vehicle_create_missing_id");
+  return { id };
 }
 
 export async function fetchDriverVehicleById(vehicleId: string): Promise<{

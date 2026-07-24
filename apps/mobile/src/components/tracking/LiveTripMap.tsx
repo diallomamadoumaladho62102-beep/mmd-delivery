@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { CoordinatePoint } from "../../lib/coordinates";
 import { isValidCoordinate } from "../../lib/coordinates";
 import {
@@ -12,6 +13,8 @@ import {
   getCameraForLngLatPoints,
   straightLineGeometry,
 } from "../../lib/liveTripTracking";
+import { MmdDriverLocationMarker } from "../driver/home/MmdDriverLocationMarker";
+import { MapFloatingButton } from "../driver/map/MapFloatingButton";
 
 export type LiveTripStop = CoordinatePoint & {
   id?: string;
@@ -22,6 +25,9 @@ export type LiveTripMapProps = {
   pickup?: CoordinatePoint | null;
   dropoff?: CoordinatePoint | null;
   driver?: CoordinatePoint | null;
+  /** Optional heading for the driver marker (degrees from north). */
+  driverHeadingDeg?: number | null;
+  driverMoving?: boolean;
   stops?: LiveTripStop[];
   routeGeometry?: GeoJSON.Feature<GeoJSON.LineString> | null;
   height?: number;
@@ -32,6 +38,9 @@ export type LiveTripMapProps = {
   stale?: boolean;
   unavailable?: boolean;
   badgeText?: string | null;
+  /** Premium customer tracking: bottom radii only + circular map controls. */
+  customerChrome?: boolean;
+  hideInternalBadge?: boolean;
 };
 
 function pinStyle(color: string) {
@@ -53,6 +62,8 @@ export function LiveTripMap({
   pickup,
   dropoff,
   driver,
+  driverHeadingDeg = null,
+  driverMoving = false,
   stops = [],
   routeGeometry,
   height = 250,
@@ -62,6 +73,8 @@ export function LiveTripMap({
   stale = false,
   unavailable = false,
   badgeText,
+  customerChrome = false,
+  hideInternalBadge = false,
 }: LiveTripMapProps) {
   const Mapbox = getMapboxModule();
   const cameraRef = useRef<{
@@ -133,14 +146,20 @@ export function LiveTripMap({
     );
   }
 
+  const wrapStyle = [
+    styles.wrap,
+    fill ? styles.fill : { height },
+    customerChrome ? styles.customerChrome : null,
+  ];
+
   return (
-    <View style={[styles.wrap, fill ? styles.fill : { height }]}>
+    <View style={wrapStyle}>
       <Mapbox.MapView
         style={StyleSheet.absoluteFill}
         styleURL={getMapStyleStreets()}
-        logoEnabled={false}
+        logoEnabled={customerChrome}
         attributionEnabled={false}
-        compassEnabled
+        compassEnabled={!customerChrome}
         surfaceView={false}
       >
         <Mapbox.Camera
@@ -175,14 +194,29 @@ export function LiveTripMap({
         ) : null}
 
         {validDriver ? (
-          <Mapbox.PointAnnotation
-            id="live-driver"
-            coordinate={[validDriver.longitude, validDriver.latitude]}
-          >
-            <View style={pinStyle("#38BDF8")}>
-              <Text style={pinText}>{labels ? "T" : ""}</Text>
-            </View>
-          </Mapbox.PointAnnotation>
+          customerChrome && Mapbox.MarkerView ? (
+            <Mapbox.MarkerView
+              id="live-driver-aurora"
+              coordinate={[validDriver.longitude, validDriver.latitude]}
+              anchor={{ x: 0.5, y: 0.5 }}
+              allowOverlap
+            >
+              <MmdDriverLocationMarker
+                headingDeg={driverHeadingDeg}
+                moving={driverMoving}
+                online
+              />
+            </Mapbox.MarkerView>
+          ) : (
+            <Mapbox.PointAnnotation
+              id="live-driver"
+              coordinate={[validDriver.longitude, validDriver.latitude]}
+            >
+              <View style={pinStyle("#38BDF8")}>
+                <Text style={pinText}>{labels ? "T" : ""}</Text>
+              </View>
+            </Mapbox.PointAnnotation>
+          )
         ) : null}
 
         {stops.map((stop, index) => {
@@ -227,20 +261,38 @@ export function LiveTripMap({
       </Mapbox.MapView>
 
       {showRezoom ? (
-        <View style={styles.rezoomWrap}>
-          <TouchableOpacity onPress={fitCamera} style={styles.rezoomBtn}>
-            <Text style={styles.rezoomText}>Re-zoom</Text>
-          </TouchableOpacity>
-        </View>
+        customerChrome ? (
+          <View style={styles.customerControls}>
+            <MapFloatingButton
+              icon="locate"
+              scheme="day"
+              onPress={fitCamera}
+              accessibilityLabel="Recenter map"
+            />
+          </View>
+        ) : (
+          <View style={styles.rezoomWrap}>
+            <TouchableOpacity onPress={fitCamera} style={styles.rezoomBtn}>
+              <Text style={styles.rezoomText}>Re-zoom</Text>
+            </TouchableOpacity>
+          </View>
+        )
       ) : null}
 
-      {(stale || badgeText) && (
+      {!hideInternalBadge && (stale || badgeText) ? (
         <View style={styles.badgeWrap}>
           <Text style={styles.badgeText}>
             {badgeText ?? (stale ? "Location may be stale" : "")}
           </Text>
         </View>
-      )}
+      ) : null}
+
+      {customerChrome && !validDriver && badgeText ? (
+        <View style={styles.gpsBanner}>
+          <Ionicons name="navigate-outline" size={14} color="#FDE68A" />
+          <Text style={styles.badgeText}>{badgeText}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -253,10 +305,43 @@ const styles = StyleSheet.create({
     borderColor: "rgba(148,163,184,0.14)",
     backgroundColor: "rgba(2,6,23,0.7)",
   },
+  customerChrome: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    borderWidth: 0,
+    shadowColor: "#000",
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
   fill: {
     flex: 1,
     borderRadius: 0,
     borderWidth: 0,
+  },
+  customerControls: {
+    position: "absolute",
+    right: 12,
+    bottom: 18,
+    gap: 10,
+  },
+  gpsBanner: {
+    position: "absolute",
+    left: 12,
+    right: 64,
+    bottom: 16,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: "rgba(2,6,23,0.88)",
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.35)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   fallback: {
     borderRadius: 18,

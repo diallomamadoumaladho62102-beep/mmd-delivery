@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Switch,
@@ -11,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import {
   useNavigation,
   useRoute,
@@ -27,6 +29,11 @@ import {
   updateDriverVehicleById,
   type VehicleCategoryStatus,
 } from "../../lib/driverServicePreferencesApi";
+import {
+  deleteDriverVehiclePhotoFile,
+  resolveVehiclePhotoPublicUrl,
+  uploadDriverVehiclePhoto,
+} from "../../lib/driverVehiclePhoto";
 import { toUserFacingError } from "../../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverVehicle">;
@@ -43,17 +50,18 @@ export function DriverVehicleScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Rt>();
   const paramVehicleId = route.params?.vehicleId;
-  // "new" (or missing param) => create a distinct vehicle via the multi-vehicle
-  // POST endpoint. A real id => edit that specific vehicle by id. This screen must
-  // never fall back to the legacy singular /api/driver/vehicle endpoint, which only
-  // ever targets the driver's primary vehicle and would silently overwrite it.
   const vehicleId =
     paramVehicleId && paramVehicleId !== "new" ? paramVehicleId : null;
   const isCreate = vehicleId === null;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [categories, setCategories] = useState<VehicleCategoryStatus[]>([]);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [pendingLocalPhoto, setPendingLocalPhoto] = useState<string | null>(
+    null,
+  );
   const [form, setForm] = useState({
     vehicle_make: "",
     vehicle_model: "",
@@ -74,6 +82,11 @@ export function DriverVehicleScreen() {
     non_smoking: false,
   });
 
+  const previewUri = useMemo(() => {
+    if (pendingLocalPhoto) return pendingLocalPhoto;
+    return resolveVehiclePhotoPublicUrl(photoUrl);
+  }, [pendingLocalPhoto, photoUrl]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -84,8 +97,11 @@ export function DriverVehicleScreen() {
       if (vehicleId) {
         const data = await fetchDriverVehicleById(vehicleId);
         setCategories(data.categories);
-        const v = data.vehicle;
+        const v = data.vehicle as Record<string, unknown> | null;
         if (v) {
+          setPhotoUrl(
+            String(v.photo_url ?? "").trim() ? String(v.photo_url) : null,
+          );
           setForm({
             vehicle_make: String(v.vehicle_make ?? ""),
             vehicle_model: String(v.vehicle_model ?? ""),
@@ -110,10 +126,18 @@ export function DriverVehicleScreen() {
         }
       } else {
         setCategories([]);
+        setPhotoUrl(null);
+        setPendingLocalPhoto(null);
         setForm((prev) => ({ ...prev, non_smoking: capabilities.non_smoking }));
       }
     } catch (error) {
-      Alert.alert("Erreur", toUserFacingError(error, "Impossible de charger les informations du véhicule."));
+      Alert.alert(
+        "Erreur",
+        toUserFacingError(
+          error,
+          "Impossible de charger les informations du véhicule.",
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -122,6 +146,97 @@ export function DriverVehicleScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const pickPhoto = (source: "camera" | "gallery") => {
+    void (async () => {
+      try {
+        setUploadingPhoto(true);
+        if (!vehicleId) {
+          const picked = await (async () => {
+            const ImagePicker = await import("expo-image-picker");
+            if (source === "camera") {
+              const p = await ImagePicker.requestCameraPermissionsAsync();
+              if (!p.granted) {
+                Alert.alert("Camera", "Allow camera access.");
+                return null;
+              }
+              const r = await ImagePicker.launchCameraAsync({
+                mediaTypes: ["images"],
+                quality: 0.85,
+                allowsEditing: true,
+                aspect: [16, 10],
+                exif: false,
+              });
+              return !r.canceled && r.assets?.[0]?.uri ? r.assets[0].uri : null;
+            }
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+              Alert.alert("Photos", "Allow photo library access.");
+              return null;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ["images"],
+              quality: 0.85,
+              allowsEditing: true,
+              aspect: [16, 10],
+              exif: false,
+            });
+            return !r.canceled && r.assets?.[0]?.uri ? r.assets[0].uri : null;
+          })();
+          if (picked) setPendingLocalPhoto(picked);
+          return;
+        }
+
+        const path = await uploadDriverVehiclePhoto({
+          vehicleId,
+          source,
+          previousPath: photoUrl,
+        });
+        await updateDriverVehicleById(vehicleId, { photo_url: path });
+        setPhotoUrl(path);
+        setPendingLocalPhoto(null);
+        Alert.alert("Vehicle photo", "Photo uploaded successfully.");
+      } catch (error) {
+        if (String((error as Error)?.message ?? "") === "photo_cancelled") return;
+        Alert.alert(
+          "Erreur",
+          toUserFacingError(error, "Impossible d'envoyer la photo."),
+        );
+      } finally {
+        setUploadingPhoto(false);
+      }
+    })();
+  };
+
+  const removePhoto = () => {
+    Alert.alert("Remove photo", "Delete this vehicle photo?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            try {
+              setUploadingPhoto(true);
+              if (vehicleId && photoUrl) {
+                await updateDriverVehicleById(vehicleId, { photo_url: null });
+                await deleteDriverVehiclePhotoFile(photoUrl);
+              }
+              setPhotoUrl(null);
+              setPendingLocalPhoto(null);
+            } catch (error) {
+              Alert.alert(
+                "Erreur",
+                toUserFacingError(error, "Impossible de supprimer la photo."),
+              );
+            } finally {
+              setUploadingPhoto(false);
+            }
+          })();
+        },
+      },
+    ]);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -147,10 +262,26 @@ export function DriverVehicleScreen() {
 
       await updateDriverCapabilities({ non_smoking: form.non_smoking });
 
+      let savedId = vehicleId;
       if (vehicleId) {
         await updateDriverVehicleById(vehicleId, payload);
       } else {
-        await addDriverVehicle(payload);
+        const created = await addDriverVehicle(payload);
+        savedId = created.id;
+      }
+
+      if (pendingLocalPhoto && savedId) {
+        const { uploadDriverVehiclePhotoFromUri } = await import(
+          "../../lib/driverVehiclePhoto"
+        );
+        const path = await uploadDriverVehiclePhotoFromUri({
+          vehicleId: savedId,
+          localUri: pendingLocalPhoto,
+          previousPath: photoUrl,
+        });
+        await updateDriverVehicleById(savedId, { photo_url: path });
+        setPhotoUrl(path);
+        setPendingLocalPhoto(null);
       }
 
       Alert.alert(
@@ -161,7 +292,13 @@ export function DriverVehicleScreen() {
       );
       navigation.goBack();
     } catch (error) {
-      Alert.alert("Erreur", toUserFacingError(error, "Impossible d'enregistrer le véhicule pour le moment."));
+      Alert.alert(
+        "Erreur",
+        toUserFacingError(
+          error,
+          "Impossible d'enregistrer le véhicule pour le moment.",
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -170,7 +307,11 @@ export function DriverVehicleScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
-        <ScreenHeader title="Véhicule" variant="light" fallbackRoute="DriverVehicles" />
+        <ScreenHeader
+          title="Véhicule"
+          variant="light"
+          fallbackRoute="DriverVehicles"
+        />
         <ActivityIndicator style={{ marginTop: 40 }} />
       </SafeAreaView>
     );
@@ -185,6 +326,57 @@ export function DriverVehicleScreen() {
         fallbackRoute="DriverVehicles"
       />
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.photoCard}>
+          <Text style={styles.photoTitle}>Vehicle photo</Text>
+          <Text style={styles.photoHelp}>
+            Upload a clear photo of the vehicle used for trips.
+          </Text>
+          <View style={styles.photoPreview}>
+            {previewUri ? (
+              <Image
+                source={{ uri: previewUri }}
+                style={styles.photoImage}
+                resizeMode="cover"
+                accessibilityLabel="Vehicle photo preview"
+              />
+            ) : (
+              <View style={styles.photoPlaceholder}>
+                <Ionicons name="car-sport-outline" size={42} color="#94A3B8" />
+                <Text style={styles.photoPlaceholderText}>No photo yet</Text>
+              </View>
+            )}
+            {uploadingPhoto ? (
+              <View style={styles.photoBusy}>
+                <ActivityIndicator color="#FFF" />
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.photoActions}>
+            <TouchableOpacity
+              style={styles.photoBtn}
+              onPress={() => pickPhoto("camera")}
+              disabled={uploadingPhoto || saving}
+            >
+              <Text style={styles.photoBtnText}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.photoBtn}
+              onPress={() => pickPhoto("gallery")}
+              disabled={uploadingPhoto || saving}
+            >
+              <Text style={styles.photoBtnText}>Gallery</Text>
+            </TouchableOpacity>
+            {previewUri ? (
+              <TouchableOpacity
+                style={[styles.photoBtn, styles.photoBtnDanger]}
+                onPress={removePhoto}
+                disabled={uploadingPhoto || saving}
+              >
+                <Text style={styles.photoBtnText}>Remove</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
 
         {[
           ["vehicle_make", "Marque"],
@@ -194,7 +386,10 @@ export function DriverVehicleScreen() {
           ["license_plate", "Plaque"],
           ["seats_count", "Places passagers"],
           ["vehicle_type", "Type (sedan, suv, van, minivan)"],
-          ["fuel_type", "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)"],
+          [
+            "fuel_type",
+            "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+          ],
           ["nickname", "Surnom (optionnel)"],
         ].map(([key, label]) => (
           <View key={key}>
@@ -202,7 +397,9 @@ export function DriverVehicleScreen() {
             <TextInput
               style={styles.input}
               value={(form as Record<string, string | boolean>)[key] as string}
-              onChangeText={(text) => setForm((prev) => ({ ...prev, [key]: text }))}
+              onChangeText={(text) =>
+                setForm((prev) => ({ ...prev, [key]: text }))
+              }
             />
           </View>
         ))}
@@ -211,100 +408,170 @@ export function DriverVehicleScreen() {
           <Text style={styles.fieldLabel}>Climatisation</Text>
           <Switch
             value={form.has_air_conditioning}
-            onValueChange={(v) => setForm((prev) => ({ ...prev, has_air_conditioning: v }))}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, has_air_conditioning: v }))
+            }
           />
         </View>
         <View style={styles.row}>
           <Text style={styles.fieldLabel}>Accessible fauteuil roulant</Text>
           <Switch
             value={form.wheelchair_accessible}
-            onValueChange={(v) => setForm((prev) => ({ ...prev, wheelchair_accessible: v }))}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, wheelchair_accessible: v }))
+            }
           />
         </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: 16, fontSize: 18 }]}>Capacités & préférences client</Text>
         <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Chauffeur non-fumeur</Text>
+          <Text style={styles.fieldLabel}>Siège enfant</Text>
+          <Switch
+            value={form.child_seat_available}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, child_seat_available: v }))
+            }
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.fieldLabel}>Animaux acceptés</Text>
+          <Switch
+            value={form.pets_allowed}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, pets_allowed: v }))
+            }
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.fieldLabel}>Gros bagages</Text>
+          <Switch
+            value={form.large_luggage}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, large_luggage: v }))
+            }
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.fieldLabel}>Chargeur téléphone</Text>
+          <Switch
+            value={form.phone_charger_available}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, phone_charger_available: v }))
+            }
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.fieldLabel}>Véhicule silencieux</Text>
+          <Switch
+            value={form.quiet_vehicle}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, quiet_vehicle: v }))
+            }
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.fieldLabel}>Non-fumeur</Text>
           <Switch
             value={form.non_smoking}
-            onValueChange={(v) => setForm((prev) => ({ ...prev, non_smoking: v }))}
+            onValueChange={(v) =>
+              setForm((prev) => ({ ...prev, non_smoking: v }))
+            }
           />
         </View>
-        {(
-          [
-            ["child_seat_available", "Siège enfant disponible"],
-            ["pets_allowed", "Animaux acceptés"],
-            ["large_luggage", "Grand espace bagages"],
-            ["phone_charger_available", "Chargeur téléphone"],
-            ["quiet_vehicle", "Véhicule silencieux"],
-          ] as const
-        ).map(([key, label]) => (
-          <View style={styles.row} key={key}>
-            <Text style={styles.fieldLabel}>{label}</Text>
-            <Switch
-              value={form[key as keyof typeof form] as boolean}
-              onValueChange={(v) => setForm((prev) => ({ ...prev, [key]: v }))}
-            />
-          </View>
-        ))}
 
-        <TouchableOpacity style={styles.primaryBtn} disabled={saving} onPress={() => void save()}>
-          <Text style={styles.primaryBtnText}>
-            {saving ? "Enregistrement…" : isCreate ? "Ajouter le véhicule" : "Enregistrer"}
-          </Text>
-        </TouchableOpacity>
-
-        {!isCreate && categories.length > 0 ? (
-          <>
-            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Catégories autorisées</Text>
-            {categories.map((cat) => (
-              <View key={cat.category} style={styles.categoryCard}>
-                <Text style={styles.categoryTitle}>{cat.label}</Text>
-                <Text style={[styles.categoryStatus, { color: statusColor(cat.status) }]}>
-                  {cat.status}
-                </Text>
-                {cat.reason_message ? (
-                  <Text style={styles.categoryReason}>{cat.reason_message}</Text>
-                ) : null}
-              </View>
+        {categories.length > 0 ? (
+          <View style={{ marginTop: 8, gap: 6 }}>
+            <Text style={styles.fieldLabel}>Catégories taxi (serveur)</Text>
+            {categories.map((c) => (
+              <Text key={c.category} style={{ color: statusColor(c.status) }}>
+                {c.category}: {c.status}
+              </Text>
             ))}
-          </>
+          </View>
         ) : null}
+
+        <TouchableOpacity
+          style={styles.saveBtn}
+          onPress={() => void save()}
+          disabled={saving || uploadingPhoto}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.saveText}>
+              {isCreate ? "Ajouter" : "Enregistrer"}
+            </Text>
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  content: { padding: 20, paddingTop: 8, gap: 10 },
-  sectionTitle: { fontSize: 22, fontWeight: "700", color: "#0f172a" },
-  fieldLabel: { fontSize: 14, fontWeight: "600", color: "#334155" },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  content: { padding: 16, gap: 12, paddingBottom: 40 },
+  fieldLabel: { color: "#334155", fontWeight: "700", marginBottom: 6 },
   input: {
     borderWidth: 1,
-    borderColor: "#cbd5e1",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    color: "#0F172A",
   },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  primaryBtn: {
-    backgroundColor: "#ea580c",
-    borderRadius: 10,
-    padding: 14,
+  row: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    justifyContent: "space-between",
+    paddingVertical: 4,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700" },
-  categoryCard: {
-    backgroundColor: "#f8fafc",
+  saveBtn: {
+    marginTop: 12,
+    backgroundColor: "#0F172A",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  saveText: { color: "#fff", fontWeight: "800" },
+  photoCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 14,
+    gap: 10,
+  },
+  photoTitle: { color: "#0F172A", fontWeight: "800", fontSize: 16 },
+  photoHelp: { color: "#64748B", fontSize: 13, lineHeight: 18 },
+  photoPreview: {
+    height: 160,
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "#F1F5F9",
+  },
+  photoImage: { width: "100%", height: "100%" },
+  photoPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  photoPlaceholderText: { color: "#94A3B8", fontWeight: "600" },
+  photoBusy: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15,23,42,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  photoBtn: {
+    backgroundColor: "#0F172A",
     borderRadius: 10,
-    padding: 12,
-    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  categoryTitle: { fontSize: 16, fontWeight: "600" },
-  categoryStatus: { fontSize: 14, marginTop: 4, fontWeight: "600" },
-  categoryReason: { fontSize: 13, color: "#64748b", marginTop: 4 },
+  photoBtnDanger: { backgroundColor: "#B91C1C" },
+  photoBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 });
 
 export default DriverVehicleScreen;

@@ -32,6 +32,7 @@ const DRIVER_WRITABLE_FIELDS = new Set([
   "large_luggage",
   "phone_charger_available",
   "quiet_vehicle",
+  "photo_url",
 ]);
 
 const DRIVER_FORBIDDEN_FIELDS = new Set([
