@@ -224,6 +224,39 @@ async function findWalletLedgerByIdempotencyKey(
   return data ?? null;
 }
 
+/**
+ * Available wallet balance = Σ credits − Σ debits on active ledger rows.
+ * Never trust wallet_ledger.balance_after_cents for reads: that snapshot can
+ * remain stale after duplicate quarantine or concurrent writes.
+ */
+export async function sumWalletLedgerBalanceCents(
+  supabaseAdmin: SupabaseClient,
+  accountType: WalletAccountType,
+  accountUserId: string | null,
+  currency: string
+): Promise<number> {
+  let query = supabaseAdmin
+    .from("wallet_ledger")
+    .select("direction, amount_cents")
+    .eq("account_type", accountType)
+    .eq("currency", currency);
+
+  const { data, error } = accountUserId
+    ? await query.eq("account_user_id", accountUserId)
+    : await query.is("account_user_id", null);
+
+  if (error) throw new Error(error.message);
+
+  let balance = 0;
+  for (const row of data ?? []) {
+    const amount = Number(row.amount_cents ?? 0);
+    if (!Number.isFinite(amount)) continue;
+    if (row.direction === "credit") balance += amount;
+    else if (row.direction === "debit") balance -= amount;
+  }
+  return balance;
+}
+
 async function computeWalletBalanceAfter(
   supabaseAdmin: SupabaseClient,
   accountType: WalletAccountType,
@@ -232,23 +265,13 @@ async function computeWalletBalanceAfter(
   direction: "credit" | "debit",
   amountCents: number
 ): Promise<number> {
-  let query = supabaseAdmin
-    .from("wallet_ledger")
-    .select("balance_after_cents")
-    .eq("account_type", accountType)
-    .eq("currency", currency)
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (accountUserId) {
-    query = query.eq("account_user_id", accountUserId);
-  } else {
-    query = query.is("account_user_id", null);
-  }
-
-  const { data } = await query.maybeSingle();
-  const current = Number(data?.balance_after_cents ?? 0);
-  return direction === "credit" ? current + amountCents : Math.max(0, current - amountCents);
+  const current = await sumWalletLedgerBalanceCents(
+    supabaseAdmin,
+    accountType,
+    accountUserId,
+    currency
+  );
+  return direction === "credit" ? current + amountCents : current - amountCents;
 }
 
 export async function getWalletBalance(
@@ -257,20 +280,12 @@ export async function getWalletBalance(
   accountUserId: string | null,
   currency: string
 ): Promise<number> {
-  let query = supabaseAdmin
-    .from("wallet_ledger")
-    .select("balance_after_cents")
-    .eq("account_type", accountType)
-    .eq("currency", currency)
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (accountUserId) query = query.eq("account_user_id", accountUserId);
-  else query = query.is("account_user_id", null);
-
-  const { data, error } = await query.maybeSingle();
-  if (error) throw new Error(error.message);
-  return Number(data?.balance_after_cents ?? 0);
+  return sumWalletLedgerBalanceCents(
+    supabaseAdmin,
+    accountType,
+    accountUserId,
+    currency
+  );
 }
 
 export async function listWalletLedgerForUser(

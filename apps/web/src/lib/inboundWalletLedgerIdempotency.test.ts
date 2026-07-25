@@ -190,51 +190,73 @@ function createLedgerStore() {
     },
     from(table: string) {
       assert.equal(table, "wallet_ledger");
-      return {
+      const filters: Record<string, unknown> = {};
+      const api = {
         select(_cols: string) {
-          return {
-            eq(col: string, val: unknown) {
-              if (col === "idempotency_key") {
-                return {
-                  maybeSingle: async () => ({
-                    data: rows.find((r) => r.idempotency_key === val) ?? null,
-                    error: null,
-                  }),
-                };
-              }
-              // balance lookup chain
-              return {
-                eq() {
-                  return {
-                    order() {
-                      return {
-                        limit() {
-                          return {
-                            eq() {
-                              return {
-                                maybeSingle: async () => ({
-                                  data: { balance_after_cents: 0 },
-                                  error: null,
-                                }),
-                              };
-                            },
-                            is() {
-                              return {
-                                maybeSingle: async () => ({
-                                  data: { balance_after_cents: 0 },
-                                  error: null,
-                                }),
-                              };
-                            },
-                          };
-                        },
-                      };
-                    },
-                  };
-                },
-              };
-            },
-          };
+          return api;
+        },
+        eq(col: string, val: unknown) {
+          filters[col] = val;
+          return api;
+        },
+        is(col: string, val: null) {
+          filters[col] = val;
+          return api;
+        },
+        order() {
+          return api;
+        },
+        limit() {
+          return api;
+        },
+        maybeSingle: async () => {
+          if ("idempotency_key" in filters) {
+            return {
+              data: rows.find((r) => r.idempotency_key === filters.idempotency_key) ?? null,
+              error: null,
+            };
+          }
+          return { data: null, error: null };
+        },
+        then(
+          resolve: (v: {
+            data: Array<{ direction: string; amount_cents: number }>;
+            error: null;
+          }) => unknown,
+          reject?: (e: unknown) => unknown
+        ) {
+          try {
+            let filtered = [...rows];
+            if ("account_type" in filters) {
+              filtered = filtered.filter((r) => r.account_type === filters.account_type);
+            }
+            if ("currency" in filters) {
+              filtered = filtered.filter((r) => r.currency === filters.currency);
+            }
+            if ("account_user_id" in filters) {
+              const uid = filters.account_user_id;
+              filtered =
+                uid === null
+                  ? filtered.filter((r) => r.account_user_id === null)
+                  : filtered.filter((r) => r.account_user_id === uid);
+            }
+            return Promise.resolve(
+              resolve({
+                data: filtered.map((r) => ({
+                  direction: r.direction,
+                  amount_cents: r.amount_cents,
+                })),
+                error: null,
+              })
+            );
+          } catch (e) {
+            return Promise.reject(reject ? reject(e) : e);
+          }
+        },
+      };
+      return {
+        select(cols: string) {
+          return api.select(cols);
         },
         insert(payload: Record<string, unknown>) {
           return {

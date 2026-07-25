@@ -49,48 +49,32 @@ function createMockAdmin(state: {
       return {
         select(_cols: string) {
           if (table === "wallet_ledger") {
-            return {
-              eq(col: string, _val: unknown) {
-                // Idempotency lookup: .eq("idempotency_key", key).maybeSingle()
-                if (col === "idempotency_key") {
-                  return {
-                    maybeSingle: async () => ({ data: null, error: null }),
-                  };
+            const api = {
+              eq(_col: string, _val: unknown) {
+                return api;
+              },
+              is(_col: string, _val: null) {
+                return api;
+              },
+              order() {
+                return api;
+              },
+              limit() {
+                return api;
+              },
+              maybeSingle: async () => ({ data: null, error: null }),
+              then(
+                resolve: (v: { data: unknown[]; error: null }) => unknown,
+                reject?: (e: unknown) => unknown
+              ) {
+                try {
+                  return Promise.resolve(resolve({ data: [], error: null }));
+                } catch (e) {
+                  return Promise.reject(reject ? reject(e) : e);
                 }
-                const afterCurrency = {
-                  order(_col3: string, _opts: { ascending: boolean }) {
-                    return {
-                      limit(_n: number) {
-                        return {
-                          eq(_col4: string, _val4: unknown) {
-                            return {
-                              maybeSingle: async () => ({
-                                data: { balance_after_cents: 0 },
-                                error: null,
-                              }),
-                            };
-                          },
-                          is(_col4: string, _val4: null) {
-                            return {
-                              maybeSingle: async () => ({
-                                data: { balance_after_cents: 0 },
-                                error: null,
-                              }),
-                            };
-                          },
-                        };
-                      },
-                    };
-                  },
-                };
-                return {
-                  eq(_col2: string, _val2: unknown) {
-                    return afterCurrency;
-                  },
-                  maybeSingle: async () => ({ data: null, error: null }),
-                };
               },
             };
+            return api;
           }
           return chain(table);
         },
