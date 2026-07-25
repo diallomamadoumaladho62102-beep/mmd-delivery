@@ -63,8 +63,7 @@
       "env": {
         "APP_ENV": "production",
         "EAS_BUILD_PROFILE": "production",
-        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com",
-        "SENTRY_ALLOW_FAILURE": "true"
+        "EXPO_PUBLIC_API_URL_PROD": "https://www.mmddelivery.com"
       }
     }
   },

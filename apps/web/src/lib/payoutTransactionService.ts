@@ -124,6 +124,22 @@ export async function listPayoutTransactionsForUser(
   return (data ?? []) as PayoutTransactionRow[];
 }
 
+export function buildWalletLedgerIdempotencyKey(input: {
+  accountType: string;
+  accountUserId?: string | null;
+  referenceType: string;
+  referenceId: string;
+  direction: string;
+}): string {
+  return [
+    input.accountType,
+    input.accountUserId?.trim() ? input.accountUserId.trim() : "null",
+    input.referenceType,
+    input.referenceId,
+    input.direction,
+  ].join("|");
+}
+
 export async function appendWalletLedgerEntry(
   supabaseAdmin: SupabaseClient,
   input: {
@@ -139,6 +155,20 @@ export async function appendWalletLedgerEntry(
     metadata?: Record<string, unknown>;
   }
 ) {
+  const idempotencyKey = buildWalletLedgerIdempotencyKey({
+    accountType: input.accountType,
+    accountUserId: input.accountUserId ?? null,
+    referenceType: input.referenceType,
+    referenceId: input.referenceId,
+    direction: input.direction,
+  });
+
+  const existing = await findWalletLedgerByIdempotencyKey(
+    supabaseAdmin,
+    idempotencyKey,
+  );
+  if (existing) return existing;
+
   const balanceAfter = await computeWalletBalanceAfter(
     supabaseAdmin,
     input.accountType,
@@ -162,14 +192,36 @@ export async function appendWalletLedgerEntry(
       reference_id: input.referenceId,
       description: input.description ?? null,
       metadata: input.metadata ?? {},
+      idempotency_key: idempotencyKey,
     })
     .select("*")
     .single();
+
+  if (error?.code === "23505") {
+    const replay = await findWalletLedgerByIdempotencyKey(
+      supabaseAdmin,
+      idempotencyKey,
+    );
+    if (replay) return replay;
+  }
 
   if (error || !data) {
     throw new Error(error?.message ?? "wallet_ledger_insert_failed");
   }
   return data;
+}
+
+async function findWalletLedgerByIdempotencyKey(
+  supabaseAdmin: SupabaseClient,
+  idempotencyKey: string,
+) {
+  const { data, error } = await supabaseAdmin
+    .from("wallet_ledger")
+    .select("*")
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ?? null;
 }
 
 async function computeWalletBalanceAfter(

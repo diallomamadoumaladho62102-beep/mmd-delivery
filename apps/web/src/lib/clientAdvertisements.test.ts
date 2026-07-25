@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {
   isAdvertisementLiveNow,
   matchesAdvertisementGeo,
-} from "./clientAdvertisements.ts";
+} from "./clientAdvertisements";
 
 const now = "2026-07-22T12:00:00.000Z";
 

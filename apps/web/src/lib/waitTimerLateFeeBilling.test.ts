@@ -50,7 +50,13 @@ function createMockAdmin(state: {
         select(_cols: string) {
           if (table === "wallet_ledger") {
             return {
-              eq(_col: string, _val: unknown) {
+              eq(col: string, _val: unknown) {
+                // Idempotency lookup: .eq("idempotency_key", key).maybeSingle()
+                if (col === "idempotency_key") {
+                  return {
+                    maybeSingle: async () => ({ data: null, error: null }),
+                  };
+                }
                 const afterCurrency = {
                   order(_col3: string, _opts: { ascending: boolean }) {
                     return {
@@ -81,6 +87,7 @@ function createMockAdmin(state: {
                   eq(_col2: string, _val2: unknown) {
                     return afterCurrency;
                   },
+                  maybeSingle: async () => ({ data: null, error: null }),
                 };
               },
             };

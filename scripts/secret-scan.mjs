@@ -20,6 +20,8 @@ const SKIP_DIR_NAMES = new Set([
   ".tmp",
   "agent-transcripts",
   "terminals",
+  // Local-only dumps (also gitignored). Must never be treated as source of truth.
+  "backups",
 ]);
 
 const SKIP_FILE_GLOBS = [
@@ -67,8 +69,14 @@ function shouldSkipFile(absPath) {
   const rel = relative(root, absPath).replace(/\\/g, "/");
   if (SKIP_FILE_GLOBS.some((re) => re.test(rel))) return true;
   if (ALLOWLIST_PATH_SNIPPETS.some((s) => rel.includes(s))) return true;
-  if (rel.endsWith(".env") || rel.includes(".env.") || rel.endsWith(".local")) {
-    // Env files may contain secrets locally — skip content but warn presence only via name.
+  if (
+    rel.endsWith(".env") ||
+    rel.includes(".env.") ||
+    rel.endsWith(".local") ||
+    /\.env\.bak/i.test(rel) ||
+    rel.endsWith(".bak")
+  ) {
+    // Env files / bak copies may contain secrets locally — skip content.
     return true;
   }
   return false;

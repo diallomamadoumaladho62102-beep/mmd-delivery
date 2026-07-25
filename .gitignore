@@ -87,6 +87,11 @@ dependabot-crit-high.json
 
 # Local live-preflight / schema dumps (never commit)
 backups/
+
+# Env backup copies (may contain keys — never commit)
+**/.env.bak*
+**/*.env.bak*
+.env.bak*
 docs/phase-integrate-e2e-report.txt
 scripts/phase-*.sh
 scripts/phase-*.mjs
