@@ -159,6 +159,11 @@ async function assertPermission(
 ): Promise<AdminSession> {
   const session = await resolveAdminSession(request);
 
+  // Founder is absolute owner — never 403 on admin permission gates.
+  if (session.isFounder) {
+    return session;
+  }
+
   if (!checker(session.role)) {
     throw new AdminAccessError("Forbidden", 403);
   }

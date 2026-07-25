@@ -7,13 +7,9 @@ import {
   waitForBrowserSession,
 } from "@/lib/adminBrowserAuth";
 import { STAFF_LOGIN_DENIED_MESSAGE } from "@/lib/adminStaffLogin";
-import {
-  hasPermission,
-  roleDisplayName,
-  type AdminPermission,
-} from "@/lib/adminRbac";
+import { type AdminPermission } from "@/lib/adminRbac";
+import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
-import type { UserRole } from "@/lib/roles";
 
 type Props = {
   children: ReactNode;
@@ -24,7 +20,6 @@ type GateState = "loading" | "allowed" | "no-session" | "forbidden" | "error";
 
 export default function AdminGate({ children, requiredPermission }: Props) {
   const [state, setState] = useState<GateState>("loading");
-  const [role, setRole] = useState<UserRole>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,7 +33,6 @@ export default function AdminGate({ children, requiredPermission }: Props) {
         if (!token) {
           setErrorMessage(null);
           setState("no-session");
-          setRole(null);
           return;
         }
 
@@ -48,27 +42,27 @@ export default function AdminGate({ children, requiredPermission }: Props) {
         if (!session) {
           setErrorMessage(null);
           setState("forbidden");
-          setRole(null);
           return;
         }
 
+        // Founder never sees Accès refusé on admin gates.
         if (
           requiredPermission &&
-          !hasPermission(session.role, requiredPermission)
+          !sessionHasPermission(
+            { role: session.role, isFounder: session.isFounder },
+            requiredPermission
+          )
         ) {
           setErrorMessage(null);
           setState("forbidden");
-          setRole(null);
           return;
         }
 
         setErrorMessage(null);
-        setRole(session.role);
         setState("allowed");
       } catch (err) {
         if (!alive) return;
         console.error("[AdminGate] evaluate failed", err);
-        setRole(null);
         setErrorMessage(
           err instanceof Error
             ? err.message
@@ -94,18 +88,20 @@ export default function AdminGate({ children, requiredPermission }: Props) {
 
   if (state === "loading") {
     return (
-      <div className="p-6 text-sm text-slate-500">Chargement espace admin…</div>
+      <div className="p-6 text-sm text-[var(--cc-muted)]">
+        Chargement Control Center…
+      </div>
     );
   }
 
   if (state === "error") {
     return (
       <div className="mx-auto max-w-xl p-6">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+        <div className="cc-card p-6">
           <div className="text-lg font-semibold text-slate-900">
-            Espace admin indisponible
+            Control Center indisponible
           </div>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-[var(--cc-muted)]">
             {errorMessage ??
               "La session admin n'a pas pu être vérifiée. Réessaie ou reconnecte-toi."}
           </p>
@@ -115,22 +111,14 @@ export default function AdminGate({ children, requiredPermission }: Props) {
               onClick={() => {
                 setState("loading");
                 setErrorMessage(null);
-                void resolveBrowserStaffSession().then((session) => {
-                  if (session) {
-                    setRole(session.role);
-                    setState("allowed");
-                    return;
-                  }
-                  setState("no-session");
-                });
               }}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+              className="rounded-xl border border-[var(--cc-border)] bg-white px-4 py-2 text-sm font-semibold text-slate-700"
             >
               Réessayer
             </button>
             <Link
               href="/admin/login"
-              className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white"
+              className="rounded-xl bg-[var(--cc-info)] px-4 py-2 text-sm font-semibold text-white"
             >
               Se connecter
             </Link>
@@ -143,17 +131,17 @@ export default function AdminGate({ children, requiredPermission }: Props) {
   if (state === "no-session") {
     return (
       <div className="mx-auto max-w-xl p-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="cc-card p-6">
           <div className="text-lg font-semibold text-slate-900">
             Connexion requise
           </div>
-          <p className="mt-2 text-sm text-slate-600">
-            Connecte-toi avec ton compte staff MMD Delivery pour accéder à
-            l&apos;espace admin.
+          <p className="mt-2 text-sm text-[var(--cc-muted)]">
+            Connecte-toi avec ton compte staff MMD Delivery pour accéder au
+            Control Center.
           </p>
           <Link
             href="/admin/login"
-            className="mt-4 inline-block text-sm font-medium text-blue-700 underline"
+            className="mt-4 inline-block text-sm font-medium text-[var(--cc-info)] underline"
           >
             Se connecter
           </Link>
@@ -165,32 +153,21 @@ export default function AdminGate({ children, requiredPermission }: Props) {
   if (state === "forbidden") {
     return (
       <div className="mx-auto max-w-xl p-6">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="cc-card p-6">
           <div className="text-lg font-semibold text-slate-900">Accès refusé</div>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-[var(--cc-muted)]">
             {STAFF_LOGIN_DENIED_MESSAGE}
           </p>
           <Link
-            href="/dashboard"
-            className="mt-4 inline-block text-sm font-medium text-blue-700 underline"
+            href="/admin"
+            className="mt-4 inline-block text-sm font-medium text-[var(--cc-info)] underline"
           >
-            Retour au dashboard
+            Retour au Dashboard
           </Link>
         </div>
       </div>
     );
   }
 
-  return (
-    <div>
-      <div className="border-b border-slate-200 bg-white px-4 py-2 text-xs text-slate-600">
-        Connecté : <span className="font-semibold">{roleDisplayName(role)}</span>
-        {" · "}
-        <Link href="/admin" className="text-blue-700 underline">
-          Control Center
-        </Link>
-      </div>
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }

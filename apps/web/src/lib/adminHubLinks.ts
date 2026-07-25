@@ -75,10 +75,16 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "users.sellers.read",
   },
   {
-    href: "/admin/admins",
-    title: "Administrateurs",
-    description: "Gérer les rôles staff (Super Admin uniquement)",
+    href: "/admin/staff",
+    title: "Staff & Roles",
+    description: "Administrators, roles, org chart and People Ops",
     permission: "users.admins.manage",
+  },
+  {
+    href: "/admin/tasks",
+    title: "Tasks",
+    description: "Internal Control Center work queue",
+    permission: "hub.access",
   },
   {
     href: "/admin/orders",

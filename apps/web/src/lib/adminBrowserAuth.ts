@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseBrowser";
 export type ResolvedStaffSession = {
   userId: string;
   role: UserRole;
+  isFounder: boolean;
 };
 
 async function readAccessToken(): Promise<string | null> {
@@ -120,11 +121,18 @@ export async function resolveBrowserStaffSession(): Promise<ResolvedStaffSession
     if (!res.ok || !body.ok) return null;
 
     const role = normalizeUserRole(body.role);
-    if (!role || !canAccessAdminDashboard(role)) return null;
+    const isFounder = body.isFounder === true;
+    // Founder always accesses hub even if role row is temporarily wrong.
+    if (!isFounder && (!role || !canAccessAdminDashboard(role))) return null;
+    if (isFounder && !role) {
+      return { userId: String(body.userId), role: "admin", isFounder: true };
+    }
+    if (!role) return null;
 
     return {
       userId: String(body.userId),
       role,
+      isFounder,
     };
   } catch (err) {
     console.warn("[adminBrowserAuth] resolveBrowserStaffSession failed", err);

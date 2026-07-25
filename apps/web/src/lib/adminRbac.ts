@@ -409,10 +409,14 @@ export function getStaffPermissions(role: UserRole): AdminPermission[] {
   return Array.from(ROLE_PERMISSIONS[role]);
 }
 
-export function roleDisplayName(role: UserRole): string {
+export function roleDisplayName(
+  role: UserRole,
+  opts?: { isFounder?: boolean | null }
+): string {
+  if (opts?.isFounder === true) return "Fondateur";
   switch (role) {
     case "admin":
-      return "Super Admin (Fondateur)";
+      return "Super Admin";
     case "ops":
       return "Operations Admin";
     case "finance":

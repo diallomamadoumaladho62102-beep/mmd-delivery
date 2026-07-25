@@ -39,10 +39,16 @@ export async function requireStaffPageAccess(
     .eq("id", user.id)
     .maybeSingle();
 
+  const isFounder = profile?.is_founder === true;
   const role = effectiveStaffRole({
     role: profile?.role,
-    isFounder: profile?.is_founder === true,
+    isFounder,
   });
+
+  // Founder is absolute owner — never redirect away from an admin page.
+  if (isFounder) {
+    return { userId: user.id, role: role ?? "admin" };
+  }
 
   if (!role || !hasPermission(role, permission ?? "hub.access")) {
     redirect("/admin");
@@ -70,10 +76,15 @@ export async function requirePricingPageAccess(): Promise<{
     .eq("id", user.id)
     .maybeSingle();
 
+  const isFounder = profile?.is_founder === true;
   const role = effectiveStaffRole({
     role: profile?.role,
-    isFounder: profile?.is_founder === true,
+    isFounder,
   });
+
+  if (isFounder) {
+    return { userId: user.id, role: role ?? "admin", canWrite: true };
+  }
 
   if (!role || !canReadPricing(role)) redirect("/admin");
 

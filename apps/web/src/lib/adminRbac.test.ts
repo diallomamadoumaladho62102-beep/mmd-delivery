@@ -3,8 +3,10 @@ import {
   effectiveStaffRole,
   hasPermission,
   isSuperAdmin,
+  roleDisplayName,
   STAFF_ROLES,
 } from "./adminRbac";
+import { sessionHasPermission } from "./adminSessionAccess";
 
 function test(name: string, fn: () => void) {
   try {
@@ -98,6 +100,28 @@ test("founder flag elevates demoted restaurant role to Super Admin", () => {
   assert.equal(
     effectiveStaffRole({ role: "ops", isFounder: false }),
     "ops",
+  );
+});
+
+test("roleDisplayName distinguishes Founder from Super Admin", () => {
+  assert.equal(roleDisplayName("admin"), "Super Admin");
+  assert.equal(roleDisplayName("admin", { isFounder: true }), "Fondateur");
+});
+
+test("founder session never fails permission checks", () => {
+  assert.equal(
+    sessionHasPermission(
+      { role: "ops", isFounder: true },
+      "users.admins.manage"
+    ),
+    true
+  );
+  assert.equal(
+    sessionHasPermission(
+      { role: "ops", isFounder: false },
+      "users.admins.manage"
+    ),
+    false
   );
 });
 

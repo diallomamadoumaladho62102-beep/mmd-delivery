@@ -12,11 +12,6 @@ export default function AdminSectionLayout({ children }: { children: ReactNode }
     return <>{children}</>;
   }
 
-  // Hub already has a dense control-center chrome — keep gate only.
-  if (pathname === "/admin") {
-    return <AdminGate requiredPermission="hub.access">{children}</AdminGate>;
-  }
-
   return (
     <AdminGate requiredPermission="hub.access">
       <AdminShell>{children}</AdminShell>

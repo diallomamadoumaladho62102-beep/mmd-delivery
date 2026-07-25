@@ -1,5 +1,5 @@
-import AdminControlCenter from "@/components/admin/AdminControlCenter";
+import AdminEnterpriseDashboard from "@/components/admin/AdminEnterpriseDashboard";
 
 export default function AdminPage() {
-  return <AdminControlCenter />;
+  return <AdminEnterpriseDashboard />;
 }
