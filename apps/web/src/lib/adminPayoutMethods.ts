@@ -91,6 +91,15 @@ export function validatePayoutMethodPatch(
   if (patch.enabled !== undefined) update.enabled = Boolean(patch.enabled);
   if (patch.test_mode !== undefined) update.test_mode = Boolean(patch.test_mode);
   if (patch.auto_payout_enabled !== undefined) {
+    const nextProvider = (update.provider as PayoutProvider | undefined) ?? existing.provider;
+    // Only Stripe Connect has an implemented automatic disbursement path.
+    // Prevent accidental auto_payout_enabled for mobile-money stubs.
+    if (Boolean(patch.auto_payout_enabled) && nextProvider !== "stripe_connect") {
+      return {
+        ok: false,
+        error: "auto_payout_only_allowed_for_stripe_connect",
+      };
+    }
     update.auto_payout_enabled = Boolean(patch.auto_payout_enabled);
   }
 

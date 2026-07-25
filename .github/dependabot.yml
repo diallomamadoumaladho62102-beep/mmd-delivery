@@ -35,22 +35,9 @@ updates:
           - "minor"
           - "patch"
 
-  - package-ecosystem: "npm"
-    directory: "/apps/mobile"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "security"
-    groups:
-      mobile-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+  # Mobile is part of the root pnpm workspace (directory "/").
+  # Do not scan /apps/mobile separately — that previously tracked a legacy
+  # package-lock.json and created false Dependabot + Vercel Preview noise.
 
   - package-ecosystem: "github-actions"
     directory: "/"

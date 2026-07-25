@@ -84,6 +84,38 @@ test("shouldExpireLocally respects payment_status and entity status", () => {
     ),
     false
   );
+
+  assert.equal(
+    shouldExpireLocally(
+      {
+        id: "t1",
+        entityType: "taxi_ride",
+        status: "quoted",
+        payment_status: "unpaid",
+        expires_at: expired,
+        stripe_session_id: null,
+        stripe_payment_intent_id: null,
+      },
+      now
+    ),
+    true
+  );
+
+  assert.equal(
+    shouldExpireLocally(
+      {
+        id: "t2",
+        entityType: "taxi_ride",
+        status: "dispatching",
+        payment_status: "unpaid",
+        expires_at: expired,
+        stripe_session_id: null,
+        stripe_payment_intent_id: null,
+      },
+      now
+    ),
+    false
+  );
 });
 
 console.log("expireStalePayments tests passed");

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
+import { taxiUnpaidExpiresAt } from "@/lib/taxiUnpaidExpiry";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
@@ -248,6 +249,18 @@ export async function POST(req: NextRequest) {
         passenger_count: passengerCount,
         client_notes: clientNotes || null,
         payment_status: "unpaid",
+        // Scheduled rides keep a payment window until shortly before pickup,
+        // but never less than the standard unpaid TTL.
+        expires_at: (() => {
+          const pickupMs = new Date(pickupTime).getTime();
+          const minTtl = Date.parse(taxiUnpaidExpiresAt());
+          const beforePickup = pickupMs - 60 * 60 * 1000;
+          return new Date(
+            Number.isFinite(beforePickup) && beforePickup > minTtl
+              ? beforePickup
+              : minTtl
+          ).toISOString();
+        })(),
         preferred_driver_id: preferredDriverId || null,
         is_scheduled: true,
         scheduled_pickup_at: new Date(pickupTime).toISOString(),

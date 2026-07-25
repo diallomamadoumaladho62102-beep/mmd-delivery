@@ -208,6 +208,18 @@ async function main() {
     assert.equal(result.executed, 0);
   });
 
+  await test("flag ON still hard-stubs executeMarketplacePayouts (no Stripe)", async () => {
+    process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED = "true";
+    const { admin } = createMockAdmin();
+    const result = await executeMarketplacePayouts(admin);
+    assert.equal(result.ok, true);
+    assert.equal(result.executed, 0);
+    assert.equal(
+      result.ignored,
+      "marketplace_payouts_execution_hard_stub_no_stripe_transfer"
+    );
+  });
+
   await test("simulate payout does not call Stripe", async () => {
     delete process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED;
     const { admin, state } = createMockAdmin();

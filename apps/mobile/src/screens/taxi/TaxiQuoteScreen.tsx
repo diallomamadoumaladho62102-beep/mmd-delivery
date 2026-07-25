@@ -27,6 +27,7 @@ import {
   validateTaxiPromotion,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
+import { nextActionAfterCheckoutReturn } from "../../lib/taxiPaymentAbandonFlow";
 import {
   formatTaxiLocalizedCurrency,
   getTaxiCountryLabel,
@@ -395,10 +396,26 @@ export default function TaxiQuoteScreen() {
 
       await WebBrowser.openBrowserAsync(String(checkout.url));
 
+      let confirmResult: { ok?: boolean; already_paid?: boolean } | null = null;
+      let confirmThrew = false;
       try {
-        await confirmTaxiPaid(rideId);
+        confirmResult = await confirmTaxiPaid(rideId);
       } catch {
-        // webhook may confirm; tracking screen will poll
+        confirmThrew = true;
+      }
+
+      const next = nextActionAfterCheckoutReturn({ confirmResult, confirmThrew });
+      if (next !== "go_tracking") {
+        // Abandoned Checkout / closed browser: unpaid ride expires via expires_at.
+        // Do not cancel immediately (webhook race with a successful charge).
+        Alert.alert(
+          t("taxi.quote.payment", "Payment"),
+          t(
+            "taxi.quote.paymentNotCompleted",
+            "Payment was not completed. Unpaid rides expire automatically; you can request a new quote when ready."
+          )
+        );
+        return;
       }
 
       navigation.replace("TaxiRideTracking", { rideId });

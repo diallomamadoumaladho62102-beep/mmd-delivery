@@ -2,6 +2,14 @@ node_modules
 .pnpm-store
 .next
 out
+
+# pnpm is the only package manager for this monorepo (EAS/Expo use the root lockfile).
+# Do not recreate npm lockfiles under apps/mobile or apps/web.
+apps/mobile/package-lock.json
+apps/web/package-lock.json
+package-lock.json
+npm-shrinkwrap.json
+
 .env
 .env.local
 .env.*.local

@@ -163,11 +163,13 @@ export async function dispatchPayoutToProvider(
     };
   }
 
+  // Never simulate a successful automatic disbursement. Keep money movement
+  // fail-closed and force an explicit manual ops path (pending until admin marks paid).
   return {
-    ok: false,
-    error: "automatic_mobile_payout_not_implemented",
+    ok: true,
+    mode: "manual",
     message:
-      "Automatic mobile money payout execution is not enabled yet. Approve and process manually from admin.",
+      "Automatic mobile money payout is not implemented. Payout stays pending for manual admin processing (never marked paid automatically).",
   };
 }
 

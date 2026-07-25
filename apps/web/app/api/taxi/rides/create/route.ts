@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { taxiUnpaidExpiresAt } from "@/lib/taxiUnpaidExpiry";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { applyOwnedLocationIdsToTaxiInput } from "@/lib/mmdLocationSnapshot";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
@@ -500,6 +501,7 @@ export async function POST(req: NextRequest) {
         passenger_count: passengerCount,
         client_notes: clientNotes || null,
         payment_status: "unpaid",
+        expires_at: taxiUnpaidExpiresAt(),
         preferred_driver_id: preferredDriverId || null,
         stop_count: route.stops.length,
         premium_driver_only: premiumDriverOnly,

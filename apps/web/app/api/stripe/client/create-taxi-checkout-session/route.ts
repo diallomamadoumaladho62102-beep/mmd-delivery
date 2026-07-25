@@ -28,6 +28,7 @@ import {
   isLegacyVercelOrigin,
   resolvePublicSiteOrigin,
 } from "@/lib/productionSite";
+import { taxiPendingPaymentExpiresAt } from "@/lib/taxiUnpaidExpiry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -327,6 +328,7 @@ export async function POST(req: NextRequest) {
       .update({
         status: "pending_payment",
         payment_status: "processing",
+        expires_at: taxiPendingPaymentExpiresAt(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", taxiRideId)

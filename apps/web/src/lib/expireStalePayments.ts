@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
+import { isTaxiExpirableStatus } from "@/lib/taxiUnpaidExpiry";
 
 /**
  * Shared lease for all payment-expiration entrypoints
  * (`/api/orders/expire-unpaid` alias + `/api/cron/expire-stale-payments`).
- * Prevents concurrent local cancel of the same order/DR rows.
+ * Prevents concurrent local cancel of the same order/DR/taxi rows.
  */
 export const PAYMENT_EXPIRATION_LOCK_JOB = "payment-expiration";
 
@@ -13,7 +14,8 @@ export const EXPIRE_STALE_PAYMENTS_JOB = PAYMENT_EXPIRATION_LOCK_JOB;
 
 /**
  * Responsibilities:
- * - Canonical owner: `/api/cron/expire-stale-payments` (orders + delivery_requests + safe Stripe PI cancel).
+ * - Canonical owner: `/api/cron/expire-stale-payments`
+ *   (orders + delivery_requests + taxi_rides + safe Stripe PI cancel).
  * - Compatibility alias: `/api/orders/expire-unpaid` delegates to the same runner + shared lock.
  * - Neither path may run concurrently with the other (shared `payment-expiration` lock).
  */
@@ -38,7 +40,7 @@ export const NEVER_CANCEL_PI_STATUSES = new Set([
   "requires_action",
 ]);
 
-export type StalePaymentEntityType = "order" | "delivery_request";
+export type StalePaymentEntityType = "order" | "delivery_request" | "taxi_ride";
 
 export type StalePaymentRow = {
   id: string;
@@ -116,6 +118,10 @@ export function shouldExpireLocally(
     return !isTerminalOrderStatus(row.status);
   }
 
+  if (row.entityType === "taxi_ride") {
+    return isTaxiExpirableStatus(row.status);
+  }
+
   const status = lower(row.status);
   return (
     status === "pending" ||
@@ -181,6 +187,36 @@ async function loadStaleDeliveryRequests(
   }));
 }
 
+async function loadStaleTaxiRides(
+  supabaseAdmin: SupabaseClient,
+  cutoffIso: string,
+  limit: number
+): Promise<StalePaymentRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("taxi_rides")
+    .select(
+      "id, status, payment_status, expires_at, stripe_session_id, stripe_payment_intent_id, driver_id"
+    )
+    .in("payment_status", ["unpaid", "processing"])
+    .in("status", ["draft", "quoted", "pending_payment", "scheduled"])
+    .is("driver_id", null)
+    .not("expires_at", "is", null)
+    .lt("expires_at", cutoffIso)
+    .limit(limit);
+
+  if (error) throw new Error(`taxi_rides_select_failed: ${error.message}`);
+
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    entityType: "taxi_ride" as const,
+    status: row.status ?? null,
+    payment_status: row.payment_status ?? null,
+    expires_at: row.expires_at ?? null,
+    stripe_session_id: row.stripe_session_id ?? null,
+    stripe_payment_intent_id: row.stripe_payment_intent_id ?? null,
+  }));
+}
+
 /**
  * Atomic claim: update returns claimed rows. If another worker already
  * canceled/paid the row, returned count is 0 and we skip double-processing.
@@ -192,6 +228,27 @@ export async function claimCancelLocalEntity(
   dryRun: boolean
 ): Promise<"claimed" | "already_processed" | "dry_run"> {
   if (dryRun) return "dry_run";
+
+  if (row.entityType === "taxi_ride") {
+    const { data, error } = await supabaseAdmin
+      .from("taxi_rides")
+      .update({
+        status: "canceled",
+        payment_status: "unpaid",
+        cancelled_by: "system",
+        cancel_reason: "payment_expired",
+        updated_at: nowIso,
+      })
+      .eq("id", row.id)
+      .in("payment_status", ["unpaid", "processing"])
+      .in("status", ["draft", "quoted", "pending_payment", "scheduled"])
+      .is("driver_id", null)
+      .select("id");
+
+    if (error) throw new Error(`taxi_rides_cancel_failed: ${error.message}`);
+    if (!Array.isArray(data) || data.length === 0) return "already_processed";
+    return "claimed";
+  }
 
   const table = row.entityType === "order" ? "orders" : "delivery_requests";
   const { data, error } = await supabaseAdmin
@@ -276,27 +333,31 @@ export async function runExpireStalePayments(opts: {
   const cutoffIso = new Date(nowMs - EXPIRE_SAFETY_MARGIN_MS).toISOString();
 
   opts.onPhase?.("supabase_query_started", { batch_size: limit });
-  const [orders, deliveryRequests] = await Promise.all([
+  const [orders, deliveryRequests, taxiRides] = await Promise.all([
     limit === 0
       ? Promise.resolve([] as StalePaymentRow[])
       : loadStaleOrders(opts.supabaseAdmin, cutoffIso, limit),
     limit === 0
       ? Promise.resolve([] as StalePaymentRow[])
       : loadStaleDeliveryRequests(opts.supabaseAdmin, cutoffIso, limit),
+    limit === 0
+      ? Promise.resolve([] as StalePaymentRow[])
+      : loadStaleTaxiRides(opts.supabaseAdmin, cutoffIso, limit),
   ]);
   opts.onPhase?.("supabase_query_finished", {
     orders: orders.length,
     delivery_requests: deliveryRequests.length,
+    taxi_rides: taxiRides.length,
   });
 
-  const candidates = [...orders, ...deliveryRequests]
+  const candidates = [...orders, ...deliveryRequests, ...taxiRides]
     .filter((row) => shouldExpireLocally(row, nowMs))
     .slice(0, limit);
 
   const summary: ExpireStalePaymentsSummary = {
     ok: true,
     dry_run: dryRun,
-    scanned: orders.length + deliveryRequests.length,
+    scanned: orders.length + deliveryRequests.length + taxiRides.length,
     canceled_local: 0,
     stripe_pi_canceled: 0,
     stripe_pi_skipped: 0,

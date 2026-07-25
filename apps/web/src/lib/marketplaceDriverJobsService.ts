@@ -255,5 +255,25 @@ export async function updateMarketplaceJobStatusForDriver(
   if (error) return { ok: false, error: error.message };
   if (!data) return { ok: false, error: "invalid_status_transition" };
 
-  return { ok: true, job: mapJobRow(data as Record<string, unknown>) };
+  const job = mapJobRow(data as Record<string, unknown>);
+
+  // Ledger prep only (no Stripe). Safe even while executeMarketplacePayouts is stubbed.
+  if (params.nextStatus === "delivered") {
+    try {
+      const { prepareMarketplaceDriverPayout } = await import(
+        "@/lib/marketplacePayoutService"
+      );
+      await prepareMarketplaceDriverPayout(supabaseAdmin, {
+        marketplaceDeliveryJobId: job.id,
+        source: "driver_status_delivered",
+      });
+    } catch (prepError) {
+      console.error("[marketplaceDriverJobs] driver payout prep failed", {
+        job_id: job.id,
+        error: prepError instanceof Error ? prepError.message : String(prepError),
+      });
+    }
+  }
+
+  return { ok: true, job };
 }

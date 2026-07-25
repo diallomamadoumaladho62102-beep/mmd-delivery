@@ -75,3 +75,21 @@ test("validatePayoutMethodPatch accepts frequency and auto payout", () => {
     assert.equal(result.update.platform_commission_pct, 12.5);
   }
 });
+
+test("validatePayoutMethodPatch rejects auto payout for mobile money stubs", () => {
+  const existing = row({
+    country_code: "GN",
+    recipient_type: "driver",
+    provider: "orange_money_gn",
+    method_code: "payout_orange_money_gn_driver",
+    display_name: "Orange Money",
+    enabled: true,
+  });
+  const result = validatePayoutMethodPatch(existing, {
+    auto_payout_enabled: true,
+  });
+  assert.equal(result.ok, false);
+  if (result.ok === false) {
+    assert.equal(result.error, "auto_payout_only_allowed_for_stripe_connect");
+  }
+});

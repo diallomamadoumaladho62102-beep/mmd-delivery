@@ -689,6 +689,11 @@ export async function simulateMarketplacePayouts(
   };
 }
 
+/**
+ * Hard fail-closed: marketplace Stripe transfers are not implemented.
+ * Env/DB live flags only control ledger prep / inventory; they must never move money.
+ * Requires Connect destination + transfer idempotency + atomic claim before any live path.
+ */
 export async function executeMarketplacePayouts(
   supabaseAdmin: SupabaseClient,
   params?: { limit?: number }
@@ -705,9 +710,10 @@ export async function executeMarketplacePayouts(
     return { ok: true, ignored: "marketplace_payouts_live_disabled", executed: 0 };
   }
 
+  // Even with MARKETPLACE_PAYOUTS_LIVE_ENABLED=true, refuse remains a hard stub.
   return {
     ok: true,
-    ignored: "marketplace_payouts_live_execution_not_enabled_yet",
+    ignored: "marketplace_payouts_execution_hard_stub_no_stripe_transfer",
     executed: 0,
   };
 }
