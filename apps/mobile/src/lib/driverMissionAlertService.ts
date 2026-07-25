@@ -125,6 +125,13 @@ export async function startDriverMissionAlert(params: {
   const id =
     params.deliveryRequestId ?? params.orderId ?? params.taxiRideId ?? null;
   const key = missionKey(params.type, id);
+  if (announcedKeys.has(key)) {
+    // Already announced — still ring if foreground, but do not re-schedule local push.
+    if (AppState.currentState === "active") {
+      await setRinging(true, key);
+    }
+    return;
+  }
   announcedKeys.add(key);
 
   const isTaxi = params.type === "taxi_offer_dispatch";

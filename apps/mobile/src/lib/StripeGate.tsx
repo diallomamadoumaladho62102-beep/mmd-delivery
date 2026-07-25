@@ -19,7 +19,10 @@ function getExtra(): ExpoExtra {
 }
 
 function getPublishableKey(): string {
-  return String(getExtra().EXPO_PUBLIC_STRIPE_PK ?? "").trim();
+  return (
+    String(process.env.EXPO_PUBLIC_STRIPE_PK ?? "").trim() ||
+    String(getExtra().EXPO_PUBLIC_STRIPE_PK ?? "").trim()
+  );
 }
 
 function isStrictProductionRuntime(): boolean {

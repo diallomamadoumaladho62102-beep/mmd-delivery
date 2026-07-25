@@ -74,10 +74,6 @@ function buildStripeClient() {
   });
 }
 
-function isRetryTarget(value: unknown): value is RetryTarget {
-  return value === "restaurant" || value === "driver";
-}
-
 function normalizeRetryTarget(value: unknown): RetryTarget {
   const v = String(value ?? "").trim().toLowerCase();
   if (v === "restaurant" || v === "driver") return v;

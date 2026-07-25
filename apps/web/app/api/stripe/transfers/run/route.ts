@@ -1092,7 +1092,23 @@ export async function POST(req: NextRequest) {
         destinationAccountId: destination!,
       });
     } catch (bridgeErr) {
-      console.error("[transfers/run] payout ledger bridge failed", bridgeErr);
+      // Stripe transfer already succeeded — never swallow ledger failure.
+      // Return 500 so ops/cron can reconcile without claiming a clean success.
+      logSupabaseError("[transfers/run] payout ledger bridge failed", bridgeErr, {
+        order_id: order.id,
+        payout_id: payout.id,
+        transfer_id: transfer.id,
+        actor,
+      });
+      return json(
+        {
+          error: "Transfer created but wallet ledger bridge failed",
+          payout_id: payout.id,
+          transfer_id: transfer.id,
+          reconcile_required: true,
+        },
+        500
+      );
     }
 
     if (target === "restaurant") {

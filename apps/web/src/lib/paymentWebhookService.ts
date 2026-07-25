@@ -68,11 +68,11 @@ export async function handleProviderWebhook(
   }
 
   if (claim.outcome === "in_progress") {
-    // Another worker holds a fresh claim — ask provider to retry shortly.
+    // Another worker holds a fresh claim — non-2xx so providers retry.
     return {
-      ok: true as const,
-      status: 200,
-      duplicate: true,
+      ok: false as const,
+      status: 503,
+      error: "webhook_in_progress",
       deferred: true,
       webhook_status: "processing" as const,
     };

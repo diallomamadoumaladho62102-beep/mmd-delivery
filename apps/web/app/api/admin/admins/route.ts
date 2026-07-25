@@ -8,7 +8,6 @@ import {
   assertFounderProtected,
   assertNotSelfTarget,
   assertTargetIsStaffAdmin,
-  loadStaffProfile,
 } from "@/lib/adminGovernance";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { STAFF_ROLES } from "@/lib/adminRbac";

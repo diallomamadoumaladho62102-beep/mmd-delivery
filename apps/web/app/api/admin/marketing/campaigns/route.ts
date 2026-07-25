@@ -98,7 +98,10 @@ export async function POST(request: NextRequest) {
         .eq("id", campaignId)
         .maybeSingle();
       if (!src) return json({ ok: false, error: "not_found" }, 404);
-      const { id: _id, created_at: _c, updated_at: _u, ...rest } = src as Record<string, unknown>;
+      const rest = { ...(src as Record<string, unknown>) };
+      delete rest.id;
+      delete rest.created_at;
+      delete rest.updated_at;
       const { data, error } = await supabase
         .from("marketing_campaigns")
         .insert({

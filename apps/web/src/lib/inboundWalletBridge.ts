@@ -58,9 +58,18 @@ export async function recordInboundPaymentWalletEntries(
     }
   }
 
-  // RPC missing / unavailable — idempotent sequential fallback.
+  // RPC missing / unavailable — idempotent sequential fallback (non-production only).
   if (rpcError && !isMissingRpcError(rpcError)) {
     throw new Error(rpcError.message);
+  }
+
+  const appEnv = String(process.env.APP_ENV ?? process.env.VERCEL_ENV ?? "").toLowerCase();
+  const isProductionRuntime =
+    appEnv === "production" || process.env.NODE_ENV === "production";
+  if (isProductionRuntime) {
+    throw new Error(
+      "record_inbound_payment_wallet_entries RPC required in production (sequential wallet fallback disabled)"
+    );
   }
 
   const credit = await appendWalletLedgerEntry(supabaseAdmin, {

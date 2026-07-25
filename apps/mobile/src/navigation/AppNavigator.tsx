@@ -421,6 +421,11 @@ export function AppNavigator({
     }
 
     function handleNotificationData(data: unknown) {
+      const record = (data ?? {}) as Record<string, unknown>;
+      // Local long-ring notifications re-enter this listener — ignore to avoid loops.
+      if (record.local_alert === true || record.local_alert === "true") {
+        return;
+      }
       if (navigateFromCommunicationPush(navRef.current as any, data)) {
         void syncAppBadgeFromServer();
         return;
