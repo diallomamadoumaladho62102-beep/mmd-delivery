@@ -193,7 +193,19 @@ export async function claimPaymentWebhookEvent(
   });
 
   if (error) {
-    // Fallback for environments where migration is not yet applied.
+    const appEnv = String(process.env.APP_ENV ?? process.env.VERCEL_ENV ?? "").toLowerCase();
+    const isProductionRuntime =
+      appEnv === "production" || process.env.NODE_ENV === "production";
+    // Production must use the atomic RPC claim — non-atomic fallback risks double settlement.
+    if (isProductionRuntime) {
+      return {
+        ok: false,
+        outcome: "invalid",
+        error:
+          "claim_payment_webhook_event RPC required in production (non-atomic claim fallback disabled)",
+      };
+    }
+    // Fallback for local/dev environments where migration is not yet applied.
     return claimPaymentWebhookEventFallback(supabaseAdmin, input);
   }
 
@@ -230,6 +242,14 @@ export async function finalizePaymentWebhookEvent(
   });
 
   if (error) {
+    const appEnv = String(process.env.APP_ENV ?? process.env.VERCEL_ENV ?? "").toLowerCase();
+    const isProductionRuntime =
+      appEnv === "production" || process.env.NODE_ENV === "production";
+    if (isProductionRuntime) {
+      throw new Error(
+        "finalize_payment_webhook_event RPC required in production (non-atomic finalize fallback disabled)",
+      );
+    }
     await finalizePaymentWebhookEventFallback(supabaseAdmin, input);
   }
 }

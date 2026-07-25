@@ -14,7 +14,6 @@ import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import {
   assertFoodCheckoutCurrencyAllowed,
-  foodStripeUnitAmount,
   safeFoodCheckoutCurrency,
 } from "@/lib/foodCurrencyGuard";
 import { validateFoodOrderBeforeCheckout } from "@/lib/foodOrderService";
@@ -746,7 +745,6 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = safeLowerCurrency(order.currency ?? "USD");
-    const stripeUnitAmount = foodStripeUnitAmount(currency, amountCents);
     const idempotencyKey = `checkout_${orderId}_${user.id}_${amountCents}`;
 
     if (!isProcessingStatus(paymentStatus)) {

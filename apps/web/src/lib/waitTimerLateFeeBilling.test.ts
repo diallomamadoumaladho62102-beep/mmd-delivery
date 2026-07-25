@@ -47,13 +47,13 @@ function createMockAdmin(state: {
   const supabaseAdmin = {
     from(table: string) {
       return {
-        select(_cols: string) {
+        select() {
           if (table === "wallet_ledger") {
             const api = {
-              eq(_col: string, _val: unknown) {
+              eq() {
                 return api;
               },
-              is(_col: string, _val: null) {
+              is() {
                 return api;
               },
               order() {
@@ -78,7 +78,7 @@ function createMockAdmin(state: {
           }
           return chain(table);
         },
-        update(_patch: Record<string, unknown>) {
+        update() {
           return {
             eq() {
               return Promise.resolve({ error: null });

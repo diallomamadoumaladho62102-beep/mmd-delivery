@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 async function notifyDriverAcceptRejected(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabaseAdmin: any;
   driverUserId: string;
   reasonCode: string;

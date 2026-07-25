@@ -7,7 +7,7 @@ type DispatchCandidate = {
 };
 
 export async function createTaxiOffers(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   taxiRideId: string;
   vehicleClass: string;

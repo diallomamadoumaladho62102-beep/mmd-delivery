@@ -98,7 +98,7 @@ async function getUserFromBearerToken(token: string): Promise<User> {
 }
 
 async function getProfileRole(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabaseService: any,
   userId: string
 ): Promise<UserRole> {
@@ -117,7 +117,7 @@ async function getProfileRole(
 
 export async function resolveDispatchAccess(
   req: NextRequest,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabaseService: any
 ): Promise<DispatchAccessResult> {
   const secret = getDispatchInternalSecret();

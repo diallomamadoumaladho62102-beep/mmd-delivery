@@ -68,7 +68,7 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
   };
 
   const from = (table: string) => ({
-    select: (_cols: string) => ({
+    select: () => ({
       eq: (col: string, val: string) => ({
         maybeSingle: async () => {
           if (table === "marketplace_delivery_jobs") {
@@ -88,7 +88,7 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
       }),
     }),
     insert: (payload: Record<string, unknown>) => ({
-      select: (_cols: string) => ({
+      select: () => ({
         maybeSingle: async () => {
           if (table === "delivery_requests") {
             state.deliveryRequestsInserted += 1;
@@ -106,7 +106,7 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
     update: (payload: Record<string, unknown>) => ({
       eq: (col: string, val: string) => ({
         neq: () => ({
-          select: (_cols: string) => ({
+          select: () => ({
             maybeSingle: async () => {
               const row = state.jobs.find((j) => j[col] === val);
               if (!row) return { data: null, error: null };
@@ -115,8 +115,8 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
             },
           }),
         }),
-        in: (_statusCol: string, _statuses: string[]) => ({
-          select: (_cols: string) => ({
+        in: () => ({
+          select: () => ({
             maybeSingle: async () => {
               const row = state.jobs.find((j) => j[col] === val);
               if (!row) return { data: null, error: null };

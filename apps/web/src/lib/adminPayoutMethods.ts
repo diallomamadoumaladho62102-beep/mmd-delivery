@@ -8,7 +8,6 @@ import {
   type PayoutFrequency,
   type PayoutMethodRow,
   type PayoutProvider,
-  type PayoutRecipientType,
 } from "@/lib/payoutTypes";
 
 export const PAYOUT_METHOD_SELECT =

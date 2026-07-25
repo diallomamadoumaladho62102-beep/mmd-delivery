@@ -32,7 +32,7 @@ function driverPriceCents(order: OrderOfferContext): number | null {
 }
 
 export async function createDriverOrderOffers(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   order: OrderOfferContext;
   candidates: DispatchCandidate[];

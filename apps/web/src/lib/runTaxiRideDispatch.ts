@@ -42,7 +42,7 @@ function isDispatchableTaxiRide(ride: {
 }
 
 async function insertTaxiDispatchLog(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any,
   row: Record<string, unknown>,
 ) {
@@ -56,7 +56,7 @@ async function insertTaxiDispatchLog(
 }
 
 async function sendTaxiOfferPushes(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   taxiRideId: string;
   wave: number;
@@ -157,7 +157,7 @@ export type RunTaxiRideDispatchResult = {
 };
 
 export async function runTaxiRideDispatch(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   taxiRideId: string;
   wave?: number;

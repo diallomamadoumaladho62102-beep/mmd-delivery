@@ -12,7 +12,6 @@ import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 import {
   assertFoodCheckoutCurrencyAllowed,
-  foodStripeUnitAmount,
   safeFoodCheckoutCurrency,
 } from "@/lib/foodCurrencyGuard";
 import { validateDeliveryRequestBeforeCheckout } from "@/lib/deliveryRequestService";
@@ -63,7 +62,6 @@ const STRIPE_MIN_EXPIRES_AT_MINUTES = 31;
 const MAX_REQUEST_BODY_BYTES = 16 * 1024;
 const ALLOWED_PAYABLE_STATUSES = new Set(["pending", "accepted"]);
 const MAX_TITLE_LENGTH = 120;
-const MAX_DESCRIPTION_LENGTH = 240;
 
 function asErrorLike(value: unknown): GenericErrorLike | null {
   if (!value || typeof value !== "object") return null;
@@ -146,10 +144,6 @@ function safeTitle(value: unknown): string | null {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
   return raw.slice(0, MAX_TITLE_LENGTH);
-}
-
-function safeDescription(value: string): string {
-  return value.trim().slice(0, MAX_DESCRIPTION_LENGTH);
 }
 
 function logSupabaseError(
@@ -698,14 +692,8 @@ export async function POST(req: NextRequest) {
     }
 
     const currency = safeLowerCurrency(request.currency ?? "USD");
-    const stripeUnitAmount = foodStripeUnitAmount(currency, amountCents);
     const idempotencyKey = `delivery_checkout_${deliveryRequestId}_${user.id}_${amountCents}_${currency}`;
     const displayTitle = safeTitle(request.title) ?? `MMD Delivery ${deliveryRequestId.slice(0, 8)}`;
-    const displayDescription = safeDescription(
-      request.title
-        ? `${displayTitle} • ${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}`
-        : `Delivery request payment • ${(amountCents / 100).toFixed(2)} ${currency.toUpperCase()}`
-    );
 
     if (!isProcessingStatus(paymentStatus)) {
       const nowIso = new Date().toISOString();

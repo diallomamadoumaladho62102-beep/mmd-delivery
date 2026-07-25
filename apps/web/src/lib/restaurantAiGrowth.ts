@@ -87,12 +87,10 @@ export async function getRestaurantAiGrowth(params: {
 
   const hourCounts = new Array(24).fill(0);
   const productCounts = new Map<string, { name: string; qty: number; revenue: number }>();
-  let totalRevenue = 0;
 
   for (const row of rows) {
     const created = String(row.created_at ?? "");
     if (created) hourCounts[hourBucket(created)] += 1;
-    totalRevenue += asNumber(row.total) || asNumber(row.subtotal) + asNumber(row.tax);
 
     for (const item of parseItemsJson(row.items_json)) {
       const name = String(item.name ?? "").trim();

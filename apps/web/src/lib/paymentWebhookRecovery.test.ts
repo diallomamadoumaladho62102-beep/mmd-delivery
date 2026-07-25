@@ -376,3 +376,38 @@ test("handleProviderWebhook rejects unknown provider", async () => {
     assert.equal(result.error, "unknown_provider");
   }
 });
+
+test("production refuses non-atomic webhook claim fallback when RPC is missing", async () => {
+  const prevAppEnv = process.env.APP_ENV;
+  const prevVercelEnv = process.env.VERCEL_ENV;
+  // Prefer APP_ENV so we do not mutate read-only NODE_ENV in TypeScript.
+  process.env.APP_ENV = "production";
+  delete process.env.VERCEL_ENV;
+
+  try {
+    const result = await claimPaymentWebhookEvent(
+      {
+        rpc: async () => ({
+          data: null,
+          error: { message: "function public.claim_payment_webhook_event does not exist" },
+        }),
+        from() {
+          throw new Error("fallback_must_not_run_in_production");
+        },
+      } as never,
+      {
+        provider: "stripe",
+        externalEventId: "evt-prod-fallback",
+        payload: { id: "evt-prod-fallback" },
+      },
+    );
+    assert.equal(result.ok, false);
+    assert.equal(result.outcome, "invalid");
+    assert.match(String(result.error), /RPC required in production/);
+  } finally {
+    if (prevAppEnv === undefined) delete process.env.APP_ENV;
+    else process.env.APP_ENV = prevAppEnv;
+    if (prevVercelEnv === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = prevVercelEnv;
+  }
+});

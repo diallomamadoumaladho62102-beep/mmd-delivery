@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   evaluateIdentityTriggers,
-  computeVerificationExpiry,
   hashIp,
 } from "@/lib/driverIdentityRiskEngine";
 import {
@@ -226,7 +225,6 @@ async function loadDriverProfileFlags(admin: SupabaseClient, driverId: string) {
     .maybeSingle();
 
   const state = await loadOrCreateState(admin, driverId);
-  const profileWasSuspended = profile?.status === "suspended";
 
   const photoUpdatedAt = photoDoc?.updated_at ?? photoDoc?.created_at ?? null;
   const profilePhotoChangedRecently =

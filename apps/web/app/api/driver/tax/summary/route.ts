@@ -859,7 +859,6 @@ export async function GET(req: NextRequest) {
       const wDate = 78;
       const wOrder = 70;
       const wTip = 70;
-      const wDriver = 110;
       const colGap = 10;
 
       const xDate = listX + 10;

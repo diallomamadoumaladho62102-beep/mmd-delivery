@@ -99,10 +99,6 @@ function logSupabaseError(
   });
 }
 
-function logStripeSync(prefix: string, extra?: Record<string, unknown>) {
-  console.error(prefix, extra ?? {});
-}
-
 async function parseBody(req: NextRequest): Promise<Body> {
   try {
     return (await req.json()) as Body;

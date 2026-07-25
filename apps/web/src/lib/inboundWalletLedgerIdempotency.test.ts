@@ -192,7 +192,7 @@ function createLedgerStore() {
       assert.equal(table, "wallet_ledger");
       const filters: Record<string, unknown> = {};
       const api = {
-        select(_cols: string) {
+        select() {
           return api;
         },
         eq(col: string, val: unknown) {
@@ -255,8 +255,9 @@ function createLedgerStore() {
         },
       };
       return {
-        select(cols: string) {
-          return api.select(cols);
+        select(_cols?: string) {
+          void _cols;
+          return api.select();
         },
         insert(payload: Record<string, unknown>) {
           return {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
 import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
 import { notifyOrderCancelledEmail } from "@/lib/transactionalEmails";
 import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
@@ -29,12 +28,6 @@ function getEnv(name: string) {
   }
 
   return value;
-}
-
-function getStripe() {
-  return new Stripe(getEnv("STRIPE_SECRET_KEY"), {
-    apiVersion: "2023-10-16",
-  });
 }
 
 function normalizeStatus(value: unknown) {
@@ -90,83 +83,6 @@ function isClientOrderOwner(order: any, userId: string) {
     sameId(order.created_by, userId) ||
     sameId(order.user_id, userId)
   );
-}
-
-async function refundStripePayment(params: {
-  order: any;
-  supabaseAdmin: any;
-  orderId: string;
-  reason: string;
-}) {
-  const { order, supabaseAdmin, orderId, reason } = params;
-
-  if (order.stripe_refunded_at || order.stripe_refund_id) {
-    return {
-      refunded: false,
-      alreadyRefunded: true,
-      refundId: order.stripe_refund_id ?? null,
-    };
-  }
-
-  const paymentIntentId = String(order.stripe_payment_intent_id ?? "").trim();
-
-  if (!paymentIntentId) {
-    await supabaseAdmin
-      .from("orders")
-      .update({
-        refund_status: "missing_payment_intent",
-      })
-      .eq("id", orderId);
-
-    return {
-      refunded: false,
-      missingPaymentIntent: true,
-    };
-  }
-
-  try {
-    const stripe = getStripe();
-
-    const refund = await stripe.refunds.create(
-      {
-        payment_intent: paymentIntentId,
-        reason: "requested_by_customer",
-        metadata: {
-          order_id: orderId,
-          cancel_reason: reason,
-        },
-      },
-      {
-        idempotencyKey: `refund_order_${orderId}`,
-      }
-    );
-
-    await supabaseAdmin
-      .from("orders")
-      .update({
-        refund_status: "refunded",
-        stripe_refund_id: refund.id,
-        stripe_refunded_at: nowIso(),
-      })
-      .eq("id", orderId);
-
-    return {
-      refunded: true,
-      refundId: refund.id,
-      status: refund.status,
-    };
-  } catch (e: any) {
-    console.log("Stripe refund error:", e?.message ?? e);
-
-    await supabaseAdmin
-      .from("orders")
-      .update({
-        refund_status: "refund_failed",
-      })
-      .eq("id", orderId);
-
-    throw new Error(e?.message ?? "Stripe refund failed");
-  }
 }
 
 async function insertClientCancelEvent(params: {

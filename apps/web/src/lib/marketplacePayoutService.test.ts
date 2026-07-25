@@ -111,9 +111,9 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
   }
 
   const from = (table: string) => ({
-    select: (_cols: string) => chainEq(table),
+    select: () => chainEq(table),
     insert: (payload: Record<string, unknown>) => ({
-      select: (_cols: string) => ({
+      select: () => ({
         maybeSingle: async () => {
           if (table === "marketplace_seller_wallet_entries") {
             const row = { id: "wallet-1", ...payload };

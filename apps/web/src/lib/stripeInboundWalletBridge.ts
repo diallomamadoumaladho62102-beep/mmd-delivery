@@ -129,6 +129,18 @@ export async function recordStripeInboundWalletBridge(
     paymentIntentId,
   );
   if (ledgerWrite.ok === false) {
+    // Keep status=paid (Stripe already captured funds) but flag for reconciliation/retry.
+    await supabaseAdmin
+      .from("payment_transactions")
+      .update({
+        failure_reason: "wallet_ledger_write_failed",
+        provider_payload: {
+          ...(transaction.provider_payload ?? {}),
+          ledger_pending: true,
+          ledger_error: ledgerWrite.error,
+        },
+      })
+      .eq("id", transaction.id);
     return { ok: false, error: ledgerWrite.error };
   }
 

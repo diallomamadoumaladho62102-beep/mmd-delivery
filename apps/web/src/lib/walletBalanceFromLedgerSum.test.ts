@@ -108,7 +108,7 @@ function createFinanceStore() {
         reject?: (e: unknown) => unknown
       ) => Promise<unknown>;
     } = {
-      select(_cols: string) {
+      select() {
         return api;
       },
       eq(col: string, val: unknown) {

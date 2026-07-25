@@ -246,33 +246,10 @@ export function applyIdentificationToRide(
   };
 }
 
-type AdminClient = {
-  from: (table: string) => {
-    select: (cols: string) => {
-      eq: (
-        col: string,
-        val: string,
-      ) => {
-        maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
-        is?: (
-          col: string,
-          val: null,
-        ) => {
-          maybeSingle: () => Promise<{
-            data: Record<string, unknown> | null;
-            error: { message: string } | null;
-          }>;
-        };
-      };
-    };
-  };
-};
-
 /**
  * Enrich a taxi_rides row for client/API consumers.
  */
 export async function enrichTaxiRideIdentification(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabaseAdmin: any,
   ride: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
@@ -330,7 +307,6 @@ export async function enrichTaxiRideIdentification(
 }
 
 export async function enrichTaxiRidesIdentification(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabaseAdmin: any,
   rides: Record<string, unknown>[],
 ): Promise<Record<string, unknown>[]> {

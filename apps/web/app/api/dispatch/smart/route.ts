@@ -4,7 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 import { createDriverOrderOffers } from "@/lib/createDriverOrderOffers";
 import {
   assertUserMayDispatchOrder,
-  buildDispatchInternalHeaders,
   resolveDispatchAccess,
 } from "@/lib/dispatchInternalAuth";
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
@@ -196,8 +195,6 @@ export async function POST(req: NextRequest) {
     if (accessResult.ok === false) {
       return json({ error: accessResult.error }, accessResult.status);
     }
-
-    const dispatchAuthHeaders = buildDispatchInternalHeaders();
 
     const { data: order, error: orderError } = await supabase
       .from("orders")

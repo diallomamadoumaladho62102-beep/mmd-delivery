@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/cronAuth";
 import { createClient } from "@supabase/supabase-js";
-import { getDispatchSiteOrigin } from "@/lib/scheduleDeliveryRequestDispatch";
 import {
   findTaxiRidesNeedingDispatchRetry,
   findTaxiRidesNeedingFavoriteFallback,

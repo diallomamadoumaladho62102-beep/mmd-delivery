@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 

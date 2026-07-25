@@ -11,7 +11,7 @@ export type TaxiDispatchRetryDecision = {
 };
 
 export async function resolveTaxiDispatchRetryDecision(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   taxiRideId: string;
 }): Promise<TaxiDispatchRetryDecision> {
@@ -72,7 +72,7 @@ export async function resolveTaxiDispatchRetryDecision(params: {
 }
 
 export async function scheduleTaxiRideDispatchIfEligible(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   origin: string;
   taxiRideId: string;
@@ -123,7 +123,7 @@ export async function scheduleTaxiRideDispatchIfEligible(params: {
 }
 
 export async function resolveTaxiSharedDispatchTarget(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   taxiRideId: string;
 }): Promise<{ dispatchRideId: string; shouldDispatch: boolean }> {

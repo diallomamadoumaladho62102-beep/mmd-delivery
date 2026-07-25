@@ -23,7 +23,7 @@ export function isLiveVisibleTrip(row: TripVisibilityFlags | null | undefined): 
  * Apply PostgREST filters for production-visible trips.
  * Chain after .from(...).select(...) and before .eq(driver_id) etc. as needed.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function applyLiveTripFilters<T extends { eq: any; is: any; or: any }>(
   query: T,
 ): T {

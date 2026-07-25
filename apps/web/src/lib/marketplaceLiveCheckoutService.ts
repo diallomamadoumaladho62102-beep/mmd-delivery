@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";

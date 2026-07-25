@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
-import { getTaxiRideId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,8 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  inferPlatformCountryCode,
-  normalizePlatformCountryCode,
-} from "@/lib/platformCountryInference";
+import { normalizePlatformCountryCode } from "@/lib/platformCountryInference";
 
 export {
   AFRICA_PLATFORM_COUNTRIES,

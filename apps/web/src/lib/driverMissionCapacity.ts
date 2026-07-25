@@ -42,7 +42,7 @@ function toNumber(value: unknown): number | null {
 }
 
 export async function loadDriverCapacitySettings(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any,
 ): Promise<DriverCapacitySettings> {
   try {
@@ -98,7 +98,7 @@ export async function loadDriverCapacitySettings(
 }
 
 export async function getDriverActiveDeliveryMissionCount(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any,
   driverId: string,
 ): Promise<number> {
@@ -116,7 +116,7 @@ export async function getDriverActiveDeliveryMissionCount(
 }
 
 export async function loadDriverActiveMissionRoutes(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any,
   driverId: string,
 ): Promise<ActiveMissionRoute[]> {
@@ -200,7 +200,7 @@ export type FilterDeliveryCapacityResult = {
  * Filter candidates that already have max missions or incompatible routes.
  */
 export async function filterDeliveryCandidatesByCapacityAndRoute(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   candidates: DeliveryDispatchCandidate[];
   newPickup: LatLng;
@@ -278,7 +278,7 @@ export async function filterDeliveryCandidatesByCapacityAndRoute(params: {
 }
 
 export async function filterTaxiCandidatesByCapacity(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   candidates: DeliveryDispatchCandidate[];
 }): Promise<{

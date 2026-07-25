@@ -31,7 +31,7 @@ function driverPriceCents(request: DeliveryRequestOfferContext): number | null {
 }
 
 export async function createDriverDeliveryRequestOffers(params: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   supabase: any;
   deliveryRequest: DeliveryRequestOfferContext;
   candidates: DispatchCandidate[];
