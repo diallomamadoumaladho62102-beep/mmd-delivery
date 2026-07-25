@@ -18,7 +18,7 @@ jobs:
       SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://www.mmddelivery.com' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
