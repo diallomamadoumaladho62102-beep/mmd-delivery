@@ -1,28 +1,68 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
 import {
+  adminFetch,
   resolveBrowserStaffSession,
 } from "@/lib/adminBrowserAuth";
-import { adminFetch } from "@/lib/adminBrowserAuth";
-import { roleDisplayName, STAFF_ROLES } from "@/lib/adminRbac";
+import { roleDisplayName } from "@/lib/adminRbac";
 
-type AdminRow = {
+type HrPayload = {
+  totals: {
+    admins: number;
+    online: number;
+    overdue_tasks: number;
+    activity_7d: number;
+  };
+  by_department: Array<{
+    key: string;
+    people: number;
+    tasks_done: number;
+    workload: number;
+    activity_7d: number;
+  }>;
+  by_country: Array<{
+    key: string;
+    people: number;
+    tasks_done: number;
+    workload: number;
+    activity_7d: number;
+  }>;
+  by_region: Array<{
+    key: string;
+    people: number;
+    activity_7d: number;
+  }>;
+  top_performers: Array<{
+    admin_id: string;
+    success_rate: number;
+    tasks_done: number;
+  }>;
+  needs_attention: Array<{
+    admin_id: string;
+    tasks_overdue: number;
+    success_rate: number;
+  }>;
+};
+
+type Person = {
   id: string;
-  role: string;
   full_name: string | null;
   email: string | null;
-  account_status: string;
+  role: string;
   is_founder: boolean;
-  created_at: string;
+  presence_status?: string | null;
+  staff_country_code?: string | null;
+  performance?: { workload: number; success_rate: number; tasks_overdue: number } | null;
 };
 
 export default function AdminHrDashboardPage() {
-  const [rows, setRows] = useState<AdminRow[]>([]);
-  const [tasksCount, setTasksCount] = useState({ total: 0, overdue: 0, open: 0 });
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [hr, setHr] = useState<HrPayload | null>(null);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -33,49 +73,20 @@ export default function AdminHrDashboardPage() {
       setAllowed(ok);
       if (!ok) return;
 
-      const [adminsRes, tasksRes] = await Promise.all([
-        adminFetch("/api/admin/admins"),
-        adminFetch("/api/admin/tasks"),
-      ]);
-      const adminsBody = await adminsRes.json().catch(() => ({}));
-      if (adminsBody.ok) setRows(adminsBody.items ?? []);
-      const tasksBody = await tasksRes.json().catch(() => ({}));
-      if (tasksBody.ok) {
-        const items = (tasksBody.items ?? []) as {
-          status: string;
-          due_at: string | null;
-        }[];
-        const open = items.filter(
-          (t) => !["done", "cancelled"].includes(t.status)
-        ).length;
-        const overdue = items.filter(
-          (t) =>
-            t.due_at &&
-            new Date(t.due_at).getTime() < Date.now() &&
-            !["done", "cancelled"].includes(t.status)
-        ).length;
-        setTasksCount({ total: items.length, open, overdue });
+      const res = await adminFetch("/api/admin/staff/performance");
+      const body = await res.json().catch(() => ({}));
+      if (!alive) return;
+      if (!res.ok || !body.ok) {
+        setError(body.error ?? "Failed to load People Ops");
+        return;
       }
+      setHr(body.hr ?? null);
+      setPeople(body.items ?? []);
     })();
     return () => {
       alive = false;
     };
   }, []);
-
-  const stats = useMemo(() => {
-    const total = rows.length;
-    const active = rows.filter((r) => r.account_status === "active").length;
-    const suspended = rows.filter((r) => r.account_status === "suspended").length;
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const newHires = rows.filter(
-      (r) => r.created_at && new Date(r.created_at).getTime() >= weekAgo
-    ).length;
-    const byRole = STAFF_ROLES.map((role) => ({
-      role,
-      count: rows.filter((r) => r.role === role).length,
-    }));
-    return { total, active, suspended, offline: total - active, newHires, byRole };
-  }, [rows]);
 
   if (allowed === false) {
     return (
@@ -83,19 +94,16 @@ export default function AdminHrDashboardPage() {
         <div className="cc-card mx-auto max-w-lg p-6">
           <h1 className="text-lg font-semibold text-slate-900">Founder only</h1>
           <p className="mt-2 text-sm text-[var(--cc-muted)]">
-            The People Ops dashboard is reserved for the Founder (and Super Admin
-            operators acting under Founder authority).
+            People Ops is reserved for the Founder and Super Admin.
           </p>
-          <Link
-            href="/admin"
-            className="mt-4 inline-block text-sm font-semibold text-[var(--cc-info)]"
-          >
-            Back to dashboard
-          </Link>
         </div>
       </AdminGate>
     );
   }
+
+  const nameById = new Map(
+    people.map((p) => [p.id, p.full_name || p.email || p.id.slice(0, 8)])
+  );
 
   return (
     <AdminGate requiredPermission="users.admins.manage">
@@ -109,7 +117,7 @@ export default function AdminHrDashboardPage() {
               People Ops
             </h1>
             <p className="mt-1 text-sm text-[var(--cc-muted)]">
-              Organization health · workload · staffing
+              Live performance from tasks + admin audit logs
             </p>
           </div>
           <Link
@@ -120,67 +128,143 @@ export default function AdminHrDashboardPage() {
           </Link>
         </header>
 
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        ) : null}
+
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { label: "Administrators", value: stats.total, tone: "info" },
-            { label: "Active", value: stats.active, tone: "success" },
-            { label: "Offline / other", value: stats.offline, tone: "neutral" },
-            { label: "Suspended", value: stats.suspended, tone: "critical" },
-            { label: "New (7 days)", value: stats.newHires, tone: "ai" },
-            { label: "Open tasks", value: tasksCount.open, tone: "warn" },
-            { label: "Overdue tasks", value: tasksCount.overdue, tone: "critical" },
-            { label: "Tasks total", value: tasksCount.total, tone: "info" },
-          ].map((kpi) => (
-            <div key={kpi.label} className="cc-kpi">
-              <p className="cc-kpi-label">{kpi.label}</p>
-              <p className="cc-kpi-value">{allowed === null ? "—" : kpi.value}</p>
+            ["Administrators", hr?.totals.admins],
+            ["Online now", hr?.totals.online],
+            ["Overdue tasks", hr?.totals.overdue_tasks],
+            ["Activity 7d", hr?.totals.activity_7d],
+          ].map(([label, value]) => (
+            <div key={String(label)} className="cc-kpi">
+              <p className="cc-kpi-label">{label}</p>
+              <p className="cc-kpi-value">{value ?? "—"}</p>
             </div>
           ))}
         </section>
 
+        <section className="grid gap-6 lg:grid-cols-3">
+          <AggCard title="By department" rows={hr?.by_department ?? []} />
+          <AggCard title="By country" rows={hr?.by_country ?? []} />
+          <AggCard title="By region" rows={hr?.by_region ?? []} />
+        </section>
+
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="cc-card p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Roles distribution</h2>
-            <ul className="mt-4 space-y-3">
-              {stats.byRole.map((item) => (
-                <li
-                  key={item.role}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-slate-700">{roleDisplayName(item.role)}</span>
-                  <span className="font-semibold text-slate-900">{item.count}</span>
+            <h2 className="text-sm font-semibold text-slate-900">
+              Top performers
+            </h2>
+            <ul className="mt-3 divide-y divide-[var(--cc-border)]">
+              {(hr?.top_performers ?? []).map((row) => (
+                <li key={row.admin_id} className="flex justify-between py-2 text-sm">
+                  <Link
+                    href={`/admin/staff/${row.admin_id}`}
+                    className="font-medium text-[var(--cc-info)]"
+                  >
+                    {nameById.get(row.admin_id) ?? row.admin_id.slice(0, 8)}
+                  </Link>
+                  <span>
+                    {row.success_rate}% · {row.tasks_done} done
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
-
           <div className="cc-card p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Workload snapshot</h2>
-            <ul className="mt-4 divide-y divide-[var(--cc-border)]">
-              {rows.slice(0, 8).map((row) => (
-                <li key={row.id} className="flex items-center justify-between py-3">
-                  <div>
-                    <Link
-                      href={`/admin/staff/${row.id}`}
-                      className="text-sm font-medium text-slate-900 hover:text-[var(--cc-info)]"
-                    >
-                      {row.full_name || row.email}
-                    </Link>
-                    <p className="text-xs text-[var(--cc-muted)]">
-                      {roleDisplayName(row.role as never, {
-                        isFounder: row.is_founder,
-                      })}
-                    </p>
-                  </div>
-                  <span className="text-xs font-semibold text-[var(--cc-muted)]">
-                    {row.account_status}
+            <h2 className="text-sm font-semibold text-slate-900">
+              Needs attention
+            </h2>
+            <ul className="mt-3 divide-y divide-[var(--cc-border)]">
+              {(hr?.needs_attention ?? []).map((row) => (
+                <li key={row.admin_id} className="flex justify-between py-2 text-sm">
+                  <Link
+                    href={`/admin/staff/${row.admin_id}`}
+                    className="font-medium text-[var(--cc-critical)]"
+                  >
+                    {nameById.get(row.admin_id) ?? row.admin_id.slice(0, 8)}
+                  </Link>
+                  <span>
+                    {row.tasks_overdue} overdue · {row.success_rate}%
                   </span>
                 </li>
               ))}
             </ul>
           </div>
         </section>
+
+        <div className="cc-card overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-[var(--cc-border)] bg-slate-50 text-xs uppercase text-[var(--cc-muted)]">
+              <tr>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Country</th>
+                <th className="px-4 py-3">Presence</th>
+                <th className="px-4 py-3">Workload</th>
+                <th className="px-4 py-3">Success</th>
+              </tr>
+            </thead>
+            <tbody>
+              {people.map((p) => (
+                <tr key={p.id} className="border-b border-slate-100">
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/staff/${p.id}`}
+                      className="font-medium text-slate-900 hover:text-[var(--cc-info)]"
+                    >
+                      {p.full_name || p.email}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3">
+                    {roleDisplayName(p.role as never, {
+                      isFounder: p.is_founder,
+                    })}
+                  </td>
+                  <td className="px-4 py-3">{p.staff_country_code || "—"}</td>
+                  <td className="px-4 py-3">{p.presence_status || "offline"}</td>
+                  <td className="px-4 py-3">{p.performance?.workload ?? 0}</td>
+                  <td className="px-4 py-3">
+                    {p.performance?.success_rate ?? 0}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </AdminGate>
+  );
+}
+
+function AggCard({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<{ key: string; people: number; activity_7d?: number }>;
+}) {
+  return (
+    <div className="cc-card p-5">
+      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+      <ul className="mt-3 space-y-2 text-sm">
+        {rows.slice(0, 8).map((row) => (
+          <li key={row.key} className="flex justify-between">
+            <span>{row.key}</span>
+            <span className="text-[var(--cc-muted)]">
+              {row.people} people
+              {row.activity_7d != null ? ` · ${row.activity_7d} acts` : ""}
+            </span>
+          </li>
+        ))}
+        {!rows.length ? (
+          <li className="text-[var(--cc-muted)]">No data yet</li>
+        ) : null}
+      </ul>
+    </div>
   );
 }

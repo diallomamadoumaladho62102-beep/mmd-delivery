@@ -11,6 +11,7 @@ import {
 } from "@/lib/adminRbac";
 import { dashboardPersona, sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
+import AdminOpsLiveMap from "@/components/admin/AdminOpsLiveMap";
 
 type OverviewMetrics = {
   pending_orders: number;
@@ -337,49 +338,7 @@ export default function AdminEnterpriseDashboard() {
         persona === "ops" ||
         persona === "support") && (
         <section aria-label="Live operations">
-          <div className="cc-card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-[var(--cc-border)] px-5 py-4">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">
-                  Live operations map
-                </h2>
-                <p className="text-sm text-[var(--cc-muted)]">
-                  Mapbox live layers — not operational yet
-                </p>
-              </div>
-              <Link
-                href="/admin/supervision"
-                className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
-              >
-                Open supervision
-              </Link>
-            </div>
-            <div className="relative flex h-[280px] flex-col items-center justify-center gap-3 bg-slate-100 px-6 text-center">
-              <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Coming soon
-              </span>
-              <p className="max-w-md text-sm text-[var(--cc-muted)]">
-                Live Mapbox supervision (drivers, orders, restaurants, alerts) is
-                scaffolded only. Use Supervision for current operational metrics.
-              </p>
-              <div className="grid w-full max-w-lg grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  { label: "Drivers", href: "/admin/drivers" },
-                  { label: "Orders", href: "/admin/orders" },
-                  { label: "Restaurants", href: "/admin/restaurants" },
-                  { label: "Alerts", href: "/admin/dispatch" },
-                ].map((layer) => (
-                  <Link
-                    key={layer.label}
-                    href={layer.href}
-                    className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-xs font-semibold text-slate-700"
-                  >
-                    {layer.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
+          <AdminOpsLiveMap />
         </section>
       )}
 

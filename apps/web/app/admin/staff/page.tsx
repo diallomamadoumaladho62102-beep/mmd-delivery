@@ -15,6 +15,14 @@ type AdminRow = {
   account_status: string;
   is_founder: boolean;
   created_at: string;
+  staff_country_code?: string | null;
+  staff_region_code?: string | null;
+  staff_county_code?: string | null;
+  staff_city?: string | null;
+  staff_timezone?: string | null;
+  staff_language?: string | null;
+  staff_department?: string | null;
+  presence_status?: string | null;
 };
 
 const CREATABLE_ROLES = STAFF_ROLES.filter((role) => role !== "admin");
@@ -30,6 +38,9 @@ export default function AdminStaffPage() {
   const [creating, setCreating] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [countryFilter, setCountryFilter] = useState("all");
+  const [regionFilter, setRegionFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [query, setQuery] = useState("");
 
   const load = useCallback(async () => {
@@ -54,15 +65,78 @@ export default function AdminStaffPage() {
     return rows.filter((row) => {
       if (roleFilter !== "all" && row.role !== roleFilter) return false;
       if (statusFilter !== "all" && row.account_status !== statusFilter) return false;
+      if (
+        countryFilter !== "all" &&
+        (row.staff_country_code ?? "") !== countryFilter
+      ) {
+        return false;
+      }
+      if (
+        regionFilter !== "all" &&
+        (row.staff_region_code ?? "") !== regionFilter
+      ) {
+        return false;
+      }
+      if (
+        cityFilter !== "all" &&
+        (row.staff_city ?? "").toLowerCase() !== cityFilter.toLowerCase()
+      ) {
+        return false;
+      }
       const q = query.trim().toLowerCase();
       if (!q) return true;
       return (
         (row.full_name ?? "").toLowerCase().includes(q) ||
         (row.email ?? "").toLowerCase().includes(q) ||
-        (row.phone ?? "").toLowerCase().includes(q)
+        (row.phone ?? "").toLowerCase().includes(q) ||
+        (row.staff_country_code ?? "").toLowerCase().includes(q) ||
+        (row.staff_region_code ?? "").toLowerCase().includes(q) ||
+        (row.staff_county_code ?? "").toLowerCase().includes(q) ||
+        (row.staff_city ?? "").toLowerCase().includes(q) ||
+        (row.staff_timezone ?? "").toLowerCase().includes(q) ||
+        (row.staff_language ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rows, roleFilter, statusFilter, query]);
+  }, [
+    rows,
+    roleFilter,
+    statusFilter,
+    countryFilter,
+    regionFilter,
+    cityFilter,
+    query,
+  ]);
+
+  const countryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(rows.map((r) => r.staff_country_code).filter(Boolean))
+      ) as string[],
+    [rows]
+  );
+  const regionOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          rows
+            .filter(
+              (r) =>
+                countryFilter === "all" ||
+                r.staff_country_code === countryFilter
+            )
+            .map((r) => r.staff_region_code)
+            .filter(Boolean)
+        )
+      ) as string[],
+    [rows, countryFilter]
+  );
+  const cityOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(rows.map((r) => r.staff_city).filter(Boolean))
+      ) as string[],
+    [rows]
+  );
 
   async function changeRole(userId: string, role: string) {
     setSavingId(userId);
@@ -238,6 +312,45 @@ export default function AdminStaffPage() {
             <option value="suspended">Suspended</option>
             <option value="disabled">Disabled</option>
           </select>
+          <select
+            value={countryFilter}
+            onChange={(e) => {
+              setCountryFilter(e.target.value);
+              setRegionFilter("all");
+            }}
+            className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
+          >
+            <option value="all">All countries</option>
+            {countryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <select
+            value={regionFilter}
+            onChange={(e) => setRegionFilter(e.target.value)}
+            className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
+          >
+            <option value="all">All states / regions</option>
+            {regionOptions.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+          <select
+            value={cityFilter}
+            onChange={(e) => setCityFilter(e.target.value)}
+            className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm"
+          >
+            <option value="all">All cities</option>
+            {cityOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading ? (
@@ -255,10 +368,15 @@ export default function AdminStaffPage() {
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Actions</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Country</th>
+                    <th className="px-4 py-3">State</th>
+                    <th className="px-4 py-3">City</th>
+                    <th className="px-4 py-3">TZ</th>
+                    <th className="px-4 py-3">Presence</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -306,6 +424,21 @@ export default function AdminStaffPage() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--cc-muted)]">
+                      {row.staff_country_code ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--cc-muted)]">
+                      {row.staff_region_code ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--cc-muted)]">
+                      {row.staff_city ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--cc-muted)]">
+                      {row.staff_timezone ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--cc-muted)]">
+                      {row.presence_status ?? "offline"}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={row.account_status} />

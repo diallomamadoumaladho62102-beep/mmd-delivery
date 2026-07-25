@@ -61,6 +61,29 @@ export default function AdminShell({
   }, [pathname]);
 
   useEffect(() => {
+    let alive = true;
+    const beat = async () => {
+      try {
+        const { adminFetch } = await import("@/lib/adminBrowserAuth");
+        if (!alive) return;
+        await adminFetch("/api/admin/staff/presence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "online" }),
+        });
+      } catch {
+        // Presence is best-effort; never block the shell.
+      }
+    };
+    void beat();
+    const timer = window.setInterval(() => void beat(), 60_000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
 

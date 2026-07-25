@@ -20,7 +20,8 @@ type AdminAction =
   | "suspend"
   | "unsuspend"
   | "activate"
-  | "deactivate";
+  | "deactivate"
+  | "update_profile";
 
 const STATUS_BY_ACTION: Record<string, string> = {
   suspend: "suspended",
@@ -33,6 +34,9 @@ function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
 }
 
+const STAFF_PROFILE_SELECT =
+  "id, role, full_name, email, phone, account_status, is_founder, created_at, staff_country_code, staff_region_code, staff_county_code, staff_city, staff_timezone, staff_language, staff_department, staff_title, last_seen_at, presence_status";
+
 export async function GET(request: NextRequest) {
   try {
     await assertStaffPermission("users.admins.manage", request);
@@ -40,9 +44,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select(
-        "id, role, full_name, email, phone, account_status, is_founder, created_at"
-      )
+      .select(STAFF_PROFILE_SELECT)
       .in("role", [...STAFF_ROLES])
       .order("created_at", { ascending: false });
 
@@ -177,6 +179,14 @@ export async function PATCH(request: NextRequest) {
       userId?: string;
       role?: string;
       action?: AdminAction;
+      staff_country_code?: string | null;
+      staff_region_code?: string | null;
+      staff_county_code?: string | null;
+      staff_city?: string | null;
+      staff_timezone?: string | null;
+      staff_language?: string | null;
+      staff_department?: string | null;
+      staff_title?: string | null;
     };
 
     const userId = String(body.userId ?? "").trim();
@@ -185,7 +195,9 @@ export async function PATCH(request: NextRequest) {
 
     if (!userId) return json({ ok: false, error: "userId required" }, 400);
 
-    assertNotSelfTarget(session.userId, userId, action.replace("_", " "));
+    if (action !== "update_profile") {
+      assertNotSelfTarget(session.userId, userId, action.replace("_", " "));
+    }
 
     const before = await assertTargetIsStaffAdmin(supabase, userId);
     await assertFounderProtected(supabase, before, action.replace("_", " "));
@@ -210,6 +222,29 @@ export async function PATCH(request: NextRequest) {
         );
       }
       updates.role = newRole;
+    } else if (action === "update_profile") {
+      const geoKeys = [
+        "staff_country_code",
+        "staff_region_code",
+        "staff_county_code",
+        "staff_city",
+        "staff_timezone",
+        "staff_language",
+        "staff_department",
+        "staff_title",
+      ] as const;
+      for (const key of geoKeys) {
+        if (body[key] !== undefined) {
+          const raw = body[key];
+          updates[key] =
+            raw == null || raw === ""
+              ? null
+              : String(raw).trim().slice(0, 120);
+        }
+      }
+      if (!Object.keys(updates).length) {
+        return json({ ok: false, error: "No profile fields to update" }, 400);
+      }
     } else {
       const nextStatus = STATUS_BY_ACTION[action];
       if (!nextStatus) return json({ ok: false, error: "Invalid action" }, 400);
@@ -220,9 +255,7 @@ export async function PATCH(request: NextRequest) {
       .from("profiles")
       .update(updates)
       .eq("id", userId)
-      .select(
-        "id, role, full_name, email, phone, account_status, is_founder, created_at"
-      )
+      .select(STAFF_PROFILE_SELECT)
       .single();
 
     if (updErr) return json({ ok: false, error: updErr.message }, 500);
