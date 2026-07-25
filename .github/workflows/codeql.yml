@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
   schedule:
     # Weekly security scan (Sunday 06:17 UTC)
     - cron: "17 6 * * 0"
