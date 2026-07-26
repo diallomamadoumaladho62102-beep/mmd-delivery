@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src/lib app/api",
-    "test:rbac": "tsx src/lib/adminRbac.test.ts && tsx src/lib/adminOutbound.test.ts && tsx src/lib/adminNav.test.ts && tsx src/lib/adminFounderBypass.test.ts && tsx src/lib/adminTasksAccess.test.ts && tsx src/lib/adminEnterpriseOps.test.ts && node scripts/verify-admin-cc-routes.mjs",
+    "test:rbac": "tsx src/lib/adminRbac.test.ts && tsx src/lib/adminOutbound.test.ts && tsx src/lib/adminNav.test.ts && tsx src/lib/adminFounderBypass.test.ts && tsx src/lib/adminTasksAccess.test.ts && tsx src/lib/adminEnterpriseOps.test.ts && tsx src/lib/staffIntegrationsSecurity.test.ts && node scripts/verify-admin-cc-routes.mjs",
     "test:security": "tsx src/lib/phase8Security.test.ts && tsx src/lib/uploadSecurity.test.ts && tsx src/lib/securityHeaders.test.ts && tsx src/lib/authValidation.test.ts && tsx src/lib/cronAuth.test.ts && tsx src/lib/apiRateLimit.test.ts && tsx src/lib/productionTrustBoundary.test.ts && tsx src/lib/foodOrderTrustBoundary.test.ts && tsx src/lib/driverLocationsRls.test.ts && tsx src/lib/driverIdentityRls.test.ts && tsx src/lib/driverVehicleSecurity.test.ts && tsx src/lib/adminRbac.test.ts && tsx src/lib/adminStaffLogin.test.ts && tsx src/lib/founderAccess.regression.test.ts && tsx src/lib/adminFounderBypass.test.ts && tsx src/lib/adminTasksAccess.test.ts && tsx src/lib/orderReviewTip.regression.test.ts && tsx src/lib/driverOnlineState.regression.test.ts && tsx src/lib/paymentProviders.webhook.test.ts && tsx src/lib/geoTrust.test.ts && tsx src/lib/deliveryProofUrl.test.ts && tsx src/lib/securePushSend.test.ts && tsx src/lib/sentryFilter.test.ts",
     "test:performance": "tsx src/lib/phase9Performance.test.ts && tsx src/lib/memoryCache.test.ts && tsx src/lib/webVitalsBudgets.test.ts",
     "test:ui": "tsx src/lib/phase10WebUi.test.ts",
@@ -59,7 +59,9 @@
     "react-map-gl": "^7.1.9",
     "stripe": "14.25.0",
     "swr": "^2.3.6",
-    "tailwindcss": "3.4.10"
+    "tailwindcss": "3.4.10",
+    "twilio": "^6.0.2",
+    "twilio-video": "^2.35.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -67,6 +69,7 @@
     "@types/pdfkit": "^0.17.5",
     "@types/react": "19.1.17",
     "@types/react-dom": "19.1.9",
+    "@types/twilio-video": "^2.11.0",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
     "autoprefixer": "10.4.20",

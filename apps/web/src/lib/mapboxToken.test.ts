@@ -33,6 +33,10 @@ try {
   env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN = "pk.legacy";
   assert.equal(getPublicMapboxToken(), "pk.legacy");
 
+  env.NEXT_PUBLIC_MAPBOX_TOKEN = "sk.should-never-be-public";
+  assert.equal(getPublicMapboxToken(), null);
+
+  env.NEXT_PUBLIC_MAPBOX_TOKEN = "pk.public";
   const check = assertMapboxEnvConfigured();
   assert.equal(check.ok, true);
   assert.equal(check.server, true);

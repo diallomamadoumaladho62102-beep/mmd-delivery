@@ -26,10 +26,29 @@ export function tryGetServerMapboxToken(): string | null {
 
 export function getPublicMapboxToken(): string | null {
   const primary = String(process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "").trim();
-  if (primary) return primary;
+  if (primary) {
+    // Never accept secret/download tokens in the public client slot.
+    if (primary.startsWith("sk.")) return null;
+    return primary;
+  }
   // Legacy alias — do not use for server-side paid routing.
   const legacy = String(process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "").trim();
+  if (legacy.startsWith("sk.")) return null;
   return legacy || null;
+}
+
+/**
+ * RNMAPBOX_MAPS_DOWNLOAD_TOKEN is build-only (EAS/native).
+ * It must never be read by browser/client bundles.
+ */
+export function assertNoMapboxDownloadTokenInPublicEnv(): boolean {
+  const publicCandidates = [
+    process.env.NEXT_PUBLIC_MAPBOX_TOKEN,
+    process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
+    process.env.NEXT_PUBLIC_RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
+    process.env.NEXT_PUBLIC_MAPBOX_DOWNLOADS_TOKEN,
+  ];
+  return !publicCandidates.some((v) => String(v ?? "").trim().startsWith("sk."));
 }
 
 export function assertMapboxEnvConfigured(): {

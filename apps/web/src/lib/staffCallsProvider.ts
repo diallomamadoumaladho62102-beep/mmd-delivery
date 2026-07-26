@@ -1,4 +1,5 @@
 import { resolveCcCapability, type CcCapabilityStatus } from "@/lib/adminFeatureFlags";
+import { hasTwilioVideoApiKeys } from "@/lib/staffTwilioAccessToken";
 
 export type StaffCallProviderPlan = {
   capability: CcCapabilityStatus;
@@ -13,10 +14,7 @@ export type StaffCallProviderPlan = {
  */
 export function getStaffCallProviderPlan(): StaffCallProviderPlan {
   const capability = resolveCcCapability("staffAudioVideoCalls");
-  const hasApiKey =
-    Boolean(String(process.env.TWILIO_API_KEY_SID ?? "").trim()) &&
-    Boolean(String(process.env.TWILIO_API_KEY_SECRET ?? "").trim()) &&
-    Boolean(String(process.env.TWILIO_ACCOUNT_SID ?? "").trim());
+  const hasApiKey = hasTwilioVideoApiKeys();
 
   if (!capability.enabled) {
     return {
@@ -95,6 +93,56 @@ export async function createTwilioVideoRoom(roomName: string): Promise<{
       };
     }
     return { ok: true, sid: data.sid };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Twilio request failed",
+    };
+  }
+}
+
+/** Complete (end) a Twilio Video room via REST — fail-closed, no secret leakage. */
+export async function completeTwilioVideoRoom(roomSid: string): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  const sid = String(roomSid ?? "").trim();
+  if (!sid.startsWith("RM")) {
+    return { ok: false, error: "Invalid room sid" };
+  }
+
+  const accountSid = String(process.env.TWILIO_ACCOUNT_SID ?? "").trim();
+  const apiKey = String(process.env.TWILIO_API_KEY_SID ?? "").trim();
+  const apiSecret = String(process.env.TWILIO_API_KEY_SECRET ?? "").trim();
+  const authToken = String(process.env.TWILIO_AUTH_TOKEN ?? "").trim();
+
+  if (!accountSid || (!authToken && !(apiKey && apiSecret))) {
+    return { ok: false, error: "Twilio credentials missing" };
+  }
+
+  const auth =
+    apiKey && apiSecret
+      ? Buffer.from(`${apiKey}:${apiSecret}`).toString("base64")
+      : Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+
+  try {
+    const body = new URLSearchParams({ Status: "completed" });
+    const res = await fetch(`https://video.twilio.com/v1/Rooms/${sid}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      return {
+        ok: false,
+        error: data.message ?? `Twilio room complete failed (${res.status})`,
+      };
+    }
+    return { ok: true };
   } catch (e) {
     return {
       ok: false,
