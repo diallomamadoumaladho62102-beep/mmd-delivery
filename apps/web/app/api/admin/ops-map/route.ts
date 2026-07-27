@@ -248,17 +248,31 @@ export async function GET(request: NextRequest) {
         const id = String(d.user_id);
         const loc = driverLocById.get(id);
         if (!loc) continue;
+        const fresh = loc.updated_at
+          ? now - new Date(loc.updated_at).getTime() < staleMs
+          : false;
         const mission = onMission.has(id);
         let layer: OpsMapLayer = "drivers_offline";
+        // Stale GPS pins are never shown as "online" — only mission keeps them
+        // visible as drivers_mission so active trips remain supervisable.
         if (mission) layer = "drivers_mission";
-        else if (d.is_online === true) layer = "drivers_online";
+        else if (d.is_online === true && fresh) layer = "drivers_online";
+        else if (!fresh && !mission) layer = "drivers_offline";
         if (!layers.includes(layer)) continue;
         const f = pointFeature(loc.lng, loc.lat, {
           id,
           layer,
           label: String(d.full_name ?? "Driver"),
           href: `/admin/drivers?focus=${id}`,
-          status: mission ? "on_mission" : d.is_online ? "online" : "offline",
+          status: mission
+            ? fresh
+              ? "on_mission"
+              : "on_mission_stale_gps"
+            : d.is_online && fresh
+              ? "online"
+              : fresh
+                ? "offline"
+                : "stale_gps",
           country_code: d.country_code ?? null,
           region_code: d.state ?? null,
           city: d.city ?? null,

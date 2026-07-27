@@ -42,6 +42,7 @@ type MagicRule = {
 const IMAGE_MAGIC: MagicRule[] = [
   { mime: "image/jpeg", ext: "jpg", bytes: [0xff, 0xd8, 0xff] },
   { mime: "image/png", ext: "png", bytes: [0x89, 0x50, 0x4e, 0x47] },
+  { mime: "image/gif", ext: "gif", bytes: [0x47, 0x49, 0x46, 0x38] }, // GIF8
   { mime: "image/webp", ext: "webp", bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF….WEBP checked below
 ];
 

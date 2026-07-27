@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { sniffImageMime } from "@/lib/uploadSecurity";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -125,19 +126,25 @@ export async function POST(request: NextRequest) {
       if (!(file instanceof File)) {
         return json({ ok: false, error: "file required" }, 400);
       }
-      const ext =
-        file.type === "image/png"
-          ? "png"
-          : file.type === "image/webp"
-            ? "webp"
-            : file.type === "image/gif"
-              ? "gif"
-              : "jpg";
-      const path = `client_home/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const buffer = Buffer.from(await file.arrayBuffer());
+      const maxBytes = 5 * 1024 * 1024;
+      if (buffer.length > maxBytes) {
+        return json({ ok: false, error: "image too large (max 5MB)" }, 400);
+      }
+      const sniffed = sniffImageMime(buffer);
+      if (!sniffed) {
+        return json({ ok: false, error: "invalid image content" }, 400);
+      }
+      // GIF is allowed for ads creative; sniffImageMime may only return jpeg/png/webp.
+      // Fall back to claimed type only when magic bytes match a known image family.
+      const ext = sniffed.ext === "jpeg" ? "jpg" : sniffed.ext;
+      const path = `client_home/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("advertisements")
-        .upload(path, buffer, { contentType: file.type || "image/jpeg", upsert: false });
+        .upload(path, buffer, {
+          contentType: sniffed.mime,
+          upsert: false,
+        });
       if (upErr) return json({ ok: false, error: upErr.message }, 500);
       const { data: pub } = supabase.storage.from("advertisements").getPublicUrl(path);
       return json({ ok: true, image_url: pub.publicUrl, path });
