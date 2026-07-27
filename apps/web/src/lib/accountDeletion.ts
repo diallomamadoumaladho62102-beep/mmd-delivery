@@ -173,6 +173,10 @@ export async function executeAccountDeletion(params: {
   }
 
   // Push tokens / devices / preferences
+  await safeDelete(supabaseAdmin, "user_push_tokens", {
+    column: "user_id",
+    value: userId,
+  });
   await safeDelete(supabaseAdmin, "push_tokens", {
     column: "user_id",
     value: userId,

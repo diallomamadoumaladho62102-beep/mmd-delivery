@@ -246,6 +246,7 @@ async function main() {
     assert.ok(ops.includes("auth.users:updateUserById"));
     assert.ok(ops.includes("account_deletion_events:insert"));
     assert.ok(ops.includes("admin_audit_logs:insert"));
+    assert.ok(ops.includes("user_push_tokens:delete"));
     assert.ok(ops.includes("push_tokens:delete") || ops.includes("client_addresses:delete"));
 
     const authUpdate = mock.calls.find(
