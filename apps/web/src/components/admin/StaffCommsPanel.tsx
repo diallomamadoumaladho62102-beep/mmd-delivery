@@ -74,6 +74,11 @@ export default function StaffCommsPanel({
   const [callNotice, setCallNotice] = useState<string | null>(null);
   const [busyCall, setBusyCall] = useState(false);
   const [activeCallId, setActiveCallId] = useState<string | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{
+    id: string;
+    kind: string;
+    title: string | null;
+  } | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -165,6 +170,63 @@ export default function StaffCommsPanel({
       alive = false;
     };
   }, [ensureDirectConversation, loadMessages, peerAdminId]);
+
+  // Poll for live rooms where this admin is invited (Admin B join path).
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      try {
+        const res = await adminFetch("/api/admin/staff/calls");
+        const body = await res.json().catch(() => ({}));
+        if (!alive || !res.ok || !body.ok || !Array.isArray(body.items)) return;
+
+        type CallRow = {
+          id: string;
+          kind?: string;
+          title?: string | null;
+          status?: string;
+          created_by?: string;
+          staff_call_participants?: {
+            admin_id: string;
+            left_at?: string | null;
+          }[];
+        };
+
+        const live = (body.items as CallRow[]).find((call) => {
+          if (activeCallId && call.id === activeCallId) return false;
+          const status = String(call.status ?? "").toLowerCase();
+          if (!["active", "ringing"].includes(status)) return false;
+          const parts = call.staff_call_participants ?? [];
+          const me = parts.find((p) => p.admin_id === currentUserId);
+          if (!me || me.left_at) return false;
+          // Prefer calls involving this peer thread.
+          const peerIn =
+            call.created_by === peerAdminId ||
+            parts.some((p) => p.admin_id === peerAdminId);
+          return peerIn && call.created_by !== currentUserId;
+        });
+
+        if (live) {
+          setIncomingCall({
+            id: String(live.id),
+            kind: String(live.kind ?? "video"),
+            title: live.title ?? null,
+          });
+        } else if (!activeCallId) {
+          setIncomingCall(null);
+        }
+      } catch {
+        // ignore transient poll errors
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => void poll(), 4000);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+    };
+  }, [activeCallId, currentUserId, peerAdminId]);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -586,6 +648,35 @@ export default function StaffCommsPanel({
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           {callNotice}
         </p>
+      ) : null}
+
+      {incomingCall && !activeCallId ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          <span>
+            Incoming {incomingCall.kind} call
+            {incomingCall.title ? ` — ${incomingCall.title}` : ""}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-semibold text-white"
+              onClick={() => {
+                setActiveCallId(incomingCall.id);
+                setCallNotice(`Joining ${incomingCall.kind} room…`);
+                setIncomingCall(null);
+              }}
+            >
+              Join
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-sky-300 px-3 py-1.5 text-xs font-medium"
+              onClick={() => setIncomingCall(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
       ) : null}
 
       <div className="flex flex-wrap gap-2">
