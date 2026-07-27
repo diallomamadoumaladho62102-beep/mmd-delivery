@@ -107,8 +107,57 @@ export async function POST(request: NextRequest) {
   const projects = await safeGet(
     `https://sentry.io/api/0/organizations/${encodeURIComponent(org)}/projects/`
   );
-  const releases = await safeGet(
-    `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/releases/?per_page=5`
+  const releasesRes = await fetch(
+    `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/releases/?per_page=8`,
+    { headers, cache: "no-store" }
+  );
+  let releaseVersions: string[] = [];
+  let releasesStatus = releasesRes.status;
+  let releasesDetail: string | null = null;
+  if (releasesRes.ok) {
+    const rows = (await releasesRes.json().catch(() => [])) as Array<{
+      version?: string;
+    }>;
+    releaseVersions = rows
+      .map((r) => String(r.version ?? ""))
+      .filter(Boolean)
+      .slice(0, 8);
+  } else {
+    const text = await releasesRes.text();
+    try {
+      releasesDetail = String(
+        (JSON.parse(text) as { detail?: string }).detail ?? ""
+      ).slice(0, 240);
+    } catch {
+      releasesDetail = text.slice(0, 120) || null;
+    }
+  }
+
+  const issuesRes = await fetch(
+    `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/issues/?query=is:unresolved&limit=1`,
+    { headers, cache: "no-store" }
+  );
+  const unresolvedApprox = issuesRes.headers.get("x-hits")
+    ? Number(issuesRes.headers.get("x-hits"))
+    : null;
+  let unresolvedSample: string[] = [];
+  if (issuesRes.ok) {
+    const issues = (await issuesRes.json().catch(() => [])) as Array<{
+      title?: string;
+      shortId?: string;
+    }>;
+    unresolvedSample = issues
+      .slice(0, 5)
+      .map((i) => `${i.shortId ?? "?"}: ${String(i.title ?? "").slice(0, 80)}`);
+  }
+
+  const commitSha = String(
+    process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? ""
+  ).trim();
+  const releaseMatch = releaseVersions.some(
+    (v) =>
+      (commitSha && v.includes(commitSha.slice(0, 7))) ||
+      (commitSha && v.includes(commitSha))
   );
 
   let primaryCause = "unknown";
@@ -134,12 +183,33 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     ok: primaryCause === "valid_ok",
     primaryCause,
-    meta,
+    meta: {
+      ...meta,
+      commitSha: commitSha || null,
+      tokenNote:
+        meta.prefixClass === "sntryu_user"
+          ? "User auth token (sntryu_). Prefer Organization Auth Token (sntrys_) for CI/source maps long-term."
+          : meta.prefixClass === "sntrys_org"
+            ? "Organization Auth Token (recommended)."
+            : null,
+    },
     api: {
       organizations: orgs,
       organization: orgDetail,
       projects,
-      releases,
+      releases: {
+        status: releasesStatus,
+        detail: releasesDetail,
+        versions: releaseVersions,
+        currentCommitMatched: releaseMatch,
+      },
+      unresolvedIssues: {
+        status: issuesRes.status,
+        xHits: Number.isFinite(unresolvedApprox as number)
+          ? unresolvedApprox
+          : null,
+        sample: unresolvedSample,
+      },
     },
     guidance: {
       replaceIn: [
