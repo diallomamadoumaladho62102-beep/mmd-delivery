@@ -489,6 +489,9 @@ export default function AdminOpsLiveMap({
               {selected.properties.eta_minutes != null
                 ? ` · ETA ${selected.properties.eta_minutes} min`
                 : ""}
+              {selected.properties.route_source
+                ? ` · route ${selected.properties.route_source}`
+                : ""}
               {selected.properties.payment_status
                 ? ` · pay ${selected.properties.payment_status}`
                 : ""}

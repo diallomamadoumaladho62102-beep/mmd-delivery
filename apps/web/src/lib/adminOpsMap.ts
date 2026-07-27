@@ -37,6 +37,8 @@ export type OpsMapFeatureProperties = {
   driver_id?: string | null;
   client_id?: string | null;
   eta_minutes?: number | null;
+  /** How the route geometry/ETA was produced */
+  route_source?: "mapbox" | "cache" | "straight" | null;
   payment_status?: string | null;
   /** JSON-encoded timeline steps for live mission panel */
   timeline_json?: string | null;
