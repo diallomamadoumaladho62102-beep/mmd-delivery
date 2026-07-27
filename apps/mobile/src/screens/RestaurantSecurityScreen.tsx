@@ -290,6 +290,26 @@ export function RestaurantSecurityScreen() {
             )}
           </Text>
         </View>
+
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate("DeleteAccount", { role: "restaurant" })
+          }
+          activeOpacity={0.85}
+          style={{
+            marginTop: 18,
+            backgroundColor: "rgba(220,38,38,0.12)",
+            borderColor: "rgba(220,38,38,0.45)",
+            borderWidth: 1,
+            borderRadius: 14,
+            paddingVertical: 14,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: "#FCA5A5", fontWeight: "900" }}>
+            {t("account.delete.title", "Delete account")}
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

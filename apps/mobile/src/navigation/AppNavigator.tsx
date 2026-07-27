@@ -76,6 +76,7 @@ export type RootStackParamList = {
   RestaurantAuth: undefined;
 
   ClientProfile: undefined;
+  DeleteAccount: { role: "client" | "driver" | "restaurant" };
   LocationPickerTest: undefined;
   MMDLocationPicker: {
     countryCode?: string;
@@ -624,6 +625,7 @@ export function AppNavigator({
       r === "Promotions" ||
       r === "MmdAi" ||
       r === "ClientProfile" ||
+      r === "DeleteAccount" ||
       (__DEV__ ? r === "LocationPickerTest" : false) ||
       r === "MMDLocationPicker" ||
       r === "TaxiHome" ||
@@ -667,6 +669,7 @@ export function AppNavigator({
       r === "DriverHelp" ||
       r === "DriverWorkAccount" ||
       r === "DriverSecurity" ||
+      r === "DeleteAccount" ||
       r === "DriverLanguage" ||
       r === "DriverTax" ||
       r === "DriverW9" ||
@@ -693,6 +696,7 @@ export function AppNavigator({
         r === "RestaurantTax" ||
         r === "RestaurantLanguage" ||
         r === "RestaurantSecurity" ||
+        r === "DeleteAccount" ||
         r === "RestaurantOrderAutomation" ||
         r === "RestaurantChat" ||
         r === "RestaurantGate" ||
@@ -1130,6 +1134,12 @@ export function AppNavigator({
           name="ClientProfile"
           getComponent={() =>
             require("../screens/ClientProfileScreen").ClientProfileScreen
+          }
+        />
+        <Stack.Screen
+          name="DeleteAccount"
+          getComponent={() =>
+            require("../screens/DeleteAccountScreen").DeleteAccountScreen
           }
         />
         {__DEV__ ? (

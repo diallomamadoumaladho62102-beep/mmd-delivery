@@ -680,6 +680,25 @@ export function ClientProfileScreen() {
           )}
         </TouchableOpacity>
 
+        <TouchableOpacity
+          onPress={() =>
+            navigation.navigate("DeleteAccount", { role: "client" })
+          }
+          style={{
+            marginTop: 14,
+            borderWidth: 1,
+            borderColor: "rgba(220,38,38,0.45)",
+            borderRadius: 12,
+            paddingVertical: 12,
+            alignItems: "center",
+            backgroundColor: "rgba(220,38,38,0.12)",
+          }}
+        >
+          <Text style={{ color: "#FCA5A5", fontWeight: "800" }}>
+            {t("account.delete.title", "Delete account")}
+          </Text>
+        </TouchableOpacity>
+
         {typeof __DEV__ !== "undefined" && __DEV__ ? (
           <TouchableOpacity
             onPress={() => navigation.navigate("LocationPickerTest")}

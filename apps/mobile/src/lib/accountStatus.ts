@@ -1,10 +1,20 @@
-export type AccountStatus = "active" | "suspended" | "disabled";
+export type AccountStatus =
+  | "active"
+  | "suspended"
+  | "disabled"
+  | "deleted";
 
 export function normalizeAccountStatus(
   value: string | null | undefined
 ): AccountStatus {
   const clean = String(value ?? "active").trim().toLowerCase();
-  if (clean === "suspended" || clean === "disabled") return clean;
+  if (
+    clean === "suspended" ||
+    clean === "disabled" ||
+    clean === "deleted"
+  ) {
+    return clean;
+  }
   return "active";
 }
 
@@ -18,6 +28,9 @@ export function accountStatusBlockMessage(
   status: string | null | undefined
 ): string | null {
   const normalized = normalizeAccountStatus(status);
+  if (normalized === "deleted") {
+    return "Ce compte a été supprimé et ne peut plus être utilisé.";
+  }
   if (normalized === "suspended") {
     return "Votre compte est suspendu. Contactez le support MMD Delivery.";
   }

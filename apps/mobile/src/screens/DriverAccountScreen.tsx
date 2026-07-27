@@ -499,6 +499,19 @@ export function DriverAccountScreen() {
           />
 
           <Row
+            icon="logout"
+            label={t("account.delete.title", "Delete account")}
+            value={t(
+              "account.delete.rowHint",
+              "Permanently delete and anonymize your data."
+            )}
+            onPress={() =>
+              navigation.navigate("DeleteAccount", { role: "driver" })
+            }
+            danger
+          />
+
+          <Row
             icon="notification"
             label={t("common.notifications", "Notifications")}
             value={t("driver.settings.notificationsHint", "Manage notifications.")}
