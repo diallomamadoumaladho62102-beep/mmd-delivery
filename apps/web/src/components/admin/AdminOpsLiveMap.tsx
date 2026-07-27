@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 import { getPublicMapboxToken } from "@/lib/mapboxToken";
 import {
   OPS_MAP_LAYER_META,
+  OPS_MAP_LAYER_ORDER,
+  interpolatePointFeatures,
   type OpsMapFeature,
   type OpsMapLayer,
+  type OpsTimelineStep,
 } from "@/lib/adminOpsMap";
 
 const Map = dynamic(() => import("react-map-gl").then((m) => m.default), {
@@ -32,11 +35,56 @@ type RegionOpt = {
   region_name: string;
 };
 
-const ALL_LAYERS = Object.keys(OPS_MAP_LAYER_META) as OpsMapLayer[];
+const ALL_LAYERS = OPS_MAP_LAYER_ORDER;
 
-export default function AdminOpsLiveMap() {
+const CIRCLE_COLOR_EXPR = [
+  "match",
+  ["get", "layer"],
+  "drivers_online",
+  "#059669",
+  "drivers_offline",
+  "#94a3b8",
+  "drivers_mission",
+  "#2563eb",
+  "clients",
+  "#0891b2",
+  "orders_pending",
+  "#d97706",
+  "orders_active",
+  "#7c3aed",
+  "taxi_rides",
+  "#db2777",
+  "restaurants",
+  "#0f766e",
+  "sellers",
+  "#b45309",
+  "incidents",
+  "#dc2626",
+  "alerts",
+  "#e11d48",
+  "#64748b",
+] as unknown as string;
+
+function parseTimeline(raw: string | null | undefined): OpsTimelineStep[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as OpsTimelineStep[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export default function AdminOpsLiveMap({
+  heightClass = "h-[480px]",
+  showHeaderLink = true,
+}: {
+  heightClass?: string;
+  showHeaderLink?: boolean;
+}) {
   const token = getPublicMapboxToken() ?? "";
-  const [features, setFeatures] = useState<OpsMapFeature[]>([]);
+  const [rawFeatures, setRawFeatures] = useState<OpsMapFeature[]>([]);
+  const [displayFeatures, setDisplayFeatures] = useState<OpsMapFeature[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [error, setError] = useState<string | null>(null);
   const [capabilityReason, setCapabilityReason] = useState<string | null>(null);
@@ -54,6 +102,9 @@ export default function AdminOpsLiveMap() {
     zoom: 3.2,
   });
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [refreshSeconds, setRefreshSeconds] = useState(5);
+  const prevPointsRef = useRef<OpsMapFeature[]>([]);
+  const animFrameRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     if (!token) {
@@ -73,16 +124,20 @@ export default function AdminOpsLiveMap() {
       if (!res.ok || !body.ok) {
         setError(body.error ?? "Failed to load ops map");
         setCapabilityReason(body.capability?.reason ?? null);
-        setFeatures([]);
+        setRawFeatures([]);
         return;
       }
       setError(null);
       setCapabilityReason(null);
-      setFeatures(body.collection?.features ?? []);
+      const next = (body.collection?.features ?? []) as OpsMapFeature[];
+      setRawFeatures(next);
       setCounts(body.counts ?? {});
       setCountries(body.geo?.countries ?? []);
       setRegions(body.geo?.regions ?? []);
       setUpdatedAt(body.generated_at ?? null);
+      if (typeof body.refresh_seconds === "number") {
+        setRefreshSeconds(body.refresh_seconds);
+      }
     } catch {
       setError("Connection lost — map data not refreshed");
     }
@@ -90,19 +145,75 @@ export default function AdminOpsLiveMap() {
 
   useEffect(() => {
     void load();
-    const timer = window.setInterval(() => void load(), 15_000);
+    const timer = window.setInterval(
+      () => void load(),
+      Math.max(3, refreshSeconds) * 1000
+    );
     return () => window.clearInterval(timer);
-  }, [load]);
+  }, [load, refreshSeconds]);
 
-  const collection = useMemo(
-    () => ({ type: "FeatureCollection" as const, features }),
-    [features]
+  // Smooth animation for moving driver/client/order points between polls
+  useEffect(() => {
+    const nextPoints = rawFeatures.filter((f) => f.geometry.type === "Point");
+    const nextLines = rawFeatures.filter((f) => f.geometry.type === "LineString");
+    const from = prevPointsRef.current;
+    if (animFrameRef.current != null) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
+    const started = performance.now();
+    const durationMs = Math.min(4500, Math.max(1200, refreshSeconds * 800));
+
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / durationMs);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const points = interpolatePointFeatures(from, nextPoints, eased);
+      setDisplayFeatures([...points, ...nextLines]);
+      if (t < 1) {
+        animFrameRef.current = requestAnimationFrame(tick);
+      } else {
+        prevPointsRef.current = nextPoints;
+        setDisplayFeatures(rawFeatures);
+      }
+    };
+
+    if (from.length === 0) {
+      prevPointsRef.current = nextPoints;
+      setDisplayFeatures(rawFeatures);
+      return;
+    }
+
+    animFrameRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (animFrameRef.current != null) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [rawFeatures, refreshSeconds]);
+
+  const pointCollection = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: displayFeatures.filter((f) => f.geometry.type === "Point"),
+    }),
+    [displayFeatures]
+  );
+
+  const routeCollection = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: displayFeatures.filter((f) => f.geometry.type === "LineString"),
+    }),
+    [displayFeatures]
   );
 
   const regionOptions = useMemo(
-    () =>
-      regions.filter((r) => !country || r.country_code === country),
+    () => regions.filter((r) => !country || r.country_code === country),
     [regions, country]
+  );
+
+  const timeline = useMemo(
+    () => parseTimeline(selected?.properties.timeline_json),
+    [selected]
   );
 
   function toggleLayer(layer: OpsMapLayer) {
@@ -133,18 +244,28 @@ export default function AdminOpsLiveMap() {
             Live operations map
           </h2>
           <p className="text-sm text-[var(--cc-muted)]">
-            Realtime fleet · orders · partners · alerts
+            Realtime fleet · clients · orders · taxi · partners · routes · ETA
             {updatedAt
               ? ` · refreshed ${new Date(updatedAt).toLocaleTimeString()}`
               : ""}
           </p>
         </div>
-        <Link
-          href="/admin/supervision"
-          className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
-        >
-          Metrics
-        </Link>
+        {showHeaderLink ? (
+          <div className="flex gap-3">
+            <Link
+              href="/admin/live-map"
+              className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
+            >
+              Full screen
+            </Link>
+            <Link
+              href="/admin/supervision"
+              className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
+            >
+              Metrics
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       <div className="grid gap-3 border-b border-[var(--cc-border)] px-4 py-3 lg:grid-cols-5">
@@ -227,12 +348,12 @@ export default function AdminOpsLiveMap() {
         </div>
       ) : null}
 
-      <div className="relative h-[480px] w-full">
+      <div className={`relative w-full ${heightClass}`}>
         <Map
           {...viewState}
           onMove={(evt) => setViewState(evt.viewState)}
           mapboxAccessToken={token}
-          mapStyle="mapbox://styles/mapbox/light-v11"
+          mapStyle="mapbox://styles/mapbox/streets-v12"
           style={{ width: "100%", height: "100%" }}
           onClick={(e) => {
             const f = e.features?.[0];
@@ -241,23 +362,68 @@ export default function AdminOpsLiveMap() {
               return;
             }
             const props = f.properties as OpsMapFeature["properties"];
+            const geom = f.geometry as
+              | { type: "Point"; coordinates: number[] }
+              | { type: "LineString"; coordinates: number[][] };
             setSelected({
               type: "Feature",
-              geometry: {
-                type: "Point",
-                coordinates: [
-                  Number((f.geometry as { coordinates?: number[] })?.coordinates?.[0]),
-                  Number((f.geometry as { coordinates?: number[] })?.coordinates?.[1]),
-                ],
-              },
+              geometry:
+                geom.type === "LineString"
+                  ? {
+                      type: "LineString",
+                      coordinates: (geom.coordinates ?? []).map(
+                        (c) => [Number(c[0]), Number(c[1])] as [number, number]
+                      ),
+                    }
+                  : {
+                      type: "Point",
+                      coordinates: [
+                        Number(geom.coordinates?.[0]),
+                        Number(geom.coordinates?.[1]),
+                      ],
+                    },
               properties: props,
             });
           }}
-          interactiveLayerIds={["ops-clusters", "ops-points"]}
+          interactiveLayerIds={[
+            "ops-clusters",
+            "ops-points",
+            "ops-routes-hit",
+          ]}
         >
           <NavigationControl position="top-right" />
-          {/* Administrative boundaries from Mapbox style (countries/states visible at zoom) */}
-          <Source id="ops-points" type="geojson" data={collection} cluster clusterMaxZoom={14} clusterRadius={48}>
+          <Source
+            id="ops-routes"
+            type="geojson"
+            data={routeCollection}
+          >
+            <Layer
+              id="ops-routes-line"
+              type="line"
+              paint={{
+                "line-color": "#0ea5e9",
+                "line-width": 4,
+                "line-opacity": 0.85,
+              }}
+            />
+            <Layer
+              id="ops-routes-hit"
+              type="line"
+              paint={{
+                "line-color": "#0ea5e9",
+                "line-width": 14,
+                "line-opacity": 0.01,
+              }}
+            />
+          </Source>
+          <Source
+            id="ops-points"
+            type="geojson"
+            data={pointCollection}
+            cluster
+            clusterMaxZoom={14}
+            clusterRadius={48}
+          >
             <Layer
               id="ops-clusters"
               type="circle"
@@ -291,39 +457,25 @@ export default function AdminOpsLiveMap() {
               type="circle"
               filter={["!", ["has", "point_count"]]}
               paint={{
-                "circle-radius": 6,
-                "circle-stroke-width": 1.5,
-                "circle-stroke-color": "#ffffff",
-                "circle-color": [
+                "circle-radius": [
                   "match",
                   ["get", "layer"],
-                  "drivers_online",
-                  "#059669",
-                  "drivers_offline",
-                  "#94a3b8",
                   "drivers_mission",
-                  "#2563eb",
-                  "orders_pending",
-                  "#d97706",
-                  "orders_active",
-                  "#7c3aed",
-                  "restaurants",
-                  "#0f766e",
-                  "sellers",
-                  "#b45309",
-                  "incidents",
-                  "#dc2626",
-                  "alerts",
-                  "#e11d48",
-                  "#64748b",
+                  9,
+                  "drivers_online",
+                  8,
+                  6,
                 ],
+                "circle-stroke-width": 1.5,
+                "circle-stroke-color": "#ffffff",
+                "circle-color": CIRCLE_COLOR_EXPR,
               }}
             />
           </Source>
         </Map>
 
         {selected ? (
-          <div className="absolute bottom-4 left-4 max-w-sm rounded-2xl border border-[var(--cc-border)] bg-white p-4 shadow-lg">
+          <div className="absolute bottom-4 left-4 max-h-[70%] w-full max-w-sm overflow-y-auto rounded-2xl border border-[var(--cc-border)] bg-white p-4 shadow-lg">
             <p className="text-xs font-semibold uppercase tracking-wide text-[var(--cc-muted)]">
               {OPS_MAP_LAYER_META[selected.properties.layer]?.label ??
                 selected.properties.layer}
@@ -334,19 +486,77 @@ export default function AdminOpsLiveMap() {
             <p className="text-xs text-[var(--cc-muted)]">
               {selected.properties.status}
               {selected.properties.city ? ` · ${selected.properties.city}` : ""}
+              {selected.properties.eta_minutes != null
+                ? ` · ETA ${selected.properties.eta_minutes} min`
+                : ""}
+              {selected.properties.payment_status
+                ? ` · pay ${selected.properties.payment_status}`
+                : ""}
             </p>
-            <Link
-              href={selected.properties.href}
-              className="mt-3 inline-flex text-sm font-semibold text-[var(--cc-info)] hover:underline"
-            >
-              Open record →
-            </Link>
+            {timeline.length > 0 ? (
+              <ol className="mt-3 space-y-1.5 border-t border-slate-100 pt-3">
+                {timeline.map((step) => (
+                  <li
+                    key={step.key}
+                    className="flex items-start gap-2 text-xs"
+                  >
+                    <span
+                      className={[
+                        "mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full",
+                        step.done ? "bg-emerald-500" : "bg-slate-300",
+                      ].join(" ")}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={
+                          step.done
+                            ? "font-medium text-slate-800"
+                            : "text-slate-500"
+                        }
+                      >
+                        {step.label}
+                      </span>
+                      {step.at ? (
+                        <span className="ml-1 text-slate-400">
+                          {new Date(step.at).toLocaleTimeString()}
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Link
+                href={selected.properties.href}
+                className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
+              >
+                Open record →
+              </Link>
+              {selected.properties.driver_id ? (
+                <Link
+                  href={`/admin/drivers?focus=${selected.properties.driver_id}`}
+                  className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
+                >
+                  Driver
+                </Link>
+              ) : null}
+              {selected.properties.client_id ? (
+                <Link
+                  href={`/admin/clients?focus=${selected.properties.client_id}`}
+                  className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
+                >
+                  Client
+                </Link>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>
       <p className="px-4 py-2 text-xs text-[var(--cc-muted)]">
-        Borders: Mapbox administrative layers. Pins refresh every 15s from live
-        Supabase ops data. Sellers without city geocodes are omitted.
+        Live Mapbox ops map · pins + routes refresh every {refreshSeconds}s ·
+        vehicle positions animate between GPS updates · click any entity for
+        timeline and detail.
       </p>
     </div>
   );

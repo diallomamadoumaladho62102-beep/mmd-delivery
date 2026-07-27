@@ -143,15 +143,16 @@ function AdvertisementsAdminInner() {
     }
   };
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const saveAd = async (activeOverride?: boolean) => {
     if (!canEdit) return;
     setSaving(true);
     setError(null);
     setNotice(null);
+    const isActive = activeOverride ?? form.is_active;
     try {
       const http = await adminFetch("/api/admin/advertisements", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "upsert",
           id: form.id || undefined,
@@ -170,7 +171,7 @@ function AdvertisementsAdminInner() {
           display_order: Number(form.display_order) || 0,
           start_date: form.start_date || null,
           end_date: form.end_date || null,
-          is_active: form.is_active,
+          is_active: isActive,
         }),
       });
       const res = (await http.json().catch(() => ({}))) as Record<string, unknown>;
@@ -178,12 +179,25 @@ function AdvertisementsAdminInner() {
         setError(String(res.error ?? "Enregistrement impossible"));
         return;
       }
-      setNotice(form.id ? "Publicité mise à jour." : "Publicité créée.");
+      setNotice(
+        isActive
+          ? form.id
+            ? "Campagne publiée / mise à jour."
+            : "Campagne créée et publiée."
+          : form.id
+            ? "Brouillon enregistré."
+            : "Brouillon créé."
+      );
       setForm(EMPTY_FORM);
       await load();
     } finally {
       setSaving(false);
     }
+  };
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    await saveAd();
   };
 
   const onDelete = async (id: string) => {
@@ -206,9 +220,13 @@ function AdvertisementsAdminInner() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Publicités Home Client</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          Advertisements — Client & Restaurant
+        </h1>
         <p className="mt-1 text-sm text-slate-600">
-          CMS dynamique — aucune image dans l&apos;app. Modifications visibles sans rebuild.
+          Gérez les publicités affichées dans les apps Client (home) et Restaurant
+          (sidebar). Création, brouillon, programmation, publication — sans modifier
+          le code de l&apos;application.
         </p>
       </div>
 
@@ -238,7 +256,7 @@ function AdvertisementsAdminInner() {
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className={`${CARD} space-y-4`}>
+      <form id="ad-admin-form" onSubmit={onSubmit} className={`${CARD} space-y-4`}>
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-slate-900">
             {form.id ? "Modifier la publicité" : "Nouvelle publicité"}
@@ -436,17 +454,45 @@ function AdvertisementsAdminInner() {
               onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
               disabled={!canEdit}
             />
-            Actif
+            Publié (actif dans les apps)
           </label>
         </div>
 
-        <button
-          type="submit"
-          disabled={!canEdit || saving}
-          className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {saving ? "Enregistrement…" : form.id ? "Mettre à jour" : "Créer"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit"
+            disabled={!canEdit || saving}
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {saving
+              ? "Enregistrement…"
+              : form.id
+                ? "Enregistrer"
+                : form.is_active
+                  ? "Créer et publier"
+                  : "Enregistrer en brouillon"}
+          </button>
+          {canEdit ? (
+            <>
+              <button
+                type="button"
+                disabled={saving || !form.title || !form.image_url}
+                onClick={() => void saveAd(false)}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              >
+                Sauver brouillon
+              </button>
+              <button
+                type="button"
+                disabled={saving || !form.title || !form.image_url}
+                onClick={() => void saveAd(true)}
+                className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 disabled:opacity-50"
+              >
+                Publier la campagne
+              </button>
+            </>
+          ) : null}
+        </div>
       </form>
 
       <div className={`${CARD} space-y-3`}>
@@ -469,7 +515,8 @@ function AdvertisementsAdminInner() {
                 <div className="min-w-0 flex-1">
                   <div className="font-semibold text-slate-900">{row.title}</div>
                   <div className="text-sm text-slate-500">
-                    {row.category} · {row.is_active ? "Actif" : "Inactif"} · ordre{" "}
+                    {row.category} · {row.placement} ·{" "}
+                    {row.is_active ? "Publié" : "Brouillon / inactif"} · ordre{" "}
                     {row.display_order}
                   </div>
                   <div className="mt-1 text-xs text-slate-500">
@@ -477,7 +524,7 @@ function AdvertisementsAdminInner() {
                     clics · CTR {row.analytics?.ctr ?? 0}%
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold"
@@ -485,6 +532,55 @@ function AdvertisementsAdminInner() {
                   >
                     Éditer
                   </button>
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      className="rounded-lg border border-emerald-200 px-3 py-1.5 text-sm font-semibold text-emerald-700"
+                      onClick={() =>
+                        void (async () => {
+                          const http = await adminFetch("/api/admin/advertisements", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              id: row.id,
+                              title: row.title,
+                              subtitle: row.subtitle,
+                              image_url: row.image_url,
+                              button_text: row.button_text,
+                              button_action: row.button_action,
+                              placement: row.placement,
+                              category: row.category,
+                              country: row.country,
+                              city: row.city,
+                              language: row.language,
+                              audience: row.audience,
+                              priority: row.priority,
+                              display_order: row.display_order,
+                              start_date: row.start_date,
+                              end_date: row.end_date,
+                              is_active: !row.is_active,
+                            }),
+                          });
+                          const res = (await http.json().catch(() => ({}))) as Record<
+                            string,
+                            unknown
+                          >;
+                          if (!http.ok || res.ok === false) {
+                            setError(String(res.error ?? "Mise à jour impossible"));
+                            return;
+                          }
+                          setNotice(
+                            row.is_active
+                              ? "Campagne désactivée (brouillon)."
+                              : "Campagne publiée."
+                          );
+                          await load();
+                        })()
+                      }
+                    >
+                      {row.is_active ? "Désactiver" : "Publier"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600"

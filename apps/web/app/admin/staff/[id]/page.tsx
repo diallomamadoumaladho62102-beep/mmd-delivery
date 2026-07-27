@@ -139,7 +139,7 @@ export default function AdminStaffDetailPage() {
           href="/admin/staff"
           className="text-sm font-semibold text-[var(--cc-info)] hover:underline"
         >
-          ← Staff & Roles
+          ← Administrators
         </Link>
 
         {error ? (
@@ -262,19 +262,29 @@ export default function AdminStaffDetailPage() {
             </form>
 
             {currentUserId ? (
-              <StaffCommsPanel
-                peerAdminId={row.id}
-                peerName={row.full_name || row.email || "Admin"}
-                currentUserId={currentUserId}
-              />
+              <div id="comms">
+                <StaffCommsPanel
+                  peerAdminId={row.id}
+                  peerName={row.full_name || row.email || "Admin"}
+                  currentUserId={currentUserId}
+                />
+              </div>
             ) : null}
 
-            <Link
-              href={`/admin/tasks?assignee=${row.id}`}
-              className="inline-flex text-sm font-semibold text-[var(--cc-info)] hover:underline"
-            >
-              Assign a task →
-            </Link>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href={`/admin/tasks?assignee=${row.id}`}
+                className="inline-flex text-sm font-semibold text-[var(--cc-info)] hover:underline"
+              >
+                Assign a task →
+              </Link>
+              <Link
+                href={`/admin/audit?actor=${row.id}`}
+                className="inline-flex text-sm font-semibold text-[var(--cc-info)] hover:underline"
+              >
+                Activity / audit →
+              </Link>
+            </div>
           </>
         )}
       </div>

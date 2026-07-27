@@ -9,6 +9,13 @@ export type AdminHubLink = {
 
 export const ADMIN_HUB_LINKS: AdminHubLink[] = [
   {
+    href: "/admin/live-map",
+    title: "Live Map",
+    description:
+      "Carte opérationnelle temps réel — chauffeurs, clients, commandes, taxi, partenaires",
+    permission: "supervision.read",
+  },
+  {
     href: "/admin/supervision",
     title: "Supervision",
     description: "Chauffeurs actifs, commandes en attente, erreurs dispatch/payout",
@@ -76,9 +83,17 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
   },
   {
     href: "/admin/staff",
-    title: "Staff & Roles",
-    description: "Administrators, roles, org chart and People Ops",
+    title: "Administrators",
+    description:
+      "Gérer tous les administrateurs — rôles, présence, chat, appels, tâches, audit",
     permission: "users.admins.manage",
+  },
+  {
+    href: "/admin/advertisements",
+    title: "Advertisements",
+    description:
+      "Créer et publier les publicités affichées dans les apps Client et Restaurant",
+    permission: "marketing.read",
   },
   {
     href: "/admin/tasks",

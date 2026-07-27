@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
 import { canFinanceMarketing, canManageMarketing } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
@@ -159,11 +160,19 @@ function MarketingAdminInner() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Marketing</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Campagnes, codes promo, coupons — moteur central Food / Delivery / Taxi / Marketplace.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">Marketing</h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Campagnes, codes promo, coupons — moteur central Food / Delivery / Taxi / Marketplace.
+          </p>
+        </div>
+        <Link
+          href="/admin/advertisements"
+          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+        >
+          Publicités apps →
+        </Link>
       </div>
 
       {error && (

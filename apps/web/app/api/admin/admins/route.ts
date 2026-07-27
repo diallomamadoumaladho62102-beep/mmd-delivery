@@ -50,7 +50,22 @@ export async function GET(request: NextRequest) {
 
     if (error) return json({ ok: false, error: error.message }, 500);
 
-    return json({ ok: true, items: data ?? [] });
+    const items = data ?? [];
+    const role_counts = Object.fromEntries(
+      STAFF_ROLES.map((role) => [
+        role,
+        items.filter((row) => String(row.role) === role).length,
+      ])
+    );
+
+    return json({
+      ok: true,
+      items,
+      role_counts,
+      total: items.length,
+      note:
+        "Founder and staff with users.admins.manage see 100% of administrators; no role is hidden by RBAC on this list.",
+    });
   } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;
     return json(

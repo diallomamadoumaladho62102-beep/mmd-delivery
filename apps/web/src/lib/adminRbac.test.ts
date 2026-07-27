@@ -125,4 +125,21 @@ test("founder session never fails permission checks", () => {
   );
 });
 
+test("only admin manages administrators; support/finance keep scoped perms", () => {
+  assert.equal(hasPermission("admin", "users.admins.manage"), true);
+  assert.equal(hasPermission("support", "users.admins.manage"), false);
+  assert.equal(hasPermission("finance", "users.admins.manage"), false);
+  assert.equal(hasPermission("support", "marketing.read"), true);
+  assert.equal(hasPermission("finance", "marketing.read"), true);
+  assert.equal(hasPermission("support", "supervision.read"), true);
+  assert.equal(hasPermission("finance", "supervision.read"), true);
+  assert.equal(hasPermission("support", "marketing.manage"), false);
+  assert.equal(hasPermission("finance", "marketing.manage"), false);
+});
+
+test("creatable staff roles include support and finance", () => {
+  assert.ok(STAFF_ROLES.includes("support"));
+  assert.ok(STAFF_ROLES.includes("finance"));
+});
+
 console.log("adminRbac tests passed");

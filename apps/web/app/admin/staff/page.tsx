@@ -23,6 +23,7 @@ type AdminRow = {
   staff_language?: string | null;
   staff_department?: string | null;
   presence_status?: string | null;
+  last_seen_at?: string | null;
 };
 
 const CREATABLE_ROLES = STAFF_ROLES.filter((role) => role !== "admin");
@@ -42,6 +43,8 @@ export default function AdminStaffPage() {
   const [regionFilter, setRegionFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -51,8 +54,10 @@ export default function AdminStaffPage() {
     if (!res.ok || !body.ok) {
       setError(body.error ?? "Failed to load staff");
       setRows([]);
+      setRoleCounts({});
     } else {
       setRows(body.items ?? []);
+      setRoleCounts((body.role_counts as Record<string, number>) ?? {});
     }
     setLoading(false);
   }, []);
@@ -210,6 +215,9 @@ export default function AdminStaffPage() {
     }
     setCreateEmail("");
     setCreateName("");
+    setNotice(
+      `Administrator created with role ${roleDisplayName(createRole as never)}. They now appear in this list.`
+    );
     void load();
   }
 
@@ -222,10 +230,11 @@ export default function AdminStaffPage() {
               Administration
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">
-              Staff & Roles
+              Administrators
             </h1>
             <p className="mt-1 text-sm text-[var(--cc-muted)]">
-              Founder and authorized admins · full internal organization
+              Founder · manage 100% of administrators (create, roles, suspend,
+              chat, call, tasks, audit) — no role is hidden
             </p>
           </div>
           <div className="flex gap-2">
@@ -241,8 +250,55 @@ export default function AdminStaffPage() {
             >
               People Ops
             </Link>
+            <Link
+              href="/admin/audit"
+              className="rounded-xl border border-[var(--cc-border)] bg-white px-3 py-2 text-sm font-semibold text-slate-700"
+            >
+              Audit
+            </Link>
           </div>
         </header>
+
+        <div className="flex flex-wrap gap-2">
+          {STAFF_ROLES.map((role) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() =>
+                setRoleFilter((prev) => (prev === role ? "all" : role))
+              }
+              className={[
+                "rounded-full px-3 py-1.5 text-xs font-semibold",
+                roleFilter === role
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700",
+              ].join(" ")}
+            >
+              {roleDisplayName(role)} ({roleCounts[role] ?? 0})
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setRoleFilter("all")}
+            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"
+          >
+            All ({rows.length})
+          </button>
+        </div>
+
+        {(roleCounts.support ?? 0) === 0 || (roleCounts.finance ?? 0) === 0 ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            No Support and/or Finance administrators currently exist in the
+            database. Use <strong>Add administrator</strong> below to create
+            them — they are not hidden by RBAC for the Founder.
+          </div>
+        ) : null}
+
+        {notice ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {notice}
+          </div>
+        ) : null}
 
         <form onSubmit={(e) => void handleCreate(e)} className="cc-card p-5">
           <h2 className="text-sm font-semibold text-slate-900">Add administrator</h2>
@@ -374,6 +430,7 @@ export default function AdminStaffPage() {
                     <th className="px-4 py-3">City</th>
                     <th className="px-4 py-3">TZ</th>
                     <th className="px-4 py-3">Presence</th>
+                    <th className="px-4 py-3">Last seen</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Created</th>
                     <th className="px-4 py-3">Actions</th>
@@ -438,7 +495,33 @@ export default function AdminStaffPage() {
                       {row.staff_timezone ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-[var(--cc-muted)]">
-                      {row.presence_status ?? "offline"}
+                      <span
+                        className={[
+                          "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold",
+                          row.presence_status === "online"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : row.presence_status === "busy"
+                              ? "bg-amber-50 text-amber-800"
+                              : "bg-slate-100 text-slate-600",
+                        ].join(" ")}
+                      >
+                        <span
+                          className={[
+                            "h-1.5 w-1.5 rounded-full",
+                            row.presence_status === "online"
+                              ? "bg-emerald-500"
+                              : row.presence_status === "busy"
+                                ? "bg-amber-500"
+                                : "bg-slate-400",
+                          ].join(" ")}
+                        />
+                        {row.presence_status ?? "offline"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-[var(--cc-muted)]">
+                      {row.last_seen_at
+                        ? new Date(row.last_seen_at).toLocaleString()
+                        : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={row.account_status} />
@@ -450,7 +533,17 @@ export default function AdminStaffPage() {
                     </td>
                     <td className="px-4 py-3">
                       {row.is_founder ? (
-                        <span className="text-xs text-[var(--cc-muted)]">Protected</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Link
+                            href={`/admin/staff/${row.id}`}
+                            className="rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs font-medium"
+                          >
+                            Profile
+                          </Link>
+                          <span className="self-center text-xs text-[var(--cc-muted)]">
+                            Protected
+                          </span>
+                        </div>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
                           <Link
@@ -458,6 +551,24 @@ export default function AdminStaffPage() {
                             className="rounded-lg border border-[var(--cc-border)] px-2 py-1 text-xs font-medium"
                           >
                             Profile
+                          </Link>
+                          <Link
+                            href={`/admin/staff/${row.id}#comms`}
+                            className="rounded-lg border border-sky-200 px-2 py-1 text-xs font-medium text-sky-800"
+                          >
+                            Chat / Call
+                          </Link>
+                          <Link
+                            href={`/admin/tasks?assignee=${row.id}`}
+                            className="rounded-lg border border-violet-200 px-2 py-1 text-xs font-medium text-violet-800"
+                          >
+                            Task
+                          </Link>
+                          <Link
+                            href={`/admin/audit?actor=${row.id}`}
+                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium"
+                          >
+                            Audit
                           </Link>
                           {row.account_status === "suspended" ? (
                             <button
@@ -476,6 +587,25 @@ export default function AdminStaffPage() {
                               className="rounded-lg border border-orange-300 px-2 py-1 text-xs"
                             >
                               Suspend
+                            </button>
+                          )}
+                          {row.account_status === "disabled" ? (
+                            <button
+                              type="button"
+                              disabled={savingId === row.id}
+                              onClick={() => void runLifecycle(row.id, "activate")}
+                              className="rounded-lg border border-emerald-300 px-2 py-1 text-xs"
+                            >
+                              Reactivate
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={savingId === row.id}
+                              onClick={() => void runLifecycle(row.id, "deactivate")}
+                              className="rounded-lg border border-slate-300 px-2 py-1 text-xs"
+                            >
+                              Deactivate
                             </button>
                           )}
                           <button

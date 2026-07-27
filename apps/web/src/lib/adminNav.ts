@@ -51,6 +51,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       },
       { href: "/admin/taxi-rides", label: "Taxi", permission: "taxi_rides.read" },
       {
+        href: "/admin/live-map",
+        label: "Live Map",
+        permission: "supervision.read",
+      },
+      {
         href: "/admin/supervision",
         label: "Supervision",
         permission: "supervision.read",
@@ -166,7 +171,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
     items: [
       {
         href: "/admin/staff",
-        label: "Staff & Roles",
+        label: "Administrators",
         permission: "users.admins.manage",
       },
       {
@@ -187,6 +192,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
       {
         href: "/admin/marketing",
         label: "Marketing",
+        permission: "marketing.read",
+      },
+      {
+        href: "/admin/advertisements",
+        label: "Advertisements",
         permission: "marketing.read",
       },
       {
