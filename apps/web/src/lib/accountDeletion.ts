@@ -228,8 +228,12 @@ export async function executeAccountDeletion(params: {
 
   // Best-effort global sign-out of refresh tokens
   try {
-    // @ts-expect-error — available on AdminAuthClient in supabase-js v2
-    await supabaseAdmin.auth.admin.signOut(userId, "global");
+    const adminAuth = supabaseAdmin.auth.admin as {
+      signOut?: (id: string, scope?: string) => Promise<unknown>;
+    };
+    if (typeof adminAuth.signOut === "function") {
+      await adminAuth.signOut(userId, "global");
+    }
   } catch {
     // ignore — ban + password rotate already invalidate practical reuse
   }
