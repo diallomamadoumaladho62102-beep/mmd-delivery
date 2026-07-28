@@ -14,7 +14,7 @@ import type {
   IdentityVerificationStatus,
 } from "./types";
 
-function mapStripeStatusToMmd(status: string): IdentityVerificationStatus {
+export function mapStripeStatusToMmd(status: string): IdentityVerificationStatus {
   switch (String(status ?? "").toLowerCase()) {
     case "verified":
       return "verified";
@@ -43,8 +43,8 @@ async function writeAuditEvent(
     providerEventId?: string | null;
     payload?: Record<string, unknown>;
   }
-) {
-  await supabase.from("identity_verification_events").insert({
+): Promise<{ inserted: boolean; duplicate: boolean }> {
+  const { error } = await supabase.from("identity_verification_events").insert({
     verification_id: input.verificationId ?? null,
     attempt_id: input.attemptId ?? null,
     subject_user_id: input.subjectUserId ?? null,
@@ -54,6 +54,17 @@ async function writeAuditEvent(
     provider_event_id: input.providerEventId ?? null,
     payload: input.payload ?? {},
   });
+
+  if (!error) return { inserted: true, duplicate: false };
+
+  const code = String((error as { code?: string }).code ?? "");
+  const message = String(error.message ?? "").toLowerCase();
+  if (code === "23505" || message.includes("duplicate")) {
+    return { inserted: false, duplicate: true };
+  }
+
+  console.warn("[identityVerification.writeAuditEvent]", error);
+  return { inserted: false, duplicate: false };
 }
 
 async function ensureVerificationRow(
@@ -86,8 +97,37 @@ async function ensureVerificationRow(
     .select("*")
     .single();
 
-  if (insertError) throw insertError;
-  return created as IdentityVerificationRow;
+  if (!insertError && created) {
+    return created as IdentityVerificationRow;
+  }
+
+  const code = String((insertError as { code?: string } | null)?.code ?? "");
+  if (code === "23505") {
+    const { data: raced, error: raceError } = await supabase
+      .from("identity_verifications")
+      .select("*")
+      .eq("subject_user_id", subjectUserId)
+      .eq("subject_type", subjectType)
+      .eq("feature_key", featureKey)
+      .maybeSingle();
+    if (raceError) throw raceError;
+    if (raced) return raced as IdentityVerificationRow;
+  }
+
+  throw insertError ?? new Error("identity_verification_row_create_failed");
+}
+
+function toPublicStatus(
+  result: Omit<IdentityStatusResult, "verification"> & {
+    verification?: IdentityVerificationRow | null;
+  }
+): IdentityStatusResult {
+  // Never expose internal metadata / admin ids / Connect internals to clients.
+  const { verification: _omit, ...publicFields } = result;
+  return {
+    ...publicFields,
+    verification: null,
+  };
 }
 
 export async function getIdentityStatus(
@@ -114,7 +154,7 @@ export async function getIdentityStatus(
   const verified = status === "verified";
   const canProceed = !required || verified;
 
-  return {
+  return toPublicStatus({
     ok: true,
     subjectType,
     featureKey,
@@ -135,7 +175,7 @@ export async function getIdentityStatus(
     activeSessionId: verification?.active_session_id ?? null,
     verifiedAt: verification?.verified_at ?? null,
     verification,
-  };
+  });
 }
 
 export async function createIdentitySession(
@@ -171,6 +211,44 @@ export async function createIdentitySession(
       provider: providerId,
       message: "already_verified",
     };
+  }
+
+  // Resume an open session instead of creating duplicates when possible.
+  if (
+    row.active_session_id &&
+    (row.verification_status === "pending" ||
+      row.verification_status === "requires_input" ||
+      row.verification_status === "processing")
+  ) {
+    try {
+      const existing = await provider.retrieveSession(row.active_session_id);
+      const mappedExisting = mapStripeStatusToMmd(existing.status);
+      if (
+        mappedExisting !== "canceled" &&
+        mappedExisting !== "redacted" &&
+        mappedExisting !== "verified" &&
+        existing.url
+      ) {
+        let ephemeralKeySecret: string | null = null;
+        if (typeof provider.createEphemeralKey === "function") {
+          ephemeralKeySecret = await provider.createEphemeralKey(
+            row.active_session_id
+          );
+        }
+        return {
+          ok: true,
+          verificationId: row.id,
+          sessionId: row.active_session_id,
+          url: existing.url,
+          ephemeralKeySecret,
+          status: mappedExisting === "requires_input" ? "requires_input" : "pending",
+          provider: providerId,
+          message: "session_resumed",
+        };
+      }
+    } catch (error) {
+      console.warn("[identityVerification] resume session failed; creating new", error);
+    }
   }
 
   if (row.verification_attempts >= policy.max_attempts) {
@@ -269,14 +347,17 @@ export async function createIdentitySession(
     subjectType: input.subjectType,
     status: "pending",
     reason: "verification_started",
+    dedupeSuffix: `session:${created.sessionId}:started`,
+    notifyAdmins: Boolean(input.adminRequested),
   });
 
+  // Public client contract: sessionId + hosted url + optional ephemeral key only.
+  // Never return Stripe VerificationSession client_secret to mobile.
   return {
     ok: true,
     verificationId: row.id,
     sessionId: created.sessionId,
     url: created.url,
-    clientSecret: created.clientSecret,
     ephemeralKeySecret: created.ephemeralKeySecret,
     status: "pending",
     provider: providerId,
@@ -295,7 +376,32 @@ export async function applyProviderSessionSnapshot(
     eventType?: string | null;
     raw?: Record<string, unknown>;
   }
-): Promise<{ ok: boolean; verificationId?: string; status?: IdentityVerificationStatus }> {
+): Promise<{
+  ok: boolean;
+  verificationId?: string;
+  status?: IdentityVerificationStatus;
+  duplicate?: boolean;
+}> {
+  const providerEventId = String(input.providerEventId ?? "").trim() || null;
+
+  // Idempotency short-circuit: same Stripe event already applied.
+  if (providerEventId) {
+    const { data: existingEvent } = await supabase
+      .from("identity_verification_events")
+      .select("id, verification_id")
+      .eq("provider", "stripe_identity")
+      .eq("provider_event_id", providerEventId)
+      .limit(1);
+    if ((existingEvent ?? []).length > 0) {
+      return {
+        ok: true,
+        duplicate: true,
+        verificationId: existingEvent?.[0]?.verification_id ?? undefined,
+        status: mapStripeStatusToMmd(input.providerStatus),
+      };
+    }
+  }
+
   const mapped = mapStripeStatusToMmd(input.providerStatus);
   const now = new Date().toISOString();
 
@@ -348,7 +454,6 @@ export async function applyProviderSessionSnapshot(
   }
 
   if (mapped === "requires_input" && input.lastErrorCode) {
-    // Keep retryable; admin may flag review separately.
     patch.requires_review = false;
   }
 
@@ -367,42 +472,53 @@ export async function applyProviderSessionSnapshot(
       .eq("id", attempt.id);
   }
 
-  await writeAuditEvent(supabase, {
+  const audit = await writeAuditEvent(supabase, {
     verificationId,
     attemptId: attempt?.id ?? null,
     subjectUserId,
     eventSource: "webhook",
     eventType: input.eventType ?? `session.${mapped}`,
     provider,
-    providerEventId: input.providerEventId ?? null,
+    providerEventId,
     payload: {
       session_id: input.sessionId,
       provider_status: input.providerStatus,
       mapped_status: mapped,
-      raw: input.raw ?? {},
     },
   });
 
-  await notifyIdentityStatusChange(supabase, {
-    subjectUserId,
-    subjectType,
-    status: mapped,
-    reason: input.lastErrorReason ?? mapped,
-  });
-
-  // Keep driver online gate in sync when Identity is required for drivers.
-  if (subjectType === "driver" && mapped === "verified") {
-    await supabase
-      .from("driver_identity_state")
-      .upsert(
-        {
-          driver_id: subjectUserId,
-          gate_status: "verified",
-          last_verified_at: now,
-        },
-        { onConflict: "driver_id" }
-      );
+  // If another worker won the audit unique race, skip side-effect notifications.
+  if (audit.duplicate) {
+    return { ok: true, duplicate: true, verificationId, status: mapped };
   }
+
+  const shouldNotify =
+    mapped === "verified" ||
+    mapped === "requires_input" ||
+    mapped === "failed" ||
+    mapped === "canceled" ||
+    mapped === "processing" ||
+    mapped === "redacted";
+
+  if (shouldNotify) {
+    await notifyIdentityStatusChange(supabase, {
+      subjectUserId,
+      subjectType,
+      status: mapped,
+      reason: input.lastErrorReason ?? mapped,
+      dedupeSuffix:
+        providerEventId ?? `session:${input.sessionId}:${mapped}`,
+      notifyAdmins:
+        mapped === "verified" ||
+        mapped === "requires_input" ||
+        mapped === "failed" ||
+        mapped === "canceled" ||
+        mapped === "redacted",
+    });
+  }
+
+  // Intentionally do NOT write driver_identity_state here.
+  // Legacy selfie / risk gate remains independent of Stripe Identity KYC.
 
   return { ok: true, verificationId, status: mapped };
 }
@@ -426,15 +542,29 @@ export async function adminRequestReverification(
     "stripe_identity"
   );
 
+  // Cancel open Stripe session when present (best-effort).
+  if (row.active_session_id) {
+    try {
+      const provider = getIdentityProvider("stripe_identity");
+      if (typeof provider.cancelSession === "function") {
+        await provider.cancelSession(row.active_session_id);
+      }
+    } catch (error) {
+      console.warn("[identityVerification] cancel before reverify failed", error);
+    }
+  }
+
   await supabase
     .from("identity_verifications")
     .update({
       verification_status: "not_started",
       verified_at: null,
       active_session_id: null,
+      verification_attempts: 0,
       requires_review: false,
       review_reason: input.reason ?? "admin_reverification",
       verification_failed_reason: null,
+      last_error_code: null,
     })
     .eq("id", row.id);
 

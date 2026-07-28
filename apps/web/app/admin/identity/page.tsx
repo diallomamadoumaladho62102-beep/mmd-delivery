@@ -18,8 +18,20 @@ type IdentityRow = {
   updated_at: string;
 };
 
+type IdentityEvent = {
+  id: string;
+  verification_id: string | null;
+  subject_user_id: string | null;
+  event_source: string;
+  event_type: string;
+  provider: string | null;
+  provider_event_id: string | null;
+  created_at: string;
+};
+
 export default function AdminIdentityPage() {
   const [items, setItems] = useState<IdentityRow[]>([]);
+  const [events, setEvents] = useState<IdentityEvent[]>([]);
   const [status, setStatus] = useState("");
   const [subjectType, setSubjectType] = useState("");
   const [q, setQ] = useState("");
@@ -42,6 +54,7 @@ export default function AdminIdentityPage() {
         throw new Error(body?.error ?? "load_failed");
       }
       setItems(Array.isArray(body.items) ? body.items : []);
+      setEvents(Array.isArray(body.events) ? body.events : []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "load_failed");
     } finally {
@@ -179,6 +192,47 @@ export default function AdminIdentityPage() {
               <tr>
                 <td className="px-3 py-6 text-slate-500" colSpan={9}>
                   No identity verifications found.
+                </td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 className="mb-2 mt-8 text-sm font-semibold text-slate-800">Audit log</h2>
+      <div className="overflow-x-auto rounded border bg-white">
+        <table className="min-w-full text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <tr>
+              <th className="px-3 py-2">When</th>
+              <th className="px-3 py-2">Source</th>
+              <th className="px-3 py-2">Event</th>
+              <th className="px-3 py-2">User</th>
+              <th className="px-3 py-2">Stripe event</th>
+            </tr>
+          </thead>
+          <tbody>
+            {events.map((event) => (
+              <tr key={event.id} className="border-t">
+                <td className="px-3 py-2 text-xs">
+                  {event.created_at
+                    ? new Date(event.created_at).toLocaleString()
+                    : "—"}
+                </td>
+                <td className="px-3 py-2">{event.event_source}</td>
+                <td className="px-3 py-2 font-mono text-xs">{event.event_type}</td>
+                <td className="px-3 py-2 font-mono text-xs">
+                  {event.subject_user_id ?? "—"}
+                </td>
+                <td className="px-3 py-2 font-mono text-xs">
+                  {event.provider_event_id ?? "—"}
+                </td>
+              </tr>
+            ))}
+            {!loading && events.length === 0 ? (
+              <tr>
+                <td className="px-3 py-6 text-slate-500" colSpan={5}>
+                  No identity audit events yet.
                 </td>
               </tr>
             ) : null}

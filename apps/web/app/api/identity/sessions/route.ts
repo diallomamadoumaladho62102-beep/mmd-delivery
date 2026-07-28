@@ -69,7 +69,9 @@ export async function POST(req: NextRequest) {
       return json(result, 400);
     }
 
-    return json(result);
+    // Strip any client_secret — mobile may only receive sessionId, url, ephemeralKeySecret.
+    const { clientSecret: _omitSecret, ...safe } = result;
+    return json(safe);
   } catch (error) {
     logTechnicalError("identity.sessions.create", error, {
       userId: auth.userId,

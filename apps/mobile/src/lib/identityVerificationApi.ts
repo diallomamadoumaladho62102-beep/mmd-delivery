@@ -29,7 +29,7 @@ export type IdentitySessionResponse = {
   ok: boolean;
   sessionId?: string;
   url?: string | null;
-  clientSecret?: string | null;
+  /** Ephemeral key only — never Stripe secret keys or VerificationSession client_secret. */
   ephemeralKeySecret?: string | null;
   status?: string;
   provider?: string;

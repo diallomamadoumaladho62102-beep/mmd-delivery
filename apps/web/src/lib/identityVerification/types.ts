@@ -96,6 +96,7 @@ export type CreateIdentitySessionResult = {
   verificationId?: string;
   sessionId?: string;
   url?: string | null;
+  /** @deprecated Never returned to mobile clients. Kept optional for internal typing only. */
   clientSecret?: string | null;
   ephemeralKeySecret?: string | null;
   status?: IdentityVerificationStatus;
@@ -156,5 +157,7 @@ export type ProviderSessionSnapshot = {
   lastErrorCode: string | null;
   lastErrorReason: string | null;
   verificationReportId: string | null;
+  url?: string | null;
+  clientSecret?: string | null;
   raw: Record<string, unknown>;
 };

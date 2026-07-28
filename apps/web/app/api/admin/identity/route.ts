@@ -62,7 +62,23 @@ export async function GET(req: NextRequest) {
     return adminJson({ ok: false, error: "list_failed" }, 500);
   }
 
-  return adminJson({ ok: true, items: data ?? [] });
+  const { data: events, error: eventsError } = await supabase
+    .from("identity_verification_events")
+    .select(
+      "id, verification_id, subject_user_id, event_source, event_type, provider, provider_event_id, created_at"
+    )
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (eventsError) {
+    logTechnicalError("admin.identity.events", eventsError);
+  }
+
+  return adminJson({
+    ok: true,
+    items: data ?? [],
+    events: events ?? [],
+  });
 }
 
 /**
@@ -122,7 +138,8 @@ export async function POST(req: NextRequest) {
         adminUserId: staff.userId,
         reason: typeof body.reason === "string" ? body.reason : null,
       });
-      return adminJson(result, result.ok ? 200 : 400);
+      const { clientSecret: _omit, ...safe } = result;
+      return adminJson(safe, result.ok ? 200 : 400);
     }
 
     return adminJson({ ok: false, error: "unknown_action" }, 400);

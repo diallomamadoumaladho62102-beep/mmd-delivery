@@ -304,5 +304,17 @@ export async function stripeEventNeedsReprocessing(
     return false;
   }
 
+  // Identity: reprocess when the audit row for this Stripe event is missing
+  // (crash after stripe_webhook_events insert, before applyProviderSessionSnapshot).
+  if (String(event.type).startsWith("identity.verification_session.")) {
+    const { data } = await supabaseAdmin
+      .from("identity_verification_events")
+      .select("id")
+      .eq("provider", "stripe_identity")
+      .eq("provider_event_id", event.id)
+      .limit(1);
+    return (data ?? []).length === 0;
+  }
+
   return false;
 }

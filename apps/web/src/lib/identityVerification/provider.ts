@@ -17,5 +17,7 @@ export interface IdentityProvider {
 
   retrieveSession(sessionId: string): Promise<ProviderSessionSnapshot>;
 
+  createEphemeralKey?(sessionId: string): Promise<string | null>;
+
   cancelSession?(sessionId: string): Promise<ProviderSessionSnapshot>;
 }

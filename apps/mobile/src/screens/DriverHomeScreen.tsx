@@ -2305,6 +2305,11 @@ export function DriverHomeScreen() {
           }
         } catch (identityErr) {
           console.log("identity verification prompt error:", identityErr);
+          Alert.alert(
+            "Identity verification",
+            "Unable to verify identity status. Try again before going online.",
+          );
+          return;
         }
 
         try {

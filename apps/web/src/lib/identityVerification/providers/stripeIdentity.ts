@@ -126,8 +126,23 @@ export class StripeIdentityProvider implements IdentityProvider {
       lastErrorCode: code,
       lastErrorReason: reason,
       verificationReportId: typeof report === "string" ? report : null,
+      url: session.url ?? null,
+      clientSecret: session.client_secret ?? null,
       raw,
     };
+  }
+
+  async createEphemeralKey(sessionId: string): Promise<string | null> {
+    try {
+      const ephemeralKey = await stripe.ephemeralKeys.create(
+        { verification_session: sessionId },
+        { apiVersion: "2024-11-20.acacia" as never }
+      );
+      return ephemeralKey.secret ?? null;
+    } catch (error) {
+      console.warn("[StripeIdentityProvider] ephemeral key create failed", error);
+      return null;
+    }
   }
 
   async cancelSession(sessionId: string): Promise<ProviderSessionSnapshot> {
