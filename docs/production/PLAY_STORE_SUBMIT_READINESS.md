@@ -1,51 +1,56 @@
-# Play Store submit readiness
+# Play Store submit readiness (EAS-managed credentials)
 
-## eas.json configuration
+## Enterprise configuration (current)
+
+Android submit uses the **Google Service Account Key stored on Expo EAS servers**.
+
+No local `google-play-service-account.json` is required for:
+
+```bash
+eas submit --platform android --profile production
+```
+
+### `eas.json` (production submit)
 
 ```json
-"submit": {
-  "production": {
-    "android": {
-      "serviceAccountKeyPath": "./google-play-service-account.json",
-      "track": "internal"
-    }
-  }
+"android": {
+  "applicationId": "com.maladho2025.mmddelivery",
+  "track": "internal",
+  "releaseStatus": "draft"
 }
 ```
 
-| Item | Status | Type |
-|------|--------|------|
-| Path `./google-play-service-account.json` | **PASS** (configured) | ops |
-| Track `internal` | **PASS** (safe first upload) | ops |
-| File in repo | **FAIL if committed** — must stay local | security |
+- **Do not set** `serviceAccountKeyPath` — that forces a local JSON path and breaks automated submit.
+- `applicationId` pins credentials to the production package (not legacy ids).
+- `track: internal` + `releaseStatus: draft` keeps first uploads safe until Play Console listing is complete.
 
-## Secure upload checklist
+### Where the key lives
 
-1. Create JSON key in Google Play Console → API access → service account.
-2. Save as `google-play-service-account.json` at **repo root** (same level as `eas.json`).
-3. Confirm file is **gitignored** (never commit).
-4. Grant service account **Release manager** (or minimum required) on Play Console.
-5. Run submit only after B6 device smoke:
+Expo dashboard → Project **mmd-delivery** → **Credentials** → **Android** → `com.maladho2025.mmddelivery` → **Google Service Account Key** (Submissions).
 
-   ```powershell
-   eas submit --platform android --profile production --latest
-   ```
+Verified on EAS:
 
-6. Set `PLAY_SERVICE_ACCOUNT_READY=true` in `store-submission.env` after file verified.
+| Field | Value |
+|-------|--------|
+| Package | `com.maladho2025.mmddelivery` |
+| Service account | `expo-eas-submit@mmd-delivery.iam.gserviceaccount.com` |
+| GCP project | `mmd-delivery` |
 
-## Risks if absent
+### One-time Google Cloud / Play Console requirements (ops)
 
-| Risk | Impact |
-|------|--------|
-| No service account file | `eas submit` fails immediately |
-| Wrong SHA in assetlinks | Android App Links fail (browser instead of app) |
-| Committing JSON key | **Critical** — rotate key in Google Cloud |
+1. Google Cloud project with **Google Play Android Developer API** enabled.
+2. Service account invited in Play Console → Users and permissions (Admin / Release to testing tracks as needed).
+3. App created in Play Console for `com.maladho2025.mmddelivery`.
+4. Key uploaded once to EAS (already done). Rotate via dashboard if compromised — never commit JSON to git.
 
-## iOS submit
+### Submit command
 
-| Item | Value |
-|------|-------|
-| `ascAppId` | `6761693075` (in eas.json) |
-| Requirement | Apple Developer account + TestFlight build |
+```bash
+eas submit --platform android --profile production --latest
+# CI / non-interactive:
+eas submit --platform android --profile production --latest --non-interactive
+```
 
-No service account file needed for iOS.
+### Legacy local path mode (not recommended)
+
+Only if you temporarily set `serviceAccountKeyPath` in `eas.json`, place a gitignored JSON at repo root. Prefer EAS-managed credentials instead.

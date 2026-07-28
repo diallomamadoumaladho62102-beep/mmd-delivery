@@ -79,7 +79,7 @@ Execute and sign `docs/production/READINESS_100_CHECKLIST.md`:
 ## App Store / Google Play
 
 - iOS: EAS submit configured (`ascAppId` in root `eas.json`)
-- Android: set Play Console `serviceAccountKeyPath` in `eas.json` submit.production.android
+- Android: Google Service Account Key on EAS Credentials for `com.maladho2025.mmddelivery` (no `serviceAccountKeyPath` in `eas.json`)
 - Set real store URLs in Vercel env (`NEXT_PUBLIC_APP_STORE_URL`, `NEXT_PUBLIC_PLAY_STORE_URL`)
 - Complete Apple Team ID in `apple-app-site-association` and Play SHA256 in `assetlinks.json`
 

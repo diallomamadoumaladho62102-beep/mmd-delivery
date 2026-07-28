@@ -104,7 +104,7 @@ See: `docs/production/DISPATCH_CRON_STRATEGY.md`
 |---|------|
 | G1 | EAS secrets: Supabase, Mapbox (public + download token), Stripe `pk_live_` |
 | G2 | `eas build --profile production` from repo root |
-| G3 | `google-play-service-account.json` at repo root (gitignored) for submit |
+| G3 | Google Service Account Key uploaded to EAS Credentials for `com.maladho2025.mmddelivery` (no local JSON) |
 | G4 | B6 device smoke checklist completed |
 | G5 | Universal links tested on device (Apple + Android App Links) |
 | G6 | `assetlinks.json` SHA256 matches Play App Signing certificate |

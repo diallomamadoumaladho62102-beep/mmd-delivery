@@ -325,11 +325,39 @@ async function checkEdgeFunctions() {
 function checkEasAndPlay() {
   const eas = JSON.parse(readRepoFile("eas.json"));
   const submit = eas?.submit?.production?.android;
-  if (submit?.serviceAccountKeyPath === "./google-play-service-account.json") {
-    record("store", "eas_play_service_account_path", "PASS", { type: "ops" });
+  const localPath = String(submit?.serviceAccountKeyPath ?? "").trim();
+  const applicationId = String(submit?.applicationId ?? "").trim();
+
+  // Enterprise mode: omit serviceAccountKeyPath so EAS Submit uses the
+  // Google Service Account Key stored on Expo servers (Credentials → Android).
+  if (!localPath) {
+    record("store", "eas_play_service_account_path", "PASS", {
+      type: "ops",
+      note: "EAS-managed Google Service Account (no local JSON path)",
+    });
+  } else if (localPath === "./google-play-service-account.json") {
+    record("store", "eas_play_service_account_path", "PASS", {
+      type: "ops",
+      note: "Legacy local path mode — prefer EAS-managed credentials",
+    });
   } else {
-    record("store", "eas_play_service_account_path", "FAIL", { type: "ops" });
+    record("store", "eas_play_service_account_path", "FAIL", {
+      type: "ops",
+      note: `Unexpected serviceAccountKeyPath: ${localPath}`,
+    });
   }
+
+  record(
+    "store",
+    "eas_play_application_id",
+    applicationId === "com.maladho2025.mmddelivery" ? "PASS" : "FAIL",
+    {
+      type: "ops",
+      note: applicationId
+        ? `applicationId=${applicationId}`
+        : "Set submit.production.android.applicationId to com.maladho2025.mmddelivery",
+    },
+  );
 
   if (submit?.track === "internal") {
     record("store", "eas_play_track_internal", "PASS", {
@@ -339,7 +367,12 @@ function checkEasAndPlay() {
   }
 
   const keyPath = path.join(repoRoot, "google-play-service-account.json");
-  if (fs.existsSync(keyPath)) {
+  if (!localPath) {
+    record("store", "play_service_account_file_present", "PASS", {
+      type: "ops",
+      note: "Local JSON not required — credential lives on EAS",
+    });
+  } else if (fs.existsSync(keyPath)) {
     record("store", "play_service_account_file_present", "PASS", { type: "ops" });
   } else if (truthy(process.env.PLAY_SERVICE_ACCOUNT_READY)) {
     record("store", "play_service_account_file_present", "PASS", {
