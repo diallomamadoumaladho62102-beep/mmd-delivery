@@ -96,3 +96,25 @@ Default migration ships with `required = false` so production Online/activation 
 ## Future providers
 
 Implement `IdentityProvider` for Persona / Veriff / Onfido. Switch via `identity_verification_policies.provider`. Apps unchanged.
+
+## Founder enablement (after Identity is live in Dashboard)
+
+Default policies ship with `required = false` so Online/activation is not blocked before Stripe Identity is enabled.
+
+When ready:
+
+```sql
+update public.identity_verification_policies
+set required = true, updated_at = now()
+where subject_type in ('driver', 'restaurant', 'seller')
+  and feature_key = 'default';
+```
+
+Also subscribe the production webhook endpoint to:
+
+- `identity.verification_session.created`
+- `identity.verification_session.processing`
+- `identity.verification_session.verified`
+- `identity.verification_session.requires_input`
+- `identity.verification_session.canceled`
+- `identity.verification_session.redacted`
