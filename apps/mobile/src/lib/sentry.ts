@@ -20,6 +20,10 @@ let initialized = false;
 const IGNORE_ERRORS = [
   /^Non-Error promise rejection captured/i,
   /Unexpected end of JSON input/i,
+  /^MmdSentryProbeError:/i,
+  /^MMD Sentry (?:web|mobile) probe\b/i,
+  /audio session not activated/i,
+  /Play encountered an error:\s*audio session/i,
 ];
 
 // Transient network / offline failures that are pure client-side noise. Kept in
@@ -91,6 +95,10 @@ export function initMobileSentry(): boolean {
       // Drop parasite/offline noise and de-duplicate bursts before sending.
       beforeSend: (event: Record<string, any>, hint: Record<string, any>) => {
         try {
+          const tags = event?.tags ?? {};
+          if (tags?.mmd_sentry_probe === "true" || tags?.mmd_sentry_probe === true) {
+            return null;
+          }
           const original = hint?.originalException;
           const message =
             original instanceof Error
@@ -120,7 +128,12 @@ export function captureMobileException(
 ): void {
   if (!sentryModule) return;
   try {
-    sentryModule.captureException(error, { extra: { scope, ...(extra ?? {}) } });
+    const { toCapturableError } = require("./toCapturableError") as {
+      toCapturableError: (error: unknown, fallbackMessage?: string) => Error;
+    };
+    sentryModule.captureException(toCapturableError(error, scope), {
+      extra: { scope, ...(extra ?? {}), original: error },
+    });
   } catch {
     // never throw from telemetry
   }

@@ -12,6 +12,11 @@ import {
 assert.equal(isNoiseMessage("SyntaxError: Unexpected token in JSON"), true);
 assert.equal(isNoiseMessage("invalid_json"), true);
 assert.equal(isNoiseMessage("TypeError: cannot read x"), false);
+assert.equal(isNoiseMessage("MmdSentryProbeError: MMD Sentry web probe 2026"), true);
+assert.equal(
+  isNoiseMessage("Play encountered an error: audio session not activated"),
+  true,
+);
 
 // --- transient network noise is detected (dropped) ---
 for (const msg of [
@@ -80,6 +85,16 @@ const first = beforeSend(realEvent, {});
 assert.notEqual(first, null, "real error kept");
 const second = beforeSend(realEvent, {});
 assert.equal(second, null, "identical repeat de-duplicated within window");
+
+const probeDropped = beforeSend(
+  {
+    level: "error",
+    message: "MMD Sentry web probe",
+    tags: { mmd_sentry_probe: "true" },
+  },
+  {},
+);
+assert.equal(probeDropped, null, "probe tag dropped");
 
 // --- signature differs for different errors ---
 const sigA = eventSignature(realEvent, {});

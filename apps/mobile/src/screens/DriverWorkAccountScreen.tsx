@@ -167,12 +167,20 @@ type DriverWorkState = {
 };
 
 const REQUIRED_DOCS = [
-  "license",
+  "license_front",
+  "license_back",
   "insurance",
   "registration",
   "profile_photo",
-  "background_check",
 ];
+
+function normalizeDriverDocType(value: unknown): string {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "license" || raw === "driver_license") return "license_front";
+  if (raw === "vehicle_insurance") return "insurance";
+  if (raw === "vehicle_registration") return "registration";
+  return raw;
+}
 
 function normMode(tm: any) {
   return String(tm ?? "")
@@ -321,9 +329,17 @@ export function DriverWorkAccountScreen() {
 
         const approved = new Set(
           (docs ?? [])
-            .filter((x: any) => (x?.status ? x?.status === "approved" : true))
-            .map((x: any) => String(x.doc_type))
+            .filter((x: any) => {
+              if (!x?.status) return true;
+              const status = String(x.status).trim().toLowerCase();
+              return status === "approved" || status === "verified" || status === "valid";
+            })
+            .map((x: any) => normalizeDriverDocType(x.doc_type))
         );
+
+        if (approved.has("license_back") || approved.has("driver_license")) {
+          approved.add("license_front");
+        }
 
         docsTotal = REQUIRED_DOCS.length;
         docsDone = REQUIRED_DOCS.filter((tt) => approved.has(tt)).length;

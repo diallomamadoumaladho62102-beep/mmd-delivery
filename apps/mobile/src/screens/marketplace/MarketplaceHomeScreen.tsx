@@ -44,7 +44,9 @@ export default function MarketplaceHomeScreen() {
   const navigation = useNavigation<Nav>();
   const { features, loading: scopeLoading } = useClientPlatformFeatures();
   const market = useMemo(() => resolveMarketScopeFromFeatures(features), [features]);
-  const marketplaceEnabled = Boolean(features.ok !== false && features.marketplace_available);
+  const marketplaceEnabled = Boolean(
+    features?.ok !== false && features?.marketplace_available,
+  );
   const [sellers, setSellers] = useState<MarketplaceSeller[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

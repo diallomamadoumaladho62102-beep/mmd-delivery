@@ -52,7 +52,7 @@ export type ClientHomeV4ViewProps = {
   displayLocation: string;
   spendingAmount: string | null;
   activeOrdersCount: number;
-  platformFeatures: PlatformFeaturesResponse;
+  platformFeatures: PlatformFeaturesResponse | null;
   comingSoonLabel: string;
   marketplaceSoonLabel: string;
   scopeLabel: string | null;
@@ -250,7 +250,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
         subtitle: props.ts("client.home.services.taxiSub", "Ride anywhere"),
         art: SERVICE_ART.taxi,
         accent: V4.taxi,
-        enabled: props.platformFeatures.taxi_available !== false,
+        enabled: props.platformFeatures?.taxi_available !== false,
         onPress: props.onNavigateTaxi,
       },
       {
@@ -262,7 +262,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
         subtitle: props.ts("client.home.services.foodSub", "Order now"),
         art: SERVICE_ART.food,
         accent: V4.food,
-        enabled: props.platformFeatures.restaurant_available !== false,
+        enabled: props.platformFeatures?.restaurant_available !== false,
         onPress: props.onNavigateFood,
       },
       {
@@ -274,7 +274,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
         subtitle: props.ts("client.home.services.deliverySub", "Send anything"),
         art: SERVICE_ART.delivery,
         accent: V4.delivery,
-        enabled: props.platformFeatures.delivery_available !== false,
+        enabled: props.platformFeatures?.delivery_available !== false,
         onPress: props.onNavigateDelivery,
       },
       {
@@ -286,7 +286,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
         subtitle: props.ts("client.home.services.marketplaceSub", "Shop & save"),
         art: SERVICE_ART.marketplace,
         accent: V4.marketplace,
-        enabled: props.platformFeatures.marketplace_available !== false,
+        enabled: props.platformFeatures?.marketplace_available !== false,
         onPress: props.onNavigateMarketplace,
       },
     ],

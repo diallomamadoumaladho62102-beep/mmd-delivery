@@ -10,6 +10,8 @@ function isEnabled(): boolean {
   );
 }
 
+import { toCapturableError } from "./toCapturableError";
+
 export function captureProductionException(
   scope: string,
   error: unknown,
@@ -17,8 +19,8 @@ export function captureProductionException(
 ) {
   if (!isEnabled()) return;
   try {
-    Sentry.captureException(error, {
-      extra: { scope, ...(metadata ?? {}) },
+    Sentry.captureException(toCapturableError(error, scope), {
+      extra: { scope, ...(metadata ?? {}), original: error },
     });
   } catch {
     // never throw from telemetry

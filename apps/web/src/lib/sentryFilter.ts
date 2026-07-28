@@ -37,6 +37,10 @@ const NOISE_MESSAGE_PATTERNS: RegExp[] = [
   /SyntaxError.*JSON/i,
   /Unexpected end of JSON input/i,
   /JSON\.parse/i,
+  /^MmdSentryProbeError:/i,
+  /^MMD Sentry (?:web|mobile) probe\b/i,
+  /audio session not activated/i,
+  /Play encountered an error:\s*audio session/i,
 ];
 
 // Transient network / offline failures that are pure client-side noise (flaky
@@ -98,6 +102,7 @@ export type SentryLikeEvent = {
   level?: string;
   message?: string;
   exception?: { values?: SentryLikeException[] };
+  tags?: Record<string, unknown>;
 };
 export type SentryLikeHint = { originalException?: unknown };
 
@@ -113,6 +118,13 @@ export function createSentryBeforeSend(options?: { dedupeWindowMs?: number }) {
     event: SentryLikeEvent,
     hint?: SentryLikeHint,
   ): SentryLikeEvent | null {
+    if (
+      event?.tags?.mmd_sentry_probe === "true" ||
+      event?.tags?.mmd_sentry_probe === true
+    ) {
+      return null;
+    }
+
     const message = messageFromEvent(event, hint);
     if (isNoiseMessage(message)) return null;
 

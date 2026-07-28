@@ -38,9 +38,13 @@ export function currencyForMarketCountry(countryCode: string): string {
 }
 
 export function resolveMarketScopeFromFeatures(
-  features: PlatformFeaturesResponse
+  features: PlatformFeaturesResponse | null | undefined
 ): UnifiedMarketScope {
-  let scopedFeatures = features;
+  const safeFeatures: PlatformFeaturesResponse = features ?? {
+    ok: false,
+    error: "scope_unresolved",
+  };
+  let scopedFeatures = safeFeatures;
 
   if (__DEV__) {
     const mockMarket = process.env.EXPO_PUBLIC_TAXI_MOCK_MARKET?.trim().toUpperCase();

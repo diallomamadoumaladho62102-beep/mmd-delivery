@@ -1343,7 +1343,7 @@ export function ClientHomeScreen() {
   );
 
   const handleNavigateMarketplace = useCallback(() => {
-    if (platformFeatures.marketplace_available) {
+    if (platformFeatures?.marketplace_available) {
       navigation.navigate("MarketplaceHome" as never);
       return;
     }

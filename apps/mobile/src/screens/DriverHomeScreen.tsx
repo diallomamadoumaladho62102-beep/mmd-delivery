@@ -2189,7 +2189,7 @@ export function DriverHomeScreen() {
     if (lastOfferIdRef.current === getOrderCompositeKey(activeOffer)) return;
 
     lastOfferIdRef.current = getOrderCompositeKey(activeOffer);
-    void mmdAudio.startLongRing("driver");
+    void mmdAudio.startLongRing("driver").catch(() => {});
 
     return () => {
       void stopSound();

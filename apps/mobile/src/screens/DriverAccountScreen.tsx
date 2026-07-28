@@ -113,12 +113,21 @@ type DriverProgress = {
 };
 
 const REQUIRED_DOCS = [
-  "license",
+  "license_front",
+  "license_back",
   "insurance",
   "registration",
   "profile_photo",
-  "background_check",
 ];
+
+/** Treat legacy aliases as matching the canonical driver_doc_type labels. */
+function normalizeDriverDocType(value: unknown): string {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "license" || raw === "driver_license") return "license_front";
+  if (raw === "vehicle_insurance") return "insurance";
+  if (raw === "vehicle_registration") return "registration";
+  return raw;
+}
 
 function normMode(tm: any) {
   return String(tm ?? "")
@@ -369,8 +378,13 @@ export function DriverAccountScreen() {
                 .toLowerCase();
               return status === "approved" || status === "verified" || status === "valid";
             })
-            .map((x: any) => String(x.doc_type))
+            .map((x: any) => normalizeDriverDocType(x.doc_type))
         );
+
+        // license_front is satisfied by either front/back or legacy driver_license.
+        if (approved.has("license_back") || approved.has("driver_license")) {
+          approved.add("license_front");
+        }
 
         docsDone = REQUIRED_DOCS.filter((tt) => approved.has(tt)).length;
         docsTotal = REQUIRED_DOCS.length;
