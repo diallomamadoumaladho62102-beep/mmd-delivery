@@ -47,6 +47,7 @@ import {
   syncStripePayoutEvent,
   syncStripeTransferEvent,
 } from "@/lib/stripeTransferPayoutWebhook";
+import { handleStripeIdentityWebhookEvent } from "@/lib/identityVerification";
 import {
   bridgeStripeWalletFromPaidDeliveryRequest,
   bridgeStripeWalletFromPaidOrder,
@@ -302,6 +303,13 @@ const HANDLED_EVENT_TYPES = new Set([
   "payout.paid",
   "payout.failed",
   "payout.canceled",
+  // Stripe Identity Verification Sessions
+  "identity.verification_session.created",
+  "identity.verification_session.processing",
+  "identity.verification_session.verified",
+  "identity.verification_session.requires_input",
+  "identity.verification_session.canceled",
+  "identity.verification_session.redacted",
   // Phase 5 — Stripe Billing subscriptions
   "customer.subscription.created",
   "customer.subscription.updated",
@@ -3233,6 +3241,19 @@ export async function POST(req: NextRequest) {
         ok: result.ok,
         matched: result.matched,
         payout_sync: result,
+      });
+    }
+
+    if (String(event.type).startsWith("identity.verification_session.")) {
+      const result = await handleStripeIdentityWebhookEvent(
+        supabaseAdmin,
+        event
+      );
+      return json({
+        received: true,
+        type: event.type,
+        ok: result.handled,
+        identity_sync: result,
       });
     }
 

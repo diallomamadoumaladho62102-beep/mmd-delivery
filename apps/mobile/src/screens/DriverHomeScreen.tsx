@@ -2292,6 +2292,22 @@ export function DriverHomeScreen() {
         }
 
         try {
+          const { promptStripeIdentityIfRequired } = await import(
+            "../lib/startStripeIdentityVerification"
+          );
+          const identityOk = await promptStripeIdentityIfRequired("driver");
+          if (!identityOk) {
+            Alert.alert(
+              "Identity verification",
+              "Complete Stripe Identity verification before going online.",
+            );
+            return;
+          }
+        } catch (identityErr) {
+          console.log("identity verification prompt error:", identityErr);
+        }
+
+        try {
           const servicePrefs = await fetchDriverServicePreferences();
           if (!hasAnyDriverServiceEnabled(servicePrefs.preferences)) {
             Alert.alert(

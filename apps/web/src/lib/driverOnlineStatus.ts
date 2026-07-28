@@ -62,6 +62,39 @@ export async function assertDriverCanGoOnline(
     return { ok: false, error: "driver_not_approved", message: messageFor("driver_not_approved") };
   }
 
+  // Enterprise Stripe Identity gate (document + selfie KYC). Policy-driven.
+  try {
+    const { data: identityOk, error: identityError } = await supabaseAdmin.rpc(
+      "is_identity_verified",
+      {
+        p_user_id: userId,
+        p_subject_type: "driver",
+        p_feature_key: "default",
+      }
+    );
+    if (identityError) {
+      return {
+        ok: false,
+        error: "identity_check_failed",
+        message: "Impossible de vérifier votre identité pour le moment.",
+      };
+    }
+    if (identityOk !== true) {
+      return {
+        ok: false,
+        error: "identity_verification_required",
+        message:
+          "Vérifiez votre identité (Stripe Identity) avant de passer en ligne.",
+      };
+    }
+  } catch {
+    return {
+      ok: false,
+      error: "identity_check_failed",
+      message: "Impossible de vérifier votre identité pour le moment.",
+    };
+  }
+
   const { data: prefs } = await supabaseAdmin
     .from("driver_service_preferences")
     .select("food_delivery_enabled, package_delivery_enabled, taxi_rides_enabled")

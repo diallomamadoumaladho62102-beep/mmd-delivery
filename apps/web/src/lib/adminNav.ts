@@ -74,6 +74,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         permission: "drivers.identity.read",
       },
       {
+        href: "/admin/identity",
+        label: "Stripe Identity",
+        permission: "drivers.identity.read",
+      },
+      {
         href: "/admin/restaurants",
         label: "Restaurants",
         permission: "users.restaurants.read",
