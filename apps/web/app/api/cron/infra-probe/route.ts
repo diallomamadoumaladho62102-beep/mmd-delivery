@@ -13,6 +13,7 @@ import {
   CronTimeoutError,
   withTimeout,
 } from "@/lib/cronTimeouts";
+import { assertStripeModeAllowed } from "@/lib/paymentLiveGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,57 +87,62 @@ async function handle(req: NextRequest) {
         if (!key) {
           stripeProbe = { ok: false, error: "stripe_key_missing" };
         } else {
-          const stripe = new Stripe(key, {
-            apiVersion: "2023-10-16",
-            timeout: CRON_STRIPE_TIMEOUT_MS,
-            maxNetworkRetries: 0,
-          });
-          const piId = String(
-            req.nextUrl.searchParams.get("payment_intent_id") ?? ""
-          ).trim();
-          trace.mark("stripe_retrieve_started", {
-            detail: { mode: piId ? "payment_intent" : "balance" },
-          });
-          try {
-            if (piId.startsWith("pi_")) {
-              const pi = await withTimeout(
-                stripe.paymentIntents.retrieve(piId),
-                CRON_STRIPE_TIMEOUT_MS,
-                "stripe_timeout"
-              );
+          const gate = assertStripeModeAllowed("cron/infra-probe");
+          if (gate.ok === false) {
+            stripeProbe = { ok: false, error: gate.error };
+          } else {
+            const stripeClient = new Stripe(key, {
+              apiVersion: "2023-10-16",
+              timeout: CRON_STRIPE_TIMEOUT_MS,
+              maxNetworkRetries: 0,
+            });
+            const piId = String(
+              req.nextUrl.searchParams.get("payment_intent_id") ?? ""
+            ).trim();
+            trace.mark("stripe_retrieve_started", {
+              detail: { mode: piId ? "payment_intent" : "balance" },
+            });
+            try {
+              if (piId.startsWith("pi_")) {
+                const pi = await withTimeout(
+                  stripeClient.paymentIntents.retrieve(piId),
+                  CRON_STRIPE_TIMEOUT_MS,
+                  "stripe_timeout"
+                );
+                stripeProbe = {
+                  ok: true,
+                  kind: "payment_intent",
+                  status: pi.status,
+                };
+              } else {
+                const balance = await withTimeout(
+                  stripeClient.balance.retrieve(),
+                  CRON_STRIPE_TIMEOUT_MS,
+                  "stripe_timeout"
+                );
+                stripeProbe = {
+                  ok: true,
+                  kind: "balance",
+                  available_currencies: (balance.available ?? []).map(
+                    (row) => row.currency
+                  ),
+                };
+              }
+            } catch (error) {
               stripeProbe = {
-                ok: true,
-                kind: "payment_intent",
-                status: pi.status,
-              };
-            } else {
-              const balance = await withTimeout(
-                stripe.balance.retrieve(),
-                CRON_STRIPE_TIMEOUT_MS,
-                "stripe_timeout"
-              );
-              stripeProbe = {
-                ok: true,
-                kind: "balance",
-                available_currencies: (balance.available ?? []).map(
-                  (row) => row.currency
-                ),
+                ok: false,
+                error:
+                  error instanceof CronTimeoutError
+                    ? error.code
+                    : error instanceof Error
+                      ? error.message
+                      : String(error),
               };
             }
-          } catch (error) {
-            stripeProbe = {
-              ok: false,
-              error:
-                error instanceof CronTimeoutError
-                  ? error.code
-                  : error instanceof Error
-                    ? error.message
-                    : String(error),
-            };
+            trace.mark("stripe_retrieve_finished", {
+              detail: { ok: stripeProbe.ok === true },
+            });
           }
-          trace.mark("stripe_retrieve_finished", {
-            detail: { ok: stripeProbe.ok === true },
-          });
         }
       }
 

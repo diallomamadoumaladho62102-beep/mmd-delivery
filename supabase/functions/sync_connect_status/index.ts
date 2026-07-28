@@ -46,12 +46,24 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const role = body?.role;
 
-    if (role !== "driver" && role !== "restaurant") {
+    if (role !== "driver" && role !== "restaurant" && role !== "seller" && role !== "merchant") {
       return new Response(JSON.stringify({ error: "Invalid role" }), { status: 400 });
     }
 
+    const normalizedRole =
+      role === "merchant" || role === "seller"
+        ? "seller"
+        : role === "restaurant"
+          ? "restaurant"
+          : "driver";
+
     const supabase = createClient(supabaseUrl, supabaseService);
-    const table = role === "driver" ? "driver_profiles" : "restaurant_profiles";
+    const table =
+      normalizedRole === "driver"
+        ? "driver_profiles"
+        : normalizedRole === "restaurant"
+          ? "restaurant_profiles"
+          : "sellers";
 
     const { data: prof, error: pErr } = await supabase
       .from(table)
@@ -77,12 +89,27 @@ serve(async (req) => {
     const onboarded = details_submitted && charges_enabled && payouts_enabled;
     const nowIso = new Date().toISOString();
 
+    const updatePayload =
+      normalizedRole === "driver"
+        ? {
+            stripe_onboarded: onboarded,
+            stripe_onboarded_at: onboarded ? nowIso : null,
+          }
+        : {
+            stripe_onboarded_at: onboarded ? nowIso : null,
+            stripe_charges_enabled: charges_enabled,
+            stripe_payouts_enabled: payouts_enabled,
+            stripe_details_submitted: details_submitted,
+            stripe_onboarding_status: onboarded
+              ? "ready_for_payouts"
+              : details_submitted
+                ? "verification_in_progress"
+                : "verification_pending",
+          };
+
     const { error: upErr } = await supabase
       .from(table)
-      .update({
-        stripe_onboarded: onboarded,
-        stripe_onboarded_at: onboarded ? nowIso : null,
-      })
+      .update(updatePayload)
       .eq("user_id", userId);
 
     if (upErr) {

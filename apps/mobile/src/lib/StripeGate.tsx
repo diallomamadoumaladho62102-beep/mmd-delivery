@@ -106,7 +106,10 @@ export default function StripeGate({ initialRouteName }: StripeGateProps) {
   }
 
   return (
-    <StripeProvider publishableKey={publishableKey}>
+    <StripeProvider
+      publishableKey={publishableKey}
+      merchantIdentifier="merchant.com.maladho2025.mmddelivery"
+    >
       <AppNavigator initialRouteName={initialRouteName as any} />
     </StripeProvider>
   );

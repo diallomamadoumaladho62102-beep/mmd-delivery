@@ -77,7 +77,6 @@ import {
   stopDriverLocationTracking,
 } from "../lib/location";
 import {
-  DRIVER_ONLINE_GRACE_MS,
   DRIVER_PRESENCE_HEARTBEAT_MS,
 } from "../lib/driverPresenceConfig";
 import { subscribeDriverMissionPushRefresh } from "../lib/driverMissionPushEvents";
@@ -510,10 +509,15 @@ function getConfiguredDriverPayout(order: Partial<DriverOrder> | null | undefine
   return null;
 }
 
+function getOrderEntityKey(order: Partial<DriverOrder> | null | undefined) {
+  if (!order?.id) return "";
+  return `${order.source_table ?? "orders"}:${order.id}`;
+}
+
 function getOrderCompositeKey(order: Partial<DriverOrder> | null | undefined) {
   if (!order?.id) return "";
   const offerId = (order as any)?.offer_id;
-  return offerId ? `offer:${order.source_table ?? "orders"}:${offerId}` : `${order.source_table ?? "orders"}:${order.id}`;
+  return offerId ? `offer:${order.source_table ?? "orders"}:${offerId}` : getOrderEntityKey(order);
 }
 
 function getRpcRow<T extends Record<string, any>>(data: T | T[] | null | undefined) {
@@ -725,7 +729,8 @@ export function DriverHomeScreen() {
       isOnline &&
       !forceOnlinePreviewRef.current
     ) {
-      void setDriverOnlineStatus(false).then(() => setIsOnline(false)).catch(() => setIsOnline(false));
+      // Do NOT flip is_online — availability is driver-controlled only.
+      // Out-of-area merely alerts; dispatch already filters by service coverage.
       Alert.alert(
         platformFeatures.unavailable_title ??
           t("driver.home.outOfServiceTitle", "Out of Service Area"),
@@ -784,13 +789,12 @@ export function DriverHomeScreen() {
 
   const cameraRef = useRef<Mapbox.Camera | null>(null);
   const presenceTrackingRef = useRef(false);
-  const onlineRestoreFailuresRef = useRef(0);
-  const onlineRestoreStartedAtRef = useRef<number | null>(null);
   const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchSeqRef = useRef(0);
   const mountedRef = useRef(true);
   const restoredOnlineStatusRef = useRef(false);
   const lastOfferIdRef = useRef<string | null>(null);
+  const declinedOrderKeysRef = useRef<Set<string>>(new Set());
   const forceOnlinePreviewRef = useRef(false);
   const locationPermissionRequestRef = useRef<Promise<boolean> | null>(null);
   const locationPermissionDeniedAlertShownRef = useRef(false);
@@ -1579,7 +1583,15 @@ export function DriverHomeScreen() {
           if (seenAvailableKeys.has(compositeKey)) return false;
           seenAvailableKeys.add(compositeKey);
 
-          if (o.is_dispatch_offer) return true;
+          const entityKey = getOrderEntityKey(o);
+          if (entityKey && declinedOrderKeysRef.current.has(entityKey)) {
+            return false;
+          }
+
+          // Dispatch offers must still map to an open job; ignore stale offer rows.
+          if (o.is_dispatch_offer) {
+            return isOrderVisibleForDriver(o);
+          }
 
           const statusVisible = isOrderVisibleForDriver(o);
           const pickupLat = typeof o.pickup_lat === "number" ? o.pickup_lat : null;
@@ -1655,7 +1667,9 @@ export function DriverHomeScreen() {
   );
 
   const resumeOnlineSession = useCallback(
-    async (options?: { softGate?: boolean }) => {
+    async (_options?: { softGate?: boolean }) => {
+      // Availability is driver-controlled only. App open/reconnect restores UI + GPS
+      // from the saved preference / DB flag — it never writes is_online.
       const savedOnline = await getDriverOnlineStatus();
       if (!mountedRef.current) return;
 
@@ -1670,59 +1684,42 @@ export function DriverHomeScreen() {
           setCountdown(60);
           lastOfferIdRef.current = null;
         }
-        onlineRestoreFailuresRef.current = 0;
-        onlineRestoreStartedAtRef.current = null;
         return;
-      }
-
-      if (onlineRestoreStartedAtRef.current == null) {
-        onlineRestoreStartedAtRef.current = Date.now();
       }
 
       try {
         const userId = await getUserIdOrThrow();
-        const canGoOnline = await ensureDriverCanGoOnline(userId, {
-          softGate: options?.softGate ?? true,
-        });
+        const { data: profile } = await supabase
+          .from("driver_profiles")
+          .select("is_online, status")
+          .eq("user_id", userId)
+          .maybeSingle();
 
-        if (!canGoOnline) {
-          const stillSaved = await getDriverOnlineStatus();
-          if (!stillSaved && mountedRef.current) {
-            setIsOnline(false);
-          }
+        // Admin suspension / DB offline wins over local preference.
+        if (profile && profile.is_online !== true) {
+          if (mountedRef.current) setIsOnline(false);
+          await stopDbGpsTracking();
           return;
         }
 
-        await setDriverProfileOnline(userId, true);
-        await setDriverOnlineStatus(true);
+        if (driverOnlineBlockMessage(profile?.status ?? null)) {
+          if (mountedRef.current) setIsOnline(false);
+          await stopDbGpsTracking();
+          return;
+        }
 
         if (mountedRef.current) setIsOnline(true);
-
         await startDbGpsTracking(userId);
         await fetchDriverOrders(true);
-
-        onlineRestoreFailuresRef.current = 0;
-        onlineRestoreStartedAtRef.current = null;
       } catch (error) {
         console.log("resumeOnlineSession error:", error);
-        onlineRestoreFailuresRef.current += 1;
-        const startedAt = onlineRestoreStartedAtRef.current ?? Date.now();
-        const elapsed = Date.now() - startedAt;
-
-        if (elapsed >= DRIVER_ONLINE_GRACE_MS) {
-          await setDriverOnlineStatus(false).catch(() => {});
-          if (mountedRef.current) setIsOnline(false);
-          onlineRestoreFailuresRef.current = 0;
-          onlineRestoreStartedAtRef.current = null;
-        }
+        // Keep previous UI state — never auto-flip availability on reconnect errors.
       }
     },
     [
-      ensureDriverCanGoOnline,
       fetchDriverOrders,
       getUserIdOrThrow,
       isOnline,
-      setDriverProfileOnline,
       startDbGpsTracking,
       stopDbGpsTracking,
       stopSound,
@@ -1757,13 +1754,15 @@ export function DriverHomeScreen() {
   }, [resumeOnlineSession]);
 
   useEffect(() => {
+    // Reconnect / foreground: refresh orders only. Never mutate availability.
     const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
       if (state !== "active") return;
-      void resumeOnlineSession({ softGate: true });
+      if (!isOnline) return;
+      void fetchDriverOrders(true);
     });
 
     return () => sub.remove();
-  }, [resumeOnlineSession]);
+  }, [fetchDriverOrders, isOnline]);
 
   useFocusEffect(
     useCallback(() => {
@@ -2089,6 +2088,11 @@ export function DriverHomeScreen() {
     try {
       const offer = activeOffer;
 
+      if (offer) {
+        const entityKey = getOrderEntityKey(offer);
+        if (entityKey) declinedOrderKeysRef.current.add(entityKey);
+      }
+
       if (offer?.offer_id) {
         const rpcName =
           (offer.source_table ?? "orders") === "delivery_requests"
@@ -2126,6 +2130,31 @@ export function DriverHomeScreen() {
   useEffect(() => {
     if (!activeOffer) return;
     if (countdown <= 0) {
+      const offer = activeOffer;
+      const entityKey = getOrderEntityKey(offer);
+      if (entityKey) declinedOrderKeysRef.current.add(entityKey);
+
+      if (offer?.offer_id) {
+        const rpcName =
+          (offer.source_table ?? "orders") === "delivery_requests"
+            ? "driver_reject_delivery_request_offer"
+            : "driver_reject_order_offer";
+        void (async () => {
+          try {
+            await supabase.rpc(rpcName, {
+              p_offer_id: offer.offer_id,
+              p_reason: "offer_timeout",
+            });
+          } catch (err) {
+            console.log("offer timeout reject error:", err);
+          } finally {
+            if (isOnline) void fetchDriverOrders(true);
+          }
+        })();
+      } else if (isOnline) {
+        void fetchDriverOrders(true);
+      }
+
       setActiveOffer(null);
       setCountdown(60);
       lastOfferIdRef.current = null;
@@ -2133,7 +2162,7 @@ export function DriverHomeScreen() {
     }
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [activeOffer, countdown]);
+  }, [activeOffer, countdown, fetchDriverOrders, isOnline]);
 
   useEffect(() => {
     const anim = Animated.loop(

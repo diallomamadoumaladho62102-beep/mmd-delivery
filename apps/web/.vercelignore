@@ -1,0 +1,15 @@
+# Upload hygiene for apps/web source (must stay under Vercel 100 MB limit)
+node_modules
+.next
+.tmp
+Backups
+Backups_replace_chatimages_20251111_031013
+.env*
+!.env.example
+*.log
+coverage
+dist
+.eslintrc.json
+app-routes.txt
+.vercel-trigger
+scripts

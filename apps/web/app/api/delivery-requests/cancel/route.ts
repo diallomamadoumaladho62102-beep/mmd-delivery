@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import {
   findLinkedOrderId,
   getDeliveryRequestId,
@@ -8,6 +8,7 @@ import {
 import { notifyClientDeliveryRequestCancelled } from "@/lib/clientPushNotifications";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,12 +23,6 @@ function getEnv(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing env: ${name}`);
   return value;
-}
-
-function getStripe() {
-  return new Stripe(getEnv("STRIPE_SECRET_KEY"), {
-    apiVersion: "2023-10-16",
-  });
 }
 
 function normalizeStatus(value: unknown) {
@@ -88,7 +83,6 @@ async function refundStripePayment(params: {
   }
 
   try {
-    const stripe = getStripe();
     const refund = await stripe.refunds.create(
       {
         payment_intent: paymentIntentId,

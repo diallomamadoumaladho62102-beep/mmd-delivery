@@ -19,7 +19,7 @@ export async function requireSellerPlatformEnabled(): Promise<{
 }
 
 const SELLER_SELECT =
-  "id,user_id,business_name,country_code,city,address,phone,region_code,mmd_zone_id,status,is_accepting_orders,logo_url,cover_image_url,document_urls,review_notes,created_at,updated_at";
+  "id,user_id,business_name,country_code,city,address,phone,region_code,mmd_zone_id,status,is_accepting_orders,logo_url,cover_image_url,document_urls,review_notes,stripe_account_id,stripe_onboarding_status,stripe_charges_enabled,stripe_payouts_enabled,stripe_details_submitted,stripe_onboarded_at,created_at,updated_at";
 
 const PRODUCT_SELECT =
   "id,seller_id,title,description,price_cents,currency,category,image_paths,active,stock_qty,options_json,variants_json,promo_price_cents,created_at,updated_at";

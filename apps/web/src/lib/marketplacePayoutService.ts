@@ -690,9 +690,9 @@ export async function simulateMarketplacePayouts(
 }
 
 /**
- * Hard fail-closed: marketplace Stripe transfers are not implemented.
- * Env/DB live flags only control ledger prep / inventory; they must never move money.
- * Requires Connect destination + transfer idempotency + atomic claim before any live path.
+ * Execute approved marketplace seller payouts via Stripe Connect transfers.
+ * Requires MARKETPLACE_PAYOUTS_LIVE_ENABLED=true and seller Express account ready.
+ * Driver marketplace payouts continue to use the driver Connect destination.
  */
 export async function executeMarketplacePayouts(
   supabaseAdmin: SupabaseClient,
@@ -700,20 +700,241 @@ export async function executeMarketplacePayouts(
 ): Promise<{
   ok: boolean;
   executed?: number;
+  failed?: number;
   ignored?: string;
   error?: string;
 }> {
-  void supabaseAdmin;
-  void params;
-
   if (!isMarketplacePayoutsLiveEnvEnabled()) {
     return { ok: true, ignored: "marketplace_payouts_live_disabled", executed: 0 };
   }
 
-  // Even with MARKETPLACE_PAYOUTS_LIVE_ENABLED=true, refuse remains a hard stub.
-  return {
-    ok: true,
-    ignored: "marketplace_payouts_execution_hard_stub_no_stripe_transfer",
-    executed: 0,
-  };
+  const { stripe } = await import("@/lib/stripe");
+
+  const limit = Math.max(1, Math.min(50, Number(params?.limit ?? 20)));
+  let executed = 0;
+  let failed = 0;
+
+  const { data: sellerRows, error: sellerLoadErr } = await supabaseAdmin
+    .from("marketplace_seller_payouts")
+    .select(
+      "id,seller_id,seller_order_id,seller_net_amount_cents,currency,status,stripe_transfer_id,payout_live_enabled"
+    )
+    .eq("status", "approved")
+    .eq("payout_live_enabled", true)
+    .is("stripe_transfer_id", null)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (sellerLoadErr) {
+    return { ok: false, error: sellerLoadErr.message };
+  }
+
+  for (const row of sellerRows ?? []) {
+    const payoutId = String(row.id);
+    const amount = Number(row.seller_net_amount_cents ?? 0);
+    const currency = String(row.currency ?? "USD").toLowerCase();
+    if (!Number.isFinite(amount) || amount <= 0) {
+      failed += 1;
+      continue;
+    }
+
+    const { data: claimed, error: claimErr } = await supabaseAdmin
+      .from("marketplace_seller_payouts")
+      .update({ status: "approved", updated_at: new Date().toISOString() })
+      .eq("id", payoutId)
+      .eq("status", "approved")
+      .is("stripe_transfer_id", null)
+      .select("id")
+      .maybeSingle();
+
+    if (claimErr || !claimed) {
+      continue;
+    }
+
+    const { data: seller, error: sellerErr } = await supabaseAdmin
+      .from("sellers")
+      .select(
+        "id,stripe_account_id,stripe_payouts_enabled,stripe_charges_enabled,stripe_details_submitted,stripe_onboarding_status"
+      )
+      .eq("id", row.seller_id)
+      .maybeSingle();
+
+    if (sellerErr || !seller?.stripe_account_id) {
+      await supabaseAdmin
+        .from("marketplace_seller_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+      continue;
+    }
+
+    const destination = String(seller.stripe_account_id).trim();
+    const ready =
+      Boolean(seller.stripe_details_submitted) &&
+      Boolean(seller.stripe_charges_enabled) &&
+      Boolean(seller.stripe_payouts_enabled);
+
+    if (!/^acct_[A-Za-z0-9]+$/.test(destination) || !ready) {
+      await supabaseAdmin
+        .from("marketplace_seller_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+      continue;
+    }
+
+    try {
+      const transfer = await stripe.transfers.create(
+        {
+          amount,
+          currency,
+          destination,
+          metadata: {
+            marketplace_seller_payout_id: payoutId,
+            seller_id: String(row.seller_id),
+            seller_order_id: String(row.seller_order_id),
+            source: "execute_marketplace_payouts",
+          },
+        },
+        { idempotencyKey: `mkt_seller_payout_${payoutId}` }
+      );
+
+      const { error: paidErr } = await supabaseAdmin
+        .from("marketplace_seller_payouts")
+        .update({
+          status: "paid",
+          stripe_transfer_id: transfer.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+
+      if (paidErr) {
+        console.error("[marketplace-payout] paid update failed after transfer", {
+          payoutId,
+          transferId: transfer.id,
+          error: paidErr.message,
+        });
+        failed += 1;
+      } else {
+        executed += 1;
+      }
+    } catch (e) {
+      console.error("[marketplace-payout] transfer failed", {
+        payoutId,
+        message: e instanceof Error ? e.message : String(e),
+      });
+      await supabaseAdmin
+        .from("marketplace_seller_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+    }
+  }
+
+  // Driver marketplace payouts: transfer to driver Connect account.
+  const { data: driverRows, error: driverLoadErr } = await supabaseAdmin
+    .from("marketplace_driver_payouts")
+    .select(
+      "id,driver_id,seller_order_id,marketplace_delivery_job_id,total_driver_payout_cents,currency,status,stripe_transfer_id,payout_live_enabled"
+    )
+    .eq("status", "approved")
+    .eq("payout_live_enabled", true)
+    .is("stripe_transfer_id", null)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (driverLoadErr) {
+    return {
+      ok: false,
+      executed,
+      failed,
+      error: driverLoadErr.message,
+    };
+  }
+
+  for (const row of driverRows ?? []) {
+    const payoutId = String(row.id);
+    const amount = Number(row.total_driver_payout_cents ?? 0);
+    const currency = String(row.currency ?? "USD").toLowerCase();
+    if (!Number.isFinite(amount) || amount <= 0) {
+      failed += 1;
+      continue;
+    }
+
+    const { data: driver, error: driverErr } = await supabaseAdmin
+      .from("driver_profiles")
+      .select("user_id,stripe_account_id,stripe_onboarded")
+      .eq("user_id", row.driver_id)
+      .maybeSingle();
+
+    if (driverErr || !driver?.stripe_account_id || !driver.stripe_onboarded) {
+      await supabaseAdmin
+        .from("marketplace_driver_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+      continue;
+    }
+
+    const destination = String(driver.stripe_account_id).trim();
+    try {
+      const transfer = await stripe.transfers.create(
+        {
+          amount,
+          currency,
+          destination,
+          metadata: {
+            marketplace_driver_payout_id: payoutId,
+            driver_id: String(row.driver_id),
+            seller_order_id: String(row.seller_order_id),
+            source: "execute_marketplace_payouts",
+          },
+        },
+        { idempotencyKey: `mkt_driver_payout_${payoutId}` }
+      );
+
+      const { error: paidErr } = await supabaseAdmin
+        .from("marketplace_driver_payouts")
+        .update({
+          status: "paid",
+          stripe_transfer_id: transfer.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId)
+        .is("stripe_transfer_id", null);
+
+      if (paidErr) {
+        failed += 1;
+      } else {
+        executed += 1;
+      }
+    } catch (e) {
+      console.error("[marketplace-payout] driver transfer failed", {
+        payoutId,
+        message: e instanceof Error ? e.message : String(e),
+      });
+      await supabaseAdmin
+        .from("marketplace_driver_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+    }
+  }
+
+  return { ok: true, executed, failed };
 }

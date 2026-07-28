@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import {
   AdminAccessError,
   assertCanManageTaxiRides,
@@ -7,6 +7,7 @@ import {
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,20 +16,8 @@ function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
 }
 
-function getEnv(name: string) {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing env: ${name}`);
-  return value;
-}
-
 function nowIso() {
   return new Date().toISOString();
-}
-
-function getStripe() {
-  return new Stripe(getEnv("STRIPE_SECRET_KEY"), {
-    apiVersion: "2023-10-16",
-  });
 }
 
 export async function POST(req: NextRequest) {
@@ -137,7 +126,6 @@ export async function POST(req: NextRequest) {
 
     if (canRefund) {
       try {
-        const stripe = getStripe();
         const refund = await stripe.refunds.create(
           {
             payment_intent: ride.stripe_payment_intent_id,

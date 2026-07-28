@@ -16,6 +16,12 @@ export type SellerRow = {
   cover_image_url?: string | null;
   document_urls?: unknown;
   review_notes: string | null;
+  stripe_account_id?: string | null;
+  stripe_onboarding_status?: string | null;
+  stripe_charges_enabled?: boolean | null;
+  stripe_payouts_enabled?: boolean | null;
+  stripe_details_submitted?: boolean | null;
+  stripe_onboarded_at?: string | null;
   created_at: string;
   updated_at: string;
 };

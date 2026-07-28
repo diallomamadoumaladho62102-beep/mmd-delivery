@@ -103,25 +103,23 @@ Deno.serve(async (req) => {
     const payoutsEnabled = Boolean(acct?.payouts_enabled);
     const detailsSubmitted = Boolean(acct?.details_submitted);
 
-    // 3) Déduire le statut
-    const onboardingStatus = payoutsEnabled
-      ? "active"
+    // 3) Déduire le statut (strict: details + charges + payouts)
+    const ready =
+      detailsSubmitted && chargesEnabled && payoutsEnabled;
+    const onboardingStatus = ready
+      ? "ready_for_payouts"
       : detailsSubmitted
-      ? "submitted"
-      : "pending";
+        ? "verification_in_progress"
+        : "verification_pending";
 
-    // 4) Update DB
+    // 4) Update DB (restaurant_profiles has no stripe_onboarded boolean)
     const updatePayload: Record<string, any> = {
       stripe_charges_enabled: chargesEnabled,
       stripe_payouts_enabled: payoutsEnabled,
       stripe_details_submitted: detailsSubmitted,
       stripe_onboarding_status: onboardingStatus,
+      stripe_onboarded_at: ready ? new Date().toISOString() : null,
     };
-
-    if (payoutsEnabled) {
-      updatePayload.stripe_onboarded = true;
-      updatePayload.stripe_onboarded_at = new Date().toISOString();
-    }
 
     const { error: upErr } = await supabaseAdmin
       .from("restaurant_profiles")

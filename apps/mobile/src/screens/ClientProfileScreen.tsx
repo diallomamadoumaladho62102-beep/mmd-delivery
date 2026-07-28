@@ -16,12 +16,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../lib/supabase";
 import { uploadFile } from "../lib/uploadFile";
+import { clearSelectedRole } from "../lib/authRole";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { toUserFacingError } from "../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientProfile">;
 
@@ -96,6 +98,7 @@ export function ClientProfileScreen() {
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarLocalUri, setAvatarLocalUri] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   const profileComplete = useMemo(() => {
     return (
@@ -336,6 +339,44 @@ export function ClientProfileScreen() {
         ) + ` ${insErr.message}`
       );
     }
+  }
+
+  async function handleSignOut() {
+    if (signingOut) return;
+
+    Alert.alert(
+      t("client.profile.signOut.title", "Sign Out"),
+      t("client.profile.signOut.body", "Sign out of this device? Your account and data stay intact."),
+      [
+        { text: t("common.cancel", "Cancel"), style: "cancel" },
+        {
+          text: t("client.profile.signOut.confirm", "Sign Out"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setSigningOut(true);
+              await clearSelectedRole();
+              const { error } = await supabase.auth.signOut();
+              if (error) throw error;
+              navigation.reset({
+                index: 0,
+                routes: [{ name: "RoleSelect" }],
+              });
+            } catch (e: unknown) {
+              Alert.alert(
+                t("common.error", "Erreur"),
+                toUserFacingError(
+                  e,
+                  t("client.profile.signOut.error", "Unable to sign out right now."),
+                ),
+              );
+            } finally {
+              setSigningOut(false);
+            }
+          },
+        },
+      ],
+    );
   }
 
   async function handleSave() {
@@ -676,6 +717,29 @@ export function ClientProfileScreen() {
           ) : (
             <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>
               {t("client.profile.saveAndContinue", "Enregistrer et continuer")}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleSignOut}
+          disabled={signingOut || saving}
+          style={{
+            marginTop: 14,
+            borderWidth: 1,
+            borderColor: "rgba(148,163,184,0.35)",
+            borderRadius: 12,
+            paddingVertical: 12,
+            alignItems: "center",
+            backgroundColor: "rgba(15,23,42,0.9)",
+            opacity: signingOut ? 0.7 : 1,
+          }}
+        >
+          {signingOut ? (
+            <ActivityIndicator color="#E2E8F0" />
+          ) : (
+            <Text style={{ color: "#E2E8F0", fontWeight: "800" }}>
+              {t("client.profile.signOut.button", "Sign Out")}
             </Text>
           )}
         </TouchableOpacity>

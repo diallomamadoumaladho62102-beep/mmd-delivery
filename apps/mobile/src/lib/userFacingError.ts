@@ -119,8 +119,33 @@ function mapKnownErrorCode(code: string, message: string): string | null {
       return "Le paiement n'a pas pu être finalisé. Réessayez dans quelques instants.";
     case "delivery_share_pct_invalid":
       return "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support.";
+    case "stripe_setup_required":
+    case "Driver not onboarded":
+      return "Complétez la configuration Stripe pour activer les virements, puis réessayez.";
+    case "stripe_secret_key_must_be_live":
+      return "La configuration Stripe Connect n'est pas prête côté serveur. Contactez le support MMD.";
+    case "stripe_account_retrieve_failed":
+      return "Impossible de lire votre compte Stripe. Rouvrez la configuration des virements.";
+    case "stripe_connect_error":
+      return "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.";
+    case "already_cashed_out_today":
+      return "Vous avez déjà demandé un retrait aujourd'hui. Réessayez demain.";
+    case "below_minimum":
+      return "Le solde disponible est inférieur au minimum de retrait.";
+    case "cashout_rate_limited":
+      return "Trop de demandes de retrait. Attendez quelques minutes puis réessayez.";
+    case "Driver has no Stripe account":
+      return "Aucun compte Stripe Connect trouvé. Appuyez sur Activer les virements pour commencer.";
     default:
       break;
+  }
+
+  if (/not onboarded|setup.?required|complete.?stripe/i.test(message)) {
+    return "Complétez la configuration Stripe pour activer les virements, puis réessayez.";
+  }
+
+  if (/stripe_secret_key_must_be_live|sk_live_/i.test(message)) {
+    return "La configuration Stripe Connect n'est pas prête côté serveur. Contactez le support MMD.";
   }
 
   if (

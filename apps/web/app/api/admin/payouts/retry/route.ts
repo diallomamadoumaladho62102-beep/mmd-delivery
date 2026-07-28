@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { AdminAccessError, assertCanRetryPayout } from "@/lib/adminServer";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { assertFoodCheckoutCurrencyAllowed } from "@/lib/foodCurrencyGuard";
+import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -59,18 +60,6 @@ function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, {
     status,
     headers: JSON_HEADERS,
-  });
-}
-
-function buildStripeClient() {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-
-  if (!secretKey) {
-    throw new Error("Missing required env: STRIPE_SECRET_KEY");
-  }
-
-  return new Stripe(secretKey, {
-    apiVersion: "2023-10-16",
   });
 }
 
@@ -562,7 +551,6 @@ export async function POST(request: NextRequest) {
     const { orderId, target } = await parseBody(request);
 
     const supabase = buildSupabaseAdminClient();
-    const stripe = buildStripeClient();
 
     await writeRetryAuditLogs({
       supabase,

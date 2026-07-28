@@ -33,6 +33,8 @@ export const CLIENT_CANCELLED_STATUSES = new Set([
   "canceled",
   "cancelled",
   "refunded",
+  "expired",
+  "rejected",
 ]);
 
 export type ClientTripKind =
@@ -46,6 +48,7 @@ export type ClientTripLike = {
   status: string;
   payment_status?: string | null;
   created_at?: string | null;
+  expires_at?: string | null;
   is_test?: boolean | null;
   hidden_from_user?: boolean | null;
   archived_at?: string | null;
@@ -62,12 +65,32 @@ export function normalizeStatus(status: string): string {
   return String(status || "").trim().toLowerCase();
 }
 
-export function isClientActiveStatus(status: string): boolean {
+export function isClientActiveStatus(
+  status: string,
+  paymentStatus?: string | null,
+  expiresAt?: string | null,
+): boolean {
   const s = normalizeStatus(status);
   if (CLIENT_COMPLETED_STATUSES.has(s) || CLIENT_CANCELLED_STATUSES.has(s)) {
     return false;
   }
-  return CLIENT_ACTIVE_STATUSES.has(s);
+  if (!CLIENT_ACTIVE_STATUSES.has(s)) {
+    return false;
+  }
+
+  const pay = normalizeStatus(paymentStatus ?? "");
+  if (expiresAt) {
+    const exp = Date.parse(expiresAt);
+    if (Number.isFinite(exp) && exp < Date.now() && pay !== "paid") {
+      return false;
+    }
+  }
+
+  // Unpaid terminal-like drafts should not stay on the active home strip forever
+  // once payment failed.
+  if (pay === "failed") return false;
+
+  return true;
 }
 
 export function isClientCompletedStatus(status: string): boolean {
@@ -82,7 +105,9 @@ export function computeClientOrderStats(items: ClientTripLike[]) {
   const visible = items.filter(isVisibleClientTrip);
   return {
     totalOrders: visible.length,
-    active: visible.filter((i) => isClientActiveStatus(i.status)).length,
+    active: visible.filter((i) =>
+      isClientActiveStatus(i.status, i.payment_status, i.expires_at),
+    ).length,
     completed: visible.filter((i) => isClientCompletedStatus(i.status)).length,
     cancelled: visible.filter((i) => isClientCancelledStatus(i.status)).length,
   };
@@ -105,7 +130,9 @@ export function selectClientHomeDisplayItems<T extends ClientTripLike>(
       return tb - ta;
     });
 
-  const actives = visible.filter((i) => isClientActiveStatus(i.status));
+  const actives = visible.filter((i) =>
+    isClientActiveStatus(i.status, i.payment_status, i.expires_at),
+  );
   if (actives.length > 0) {
     return { displayItems: actives, mode: "active" };
   }

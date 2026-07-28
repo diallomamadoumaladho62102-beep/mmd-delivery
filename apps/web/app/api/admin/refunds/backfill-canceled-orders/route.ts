@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import {
   AdminAccessError,
   assertCanManageOrders,
 } from "@/lib/adminServer";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,12 +23,6 @@ function getEnv(name: string) {
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-function getStripe() {
-  return new Stripe(getEnv("STRIPE_SECRET_KEY"), {
-    apiVersion: "2023-10-16",
-  });
 }
 
 async function safeReadJson(req: NextRequest) {
@@ -101,7 +96,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const stripe = getStripe();
     const results: any[] = [];
 
     for (const order of eligible as any[]) {

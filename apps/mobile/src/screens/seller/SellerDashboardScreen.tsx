@@ -21,6 +21,15 @@ import { sellerStatusLabel, type SellerRow } from "../../lib/sellerTypes";
 import { useTranslation } from "react-i18next";
 import { rowDirection } from "../../i18n/rtl";
 import { APP_COLORS } from "../../theme/appTheme";
+import { startStripeOnboarding } from "../../utils/stripe";
+import { supabase } from "../../lib/supabase";
+import {
+  normalizeStripeConnectStatus,
+  stripeConnectStatusLabel,
+  stripeConnectUserMessage,
+  type StripeConnectStatusCode,
+} from "../../lib/stripeConnectStatus";
+import { toUserFacingError } from "../../lib/userFacingError";
 
 type Props = { navigation: any };
 
@@ -57,6 +66,12 @@ export default function SellerDashboardScreen({ navigation }: Props) {
   const [orderCount, setOrderCount] = useState(0);
   const [platformOk, setPlatformOk] = useState(true);
   const [togglingShop, setTogglingShop] = useState(false);
+  const [stripeBusy, setStripeBusy] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<StripeConnectStatusCode>("setup_required");
+  const [stripeLabel, setStripeLabel] = useState(stripeConnectStatusLabel("setup_required"));
+  const [stripeMessage, setStripeMessage] = useState(
+    stripeConnectUserMessage("setup_required"),
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -69,6 +84,35 @@ export default function SellerDashboardScreen({ navigation }: Props) {
         const counts = await loadSellerDashboardCounts(row.id);
         setProductCount(counts.productCount);
         setOrderCount(counts.orderCount);
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (token) {
+          const { data: connectData } = await supabase.functions.invoke(
+            "check_connect_status",
+            {
+              body: { role: "seller" },
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+          if (connectData && typeof connectData === "object") {
+            const connect = connectData as Record<string, unknown>;
+            const code = normalizeStripeConnectStatus(connect.status);
+            setStripeStatus(code);
+            setStripeLabel(
+              String(connect.status_label ?? "") || stripeConnectStatusLabel(code),
+            );
+            setStripeMessage(stripeConnectUserMessage(code));
+          } else {
+            const code = normalizeStripeConnectStatus(
+              row.stripe_onboarding_status ??
+                (row.stripe_payouts_enabled ? "ready_for_payouts" : "setup_required"),
+            );
+            setStripeStatus(code);
+            setStripeLabel(stripeConnectStatusLabel(code));
+            setStripeMessage(stripeConnectUserMessage(code));
+          }
+        }
       }
     } catch (e) {
       console.log("SellerDashboard refresh error:", e);
@@ -99,6 +143,25 @@ export default function SellerDashboardScreen({ navigation }: Props) {
       );
     } finally {
       setTogglingShop(false);
+    }
+  };
+
+  const onOpenStripe = async () => {
+    if (stripeBusy) return;
+    try {
+      setStripeBusy(true);
+      await startStripeOnboarding("seller");
+      await refresh();
+    } catch (e) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        toUserFacingError(
+          e,
+          t("seller.dashboard.stripeError", "Unable to open Stripe Connect."),
+        ),
+      );
+    } finally {
+      setStripeBusy(false);
     }
   };
 
@@ -142,6 +205,58 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 </Text>
               ) : null}
             </View>
+
+            {seller && canManageProducts ? (
+              <View
+                style={{
+                  backgroundColor: APP_COLORS.surface,
+                  borderRadius: 16,
+                  padding: 16,
+                  borderWidth: 1,
+                  borderColor: APP_COLORS.border,
+                  gap: 10,
+                }}
+              >
+                <Text style={{ color: APP_COLORS.text, fontWeight: "800", fontSize: 16 }}>
+                  {t("seller.dashboard.payoutsTitle", "Payouts (Stripe Connect)")}
+                </Text>
+                <Text
+                  style={{
+                    color:
+                      stripeStatus === "ready_for_payouts"
+                        ? "#22C55E"
+                        : stripeStatus === "restricted" || stripeStatus === "disabled"
+                          ? APP_COLORS.danger
+                          : "#EAB308",
+                    fontWeight: "800",
+                  }}
+                >
+                  {stripeLabel}
+                </Text>
+                <Text style={{ color: APP_COLORS.textMuted }}>{stripeMessage}</Text>
+                <TouchableOpacity
+                  onPress={() => void onOpenStripe()}
+                  disabled={stripeBusy}
+                  style={{
+                    alignSelf: "flex-start",
+                    marginTop: 4,
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: APP_COLORS.border,
+                    backgroundColor: "rgba(59,130,246,0.14)",
+                    opacity: stripeBusy ? 0.65 : 1,
+                  }}
+                >
+                  <Text style={{ color: APP_COLORS.text, fontWeight: "800" }}>
+                    {stripeStatus === "ready_for_payouts"
+                      ? t("seller.dashboard.manageBank", "Manage bank account")
+                      : t("seller.dashboard.setupPayouts", "Set up payouts")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
             {seller && canToggleShop ? (
               <View

@@ -13,6 +13,7 @@ type Props = {
   currentLang: string;
   onClose: () => void;
   onSelect: (lang: AppLanguageCode) => void;
+  onSignOut?: () => void;
 };
 
 export function ClientHomeLanguageSheet({
@@ -21,6 +22,7 @@ export function ClientHomeLanguageSheet({
   currentLang,
   onClose,
   onSelect,
+  onSignOut,
 }: Props) {
   const insets = useSafeAreaInsets();
 
@@ -54,6 +56,24 @@ export function ClientHomeLanguageSheet({
           </Text>
 
           <LanguagePicker currentCode={currentLang} onSelect={handleSelect} />
+
+          {onSignOut ? (
+            <Pressable
+              onPress={() => {
+                onClose();
+                onSignOut();
+              }}
+              style={styles.signOutButton}
+              accessibilityRole="button"
+              accessibilityLabel={ts("client.profile.signOut.button", "Sign Out")}
+              testID="client-home-sign-out"
+              hitSlop={10}
+            >
+              <Text style={styles.signOutText}>
+                {ts("client.profile.signOut.button", "Sign Out")}
+              </Text>
+            </Pressable>
+          ) : null}
 
           <Pressable
             onPress={onClose}
@@ -122,4 +142,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   dismissText: { color: V4.green, fontSize: 15, fontWeight: "700" },
+  signOutButton: {
+    marginTop: 10,
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.35)",
+    backgroundColor: "#F8FAFC",
+  },
+  signOutText: { color: "#334155", fontSize: 15, fontWeight: "800" },
 });

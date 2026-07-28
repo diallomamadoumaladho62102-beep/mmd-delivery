@@ -712,7 +712,17 @@ serve(async (req) => {
 
   const { error: rErr } = await supabase
     .from("restaurant_profiles")
-    .update({ stripe_onboarded: onboarded, stripe_onboarded_at: onboarded ? now : null })
+    .update({
+      stripe_onboarded_at: onboarded ? now : null,
+      stripe_charges_enabled: charges_enabled,
+      stripe_payouts_enabled: payouts_enabled,
+      stripe_details_submitted: details_submitted,
+      stripe_onboarding_status: onboarded
+        ? "ready_for_payouts"
+        : details_submitted
+          ? "verification_in_progress"
+          : "verification_pending",
+    })
     .eq("stripe_account_id", accountId);
 
   if (rErr) {
@@ -721,6 +731,30 @@ serve(async (req) => {
       event_id,
       account_id: accountId,
       error: rErr.message,
+    });
+  }
+
+  const { error: sErr } = await supabase
+    .from("sellers")
+    .update({
+      stripe_onboarded_at: onboarded ? now : null,
+      stripe_charges_enabled: charges_enabled,
+      stripe_payouts_enabled: payouts_enabled,
+      stripe_details_submitted: details_submitted,
+      stripe_onboarding_status: onboarded
+        ? "ready_for_payouts"
+        : details_submitted
+          ? "verification_in_progress"
+          : "verification_pending",
+    })
+    .eq("stripe_account_id", accountId);
+
+  if (sErr) {
+    log("error", "stripe_webhook.seller_update_failed", {
+      request_id,
+      event_id,
+      account_id: accountId,
+      error: sErr.message,
     });
   }
 

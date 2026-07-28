@@ -34,7 +34,7 @@ Affected functions (return `200` + `disabled: true` without moving money):
 **Also disabled when `MMD_EDGE_PAYOUTS_DISABLED=true`:**
 
 - `pay_restaurant_now` — manual restaurant transfer (use Vercel `transfers/run` / admin)
-- `pay-driver-now` — driver wallet cashout (use Vercel canonical payouts)
+- `pay-driver-now` — Edge wallet cashout disabled; use Vercel `POST /api/wallet/driver-cashout`
 
 ## Verification SQL
 

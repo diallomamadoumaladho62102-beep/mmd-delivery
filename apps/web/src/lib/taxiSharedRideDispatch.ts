@@ -104,22 +104,51 @@ export async function scheduleTaxiRideDispatchIfEligible(params: {
     };
   }
 
+  const wave = resolveInitialTaxiDispatchWave(rideForWave);
+
   const dispatchResult = await triggerTaxiRideDispatch({
     origin,
     taxiRideId: dispatchTarget.dispatchRideId,
-    wave: resolveInitialTaxiDispatchWave(rideForWave),
+    wave,
     supabaseAdmin: supabase,
   });
 
-  if (!dispatchResult.ok) {
+  if (dispatchResult.ok) {
+    return { dispatched: true, dispatchRideId: dispatchTarget.dispatchRideId };
+  }
+
+  // In-process fallback when HTTP dispatch secret/network fails — same path as local payments.
+  console.warn("[scheduleTaxiRideDispatchIfEligible] HTTP dispatch failed — in-process fallback", {
+    taxiRideId: dispatchTarget.dispatchRideId,
+    wave,
+    error: dispatchResult.error,
+  });
+
+  try {
+    const { runTaxiRideDispatch } = await import("@/lib/runTaxiRideDispatch");
+    const local = await runTaxiRideDispatch({
+      supabase,
+      taxiRideId: dispatchTarget.dispatchRideId,
+      wave,
+    });
+    if (local.ok) {
+      return { dispatched: true, dispatchRideId: dispatchTarget.dispatchRideId };
+    }
     return {
       dispatched: false,
       dispatchRideId: dispatchTarget.dispatchRideId,
-      reason: dispatchResult.error ?? "dispatch_failed",
+      reason: local.error ?? dispatchResult.error ?? "dispatch_failed",
+    };
+  } catch (err) {
+    return {
+      dispatched: false,
+      dispatchRideId: dispatchTarget.dispatchRideId,
+      reason:
+        err instanceof Error
+          ? err.message
+          : dispatchResult.error ?? "dispatch_failed",
     };
   }
-
-  return { dispatched: true, dispatchRideId: dispatchTarget.dispatchRideId };
 }
 
 export async function resolveTaxiSharedDispatchTarget(params: {

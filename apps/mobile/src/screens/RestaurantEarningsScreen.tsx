@@ -13,11 +13,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import * as Linking from "expo-linking";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../lib/supabase";
 import { clearSelectedRole } from "../lib/authRole";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { startStripeOnboarding } from "../utils/stripe";
+import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
+import {
+  normalizeStripeConnectStatus,
+  stripeConnectStatusLabel,
+  stripeConnectUserMessage,
+  type StripeConnectStatusCode,
+} from "../lib/stripeConnectStatus";
 
 type OrderStatus =
   | "pending"
@@ -272,14 +279,25 @@ export function RestaurantEarningsScreen() {
   const fetchPayoutProfile = useCallback(async () => {
     try {
       const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionErr,
+      } = await supabase.auth.getSession();
 
-      if (userErr) throw userErr;
-      if (!user) {
+      if (sessionErr) throw sessionErr;
+      if (!session?.user) {
         setPayoutProfile(null);
         return;
+      }
+
+      const { data: connectData, error: connectErr } = await supabase.functions.invoke(
+        "check_connect_status",
+        {
+          body: { role: "restaurant" },
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        },
+      );
+      if (connectErr) {
+        logTechnicalError("restaurant.earnings.check_connect_status", connectErr);
       }
 
       const { data, error } = await supabase
@@ -294,12 +312,41 @@ export function RestaurantEarningsScreen() {
             "stripe_details_submitted",
           ].join(",")
         )
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .maybeSingle();
 
       if (error) throw error;
-      setPayoutProfile((data as any) ?? null);
-    } catch {
+
+      let profile = (data as unknown as RestaurantPayoutProfile | null) ?? null;
+      if (connectData && typeof connectData === "object" && profile) {
+        const connect = connectData as Record<string, unknown>;
+        profile = {
+          ...profile,
+          stripe_account_id:
+            connect.stripe_account_id != null
+              ? String(connect.stripe_account_id)
+              : profile.stripe_account_id,
+          stripe_onboarding_status:
+            typeof connect.status === "string"
+              ? connect.status
+              : profile.stripe_onboarding_status,
+          stripe_charges_enabled:
+            typeof connect.charges_enabled === "boolean"
+              ? connect.charges_enabled
+              : profile.stripe_charges_enabled,
+          stripe_payouts_enabled:
+            typeof connect.payouts_enabled === "boolean"
+              ? connect.payouts_enabled
+              : profile.stripe_payouts_enabled,
+          stripe_details_submitted:
+            typeof connect.details_submitted === "boolean"
+              ? connect.details_submitted
+              : profile.stripe_details_submitted,
+        };
+      }
+      setPayoutProfile(profile);
+    } catch (e) {
+      logTechnicalError("restaurant.earnings.fetchPayoutProfile", e);
       setPayoutProfile(null);
     }
   }, []);
@@ -587,90 +634,44 @@ export function RestaurantEarningsScreen() {
   );
 
   const payoutStatus = useMemo(() => {
-    if (!payoutProfile?.stripe_account_id)
-      return {
-        label: t("restaurant.earnings.payout.notConfigured", "Non configuré"),
-        ok: false,
-      };
-
-    if (payoutProfile.stripe_payouts_enabled)
-      return { label: t("restaurant.earnings.payout.active", "Actif"), ok: true };
+    const code: StripeConnectStatusCode = !payoutProfile?.stripe_account_id
+      ? "setup_required"
+      : normalizeStripeConnectStatus(
+          payoutProfile.stripe_onboarding_status ??
+            (payoutProfile.stripe_payouts_enabled &&
+            payoutProfile.stripe_charges_enabled &&
+            payoutProfile.stripe_details_submitted
+              ? "ready_for_payouts"
+              : payoutProfile.stripe_details_submitted
+                ? "verification_in_progress"
+                : "verification_pending"),
+        );
 
     return {
-      label: t("restaurant.earnings.payout.configuring", "En configuration"),
-      ok: false,
+      code,
+      label: stripeConnectStatusLabel(code),
+      message: stripeConnectUserMessage(code),
+      ok: code === "ready_for_payouts",
     };
-  }, [payoutProfile, t]);
+  }, [payoutProfile]);
 
-  async function startStripeOnboarding() {
+  async function openRestaurantStripe() {
     if (payoutLoading) return;
 
     try {
-      if (payoutProfile?.stripe_payouts_enabled) {
-        Alert.alert(
-          t("common.info", "Info"),
-          t(
-            "restaurant.earnings.payout.alreadyActive",
-            "Ton virement est déjà actif ✅"
-          )
-        );
-        return;
-      }
-
       setPayoutLoading(true);
-
-      const { data: sessionData, error: sessionErr } =
-        await supabase.auth.getSession();
-      if (sessionErr) throw sessionErr;
-
-      const token = sessionData.session?.access_token;
-      if (!token)
-        throw new Error(
-          t(
-            "restaurant.earnings.errors.missingSession",
-            "Session manquante. Reconnecte-toi puis réessaie."
-          )
-        );
-
-      const returnUrl = Linking.createURL("stripe/return");
-      const refreshUrl = Linking.createURL("stripe/refresh");
-
-      const { data, error } = await supabase.functions.invoke(
-        "restaurant-connect-link",
-        {
-          body: { return_url: returnUrl, refresh_url: refreshUrl },
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (error) {
-        const anyErr: any = error;
-        const body = anyErr?.context?.body;
-
-        const msg = body
-          ? typeof body === "string"
-            ? body
-            : JSON.stringify(body, null, 2)
-          : error.message;
-
-        throw new Error(msg);
-      }
-
-      const url = (data as any)?.url as string | undefined;
-      if (!url)
-        throw new Error(
-          t("restaurant.earnings.errors.missingStripeLink", "Lien Stripe manquant.")
-        );
-
-      await Linking.openURL(url);
+      await startStripeOnboarding("restaurant");
+      await fetchPayoutProfile();
     } catch (e: any) {
       Alert.alert(
         t("common.error", "Erreur"),
-        e?.message ??
+        toUserFacingError(
+          e,
           t(
             "restaurant.earnings.errors.openStripe",
-            "Impossible d’ouvrir Stripe Connect."
-          )
+            "Impossible d’ouvrir Stripe Connect.",
+          ),
+        ),
       );
     } finally {
       setPayoutLoading(false);
@@ -1227,7 +1228,11 @@ export function RestaurantEarningsScreen() {
             {t("restaurant.earnings.payments.statusLabel", "Statut virement :")}{" "}
             <Text
               style={{
-                color: payoutStatus.ok ? "#22C55E" : "#EAB308",
+                color: payoutStatus.ok
+                  ? "#22C55E"
+                  : payoutStatus.code === "restricted" || payoutStatus.code === "disabled"
+                    ? "#FCA5A5"
+                    : "#EAB308",
                 fontWeight: "900",
               }}
             >
@@ -1236,15 +1241,12 @@ export function RestaurantEarningsScreen() {
           </Text>
 
           <Text style={{ color: "#64748B", marginTop: 8, fontWeight: "800" }}>
-            {t(
-              "restaurant.earnings.payments.help",
-              "Configure ton compte Stripe pour recevoir les virements (Express)."
-            )}
+            {payoutStatus.message}
           </Text>
 
           <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
             <TouchableOpacity
-              onPress={() => void startStripeOnboarding()}
+              onPress={() => void openRestaurantStripe()}
               disabled={payoutLoading}
               style={{
                 alignSelf: "flex-start",
@@ -1257,7 +1259,9 @@ export function RestaurantEarningsScreen() {
               }}
             >
               <Text style={{ color: "white", fontWeight: "900" }}>
-                {t("restaurant.earnings.payments.setup", "Configurer mon virement")}
+                {payoutStatus.ok
+                  ? t("restaurant.earnings.payments.manage", "Gérer le compte bancaire")
+                  : t("restaurant.earnings.payments.setup", "Configurer mon virement")}
               </Text>
             </TouchableOpacity>
 

@@ -48,13 +48,6 @@ function mapStripePaymentError(error: { code?: string; message?: string }): stri
   );
 }
 
-function extractSupabaseFunctionError(error: unknown): string {
-  return toUserFacingError(
-    error,
-    "Une action temporairement impossible s'est produite. Veuillez réessayer.",
-  );
-}
-
 function isExpoGo(): boolean {
   const ownership = (Constants as { appOwnership?: string } | null)?.appOwnership;
   return ownership === "expo";
@@ -75,13 +68,77 @@ function pickOnboardingUrl(data: unknown): string | null {
   return (
     asNonEmptyString(d?.onboarding_url) ??
     asNonEmptyString(d?.onboardingUrl) ??
+    asNonEmptyString(d?.login_url) ??
     asNonEmptyString(d?.url) ??
     asNonEmptyString(d?.link) ??
     asNonEmptyString(d?.data?.onboarding_url) ??
     asNonEmptyString(d?.data?.onboardingUrl) ??
+    asNonEmptyString(d?.data?.login_url) ??
     asNonEmptyString(d?.data?.url) ??
     asNonEmptyString(d?.data?.link)
   );
+}
+
+async function parseFunctionsInvokeError(
+  error: unknown
+): Promise<{ code?: string; message?: string }> {
+  const record =
+    typeof error === "object" && error !== null
+      ? (error as Record<string, any>)
+      : null;
+
+  try {
+    const context = record?.context;
+    if (context && typeof context.json === "function") {
+      const parsed = await context.json();
+      return {
+        code: asNonEmptyString(parsed?.error) ?? asNonEmptyString(parsed?.code) ?? undefined,
+        message:
+          asNonEmptyString(parsed?.message) ??
+          asNonEmptyString(parsed?.details) ??
+          asNonEmptyString(parsed?.error) ??
+          undefined,
+      };
+    }
+    if (context && typeof context.text === "function") {
+      const text = await context.text();
+      try {
+        const parsed = text ? JSON.parse(text) : null;
+        return {
+          code: asNonEmptyString(parsed?.error) ?? asNonEmptyString(parsed?.code) ?? undefined,
+          message:
+            asNonEmptyString(parsed?.message) ??
+            asNonEmptyString(parsed?.details) ??
+            asNonEmptyString(text) ??
+            undefined,
+        };
+      } catch {
+        return { message: asNonEmptyString(text) ?? undefined };
+      }
+    }
+    if (typeof context?.body === "string" && context.body.trim()) {
+      try {
+        const parsed = JSON.parse(context.body);
+        return {
+          code: asNonEmptyString(parsed?.error) ?? asNonEmptyString(parsed?.code) ?? undefined,
+          message:
+            asNonEmptyString(parsed?.message) ??
+            asNonEmptyString(parsed?.details) ??
+            asNonEmptyString(context.body) ??
+            undefined,
+        };
+      } catch {
+        return { message: context.body };
+      }
+    }
+  } catch {
+    // fall through
+  }
+
+  return {
+    code: asNonEmptyString(record?.code) ?? asNonEmptyString(record?.error) ?? undefined,
+    message: asNonEmptyString(record?.message) ?? undefined,
+  };
 }
 
 function pickCheckoutUrl(data: unknown): string | null {
@@ -426,7 +483,7 @@ async function openExternalUrl(url: string): Promise<{ type: string | null }> {
 }
 
 export async function startStripeOnboarding(
-  role: "driver" | "restaurant" = "driver"
+  role: "driver" | "restaurant" | "seller" = "driver"
 ): Promise<boolean> {
   try {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -438,18 +495,40 @@ export async function startStripeOnboarding(
     console.log("[stripe-onboarding] session:", {
       userId: sessionData?.session?.user?.id ?? null,
       hasAccessToken: Boolean(sessionData?.session?.access_token),
+      role,
     });
 
+    const accessToken = sessionData?.session?.access_token;
     const { data, error } = await supabase.functions.invoke("create_connect_account", {
       body: { role },
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     });
 
     if (error) {
-      console.log(
-        "[stripe-onboarding] create_connect_account error:",
-        JSON.stringify(error, null, 2)
+      const parsed = await parseFunctionsInvokeError(error);
+      console.log("[stripe-onboarding] create_connect_account error:", {
+        parsed,
+        error,
+      });
+      Alert.alert(
+        "Stripe",
+        toUserFacingError(
+          { code: parsed.code, message: parsed.message ?? error.message },
+          "Impossible d'ouvrir la configuration Stripe pour le moment.",
+        ),
       );
-      Alert.alert("Erreur Stripe", extractSupabaseFunctionError(error));
+      return false;
+    }
+
+    const payload = (data ?? {}) as Record<string, unknown>;
+    if (payload?.error) {
+      Alert.alert(
+        "Stripe",
+        toUserFacingError(
+          { code: String(payload.error), message: String(payload.message ?? payload.error) },
+          "Impossible d'ouvrir la configuration Stripe pour le moment.",
+        ),
+      );
       return false;
     }
 
@@ -458,10 +537,18 @@ export async function startStripeOnboarding(
     if (!url) {
       console.log("[stripe-onboarding] no onboarding url in response:", data);
       Alert.alert(
-        "Erreur",
-        "Stripe URL manquante. La fonction a répondu, mais aucune URL d’onboarding n’a été trouvée."
+        "Stripe",
+        "Stripe URL manquante. La fonction a répondu, mais aucun lien d’onboarding n’a été trouvé.",
       );
       return false;
+    }
+
+    const alreadyComplete = Boolean(payload?.already_complete);
+    if (alreadyComplete) {
+      Alert.alert(
+        "Stripe",
+        "Votre compte est prêt pour les virements. Vous pouvez ajouter ou modifier votre compte bancaire dans le tableau de bord Stripe.",
+      );
     }
 
     await openExternalUrl(url);
@@ -469,7 +556,7 @@ export async function startStripeOnboarding(
   } catch (error) {
     logTechnicalError("stripe-onboarding", error);
     Alert.alert(
-      "Erreur",
+      "Stripe",
       toUserFacingError(error, "Impossible d'ouvrir la configuration Stripe pour le moment."),
     );
     return false;
@@ -530,18 +617,28 @@ export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean
   const initPaymentSheet = stripeNative.initPaymentSheet;
   const presentPaymentSheet = stripeNative.presentPaymentSheet;
 
-  const init = await initPaymentSheet({
+  const merchantCountryCode =
+    asNonEmptyString(d?.merchantCountryCode) ??
+    asNonEmptyString(d?.merchant_country_code) ??
+    "US";
+
+  const paymentSheetOptions: Record<string, unknown> = {
     merchantDisplayName: "MMD Delivery",
     paymentIntentClientSecret: clientSecret,
-    allowsDelayedPaymentMethods: true,
-    applePay: {
-      merchantCountryCode: "US",
-    },
-    googlePay: {
-      merchantCountryCode: "US",
+    allowsDelayedPaymentMethods: false,
+  };
+
+  // Wallet buttons only on supported platforms; card always remains available via PaymentSheet.
+  if (Platform.OS === "ios") {
+    paymentSheetOptions.applePay = { merchantCountryCode };
+  } else if (Platform.OS === "android") {
+    paymentSheetOptions.googlePay = {
+      merchantCountryCode,
       testEnv: String(process.env.EXPO_PUBLIC_STRIPE_PK ?? "").startsWith("pk_test_"),
-    },
-  });
+    };
+  }
+
+  const init = await initPaymentSheet(paymentSheetOptions as any);
 
   if (init.error) {
     logTechnicalError("payments.initPaymentSheet", init.error, { orderId: normalizedOrderId });

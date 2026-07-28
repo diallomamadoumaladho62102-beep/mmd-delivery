@@ -132,10 +132,22 @@ serve(async (req) => {
     const userId = userData.user.id;
 
     const body = await req.json().catch(() => ({} as any));
-    const role = body?.role;
+    const roleRaw = String(body?.role ?? "").toLowerCase();
+    const role =
+      roleRaw === "restaurant"
+        ? "restaurant"
+        : roleRaw === "seller" || roleRaw === "merchant"
+          ? "seller"
+          : roleRaw === "driver"
+            ? "driver"
+            : null;
 
-    if (role !== "driver" && role !== "restaurant") {
-      return json(req, { error: "Invalid role. Must be 'driver' or 'restaurant'." }, 400);
+    if (!role) {
+      return json(
+        req,
+        { error: "Invalid role. Must be 'driver', 'restaurant', or 'seller'." },
+        400,
+      );
     }
 
     // Service role client (bypass RLS)
@@ -143,17 +155,40 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
 
-    const table = role === "driver" ? "driver_profiles" : "restaurant_profiles";
+    const table =
+      role === "driver"
+        ? "driver_profiles"
+        : role === "restaurant"
+          ? "restaurant_profiles"
+          : "sellers";
 
     // Lire profil
+    const selectCols =
+      role === "seller"
+        ? "stripe_account_id, city, country_code"
+        : "stripe_account_id, city, state";
     const { data: prof, error: pErr } = await supabase
       .from(table)
-      .select("stripe_account_id, city, state")
+      .select(selectCols)
       .eq("user_id", userId)
       .maybeSingle();
 
     if (pErr) {
       return json(req, { error: "Profile read failed", details: pErr.message }, 400);
+    }
+
+    if (!prof) {
+      return json(
+        req,
+        {
+          error: "profile_not_found",
+          message:
+            role === "seller"
+              ? "Complete seller onboarding before connecting Stripe."
+              : "Profile not found for this role.",
+        },
+        404,
+      );
     }
 
     let accountId: string | null = (prof as any)?.stripe_account_id ?? null;
@@ -162,6 +197,7 @@ serve(async (req) => {
     const connectCountry = normalizeStripeConnectCountry(
       body?.country_code ??
         body?.countryCode ??
+        (prof as any)?.country_code ??
         inferConnectCountryFromProfile((prof as any)?.city, (prof as any)?.state)
     );
 
@@ -182,7 +218,10 @@ serve(async (req) => {
             : {
                 stripe_account_id: null,
                 stripe_onboarding_status: "pending",
-                stripe_onboarded: false,
+                stripe_charges_enabled: false,
+                stripe_payouts_enabled: false,
+                stripe_details_submitted: false,
+                stripe_onboarded_at: null,
               };
         const { error: clearErr } = await supabase
           .from(table)
@@ -217,9 +256,20 @@ serve(async (req) => {
 
       accountId = account.id;
 
+      const createPayload =
+        role === "driver"
+          ? { stripe_account_id: accountId, stripe_onboarded: false }
+          : {
+              stripe_account_id: accountId,
+              stripe_onboarding_status: "created",
+              stripe_charges_enabled: false,
+              stripe_payouts_enabled: false,
+              stripe_details_submitted: false,
+            };
+
       const { error: upErr } = await supabase
         .from(table)
-        .update({ stripe_account_id: accountId })
+        .update(createPayload)
         .eq("user_id", userId);
 
       if (upErr) {
@@ -227,13 +277,99 @@ serve(async (req) => {
       }
     }
 
-    // Générer le lien d'onboarding
+    // Sync live Stripe account flags before deciding link type.
+    const acct = await stripe.accounts.retrieve(accountId);
+    const detailsSubmitted = Boolean(acct.details_submitted);
+    const chargesEnabled = Boolean(acct.charges_enabled);
+    const payoutsEnabled = Boolean(acct.payouts_enabled);
+    const disabledReason =
+      (acct.requirements as { disabled_reason?: string | null } | null)
+        ?.disabled_reason ?? null;
+    const currentlyDue = Array.isArray(acct.requirements?.currently_due)
+      ? acct.requirements!.currently_due!
+      : [];
+    const pastDue = Array.isArray(acct.requirements?.past_due)
+      ? acct.requirements!.past_due!
+      : [];
+    const onboarded = detailsSubmitted && chargesEnabled && payoutsEnabled;
+    const nowIso = new Date().toISOString();
+
+    if (role === "driver") {
+      await supabase
+        .from("driver_profiles")
+        .update({
+          stripe_onboarded: onboarded,
+          stripe_onboarded_at: onboarded ? nowIso : null,
+        })
+        .eq("user_id", userId);
+    } else {
+      const statusForDb = onboarded
+        ? "ready_for_payouts"
+        : pastDue.length > 0
+          ? "restricted"
+          : detailsSubmitted
+            ? "verification_in_progress"
+            : "verification_pending";
+      await supabase
+        .from(table)
+        .update({
+          stripe_onboarded_at: onboarded ? nowIso : null,
+          stripe_charges_enabled: chargesEnabled,
+          stripe_payouts_enabled: payoutsEnabled,
+          stripe_details_submitted: detailsSubmitted,
+          stripe_onboarding_status: statusForDb,
+        })
+        .eq("user_id", userId);
+    }
+
+    // Fully ready: open Express dashboard (bank update / manage) instead of re-onboarding.
+    if (onboarded && !disabledReason) {
+      const login = await stripe.accounts.createLoginLink(accountId);
+      return json(req, {
+        ok: true,
+        role,
+        user_id: userId,
+        account_id: accountId,
+        country: connectCountry,
+        already_complete: true,
+        status: "ready_for_payouts",
+        status_label: "Ready for payouts",
+        can_receive_payouts: true,
+        needs_onboarding: false,
+        onboarding_url: login.url,
+        login_url: login.url,
+        stripe_mode: stripeMode,
+        cleared_stale_test_account: clearedStaleTestAccount,
+        details_submitted: detailsSubmitted,
+        charges_enabled: chargesEnabled,
+        payouts_enabled: payoutsEnabled,
+      });
+    }
+
+    // Incomplete or restricted: continue / resume onboarding (or account_update if submitted).
+    const linkType =
+      detailsSubmitted && (currentlyDue.length > 0 || pastDue.length > 0)
+        ? "account_update"
+        : "account_onboarding";
+
     const link = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: refreshUrl,
       return_url: returnUrl,
-      type: "account_onboarding",
+      type: linkType,
     });
+
+    const status = disabledReason
+      ? /rejected|listed|under_review/i.test(disabledReason)
+        ? "restricted"
+        : "disabled"
+      : pastDue.length > 0
+        ? "restricted"
+        : detailsSubmitted
+          ? "verification_in_progress"
+          : currentlyDue.length > 0
+            ? "verification_pending"
+            : "verification_pending";
 
     return json(req, {
       ok: true,
@@ -241,13 +377,32 @@ serve(async (req) => {
       user_id: userId,
       account_id: accountId,
       country: connectCountry,
+      already_complete: false,
+      status,
+      status_label: status.replace(/_/g, " "),
+      can_receive_payouts: false,
+      needs_onboarding: true,
       onboarding_url: link.url,
+      link_type: linkType,
       expires_at: link.expires_at ?? null,
       stripe_mode: stripeMode,
       cleared_stale_test_account: clearedStaleTestAccount,
+      details_submitted: detailsSubmitted,
+      charges_enabled: chargesEnabled,
+      payouts_enabled: payoutsEnabled,
+      disabled_reason: disabledReason,
+      currently_due: currentlyDue,
+      past_due: pastDue,
     });
   } catch (e: any) {
     console.error("create_connect_account fatal:", e);
-    return json(req, { error: e?.message ?? "Server error" }, 500);
+    const msg = e?.message ?? "Server error";
+    const code =
+      typeof e?.code === "string"
+        ? e.code
+        : /must be live|sk_live/i.test(msg)
+          ? "stripe_secret_key_must_be_live"
+          : "stripe_connect_error";
+    return json(req, { error: code, message: msg, details: msg }, 500);
   }
 });

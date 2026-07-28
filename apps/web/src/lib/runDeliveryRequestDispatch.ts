@@ -464,9 +464,13 @@ export async function runDeliveryRequestDispatch(params: {
   const uniqueTokens = Array.from(
     new Map(
       (tokens ?? [])
-        .filter((t: { expo_push_token?: string }) =>
-          String(t.expo_push_token ?? "").startsWith("ExponentPushToken["),
-        )
+        .filter((t: { expo_push_token?: string }) => {
+          const token = String(t.expo_push_token ?? "");
+          return (
+            token.startsWith("ExponentPushToken[") ||
+            token.startsWith("ExpoPushToken[")
+          );
+        })
         .map((t: { expo_push_token: string; user_id: string }) => [
           String(t.expo_push_token),
           t,

@@ -17,20 +17,45 @@
 3. Remove or disable any Supabase project URL pointing at `stripe_webhook`.
 4. Signing secret must match `STRIPE_WEBHOOK_SECRET` in Vercel production env.
 5. Subscribe exactly these Live events (handler in `route.ts`):
+   - `account.updated`
+   - `account.application.authorized`
+   - `capability.updated`
+   - `payment_intent.created`
+   - `payment_intent.processing`
+   - `payment_intent.succeeded`
+   - `payment_intent.payment_failed`
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
-   - `payment_intent.succeeded`
+   - `checkout.session.async_payment_failed`
    - `checkout.session.expired`
-   - `payment_intent.payment_failed`
+   - `payout.created`
+   - `payout.updated`
+   - `payout.paid`
+   - `payout.failed`
+   - `payout.canceled`
+   - `transfer.created`
+   - `transfer.updated`
+   - `transfer.reversed`
    - `charge.refunded`
    - `refund.updated`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.paid`
+   - `invoice.payment_succeeded`
+   - `invoice.payment_failed`
 
-## Failure / expiry sync (Vercel)
+## Event handling notes
 
-| Event | Effect (idempotent, never downgrades `paid` / `refunded`) |
-|-------|-----------------------------------------------------------|
+| Event | Effect |
+|-------|--------|
+| `payment_intent.created` / `processing` | Acknowledged + idempotency row only (no money movement) |
+| `payment_intent.succeeded` / checkout completed / async succeeded | Mark entity paid + wallet bridge |
 | `checkout.session.expired` | Food / DR / taxi → `payment_status=unpaid`; marketplace → `pending_checkout` |
-| `payment_intent.payment_failed` | Food / DR / taxi → `payment_status=failed`; marketplace → `payment_failed` |
+| `payment_intent.payment_failed` / `checkout.session.async_payment_failed` | Food / DR / taxi → `failed` (or unpaid fallback); marketplace → `payment_failed` |
+| `account.*` / `capability.updated` | Sync Connect readiness on drivers / restaurants / sellers |
+| `transfer.*` | Sync `order_payouts` + marketplace payout rows by `stripe_transfer_id` |
+| `payout.created` / `updated` / `paid` / `failed` / `canceled` | Sync `driver_payouts` + `payout_transactions` by Stripe payout id |
 
 ## Idempotency table (Vercel webhook)
 

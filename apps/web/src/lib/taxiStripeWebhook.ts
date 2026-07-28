@@ -350,13 +350,40 @@ export async function handleTaxiStripePayment(params: {
   }
 
   const dispatchOrigin = getDispatchSiteOrigin();
+  const waveRide = {
+    preferred_driver_id: (row as { preferred_driver_id?: string | null })
+      .preferred_driver_id,
+    is_scheduled: row.is_scheduled,
+  };
+
   if (dispatchOrigin) {
     await scheduleTaxiRideDispatchIfEligible({
       supabase: supabaseAdmin,
       origin: dispatchOrigin,
       taxiRideId,
-      rideForWave: row,
+      rideForWave: waveRide,
     });
+  } else {
+    console.warn(
+      "[taxiStripeWebhook] missing dispatch origin — running in-process taxi dispatch",
+      { taxiRideId },
+    );
+    try {
+      const { runTaxiRideDispatch } = await import("@/lib/runTaxiRideDispatch");
+      const { resolveInitialTaxiDispatchWave } = await import(
+        "@/lib/taxiPremiumDispatch"
+      );
+      await runTaxiRideDispatch({
+        supabase: supabaseAdmin,
+        taxiRideId,
+        wave: resolveInitialTaxiDispatchWave(waveRide),
+      });
+    } catch (err) {
+      console.error("[taxiStripeWebhook] in-process taxi dispatch failed", {
+        taxiRideId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   return { ok: true, already_paid: false };

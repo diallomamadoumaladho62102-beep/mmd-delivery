@@ -397,9 +397,12 @@ export async function runTaxiRideDispatch(params: {
     const payoutDollars =
       payoutCents != null ? (payoutCents / 100).toFixed(2) : null;
 
-    const tokenRows = (tokens ?? []).filter((t: { expo_push_token?: string }) =>
-      String(t.expo_push_token ?? "").startsWith("ExponentPushToken[")
-    ) as Array<{
+    const tokenRows = (tokens ?? []).filter((t: { expo_push_token?: string }) => {
+      const token = String(t.expo_push_token ?? "");
+      return (
+        token.startsWith("ExponentPushToken[") || token.startsWith("ExpoPushToken[")
+      );
+    }) as Array<{
       user_id: string;
       expo_push_token: string;
       platform?: string | null;
@@ -420,7 +423,8 @@ export async function runTaxiRideDispatch(params: {
         isFavoriteDispatch: true,
         screen: "DriverTabs",
       },
-      priority: "high",
+      priority: "high" as const,
+      _contentAvailable: true,
     }));
 
     const pushResult = await sendTaxiOfferPushes({
@@ -762,9 +766,13 @@ export async function runTaxiRideDispatch(params: {
   const uniqueTokens = Array.from(
     new Map(
       (tokens ?? [])
-        .filter((t: { expo_push_token?: string }) =>
-          String(t.expo_push_token ?? "").startsWith("ExponentPushToken[")
-        )
+        .filter((t: { expo_push_token?: string }) => {
+          const token = String(t.expo_push_token ?? "");
+          return (
+            token.startsWith("ExponentPushToken[") ||
+            token.startsWith("ExpoPushToken[")
+          );
+        })
         .map(
           (t: {
             expo_push_token: string;
@@ -797,7 +805,8 @@ export async function runTaxiRideDispatch(params: {
       wave,
       screen: "DriverTabs",
     },
-    priority: "high",
+    priority: "high" as const,
+    _contentAvailable: true,
   }));
 
   const distanceByDriver = new Map(

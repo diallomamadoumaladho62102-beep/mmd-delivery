@@ -42,6 +42,11 @@ import {
   isMarketplaceStripeModule,
   pickSellerOrderIdFromMetadata,
 } from "@/lib/marketplaceStripeWebhook";
+import { syncStripeConnectAccountUpdated } from "@/lib/stripeConnectWebhook";
+import {
+  syncStripePayoutEvent,
+  syncStripeTransferEvent,
+} from "@/lib/stripeTransferPayoutWebhook";
 import {
   bridgeStripeWalletFromPaidDeliveryRequest,
   bridgeStripeWalletFromPaidOrder,
@@ -276,11 +281,27 @@ const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024; // 1 MB
 const HANDLED_EVENT_TYPES = new Set([
   "checkout.session.completed",
   "checkout.session.async_payment_succeeded",
-  "payment_intent.succeeded",
+  "checkout.session.async_payment_failed",
   "checkout.session.expired",
+  "payment_intent.created",
+  "payment_intent.processing",
+  "payment_intent.succeeded",
   "payment_intent.payment_failed",
   "charge.refunded",
   "refund.updated",
+  // Stripe Connect onboarding / bank verification sync
+  "account.updated",
+  "account.application.authorized",
+  "capability.updated",
+  // Connect transfers / payouts (wallet cashout + marketplace disbursements)
+  "transfer.created",
+  "transfer.updated",
+  "transfer.reversed",
+  "payout.created",
+  "payout.updated",
+  "payout.paid",
+  "payout.failed",
+  "payout.canceled",
   // Phase 5 — Stripe Billing subscriptions
   "customer.subscription.created",
   "customer.subscription.updated",
@@ -3047,12 +3068,76 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (
+      event.type === "payment_intent.created" ||
+      event.type === "payment_intent.processing"
+    ) {
+      // Lifecycle acknowledgements only — money movement is driven by
+      // payment_intent.succeeded / payment_failed (and checkout session events).
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      console.log("ℹ️ WEBHOOK: payment_intent lifecycle acknowledged", {
+        event_id: event.id,
+        type: event.type,
+        payment_intent_id: paymentIntent.id,
+        status: paymentIntent.status,
+      });
+      return json({
+        received: true,
+        type: event.type,
+        ok: true,
+        acknowledged: true,
+        payment_intent_id: paymentIntent.id,
+        status: paymentIntent.status,
+      });
+    }
+
     if (event.type === "payment_intent.succeeded") {
       return await handlePaymentIntentSucceeded(supabaseAdmin, event);
     }
 
     if (event.type === "checkout.session.expired") {
       const session = event.data.object as Stripe.Checkout.Session;
+      const result = await handleCheckoutSessionExpiredEvent({
+        supabaseAdmin,
+        session,
+        eventType: event.type,
+      });
+      return json(result);
+    }
+
+    if (event.type === "checkout.session.async_payment_failed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent &&
+              typeof session.payment_intent === "object" &&
+              "id" in session.payment_intent
+            ? String((session.payment_intent as { id?: unknown }).id ?? "")
+            : "";
+
+      if (paymentIntentId.trim()) {
+        try {
+          const paymentIntent =
+            await stripe.paymentIntents.retrieve(paymentIntentId.trim());
+          const result = await handlePaymentIntentFailedEvent({
+            supabaseAdmin,
+            paymentIntent,
+            eventType: event.type,
+          });
+          return json(result);
+        } catch (retrieveError) {
+          console.warn(
+            "⚠️ WEBHOOK: async_payment_failed PI retrieve failed — session fallback",
+            {
+              event_id: event.id,
+              payment_intent_id: paymentIntentId,
+              error: getErrorMessage(retrieveError),
+            },
+          );
+        }
+      }
+
       const result = await handleCheckoutSessionExpiredEvent({
         supabaseAdmin,
         session,
@@ -3098,6 +3183,56 @@ export async function POST(req: NextRequest) {
         type: event.type,
         ok: true,
         refund_sync: result,
+      });
+    }
+
+    if (
+      event.type === "account.updated" ||
+      event.type === "account.application.authorized" ||
+      event.type === "capability.updated"
+    ) {
+      const result = await syncStripeConnectAccountUpdated(
+        supabaseAdmin,
+        stripe,
+        event
+      );
+      return json({
+        received: true,
+        type: event.type,
+        ok: result.ok,
+        connect_sync: result,
+      });
+    }
+
+    if (
+      event.type === "transfer.created" ||
+      event.type === "transfer.updated" ||
+      event.type === "transfer.reversed"
+    ) {
+      const result = await syncStripeTransferEvent(supabaseAdmin, event);
+      return json({
+        received: true,
+        type: event.type,
+        ok: result.ok,
+        matched: result.matched,
+        transfer_sync: result,
+      });
+    }
+
+    if (
+      event.type === "payout.created" ||
+      event.type === "payout.updated" ||
+      event.type === "payout.paid" ||
+      event.type === "payout.failed" ||
+      event.type === "payout.canceled"
+    ) {
+      const result = await syncStripePayoutEvent(supabaseAdmin, event);
+      return json({
+        received: true,
+        type: event.type,
+        ok: result.ok,
+        matched: result.matched,
+        payout_sync: result,
       });
     }
 

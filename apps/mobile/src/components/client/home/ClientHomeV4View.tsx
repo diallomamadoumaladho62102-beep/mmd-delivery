@@ -660,6 +660,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
         currentLang={props.currentLang}
         onClose={props.onCloseMenu}
         onSelect={props.onChangeLang}
+        onSignOut={props.onSignOut}
         ts={props.ts}
       />
     </View>

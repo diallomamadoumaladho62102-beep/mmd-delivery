@@ -33,14 +33,29 @@ Expected:
 ## Stripe Dashboard checklist
 
 1. **One** webhook endpoint → Vercel URL only
-2. Events (liste cible Live, alignée sur `apps/web/app/api/stripe/webhook/route.ts`) :
+2. Events (Live, aligned on `apps/web/app/api/stripe/webhook/route.ts`):
+   - `account.updated`
+   - `account.application.authorized`
+   - `capability.updated`
+   - `payment_intent.created`
+   - `payment_intent.processing`
+   - `payment_intent.succeeded`
+   - `payment_intent.payment_failed`
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
-   - `payment_intent.succeeded`
+   - `checkout.session.async_payment_failed`
    - `checkout.session.expired`
-   - `payment_intent.payment_failed`
+   - `payout.created`
+   - `payout.updated`
+   - `payout.paid`
+   - `payout.failed`
+   - `payout.canceled`
+   - `transfer.created`
+   - `transfer.updated`
+   - `transfer.reversed`
    - `charge.refunded`
    - `refund.updated`
+   - plus subscription/invoice events if Billing is live
 3. No Supabase project URL in webhook list
 4. Supabase Edge secrets: `MMD_STRIPE_WEBHOOK_DISABLED=true`
 

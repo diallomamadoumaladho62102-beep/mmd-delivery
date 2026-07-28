@@ -15,6 +15,7 @@ import { mmdAudio } from "./src/lib/mmdAudio";
 import { syncLocaleForRole } from "./src/i18n";
 import { logStartupProbe, reportBootError } from "./src/lib/startupProbe";
 import { initMobileSentry, wrapWithSentry } from "./src/lib/sentry";
+import { checkAndApplyExpoUpdates } from "./src/lib/expoOtaUpdates";
 
 type Role = "client" | "driver" | "restaurant";
 
@@ -83,6 +84,13 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     logStartupProbe("app-mounted");
+  }, []);
+
+  // Production OTA: apply JS updates on launch so store binaries stay stable.
+  useEffect(() => {
+    void checkAndApplyExpoUpdates().catch((error) => {
+      reportBootError("expo-ota-updates", error);
+    });
   }, []);
 
   useEffect(() => {

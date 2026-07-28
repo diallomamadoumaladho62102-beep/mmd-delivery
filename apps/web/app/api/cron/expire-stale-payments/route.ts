@@ -18,6 +18,7 @@ import {
   PAYMENT_EXPIRATION_LOCK_JOB,
   runExpireStalePayments,
 } from "@/lib/expireStalePayments";
+import { assertStripeModeAllowed } from "@/lib/paymentLiveGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,8 @@ function json(body: Record<string, unknown>, status = 200) {
 function getStripe(): Stripe | null {
   const key = String(process.env.STRIPE_SECRET_KEY ?? "").trim();
   if (!key) return null;
+  const gate = assertStripeModeAllowed("cron/expire-stale-payments");
+  if (gate.ok === false) throw new Error(gate.error);
   return new Stripe(key, {
     apiVersion: "2023-10-16",
     timeout: CRON_STRIPE_TIMEOUT_MS,

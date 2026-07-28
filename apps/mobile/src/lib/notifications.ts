@@ -45,6 +45,16 @@ export async function ensureAndroidPushChannels(): Promise<void> {
     bypassDnd: false,
   });
 
+  await Notifications.setNotificationChannelAsync("driver-alerts", {
+    name: "Alertes chauffeur",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 400, 200, 400],
+    lightColor: "#2563EB",
+    sound: "mmd_signature_driver_60s.wav",
+    enableVibrate: true,
+    bypassDnd: false,
+  });
+
   await Notifications.setNotificationChannelAsync(RESTAURANT_ORDERS_PUSH_CHANNEL, {
     name: "Commandes restaurant",
     importance: Notifications.AndroidImportance.MAX,
@@ -183,6 +193,8 @@ export async function registerUserPushToken(
         expo_push_token: expoPushToken,
         platform: Platform.OS,
         app_version: appVersion,
+        is_active: true,
+        disabled: false,
         updated_at: new Date().toISOString(),
       },
       {

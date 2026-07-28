@@ -15,6 +15,9 @@ export type WalletSummaryResponse = {
   last_cashout_at?: string | null;
   stripe_account_id?: string | null;
   stripe_onboarded?: boolean;
+  stripe_status?: string;
+  stripe_status_label?: string;
+  stripe_status_message?: string;
   can_cashout?: boolean;
   cashout_block_reason?: string | null;
   error?: string;

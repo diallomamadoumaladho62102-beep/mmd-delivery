@@ -1118,6 +1118,14 @@ export function ClientHomeScreen() {
           void fetchOrders("load", true);
         },
       },
+      {
+        event: "*",
+        table: "taxi_rides",
+        filter: `client_user_id=eq.${clientUserId}`,
+        callback: () => {
+          void fetchOrders("load", true);
+        },
+      },
     ]);
 
     realtimeChannelRef.current = channel;

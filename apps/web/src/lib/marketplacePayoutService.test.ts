@@ -57,9 +57,12 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
   };
 
   function chainEq(table: string, filters: Record<string, unknown> = {}) {
+    const emptyList = async () => ({ data: [] as Record<string, unknown>[], error: null });
     const api: Record<string, unknown> = {
       eq: (col: string, val: unknown) => chainEq(table, { ...filters, [col]: val }),
-      limit: () => api,
+      is: (col: string, val: unknown) => chainEq(table, { ...filters, [col]: val }),
+      order: () => api,
+      limit: () => emptyList(),
       maybeSingle: async () => {
         if (table === "marketplace_seller_wallet_entries") {
           const row =
@@ -112,6 +115,33 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
 
   const from = (table: string) => ({
     select: () => chainEq(table),
+    update: () => ({
+      eq: () => ({
+        eq: () => ({
+          is: () => ({
+            select: () => ({
+              maybeSingle: async () => ({ data: null, error: null }),
+            }),
+          }),
+          select: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
+        is: () => ({
+          select: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
+        in: () => ({
+          select: () => ({
+            maybeSingle: async () => ({ data: null, error: null }),
+          }),
+        }),
+        select: () => ({
+          maybeSingle: async () => ({ data: null, error: null }),
+        }),
+      }),
+    }),
     insert: (payload: Record<string, unknown>) => ({
       select: () => ({
         maybeSingle: async () => {
@@ -208,16 +238,14 @@ async function main() {
     assert.equal(result.executed, 0);
   });
 
-  await test("flag ON still hard-stubs executeMarketplacePayouts (no Stripe)", async () => {
+  await test("flag ON executes zero when no approved live payouts queued", async () => {
     process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED = "true";
     const { admin } = createMockAdmin();
     const result = await executeMarketplacePayouts(admin);
     assert.equal(result.ok, true);
     assert.equal(result.executed, 0);
-    assert.equal(
-      result.ignored,
-      "marketplace_payouts_execution_hard_stub_no_stripe_transfer"
-    );
+    assert.equal(result.failed ?? 0, 0);
+    assert.equal(result.ignored, undefined);
   });
 
   await test("simulate payout does not call Stripe", async () => {

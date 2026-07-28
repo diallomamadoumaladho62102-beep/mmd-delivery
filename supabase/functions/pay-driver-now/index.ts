@@ -38,7 +38,7 @@ serve(async (req) => {
       ok: false,
       disabled: true,
       message:
-        "Edge driver payouts disabled. Use Vercel /api/admin/process-payouts.",
+        "Edge driver payouts disabled. Use Vercel POST /api/wallet/driver-cashout.",
     });
   }
 
@@ -149,11 +149,27 @@ serve(async (req) => {
     }
 
     if (!prof.stripe_account_id) {
-      return json(req, { error: "Driver has no stripe_account_id" }, 400);
+      return json(
+        req,
+        {
+          error: "Driver has no Stripe account",
+          message:
+            "Aucun compte Stripe Connect trouvé. Appuyez sur Activer les virements pour commencer.",
+        },
+        400,
+      );
     }
 
     if (prof.stripe_onboarded === false) {
-      return json(req, { error: "Driver not onboarded" }, 400);
+      return json(
+        req,
+        {
+          error: "stripe_setup_required",
+          message:
+            "Complétez la configuration Stripe pour activer les virements, puis réessayez.",
+        },
+        400,
+      );
     }
 
     const { data: prep, error: prepErr } = await supabase.rpc(

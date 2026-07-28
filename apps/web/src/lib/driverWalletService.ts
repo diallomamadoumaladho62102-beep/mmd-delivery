@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPayoutMethodsForRecipient } from "@/lib/payoutMethodRouting";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
+import {
+  deriveStripeConnectStatus,
+  stripeConnectStatusLabel,
+  stripeConnectUserMessage,
+  type StripeConnectStatusCode,
+} from "@/lib/stripeConnectStatus";
 
 const CURRENCY_BY_COUNTRY: Record<string, string> = {
   US: "USD",
@@ -153,6 +159,9 @@ export type DriverWalletSummary = {
   last_cashout_at: string | null;
   stripe_account_id: string | null;
   stripe_onboarded: boolean;
+  stripe_status: StripeConnectStatusCode;
+  stripe_status_label: string;
+  stripe_status_message: string;
   can_cashout: boolean;
   cashout_block_reason: string | null;
 };
@@ -190,6 +199,12 @@ export async function buildDriverWalletSummary(
     ? String(profile.stripe_account_id)
     : null;
   const stripeOnboarded = Boolean(profile?.stripe_onboarded);
+  const stripeStatus = deriveStripeConnectStatus({
+    stripe_account_id: stripeAccountId,
+    details_submitted: stripeOnboarded ? true : null,
+    charges_enabled: stripeOnboarded ? true : null,
+    payouts_enabled: stripeOnboarded ? true : null,
+  });
   const cashoutBlockedToday = Boolean(
     lastCashoutAt && isSameLocalDay(new Date(lastCashoutAt), new Date())
   );
@@ -217,6 +232,9 @@ export async function buildDriverWalletSummary(
     last_cashout_at: lastCashoutAt,
     stripe_account_id: stripeAccountId,
     stripe_onboarded: stripeOnboarded,
+    stripe_status: stripeStatus,
+    stripe_status_label: stripeConnectStatusLabel(stripeStatus),
+    stripe_status_message: stripeConnectUserMessage(stripeStatus),
     can_cashout: canCashout,
     cashout_block_reason: cashoutBlockReason,
   };

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import Stripe from "stripe";
+import type Stripe from "stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import {
@@ -10,15 +10,10 @@ import {
   requireTaxiApiUser,
   taxiJson,
 } from "@/lib/taxiApi";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error("Missing STRIPE_SECRET_KEY");
-  return new Stripe(key, { apiVersion: "2023-10-16" });
-}
 
 function clientCanCancelStatus(status: string, driverId: unknown) {
   if (driverId) return false;
@@ -140,7 +135,6 @@ export async function POST(req: NextRequest) {
       const paymentIntentId = String(ride.stripe_payment_intent_id ?? "").trim();
       if (paymentIntentId) {
         try {
-          const stripe = getStripe();
           const refund = await stripe.refunds.create(
             {
               payment_intent: paymentIntentId,

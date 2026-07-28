@@ -8,6 +8,7 @@ import {
   PAYMENT_EXPIRATION_LOCK_JOB,
   runExpireStalePayments,
 } from "@/lib/expireStalePayments";
+import { assertStripeModeAllowed } from "@/lib/paymentLiveGuard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +60,8 @@ function getSupabaseAdmin() {
 function getStripe(): Stripe | null {
   const key = String(process.env.STRIPE_SECRET_KEY ?? "").trim();
   if (!key) return null;
+  const gate = assertStripeModeAllowed("orders/expire-unpaid");
+  if (gate.ok === false) throw new Error(gate.error);
   return new Stripe(key, { apiVersion: "2023-10-16" });
 }
 

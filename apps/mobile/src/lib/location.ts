@@ -364,7 +364,6 @@ export async function startDriverLocationTracking(
         return;
       }
 
-      await updateDriverOnlineStatus(driverId, true);
       await startKeepAwake();
       subscribeAppStateForKeepAwake();
 

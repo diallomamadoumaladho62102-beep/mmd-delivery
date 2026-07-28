@@ -57,6 +57,8 @@ export default function SellerDashboardPage() {
   const [coverUrl, setCoverUrl] = useState("");
   const [documentUrlsText, setDocumentUrlsText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [stripeBusy, setStripeBusy] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState("setup_required");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -64,6 +66,7 @@ export default function SellerDashboardPage() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id;
+      const token = sessionData.session?.access_token;
       if (!userId) {
         router.replace("/login");
         return;
@@ -72,7 +75,7 @@ export default function SellerDashboardPage() {
       const { data: sellerRow, error: sellerError } = await supabase
         .from("sellers")
         .select(
-          "id,business_name,status,city,is_accepting_orders,logo_url,cover_image_url,document_urls"
+          "id,business_name,status,city,is_accepting_orders,logo_url,cover_image_url,document_urls,stripe_onboarding_status"
         )
         .eq("user_id", userId)
         .maybeSingle();
@@ -85,12 +88,22 @@ export default function SellerDashboardPage() {
         return;
       }
 
-      const row = sellerRow as SellerRow;
+      const row = sellerRow as SellerRow & { stripe_onboarding_status?: string | null };
       setSeller(row);
       setBusinessName(row.business_name);
       setLogoUrl(row.logo_url ?? "");
       setCoverUrl(row.cover_image_url ?? "");
       setDocumentUrlsText(asUrlList(row.document_urls).join("\n"));
+      setStripeStatus(String(row.stripe_onboarding_status ?? "setup_required"));
+
+      if (token) {
+        const { data: connectData } = await supabase.functions.invoke("check_connect_status", {
+          body: { role: "seller" },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const status = (connectData as { status?: string } | null)?.status;
+        if (status) setStripeStatus(status);
+      }
 
       const [{ data: productRows }, { data: orderRows }] = await Promise.all([
         supabase
@@ -233,6 +246,51 @@ export default function SellerDashboardPage() {
           {saving ? "Saving…" : "Save profile"}
         </button>
       </form>
+
+      <section className="space-y-2 rounded-xl border border-slate-200 p-4">
+        <h2 className="font-medium text-slate-900">Stripe Connect payouts</h2>
+        <p className="text-sm text-slate-600">
+          Status: <span className="font-semibold">{stripeStatus.replace(/_/g, " ")}</span>
+        </p>
+        <button
+          type="button"
+          disabled={stripeBusy || seller?.status !== "approved"}
+          className="rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          onClick={async () => {
+            try {
+              setStripeBusy(true);
+              const { data: sessionData } = await supabase.auth.getSession();
+              const token = sessionData.session?.access_token;
+              if (!token) throw new Error("Not signed in");
+              const { data, error } = await supabase.functions.invoke(
+                "create_connect_account",
+                {
+                  body: { role: "seller" },
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              );
+              if (error) throw error;
+              const url =
+                (data as { onboarding_url?: string; login_url?: string } | null)
+                  ?.onboarding_url ||
+                (data as { login_url?: string } | null)?.login_url;
+              if (!url) throw new Error("Stripe URL missing");
+              window.open(url, "_blank", "noopener,noreferrer");
+              await refresh();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Stripe Connect failed");
+            } finally {
+              setStripeBusy(false);
+            }
+          }}
+        >
+          {stripeBusy
+            ? "Opening…"
+            : stripeStatus === "ready_for_payouts"
+              ? "Manage bank account"
+              : "Set up Stripe payouts"}
+        </button>
+      </section>
 
       <section className="space-y-2">
         <h2 className="font-medium text-slate-900">Products ({products.length})</h2>

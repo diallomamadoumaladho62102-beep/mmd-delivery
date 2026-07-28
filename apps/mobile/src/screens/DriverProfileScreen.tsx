@@ -1046,16 +1046,26 @@ export function DriverProfileScreen() {
         role: profile?.role ?? "driver",
         full_name: trimOrNull(editFullName),
         phone: trimOrNull(editPhone),
+        avatar_url: avatarPath ?? profile?.avatar_url ?? profile?.personal_photo_url ?? null,
+      };
+
+      // Optional columns may exist after 20261001120000 migration — fail soft if absent.
+      const profilePayloadWithExtras: Record<string, unknown> = {
+        ...profilePayload,
         emergency_phone: trimOrNull(editEmergencyPhone),
         state: trimOrNull(editState),
         zip_code: trimOrNull(normalizeZip(editZipCode)),
-        avatar_url: avatarPath ?? profile?.avatar_url ?? profile?.personal_photo_url ?? null,
-        updated_at: new Date().toISOString(),
       };
 
-      const { error: pErr } = await supabase
+      let { error: pErr } = await supabase
         .from("profiles")
-        .upsert(profilePayload, { onConflict: "id" });
+        .upsert(profilePayloadWithExtras, { onConflict: "id" });
+
+      if (pErr && /emergency_phone|zip_code|state|updated_at|personal_photo|schema cache/i.test(String(pErr.message ?? ""))) {
+        ({ error: pErr } = await supabase
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "id" }));
+      }
 
       if (pErr) {
         logTechnicalError("driver.profile.profiles", pErr);
@@ -1294,8 +1304,6 @@ export function DriverProfileScreen() {
             full_name: profile?.full_name ?? driver?.full_name ?? null,
             phone: profile?.phone ?? driver?.phone ?? null,
             avatar_url: storagePath,
-            personal_photo_url: storagePath,
-            updated_at: new Date().toISOString(),
           },
           { onConflict: "id" },
         );
