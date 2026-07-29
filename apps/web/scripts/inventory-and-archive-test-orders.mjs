@@ -81,6 +81,8 @@ async function fetchAll(table, select, filters = "") {
 
 function isLivePi(pi) {
   const s = String(pi || "");
+  // Stripe test-mode PaymentIntents often look like pi_3… (not pi_test_).
+  // Never treat a PI as live when the Checkout Session is clearly test.
   return s.startsWith("pi_") && !s.startsWith("pi_test_");
 }
 function isTestPi(pi) {
@@ -89,7 +91,7 @@ function isTestPi(pi) {
 }
 function isLiveCs(cs) {
   const s = String(cs || "");
-  return s.startsWith("cs_live_") || (s.startsWith("cs_") && !s.startsWith("cs_test_"));
+  return s.startsWith("cs_live_");
 }
 function isTestCs(cs) {
   const s = String(cs || "");
@@ -109,15 +111,27 @@ function classifyRow(row) {
   const pi = row.stripe_payment_intent_id;
   const cs = row.stripe_session_id;
   const paid = String(row.payment_status || "").toLowerCase() === "paid";
+  const status = String(row.status || "").toLowerCase();
 
-  if (isProtected(row.id)) {
+  // Explicit Stripe test markers always win — even over LIVE_PROTECTED allowlist
+  // (those IDs were meant for cs_live_ proofs; cs_test_ leftovers must hide).
+  if (isTestCs(cs) || isTestPi(pi)) {
+    reasons.push("stripe_test_prefix");
+    if (paid || status === "paid_pending" || status === "processing_pending") {
+      return { class: "TEST_PAID_TESTMODE", reasons };
+    }
+    return { class: "TEST_CANDIDATE", reasons };
+  }
+
+  if (isProtected(row.id) && (isLiveCs(cs) || isLivePi(pi) || paid)) {
     return { class: "LIVE_PROTECTED", reasons: ["explicit_live_proof_id"] };
   }
-  if (isLivePi(pi) || isLiveCs(cs)) {
+
+  // Only cs_live_ / unambiguous live PI (no test session) counts as LIVE.
+  if (isLiveCs(cs) || (isLivePi(pi) && !isTestCs(cs))) {
     return { class: "LIVE", reasons: ["live_stripe_id"] };
   }
 
-  if (isTestPi(pi) || isTestCs(cs)) reasons.push("stripe_test_prefix");
   const meta = JSON.stringify(row.metadata || row.items_json || {}).toLowerCase();
   if (/e2e|fixture|demo_test|test_only|cypress|playwright/.test(meta)) {
     reasons.push("test_metadata");
@@ -131,13 +145,23 @@ function classifyRow(row) {
     reasons.push("test_external_ref");
   }
 
-  if (reasons.length > 0 && paid && (isTestPi(pi) || isTestCs(cs))) {
+  if (reasons.length > 0 && paid) {
     return { class: "TEST_PAID_TESTMODE", reasons };
   }
   if (reasons.length > 0) {
     return { class: "TEST_CANDIDATE", reasons };
   }
   if (!pi && !cs && !paid) {
+    // Abandoned checkout / quote drafts from e2e — safe to hide from apps.
+    if (
+      /^(pending|quoted|canceled|cancelled|expired|draft)$/i.test(status) ||
+      !status
+    ) {
+      return {
+        class: "UNPAID_ABANDONED_DRAFT",
+        reasons: ["unpaid_no_stripe_abandoned"],
+      };
+    }
     return { class: "UNPAID_NO_STRIPE", reasons: ["unpaid_no_stripe"] };
   }
   if (paid && !pi && !cs) {
@@ -146,11 +170,12 @@ function classifyRow(row) {
   return { class: "KEEP", reasons: ["default_keep"] };
 }
 
-/** Only clear test markers — never unpaid-only or paid-suspect. */
+/** Clear test markers + abandoned unpaid drafts — never live Stripe or paid-suspect. */
 function isSafeToArchive(classified) {
   return (
     classified.class === "TEST_PAID_TESTMODE" ||
-    classified.class === "TEST_CANDIDATE"
+    classified.class === "TEST_CANDIDATE" ||
+    classified.class === "UNPAID_ABANDONED_DRAFT"
   );
 }
 
@@ -266,12 +291,16 @@ const backupPayload = {
   archive_targets: archiveTargets,
   live_or_protected_ids: liveOrProtected.map((r) => r.id),
   criteria: {
-    archive_only: ["TEST_PAID_TESTMODE", "TEST_CANDIDATE"],
+    archive_only: [
+      "TEST_PAID_TESTMODE",
+      "TEST_CANDIDATE",
+      "UNPAID_ABANDONED_DRAFT",
+    ],
     never_archive: [
       "LIVE",
       "LIVE_PROTECTED",
       "PAID_NO_STRIPE_SUSPECT",
-      "UNPAID_NO_STRIPE (inventoried only)",
+      "UNPAID_NO_STRIPE (non-abandoned)",
       "age alone",
     ],
   },

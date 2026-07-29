@@ -16,13 +16,17 @@ export function isLiveVisibleTrip(row: TripVisibilityFlags | null | undefined): 
   return true;
 }
 
-/** PostgREST chain for production-visible trips. */
+/**
+ * PostgREST chain for production-visible trips.
+ *
+ * Avoids `.or()` so subsequent ownership `.or(...)` calls on the same query
+ * do not overwrite the visibility predicate. Soft-archive always sets
+ * `is_test=true` + `archived_at`, so those two alone hide archived rows;
+ * `hidden_from_user` is enforced client-side via `isLiveVisibleTrip`.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyLiveTripFilters<T extends { eq: any; is: any; or: any }>(
   query: T,
 ): T {
-  return query
-    .eq("is_test", false)
-    .is("archived_at", null)
-    .or("hidden_from_user.is.null,hidden_from_user.eq.false") as T;
+  return query.eq("is_test", false).is("archived_at", null) as T;
 }

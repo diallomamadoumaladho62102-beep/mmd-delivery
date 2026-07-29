@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 
 type OrderRow = {
@@ -96,20 +97,21 @@ export function ClientInboxScreen() {
       const from = startOfDay(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000));
       const fromISO = from.toISOString();
 
-      const baseSelect = "id, created_at, status, client_id, restaurant_name";
+      const baseSelect =
+        "id, created_at, status, client_id, restaurant_name, is_test, hidden_from_user, archived_at";
 
-      const { data: inProgress, error: e1 } = await supabase
-        .from("orders")
-        .select(baseSelect)
+      const { data: inProgress, error: e1 } = await applyLiveTripFilters(
+        supabase.from("orders").select(baseSelect),
+      )
         .eq("client_id", uid)
         .neq("status", "delivered")
         .order("created_at", { ascending: false });
 
       if (e1) throw e1;
 
-      const { data: delivered7d, error: e2 } = await supabase
-        .from("orders")
-        .select(baseSelect)
+      const { data: delivered7d, error: e2 } = await applyLiveTripFilters(
+        supabase.from("orders").select(baseSelect),
+      )
         .eq("client_id", uid)
         .eq("status", "delivered")
         .gte("created_at", fromISO)

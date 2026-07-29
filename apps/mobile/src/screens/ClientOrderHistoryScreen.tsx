@@ -15,6 +15,7 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
+import { applyLiveTripFilters } from "../lib/tripVisibility";
 import {
   computeClientOrderStats,
   isClientActiveStatus,
@@ -64,29 +65,35 @@ export default function ClientOrderHistoryScreen() {
       }
 
       const [ordersRes, drRes, taxiRes] = await Promise.all([
-        supabase
-          .from("orders")
-          .select(
-            "id,status,payment_status,created_at,pickup_address,dropoff_address,total,kind,is_test,hidden_from_user,archived_at",
-          )
+        applyLiveTripFilters(
+          supabase
+            .from("orders")
+            .select(
+              "id,status,payment_status,created_at,pickup_address,dropoff_address,total,kind,is_test,hidden_from_user,archived_at",
+            ),
+        )
           .or(
             `client_user_id.eq.${userId},client_id.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`,
           )
           .order("created_at", { ascending: false })
           .limit(100),
-        supabase
-          .from("delivery_requests")
-          .select(
-            "id,status,payment_status,created_at,pickup_address,dropoff_address,total,is_test,hidden_from_user,archived_at",
-          )
+        applyLiveTripFilters(
+          supabase
+            .from("delivery_requests")
+            .select(
+              "id,status,payment_status,created_at,pickup_address,dropoff_address,total,is_test,hidden_from_user,archived_at",
+            ),
+        )
           .or(`client_user_id.eq.${userId},created_by.eq.${userId}`)
           .order("created_at", { ascending: false })
           .limit(100),
-        supabase
-          .from("taxi_rides")
-          .select(
-            "id,status,payment_status,created_at,pickup_address,dropoff_address,total_cents,is_test,hidden_from_user,archived_at",
-          )
+        applyLiveTripFilters(
+          supabase
+            .from("taxi_rides")
+            .select(
+              "id,status,payment_status,created_at,pickup_address,dropoff_address,total_cents,is_test,hidden_from_user,archived_at",
+            ),
+        )
           .eq("client_user_id", userId)
           .order("created_at", { ascending: false })
           .limit(100),
