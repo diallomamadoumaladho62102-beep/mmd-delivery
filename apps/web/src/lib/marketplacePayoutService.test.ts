@@ -52,6 +52,21 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
         platform_margin_cents: 200,
       },
     ] as Record<string, unknown>[],
+    commissionSnapshots: [
+      {
+        order_kind: "marketplace",
+        order_id: "order-paid-1",
+        rate_pct: 5,
+        fixed_fee_cents: 0,
+        fee_credit_cents: 0,
+        base_rate_pct: null,
+        rule_type: "standard_rate",
+        rule_id: null,
+        rule_label: null,
+        loyalty_benefit_id: null,
+        currency: "USD",
+      },
+    ] as Record<string, unknown>[],
     stripeCalls: 0,
     ...overrides,
   };
@@ -102,6 +117,15 @@ function createMockAdmin(overrides: Record<string, unknown> = {}) {
           return {
             data:
               state.jobs.find((r) =>
+                Object.entries(filters).every(([k, v]) => r[k] === v)
+              ) ?? null,
+            error: null,
+          };
+        }
+        if (table === "commission_snapshots") {
+          return {
+            data:
+              state.commissionSnapshots.find((r) =>
                 Object.entries(filters).every(([k, v]) => r[k] === v)
               ) ?? null,
             error: null,
@@ -179,14 +203,22 @@ async function main() {
     );
   });
 
-  await test("calculateSellerMarketplacePayout derives net from subtotal commission", () => {
+  await test("calculateSellerMarketplacePayout derives net from snapshot rate", () => {
     const result = calculateSellerMarketplacePayout({
       subtotal_cents: 5000,
       service_fee_cents: 250,
+      platform_rate_pct: 5,
     });
     assert.equal(result.gross_amount_cents, 5000);
     assert.equal(result.platform_fee_cents, 250);
     assert.equal(result.seller_net_amount_cents, 4750);
+  });
+
+  await test("calculateSellerMarketplacePayout throws without a resolved rate (no 5% fallback)", () => {
+    assert.throws(
+      () => calculateSellerMarketplacePayout({ subtotal_cents: 5000 }),
+      /platform_rate_pct_required/
+    );
   });
 
   await test("calculateDriverMarketplacePayout sums earning and bonus", () => {

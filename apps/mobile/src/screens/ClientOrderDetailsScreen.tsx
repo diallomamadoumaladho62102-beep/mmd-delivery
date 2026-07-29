@@ -28,7 +28,7 @@ import {
 import { mmdAudio } from "../lib/mmdAudio";
 import * as WebBrowser from "expo-web-browser";
 import { openStripeCheckout } from "../lib/stripe";
-import { payOrderWithPaymentSheet } from "../utils/stripe";
+import { payOrderWithPaymentSheet, payTipWithPaymentSheet } from "../utils/stripe";
 import { confirmOrderPaid } from "../../lib/payments";
 import { PaymentMethodPicker } from "../components/PaymentMethodPicker";
 import {
@@ -2393,6 +2393,7 @@ export function ClientOrderDetailsScreen() {
 
                       // Official RPC: rating independent of tip; tip_cents only;
                       // never rewrites paid grand_total / total_cents.
+                      // Tip money movement requires a separate Stripe charge (Wave 2c).
                       const { data: reviewResult, error: reviewErr } = await supabase.rpc(
                         "submit_order_review_and_tip",
                         {
@@ -2410,11 +2411,32 @@ export function ClientOrderDetailsScreen() {
                       }
 
                       setAlreadyRated(true);
+
+                      if (tip_cents > 0) {
+                        const tipPaid = await payTipWithPaymentSheet(order.id);
+                        if (!tipPaid) {
+                          throw new Error(
+                            ts(
+                              "client.orderDetails.tipPaymentRequired",
+                              "Review saved, but tip payment is required. Please retry the tip payment."
+                            )
+                          );
+                        }
+                      }
+
                       await fetchOrder();
 
                       Alert.alert(
                         ts("common.thanks", "Thanks ✅") as any,
-                        ts("client.orderDetails.reviewSaved", "Review saved. Tip added if selected.") as any
+                        tip_cents > 0
+                          ? (ts(
+                              "client.orderDetails.reviewAndTipPaid",
+                              "Review saved. Tip payment confirmed."
+                            ) as any)
+                          : (ts(
+                              "client.orderDetails.reviewSaved",
+                              "Review saved. Tip added if selected."
+                            ) as any)
                       );
                     } catch (e: any) {
                       const msg = e?.message ?? ts("client.orderDetails.reviewSaveError", "Unable to save your review.");

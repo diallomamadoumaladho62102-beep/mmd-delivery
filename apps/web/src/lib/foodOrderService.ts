@@ -264,10 +264,17 @@ export async function createFoodOrderServerSide(
     countryCode: countryCode ?? pricing.countryCode ?? null,
   });
   if (!snap.ok) {
-    console.error("[commission-engine] food snapshot failed (continuing with pricing_config)", {
+    // Never let a food order go live on an unfrozen commission rate — the
+    // snapshot is the only thing preventing refresh_order_commissions from
+    // silently falling back to whatever pricing_config default is live at
+    // payout time. Fail the order create, same as a commission refresh failure.
+    console.error("[commission-engine] food snapshot failed — failing order create", {
       order_id: orderId,
       error: snap.error,
     });
+    await supabaseAdmin.from("order_members").delete().eq("order_id", orderId);
+    await supabaseAdmin.from("orders").delete().eq("id", orderId);
+    throw new Error(`Commission snapshot failed: ${snap.error}`);
   }
 
   const { data: commissionData, error: commissionErr } = await supabaseAdmin.rpc(

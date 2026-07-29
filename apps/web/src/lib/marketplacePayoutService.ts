@@ -59,8 +59,6 @@ type DeliveryJobPayoutSource = {
   platform_margin_cents: number;
 };
 
-const MARKETPLACE_SELLER_COMMISSION_BPS = 500; // 5% of subtotal (legacy fallback)
-
 function roundCents(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.round(value));
@@ -81,10 +79,16 @@ function isSellerOrderPaid(order: SellerOrderPayoutSource): boolean {
   return true;
 }
 
+/**
+ * Requires a resolved Phase-4 commission snapshot rate — there is no
+ * hardcoded fallback percentage. Callers MUST resolve/create the snapshot
+ * (see `@/lib/commission/commissionEngine`) before calling this; a missing
+ * `platform_rate_pct` throws rather than silently defaulting to some
+ * commission rate the founder never approved for this order.
+ */
 export function calculateSellerMarketplacePayout(order: {
   subtotal_cents?: number | null;
   service_fee_cents?: number | null;
-  /** When provided (Phase 4 snapshot), overrides the hardcoded 5% BPS. */
   platform_rate_pct?: number | null;
   platform_fixed_fee_cents?: number | null;
   platform_fee_credit_cents?: number | null;
@@ -93,28 +97,21 @@ export function calculateSellerMarketplacePayout(order: {
   platform_fee_cents: number;
   seller_net_amount_cents: number;
 } {
+  if (
+    order.platform_rate_pct == null ||
+    !Number.isFinite(Number(order.platform_rate_pct))
+  ) {
+    throw new Error("platform_rate_pct_required");
+  }
+
   const gross = roundCents(Number(order.subtotal_cents ?? 0));
 
-  let platformFee: number;
-  if (
-    order.platform_rate_pct != null &&
-    Number.isFinite(Number(order.platform_rate_pct))
-  ) {
-    const fromRate = roundCents((gross * Number(order.platform_rate_pct)) / 100);
-    const withFixed = fromRate + roundCents(Number(order.platform_fixed_fee_cents ?? 0));
-    platformFee = Math.max(
-      0,
-      withFixed - roundCents(Number(order.platform_fee_credit_cents ?? 0))
-    );
-  } else {
-    const commissionFromSubtotal = roundCents(
-      (gross * MARKETPLACE_SELLER_COMMISSION_BPS) / 10_000
-    );
-    platformFee =
-      commissionFromSubtotal > 0
-        ? commissionFromSubtotal
-        : roundCents(Number(order.service_fee_cents ?? 0));
-  }
+  const fromRate = roundCents((gross * Number(order.platform_rate_pct)) / 100);
+  const withFixed = fromRate + roundCents(Number(order.platform_fixed_fee_cents ?? 0));
+  const platformFee = Math.max(
+    0,
+    withFixed - roundCents(Number(order.platform_fee_credit_cents ?? 0))
+  );
 
   const sellerNet = Math.max(0, gross - platformFee);
 
@@ -327,12 +324,29 @@ export async function prepareMarketplaceSellerPayout(
     });
   }
 
-  const amounts = calculateSellerMarketplacePayout({
-    ...order,
-    platform_rate_pct: ratePct,
-    platform_fixed_fee_cents: fixedFee,
-    platform_fee_credit_cents: feeCredit,
-  });
+  // Fail closed: never let calculateSellerMarketplacePayout silently apply
+  // some other rate when the Phase-4 snapshot could not be resolved/created.
+  if (ratePct == null) {
+    console.error("[marketplace-payout] commission snapshot missing — payout skipped", {
+      sellerOrderId,
+    });
+    return { ok: true, skipped: "commission_snapshot_missing" };
+  }
+
+  let amounts: ReturnType<typeof calculateSellerMarketplacePayout>;
+  try {
+    amounts = calculateSellerMarketplacePayout({
+      ...order,
+      platform_rate_pct: ratePct,
+      platform_fixed_fee_cents: fixedFee,
+      platform_fee_credit_cents: feeCredit,
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "seller_payout_amount_calculation_failed",
+    };
+  }
   if (amounts.gross_amount_cents <= 0) {
     return { ok: true, skipped: "zero_gross_amount" };
   }
@@ -702,6 +716,50 @@ export async function simulateMarketplacePayouts(
 }
 
 /**
+ * Resolve the Stripe charge that actually funds a seller_order, so every
+ * marketplace SCT (seller or driver share) can be created with
+ * `source_transaction` — same fail-closed contract as food `transfers/run`.
+ * seller_orders has no stored `stripe_charge_id` column, only the
+ * PaymentIntent id, so this retrieves the PI and reads `latest_charge`.
+ */
+async function resolveSellerOrderSourceChargeId(
+  supabaseAdmin: SupabaseClient,
+  sellerOrderId: string
+): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
+    .from("seller_orders")
+    .select("stripe_payment_intent_id")
+    .eq("id", sellerOrderId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const paymentIntentId = String(
+    (data as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ?? ""
+  ).trim();
+  if (!paymentIntentId) return null;
+
+  try {
+    const { stripe } = await import("@/lib/stripe");
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const latest = pi.latest_charge;
+    if (typeof latest === "string" && latest.trim()) return latest.trim();
+    if (latest && typeof latest === "object" && "id" in latest) {
+      const id = (latest as { id?: unknown }).id;
+      if (typeof id === "string" && id.trim()) return id.trim();
+    }
+    return null;
+  } catch (e) {
+    console.error("[marketplace-payout] source charge retrieve failed", {
+      sellerOrderId,
+      paymentIntentId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return null;
+  }
+}
+
+/**
  * Execute approved marketplace seller payouts via Stripe Connect transfers.
  * Requires MARKETPLACE_PAYOUTS_LIVE_ENABLED=true and seller Express account ready.
  * Driver marketplace payouts continue to use the driver Connect destination.
@@ -801,12 +859,36 @@ export async function executeMarketplacePayouts(
       continue;
     }
 
+    // Fail closed (same contract as food transfers/run): a marketplace SCT
+    // must always be funded from the seller_order's own charge.
+    const sourceChargeId = await resolveSellerOrderSourceChargeId(
+      supabaseAdmin,
+      String(row.seller_order_id)
+    );
+
+    if (!sourceChargeId) {
+      console.error("[marketplace-payout] missing source charge — payout failed closed", {
+        payoutId,
+        sellerOrderId: row.seller_order_id,
+      });
+      await supabaseAdmin
+        .from("marketplace_seller_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+      continue;
+    }
+
     try {
       const transfer = await stripe.transfers.create(
         {
           amount,
           currency,
           destination,
+          source_transaction: sourceChargeId,
           metadata: {
             marketplace_seller_payout_id: payoutId,
             seller_id: String(row.seller_id),
@@ -901,12 +983,49 @@ export async function executeMarketplacePayouts(
     }
 
     const destination = String(driver.stripe_account_id).trim();
+
+    if (!/^acct_[A-Za-z0-9]+$/.test(destination)) {
+      await supabaseAdmin
+        .from("marketplace_driver_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+      continue;
+    }
+
+    // Fail closed (same contract as food transfers/run): a marketplace SCT
+    // must always be funded from the seller_order's own charge.
+    const sourceChargeId = await resolveSellerOrderSourceChargeId(
+      supabaseAdmin,
+      String(row.seller_order_id)
+    );
+
+    if (!sourceChargeId) {
+      console.error("[marketplace-payout] missing source charge — driver payout failed closed", {
+        payoutId,
+        sellerOrderId: row.seller_order_id,
+      });
+      await supabaseAdmin
+        .from("marketplace_driver_payouts")
+        .update({
+          status: "failed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
+      failed += 1;
+      continue;
+    }
+
     try {
       const transfer = await stripe.transfers.create(
         {
           amount,
           currency,
           destination,
+          source_transaction: sourceChargeId,
           metadata: {
             marketplace_driver_payout_id: payoutId,
             driver_id: String(row.driver_id),

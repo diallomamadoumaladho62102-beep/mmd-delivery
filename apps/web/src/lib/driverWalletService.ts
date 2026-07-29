@@ -67,6 +67,11 @@ export async function fetchConnectUsdBalanceCents(
 /**
  * Unpaid delivery earnings not yet SCT'd to Connect (orders + delivery_requests).
  * Exported for parity / wallet awaiting_transfer_cents.
+ *
+ * Tips are intentionally EXCLUDED here — see
+ * `@/lib/finance/tipMoneyArchitecture` for the single tip rule. A tip is only
+ * ever moved once its own PaymentIntent has succeeded (executeDriverTipTransfer),
+ * so it must never inflate this "awaiting platform SCT" figure.
  */
 export async function computeDriverAvailableCents(
   supabaseAdmin: SupabaseClient,
@@ -74,7 +79,7 @@ export async function computeDriverAvailableCents(
 ): Promise<number> {
   const { data: deliveredOrders, error: ordersErr } = await supabaseAdmin
     .from("orders")
-    .select("driver_delivery_payout, tip_cents, driver_payout_id")
+    .select("driver_delivery_payout, driver_payout_id")
     .eq("driver_id", driverUserId)
     .eq("status", "delivered")
     .eq("driver_paid_out", false)
@@ -93,9 +98,7 @@ export async function computeDriverAvailableCents(
   if (requestsErr) throw new Error(requestsErr.message);
 
   const ordersAvailableCents = (deliveredOrders ?? []).reduce((sum, row) => {
-    const baseCents = Math.round(toNumber(row.driver_delivery_payout) * 100);
-    const tipCents = Math.max(0, Math.round(toNumber(row.tip_cents)));
-    return sum + baseCents + tipCents;
+    return sum + Math.round(toNumber(row.driver_delivery_payout) * 100);
   }, 0);
 
   const requestsAvailableCents = (deliveredRequests ?? []).reduce((sum, row) => {

@@ -7,6 +7,11 @@ assert.equal(
   MONEY_OUT_MODEL.driverCashout,
   "connect_available_balance_payout_only"
 );
+assert.equal(
+  MONEY_OUT_MODEL.tipFunding,
+  "separate_payment_intent_then_sct"
+);
+assert.equal(MONEY_OUT_MODEL.legacyEdgePayouts, "disabled_by_default");
 
 // Decision guard: cashout must never fund Connect by marking delivery ledgers paid.
 const FORBIDDEN_CASHOUT_RPCS = [

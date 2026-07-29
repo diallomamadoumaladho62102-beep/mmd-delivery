@@ -50,12 +50,12 @@ async function stripePOST(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: buildCorsHeaders(req) });
 
-  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
+  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") !== "false") {
     return json(req, {
       ok: false,
       disabled: true,
       message:
-        "Edge restaurant payouts disabled. Use Vercel /api/admin/process-payouts.",
+        "Edge restaurant payouts disabled by default. Use Vercel /api/admin/process-payouts. Set MMD_EDGE_PAYOUTS_DISABLED=false only to re-enable legacy Edge.",
     });
   }
 

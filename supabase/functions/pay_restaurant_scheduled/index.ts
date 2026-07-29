@@ -48,7 +48,7 @@ async function stripePOST(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: buildCorsHeaders(req) });
 
-  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
+  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") !== "false") {
     return json(req, {
       ok: true,
       disabled: true,

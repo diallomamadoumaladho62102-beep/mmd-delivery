@@ -22,9 +22,9 @@ Deno.serve(async (req) => {
   }
 
   // Canonical restaurant payouts live on Vercel (admin/cron), not Edge→Edge JWT.
-  // The previous path called pay_restaurant_now with only x-cron-secret and always 401'd.
+  // Legacy Edge money-out is disabled unless MMD_EDGE_PAYOUTS_DISABLED=false.
   if (
-    Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true" ||
+    Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") !== "false" ||
     !SITE_URL
   ) {
     return json(req, {
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       handler: "vercel",
       path: "/api/admin/process-payouts",
       message:
-        "Edge weekly restaurant payout is disabled. Use Vercel /api/admin/process-payouts with cron auth.",
+        "Edge weekly restaurant payout is disabled by default. Use Vercel /api/admin/process-payouts with cron auth.",
     });
   }
 

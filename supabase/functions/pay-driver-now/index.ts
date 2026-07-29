@@ -33,12 +33,12 @@ function isDriverRole(role: string | null | undefined) {
 }
 
 serve(async (req) => {
-  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
+  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") !== "false") {
     return json(req, {
       ok: false,
       disabled: true,
       message:
-        "Edge driver payouts disabled. Use Vercel POST /api/wallet/driver-cashout.",
+        "Edge driver payouts disabled by default. Use Vercel POST /api/wallet/driver-cashout. Set MMD_EDGE_PAYOUTS_DISABLED=false only to re-enable legacy Edge cashout.",
     });
   }
 

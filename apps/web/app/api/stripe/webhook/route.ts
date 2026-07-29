@@ -24,6 +24,7 @@ import {
   syncStripeRefundObject,
 } from "@/lib/stripeWebhookChargeRefunded";
 import { syncStripeChargeDispute } from "@/lib/stripeWebhookDispute";
+import { executeDriverTipTransfer } from "@/lib/finance/executeDriverTipTransfer";
 import {
   handleCheckoutSessionExpiredEvent,
   handlePaymentIntentFailedEvent,
@@ -424,6 +425,12 @@ function isNonEmptyString(x: unknown): x is string {
 
 function isPaidStatus(status: unknown): boolean {
   return String(status ?? "").trim().toLowerCase() === "paid";
+}
+
+function isDriverTipPaymentIntent(
+  md: Record<string, unknown> | null | undefined
+): boolean {
+  return String(md?.kind ?? "").trim().toLowerCase() === "driver_tip";
 }
 
 function pickOrderIdFromMetadata(
@@ -2216,6 +2223,50 @@ async function handlePaymentIntentSucceeded(
     stripe_fee_cents: stripeFeeSnapshot.stripe_fee_cents,
     stripe_net_cents: stripeFeeSnapshot.stripe_net_cents,
   });
+
+  if (isDriverTipPaymentIntent(metadata)) {
+    const tipOrderId = pickOrderIdFromMetadata(metadata);
+
+    if (!tipOrderId) {
+      return json({
+        received: true,
+        ignored: "missing order_id for kind=driver_tip",
+        type: event.type,
+      });
+    }
+
+    const tipResult = await executeDriverTipTransfer(supabaseAdmin, {
+      orderId: tipOrderId,
+      tipPaymentIntentId: paymentIntentId,
+    });
+
+    if (tipResult.ok === false) {
+      console.error("[webhook] driver tip transfer failed", {
+        order_id: tipOrderId,
+        payment_intent_id: paymentIntentId,
+        error: tipResult.error,
+      });
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: tipResult.error,
+          order_id: tipOrderId,
+          type: event.type,
+        },
+        500
+      );
+    }
+
+    return json({
+      received: true,
+      ok: true,
+      order_id: tipOrderId,
+      transfer_id: tipResult.transfer_id,
+      already_transferred: tipResult.already_transferred,
+      type: event.type,
+    });
+  }
 
   if (isTaxiStripeModule(metadata)) {
     const taxiRideId = pickTaxiRideIdFromMetadata(metadata);

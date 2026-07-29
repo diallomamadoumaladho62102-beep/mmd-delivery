@@ -23,6 +23,12 @@ function isTaxiStripeModule(
   return String(metadata?.module ?? "").trim().toLowerCase() === "taxi";
 }
 
+function isDriverTipPaymentIntent(
+  metadata: Record<string, unknown> | null | undefined
+): boolean {
+  return String(metadata?.kind ?? "").trim().toLowerCase() === "driver_tip";
+}
+
 function pickOrderIdFromMetadata(
   metadata: Record<string, unknown> | null
 ): string | null {
@@ -105,6 +111,21 @@ async function isTaxiRideUnpaid(
 
   if (error || !data) return false;
   return !isPaidStatus(data.payment_status);
+}
+
+/** Driver tip transfer not yet completed for this order (see executeDriverTipTransfer). */
+async function isOrderTipUntransferred(
+  supabaseAdmin: SupabaseClient,
+  orderId: string
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("orders")
+    .select("tip_paid_out")
+    .eq("id", orderId)
+    .maybeSingle<{ tip_paid_out: boolean | null }>();
+
+  if (error || !data) return false;
+  return data.tip_paid_out !== true;
 }
 
 async function orderMissingCommissions(
@@ -262,6 +283,12 @@ export async function stripeEventNeedsReprocessing(
     const paymentIntentId = String(pi.id ?? "").trim();
 
     if (!paymentIntentId) return false;
+
+    if (isDriverTipPaymentIntent(metadata)) {
+      const tipOrderId = pickOrderIdFromMetadata(metadata);
+      if (!tipOrderId) return false;
+      return isOrderTipUntransferred(supabaseAdmin, tipOrderId);
+    }
 
     const orderId = await resolveOrderIdForPaymentIntent(
       supabaseAdmin,

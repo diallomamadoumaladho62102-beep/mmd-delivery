@@ -27,8 +27,8 @@ function errMsg(e: unknown) {
 }
 
 serve(async (req) => {
-  // Canonical payouts: Vercel /api/admin/process-payouts (Sunday cron).
-  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") === "true") {
+  // Opt-in only: legacy Edge money-out disabled unless explicitly re-enabled.
+  if (Deno.env.get("MMD_EDGE_PAYOUTS_DISABLED") !== "false") {
     return json({
       ok: true,
       disabled: true,
