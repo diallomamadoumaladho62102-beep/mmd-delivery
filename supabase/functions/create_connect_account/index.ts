@@ -23,21 +23,91 @@ function getAuthHeader(req: Request) {
   return req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
 }
 
-function normalizeStripeConnectCountry(value: unknown): string {
-  const raw = String(value ?? "").trim().toUpperCase();
-  if (/^[A-Z]{2}$/.test(raw)) return raw;
-  if (raw === "USA" || raw === "UNITED STATES") return "US";
+/** ISO countries we intentionally support for Express Connect (not US states). */
+const STRIPE_CONNECT_COUNTRIES = new Set([
+  "US",
+  "CA",
+  "GB",
+  "FR",
+  "BE",
+  "GN",
+  "SN",
+  "CI",
+  "ML",
+  "SL",
+  "MR",
+  "DE",
+  "ES",
+  "IT",
+  "NL",
+  "PT",
+  "IE",
+  "AU",
+  "NZ",
+]);
+
+/**
+ * US state / territory codes. Must NEVER be sent to Stripe as `country`
+ * (was causing: Country 'NY' is unknown for drivers with state=NY).
+ * Includes CA so California is not treated as Canada unless country_code=CA.
+ */
+const US_STATE_OR_TERRITORY_CODES = new Set([
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL",
+  "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT",
+  "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI",
+  "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC", "PR",
+  "VI", "GU", "AS", "MP",
+]);
+
+const US_STATE_NAMES = new Set([
+  "ALABAMA", "ALASKA", "ARIZONA", "ARKANSAS", "CALIFORNIA", "COLORADO",
+  "CONNECTICUT", "DELAWARE", "FLORIDA", "GEORGIA", "HAWAII", "IDAHO",
+  "ILLINOIS", "INDIANA", "IOWA", "KANSAS", "KENTUCKY", "LOUISIANA", "MAINE",
+  "MARYLAND", "MASSACHUSETTS", "MICHIGAN", "MINNESOTA", "MISSISSIPPI",
+  "MISSOURI", "MONTANA", "NEBRASKA", "NEVADA", "NEW HAMPSHIRE", "NEW JERSEY",
+  "NEW MEXICO", "NEW YORK", "NORTH CAROLINA", "NORTH DAKOTA", "OHIO",
+  "OKLAHOMA", "OREGON", "PENNSYLVANIA", "RHODE ISLAND", "SOUTH CAROLINA",
+  "SOUTH DAKOTA", "TENNESSEE", "TEXAS", "UTAH", "VERMONT", "VIRGINIA",
+  "WASHINGTON", "WEST VIRGINIA", "WISCONSIN", "WYOMING", "DISTRICT OF COLUMBIA",
+]);
+
+function normalizeStripeConnectCountry(value: unknown): string | null {
+  const raw = String(value ?? "").trim().toUpperCase().replace(/['’]/g, "");
+  if (!raw) return null;
+
+  if (raw === "USA" || raw === "UNITED STATES" || raw === "UNITED STATES OF AMERICA") {
+    return "US";
+  }
   if (raw === "CANADA") return "CA";
-  if (raw === "UNITED KINGDOM" || raw === "UK") return "GB";
+  if (raw === "UNITED KINGDOM" || raw === "UK" || raw === "GREAT BRITAIN") return "GB";
   if (raw === "FRANCE") return "FR";
   if (raw === "BELGIUM") return "BE";
-  if (raw === "GUINEA" || raw === "GUINEE") return "GN";
+  if (raw === "GUINEA" || raw === "GUINEE" || raw === "REPUBLIC OF GUINEA") return "GN";
   if (raw === "SENEGAL") return "SN";
-  if (raw === "COTE D IVOIRE" || raw === "CÔTE D'IVOIRE" || raw === "IVORY COAST") return "CI";
+  if (
+    raw === "COTE D IVOIRE" ||
+    raw === "COTE DIVOIRE" ||
+    raw === "IVORY COAST"
+  ) {
+    return "CI";
+  }
   if (raw === "MALI") return "ML";
   if (raw === "SIERRA LEONE") return "SL";
   if (raw === "MAURITANIA") return "MR";
-  return "US";
+
+  // Full US state name → US (e.g. OHIO, NEW YORK)
+  if (US_STATE_NAMES.has(raw) || US_STATE_NAMES.has(raw.replace(/\s+/g, " "))) {
+    return "US";
+  }
+
+  if (/^[A-Z]{2}$/.test(raw)) {
+    // Never treat a US state code as a Stripe country.
+    if (US_STATE_OR_TERRITORY_CODES.has(raw)) return "US";
+    if (STRIPE_CONNECT_COUNTRIES.has(raw)) return raw;
+    return null;
+  }
+
+  return null;
 }
 
 function inferConnectCountryFromProfile(city: unknown, state: unknown): string {
@@ -48,7 +118,14 @@ function inferConnectCountryFromProfile(city: unknown, state: unknown): string {
   if (cityText.includes("BAMAKO") || cityText.includes("MALI")) return "ML";
   if (cityText.includes("FREETOWN") || cityText.includes("SIERRA")) return "SL";
   if (cityText.includes("NOUAKCHOTT") || cityText.includes("MAURITAN")) return "MR";
-  return normalizeStripeConnectCountry(state);
+  if (
+    cityText.includes("NEW YORK") ||
+    cityText.includes("CANAL WINCHESTER") ||
+    cityText.includes("COLUMBUS")
+  ) {
+    return "US";
+  }
+  return normalizeStripeConnectCountry(state) ?? "US";
 }
 
 serve(async (req) => {
@@ -224,12 +301,13 @@ serve(async (req) => {
     let accountId: string | null = (prof as any)?.stripe_account_id ?? null;
     let clearedStaleTestAccount = false;
 
-    const connectCountry = normalizeStripeConnectCountry(
-      body?.country_code ??
-        body?.countryCode ??
-        (prof as any)?.country_code ??
-        inferConnectCountryFromProfile((prof as any)?.city, (prof as any)?.state)
-    );
+    // Prefer explicit country_code from client/profile. Never pass raw `state`
+    // (US states like NY/OH were incorrectly sent as Stripe country codes).
+    const connectCountry =
+      normalizeStripeConnectCountry(body?.country_code) ??
+      normalizeStripeConnectCountry(body?.countryCode) ??
+      normalizeStripeConnectCountry((prof as any)?.country_code) ??
+      inferConnectCountryFromProfile((prof as any)?.city, (prof as any)?.state);
 
     // If DB still holds a test-mode acct_ after switching to sk_live_, retrieve fails —
     // clear and recreate under Live so onboarding never reuses a test Connect account.
