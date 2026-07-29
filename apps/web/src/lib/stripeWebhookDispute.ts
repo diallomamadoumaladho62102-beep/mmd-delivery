@@ -248,19 +248,23 @@ async function findTransferIdsForDisputeEntity(
   }
 
   if (entity.table === "taxi_rides") {
-    const { data: taxiRow, error: taxiErr } = await supabaseAdmin
-      .from("taxi_rides")
+    const { data: taxiCommission, error: taxiErr } = await supabaseAdmin
+      .from("taxi_commissions")
       .select("driver_transfer_id")
-      .eq("id", entity.id)
+      .eq("taxi_ride_id", entity.id)
+      .not("driver_transfer_id", "is", null)
       .maybeSingle();
 
     if (taxiErr) {
       console.warn(
-        "[stripeWebhookDispute] taxi_rides transfer id lookup fail-open",
+        "[stripeWebhookDispute] taxi_commissions transfer id lookup fail-open",
         taxiErr.message
       );
-    } else if (taxiRow) {
-      add((taxiRow as { driver_transfer_id?: string | null }).driver_transfer_id, "driver");
+    } else if (taxiCommission) {
+      add(
+        (taxiCommission as { driver_transfer_id?: string | null }).driver_transfer_id,
+        "driver"
+      );
     }
   }
 

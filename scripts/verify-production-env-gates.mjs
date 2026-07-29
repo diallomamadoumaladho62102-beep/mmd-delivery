@@ -46,10 +46,34 @@ req("NEXT_PUBLIC_SENTRY_DSN");
 req("STRIPE_SECRET_KEY");
 req("STRIPE_WEBHOOK_SECRET");
 
-mustBe("MARKETPLACE_CHECKOUT_LIVE_ENABLED", "false");
-mustBe("MARKETPLACE_DISPATCH_LIVE_ENABLED", "false");
-mustBe("MARKETPLACE_PAYOUTS_LIVE_ENABLED", "false");
-mustBe("MARKETPLACE_SELLER_PAYOUTS_E2E_READY", "false");
+const marketplaceE2e = String(
+  process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY ?? ""
+).trim();
+const marketplaceLiveFlags = [
+  "MARKETPLACE_CHECKOUT_LIVE_ENABLED",
+  "MARKETPLACE_DISPATCH_LIVE_ENABLED",
+  "MARKETPLACE_PAYOUTS_LIVE_ENABLED",
+];
+
+if (marketplaceE2e === "true") {
+  console.log(
+    "PASS MARKETPLACE_SELLER_PAYOUTS_E2E_READY=true (seller money E2E certified)"
+  );
+  for (const name of marketplaceLiveFlags) {
+    const v = String(process.env[name] ?? "").trim();
+    if (v !== "true" && v !== "false") {
+      console.log(`FAIL ${name} must be "true" or "false" when E2E ready (got "${v || "<empty>"}")`);
+      failed += 1;
+    } else {
+      console.log(`PASS ${name}=${v}`);
+    }
+  }
+} else {
+  mustBe("MARKETPLACE_SELLER_PAYOUTS_E2E_READY", "false");
+  for (const name of marketplaceLiveFlags) {
+    mustBe(name, "false");
+  }
+}
 
 // When scope gates are enabled for US launch, county gates must also be on.
 const scope = String(process.env.PLATFORM_SCOPE_GATES_ENABLED ?? "").trim().toLowerCase();

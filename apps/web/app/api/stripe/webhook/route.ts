@@ -430,7 +430,23 @@ function isPaidStatus(status: unknown): boolean {
 function isDriverTipPaymentIntent(
   md: Record<string, unknown> | null | undefined
 ): boolean {
-  return String(md?.kind ?? "").trim().toLowerCase() === "driver_tip";
+  const kind = String(md?.kind ?? "").trim().toLowerCase();
+  return kind === "driver_tip" || kind === "taxi_driver_tip";
+}
+
+function isTaxiDriverTipPaymentIntent(
+  md: Record<string, unknown> | null | undefined
+): boolean {
+  return String(md?.kind ?? "").trim().toLowerCase() === "taxi_driver_tip";
+}
+
+function pickTaxiRideIdFromTipMetadata(
+  md: Record<string, unknown> | null | undefined
+): string | null {
+  const raw = md?.taxi_ride_id ?? md?.taxiRideId ?? md?.ride_id ?? null;
+  if (!raw) return null;
+  const normalized = String(raw).trim();
+  return normalized || null;
 }
 
 function pickOrderIdFromMetadata(
@@ -1446,6 +1462,24 @@ async function handleCheckoutCompletedLikeEvent(
     metadata: session.metadata,
   });
 
+  if (String(metadata?.kind ?? "").trim().toLowerCase() === "business_wallet_topup") {
+    const { handleBusinessWalletTopupPayment } = await import(
+      "@/lib/taxiBusinessWalletStripe"
+    );
+    const topup = await handleBusinessWalletTopupPayment({
+      supabaseAdmin,
+      session,
+      source: `webhook:${event.type}`,
+    });
+    return json({
+      received: true,
+      ok: topup.ok,
+      business_wallet_topup: topup,
+      type: event.type,
+      ...(topup.error ? { error: topup.error } : {}),
+    }, topup.ok ? 200 : 500);
+  }
+
   if (isTaxiStripeModule(metadata)) {
     const taxiRideId = pickTaxiRideIdFromMetadata(metadata);
 
@@ -2224,7 +2258,51 @@ async function handlePaymentIntentSucceeded(
     stripe_net_cents: stripeFeeSnapshot.stripe_net_cents,
   });
 
+  if (String(metadata?.kind ?? "").trim().toLowerCase() === "business_wallet_topup") {
+    const { handleBusinessWalletTopupPayment } = await import(
+      "@/lib/taxiBusinessWalletStripe"
+    );
+    const topup = await handleBusinessWalletTopupPayment({
+      supabaseAdmin,
+      paymentIntent: pi,
+      source: `webhook:${event.type}`,
+    });
+    return json({
+      received: true,
+      ok: topup.ok,
+      business_wallet_topup: topup,
+      type: event.type,
+      ...(topup.error ? { error: topup.error } : {}),
+    }, topup.ok ? 200 : 500);
+  }
+
   if (isDriverTipPaymentIntent(metadata)) {
+    if (isTaxiDriverTipPaymentIntent(metadata)) {
+      const tipRideId = pickTaxiRideIdFromTipMetadata(metadata);
+      if (!tipRideId) {
+        return json({
+          received: true,
+          ignored: "missing taxi_ride_id for kind=taxi_driver_tip",
+          type: event.type,
+        });
+      }
+      const { executeTaxiDriverTipTransfer } = await import(
+        "@/lib/finance/executeTaxiDriverTipTransfer"
+      );
+      const tipResult = await executeTaxiDriverTipTransfer(supabaseAdmin, {
+        taxiRideId: tipRideId,
+        paymentIntentId,
+        paymentIntent: pi,
+      });
+      return json({
+        received: true,
+        ok: tipResult.ok,
+        taxi_tip: tipResult,
+        type: event.type,
+        ...(tipResult.ok === false ? { error: tipResult.error } : {}),
+      }, tipResult.ok ? 200 : 500);
+    }
+
     const tipOrderId = pickOrderIdFromMetadata(metadata);
 
     if (!tipOrderId) {

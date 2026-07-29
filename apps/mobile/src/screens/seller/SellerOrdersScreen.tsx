@@ -110,12 +110,20 @@ export default function SellerOrdersScreen({ navigation }: Props) {
       });
       if (result.stripe_refund_deferred) {
         Alert.alert(
-          t("seller.orders.refundDeferredTitle", "Refund deferred"),
+          t("seller.orders.refundRetryTitle", "Refund pending retry"),
           result.message ??
             t(
-              "seller.orders.refundDeferredBody",
-              "Order refused. Full refund is marked required — Stripe refund is not executed yet."
+              "seller.orders.refundRetryBody",
+              "Order refused. Stripe refund did not complete automatically and will be retried."
             )
+        );
+      } else if (status === "refused" && result.refund_status === "refunded") {
+        Alert.alert(
+          t("seller.orders.refundedTitle", "Refund completed"),
+          t(
+            "seller.orders.refundedBody",
+            "Order refused and the customer was refunded on Stripe."
+          )
         );
       }
       await refresh();
@@ -135,7 +143,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
         title={t("seller.orders.title", "Marketplace Orders")}
         subtitle={t(
           "seller.orders.lifecycleHint",
-          "Accept and prepare paid orders. Live payouts stay off."
+          "Accept and prepare paid orders. Seller payouts run via Stripe Connect when live flags are on."
         )}
         fallbackRoute="SellerDashboard"
         variant="dark"

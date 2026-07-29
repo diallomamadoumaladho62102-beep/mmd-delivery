@@ -62,14 +62,14 @@ export async function POST(req: NextRequest) {
     return mmdLocationJson({
       ok: true,
       order: result.order,
-      ...(result.stripe_refund_deferred
-        ? {
-            stripe_refund_deferred: true,
-            refund_status: result.refund_status,
-            message:
-              "Order canceled. Full refund marked as required — Stripe refund is deferred (not executed).",
-          }
-        : {}),
+      refund_status: result.refund_status,
+      stripe_refund_id: result.stripe_refund_id ?? null,
+      stripe_refund_deferred: Boolean(result.stripe_refund_deferred),
+      message: result.stripe_refund_deferred
+        ? "Order canceled. Stripe refund could not be completed automatically — marked for retry."
+        : result.refund_status === "refunded"
+          ? "Order canceled. Stripe refund completed."
+          : "Order canceled.",
     });
   } catch (error) {
     return mmdLocationJson(

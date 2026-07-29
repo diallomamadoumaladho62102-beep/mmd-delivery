@@ -210,6 +210,120 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({} as any));
     const roleRaw = String(body?.role ?? "").toLowerCase();
+    const businessAccountId = String(body?.business_account_id ?? "").trim();
+
+    // Business wallet Connect (organizational account).
+    if (roleRaw === "business") {
+      if (!businessAccountId) {
+        return json(req, { error: "business_account_id_required" }, 400);
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseService, {
+        auth: { persistSession: false },
+      });
+
+      const { data: membership } = await supabase
+        .from("taxi_business_members")
+        .select("role")
+        .eq("business_account_id", businessAccountId)
+        .eq("user_id", userId)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (!membership || !["manager", "admin"].includes(String(membership.role))) {
+        return json(req, { error: "forbidden" }, 403);
+      }
+
+      const { data: biz } = await supabase
+        .from("taxi_business_accounts")
+        .select(
+          "id,name,country_code,stripe_account_id,stripe_onboarding_status,stripe_charges_enabled,stripe_payouts_enabled,stripe_details_submitted"
+        )
+        .eq("id", businessAccountId)
+        .maybeSingle();
+
+      if (!biz) return json(req, { error: "business_account_not_found" }, 404);
+
+      let accountId = String(biz.stripe_account_id ?? "").trim();
+      const connectCountry = normalizeStripeConnectCountry(biz.country_code) ?? "US";
+
+      if (!accountId) {
+        const account = await stripe.accounts.create({
+          type: "express",
+          country: connectCountry,
+          capabilities: {
+            transfers: { requested: true },
+            card_payments: { requested: true },
+          },
+          business_type: "company",
+          metadata: {
+            mmd_role: "business",
+            business_account_id: businessAccountId,
+            user_id: userId,
+          },
+        });
+        accountId = account.id;
+        await supabase
+          .from("taxi_business_accounts")
+          .update({
+            stripe_account_id: accountId,
+            stripe_onboarding_status: "created",
+            owner_user_id: userId,
+            country_code: connectCountry,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", businessAccountId);
+      }
+
+      const acct = await stripe.accounts.retrieve(accountId);
+      const onboarded =
+        Boolean(acct.details_submitted) &&
+        Boolean(acct.charges_enabled) &&
+        Boolean(acct.payouts_enabled);
+
+      await supabase
+        .from("taxi_business_accounts")
+        .update({
+          stripe_charges_enabled: Boolean(acct.charges_enabled),
+          stripe_payouts_enabled: Boolean(acct.payouts_enabled),
+          stripe_details_submitted: Boolean(acct.details_submitted),
+          stripe_onboarding_status: onboarded
+            ? "ready_for_payouts"
+            : "verification_pending",
+          stripe_onboarded_at: onboarded ? new Date().toISOString() : null,
+        })
+        .eq("id", businessAccountId);
+
+      if (onboarded) {
+        const login = await stripe.accounts.createLoginLink(accountId);
+        return json(req, {
+          ok: true,
+          role: "business",
+          business_account_id: businessAccountId,
+          account_id: accountId,
+          already_complete: true,
+          onboarding_url: login.url,
+          login_url: login.url,
+        });
+      }
+
+      const link = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${Deno.env.get("APP_URL") ?? "https://www.mmddelivery.com"}/taxi/business/wallet?connect=refresh`,
+        return_url: `${Deno.env.get("APP_URL") ?? "https://www.mmddelivery.com"}/taxi/business/wallet?connect=return`,
+        type: "account_onboarding",
+      });
+
+      return json(req, {
+        ok: true,
+        role: "business",
+        business_account_id: businessAccountId,
+        account_id: accountId,
+        onboarding_url: link.url,
+        needs_onboarding: true,
+      });
+    }
+
     const role =
       roleRaw === "restaurant"
         ? "restaurant"
@@ -222,7 +336,7 @@ serve(async (req) => {
     if (!role) {
       return json(
         req,
-        { error: "Invalid role. Must be 'driver', 'restaurant', or 'seller'." },
+        { error: "Invalid role. Must be 'driver', 'restaurant', 'seller', or 'business'." },
         400,
       );
     }

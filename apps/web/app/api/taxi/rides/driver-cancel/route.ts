@@ -1,15 +1,17 @@
 import { NextRequest } from "next/server";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
-import { getTaxiRideId, requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
+import { getTaxiRideId, requireTaxiApiUser, taxiJson, normalizeStatus } from "@/lib/taxiApi";
 import { mapTaxiRpcError, type TaxiRpcResult } from "@/lib/taxiDriver";
 import { notifyClientTaxiRideCancelled } from "@/lib/clientPushNotifications";
+import { stripe } from "@/lib/stripe";
+import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Driver cancel before ride start. Marks refund required when paid,
- * without moving Live Stripe money (admin refund path remains).
+ * Driver cancel before ride start. Marks ride canceled and executes Stripe
+ * refund immediately when the ride was paid (parity with client cancel).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -30,7 +32,9 @@ export async function POST(req: NextRequest) {
 
     const { data: rideBefore } = await auth.supabaseAdmin
       .from("taxi_rides")
-      .select("id,status,client_user_id,payment_status")
+      .select(
+        "id,status,client_user_id,payment_status,stripe_payment_intent_id,stripe_refund_id,stripe_refunded_at,payment_funding,business_account_id,total_cents,currency"
+      )
       .eq("id", rideId)
       .maybeSingle();
 
@@ -49,6 +53,123 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: mapped.message }, mapped.status);
     }
 
+    await releaseEntityCredit(auth.supabaseAdmin, "taxi_ride", rideId).catch(
+      () => undefined
+    );
+
+    let stripeRefund: {
+      refunded: boolean;
+      deferred: boolean;
+      refundId?: string;
+      status?: string | null;
+      error?: string;
+    } = { refunded: false, deferred: false };
+
+    const refundRequired = String(result.refund ?? "") === "REQUIRED";
+    const wasPaid = normalizeStatus(rideBefore?.payment_status) === "paid";
+    const paymentFunding = String(
+      (rideBefore as { payment_funding?: string | null } | null)?.payment_funding ??
+        "stripe"
+    ).toLowerCase();
+
+    if (refundRequired && wasPaid && !rideBefore?.stripe_refund_id) {
+      if (paymentFunding === "business_wallet") {
+        try {
+          const { creditBusinessWalletRefund } = await import(
+            "@/lib/taxiBusinessWalletService"
+          );
+          const bizId = String(
+            (rideBefore as { business_account_id?: string | null })
+              ?.business_account_id ?? ""
+          );
+          if (bizId) {
+            await creditBusinessWalletRefund(auth.supabaseAdmin, {
+              businessAccountId: bizId,
+              taxiRideId: rideId,
+              amountCents: Number(
+                (rideBefore as { total_cents?: number | null })?.total_cents ?? 0
+              ),
+              currency: String(
+                (rideBefore as { currency?: string | null })?.currency ?? "USD"
+              ),
+              reason: "driver_cancel",
+            });
+          }
+          await auth.supabaseAdmin
+            .from("taxi_rides")
+            .update({
+              refund_status: "refunded",
+              payment_status: "refunded",
+              stripe_refunded_at: new Date().toISOString(),
+            })
+            .eq("id", rideId);
+          stripeRefund = { refunded: true, deferred: false, status: "business_wallet" };
+        } catch (e) {
+          stripeRefund = {
+            refunded: false,
+            deferred: true,
+            error: e instanceof Error ? e.message : String(e),
+          };
+          await auth.supabaseAdmin
+            .from("taxi_rides")
+            .update({ refund_status: "refund_failed" })
+            .eq("id", rideId);
+        }
+      } else {
+        const paymentIntentId = String(
+          rideBefore?.stripe_payment_intent_id ?? ""
+        ).trim();
+        if (paymentIntentId) {
+          try {
+            const refund = await stripe.refunds.create(
+              {
+                payment_intent: paymentIntentId,
+                reason: "requested_by_customer",
+                metadata: {
+                  module: "taxi",
+                  taxi_ride_id: rideId,
+                  cancel_reason: reason,
+                  cancelled_by: "driver",
+                },
+              },
+              { idempotencyKey: `refund_taxi_driver_cancel_${rideId}` }
+            );
+            const now = new Date().toISOString();
+            await auth.supabaseAdmin
+              .from("taxi_rides")
+              .update({
+                refund_status: "refunded",
+                stripe_refund_id: refund.id,
+                stripe_refunded_at: now,
+                payment_status: "refunded",
+              })
+              .eq("id", rideId);
+            stripeRefund = {
+              refunded: true,
+              deferred: false,
+              refundId: refund.id,
+              status: refund.status,
+            };
+          } catch (refundErr: unknown) {
+            const message =
+              refundErr instanceof Error ? refundErr.message : String(refundErr);
+            console.error("taxi driver-cancel refund error:", message);
+            await auth.supabaseAdmin
+              .from("taxi_rides")
+              .update({ refund_status: "refund_failed" })
+              .eq("id", rideId);
+            stripeRefund = { refunded: false, deferred: false, error: message };
+          }
+        } else {
+          stripeRefund = {
+            refunded: false,
+            deferred: true,
+            error: "missing_payment_intent",
+          };
+        }
+      }
+    }
+
     await logTaxiEventServer(auth.supabaseAdmin, {
       rideId,
       eventType: "driver_cancel",
@@ -56,11 +177,11 @@ export async function POST(req: NextRequest) {
       newStatus: "canceled",
       actorId: auth.user.id,
       triggeredRole: "driver",
-      description: "Driver cancelled taxi ride via API (Stripe deferred)",
+      description: "Driver cancelled taxi ride via API",
       metadata: {
         reason,
         refund: result.refund ?? "NONE",
-        stripe_refund_deferred: true,
+        stripe_refund: stripeRefund,
       },
     });
 
@@ -69,7 +190,7 @@ export async function POST(req: NextRequest) {
         supabaseAdmin: auth.supabaseAdmin,
         userIds: [rideBefore.client_user_id],
         taxiRideId: rideId,
-        refund: String(result.refund ?? "NONE") === "REQUIRED" ? "REQUIRED" : "NONE",
+        refund: refundRequired ? "REQUIRED" : "NONE",
       }).catch(() => undefined);
     }
 
@@ -78,10 +199,11 @@ export async function POST(req: NextRequest) {
       taxi_ride_id: rideId,
       result,
       refund: result.refund ?? "NONE",
-      stripeRefund: { refunded: false, deferred: true },
-      message:
-        result.refund === "REQUIRED"
-          ? "Course annulée. Remboursement à traiter (aucun mouvement Stripe immédiat)."
+      stripeRefund,
+      message: stripeRefund.refunded
+        ? "Course annulée. Remboursement effectué."
+        : refundRequired
+          ? "Course annulée. Remboursement en cours de traitement."
           : "Course annulée.",
     });
   } catch (e: unknown) {

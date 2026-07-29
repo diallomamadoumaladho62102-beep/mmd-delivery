@@ -212,6 +212,26 @@ async function markRefundedByPaymentIntent(
       );
     }
 
+    if (table === "seller_orders") {
+      try {
+        const {
+          cancelOpenMarketplacePayouts,
+          reversePaidMarketplaceTransfers,
+        } = await import("@/lib/marketplaceRefundService");
+        await cancelOpenMarketplacePayouts(supabaseAdmin, id);
+        await reversePaidMarketplaceTransfers(
+          supabaseAdmin,
+          id,
+          `stripe_webhook_refund:${refundRef}`
+        );
+      } catch (e) {
+        console.warn(
+          "[marketplace] refund clawback fail-open",
+          e instanceof Error ? e.message : e
+        );
+      }
+    }
+
     updated.push(id);
   }
 

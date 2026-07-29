@@ -50,6 +50,7 @@ import {
   shouldOfferLocalMobileMoney,
   startLocalPaymentForMethod,
 } from "../../lib/localPayments";
+import { applyCheckoutCredit } from "../../lib/loyaltyApi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
@@ -383,9 +384,23 @@ export default function TaxiQuoteScreen() {
         return;
       }
 
+      // Reserve loyalty credit against the ride before opening Stripe Checkout.
+      try {
+        const credit = await applyCheckoutCredit({
+          entityType: "taxi_ride",
+          entityId: rideId,
+          mode: "max",
+        });
+        if (credit?.credit_applied_cents && Number(credit.credit_applied_cents) > 0) {
+          console.log("taxi checkout credit applied", credit.credit_applied_cents);
+        }
+      } catch (creditErr) {
+        console.log("taxi checkout credit apply skipped:", creditErr);
+      }
+
       const checkout = await startTaxiCheckout(rideId);
 
-      if (checkout?.already_paid) {
+      if (checkout?.already_paid || checkout?.wallet_paid) {
         navigation.replace("TaxiRideTracking", { rideId });
         return;
       }

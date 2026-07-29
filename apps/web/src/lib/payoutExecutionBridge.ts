@@ -156,6 +156,6 @@ export async function markPayoutProcessingFromManualApproval(
 
 export function recipientTypeToWalletAccount(
   recipientType: PayoutRecipientType
-): "driver" | "restaurant" | "seller" | "partner" {
+): "driver" | "restaurant" | "seller" | "partner" | "business" {
   return recipientType;
 }

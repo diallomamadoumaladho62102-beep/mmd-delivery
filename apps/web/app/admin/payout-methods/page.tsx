@@ -55,6 +55,7 @@ const RECIPIENT_LABELS: Record<PayoutRecipientType, string> = {
   restaurant: "Restaurant",
   seller: "Marketplace seller",
   partner: "Partner",
+  business: "Business account",
 };
 
 function availabilityBadge(row: AdminPayoutMethodRow) {

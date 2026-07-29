@@ -141,6 +141,15 @@ export async function handleMarketplaceStripePayment(params: {
 
   const paidAt = new Date().toISOString();
 
+  let stripeChargeId: string | null = null;
+  const chargeSource = params.paymentIntent?.latest_charge;
+  if (typeof chargeSource === "string" && chargeSource.trim()) {
+    stripeChargeId = chargeSource.trim();
+  } else if (chargeSource && typeof chargeSource === "object" && "id" in chargeSource) {
+    const id = (chargeSource as { id?: unknown }).id;
+    if (typeof id === "string" && id.trim()) stripeChargeId = id.trim();
+  }
+
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("seller_orders")
     .update({
@@ -149,6 +158,7 @@ export async function handleMarketplaceStripePayment(params: {
       paid_at: paidAt,
       stripe_checkout_session_id: sessionId ?? row.stripe_checkout_session_id,
       stripe_payment_intent_id: paymentIntentId ?? row.stripe_payment_intent_id,
+      ...(stripeChargeId ? { stripe_charge_id: stripeChargeId } : {}),
       updated_at: paidAt,
     })
     .eq("id", sellerOrderId)

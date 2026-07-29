@@ -11,22 +11,17 @@ import {
   CronTimeoutError,
   readCronBatchLimit,
 } from "@/lib/cronTimeouts";
+import {
+  isMarketplacePayoutsLiveEnvEnabled,
+  isMarketplaceSellerPayoutsE2EReady,
+} from "@/lib/marketplaceLaunchControl";
 import { executeMarketplacePayouts } from "@/lib/marketplacePayoutService";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-/** Confirmed ceiling for this Vercel project (same as /api/ai/chat). */
 export const maxDuration = 60;
 
 const JOB = "marketplace-payouts";
-
-export const MARKETPLACE_PAYOUT_BLOCKERS = [
-  "executeMarketplacePayouts_is_stub_no_stripe_transfer",
-  "sellers_table_has_no_stripe_connect_account_column",
-  "no_seller_order_refund_or_dispute_columns",
-  "no_persisted_transfer_idempotency_key",
-  "no_atomic_processing_claim_for_live_transfer",
-] as const;
 
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
@@ -35,8 +30,17 @@ function json(body: Record<string, unknown>, status = 200) {
 async function handle(req: NextRequest) {
   const start = startCronRun(JOB, true);
   const limit = readCronBatchLimit(req.nextUrl.searchParams, 1);
+  const inventoryOnly =
+    req.nextUrl.searchParams.get("inventory_only") === "1" || limit === 0;
+  const liveReady =
+    isMarketplaceSellerPayoutsE2EReady() && isMarketplacePayoutsLiveEnvEnabled();
+  const liveMode = liveReady && !inventoryOnly;
+
   const trace = createCronPhaseTracer(JOB, start.run_id);
-  trace.mark("request_received", { batch_size: limit });
+  trace.mark("request_received", {
+    batch_size: limit,
+    detail: { live_mode: liveMode },
+  });
 
   try {
     if (!isAuthorizedCronRequest(req)) {
@@ -73,7 +77,7 @@ async function handle(req: NextRequest) {
             )
             .in("status", ["pending", "approved", "failed"])
             .order("updated_at", { ascending: true })
-            .limit(Math.max(0, limit)),
+            .limit(Math.max(0, limit || 20)),
           supabaseAdmin
             .from("marketplace_driver_payouts")
             .select(
@@ -81,7 +85,7 @@ async function handle(req: NextRequest) {
             )
             .in("status", ["pending", "approved", "failed"])
             .order("updated_at", { ascending: true })
-            .limit(Math.max(0, limit)),
+            .limit(Math.max(0, limit || 20)),
         ]);
 
         trace.mark("supabase_query_finished", {
@@ -91,21 +95,34 @@ async function handle(req: NextRequest) {
           },
         });
 
-        const execution = await executeMarketplacePayouts(supabaseAdmin, {
-          limit: Math.max(0, limit),
-        });
+        const execution = liveMode
+          ? await executeMarketplacePayouts(supabaseAdmin, {
+              limit: Math.max(0, limit),
+            })
+          : { ok: true as const, executed: 0, failed: 0, ignored: "inventory_only" };
 
         const sellerCount = (sellerRes.data ?? []).length;
         const driverCount = (driverRes.data ?? []).length;
+        const transfersCreated = Number(execution.executed ?? 0);
 
         return {
           ok: true as const,
-          mode: "INVENTORY_ONLY" as const,
-          live_execution_enabled: false,
-          transfers_created: 0,
-          blockers: [...MARKETPLACE_PAYOUT_BLOCKERS],
-          note:
-            "Marketplace Stripe transfers are not enabled. Cron inventories ledger state only.",
+          mode: liveMode ? ("LIVE" as const) : ("INVENTORY_ONLY" as const),
+          live_execution_enabled: liveMode,
+          e2e_ready: isMarketplaceSellerPayoutsE2EReady(),
+          payouts_env_enabled: isMarketplacePayoutsLiveEnvEnabled(),
+          transfers_created: transfersCreated,
+          blockers: liveMode
+            ? []
+            : [
+                ...(isMarketplaceSellerPayoutsE2EReady()
+                  ? []
+                  : ["marketplace_seller_payouts_e2e_not_ready"]),
+                ...(isMarketplacePayoutsLiveEnvEnabled()
+                  ? []
+                  : ["marketplace_payouts_live_env_disabled"]),
+                ...(inventoryOnly ? ["inventory_only_request"] : []),
+              ],
           seller_queue_error: sellerRes.error?.message ?? null,
           driver_queue_error: driverRes.error?.message ?? null,
           seller_payouts_count: sellerCount,
@@ -114,72 +131,50 @@ async function handle(req: NextRequest) {
           driver_payouts: driverRes.data ?? [],
           execution,
           scanned: sellerCount + driverCount,
-          eligible: 0,
-          processed: 0,
-          skipped: sellerCount + driverCount,
-          failed: 0,
+          eligible: liveMode ? transfersCreated : 0,
+          processed: transfersCreated,
+          skipped: liveMode ? 0 : sellerCount + driverCount,
+          failed: Number(execution.failed ?? 0),
         };
       },
-      {
-        lockedBy: `marketplace:${start.run_id}`,
-        ttlSeconds: Math.ceil(CRON_JOB_BUDGET_MS / 1000) + 30,
-      }
+      { timeoutMs: CRON_JOB_BUDGET_MS }
     );
 
     if (locked.ok === false) {
-      const reason = String(locked.error ?? "lock_busy");
-      const infraTimeout =
-        reason === "supabase_timeout" || reason === "lock_timeout";
-      trace.mark(reason === "lock_busy" ? "lock_busy" : "error", {
-        detail: { error: locked.error },
-      });
-      trace.mark("response_sent");
       return json(
         finishCronRun(start, {
-          ok: !infraTimeout,
+          ok: true,
           skipped: 1,
-          reason,
-          mode: "INVENTORY_ONLY",
+          reason: "lock_not_acquired",
           lock_acquired: false,
-          transfers_created: 0,
           phases: trace.phases,
-        }),
-        infraTimeout ? 504 : 200
+        })
       );
     }
 
-    trace.mark("processing_finished");
-    trace.mark("response_sent");
     return json(
       finishCronRun(start, {
         ...locked.result,
-        ok: true,
         lock_acquired: true,
-        batch_limit: limit,
         phases: trace.phases,
-        vercel_max_duration_sec: CRON_VERCEL_MAX_DURATION_SEC,
-        job_budget_ms: CRON_JOB_BUDGET_MS,
+        maxDuration: CRON_VERCEL_MAX_DURATION_SEC,
       })
     );
-  } catch (error) {
-    const code =
-      error instanceof CronTimeoutError
-        ? error.code
-        : error instanceof Error
-          ? error.message
-          : String(error);
-    trace.mark("error", { detail: { code } });
-    trace.mark("response_sent");
+  } catch (e) {
+    const message =
+      e instanceof CronTimeoutError
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : String(e);
     return json(
       finishCronRun(start, {
         ok: false,
-        error: code,
-        mode: "INVENTORY_ONLY",
+        error: message,
         lock_acquired: false,
-        transfers_created: 0,
         phases: trace.phases,
       }),
-      error instanceof CronTimeoutError ? 504 : 500
+      500
     );
   }
 }

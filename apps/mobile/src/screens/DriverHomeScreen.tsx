@@ -1140,13 +1140,13 @@ export function DriverHomeScreen() {
         if (identityBlocksDriverOnline(identityStatus.gate_status)) {
           await setDriverOnlineStatus(false);
           Alert.alert(
-            "Vérification d'identité",
+            "Photo verification (safety)",
             identityStatus.message ??
-              "Une vérification d'identité est requise avant de passer en ligne.",
+              "Complete photo/liveness verification before going online. This is separate from legal ID verification (Stripe Identity).",
             [
-              { text: "Annuler", style: "cancel" },
+              { text: "Cancel", style: "cancel" },
               {
-                text: "Vérifier",
+                text: "Verify photo",
                 onPress: () => navigation.navigate("DriverIdentityVerification"),
               },
             ],
@@ -2402,16 +2402,16 @@ export function DriverHomeScreen() {
           const identityOk = await promptStripeIdentityIfRequired("driver");
           if (!identityOk) {
             Alert.alert(
-              "Identity verification",
-              "Complete Stripe Identity verification before going online.",
+              "Legal ID verification (Stripe Identity)",
+              "Complete Stripe Identity (government ID) before going online. This is separate from the in-app photo/liveness check.",
             );
             return;
           }
         } catch (identityErr) {
           console.log("identity verification prompt error:", identityErr);
           Alert.alert(
-            "Identity verification",
-            "Unable to verify identity status. Try again before going online.",
+            "Legal ID verification (Stripe Identity)",
+            "Unable to verify Stripe Identity status. Try again before going online.",
           );
           return;
         }

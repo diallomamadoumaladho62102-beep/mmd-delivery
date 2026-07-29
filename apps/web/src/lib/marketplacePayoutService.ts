@@ -68,11 +68,13 @@ function isSellerOrderPaid(order: SellerOrderPayoutSource): boolean {
   const paid = order.payment_status === "paid" || order.status === "paid";
   if (!paid) return false;
   const refund = String(order.refund_status ?? "").trim().toLowerCase();
-  // null/empty refund_status is OK; block payouts after refund/dispute.
+  // null/empty refund_status is OK; block payouts after refund/dispute/pending refund.
   if (
     refund === "refunded" ||
     refund === "partially_refunded" ||
-    refund === "disputed"
+    refund === "disputed" ||
+    refund === "full_refund_required" ||
+    refund === "refund_failed"
   ) {
     return false;
   }
@@ -199,7 +201,7 @@ async function loadDeliveryJobForPayout(
 
 /**
  * Logical wallet credit for a paid/delivered marketplace order.
- * No Stripe transfer ids — executeMarketplacePayouts remains a stub.
+ * No Stripe transfer ids — live transfers run via executeMarketplacePayouts when gated.
  */
 export async function ensureMarketplaceSellerWalletEntry(
   supabaseAdmin: SupabaseClient,
@@ -719,8 +721,8 @@ export async function simulateMarketplacePayouts(
  * Resolve the Stripe charge that actually funds a seller_order, so every
  * marketplace SCT (seller or driver share) can be created with
  * `source_transaction` — same fail-closed contract as food `transfers/run`.
- * seller_orders has no stored `stripe_charge_id` column, only the
- * PaymentIntent id, so this retrieves the PI and reads `latest_charge`.
+ * Prefers durable `seller_orders.stripe_charge_id`; falls back to PaymentIntent
+ * `latest_charge` and persists it when found.
  */
 async function resolveSellerOrderSourceChargeId(
   supabaseAdmin: SupabaseClient,
@@ -728,11 +730,16 @@ async function resolveSellerOrderSourceChargeId(
 ): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from("seller_orders")
-    .select("stripe_payment_intent_id")
+    .select("stripe_payment_intent_id,stripe_charge_id,refund_status,payment_status")
     .eq("id", sellerOrderId)
     .maybeSingle();
 
   if (error || !data) return null;
+
+  const storedCharge = String(
+    (data as { stripe_charge_id?: string | null }).stripe_charge_id ?? ""
+  ).trim();
+  if (storedCharge) return storedCharge;
 
   const paymentIntentId = String(
     (data as { stripe_payment_intent_id?: string | null }).stripe_payment_intent_id ?? ""
@@ -743,12 +750,20 @@ async function resolveSellerOrderSourceChargeId(
     const { stripe } = await import("@/lib/stripe");
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
     const latest = pi.latest_charge;
-    if (typeof latest === "string" && latest.trim()) return latest.trim();
-    if (latest && typeof latest === "object" && "id" in latest) {
+    let chargeId: string | null = null;
+    if (typeof latest === "string" && latest.trim()) chargeId = latest.trim();
+    else if (latest && typeof latest === "object" && "id" in latest) {
       const id = (latest as { id?: unknown }).id;
-      if (typeof id === "string" && id.trim()) return id.trim();
+      if (typeof id === "string" && id.trim()) chargeId = id.trim();
     }
-    return null;
+    if (chargeId) {
+      await supabaseAdmin
+        .from("seller_orders")
+        .update({ stripe_charge_id: chargeId })
+        .eq("id", sellerOrderId)
+        .is("stripe_charge_id", null);
+    }
+    return chargeId;
   } catch (e) {
     console.error("[marketplace-payout] source charge retrieve failed", {
       sellerOrderId,
@@ -757,6 +772,29 @@ async function resolveSellerOrderSourceChargeId(
     });
     return null;
   }
+}
+
+async function assertSellerOrderStillPayoutEligible(
+  supabaseAdmin: SupabaseClient,
+  sellerOrderId: string
+): Promise<boolean> {
+  const { marketplaceRefundBlocksPayout } = await import(
+    "@/lib/marketplaceRefundService"
+  );
+  const { data } = await supabaseAdmin
+    .from("seller_orders")
+    .select("payment_status,refund_status,status")
+    .eq("id", sellerOrderId)
+    .maybeSingle();
+  if (!data) return false;
+  const paid =
+    String((data as { payment_status?: string }).payment_status ?? "") ===
+      "paid" ||
+    String((data as { status?: string }).status ?? "") === "paid";
+  if (!paid) return false;
+  return !marketplaceRefundBlocksPayout(
+    (data as { refund_status?: string | null }).refund_status
+  );
 }
 
 /**
@@ -778,9 +816,21 @@ export async function executeMarketplacePayouts(
     return { ok: true, ignored: "marketplace_payouts_live_disabled", executed: 0 };
   }
 
+  const { assertMarketplaceLiveMoneyAllowed } = await import(
+    "@/lib/marketplaceLaunchControl"
+  );
+  const e2e = assertMarketplaceLiveMoneyAllowed();
+  if (e2e.ok === false) {
+    return { ok: true, ignored: e2e.error, executed: 0 };
+  }
+
   const { stripe } = await import("@/lib/stripe");
 
-  const limit = Math.max(1, Math.min(50, Number(params?.limit ?? 20)));
+  const requested = Number(params?.limit ?? 20);
+  if (!Number.isFinite(requested) || requested <= 0) {
+    return { ok: true, executed: 0, failed: 0 };
+  }
+  const limit = Math.max(1, Math.min(50, Math.floor(requested)));
   let executed = 0;
   let failed = 0;
 
@@ -856,6 +906,21 @@ export async function executeMarketplacePayouts(
         })
         .eq("id", payoutId);
       failed += 1;
+      continue;
+    }
+
+    const stillEligible = await assertSellerOrderStillPayoutEligible(
+      supabaseAdmin,
+      String(row.seller_order_id)
+    );
+    if (!stillEligible) {
+      await supabaseAdmin
+        .from("marketplace_seller_payouts")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
       continue;
     }
 
@@ -993,6 +1058,21 @@ export async function executeMarketplacePayouts(
         })
         .eq("id", payoutId);
       failed += 1;
+      continue;
+    }
+
+    const stillEligible = await assertSellerOrderStillPayoutEligible(
+      supabaseAdmin,
+      String(row.seller_order_id)
+    );
+    if (!stillEligible) {
+      await supabaseAdmin
+        .from("marketplace_driver_payouts")
+        .update({
+          status: "cancelled",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payoutId);
       continue;
     }
 

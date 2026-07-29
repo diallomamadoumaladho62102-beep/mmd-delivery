@@ -3,6 +3,7 @@ export const PAYOUT_RECIPIENT_TYPES = [
   "restaurant",
   "seller",
   "partner",
+  "business",
 ] as const;
 
 export type PayoutRecipientType = (typeof PAYOUT_RECIPIENT_TYPES)[number];
@@ -45,6 +46,7 @@ export const WALLET_ACCOUNT_TYPES = [
   "seller",
   "partner",
   "client",
+  "business",
 ] as const;
 
 export type WalletAccountType = (typeof WALLET_ACCOUNT_TYPES)[number];
@@ -56,6 +58,10 @@ export const WALLET_REFERENCE_TYPES = [
   "refund",
   "adjustment",
   "order_payout",
+  "business_topup",
+  "business_ride_debit",
+  "business_payout",
+  "business_refund_credit",
 ] as const;
 
 export type WalletReferenceType = (typeof WALLET_REFERENCE_TYPES)[number];

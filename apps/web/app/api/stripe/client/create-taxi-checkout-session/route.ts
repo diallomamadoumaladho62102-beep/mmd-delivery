@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     const { data: ride, error: rideError } = await supabaseAdmin
       .from("taxi_rides")
       .select(
-        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,subtotal_cents,service_fee_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,mmd_credit_applied_cents,mmd_plus_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,is_shared_ride,shared_ride_id,premium_driver_only,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng"
+        "id,client_user_id,status,payment_status,total_cents,currency,tax_cents,subtotal_cents,service_fee_cents,stripe_session_id,stripe_payment_intent_id,promotion_id,discount_cents,loyalty_reward_id,loyalty_discount_cents,shared_discount_cents,mmd_credit_applied_cents,mmd_plus_discount_cents,promo_code,vehicle_class,country_code,gross_total_cents,is_scheduled,business_account_id,business_member_id,business_trip_type,business_approval_status,is_shared_ride,shared_ride_id,premium_driver_only,pickup_lat,pickup_lng,dropoff_lat,dropoff_lng,payment_funding"
       )
       .eq("id", taxiRideId)
       .maybeSingle();
@@ -134,6 +134,108 @@ export async function POST(req: NextRequest) {
     const status = normalizeStatus(ride.status);
     if (!["quoted", "pending_payment", "draft", "scheduled"].includes(status)) {
       return taxiJson({ error: "Ride is not payable at this stage" }, 400);
+    }
+
+    const approval = String(
+      (ride as { business_approval_status?: string | null }).business_approval_status ??
+        "not_required"
+    ).toLowerCase();
+    if (approval === "pending") {
+      return taxiJson(
+        {
+          ok: false,
+          error: "business_approval_pending",
+          message:
+            "This business ride is waiting for manager approval before payment.",
+        },
+        400
+      );
+    }
+    if (approval === "rejected") {
+      return taxiJson(
+        {
+          ok: false,
+          error: "business_approval_rejected",
+          message: "This business ride was rejected by a manager.",
+        },
+        400
+      );
+    }
+
+    const businessAccountId = String(ride.business_account_id ?? "").trim();
+    const isBusinessTrip =
+      String(ride.business_trip_type ?? "").toLowerCase() === "business" &&
+      Boolean(businessAccountId);
+
+    if (isBusinessTrip && (approval === "approved" || approval === "not_required")) {
+      const amountCents = Math.round(Number(ride.total_cents ?? 0));
+      if (Number.isFinite(amountCents) && amountCents > 0) {
+        const {
+          debitBusinessWalletForRide,
+          getBusinessWalletBalance,
+        } = await import("@/lib/taxiBusinessWalletService");
+        const currency = String(ride.currency ?? "USD");
+        const balance = await getBusinessWalletBalance(
+          supabaseAdmin,
+          businessAccountId,
+          currency
+        );
+        if (balance >= amountCents) {
+          const debit = await debitBusinessWalletForRide(supabaseAdmin, {
+            businessAccountId,
+            taxiRideId,
+            amountCents,
+            currency,
+          });
+          if (debit.ok === false) {
+            if (debit.error !== "insufficient_business_wallet_balance") {
+              return taxiJson({ ok: false, error: debit.error }, 400);
+            }
+            // Fall through to personal Stripe checkout when wallet is short.
+          } else {
+            const paidAt = new Date().toISOString();
+            const { data: paidRide, error: paidErr } = await supabaseAdmin
+              .from("taxi_rides")
+              .update({
+                payment_status: "paid",
+                status: status === "scheduled" ? "scheduled" : "paid",
+                payment_funding: "business_wallet",
+                paid_at: paidAt,
+                updated_at: paidAt,
+              })
+              .eq("id", taxiRideId)
+              .neq("payment_status", "paid")
+              .select("id,payment_status,status")
+              .maybeSingle();
+
+            if (paidErr) {
+              return taxiJson({ ok: false, error: paidErr.message }, 500);
+            }
+
+            try {
+              await supabaseAdmin.rpc("record_taxi_business_billing_event", {
+                p_business_account_id: businessAccountId,
+                p_taxi_ride_id: taxiRideId,
+                p_member_user_id: user.id,
+                p_amount_cents: amountCents,
+                p_event_type: "ride_paid",
+                p_metadata: { funding: "business_wallet" },
+              });
+            } catch {
+              /* best-effort */
+            }
+
+            return taxiJson({
+              ok: true,
+              wallet_paid: true,
+              payment_funding: "business_wallet",
+              taxi_ride_id: taxiRideId,
+              amount_cents: amountCents,
+              already_paid: !paidRide,
+            });
+          }
+        }
+      }
     }
 
     if (ride.promo_code) {

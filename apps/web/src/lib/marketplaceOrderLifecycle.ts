@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notifyMarketplaceClientOrderStatus } from "@/lib/marketplacePushNotifications";
+import { refundMarketplaceSellerOrder } from "@/lib/marketplaceRefundService";
 
 const PAID_STATUSES = new Set(["paid", "confirmed"]);
 const BEFORE_OUT_FOR_DELIVERY = new Set([
@@ -64,6 +65,7 @@ export async function transitionMarketplaceSellerOrderStatus(
       order: Record<string, unknown>;
       stripe_refund_deferred?: boolean;
       refund_status?: string | null;
+      stripe_refund_id?: string | null;
     }
   | { ok: false; error: string }
 > {
@@ -98,12 +100,14 @@ export async function transitionMarketplaceSellerOrderStatus(
   };
 
   let stripeRefundDeferred = false;
+  let refundResult:
+    | { ok: boolean; refunded: boolean; refundId: string | null; refundStatus: string; error?: string }
+    | null = null;
   if (params.nextStatus === "refused") {
     patch.refund_status = "full_refund_required";
     patch.cancelled_by = "seller";
     patch.cancelled_at = now;
     patch.cancel_reason = params.cancelReason?.trim() || "refused_by_seller";
-    stripeRefundDeferred = true;
   }
 
   const { data: updated, error: updateError } = await supabaseAdmin
@@ -113,12 +117,21 @@ export async function transitionMarketplaceSellerOrderStatus(
     .eq("seller_id", seller.id)
     .eq("status", order.status)
     .select(
-      "id,seller_id,client_user_id,status,payment_status,refund_status,cancelled_by,cancelled_at,cancel_reason,updated_at"
+      "id,seller_id,client_user_id,status,payment_status,refund_status,cancelled_by,cancelled_at,cancel_reason,updated_at,stripe_payment_intent_id"
     )
     .maybeSingle();
 
   if (updateError) return { ok: false, error: updateError.message };
   if (!updated) return { ok: false, error: "order_update_failed" };
+
+  if (params.nextStatus === "refused") {
+    refundResult = await refundMarketplaceSellerOrder(supabaseAdmin, {
+      orderId: params.orderId,
+      reason: String(patch.cancel_reason ?? "refused_by_seller"),
+      actorRole: "seller",
+    });
+    stripeRefundDeferred = !refundResult.refunded;
+  }
 
   void notifyMarketplaceClientOrderStatus({
     supabaseAdmin,
@@ -135,10 +148,11 @@ export async function transitionMarketplaceSellerOrderStatus(
   return {
     ok: true,
     order: updated as Record<string, unknown>,
-    ...(stripeRefundDeferred
+    ...(params.nextStatus === "refused"
       ? {
-          stripe_refund_deferred: true,
-          refund_status: "full_refund_required",
+          stripe_refund_deferred: stripeRefundDeferred,
+          refund_status: refundResult?.refundStatus ?? "full_refund_required",
+          stripe_refund_id: refundResult?.refundId ?? null,
         }
       : {}),
   };
@@ -158,6 +172,7 @@ export async function cancelMarketplaceOrder(
       order: Record<string, unknown>;
       stripe_refund_deferred?: boolean;
       refund_status?: string | null;
+      stripe_refund_id?: string | null;
     }
   | { ok: false; error: string }
 > {
@@ -222,7 +237,7 @@ export async function cancelMarketplaceOrder(
     return { ok: true, order: updated as Record<string, unknown> };
   }
 
-  // Paid cancel before out_for_delivery — mark refund required, do NOT call Stripe.
+  // Paid cancel before out_for_delivery — cancel + execute Stripe refund.
   if (!isPaid) {
     return { ok: false, error: "order_not_cancellable" };
   }
@@ -250,6 +265,12 @@ export async function cancelMarketplaceOrder(
   if (updateError) return { ok: false, error: updateError.message };
   if (!updated) return { ok: false, error: "order_update_failed" };
 
+  const refundResult = await refundMarketplaceSellerOrder(supabaseAdmin, {
+    orderId: params.orderId,
+    reason: String(updated.cancel_reason ?? `cancelled_by_${params.actorRole}`),
+    actorRole: params.actorRole,
+  });
+
   void notifyMarketplaceClientOrderStatus({
     supabaseAdmin,
     clientUserId: String(updated.client_user_id ?? order.client_user_id ?? ""),
@@ -260,7 +281,8 @@ export async function cancelMarketplaceOrder(
   return {
     ok: true,
     order: updated as Record<string, unknown>,
-    stripe_refund_deferred: true,
-    refund_status: "full_refund_required",
+    stripe_refund_deferred: !refundResult.refunded,
+    refund_status: refundResult.refundStatus,
+    stripe_refund_id: refundResult.refundId,
   };
 }
