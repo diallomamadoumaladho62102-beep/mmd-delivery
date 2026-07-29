@@ -14,6 +14,14 @@ export type InboundWalletLedgerResult = {
   source: "rpc" | "fallback";
 };
 
+export type ReverseInboundWalletLedgerResult = {
+  ok: true;
+  created: boolean;
+  debitId: string;
+  creditId: string;
+  source: "rpc" | "fallback";
+};
+
 /**
  * Records the inbound payment wallet pair (platform credit + client debit).
  * Prefer atomic RPC; fall back to idempotent appends if RPC is unavailable.
@@ -59,7 +67,7 @@ export async function recordInboundPaymentWalletEntries(
   }
 
   // RPC missing / unavailable — idempotent sequential fallback (non-production only).
-  if (rpcError && !isMissingRpcError(rpcError)) {
+  if (rpcError && !isMissingRpcError(rpcError, "record_inbound_payment_wallet_entries")) {
     throw new Error(rpcError.message);
   }
 
@@ -129,11 +137,118 @@ export async function recordInboundPaymentWalletEntries(
   };
 }
 
-function isMissingRpcError(error: { message?: string; code?: string }): boolean {
+/**
+ * Compensating reverse for a prior inbound payment (platform debit + client credit).
+ * Idempotent on Stripe refund id. Prefer atomic RPC.
+ */
+export async function reverseInboundPaymentWalletEntries(
+  supabaseAdmin: SupabaseClient,
+  input: {
+    transaction: PaymentTransactionRow;
+    refundId: string;
+    amountCents: number;
+  }
+): Promise<ReverseInboundWalletLedgerResult> {
+  const refundId = String(input.refundId ?? "").trim();
+  if (!refundId) {
+    throw new Error("missing_refund_id");
+  }
+  const amountCents = Math.max(0, Math.round(Number(input.amountCents ?? 0)));
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    throw new Error("invalid_amount_cents");
+  }
+
+  const { data: rpcData, error: rpcError } = await supabaseAdmin.rpc(
+    "reverse_inbound_payment_wallet_entries",
+    {
+      p_transaction_id: input.transaction.id,
+      p_refund_id: refundId,
+      p_amount_cents: amountCents,
+    },
+  );
+
+  if (!rpcError && rpcData && typeof rpcData === "object") {
+    const payload = rpcData as Record<string, unknown>;
+    if (payload.ok === true && payload.debit_id && payload.credit_id) {
+      return {
+        ok: true,
+        created: Boolean(payload.created),
+        debitId: String(payload.debit_id),
+        creditId: String(payload.credit_id),
+        source: "rpc",
+      };
+    }
+    if (payload.ok === false) {
+      throw new Error(String(payload.error ?? "wallet_ledger_reverse_rpc_failed"));
+    }
+  }
+
+  if (rpcError && !isMissingRpcError(rpcError, "reverse_inbound_payment_wallet_entries")) {
+    throw new Error(rpcError.message);
+  }
+
+  const appEnv = String(process.env.APP_ENV ?? process.env.VERCEL_ENV ?? "").toLowerCase();
+  const isProductionRuntime =
+    appEnv === "production" || process.env.NODE_ENV === "production";
+  if (isProductionRuntime) {
+    throw new Error(
+      "reverse_inbound_payment_wallet_entries RPC required in production (sequential wallet fallback disabled)"
+    );
+  }
+
+  const { transaction } = input;
+
+  const debit = await appendWalletLedgerEntry(supabaseAdmin, {
+    accountType: "platform",
+    accountUserId: null,
+    countryCode: transaction.country_code,
+    currency: transaction.currency,
+    direction: "debit",
+    amountCents,
+    referenceType: "refund",
+    referenceId: refundId,
+    description: "Inbound payment refund (platform reverse)",
+    metadata: {
+      payment_transaction_id: transaction.id,
+      refund_id: refundId,
+      source: "reverse_inbound_payment_wallet_entries",
+    },
+  });
+
+  const credit = await appendWalletLedgerEntry(supabaseAdmin, {
+    accountType: "client",
+    accountUserId: transaction.user_id,
+    countryCode: transaction.country_code,
+    currency: transaction.currency,
+    direction: "credit",
+    amountCents,
+    referenceType: "refund",
+    referenceId: refundId,
+    description: "Client payment refund credit",
+    metadata: {
+      payment_transaction_id: transaction.id,
+      refund_id: refundId,
+      source: "reverse_inbound_payment_wallet_entries",
+    },
+  });
+
+  return {
+    ok: true,
+    created: true,
+    debitId: String((debit as { id?: string }).id ?? ""),
+    creditId: String((credit as { id?: string }).id ?? ""),
+    source: "fallback",
+  };
+}
+
+function isMissingRpcError(
+  error: { message?: string; code?: string },
+  fnName: string
+): boolean {
   const message = String(error.message ?? "").toLowerCase();
   return (
     message.includes("could not find the function") ||
-    message.includes("function public.record_inbound_payment_wallet_entries") ||
+    message.includes(`function public.${fnName}`) ||
     message.includes("schema cache") ||
     error.code === "PGRST202"
   );

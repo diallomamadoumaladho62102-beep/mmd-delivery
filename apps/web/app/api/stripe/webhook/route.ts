@@ -23,6 +23,7 @@ import {
   syncStripeChargeRefunded,
   syncStripeRefundObject,
 } from "@/lib/stripeWebhookChargeRefunded";
+import { syncStripeChargeDispute } from "@/lib/stripeWebhookDispute";
 import {
   handleCheckoutSessionExpiredEvent,
   handlePaymentIntentFailedEvent,
@@ -290,6 +291,12 @@ const HANDLED_EVENT_TYPES = new Set([
   "payment_intent.payment_failed",
   "charge.refunded",
   "refund.updated",
+  // Charge disputes
+  "charge.dispute.created",
+  "charge.dispute.updated",
+  "charge.dispute.closed",
+  "charge.dispute.funds_withdrawn",
+  "charge.dispute.funds_reinstated",
   // Stripe Connect onboarding / bank verification sync
   "account.updated",
   "account.application.authorized",
@@ -3191,6 +3198,28 @@ export async function POST(req: NextRequest) {
         type: event.type,
         ok: true,
         refund_sync: result,
+      });
+    }
+
+    if (
+      event.type === "charge.dispute.created" ||
+      event.type === "charge.dispute.updated" ||
+      event.type === "charge.dispute.closed" ||
+      event.type === "charge.dispute.funds_withdrawn" ||
+      event.type === "charge.dispute.funds_reinstated"
+    ) {
+      const dispute = event.data.object as Stripe.Dispute;
+      const result = await syncStripeChargeDispute({
+        supabaseAdmin,
+        dispute,
+        eventType: event.type,
+        stripe,
+      });
+      return json({
+        received: true,
+        type: event.type,
+        ok: result.ok,
+        dispute_sync: result,
       });
     }
 

@@ -5,6 +5,9 @@ import {
   reverseEntityLoyalty,
   type CreditEntityType,
 } from "@/lib/loyalty/loyaltyCredit";
+import { reverseInboundPaymentWalletEntries } from "@/lib/inboundWalletBridge";
+import { getPaymentTransactionByExternalReference } from "@/lib/paymentTransactionService";
+import type { PaymentTransactionRow } from "@/lib/paymentTypes";
 
 type RefundableTable =
   | "orders"
@@ -64,6 +67,45 @@ function financeEntityType(table: RefundableTable): string {
   if (table === "delivery_requests") return "delivery_request";
   if (table === "taxi_rides") return "taxi_ride";
   return "seller_order";
+}
+
+async function tryReverseInboundWallet(
+  supabaseAdmin: SupabaseClient,
+  paymentIntentId: string,
+  refundId: string | null,
+  amountCents: number
+): Promise<void> {
+  if (!refundId || amountCents <= 0) return;
+
+  let transaction: PaymentTransactionRow | null = null;
+  try {
+    transaction = await getPaymentTransactionByExternalReference(
+      supabaseAdmin,
+      "stripe",
+      paymentIntentId
+    );
+  } catch (e) {
+    console.warn(
+      "[wallet] refund reverse lookup fail-open",
+      e instanceof Error ? e.message : e
+    );
+    return;
+  }
+
+  if (!transaction) return;
+
+  try {
+    await reverseInboundPaymentWalletEntries(supabaseAdmin, {
+      transaction,
+      refundId,
+      amountCents,
+    });
+  } catch (e) {
+    console.warn(
+      "[wallet] reverse_inbound_payment_wallet_entries fail-open",
+      e instanceof Error ? e.message : e
+    );
+  }
 }
 
 async function markRefundedByPaymentIntent(
@@ -228,6 +270,14 @@ export async function syncStripeChargeRefunded(params: {
     amountCents,
   );
 
+  // After entity mark: reverse inbound wallet entries (fail-open).
+  await tryReverseInboundWallet(
+    params.supabaseAdmin,
+    paymentIntentId,
+    refundId,
+    amountCents
+  );
+
   if (updated.length === 0) {
     return { updated: [], skipped: ["no_matching_rows"] };
   }
@@ -258,6 +308,13 @@ export async function syncStripeRefundObject(params: {
     refundId,
     refundedAt,
     amountCents,
+  );
+
+  await tryReverseInboundWallet(
+    params.supabaseAdmin,
+    paymentIntentId,
+    refundId,
+    amountCents
   );
 
   if (updated.length === 0) {

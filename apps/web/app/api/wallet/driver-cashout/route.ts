@@ -1,10 +1,20 @@
 import { NextRequest } from "next/server";
 import {
+  DRIVER_CASHOUT_MINIMUM_CENTS,
+  fetchConnectUsdBalanceCents,
+  isDriverCashoutRateLimited,
+} from "@/lib/driverWalletService";
+import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
+import {
   getBearerToken,
   getSupabaseAdminClient,
   getSupabaseUserClient,
   mmdLocationJson,
 } from "@/lib/mmdLocationCore";
+import {
+  createPayoutTransaction,
+  updatePayoutTransactionStatus,
+} from "@/lib/payoutTransactionService";
 import { stripe } from "@/lib/stripe";
 import { toUserFacingError } from "@/lib/userFacingError";
 
@@ -20,7 +30,9 @@ function isDriverRole(role: string | null | undefined): boolean {
 
 /**
  * Canonical Driver wallet Cash Out (Vercel).
- * Replaces Edge `pay-driver-now` which is disabled by MMD_EDGE_PAYOUTS_DISABLED in production.
+ * Withdraws Stripe Connect **available** balance only via Express payout.
+ * Does NOT call admin_pay_driver_now / finalize_driver_payout — unpaid
+ * delivery earnings await SCT via transfers/run.
  */
 export async function POST(req: NextRequest) {
   const token = getBearerToken(req);
@@ -155,79 +167,127 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: prep, error: prepErr } = await supabaseAdmin.rpc("admin_pay_driver_now", {
-      p_driver_id: driverUserId,
-      p_currency: currency,
-    });
-
-    if (prepErr) {
-      const message = prepErr.message ?? "Cash out failed";
-      const status = message.includes("cashout_rate_limited") ? 429 : 400;
-      return mmdLocationJson({ ok: false, error: message }, status);
-    }
-
-    const row = Array.isArray(prep) ? prep[0] : prep;
-    const payoutAmount = Number(
-      (row as { payout_amount?: unknown } | null)?.payout_amount ?? 0
-    );
-    const payoutId = (row as { payout_id?: unknown } | null)?.payout_id;
-
-    if (!payoutId || !Number.isFinite(payoutAmount) || payoutAmount <= 0) {
-      return mmdLocationJson({
-        ok: true,
-        message: "Nothing to pay",
-        payout_amount: 0,
-        payout_amount_cents: 0,
-      });
-    }
-
-    const amountCents = Math.round(payoutAmount * 100);
-    if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      return mmdLocationJson({ ok: false, error: "Invalid payout amount" }, 400);
-    }
-
-    const payout = await stripe.payouts.create(
-      {
-        amount: amountCents,
-        currency: currency.toLowerCase(),
-        metadata: {
-          driver_id: driverUserId,
-          driver_profile_id: String(prof.id ?? ""),
-          payout_id: String(payoutId),
-          source: "mobile_wallet_cashout_vercel",
-        },
-      },
-      {
-        stripeAccount: String(prof.stripe_account_id),
-        idempotencyKey: `driver-payout:${payoutId}`,
-      }
-    );
-
-    const { error: finErr } = await supabaseAdmin.rpc("finalize_driver_payout", {
-      p_payout_id: payoutId,
-      p_stripe_payout_id: payout.id,
-    });
-
-    if (finErr) {
+    const stripeAccountId = String(prof.stripe_account_id);
+    const rateLimit = await isDriverCashoutRateLimited(supabaseAdmin, driverUserId);
+    if (rateLimit.limited) {
       return mmdLocationJson(
         {
           ok: false,
-          error: "Stripe payout created but DB finalize failed",
-          details: finErr.message,
-          payout_id: payoutId,
-          stripe_payout_id: payout.id,
+          error: "cashout_rate_limited",
+          message:
+            "Vous avez déjà demandé un cash out récemment. Réessayez dans 24 heures.",
+          last_cashout_at: rateLimit.lastCashoutAt,
+          money_out_model: MONEY_OUT_MODEL,
         },
-        500
+        429
       );
     }
 
+    let availableCents = 0;
+    try {
+      const balance = await fetchConnectUsdBalanceCents(stripeAccountId);
+      availableCents = balance.availableCents;
+    } catch (balanceErr) {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: "stripe_balance_lookup_failed",
+          message: toUserFacingError(
+            balanceErr,
+            "Impossible de lire le solde Stripe. Réessayez dans quelques instants."
+          ),
+        },
+        400
+      );
+    }
+
+    if (!Number.isFinite(availableCents) || availableCents <= 0) {
+      return mmdLocationJson({
+        ok: true,
+        stripe_payout_id: null,
+        payout_amount_cents: 0,
+        currency,
+        money_out_model: MONEY_OUT_MODEL,
+        message:
+          "Nothing to pay — Connect available balance is empty. Unpaid delivery earnings await SCT transfer.",
+      });
+    }
+
+    if (availableCents < DRIVER_CASHOUT_MINIMUM_CENTS) {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: "below_minimum",
+          message: `Minimum cash out is ${DRIVER_CASHOUT_MINIMUM_CENTS} cents.`,
+          payout_amount_cents: availableCents,
+          currency,
+          money_out_model: MONEY_OUT_MODEL,
+        },
+        400
+      );
+    }
+
+    const amountCents = availableCents;
+
+    const audit = await createPayoutTransaction(supabaseAdmin, {
+      countryCode: "US",
+      recipientType: "driver",
+      recipientUserId: driverUserId,
+      provider: "stripe_connect",
+      methodCode: "payout_stripe_connect",
+      amountCents,
+      currency,
+      status: "processing",
+      payoutMode: "manual",
+      destinationAccount: stripeAccountId,
+      providerPayload: {
+        source: "mobile_wallet_cashout",
+        money_out_model: MONEY_OUT_MODEL.driverCashout,
+      },
+    });
+
+    let payout;
+    try {
+      payout = await stripe.payouts.create(
+        {
+          amount: amountCents,
+          currency: currency.toLowerCase(),
+          metadata: {
+            driver_id: driverUserId,
+            driver_profile_id: String(prof.id ?? ""),
+            payout_transaction_id: String(audit.id),
+            source: "mobile_wallet_cashout",
+          },
+        },
+        {
+          stripeAccount: stripeAccountId,
+          idempotencyKey: `driver-connect-payout:${audit.id}`,
+        }
+      );
+    } catch (stripeErr) {
+      await updatePayoutTransactionStatus(supabaseAdmin, audit.id, "failed", {
+        failure_reason: toUserFacingError(stripeErr, "Stripe payout create failed"),
+      });
+      throw stripeErr;
+    }
+
+    await updatePayoutTransactionStatus(supabaseAdmin, audit.id, "paid", {
+      external_reference: payout.id,
+      provider_payload: {
+        source: "mobile_wallet_cashout",
+        stripe_payout_id: payout.id,
+        money_out_model: MONEY_OUT_MODEL.driverCashout,
+      },
+    });
+
     return mmdLocationJson({
       ok: true,
-      payout_id: payoutId,
       stripe_payout_id: payout.id,
-      payout_amount: payoutAmount,
       payout_amount_cents: amountCents,
       currency,
+      money_out_model: MONEY_OUT_MODEL,
+      message: "Connect available balance payout created.",
+      payout_transaction_id: audit.id,
       driver_id: driverUserId,
     });
   } catch (e) {

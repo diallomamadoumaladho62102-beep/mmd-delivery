@@ -20,10 +20,10 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
   CI: "XOF",
 };
 
-/** Keep UI + admin_pay_driver_now aligned (hardcoded $20 in RPC). */
+/** Minimum Cash Out from Connect available balance ($20). */
 export const DRIVER_CASHOUT_MINIMUM_CENTS = 2000;
 
-/** Match admin_pay_driver_now rolling 24h window. */
+/** Rolling 24h cashout cooldown window. */
 export const DRIVER_CASHOUT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 function toNumber(value: unknown): number {
@@ -42,7 +42,32 @@ function isWithinCashoutCooldown(lastCashoutAt: string | null, now = new Date())
   return now.getTime() - last < DRIVER_CASHOUT_COOLDOWN_MS;
 }
 
-/** Exported for parity tests vs SQL admin_pay_driver_now available set. */
+function payloadSource(payload: unknown): string {
+  if (!payload || typeof payload !== "object") return "";
+  const source = (payload as { source?: unknown }).source;
+  return String(source ?? "").trim().toLowerCase();
+}
+
+/** Live Connect USD balances (available + pending). */
+export async function fetchConnectUsdBalanceCents(
+  stripeAccountId: string
+): Promise<{ availableCents: number; pendingCents: number }> {
+  const balance = await stripe.balance.retrieve({
+    stripeAccount: stripeAccountId,
+  });
+  const availableCents = (balance.available ?? [])
+    .filter((row) => String(row.currency ?? "").toLowerCase() === "usd")
+    .reduce((sum, row) => sum + Math.max(0, Math.round(Number(row.amount ?? 0))), 0);
+  const pendingCents = (balance.pending ?? [])
+    .filter((row) => String(row.currency ?? "").toLowerCase() === "usd")
+    .reduce((sum, row) => sum + Math.max(0, Math.round(Number(row.amount ?? 0))), 0);
+  return { availableCents, pendingCents };
+}
+
+/**
+ * Unpaid delivery earnings not yet SCT'd to Connect (orders + delivery_requests).
+ * Exported for parity / wallet awaiting_transfer_cents.
+ */
 export async function computeDriverAvailableCents(
   supabaseAdmin: SupabaseClient,
   driverUserId: string
@@ -80,7 +105,7 @@ export async function computeDriverAvailableCents(
   return ordersAvailableCents + requestsAvailableCents;
 }
 
-async function computeDriverPendingCents(
+async function computeDriverPendingPayoutTxCents(
   supabaseAdmin: SupabaseClient,
   driverUserId: string
 ): Promise<number> {
@@ -118,28 +143,62 @@ async function computeDriverPendingCents(
   return pendingCents;
 }
 
+/**
+ * Rate-limit: stripe_connect payout_transactions in processing/paid within 24h,
+ * or provider_payload.source mobile_wallet_cashout within 24h.
+ */
+export async function isDriverCashoutRateLimited(
+  supabaseAdmin: SupabaseClient,
+  driverUserId: string,
+  now = new Date()
+): Promise<{ limited: boolean; lastCashoutAt: string | null }> {
+  const sinceIso = new Date(now.getTime() - DRIVER_CASHOUT_COOLDOWN_MS).toISOString();
+
+  const { data: rows, error } = await supabaseAdmin
+    .from("payout_transactions")
+    .select("created_at, status, provider, provider_payload")
+    .eq("recipient_user_id", driverUserId)
+    .eq("recipient_type", "driver")
+    .eq("provider", "stripe_connect")
+    .gte("created_at", sinceIso)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error && error.code !== "42P01") {
+    throw new Error(error.message);
+  }
+
+  for (const row of rows ?? []) {
+    const status = String(row.status ?? "").toLowerCase();
+    const source = payloadSource(row.provider_payload);
+    const isCashoutSource =
+      source === "mobile_wallet_cashout" ||
+      source === "mobile_wallet_cashout_vercel";
+    if (status === "processing" || status === "paid" || isCashoutSource) {
+      return {
+        limited: true,
+        lastCashoutAt: row.created_at ? String(row.created_at) : null,
+      };
+    }
+  }
+
+  return { limited: false, lastCashoutAt: null };
+}
+
 async function resolveLastCashoutAt(
   supabaseAdmin: SupabaseClient,
   driverUserId: string
 ): Promise<string | null> {
-  const { data: legacyRows, error: legacyErr } = await supabaseAdmin
-    .from("driver_payouts")
-    .select("created_at, status")
-    .eq("driver_id", driverUserId)
-    .in("status", ["scheduled", "processing", "paid"])
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (legacyErr) throw new Error(legacyErr.message);
-
-  const legacyAt = legacyRows?.[0]?.created_at ?? null;
+  const rate = await isDriverCashoutRateLimited(supabaseAdmin, driverUserId);
+  if (rate.lastCashoutAt) return rate.lastCashoutAt;
 
   const { data: payoutRows, error: payoutErr } = await supabaseAdmin
     .from("payout_transactions")
-    .select("created_at, status")
+    .select("created_at, status, provider, provider_payload")
     .eq("recipient_user_id", driverUserId)
     .eq("recipient_type", "driver")
-    .in("status", ["pending", "approved", "processing", "paid"])
+    .eq("provider", "stripe_connect")
+    .in("status", ["processing", "paid"])
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -147,11 +206,7 @@ async function resolveLastCashoutAt(
     throw new Error(payoutErr.message);
   }
 
-  const payoutAt = payoutRows?.[0]?.created_at ?? null;
-
-  if (!legacyAt) return payoutAt;
-  if (!payoutAt) return legacyAt;
-  return new Date(legacyAt) > new Date(payoutAt) ? legacyAt : payoutAt;
+  return payoutRows?.[0]?.created_at ? String(payoutRows[0].created_at) : null;
 }
 
 export type DriverWalletSummary = {
@@ -159,7 +214,11 @@ export type DriverWalletSummary = {
   country_code: string;
   currency: string;
   balance_cents: number;
+  /** Connect available balance (cashable). */
   available_cents: number;
+  /** Unpaid delivery earnings awaiting platform→Connect SCT. */
+  awaiting_transfer_cents: number;
+  /** Connect pending + in-flight payout transactions. */
   pending_cents: number;
   minimum_payout_cents: number;
   cashout_blocked_today: boolean;
@@ -191,18 +250,24 @@ export async function buildDriverWalletSummary(
 
   if (profileErr) throw new Error(profileErr.message);
 
-  const [balanceCents, availableCents, pendingCents, payoutMethods, lastCashoutAt] =
-    await Promise.all([
-      getWalletBalance(supabaseAdmin, "driver", driverUserId, currency),
-      computeDriverAvailableCents(supabaseAdmin, driverUserId),
-      computeDriverPendingCents(supabaseAdmin, driverUserId),
-      loadPayoutMethodsForRecipient(supabaseAdmin, countryCode, "driver"),
-      resolveLastCashoutAt(supabaseAdmin, driverUserId),
-    ]);
+  const [
+    balanceCents,
+    awaitingTransferCents,
+    pendingPayoutTxCents,
+    payoutMethods,
+    lastCashoutAt,
+    rateLimit,
+  ] = await Promise.all([
+    getWalletBalance(supabaseAdmin, "driver", driverUserId, currency),
+    computeDriverAvailableCents(supabaseAdmin, driverUserId),
+    computeDriverPendingPayoutTxCents(supabaseAdmin, driverUserId),
+    loadPayoutMethodsForRecipient(supabaseAdmin, countryCode, "driver"),
+    resolveLastCashoutAt(supabaseAdmin, driverUserId),
+    isDriverCashoutRateLimited(supabaseAdmin, driverUserId),
+  ]);
 
   const defaultMethod =
     payoutMethods.find((method) => method.available) ?? payoutMethods[0] ?? null;
-  // Never advertise a lower minimum than the SQL cashout RPC ($20).
   const minimumPayoutCents = Math.max(
     DRIVER_CASHOUT_MINIMUM_CENTS,
     defaultMethod?.minimum_payout_cents ?? DRIVER_CASHOUT_MINIMUM_CENTS,
@@ -217,6 +282,8 @@ export async function buildDriverWalletSummary(
   let chargesEnabled: boolean | null = stripeOnboarded ? true : null;
   let payoutsEnabled: boolean | null = stripeOnboarded ? true : null;
   let stripeLiveVerified = false;
+  let connectAvailableCents = 0;
+  let connectPendingCents = 0;
 
   // Same live triad as POST /api/wallet/driver-cashout — never enable cashout
   // from the DB boolean alone when an Express account id exists.
@@ -228,6 +295,15 @@ export async function buildDriverWalletSummary(
       payoutsEnabled = Boolean(connectAccount.payouts_enabled);
       stripeOnboarded = detailsSubmitted && chargesEnabled && payoutsEnabled;
       stripeLiveVerified = true;
+
+      try {
+        const bal = await fetchConnectUsdBalanceCents(stripeAccountId);
+        connectAvailableCents = bal.availableCents;
+        connectPendingCents = bal.pendingCents;
+      } catch {
+        connectAvailableCents = 0;
+        connectPendingCents = 0;
+      }
     } catch {
       // Fail closed for cashout eligibility when Stripe is unreachable.
       detailsSubmitted = false;
@@ -235,6 +311,8 @@ export async function buildDriverWalletSummary(
       payoutsEnabled = false;
       stripeOnboarded = false;
       stripeLiveVerified = false;
+      connectAvailableCents = 0;
+      connectPendingCents = 0;
     }
   }
 
@@ -245,7 +323,10 @@ export async function buildDriverWalletSummary(
     payouts_enabled: payoutsEnabled,
   });
 
-  const cashoutBlockedCooldown = isWithinCashoutCooldown(lastCashoutAt);
+  const cashoutBlockedCooldown =
+    rateLimit.limited || isWithinCashoutCooldown(lastCashoutAt);
+  const availableCents = stripeAccountId ? connectAvailableCents : 0;
+  const pendingCents = connectPendingCents + pendingPayoutTxCents;
 
   let cashoutBlockReason: string | null = null;
   if (!stripeAccountId || !stripeOnboarded) {
@@ -256,7 +337,12 @@ export async function buildDriverWalletSummary(
     cashoutBlockReason = "below_minimum";
   }
 
-  const canCashout = cashoutBlockReason === null;
+  const canCashout =
+    cashoutBlockReason === null &&
+    stripeLiveVerified &&
+    stripeOnboarded &&
+    availableCents >= minimumPayoutCents &&
+    !cashoutBlockedCooldown;
 
   return {
     account_type: "driver",
@@ -264,10 +350,11 @@ export async function buildDriverWalletSummary(
     currency,
     balance_cents: balanceCents,
     available_cents: availableCents,
+    awaiting_transfer_cents: awaitingTransferCents,
     pending_cents: pendingCents,
     minimum_payout_cents: minimumPayoutCents,
     cashout_blocked_today: cashoutBlockedCooldown,
-    last_cashout_at: lastCashoutAt,
+    last_cashout_at: rateLimit.lastCashoutAt ?? lastCashoutAt,
     stripe_account_id: stripeAccountId,
     stripe_onboarded: stripeOnboarded,
     stripe_status: stripeStatus,

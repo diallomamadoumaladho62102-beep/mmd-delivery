@@ -35,6 +35,7 @@ type OrderRow = {
   id: string;
   status: string | null;
   payment_status: string | null;
+  refund_status: string | null;
   currency: string | null;
   driver_id: string | null;
   restaurant_id: string | null;
@@ -407,6 +408,11 @@ function isPaidPaymentStatus(status: unknown): boolean {
   return lower(status) === "paid";
 }
 
+function isBlockedRefundStatus(status: unknown): boolean {
+  const s = lower(status);
+  return s === "refunded" || s === "disputed" || s === "partially_refunded";
+}
+
 function isCanceledOrderStatus(status: unknown): boolean {
   const s = lower(status);
   return s === "canceled" || s === "cancelled" || s === "expired";
@@ -463,6 +469,7 @@ export async function POST(req: NextRequest) {
         id,
         status,
         payment_status,
+        refund_status,
         currency,
         driver_id,
         restaurant_id,
@@ -523,6 +530,16 @@ export async function POST(req: NextRequest) {
 
     if (!isPaidPaymentStatus(order.payment_status)) {
       return json({ error: "Order is not paid" }, 409);
+    }
+
+    if (isBlockedRefundStatus(order.refund_status)) {
+      return json(
+        {
+          error: "Order refunded or disputed — transfer blocked",
+          refund_status: order.refund_status,
+        },
+        409
+      );
     }
 
     if (isOrderAlreadyPaidOut(order, target)) {

@@ -41,6 +41,7 @@ type SellerOrderPayoutSource = {
   seller_id: string;
   status: string;
   payment_status: string | null;
+  refund_status?: string | null;
   currency: string;
   subtotal_cents: number | null;
   service_fee_cents: number | null;
@@ -66,7 +67,18 @@ function roundCents(value: number): number {
 }
 
 function isSellerOrderPaid(order: SellerOrderPayoutSource): boolean {
-  return order.payment_status === "paid" || order.status === "paid";
+  const paid = order.payment_status === "paid" || order.status === "paid";
+  if (!paid) return false;
+  const refund = String(order.refund_status ?? "").trim().toLowerCase();
+  // null/empty refund_status is OK; block payouts after refund/dispute.
+  if (
+    refund === "refunded" ||
+    refund === "partially_refunded" ||
+    refund === "disputed"
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function calculateSellerMarketplacePayout(order: {
@@ -137,7 +149,7 @@ async function loadSellerOrderForPayout(
   const { data, error } = await supabaseAdmin
     .from("seller_orders")
     .select(
-      "id,seller_id,status,payment_status,currency,subtotal_cents,service_fee_cents,total_cents,sellers(country_code)"
+      "id,seller_id,status,payment_status,refund_status,currency,subtotal_cents,service_fee_cents,total_cents,sellers(country_code)"
     )
     .eq("id", sellerOrderId)
     .maybeSingle();
@@ -443,7 +455,7 @@ export async function prepareMarketplaceDriverPayout(
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from("seller_orders")
-    .select("currency,payment_status,status,sellers(country_code)")
+    .select("currency,payment_status,status,refund_status,sellers(country_code)")
     .eq("id", job.seller_order_id)
     .maybeSingle();
 

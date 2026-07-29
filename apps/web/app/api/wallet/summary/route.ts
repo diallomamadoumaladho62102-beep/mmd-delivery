@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { getBearerToken, getSupabaseAdminClient, getSupabaseUserClient, mmdLocationJson } from "@/lib/mmdLocationCore";
 import { buildDriverWalletSummary } from "@/lib/driverWalletService";
+import {
+  buildRestaurantWalletSummary,
+  buildSellerWalletSummary,
+} from "@/lib/finance/unifiedWalletSummary";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import type { WalletAccountType } from "@/lib/payoutTypes";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
@@ -54,6 +58,24 @@ export async function GET(req: NextRequest) {
 
     if (accountType === "driver") {
       const summary = await buildDriverWalletSummary(
+        supabaseAdmin,
+        data.user.id,
+        countryCode
+      );
+      return mmdLocationJson({ ok: true, ...summary });
+    }
+
+    if (accountType === "restaurant") {
+      const summary = await buildRestaurantWalletSummary(
+        supabaseAdmin,
+        data.user.id,
+        countryCode
+      );
+      return mmdLocationJson({ ok: true, ...summary });
+    }
+
+    if (accountType === "seller") {
+      const summary = await buildSellerWalletSummary(
         supabaseAdmin,
         data.user.id,
         countryCode

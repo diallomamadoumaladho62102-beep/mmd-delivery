@@ -103,6 +103,7 @@ export function DriverWalletScreen() {
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currency, setCurrency] = useState("USD");
   const [availableCents, setAvailableCents] = useState(0);
+  const [awaitingTransferCents, setAwaitingTransferCents] = useState(0);
   const [pendingCents, setPendingCents] = useState(0);
   const [ledgerBalanceCents, setLedgerBalanceCents] = useState(0);
   const [minimumPayoutCents, setMinimumPayoutCents] = useState(2000);
@@ -206,6 +207,7 @@ export function DriverWalletScreen() {
           setStripeAccountId(null);
           applyStripeStatus("setup_required");
           setAvailableCents(0);
+          setAwaitingTransferCents(0);
           setPendingCents(0);
           setLedgerBalanceCents(0);
           setCanCashout(false);
@@ -250,6 +252,7 @@ export function DriverWalletScreen() {
 
         setCurrency(walletCurrency);
         setAvailableCents(summary.available_cents ?? 0);
+        setAwaitingTransferCents(summary.awaiting_transfer_cents ?? 0);
         setPendingCents(summary.pending_cents ?? 0);
         setLedgerBalanceCents(summary.balance_cents ?? 0);
         setMinimumPayoutCents(summary.minimum_payout_cents ?? 2000);
@@ -498,10 +501,25 @@ export function DriverWalletScreen() {
               <>
                 <Text style={styles.availableAmount}>{fmtMoney(availableCents)}</Text>
                 <Text style={styles.rulesText}>
+                  {t(
+                    "driver.wallet.available.connectHint",
+                    "Available to cash out from your Stripe Connect balance",
+                  )}
+                </Text>
+                <Text style={styles.rulesText}>
                   {t("driver.wallet.available.rules", "Minimum cash out: {{min}} • 1 cash out / day", {
                     min: fmtMoney(minimumPayoutCents),
                   })}
                 </Text>
+                {awaitingTransferCents > 0 ? (
+                  <Text style={styles.reasonTextMuted}>
+                    {t(
+                      "driver.wallet.available.awaitingTransfer",
+                      "{{amount}} in delivery earnings await platform transfer (SCT) before they can be cashed out.",
+                      { amount: fmtMoney(awaitingTransferCents) },
+                    )}
+                  </Text>
+                ) : null}
 
                 <Text style={styles.reasonTextMuted}>{stripeStatusMessage}</Text>
 

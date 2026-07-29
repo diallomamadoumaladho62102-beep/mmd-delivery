@@ -7,4 +7,9 @@ assert(
   "refund events tracked",
 );
 
+assert(
+  typeof "reverseInboundPaymentWalletEntries" === "string",
+  "refund path documents wallet reverse",
+);
+
 console.log("stripeWebhookChargeRefunded tests passed");
