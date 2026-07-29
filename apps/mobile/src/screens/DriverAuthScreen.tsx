@@ -876,11 +876,12 @@ export function DriverAuthScreen() {
 
         vehicle_type: transportMode,
         license_number: isBike ? null : cleanedLicenseNumber,
-        vehicle_brand: isBike ? null : cleanedVehicleBrand,
-        vehicle_model: isBike ? null : cleanedVehicleModel,
-        vehicle_year: isBike ? null : yearNum,
-        vehicle_color: isBike ? null : cleanedVehicleColor || null,
-        plate_number: isBike ? null : cleanedPlateNumber,
+        // Fleet fields live on driver_vehicles — never write legacy columns at signup.
+        vehicle_brand: null,
+        vehicle_model: null,
+        vehicle_year: null,
+        vehicle_color: null,
+        plate_number: null,
       };
 
       const { error: dErr } = await supabase

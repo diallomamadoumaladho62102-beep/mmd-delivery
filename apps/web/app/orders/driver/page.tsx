@@ -62,6 +62,7 @@ type DriverProfile = {
   state?: string | null;
   zip_code?: string | null;
   date_of_birth?: string | null;
+  active_vehicle_id?: string | null;
   vehicle_brand?: string | null;
   vehicle_model?: string | null;
   vehicle_year?: number | null;
@@ -207,11 +208,7 @@ export default function DriverOrdersDashboardPage() {
       driverProfile.transport_mode === "moto" || driverProfile.transport_mode === "car";
 
     if (requiresMotorDocs) {
-      if (!driverProfile.vehicle_brand) missing.push("vehicle brand");
-      if (!driverProfile.vehicle_model) missing.push("vehicle model");
-      if (!driverProfile.vehicle_year) missing.push("vehicle year");
-      if (!driverProfile.vehicle_color) missing.push("vehicle color");
-      if (!driverProfile.plate_number) missing.push("plate number");
+      if (!driverProfile.active_vehicle_id) missing.push("active vehicle");
       if (!driverProfile.license_number) missing.push("license number");
       if (!driverProfile.license_expiry) missing.push("license expiry");
       if (!docTypes.has("license_front")) missing.push("license front");
@@ -269,6 +266,7 @@ export default function DriverOrdersDashboardPage() {
             zip_code,
             date_of_birth,
             transport_mode,
+            active_vehicle_id,
             vehicle_brand,
             vehicle_model,
             vehicle_year,
@@ -336,11 +334,7 @@ export default function DriverOrdersDashboardPage() {
           profile.transport_mode === "moto" || profile.transport_mode === "car";
 
         if (requiresMotorDocs) {
-          if (!profile.vehicle_brand) missing.push("vehicle brand");
-          if (!profile.vehicle_model) missing.push("vehicle model");
-          if (!profile.vehicle_year) missing.push("vehicle year");
-          if (!profile.vehicle_color) missing.push("vehicle color");
-          if (!profile.plate_number) missing.push("plate number");
+          if (!profile.active_vehicle_id) missing.push("active vehicle");
           if (!profile.license_number) missing.push("license number");
           if (!profile.license_expiry) missing.push("license expiry");
           if (!docTypes.has("license_front")) missing.push("license front");

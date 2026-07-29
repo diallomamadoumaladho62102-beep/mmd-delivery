@@ -65,6 +65,7 @@ type DriverProfileRow = {
   date_of_birth: string | null;
   transport_mode: string | null;
   vehicle_type: string | null;
+  active_vehicle_id?: string | null;
   vehicle_brand: string | null;
   vehicle_model: string | null;
   vehicle_year: number | null;
@@ -135,12 +136,6 @@ function trimOrNull(value: string): string | null {
 
 function normalizeZip(value: string): string {
   return value.trim();
-}
-
-function normalizeYearInput(value: string): number | "" {
-  if (!value.trim()) return "";
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.round(parsed) : "";
 }
 
 function formatDateLabel(value: string | null | undefined): string {
@@ -339,11 +334,6 @@ export function DriverProfileScreen() {
   const [editZipCode, setEditZipCode] = useState("");
   const [editDateOfBirth, setEditDateOfBirth] = useState("");
   const [editTransportMode, setEditTransportMode] = useState<TransportMode>("bike");
-  const [editVehicleBrand, setEditVehicleBrand] = useState("");
-  const [editVehicleModel, setEditVehicleModel] = useState("");
-  const [editVehicleYear, setEditVehicleYear] = useState<number | "">("");
-  const [editVehicleColor, setEditVehicleColor] = useState("");
-  const [editPlateNumber, setEditPlateNumber] = useState("");
   const [editLicenseNumber, setEditLicenseNumber] = useState("");
   const [editLicenseExpiry, setEditLicenseExpiry] = useState("");
 
@@ -478,25 +468,17 @@ export function DriverProfileScreen() {
   const isMotorComplete = useMemo(() => {
     if (isBike) return true;
     return (
+      Boolean(driver?.active_vehicle_id) &&
       !!trimOrNull(driver?.license_number ?? "") &&
       !!trimOrNull(driver?.license_expiry ?? "") &&
-      !!trimOrNull(driver?.vehicle_brand ?? "") &&
-      !!trimOrNull(driver?.vehicle_model ?? "") &&
-      !!driver?.vehicle_year &&
-      !!trimOrNull(driver?.vehicle_color ?? "") &&
-      !!trimOrNull(driver?.plate_number ?? "") &&
       hasLicense &&
       hasInsurance &&
       hasRegistration
     );
   }, [
+    driver?.active_vehicle_id,
     driver?.license_expiry,
     driver?.license_number,
-    driver?.plate_number,
-    driver?.vehicle_brand,
-    driver?.vehicle_color,
-    driver?.vehicle_model,
-    driver?.vehicle_year,
     hasInsurance,
     hasLicense,
     hasRegistration,
@@ -592,6 +574,9 @@ export function DriverProfileScreen() {
     }
 
     if (!isBike) {
+      if (!driver?.active_vehicle_id) {
+        missing.push("Véhicule actif (flotte)");
+      }
       if (!trimOrNull(driver?.license_number ?? "")) {
         missing.push(t("driver.profile.licenseNumber", { defaultValue: "Numéro du permis" }));
       }
@@ -599,21 +584,6 @@ export function DriverProfileScreen() {
         missing.push(
           t("driver.profile.licenseExpiry", { defaultValue: "Expiration du permis" }),
         );
-      }
-      if (!trimOrNull(driver?.vehicle_brand ?? "")) {
-        missing.push(t("common.profile.brand", { defaultValue: "Marque" }));
-      }
-      if (!trimOrNull(driver?.vehicle_model ?? "")) {
-        missing.push(t("common.profile.model", { defaultValue: "Modèle" }));
-      }
-      if (!driver?.vehicle_year) {
-        missing.push(t("common.profile.year", { defaultValue: "Année" }));
-      }
-      if (!trimOrNull(driver?.vehicle_color ?? "")) {
-        missing.push(t("common.profile.color", { defaultValue: "Couleur" }));
-      }
-      if (!trimOrNull(driver?.plate_number ?? "")) {
-        missing.push(t("common.profile.plate", { defaultValue: "Plaque" }));
       }
       if (!hasLicenseFront) {
         missing.push(
@@ -633,6 +603,7 @@ export function DriverProfileScreen() {
 
     return missing;
   }, [
+    driver?.active_vehicle_id,
     driver?.address,
     driver?.city,
     driver?.date_of_birth,
@@ -641,12 +612,7 @@ export function DriverProfileScreen() {
     driver?.license_expiry,
     driver?.license_number,
     driver?.phone,
-    driver?.plate_number,
     driver?.state,
-    driver?.vehicle_brand,
-    driver?.vehicle_color,
-    driver?.vehicle_model,
-    driver?.vehicle_year,
     driver?.zip_code,
     hasIdBack,
     hasIdFront,
@@ -1004,11 +970,6 @@ export function DriverProfileScreen() {
         ? currentTransportMode
         : "bike",
     );
-    setEditVehicleBrand(currentTransportMode === "bike" ? "" : driver?.vehicle_brand ?? "");
-    setEditVehicleModel(currentTransportMode === "bike" ? "" : driver?.vehicle_model ?? "");
-    setEditVehicleYear(currentTransportMode === "bike" ? "" : driver?.vehicle_year ?? "");
-    setEditVehicleColor(currentTransportMode === "bike" ? "" : driver?.vehicle_color ?? "");
-    setEditPlateNumber(currentTransportMode === "bike" ? "" : driver?.plate_number ?? "");
     setEditLicenseNumber(currentTransportMode === "bike" ? "" : driver?.license_number ?? "");
     setEditLicenseExpiry(currentTransportMode === "bike" ? "" : driver?.license_expiry ?? "");
     setEditOpen(true);
@@ -1024,17 +985,6 @@ export function DriverProfileScreen() {
         Alert.alert(
           t("client.auth.errorTitle", { defaultValue: "Erreur" }),
           t("driver.home.errors.mustBeLoggedIn", { defaultValue: "Tu dois être connecté." }),
-        );
-        return;
-      }
-
-      const safeYear =
-        editVehicleYear === "" ? null : normalizeYearInput(String(editVehicleYear));
-
-      if (safeYear === "") {
-        Alert.alert(
-          t("client.auth.errorTitle", { defaultValue: "Erreur" }),
-          t("common.profile.invalidYear", { defaultValue: "Année de véhicule invalide." }),
         );
         return;
       }
@@ -1114,17 +1064,7 @@ export function DriverProfileScreen() {
         updated_at: new Date().toISOString(),
       };
 
-      if (!transportModeChanged) {
-        driverPayload.transport_mode = editTransportMode;
-        driverPayload.vehicle_type = editTransportMode;
-      }
-
       if (requiresMotorDocs) {
-        driverPayload.vehicle_brand = trimOrNull(editVehicleBrand);
-        driverPayload.vehicle_model = trimOrNull(editVehicleModel);
-        driverPayload.vehicle_year = safeYear as number | null;
-        driverPayload.vehicle_color = trimOrNull(editVehicleColor);
-        driverPayload.plate_number = trimOrNull(editPlateNumber);
         driverPayload.license_number = trimOrNull(editLicenseNumber);
         driverPayload.license_expiry = trimOrNull(editLicenseExpiry);
       }
@@ -1877,6 +1817,23 @@ export function DriverProfileScreen() {
                 {t("common.profile.vehicleSection", { defaultValue: "Véhicule" })}
               </SectionTitle>
               <Card>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("DriverVehicles")}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 12,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: "#2563EB",
+                    backgroundColor: "#0A1730",
+                    marginBottom: 10,
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={{ color: "#93C5FD", fontWeight: "900", textAlign: "center" }}>
+                    Gérer ma flotte
+                  </Text>
+                </TouchableOpacity>
                 <Row
                   label={t("common.profile.brand", { defaultValue: "Marque" })}
                   value={driver?.vehicle_brand ?? "—"}
@@ -2304,130 +2261,26 @@ export function DriverProfileScreen() {
                     {t("common.profile.vehicleSection", { defaultValue: "Véhicule" })}
                   </Text>
 
-                  <View style={{ height: 8 }} />
-
-                  <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                    {t("common.profile.brand", { defaultValue: "Marque" })}
-                  </Text>
-                  <TextInput
-                    value={editVehicleBrand}
-                    onChangeText={setEditVehicleBrand}
-                    placeholder={t("common.profile.placeholderBrand", {
-                      defaultValue: "Ex: Honda",
-                    })}
-                    placeholderTextColor="#64748B"
-                    style={{
-                      color: "white",
-                      backgroundColor: "#071022",
-                      borderColor: "#111827",
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      marginTop: 6,
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditOpen(false);
+                      navigation.navigate("DriverVehicles");
                     }}
-                  />
-
-                  <View style={{ height: 10 }} />
-
-                  <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                    {t("common.profile.model", { defaultValue: "Modèle" })}
-                  </Text>
-                  <TextInput
-                    value={editVehicleModel}
-                    onChangeText={setEditVehicleModel}
-                    placeholder={t("common.profile.placeholderModel", {
-                      defaultValue: "Ex: Accord",
-                    })}
-                    placeholderTextColor="#64748B"
                     style={{
-                      color: "white",
-                      backgroundColor: "#071022",
-                      borderColor: "#111827",
-                      borderWidth: 1,
-                      borderRadius: 12,
+                      marginTop: 10,
+                      paddingVertical: 12,
                       paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      marginTop: 6,
-                    }}
-                  />
-
-                  <View style={{ height: 10 }} />
-
-                  <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                    {t("common.profile.color", { defaultValue: "Couleur" })}
-                  </Text>
-                  <TextInput
-                    value={editVehicleColor}
-                    onChangeText={setEditVehicleColor}
-                    placeholder={t("common.profile.placeholderColor", {
-                      defaultValue: "Ex: Noir",
-                    })}
-                    placeholderTextColor="#64748B"
-                    style={{
-                      color: "white",
-                      backgroundColor: "#071022",
-                      borderColor: "#111827",
-                      borderWidth: 1,
                       borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      marginTop: 6,
+                      borderWidth: 1,
+                      borderColor: "#2563EB",
+                      backgroundColor: "#071022",
                     }}
-                  />
-
-                  <View style={{ height: 10 }} />
-
-                  <View style={{ flexDirection: "row" }}>
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                        {t("common.profile.year", { defaultValue: "Année" })}
-                      </Text>
-                      <TextInput
-                        value={editVehicleYear === "" ? "" : String(editVehicleYear)}
-                        onChangeText={(value) => setEditVehicleYear(normalizeYearInput(value))}
-                        placeholder={t("common.profile.placeholderYear", {
-                          defaultValue: "2020",
-                        })}
-                        placeholderTextColor="#64748B"
-                        keyboardType="number-pad"
-                        style={{
-                          color: "white",
-                          backgroundColor: "#071022",
-                          borderColor: "#111827",
-                          borderWidth: 1,
-                          borderRadius: 12,
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          marginTop: 6,
-                        }}
-                      />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-                        {t("common.profile.plate", { defaultValue: "Plaque" })}
-                      </Text>
-                      <TextInput
-                        value={editPlateNumber}
-                        onChangeText={setEditPlateNumber}
-                        placeholder={t("common.profile.placeholderPlate", {
-                          defaultValue: "ABC-1234",
-                        })}
-                        placeholderTextColor="#64748B"
-                        style={{
-                          color: "white",
-                          backgroundColor: "#071022",
-                          borderColor: "#111827",
-                          borderWidth: 1,
-                          borderRadius: 12,
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          marginTop: 6,
-                        }}
-                      />
-                    </View>
-                  </View>
+                    activeOpacity={0.85}
+                  >
+                    <Text style={{ color: "#93C5FD", fontWeight: "900", textAlign: "center" }}>
+                      Gérer ma flotte
+                    </Text>
+                  </TouchableOpacity>
 
                   <View style={{ height: 10 }} />
 

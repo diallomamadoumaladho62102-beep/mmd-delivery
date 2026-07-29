@@ -2366,7 +2366,8 @@ export function DriverHomeScreen() {
 
       const isVehicle = driver.transport_mode === "car" || driver.transport_mode === "moto";
       if (isVehicle) {
-        if (!driver.vehicle_brand && !driver.active_vehicle_id) missing.push("Véhicule");
+        // Align with server assertDriverCanGoOnline — fleet table only.
+        if (!driver.active_vehicle_id) missing.push("Véhicule");
         if (!hasDoc("license_front")) missing.push("Permis recto");
         if (!hasDoc("license_back")) missing.push("Permis verso");
         if (!hasDoc("insurance")) missing.push("Assurance");

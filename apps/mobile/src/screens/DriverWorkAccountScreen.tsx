@@ -13,6 +13,11 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import {
+  computeDriverSetupProgress,
+  nextDriverSetupStep,
+  type DriverSetupProgress,
+} from "../lib/driverSetupProgress";
 
 function SectionCard({
   title,
@@ -155,81 +160,28 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-type DriverWorkState = {
-  progress: number;
-  vehicleOk: boolean;
-  docsDone: number;
-  docsTotal: number;
-  payoutOk: boolean;
-
-  // ✅ on stocke les inputs bruts, mais le "nextStep" est calculé via t() au render
-  isBike: boolean;
+const EMPTY_STATE: DriverSetupProgress = {
+  progress: 0,
+  vehicleOk: false,
+  docsDone: 0,
+  docsTotal: 4,
+  payoutOk: false,
+  isBike: false,
+  needsVehicle: false,
 };
-
-const REQUIRED_DOCS = [
-  "license_front",
-  "license_back",
-  "insurance",
-  "registration",
-  "profile_photo",
-];
-
-function normalizeDriverDocType(value: unknown): string {
-  const raw = String(value ?? "").trim().toLowerCase();
-  if (raw === "license" || raw === "driver_license") return "license_front";
-  if (raw === "vehicle_insurance") return "insurance";
-  if (raw === "vehicle_registration") return "registration";
-  return raw;
-}
-
-function normMode(tm: any) {
-  return String(tm ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-
-function isBikeMode(tm: any) {
-  const x = normMode(tm);
-  return x === "bike" || x === "velo";
-}
-
-function needsVehicleDetails(tm: any) {
-  const x = normMode(tm);
-  return x === "car" || x === "moto" || x === "motorcycle" || x === "scooter";
-}
 
 export function DriverWorkAccountScreen() {
   const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
 
   const [loading, setLoading] = useState(true);
-
-  const [state, setState] = useState<DriverWorkState>({
-    progress: 0,
-    vehicleOk: false,
-    docsDone: 0,
-    docsTotal: REQUIRED_DOCS.length,
-    payoutOk: false,
-    isBike: false,
-  });
+  const [state, setState] = useState<DriverSetupProgress>(EMPTY_STATE);
 
   const chevron = useMemo(() => {
     // simple RTL: ar -> ‹ (sinon ›)
     const lng = String(i18n.language || "en").toLowerCase();
     return lng.startsWith("ar") ? "‹" : "›";
   }, [i18n.language]);
-
-  const computeNextStepKey = useCallback(
-    (vehicleOk: boolean, docsDone: number, docsTotal: number, payoutOk: boolean) => {
-      if (!vehicleOk) return "addVehicle";
-      if (docsDone < docsTotal) return "addDocs";
-      if (!payoutOk) return "setupPayment";
-      return "ready";
-    },
-    []
-  );
 
   const load = useCallback(async () => {
     try {
@@ -260,104 +212,45 @@ export function DriverWorkAccountScreen() {
 
       const { data: profile, error: pErr } = await supabase
         .from("driver_profiles")
-        .select(
-          [
-            "id",
-            "user_id",
-            "transport_mode",
-            "vehicle_brand",
-            "vehicle_model",
-            "vehicle_year",
-            "plate_number",
-            "stripe_onboarded",
-            "payout_enabled",
-          ].join(",")
-        )
+        .select("transport_mode,active_vehicle_id,stripe_onboarded")
         .or(`user_id.eq.${uid},id.eq.${uid}`)
         .maybeSingle();
 
       if (pErr) console.log("driver_profiles load error:", pErr);
 
-      const tm = (profile as any)?.transport_mode ?? "bike";
-      const bike = isBikeMode(tm);
-      const needsVehicle = needsVehicleDetails(tm);
+      let docs: { doc_type?: string | null; status?: string | null }[] = [];
 
-      const vehicleOk = !needsVehicle
-        ? true
-        : Boolean(
-            String((profile as any)?.vehicle_brand ?? "").trim() &&
-              String((profile as any)?.vehicle_model ?? "").trim() &&
-              Number((profile as any)?.vehicle_year ?? 0) > 1900 &&
-              String((profile as any)?.plate_number ?? "").trim()
-          );
+      const first = await supabase
+        .from("driver_documents")
+        .select("doc_type, status, driver_id, user_id")
+        .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
 
-      // ✅ Paiement: Stripe d’abord, fallback payout_enabled
-      const stripeOnboarded = Boolean((profile as any)?.stripe_onboarded);
-      const payoutEnabledFallback = Boolean((profile as any)?.payout_enabled);
-      const payoutOk = stripeOnboarded || payoutEnabledFallback;
-
-      // ✅ Documents
-      let docsDone = 0;
-      let docsTotal = 0;
-
-      if (bike) {
-        docsDone = 0;
-        docsTotal = 0;
+      if (!first.error) {
+        docs = first.data ?? [];
       } else {
-        let docs: any[] = [];
-
-        const first = await supabase
+        const second = await supabase
           .from("driver_documents")
-          .select("doc_type, status, driver_id, user_id")
-          .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
+          .select("doc_type, status, user_id")
+          .eq("user_id", uid);
 
-        if (!first.error) {
-          docs = first.data ?? [];
+        if (second.error) {
+          console.log("driver_documents fallback error:", second.error);
+          docs = [];
         } else {
-          const second = await supabase
-            .from("driver_documents")
-            .select("doc_type, user_id")
-            .eq("user_id", uid);
-
-          if (second.error) {
-            console.log("driver_documents fallback error:", second.error);
-            docs = [];
-          } else {
-            docs = second.data ?? [];
-          }
+          docs = second.data ?? [];
         }
-
-        const approved = new Set(
-          (docs ?? [])
-            .filter((x: any) => {
-              if (!x?.status) return true;
-              const status = String(x.status).trim().toLowerCase();
-              return status === "approved" || status === "verified" || status === "valid";
-            })
-            .map((x: any) => normalizeDriverDocType(x.doc_type))
-        );
-
-        if (approved.has("license_back") || approved.has("driver_license")) {
-          approved.add("license_front");
-        }
-
-        docsTotal = REQUIRED_DOCS.length;
-        docsDone = REQUIRED_DOCS.filter((tt) => approved.has(tt)).length;
       }
 
-      // ✅ Progress (Vehicle 25 / Docs 50 / Payout 25)
-      // Bike: docsScore = 50 (non requis => considéré OK)
-      const docsScore = bike ? 50 : docsTotal ? Math.round((docsDone / docsTotal) * 50) : 0;
-      const score = (vehicleOk ? 25 : 0) + docsScore + (payoutOk ? 25 : 0);
-
-      setState({
-        progress: Math.max(0, Math.min(100, score)),
-        vehicleOk,
-        docsDone,
-        docsTotal,
-        payoutOk,
-        isBike: bike,
+      const computed = computeDriverSetupProgress({
+        profile: {
+          transport_mode: (profile as any)?.transport_mode,
+          active_vehicle_id: (profile as any)?.active_vehicle_id,
+          stripe_onboarded: (profile as any)?.stripe_onboarded,
+        },
+        docs,
       });
+
+      setState(computed);
     } catch (e: any) {
       console.log("DriverWorkAccountScreen load error:", e);
       Alert.alert(t("common.errorTitle", "Error"), e?.message ?? "Unknown error");
@@ -374,8 +267,7 @@ export function DriverWorkAccountScreen() {
 
   // ✅ nextStep calculé à l’affichage (donc change de langue instantanément)
   const nextStep = useMemo(() => {
-    const docsTotalForStep = state.isBike ? 0 : state.docsTotal;
-    const key = computeNextStepKey(state.vehicleOk, state.docsDone, docsTotalForStep, state.payoutOk);
+    const key = nextDriverSetupStep(state);
 
     if (key === "addVehicle")
       return t("driver.workAccount.next.addVehicle", "Add vehicle");
@@ -384,17 +276,47 @@ export function DriverWorkAccountScreen() {
     if (key === "setupPayment")
       return t("driver.workAccount.next.setupPayment", "Set up payout");
     return t("driver.workAccount.next.ready", "Ready");
-  }, [computeNextStepKey, state.docsDone, state.docsTotal, state.isBike, state.payoutOk, state.vehicleOk, t]);
+  }, [state, t]);
 
   const go = useCallback(
     (route: string) => {
-      // ⚠️ routes à remplacer quand tu ajoutes les écrans
-      Alert.alert(
-        t("common.soon", "Coming soon ✅"),
-        `${t("common.toAdd", "To add")}: ${route}`
-      );
+      switch (route) {
+        case "DriverVehicleScreen":
+        case "DriverVehicles":
+          navigation.navigate("DriverVehicles");
+          return;
+        case "DriverDocumentsScreen":
+        case "DriverProfile":
+          navigation.navigate("DriverProfile");
+          return;
+        case "DriverPayoutScreen":
+        case "DriverWallet":
+        case "DriverEarningsScreen":
+          navigation.navigate("DriverWallet");
+          return;
+        case "DriverWorkCenterScreen":
+        case "DriverServices":
+          navigation.navigate("DriverServices");
+          return;
+        case "DriverTaxScreen":
+        case "DriverTax":
+          navigation.navigate("DriverTax");
+          return;
+        case "DriverPrivacyScreen":
+          navigation.navigate("DriverPrivacyScreen");
+          return;
+        case "DriverAboutScreen":
+          navigation.navigate("DriverAboutScreen");
+          return;
+        case "DriverIdentityVerification":
+          navigation.navigate("DriverIdentityVerification");
+          return;
+        default:
+          console.warn("[DriverWorkAccount] unknown route alias:", route);
+          navigation.navigate("DriverAccount");
+      }
     },
-    [t]
+    [navigation, t],
   );
 
   const title = useMemo(

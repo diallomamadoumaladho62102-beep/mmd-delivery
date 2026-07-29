@@ -18,6 +18,7 @@ import { DriverAccountCard } from "../components/DriverAccountCard";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { toUserFacingError } from "../lib/userFacingError";
 import { APP_COLORS } from "../theme/appTheme";
+import { computeDriverSetupProgress } from "../lib/driverSetupProgress";
 
 const LOCALE_KEY = "mmd_locale_driver";
 
@@ -46,7 +47,6 @@ type AccountIconName =
   | "earnings"
   | "tax"
   | "security"
-  | "notification"
   | "language"
   | "logout";
 
@@ -112,41 +112,6 @@ type DriverProgress = {
   payoutOk: boolean;
 };
 
-const REQUIRED_DOCS = [
-  "license_front",
-  "license_back",
-  "insurance",
-  "registration",
-  "profile_photo",
-];
-
-/** Treat legacy aliases as matching the canonical driver_doc_type labels. */
-function normalizeDriverDocType(value: unknown): string {
-  const raw = String(value ?? "").trim().toLowerCase();
-  if (raw === "license" || raw === "driver_license") return "license_front";
-  if (raw === "vehicle_insurance") return "insurance";
-  if (raw === "vehicle_registration") return "registration";
-  return raw;
-}
-
-function normMode(tm: any) {
-  return String(tm ?? "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "");
-}
-
-function isBike(tm: any) {
-  const x = normMode(tm);
-  return x === "bike" || x === "velo";
-}
-
-function needsVehicleDetails(tm: any) {
-  const x = normMode(tm);
-  return x === "car" || x === "moto" || x === "motorcycle" || x === "scooter";
-}
-
 function normalizeLocale6(locale: string) {
   const x = String(locale || "").trim().toLowerCase();
   if (x.startsWith("zh")) return "zh";
@@ -162,6 +127,7 @@ type DriverProfile = {
   id?: string | null;
   user_id?: string | null;
   transport_mode?: string | null;
+  active_vehicle_id?: string | null;
   vehicle_brand?: string | null;
   vehicle_model?: string | null;
   vehicle_year?: number | null;
@@ -181,7 +147,7 @@ export function DriverAccountScreen() {
     progress: 0,
     vehicleOk: false,
     docsDone: 0,
-    docsTotal: REQUIRED_DOCS.length,
+    docsTotal: 4,
     payoutOk: false,
   });
   const [loadingProgress, setLoadingProgress] = useState(false);
@@ -248,21 +214,7 @@ export function DriverAccountScreen() {
 
       let { data: profileRaw, error: pErr } = await supabase
         .from("driver_profiles")
-        .select(
-          [
-            "id",
-            "user_id",
-            "transport_mode",
-            "vehicle_brand",
-            "vehicle_model",
-            "vehicle_year",
-            "plate_number",
-            "vehicle_verified",
-            "payout_enabled",
-            "stripe_account_id",
-            "stripe_onboarded",
-          ].join(",")
-        )
+        .select("id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded")
         .or(`user_id.eq.${uid},id.eq.${uid}`)
         .maybeSingle();
 
@@ -277,9 +229,9 @@ export function DriverAccountScreen() {
             acceptance_rate: 0,
             cancellation_rate: 0,
             vehicle_verified: false,
-            payout_enabled: false,
+            stripe_onboarded: false,
           } as any,
-          { onConflict: "id" }
+          { onConflict: "id" },
         );
 
         if (upErr) {
@@ -291,21 +243,7 @@ export function DriverAccountScreen() {
 
         const again = await supabase
           .from("driver_profiles")
-          .select(
-            [
-              "id",
-              "user_id",
-              "transport_mode",
-              "vehicle_brand",
-              "vehicle_model",
-              "vehicle_year",
-              "plate_number",
-              "vehicle_verified",
-              "payout_enabled",
-              "stripe_account_id",
-              "stripe_onboarded",
-            ].join(",")
-          )
+          .select("id,user_id,transport_mode,active_vehicle_id,stripe_account_id,stripe_onboarded")
           .or(`user_id.eq.${uid},id.eq.${uid}`)
           .maybeSingle();
 
@@ -321,84 +259,45 @@ export function DriverAccountScreen() {
       }
 
       const dp = (profileRaw as unknown as DriverProfile | null) ?? null;
-      const tm = dp?.transport_mode ?? "bike";
-      const bike = isBike(tm);
-      const needsVehicle = needsVehicleDetails(tm);
 
-      const vehicleOk = !needsVehicle
-        ? true
-        : Boolean(
-            String(dp?.vehicle_brand ?? "").trim() &&
-              String(dp?.vehicle_model ?? "").trim() &&
-              Number(dp?.vehicle_year ?? 0) > 1900 &&
-              String(dp?.plate_number ?? "").trim()
-          );
+      let docs: { doc_type?: string | null; status?: string | null }[] = [];
+      const first = await supabase
+        .from("driver_documents")
+        .select("doc_type, status, driver_id, user_id")
+        .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
 
-      const stripeOnboarded = Boolean(dp?.stripe_onboarded);
-      const payoutEnabledFallback = Boolean(dp?.payout_enabled);
-      const payoutOk = stripeOnboarded || payoutEnabledFallback;
-
-      let docsDone = 0;
-      let docsTotal = 0;
-
-      if (bike) {
-        docsDone = 1;
-        docsTotal = 1;
+      if (!first.error) {
+        docs = first.data ?? [];
       } else {
-        let docs: any[] = [];
-
-        const first = await supabase
+        const second = await supabase
           .from("driver_documents")
-          .select("doc_type, status, driver_id, user_id")
-          .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
-
-        if (!first.error) {
-          docs = first.data ?? [];
+          .select("doc_type, status, user_id")
+          .eq("user_id", uid);
+        if (second.error) {
+          Alert.alert(
+            t("common.errorTitle", "Error"),
+            toUserFacingError(second.error, "Impossible de charger les documents pour le moment."),
+          );
         } else {
-          const second = await supabase
-            .from("driver_documents")
-            .select("doc_type, user_id")
-            .eq("user_id", uid);
-
-          if (second.error) {
-            Alert.alert(
-              t("common.errorTitle", "Error"),
-              toUserFacingError(second.error, "Impossible de charger les documents pour le moment."),
-            );
-          } else {
-            docs = second.data ?? [];
-          }
+          docs = second.data ?? [];
         }
-
-        const approved = new Set(
-          (docs ?? [])
-            .filter((x: any) => {
-              const status = String(x?.status ?? "")
-                .trim()
-                .toLowerCase();
-              return status === "approved" || status === "verified" || status === "valid";
-            })
-            .map((x: any) => normalizeDriverDocType(x.doc_type))
-        );
-
-        // license_front is satisfied by either front/back or legacy driver_license.
-        if (approved.has("license_back") || approved.has("driver_license")) {
-          approved.add("license_front");
-        }
-
-        docsDone = REQUIRED_DOCS.filter((tt) => approved.has(tt)).length;
-        docsTotal = REQUIRED_DOCS.length;
       }
 
-      const docsScore = docsTotal > 0 ? Math.round((docsDone / docsTotal) * 50) : 0;
-      const score = (vehicleOk ? 25 : 0) + docsScore + (payoutOk ? 25 : 0);
+      const computed = computeDriverSetupProgress({
+        profile: {
+          transport_mode: dp?.transport_mode,
+          active_vehicle_id: dp?.active_vehicle_id,
+          stripe_onboarded: dp?.stripe_onboarded,
+        },
+        docs,
+      });
 
       setP({
-        progress: Math.max(0, Math.min(100, score)),
-        vehicleOk,
-        docsDone,
-        docsTotal,
-        payoutOk,
+        progress: computed.progress,
+        vehicleOk: computed.vehicleOk,
+        docsDone: computed.docsDone,
+        docsTotal: computed.docsTotal,
+        payoutOk: computed.payoutOk,
       });
     } catch (e: any) {
       console.log("loadProgress error", e);
@@ -468,7 +367,17 @@ export function DriverAccountScreen() {
             docsTotal={safeProgress.docsTotal}
             payoutOk={safeProgress.payoutOk}
             onPress={() => navigation.navigate("DriverWorkAccount")}
-            onAction={() => navigation.navigate("DriverOnboarding")}
+            onAction={() => {
+              if (!safeProgress.vehicleOk) {
+                navigation.navigate("DriverVehicles");
+                return;
+              }
+              if (!safeProgress.payoutOk) {
+                navigation.navigate("DriverWallet");
+                return;
+              }
+              navigation.navigate("DriverProfile");
+            }}
           />
         </View>
 
@@ -483,7 +392,7 @@ export function DriverAccountScreen() {
             icon="work"
             label={t("driver.account.workCenter", "Work center")}
             value={t("driver.account.workCenterHint", "Zone, preferences, availability")}
-            onPress={() => navigation.navigate("DriverWorkAccount")}
+            onPress={() => navigation.navigate("DriverServices")}
           />
 
           <Row
@@ -523,18 +432,6 @@ export function DriverAccountScreen() {
               navigation.navigate("DeleteAccount", { role: "driver" })
             }
             danger
-          />
-
-          <Row
-            icon="notification"
-            label={t("common.notifications", "Notifications")}
-            value={t("driver.settings.notificationsHint", "Manage notifications.")}
-            onPress={() =>
-              Alert.alert(
-                t("common.soon", "Coming soon ✅"),
-                t("driver.settings.notificationsSoon", "Coming soon ✅")
-              )
-            }
           />
 
           <Row
@@ -585,16 +482,6 @@ function AccountIcon({ name, danger }: { name: AccountIconName; danger?: boolean
 
   if (name === "language") {
     return <Text style={[styles.iconGlyph, { color, fontSize: 17 }]}>文</Text>;
-  }
-
-  if (name === "notification") {
-    return (
-      <View style={styles.bellIcon}>
-        <View style={[styles.bellTop, { borderColor: color }]} />
-        <View style={[styles.bellBody, { borderColor: color }]} />
-        <View style={[styles.bellClapper, { backgroundColor: color }]} />
-      </View>
-    );
   }
 
   if (name === "security") {
@@ -816,34 +703,5 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     borderWidth: 2,
     transform: [{ rotate: "45deg" }],
-  },
-  bellIcon: {
-    width: 24,
-    height: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bellTop: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "transparent",
-    borderWidth: 2,
-    marginBottom: -2,
-  },
-  bellBody: {
-    width: 18,
-    height: 15,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    borderBottomLeftRadius: 5,
-    borderBottomRightRadius: 5,
-    borderWidth: 2,
-  },
-  bellClapper: {
-    width: 6,
-    height: 3,
-    borderRadius: 3,
-    marginTop: 2,
   },
 });

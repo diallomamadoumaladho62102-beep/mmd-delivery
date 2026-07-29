@@ -1,340 +1,126 @@
-// apps/mobile/src/screens/DriverOnboardingScreen.tsx
-import React, { useCallback, useEffect, useState } from "react";
+/**
+ * First-run / incomplete Driver setup hub.
+ * Does NOT edit legacy vehicle_brand/plate on driver_profiles.
+ * Vehicle fleet → DriverVehicles; payouts → DriverWallet; docs → DriverProfile.
+ */
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  TextInput,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { normalizePhoneE164 } from "../lib/phoneE164";
-import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
+import { supabase } from "../lib/supabase";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import {
+  changeDriverTransportMode,
+} from "../lib/driverServicePreferencesApi";
+import {
+  computeDriverSetupProgress,
+  nextDriverSetupStep,
+  type DriverSetupProgress,
+} from "../lib/driverSetupProgress";
 
 type TransportMode = "bike" | "car" | "moto";
 
 export function DriverOnboardingScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  // profiles
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-
-  // driver_profiles
+  const [savingMode, setSavingMode] = useState(false);
   const [transportMode, setTransportMode] = useState<TransportMode>("bike");
-  const [brand, setBrand] = useState("");
-  const [model, setModel] = useState("");
-  const [year, setYear] = useState("");
-  const [color, setColor] = useState("");
-  const [plate, setPlate] = useState("");
-
-  const [vehicleVerified, setVehicleVerified] = useState(false);
-  const [payoutEnabled, setPayoutEnabled] = useState(false);
-  const [isOnline, setIsOnline] = useState(false);
-
-  const needsVehicle = transportMode === "car" || transportMode === "moto";
-
-  function normalizePhone(p: string) {
-    return normalizePhoneE164(p) ?? "";
-  }
-
-  function parseYear(y: string) {
-    const n = Number(String(y).trim());
-    if (!Number.isFinite(n)) return null;
-    const yy = Math.round(n);
-    if (yy < 1900 || yy > 2100) return null;
-    return yy;
-  }
-
-  async function ensureDriverProfileRow(uid: string) {
-    const payload: Record<string, unknown> = {
-      id: uid,
-      user_id: uid,
-      transport_mode: "bike",
-      is_online: false,
-      total_deliveries: 0,
-      acceptance_rate: 0,
-      cancellation_rate: 0,
-      vehicle_verified: false,
-      payout_enabled: false,
-      full_name: null,
-      phone: null,
-      vehicle_type: null,
-      license_number: null,
-      city: null,
-      address: null,
-      date_of_birth: null,
-      vehicle_brand: null,
-      vehicle_model: null,
-      vehicle_year: null,
-      vehicle_color: null,
-      plate_number: null,
-      rating: null,
-      rating_count: null,
-      stripe_account_id: null,
-      stripe_onboarded: false,
-    };
-
-    const { error } = await supabase
-      .from("driver_profiles")
-      .upsert(payload, { onConflict: "id" });
-
-    if (error) {
-      console.log("ensureDriverProfileRow upsert error:", error);
-    }
-  }
-
-  async function fetchDriverProfile(uid: string) {
-    const { data, error } = await supabase
-      .from("driver_profiles")
-      .select(
-        [
-          "id",
-          "user_id",
-          "transport_mode",
-          "vehicle_brand",
-          "vehicle_model",
-          "vehicle_year",
-          "vehicle_color",
-          "plate_number",
-          "vehicle_verified",
-          "payout_enabled",
-          "is_online",
-          "stripe_account_id",
-          "stripe_onboarded",
-          "documents_required",
-        ].join(",")
-      )
-      .or(`user_id.eq.${uid},id.eq.${uid}`)
-      .maybeSingle();
-
-    return { data: (data ?? null) as any, error };
-  }
-
-  const resolvePayoutOk = useCallback((d: any) => {
-    const stripeOnboarded =
-      typeof d?.stripe_onboarded === "boolean" ? !!d.stripe_onboarded : null;
-
-    return stripeOnboarded !== null ? stripeOnboarded : !!d?.payout_enabled;
-  }, []);
-
-  const refreshStripeAndReload = useCallback(async (uid: string) => {
-    try {
-      const { error: fnErr } = await supabase.functions.invoke(
-        "check_connect_status",
-        { body: {} }
-      );
-      if (fnErr) {
-        console.log("check_connect_status error:", fnErr);
-      }
-
-      const { data: dp, error: dpErr } = await fetchDriverProfile(uid);
-      if (dpErr) {
-        console.log("driver_profiles reload after stripe error:", dpErr);
-        return null;
-      }
-
-      return dp;
-    } catch (e) {
-      console.log("refreshStripeAndReload error:", e);
-      return null;
-    }
-  }, []);
+  const [progress, setProgress] = useState<DriverSetupProgress>({
+    progress: 0,
+    vehicleOk: false,
+    docsDone: 0,
+    docsTotal: 4,
+    payoutOk: false,
+    isBike: true,
+    needsVehicle: false,
+  });
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      const { data: authRes } = await supabase.auth.getUser();
-      const user = authRes?.user;
-
-      if (!user) {
+      const { data: authRes, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !authRes.user?.id) {
         Alert.alert(
-          t("driver.revenue.history.auth.title", "Login"),
-          t("driver.home.errors.mustBeLoggedIn", "You must be logged in.")
+          t("common.errorTitle", "Error"),
+          t("driver.home.errors.mustBeLoggedIn", "You must be logged in."),
         );
-        navigation.goBack();
         return;
       }
+      const uid = authRes.user.id;
 
-      const uid = user.id;
+      try {
+        await supabase.functions.invoke("check_connect_status", {
+          body: { role: "driver" },
+        });
+      } catch {
+        // non-blocking
+      }
 
-      const { data: p, error: pErr } = await supabase
-        .from("profiles")
-        .select("id, full_name, phone, role")
-        .eq("id", uid)
+      const { data: profile } = await supabase
+        .from("driver_profiles")
+        .select("transport_mode, active_vehicle_id, stripe_onboarded")
+        .or(`user_id.eq.${uid},id.eq.${uid}`)
         .maybeSingle();
 
-      if (pErr) {
-        console.log("profiles load error:", pErr);
-      }
+      const tm = (String(profile?.transport_mode ?? "bike").toLowerCase() ||
+        "bike") as TransportMode;
+      setTransportMode(tm === "car" || tm === "moto" || tm === "bike" ? tm : "bike");
 
-      if (p) {
-        setFullName(p.full_name ?? "");
-        setPhone(p.phone ?? "");
-      }
+      let docs: { doc_type?: string | null; status?: string | null }[] = [];
+      const docsRes = await supabase
+        .from("driver_documents")
+        .select("doc_type, status, driver_id, user_id")
+        .or(`driver_id.eq.${uid},user_id.eq.${uid}`);
+      if (!docsRes.error) docs = docsRes.data ?? [];
 
-      let { data: d, error: dErr } = await fetchDriverProfile(uid);
-      if (dErr) {
-        console.log("driver_profiles load error:", dErr);
-      }
-
-      if (!d) {
-        await ensureDriverProfileRow(uid);
-        const retry = await fetchDriverProfile(uid);
-        d = retry.data;
-      }
-
-      if (d) {
-        const tm: TransportMode = (d.transport_mode as TransportMode) || "bike";
-        setTransportMode(tm);
-        setBrand(d.vehicle_brand ?? "");
-        setModel(d.vehicle_model ?? "");
-        setYear(d.vehicle_year ? String(d.vehicle_year) : "");
-        setColor(d.vehicle_color ?? "");
-        setPlate(d.plate_number ?? "");
-        setVehicleVerified(!!d.vehicle_verified);
-        setPayoutEnabled(resolvePayoutOk(d));
-        setIsOnline(!!d.is_online);
-      }
+      setProgress(
+        computeDriverSetupProgress({
+          profile: {
+            transport_mode: profile?.transport_mode,
+            active_vehicle_id: (profile as { active_vehicle_id?: string | null })
+              ?.active_vehicle_id,
+            stripe_onboarded: profile?.stripe_onboarded,
+          },
+          docs,
+        }),
+      );
     } finally {
       setLoading(false);
     }
-  }, [navigation, resolvePayoutOk, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-
-      void (async () => {
-        try {
-          const { data: authRes } = await supabase.auth.getUser();
-          const uid = authRes?.user?.id;
-          if (!uid) return;
-
-          const refreshed = await refreshStripeAndReload(uid);
-          if (cancelled) return;
-
-          if (refreshed) {
-            setPayoutEnabled(resolvePayoutOk(refreshed));
-            setVehicleVerified(!!refreshed?.vehicle_verified);
-            setIsOnline(!!refreshed?.is_online);
-          }
-        } catch (e) {
-          console.log("useFocusEffect refresh stripe error:", e);
-        }
-      })();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [refreshStripeAndReload, resolvePayoutOk])
+      void load();
+    }, [load]),
   );
 
-  function setMode(next: TransportMode) {
-    setTransportMode(next);
-    if (next === "bike") {
-      setBrand("");
-      setModel("");
-      setYear("");
-      setColor("");
-      setPlate("");
-    }
-  }
-
-  function goToProfile() {
-    navigation.navigate("DriverProfile");
-  }
-
-  async function saveAll() {
+  const saveTransportMode = async (next: TransportMode) => {
+    setSavingMode(true);
     try {
-      setSaving(true);
-
-      const { data: authRes } = await supabase.auth.getUser();
-      const user = authRes?.user;
-      if (!user) return;
-
-      const uid = user.id;
-
-      const { error: pErr } = await supabase
-        .from("profiles")
-        .update({
-          full_name: fullName.trim() || null,
-          phone: normalizePhone(phone) || null,
-          role: "driver",
-        })
-        .eq("id", uid);
-
-      if (pErr) {
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          t(
-            "common.profile.saveProfilesFailed",
-            "Unable to save account (profiles)."
-          )
-        );
-        return;
-      }
-
-      const payload: Record<string, unknown> = {
-        transport_mode: transportMode,
-        full_name: fullName.trim() || null,
-        phone: normalizePhone(phone) || null,
-      };
-
-      if (needsVehicle) {
-        payload.vehicle_brand = brand.trim() || null;
-        payload.vehicle_model = model.trim() || null;
-        payload.vehicle_year = parseYear(year);
-        payload.vehicle_color = color.trim() || null;
-        payload.plate_number = plate.trim() || null;
-      } else {
-        payload.vehicle_brand = null;
-        payload.vehicle_model = null;
-        payload.vehicle_year = null;
-        payload.vehicle_color = null;
-        payload.plate_number = null;
-      }
-
-      const { error: dErr } = await supabase
-        .from("driver_profiles")
-        .update(payload)
-        .or(`user_id.eq.${uid},id.eq.${uid}`);
-
-      if (dErr) {
-        console.log("driver_profiles update error:", dErr);
-        Alert.alert(
-          t("common.errorTitle", "Error"),
-          t(
-            "common.profile.saveDriverProfilesFailed",
-            "Unable to save (driver_profiles)."
-          )
-        );
-        return;
-      }
-
-      Alert.alert(
-        t("common.ok", "OK"),
-        t("common.profile.updated", "Profile updated ✅")
-      );
+      await changeDriverTransportMode(next);
+      setTransportMode(next);
       await load();
+    } catch (error) {
+      Alert.alert(
+        t("common.errorTitle", "Error"),
+        String((error as Error)?.message ?? error),
+      );
     } finally {
-      setSaving(false);
+      setSavingMode(false);
     }
-  }
+  };
+
+  const step = nextDriverSetupStep(progress);
 
   if (loading) {
     return (
@@ -345,34 +131,21 @@ export function DriverOnboardingScreen() {
           alignItems: "center",
           justifyContent: "center",
         }}
+        edges={["bottom", "left", "right"]}
       >
         <ActivityIndicator />
-        <Text style={{ color: "#9CA3AF", marginTop: 10 }}>
-          {t("common.loading", "Loading…")}
-        </Text>
       </SafeAreaView>
     );
   }
 
-  const transportLabel = (m: TransportMode) =>
-    m === "bike"
-      ? t("driver.auth.transport.bike", "Bike")
-      : m === "moto"
-        ? t("driver.auth.transport.moto", "Motorbike")
-        : t("driver.auth.transport.car", "Car");
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#020617" }} edges={["bottom", "left", "right"]}>
       <ScreenHeader
-        title={t("driver.account.title", "Driver account")}
+        title={t("driver.onboarding.title", "Configuration chauffeur")}
         fallbackRoute="DriverTabs"
         variant="dark"
       />
-
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28, gap: 12 }}>
         <View
           style={{
             backgroundColor: "#0B1220",
@@ -382,343 +155,121 @@ export function DriverOnboardingScreen() {
             borderColor: "#111827",
           }}
         >
-          <Text style={{ color: "white", fontWeight: "900", fontSize: 18 }}>
-            {t("driver.account.subtitle", "Set up your driver account")}
+          <Text style={{ color: "#F8FAFC", fontWeight: "900", fontSize: 18 }}>
+            {t("driver.onboarding.progress", "Progression")} · {progress.progress}%
           </Text>
-
-          <Text
-            style={{
-              color: "#9CA3AF",
-              marginTop: 8,
-              fontWeight: "700",
-              lineHeight: 20,
-            }}
-          >
-            {t(
-              "driver.account.setupHint",
-              "Complete your basic info here, then finish documents, identity and payout in your driver profile."
-            )}
+          <Text style={{ color: "#94A3B8", marginTop: 6, fontWeight: "700" }}>
+            {step === "addVehicle"
+              ? t("driver.onboarding.next.vehicle", "Ajoutez et activez un véhicule")
+              : step === "addDocs"
+                ? t("driver.onboarding.next.docs", "Complétez vos documents")
+                : step === "setupPayment"
+                  ? t("driver.onboarding.next.payout", "Activez Stripe Connect (Wallet)")
+                  : t("driver.onboarding.next.ready", "Prêt — retournez à l'accueil")}
           </Text>
-
-          <View
-            style={{
-              marginTop: 12,
-              backgroundColor: "#071022",
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: "#111827",
-              padding: 12,
-            }}
-          >
-            <Text style={{ color: "#CBD5E1", fontWeight: "800" }}>
-              {t("common.profile.payment", "Payout")}:{" "}
-              {payoutEnabled
-                ? t("common.ready", "Ready")
-                : t("common.notConfigured", "Not configured")}
-            </Text>
-
-            <Text
-              style={{
-                color: "#CBD5E1",
-                fontWeight: "800",
-                marginTop: 6,
-              }}
-            >
-              {t("common.profile.documentsSection", "Documents")}:{" "}
-              {vehicleVerified
-                ? t("common.profile.verified.complete", "All documents ✅")
-                : t("common.profile.verified.notVerified", "Profile incomplete ❌")}
-            </Text>
-
-            <Text
-              style={{
-                color: "#CBD5E1",
-                fontWeight: "800",
-                marginTop: 6,
-              }}
-            >
-              {t("driver.map.statusTitle", "Driver status")}:{" "}
-              {isOnline
-                ? t("driver.map.online", "ONLINE")
-                : t("driver.map.offline", "OFFLINE")}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            onPress={goToProfile}
-            style={{
-              marginTop: 14,
-              borderRadius: 12,
-              padding: 12,
-              backgroundColor: "#2563EB",
-            }}
-          >
-            <Text
-              style={{
-                color: "white",
-                textAlign: "center",
-                fontWeight: "900",
-              }}
-            >
-              {t("driver.account.completeProfile", "Complete profile")}
-            </Text>
-          </TouchableOpacity>
+          <Text style={{ color: "#64748B", marginTop: 8, fontSize: 12 }}>
+            Véhicule: {progress.vehicleOk ? "OK" : "manquant"} · Docs:{" "}
+            {progress.docsDone}/{progress.docsTotal} · Payout:{" "}
+            {progress.payoutOk ? "Ready" : "Setup required"}
+          </Text>
         </View>
 
-        <Text
+        <View
           style={{
-            color: "white",
-            fontWeight: "900",
-            fontSize: 16,
-            marginTop: 16,
+            backgroundColor: "#0B1220",
+            borderRadius: 16,
+            padding: 14,
+            gap: 10,
           }}
         >
-          {t("driver.auth.transport.title", "Transport")}
-        </Text>
-
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-          {(["bike", "moto", "car"] as TransportMode[]).map((m) => {
-            const active = transportMode === m;
-            return (
-              <TouchableOpacity
-                key={m}
-                onPress={() => setMode(m)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: active ? "#2563EB" : "#1F2937",
-                  backgroundColor: active ? "#0A1730" : "#071022",
-                }}
-              >
-                <Text
-                  style={{
-                    color: "white",
-                    textAlign: "center",
-                    fontWeight: "900",
-                  }}
-                >
-                  {transportLabel(m)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <Text
-          style={{
-            color: "white",
-            fontWeight: "900",
-            fontSize: 16,
-            marginTop: 16,
-          }}
-        >
-          {t("common.profile.accountSection", "Account")}
-        </Text>
-
-        <Text style={{ color: "#CBD5E1", marginTop: 10, fontWeight: "800" }}>
-          {t("common.profile.name", "Name")}
-        </Text>
-        <TextInput
-          value={fullName}
-          onChangeText={setFullName}
-          placeholder={t("common.profile.placeholderName", "e.g. Mamadou")}
-          placeholderTextColor="#64748B"
-          style={{
-            color: "white",
-            backgroundColor: "#071022",
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: "#111827",
-            padding: 12,
-            marginTop: 6,
-          }}
-        />
-
-        <Text style={{ color: "#CBD5E1", marginTop: 10, fontWeight: "800" }}>
-          {t("common.profile.phone", "Phone")}
-        </Text>
-        <TextInput
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-          placeholder={t(
-            "common.profile.placeholderPhone",
-            "e.g. +1 555 123 4567"
-          )}
-          placeholderTextColor="#64748B"
-          style={{
-            color: "white",
-            backgroundColor: "#071022",
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: "#111827",
-            padding: 12,
-            marginTop: 6,
-          }}
-        />
-
-        {needsVehicle ? (
-          <>
-            <Text
+          <Text style={{ color: "#F8FAFC", fontWeight: "800" }}>
+            {t("driver.onboarding.transport", "Type de véhicule")}
+          </Text>
+          {(["car", "moto", "bike"] as TransportMode[]).map((mode) => (
+            <TouchableOpacity
+              key={mode}
+              disabled={savingMode}
+              onPress={() => void saveTransportMode(mode)}
               style={{
-                color: "white",
-                fontWeight: "900",
-                fontSize: 16,
-                marginTop: 18,
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: transportMode === mode ? "#1D4ED8" : "#111827",
               }}
             >
-              {t("common.profile.vehicleSection", "Vehicle")}
-            </Text>
+              <Text style={{ color: "#fff", fontWeight: "800" }}>
+                {mode === "car" ? "Car" : mode === "moto" ? "Motorcycle" : "Bicycle"}
+                {transportMode === mode ? " ✓" : ""}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {savingMode ? <ActivityIndicator color="#fff" /> : null}
+        </View>
 
-            <Text style={{ color: "#CBD5E1", marginTop: 10, fontWeight: "800" }}>
-              {t("common.profile.brand", "Brand")}
-            </Text>
-            <TextInput
-              value={brand}
-              onChangeText={setBrand}
-              placeholder={t("common.profile.placeholderBrand", "e.g. Honda")}
-              placeholderTextColor="#64748B"
-              style={{
-                color: "white",
-                backgroundColor: "#071022",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#111827",
-                padding: 12,
-                marginTop: 6,
-              }}
-            />
-
-            <Text style={{ color: "#CBD5E1", marginTop: 10, fontWeight: "800" }}>
-              {t("common.profile.model", "Model")}
-            </Text>
-            <TextInput
-              value={model}
-              onChangeText={setModel}
-              placeholder={t("common.profile.placeholderModel", "e.g. Accord")}
-              placeholderTextColor="#64748B"
-              style={{
-                color: "white",
-                backgroundColor: "#071022",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#111827",
-                padding: 12,
-                marginTop: 6,
-              }}
-            />
-
-            <Text style={{ color: "#CBD5E1", marginTop: 10, fontWeight: "800" }}>
-              {t("common.profile.year", "Year")}
-            </Text>
-            <TextInput
-              value={year}
-              onChangeText={setYear}
-              keyboardType="number-pad"
-              placeholder={t("common.profile.placeholderYear", "2020")}
-              placeholderTextColor="#64748B"
-              style={{
-                color: "white",
-                backgroundColor: "#071022",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#111827",
-                padding: 12,
-                marginTop: 6,
-              }}
-            />
-
-            <Text style={{ color: "#CBD5E1", marginTop: 10, fontWeight: "800" }}>
-              {t("driver.auth.vehicle.colorOptional", "Color (optional)")}
-            </Text>
-            <TextInput
-              value={color}
-              onChangeText={setColor}
-              placeholder={t("common.profile.placeholderColor", "e.g. Black")}
-              placeholderTextColor="#64748B"
-              style={{
-                color: "white",
-                backgroundColor: "#071022",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#111827",
-                padding: 12,
-                marginTop: 6,
-              }}
-            />
-
-            <Text style={{ color: "#CBD5E1", marginTop: 10, fontWeight: "800" }}>
-              {t("common.profile.plate", "Plate")}
-            </Text>
-            <TextInput
-              value={plate}
-              onChangeText={setPlate}
-              placeholder={t("common.profile.placeholderPlate", "ABC-1234")}
-              placeholderTextColor="#64748B"
-              style={{
-                color: "white",
-                backgroundColor: "#071022",
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#111827",
-                padding: 12,
-                marginTop: 6,
-              }}
-            />
-          </>
-        ) : (
-          <View
-            style={{
-              marginTop: 14,
-              backgroundColor: "#0B1220",
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: "#111827",
-              padding: 12,
-            }}
-          >
-            <Text style={{ color: "#CBD5E1", fontWeight: "900" }}>
-              {t("driver.accountScreen.bikeSelectedTitle", "Bike selected ✅")}
-            </Text>
-            <Text style={{ color: "#9CA3AF", marginTop: 6, fontWeight: "700" }}>
-              {t(
-                "driver.accountScreen.bikeSelectedBody",
-                "No license, plate, insurance or registration required."
-              )}
-            </Text>
-          </View>
-        )}
-
-        <View style={{ height: 18 }} />
+        <HubRow
+          label={t("driver.onboarding.go.vehicles", "Mon véhicule")}
+          hint={
+            progress.vehicleOk
+              ? t("driver.onboarding.go.vehiclesOk", "Flotte configurée")
+              : t("driver.onboarding.go.vehiclesNeed", "Ajouter Car / Motorcycle")
+          }
+          onPress={() => navigation.navigate("DriverVehicles")}
+        />
+        <HubRow
+          label={t("driver.onboarding.go.profile", "Profil & documents")}
+          hint={t("driver.onboarding.go.profileHint", "Identité, permis, assurance")}
+          onPress={() => navigation.navigate("DriverProfile")}
+        />
+        <HubRow
+          label={t("driver.onboarding.go.wallet", "Wallet / Stripe Connect")}
+          hint={
+            progress.payoutOk
+              ? t("driver.onboarding.go.walletOk", "Payout ready")
+              : t("driver.onboarding.go.walletNeed", "Setup required")
+          }
+          onPress={() => navigation.navigate("DriverWallet")}
+        />
+        <HubRow
+          label={t("driver.onboarding.go.services", "Mes services")}
+          hint={t("driver.onboarding.go.servicesHint", "Food, colis, taxi")}
+          onPress={() => navigation.navigate("DriverServices")}
+        />
 
         <TouchableOpacity
-          onPress={saveAll}
-          disabled={saving}
+          onPress={() => navigation.navigate("DriverTabs")}
           style={{
-            borderRadius: 12,
-            padding: 12,
-            backgroundColor: "#2563EB",
-            opacity: saving ? 0.6 : 1,
+            marginTop: 8,
+            backgroundColor: "#22C55E",
+            borderRadius: 14,
+            paddingVertical: 14,
+            alignItems: "center",
           }}
         >
-          <Text
-            style={{
-              color: "white",
-              textAlign: "center",
-              fontWeight: "900",
-            }}
-          >
-            {saving
-              ? t("shared.common.loadingEllipsis", "…")
-              : t("shared.common.save", "Save")}
+          <Text style={{ color: "#052e16", fontWeight: "900" }}>
+            {t("driver.onboarding.continue", "Continuer vers l'accueil")}
           </Text>
         </TouchableOpacity>
-
-        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function HubRow(props: { label: string; hint: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={props.onPress}
+      style={{
+        backgroundColor: "#0B1220",
+        borderRadius: 14,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: "#1E293B",
+      }}
+    >
+      <Text style={{ color: "#F8FAFC", fontWeight: "800" }}>{props.label}</Text>
+      <Text style={{ color: "#94A3B8", marginTop: 4, fontWeight: "600" }}>
+        {props.hint}
+      </Text>
+    </TouchableOpacity>
   );
 }
 

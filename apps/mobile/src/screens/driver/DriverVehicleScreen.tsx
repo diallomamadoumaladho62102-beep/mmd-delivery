@@ -23,6 +23,7 @@ import type { RootStackParamList } from "../../navigation/AppNavigator";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import {
   addDriverVehicle,
+  changeDriverTransportMode,
   fetchDriverCapabilities,
   fetchDriverVehicleById,
   updateDriverCapabilities,
@@ -38,6 +39,7 @@ import { toUserFacingError } from "../../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverVehicle">;
 type Rt = RouteProp<RootStackParamList, "DriverVehicle">;
+type TransportMode = "car" | "moto" | "bike";
 
 function statusColor(status: string) {
   if (status === "eligible") return "#15803d";
@@ -61,6 +63,10 @@ export function DriverVehicleScreen() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [pendingLocalPhoto, setPendingLocalPhoto] = useState<string | null>(
     null,
+  );
+  /** Create flow: must choose Car / Motorcycle / Bicycle before the form. */
+  const [transportMode, setTransportMode] = useState<TransportMode | null>(
+    isCreate ? null : "car",
   );
   const [form, setForm] = useState({
     vehicle_make: "",
@@ -239,26 +245,65 @@ export function DriverVehicleScreen() {
   };
 
   const save = async () => {
+    if (isCreate && !transportMode) {
+      Alert.alert(
+        "Type de véhicule",
+        "Choisissez d'abord Car, Motorcycle ou Bicycle.",
+      );
+      return;
+    }
+
     setSaving(true);
     try {
+      if (isCreate && transportMode === "bike") {
+        await changeDriverTransportMode("bike");
+        Alert.alert(
+          "Mode vélo",
+          "Votre catégorie est passée en Bicycle. Aucun véhicule motorisé n'est requis pour passer en ligne.",
+        );
+        navigation.goBack();
+        return;
+      }
+
+      if (isCreate && (transportMode === "car" || transportMode === "moto")) {
+        await changeDriverTransportMode(transportMode);
+      }
+
       const payload: Record<string, unknown> = {
         vehicle_make: form.vehicle_make.trim(),
         vehicle_model: form.vehicle_model.trim(),
         vehicle_year: Number(form.vehicle_year) || null,
         vehicle_color: form.vehicle_color.trim(),
         license_plate: form.license_plate.trim(),
-        seats_count: Number(form.seats_count) || 4,
-        vehicle_type: form.vehicle_type.trim(),
-        has_air_conditioning: form.has_air_conditioning,
-        wheelchair_accessible: form.wheelchair_accessible,
+        seats_count:
+          transportMode === "moto"
+            ? Math.min(Number(form.seats_count) || 2, 2)
+            : Number(form.seats_count) || 4,
+        vehicle_type:
+          transportMode === "moto"
+            ? "motorcycle"
+            : form.vehicle_type.trim() || "sedan",
+        has_air_conditioning:
+          transportMode === "moto" ? false : form.has_air_conditioning,
+        wheelchair_accessible:
+          transportMode === "moto" ? false : form.wheelchair_accessible,
         fuel_type: form.fuel_type,
         nickname: form.nickname.trim() || null,
-        child_seat_available: form.child_seat_available,
+        child_seat_available:
+          transportMode === "moto" ? false : form.child_seat_available,
         pets_allowed: form.pets_allowed,
-        large_luggage: form.large_luggage,
+        large_luggage: transportMode === "moto" ? false : form.large_luggage,
         phone_charger_available: form.phone_charger_available,
         quiet_vehicle: form.quiet_vehicle,
       };
+
+      if (!payload.vehicle_make || !payload.vehicle_model || !payload.license_plate) {
+        Alert.alert(
+          "Formulaire incomplet",
+          "Marque, modèle et plaque sont obligatoires.",
+        );
+        return;
+      }
 
       await updateDriverCapabilities({ non_smoking: form.non_smoking });
 
@@ -317,15 +362,135 @@ export function DriverVehicleScreen() {
     );
   }
 
+  if (isCreate && transportMode === null) {
+    return (
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title="Ajouter un véhicule"
+          subtitle="Choisissez d'abord le type — la catégorie est synchronisée immédiatement avec Supabase et le dispatch."
+          variant="light"
+          fallbackRoute="DriverVehicles"
+        />
+        <View style={styles.modePicker}>
+          {(
+            [
+              { id: "car" as const, label: "Car", hint: "Voiture — food, colis, taxi" },
+              {
+                id: "moto" as const,
+                label: "Motorcycle",
+                hint: "Moto — livraison rapide",
+              },
+              {
+                id: "bike" as const,
+                label: "Bicycle",
+                hint: "Vélo — pas de flotte motorisée requise",
+              },
+            ] as const
+          ).map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={styles.modeCard}
+              onPress={() => {
+                setTransportMode(opt.id);
+                if (opt.id === "moto") {
+                  setForm((prev) => ({
+                    ...prev,
+                    seats_count: "2",
+                    vehicle_type: "motorcycle",
+                    has_air_conditioning: false,
+                    wheelchair_accessible: false,
+                    child_seat_available: false,
+                    large_luggage: false,
+                  }));
+                } else if (opt.id === "car") {
+                  setForm((prev) => ({
+                    ...prev,
+                    seats_count: "4",
+                    vehicle_type: "sedan",
+                  }));
+                }
+              }}
+            >
+              <Text style={styles.modeLabel}>{opt.label}</Text>
+              <Text style={styles.modeHint}>{opt.hint}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isCreate && transportMode === "bike") {
+    return (
+      <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+        <ScreenHeader
+          title="Bicycle"
+          subtitle="Pas de véhicule motorisé requis. Confirmez pour synchroniser transport_mode=bike."
+          variant="light"
+          fallbackRoute="DriverVehicles"
+        />
+        <View style={styles.modePicker}>
+          <TouchableOpacity
+            style={styles.modeCard}
+            onPress={() => setTransportMode(null)}
+          >
+            <Text style={styles.modeHint}>Changer de type</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.saveBtn}
+            onPress={() => void save()}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveText}>Confirmer le mode vélo</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const motoForm = transportMode === "moto";
+  const fieldRows: Array<[string, string]> = [
+    ["vehicle_make", "Marque"],
+    ["vehicle_model", "Modèle"],
+    ["vehicle_year", "Année"],
+    ["vehicle_color", "Couleur"],
+    ["license_plate", "Plaque"],
+    ...(motoForm
+      ? []
+      : ([
+          ["seats_count", "Places passagers"],
+          ["vehicle_type", "Type (sedan, suv, van, minivan)"],
+        ] as Array<[string, string]>)),
+    [
+      "fuel_type",
+      "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
+    ],
+    ["nickname", "Surnom (optionnel)"],
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <ScreenHeader
         title={isCreate ? "Ajouter un véhicule" : "Véhicule"}
-        subtitle="Les catégories taxi sont calculées par le serveur. Vous ne pouvez pas vous auto-attribuer Comfort, XL ou Wheelchair."
+        subtitle={
+          isCreate
+            ? `Type: ${transportMode === "moto" ? "Motorcycle" : "Car"}. Les catégories taxi sont calculées par le serveur.`
+            : "Les catégories taxi sont calculées par le serveur. Vous ne pouvez pas vous auto-attribuer Comfort, XL ou Wheelchair."
+        }
         variant="light"
         fallbackRoute="DriverVehicles"
       />
       <ScrollView contentContainerStyle={styles.content}>
+        {isCreate ? (
+          <TouchableOpacity onPress={() => setTransportMode(null)}>
+            <Text style={styles.changeType}>Changer le type de véhicule</Text>
+          </TouchableOpacity>
+        ) : null}
+
         <View style={styles.photoCard}>
           <Text style={styles.photoTitle}>Vehicle photo</Text>
           <Text style={styles.photoHelp}>
@@ -378,20 +543,7 @@ export function DriverVehicleScreen() {
           </View>
         </View>
 
-        {[
-          ["vehicle_make", "Marque"],
-          ["vehicle_model", "Modèle"],
-          ["vehicle_year", "Année"],
-          ["vehicle_color", "Couleur"],
-          ["license_plate", "Plaque"],
-          ["seats_count", "Places passagers"],
-          ["vehicle_type", "Type (sedan, suv, van, minivan)"],
-          [
-            "fuel_type",
-            "Motorisation (gasoline, diesel, hybrid, electric, plug_in_hybrid)",
-          ],
-          ["nickname", "Surnom (optionnel)"],
-        ].map(([key, label]) => (
+        {fieldRows.map(([key, label]) => (
           <View key={key}>
             <Text style={styles.fieldLabel}>{label}</Text>
             <TextInput
@@ -404,48 +556,53 @@ export function DriverVehicleScreen() {
           </View>
         ))}
 
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Climatisation</Text>
-          <Switch
-            value={form.has_air_conditioning}
-            onValueChange={(v) =>
-              setForm((prev) => ({ ...prev, has_air_conditioning: v }))
-            }
-          />
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Accessible fauteuil roulant</Text>
-          <Switch
-            value={form.wheelchair_accessible}
-            onValueChange={(v) =>
-              setForm((prev) => ({ ...prev, wheelchair_accessible: v }))
-            }
-          />
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Siège enfant</Text>
-          <Switch
-            value={form.child_seat_available}
-            onValueChange={(v) =>
-              setForm((prev) => ({ ...prev, child_seat_available: v }))
-            }
-          />
-        </View>
+        {!motoForm ? (
+          <>
+            <View style={styles.row}>
+              <Text style={styles.fieldLabel}>Climatisation</Text>
+              <Switch
+                value={form.has_air_conditioning}
+                onValueChange={(v) =>
+                  setForm((prev) => ({ ...prev, has_air_conditioning: v }))
+                }
+              />
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.fieldLabel}>Accessible fauteuil roulant</Text>
+              <Switch
+                value={form.wheelchair_accessible}
+                onValueChange={(v) =>
+                  setForm((prev) => ({ ...prev, wheelchair_accessible: v }))
+                }
+              />
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.fieldLabel}>Siège enfant</Text>
+              <Switch
+                value={form.child_seat_available}
+                onValueChange={(v) =>
+                  setForm((prev) => ({ ...prev, child_seat_available: v }))
+                }
+              />
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.fieldLabel}>Gros bagages</Text>
+              <Switch
+                value={form.large_luggage}
+                onValueChange={(v) =>
+                  setForm((prev) => ({ ...prev, large_luggage: v }))
+                }
+              />
+            </View>
+          </>
+        ) : null}
+
         <View style={styles.row}>
           <Text style={styles.fieldLabel}>Animaux acceptés</Text>
           <Switch
             value={form.pets_allowed}
             onValueChange={(v) =>
               setForm((prev) => ({ ...prev, pets_allowed: v }))
-            }
-          />
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.fieldLabel}>Gros bagages</Text>
-          <Switch
-            value={form.large_luggage}
-            onValueChange={(v) =>
-              setForm((prev) => ({ ...prev, large_luggage: v }))
             }
           />
         </View>
@@ -572,6 +729,22 @@ const styles = StyleSheet.create({
   },
   photoBtnDanger: { backgroundColor: "#B91C1C" },
   photoBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  modePicker: { padding: 16, gap: 12 },
+  modeCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 16,
+    gap: 6,
+  },
+  modeLabel: { color: "#0F172A", fontWeight: "800", fontSize: 18 },
+  modeHint: { color: "#64748B", fontSize: 13, lineHeight: 18 },
+  changeType: {
+    color: "#2563EB",
+    fontWeight: "700",
+    marginBottom: 4,
+  },
 });
 
 export default DriverVehicleScreen;
