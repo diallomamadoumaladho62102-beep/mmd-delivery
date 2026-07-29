@@ -519,13 +519,12 @@ export async function startStripeOnboarding(
         { code: parsed.code, message: detail },
         "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.",
       );
-      // Surface Stripe/server detail when the mapped string is generic.
       Alert.alert(
         "Stripe",
         detail &&
-          mapped.includes("Impossible d'ouvrir la configuration Stripe") &&
           detail !== mapped &&
-          detail.length < 220
+          !mapped.includes("questionnaire Connect") &&
+          detail.length < 320
           ? `${mapped}\n\n(${detail})`
           : mapped,
       );
@@ -542,9 +541,9 @@ export async function startStripeOnboarding(
       Alert.alert(
         "Stripe",
         detail &&
-          mapped.includes("Impossible d'ouvrir la configuration Stripe") &&
           detail !== mapped &&
-          detail.length < 220
+          !mapped.includes("questionnaire Connect") &&
+          detail.length < 320
           ? `${mapped}\n\n(${detail})`
           : mapped,
       );

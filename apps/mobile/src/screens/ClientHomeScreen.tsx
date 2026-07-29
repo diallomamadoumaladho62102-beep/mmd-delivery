@@ -866,50 +866,19 @@ export function ClientHomeScreen() {
     let taxiData = taxiRes.data;
     let taxiError = taxiRes.error;
 
+    // Never drop visibility filters. If archive columns were somehow missing,
+    // fail closed (empty lists) instead of showing archived/test trips.
     if (archiveMissing) {
-      const retry = await Promise.all([
-        supabase
-          .from("orders")
-          .select(
-            `id,kind,status,payment_status,created_at,updated_at,paid_at,pickup_address,dropoff_address,distance_miles,total,delivery_fee,stripe_session_id,stripe_payment_intent_id,client_user_id`,
-          )
-          .or(
-            `client_user_id.eq.${userId},client_id.eq.${userId},created_by.eq.${userId},user_id.eq.${userId}`,
-          )
-          .order("created_at", { ascending: false })
-          .limit(FETCH_LIMIT),
-        supabase
-          .from("delivery_requests")
-          .select(
-            `id,status,payment_status,created_at,updated_at,paid_at,pickup_address,dropoff_address,distance_miles,total,delivery_fee,stripe_session_id,stripe_payment_intent_id,client_user_id,created_by`,
-          )
-          .eq("client_user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(FETCH_LIMIT),
-        supabase
-          .from("delivery_requests")
-          .select(
-            `id,status,payment_status,created_at,updated_at,paid_at,pickup_address,dropoff_address,distance_miles,total,delivery_fee,stripe_session_id,stripe_payment_intent_id,client_user_id,created_by`,
-          )
-          .eq("created_by", userId)
-          .order("created_at", { ascending: false })
-          .limit(FETCH_LIMIT),
-        supabase
-          .from("taxi_rides")
-          .select(
-            `id,status,payment_status,created_at,updated_at,pickup_address,dropoff_address,distance_miles,total_cents`,
-          )
-          .eq("client_user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(FETCH_LIMIT),
-      ]);
-      ordersData = retry[0].data as typeof ordersData;
-      ordersError = retry[0].error;
-      drClientData = retry[1].data as typeof drClientData;
-      drCreatedData = retry[2].data as typeof drCreatedData;
-      drError = retry[1].error || retry[2].error;
-      taxiData = retry[3].data as typeof taxiData;
-      taxiError = retry[3].error;
+      console.log(
+        "[ClientHome] visibility columns unavailable — refusing unfiltered fallback",
+      );
+      ordersData = [];
+      ordersError = null;
+      drClientData = [];
+      drCreatedData = [];
+      drError = null;
+      taxiData = [];
+      taxiError = null;
     }
 
     if (ordersError) {

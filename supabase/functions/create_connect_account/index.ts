@@ -167,7 +167,7 @@ serve(async (req) => {
       role === "seller"
         ? "stripe_account_id, city, country_code"
         : "stripe_account_id, city, state";
-    const { data: prof, error: pErr } = await supabase
+    let { data: prof, error: pErr } = await supabase
       .from(table)
       .select(selectCols)
       .eq("user_id", userId)
@@ -178,17 +178,47 @@ serve(async (req) => {
     }
 
     if (!prof) {
-      return json(
-        req,
-        {
-          error: "profile_not_found",
-          message:
-            role === "seller"
-              ? "Complete seller onboarding before connecting Stripe."
-              : "Profile not found for this role.",
-        },
-        404,
-      );
+      // Drivers sometimes have profiles.role=driver before driver_profiles exists.
+      // Create a minimal row so Connect onboarding can proceed.
+      if (role === "driver") {
+        const { data: created, error: createProfErr } = await supabase
+          .from("driver_profiles")
+          .upsert(
+            {
+              user_id: userId,
+              stripe_onboarded: false,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "user_id" },
+          )
+          .select("stripe_account_id, city, state")
+          .maybeSingle();
+        if (createProfErr || !created) {
+          return json(
+            req,
+            {
+              error: "profile_not_found",
+              message:
+                "Profile not found for this role. Unable to create driver_profiles row.",
+              details: createProfErr?.message ?? null,
+            },
+            404,
+          );
+        }
+        prof = created;
+      } else {
+        return json(
+          req,
+          {
+            error: "profile_not_found",
+            message:
+              role === "seller"
+                ? "Complete seller onboarding before connecting Stripe."
+                : "Profile not found for this role.",
+          },
+          404,
+        );
+      }
     }
 
     let accountId: string | null = (prof as any)?.stripe_account_id ?? null;
@@ -427,7 +457,11 @@ serve(async (req) => {
     const msg = String(e?.raw?.message ?? e?.message ?? "Server error");
     const code = /must be live|sk_live/i.test(msg)
       ? "stripe_secret_key_must_be_live"
-      : "stripe_connect_error";
+      : /complete your platform profile|answer the questionnaire|connect\/accounts\/overview/i.test(
+            msg,
+          )
+        ? "stripe_connect_platform_profile_incomplete"
+        : "stripe_connect_error";
     return json(
       req,
       {

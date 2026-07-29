@@ -126,7 +126,18 @@ function mapKnownErrorCode(code: string, message: string): string | null {
       return "La configuration Stripe Connect n'est pas prête côté serveur. Contactez le support MMD.";
     case "stripe_account_retrieve_failed":
       return "Impossible de lire votre compte Stripe. Rouvrez la configuration des virements.";
+    case "stripe_connect_platform_profile_incomplete":
+      return "Stripe Connect n'est pas encore activé pour la plateforme MMD. Complétez le questionnaire Connect dans le Dashboard Stripe (Connect → Accounts → Overview), puis réessayez.";
+    case "profile_not_found":
+      return "Votre profil chauffeur est incomplet. Rouvrez l'application ou contactez le support pour finaliser votre compte, puis réessayez Enable.";
     case "stripe_connect_error":
+      if (
+        /complete your platform profile|answer the questionnaire|connect\/accounts\/overview/i.test(
+          message,
+        )
+      ) {
+        return "Stripe Connect n'est pas encore activé pour la plateforme MMD. Complétez le questionnaire Connect dans le Dashboard Stripe (Connect → Accounts → Overview), puis réessayez.";
+      }
       return "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.";
     case "already_cashed_out_today":
       return "Vous avez déjà demandé un retrait aujourd'hui. Réessayez demain.";

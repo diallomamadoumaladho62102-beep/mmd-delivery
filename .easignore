@@ -1,43 +1,231 @@
-# Dependencies / caches
+# =============================================================================
+# MMD Delivery — production .easignore
+# =============================================================================
+# EAS CLI uses THIS file instead of .gitignore when present.
+# Keep every .gitignore rule here, then add build-upload-only exclusions.
+# Goal: shrink the EAS project archive without removing anything required
+# for Expo prebuild / Metro / Android / iOS compilation.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Copied from .gitignore (required — .easignore replaces .gitignore)
+# -----------------------------------------------------------------------------
 node_modules
 .pnpm-store
-.expo
-.git
-.vercel
-.vscode
-.DS_Store
-*.log
-dist
-tmp
 .next
 out
-*.tsbuildinfo
-build*/
-*.ipa
 
-# Secrets — never upload to EAS (.easignore replaces .gitignore entirely)
+# pnpm is the only package manager for this monorepo (EAS/Expo use the root lockfile).
+apps/mobile/package-lock.json
+apps/web/package-lock.json
+package-lock.json
+npm-shrinkwrap.json
+
 .env
-.env.*
 .env.local
 .env.*.local
+**/.env.*.tmp
+.env.production
+.env.production.local
+apps/web/.env.local
+apps/web/.env.vercel.production.local
+apps/mobile/.env
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+.vscode
+.DS_Store
+.vercel
+
+artifacts-proof-*.log
+artifacts-proof-*.patch
+docs/production/docs/
+
+docs/production/final-certification.env
+docs/production/store-submission.env
+google-play-service-account.json
+google-services.json
+GoogleService-Info.plist
+*.pem
+.env.development
+.env.staging
+docs/production/reports/
+docs/production/tools/
+*.keystore
+*.jks
+*.p8
+*.p12
+
+*.tsbuildinfo
+
+.expo/
+apps/mobile/.expo/
+apps/mobile/android/
+.eas-tmp/
+
+android-log.txt
+mmd-log.txt
+logcat*.txt
+
+docs/screenshots/
+apps/mobile/artifacts/
+apps/mobile/preview/
+
+docs/audio-proposals/
+docs/audio-preview/
+docs/audio-backup/
+
+*.ipa
+build*/
+
+supabase/.temp/
+ios/
+
+.tmp-pg-diag/
+.tmp/
+
+apps/web/.tmp/
+apps/web/Backups/
+apps/web/.env.twilio-audit
+apps/web/scripts/_tmp-*
+apps/web/scripts/_audit-*
+apps/web/scripts/live-*-*.mjs
+apps/web/scripts/delivery-quote-preflight.mjs
+apps/web/scripts/phase-prod-*.mjs
+apps/web/scripts/verify-*-preflight.mjs
+dependabot-alerts.json
+dependabot-crit-high.json
+
+backups/
+
+**/.env.bak*
+**/*.env.bak*
+.env.bak*
+docs/phase-integrate-e2e-report.txt
+scripts/phase-*.sh
+scripts/phase-*.mjs
+scripts/stripe-prod-*.cjs
+
+# -----------------------------------------------------------------------------
+# Extra EAS upload exclusions (safe — never used by Expo/Metro compile)
+# -----------------------------------------------------------------------------
+
+# VCS / IDE / CI metadata
+.git
+.github
+.idea
+.cursor
+**/.DS_Store
+
+# Secrets / env (belt-and-suspenders; never upload to EAS workers)
+.env
+.env.*
 **/.env
 **/.env.*
 **/.env.local
+**/.env.*.local
 
-# Archives / backups
-_archive_mobile
-backup
+# Monorepo server / DB / web — mobile EAS build does not compile these
+apps/web/
+apps/orders/
+apps/Backups_Mobile_merge/
+api/
+supabase/
+vercel.json
+next-env.d.ts
+page.tsx
+
+# Docs, screenshots, certification artifacts
+docs/
+*.md
+!apps/mobile/**/*.md
+
+# Local caches / temp / logs
+.expo
+**/.expo/
+.tmp
+**/.tmp/
+temp/
+**/temp/
+tmp/
+**/tmp/
+logs/
+**/logs/
+*.log
+coverage/
+**/coverage/
+dist/
+**/dist/
+.turbo
+**/.turbo/
+
+# Local native build outputs (EAS regenerates ios; keep root android/ scaffold)
+apps/mobile/android/
+apps/mobile/ios/
+android/.gradle/
+android/app/build/
+android/build/
+
+# Local UI captures / demos / previews (were ~270MB alone)
+apps/mobile/preview/
+apps/mobile/artifacts/
+apps/mobile/validation/
+apps/mobile/design/
+apps/mobile/part1.txt
+apps/mobile/part2.txt
+apps/mobile/part3.txt
+
+# Test-only sources (not imported by production Metro graph)
+**/*.test.ts
+**/*.test.tsx
+**/*.test.js
+**/*.test.mjs
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/
+**/__mocks__/
+**/fixtures/
+**/mocks/
+**/test-utils/
+**/testing/
+
+# Archives / installers / dumps
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.sql
+*.dump
+*.bak
+schema.sql
+AUDIT_MMD.txt
+missing-i18n-keys.txt
+_tmp_*
+**/_tmp_*
+build31*
+*_unzipped/
+**/_archive*/
+_archive_mobile/
+
+# Dependabot / audit dumps
+dependabot-*.json
+**/dependabot-*.json
+
+# Root tools / scripts not needed on EAS workers
+tools/
+scripts/
+!apps/mobile/scripts/
+
+# Heavy local backups (already in gitignore; keep explicit)
+backup/
+backups/
+**/backup/
+**/backups/
+**/Backups/
 Backups*
-**/backup
-**/backups
-**/Backups*
-
-# Web / server code not needed for iOS mobile build
-apps/web
-apps/orders
-api
-supabase
-
-# Native / build caches
-android/.gradle
-android/app/build
