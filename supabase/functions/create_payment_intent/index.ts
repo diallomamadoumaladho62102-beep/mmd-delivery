@@ -32,17 +32,30 @@ function resolveOrderAmountCents(order: {
   total_cents?: unknown;
   total?: unknown;
   grand_total?: unknown;
+  net_charge_cents?: unknown;
 }): number | null {
-  const totalCents = toPositiveNumber(order.total_cents);
-  if (totalCents != null) return Math.round(totalCents);
+  // Prefer net_charge_cents when a valid MMD credit reservation reduced what
+  // Stripe must charge — must match Checkout + webhook settlement expectations.
+  const grossFromCents = toPositiveNumber(order.total_cents);
+  const gross =
+    grossFromCents != null
+      ? Math.round(grossFromCents)
+      : (() => {
+          const total = toPositiveNumber(order.total);
+          if (total != null) return Math.round(total * 100);
+          const grandTotal = toPositiveNumber(order.grand_total);
+          if (grandTotal != null) return Math.round(grandTotal * 100);
+          return null;
+        })();
 
-  const total = toPositiveNumber(order.total);
-  if (total != null) return Math.round(total * 100);
+  if (gross == null) return null;
 
-  const grandTotal = toPositiveNumber(order.grand_total);
-  if (grandTotal != null) return Math.round(grandTotal * 100);
+  const net = toPositiveNumber(order.net_charge_cents);
+  if (net != null && Math.round(net) <= gross) {
+    return Math.round(net);
+  }
 
-  return null;
+  return gross;
 }
 
 function buildPaymentIntentIdempotencyKey(
@@ -63,7 +76,14 @@ async function createOrderPaymentIntent(
     amount,
     currency,
     automatic_payment_methods: { enabled: true },
-    metadata: { order_id: orderId, user_id: userId },
+    metadata: {
+      order_id: orderId,
+      user_id: userId,
+      entity_id: orderId,
+      module: "food",
+      service_type: "food",
+      metadata_schema_version: "1",
+    },
   };
 
   return stripe.paymentIntents.create(params, {
@@ -89,7 +109,7 @@ Deno.serve(async (req) => {
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .select(
-        "id, created_by, client_user_id, total, total_cents, grand_total, currency, payment_status, stripe_payment_intent_id"
+        "id, created_by, client_user_id, total, total_cents, grand_total, net_charge_cents, currency, payment_status, stripe_payment_intent_id"
       )
       .eq("id", orderId)
       .single();

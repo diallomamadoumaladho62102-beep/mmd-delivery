@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
 import { notifyOrderCancelledEmail } from "@/lib/transactionalEmails";
 import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
@@ -10,6 +10,7 @@ import {
   gateOrderPlatformFeature,
   orderVerticalForPlatformGate,
 } from "@/lib/platformRouteGuards";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,6 +76,90 @@ async function safeReadJson(req: NextRequest) {
 
 function isTerminalStatus(status: string) {
   return status === "delivered" || status === "canceled";
+}
+
+/**
+ * When a client cancels a paid food order before restaurant acceptance,
+ * execute the Stripe refund immediately (parity with delivery-requests cancel).
+ * Idempotent on stripe_refund_id.
+ */
+async function refundPaidFoodOrderOnClientCancel(params: {
+  supabaseAdmin: SupabaseClient;
+  order: Record<string, unknown>;
+  orderId: string;
+  reason: string;
+}): Promise<{
+  refunded: boolean;
+  refundId: string | null;
+  refundStatus: string;
+  stripeRefund: { id: string; status: string | null } | null;
+}> {
+  const paymentStatus = normalizeStatus(params.order.payment_status);
+  if (paymentStatus !== "paid") {
+    return {
+      refunded: false,
+      refundId: null,
+      refundStatus: "not_paid",
+      stripeRefund: null,
+    };
+  }
+
+  if (params.order.stripe_refund_id) {
+    return {
+      refunded: true,
+      refundId: String(params.order.stripe_refund_id),
+      refundStatus: "refunded",
+      stripeRefund: {
+        id: String(params.order.stripe_refund_id),
+        status: "succeeded",
+      },
+    };
+  }
+
+  const paymentIntentId = String(
+    params.order.stripe_payment_intent_id ?? ""
+  ).trim();
+  if (!paymentIntentId) {
+    await params.supabaseAdmin
+      .from("orders")
+      .update({ refund_status: "missing_payment_intent" })
+      .eq("id", params.orderId);
+    return {
+      refunded: false,
+      refundId: null,
+      refundStatus: "missing_payment_intent",
+      stripeRefund: null,
+    };
+  }
+
+  const refund = await stripe.refunds.create(
+    {
+      payment_intent: paymentIntentId,
+      reason: "requested_by_customer",
+      metadata: {
+        order_id: params.orderId,
+        cancel_reason: params.reason,
+        source: "api/orders/cancel",
+      },
+    },
+    { idempotencyKey: `food_client_cancel_refund_${params.orderId}` }
+  );
+
+  await params.supabaseAdmin
+    .from("orders")
+    .update({
+      refund_status: "refunded",
+      stripe_refund_id: refund.id,
+      stripe_refunded_at: nowIso(),
+    })
+    .eq("id", params.orderId);
+
+  return {
+    refunded: true,
+    refundId: refund.id,
+    refundStatus: "refunded",
+    stripeRefund: { id: refund.id, status: refund.status ?? null },
+  };
 }
 
 function isClientOrderOwner(order: any, userId: string) {
@@ -359,7 +444,10 @@ export async function POST(req: NextRequest) {
             cancel_reason: reason,
             cancelled_by: "client",
             cancelled_at: nowIso(),
-            refund_status: "full_refund_required",
+            refund_status:
+              normalizeStatus(order.payment_status) === "paid"
+                ? "full_refund_required"
+                : "not_paid",
           })
           .eq("id", orderId)
           .eq("status", order.status)
@@ -376,6 +464,45 @@ export async function POST(req: NextRequest) {
               error: "Order status changed. Please refresh and try again.",
             },
             409
+          );
+        }
+
+        let stripeRefund: { id: string; status: string | null } | null = null;
+        let refundLabel: CancelRefund = "NONE";
+        let linkedRefundStatus = "not_paid";
+
+        try {
+          const refundResult = await refundPaidFoodOrderOnClientCancel({
+            supabaseAdmin,
+            order: order as Record<string, unknown>,
+            orderId,
+            reason,
+          });
+          stripeRefund = refundResult.stripeRefund;
+          linkedRefundStatus = refundResult.refundStatus;
+          if (refundResult.refunded) {
+            refundLabel = "FULL";
+          } else if (normalizeStatus(order.payment_status) === "paid") {
+            // Paid but refund could not run (missing PI) — keep required flag.
+            refundLabel = "REQUIRED";
+            linkedRefundStatus =
+              refundResult.refundStatus || "full_refund_required";
+          }
+        } catch (e) {
+          console.error("[orders/cancel] client Stripe refund failed", {
+            order_id: orderId,
+            message: e instanceof Error ? e.message : String(e),
+          });
+          await supabaseAdmin
+            .from("orders")
+            .update({ refund_status: "refund_failed" })
+            .eq("id", orderId);
+          return json(
+            {
+              error: "Order cancelled but Stripe refund failed. Support will retry.",
+              refund_status: "refund_failed",
+            },
+            502
           );
         }
 
@@ -401,8 +528,8 @@ export async function POST(req: NextRequest) {
           oldStatus: status,
           reason,
           userId: user.id,
-          refund: "FULL",
-          stripeRefund: null,
+          refund: refundLabel,
+          stripeRefund,
         });
 
         await notifyClientAfterCancel({
@@ -410,22 +537,25 @@ export async function POST(req: NextRequest) {
           order,
           userId: user.id,
           orderId,
-          refund: "FULL",
+          refund: refundLabel === "FULL" ? "FULL" : "NONE",
         });
 
         await syncLinkedDeliveryRequestCancel({
           supabaseAdmin,
           order,
           reason,
-          refundStatus: "full_refund_required",
+          refundStatus: linkedRefundStatus,
         });
 
         return successResponse({
           by: "client",
-          refund: "FULL",
+          refund: refundLabel,
           status: "canceled",
-          stripeRefund: null,
-          message: "Client cancelled before restaurant acceptance.",
+          stripeRefund,
+          message:
+            refundLabel === "FULL"
+              ? "Client cancelled before restaurant acceptance. Stripe refund executed."
+              : "Client cancelled before restaurant acceptance.",
         });
       }
 
