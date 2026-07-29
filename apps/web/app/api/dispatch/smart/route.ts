@@ -503,7 +503,13 @@ export async function POST(req: NextRequest) {
     const uniqueTokens = Array.from(
       new Map(
         (tokens ?? [])
-          .filter((t: any) => String(t.expo_push_token ?? "").startsWith("ExponentPushToken["))
+          .filter((t: any) => {
+            const token = String(t.expo_push_token ?? "").trim();
+            return (
+              token.startsWith("ExponentPushToken[") ||
+              token.startsWith("ExpoPushToken[")
+            );
+          })
           .map((t: any) => [String(t.expo_push_token), t])
       ).values()
     );
@@ -528,6 +534,8 @@ export async function POST(req: NextRequest) {
         screen: "DriverTabs",
       },
       priority: "high",
+      // Wake suspended iOS apps so the Driver mission alert service can ring.
+      _contentAvailable: true,
     }));
 
     const pushResult = await sendExpoPush(messages);

@@ -471,6 +471,10 @@ async function openExternalUrl(url: string): Promise<{ type: string | null }> {
     });
 
     return { type: typeof result?.type === "string" ? result.type : null };
+  } catch (browserError) {
+    console.log("[stripe-onboarding] WebBrowser failed, fallback Linking:", browserError);
+    await Linking.openURL(url);
+    return { type: "link" };
   } finally {
     try {
       if (Platform.OS === "android") {
@@ -510,24 +514,39 @@ export async function startStripeOnboarding(
         parsed,
         error,
       });
+      const detail = String(parsed.message ?? error.message ?? "").trim();
+      const mapped = toUserFacingError(
+        { code: parsed.code, message: detail },
+        "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.",
+      );
+      // Surface Stripe/server detail when the mapped string is generic.
       Alert.alert(
         "Stripe",
-        toUserFacingError(
-          { code: parsed.code, message: parsed.message ?? error.message },
-          "Impossible d'ouvrir la configuration Stripe pour le moment.",
-        ),
+        detail &&
+          mapped.includes("Impossible d'ouvrir la configuration Stripe") &&
+          detail !== mapped &&
+          detail.length < 220
+          ? `${mapped}\n\n(${detail})`
+          : mapped,
       );
       return false;
     }
 
     const payload = (data ?? {}) as Record<string, unknown>;
     if (payload?.error) {
+      const detail = String(payload.message ?? payload.details ?? payload.error).trim();
+      const mapped = toUserFacingError(
+        { code: String(payload.error), message: detail },
+        "Impossible d'ouvrir la configuration Stripe. Réessayez ou contactez le support.",
+      );
       Alert.alert(
         "Stripe",
-        toUserFacingError(
-          { code: String(payload.error), message: String(payload.message ?? payload.error) },
-          "Impossible d'ouvrir la configuration Stripe pour le moment.",
-        ),
+        detail &&
+          mapped.includes("Impossible d'ouvrir la configuration Stripe") &&
+          detail !== mapped &&
+          detail.length < 220
+          ? `${mapped}\n\n(${detail})`
+          : mapped,
       );
       return false;
     }

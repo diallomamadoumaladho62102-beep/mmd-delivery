@@ -229,7 +229,8 @@ export default ({ config }) => {
           "MMD Delivery utilise votre position pour les livraisons en temps réel.",
         NSLocationAlwaysUsageDescription:
           "MMD Delivery utilise votre position pour suivre les livraisons en temps réel lorsque vous êtes en ligne.",
-        UIBackgroundModes: ["location", "remote-notification"],
+        // `audio` keeps the in-app driver long-ring alive when the app is backgrounded.
+        UIBackgroundModes: ["location", "remote-notification", "audio"],
         LSApplicationQueriesSchemes: ["waze", "comgooglemaps", "googlemaps"],
       },
     },

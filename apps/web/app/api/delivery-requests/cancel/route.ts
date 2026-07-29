@@ -8,6 +8,7 @@ import {
 import { notifyClientDeliveryRequestCancelled } from "@/lib/clientPushNotifications";
 import { gateDeliveryRequestPlatformFeature } from "@/lib/platformRouteGuards";
 import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
+import { expirePendingDeliveryRequestOffers } from "@/lib/expirePendingDriverOffers";
 import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
@@ -296,6 +297,7 @@ export async function POST(req: NextRequest) {
     if (updatedRequest) {
       // Crédit MMD: free a still-held reservation (no-op once captured).
       await releaseEntityCredit(supabaseAdmin, "delivery_request", requestId);
+      await expirePendingDeliveryRequestOffers(supabaseAdmin, requestId);
       try {
         const { releaseEntityMarketing } = await import(
           "@/lib/marketing/marketingCheckoutLifecycle"

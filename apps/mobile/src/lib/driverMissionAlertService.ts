@@ -2,7 +2,10 @@ import { AppState, Platform, Vibration, type AppStateStatus } from "react-native
 import * as Notifications from "expo-notifications";
 import { mmdAudio } from "./mmdAudio";
 import { isDriverMissionPushType } from "./driverMissionPush";
-import { DRIVER_MISSION_PUSH_CHANNEL } from "./mmdPushSounds";
+import {
+  DRIVER_MISSION_PUSH_CHANNEL,
+  MMD_PUSH_SOUNDS,
+} from "./mmdPushSounds";
 import { supabase } from "./supabase";
 import {
   subscribePostgresChannel,
@@ -11,8 +14,11 @@ import {
 
 /**
  * Global driver mission long-ring — independent of DriverHomeScreen / isFocused.
- * Starts on push OR Realtime offer insert (delivery + taxi); stops only via
+ * Starts on push OR Realtime offer insert (food + delivery + taxi); stops only via
  * stopDriverMissionAlert (accept / decline / expire).
+ *
+ * Continues ringing while backgrounded (iOS UIBackgroundModes includes audio).
+ * When the process is killed, OS remote push + channel sound is the alert path.
  */
 
 let ringing = false;
@@ -100,7 +106,7 @@ async function showLocalMissionNotification(params: {
       content: {
         title: params.title,
         body: params.body,
-        sound: true,
+        sound: MMD_PUSH_SOUNDS.driverRing,
         data: { ...params.data, local_alert: true },
         ...(Platform.OS === "android"
           ? { channelId: DRIVER_MISSION_PUSH_CHANNEL }
@@ -126,10 +132,8 @@ export async function startDriverMissionAlert(params: {
     params.deliveryRequestId ?? params.orderId ?? params.taxiRideId ?? null;
   const key = missionKey(params.type, id);
   if (announcedKeys.has(key)) {
-    // Already announced — still ring if foreground, but do not re-schedule local push.
-    if (AppState.currentState === "active") {
-      await setRinging(true, key);
-    }
+    // Already announced — keep / restart ring across foreground+background.
+    await setRinging(true, key);
     return;
   }
   announcedKeys.add(key);
@@ -151,10 +155,8 @@ export async function startDriverMissionAlert(params: {
     });
   }
 
-  // Foreground: always ring + vibrate. Background: OS push channel covers sound.
-  if (AppState.currentState === "active") {
-    await setRinging(true, key);
-  }
+  // Ring in all app states while the JS process is alive (incl. background).
+  await setRinging(true, key);
 }
 
 export async function stopDriverMissionAlert(): Promise<void> {
@@ -181,6 +183,35 @@ export function handleDriverMissionPushAlert(data: unknown): void {
 
 export function isDriverMissionAlertRinging(): boolean {
   return ringing;
+}
+
+async function fetchPendingFoodOffers(driverUserId: string) {
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("driver_order_offers")
+    .select("id,order_id,status,expires_at")
+    .eq("driver_id", driverUserId)
+    .eq("status", "pending")
+    .gt("expires_at", nowIso)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.log("[driverMissionAlert] food offers fetch failed", error.message);
+    return;
+  }
+
+  for (const row of data ?? []) {
+    const orderId = String((row as { order_id?: string }).order_id ?? "").trim();
+    if (!orderId) continue;
+    const key = missionKey("driver_offer", orderId);
+    if (announcedKeys.has(key)) continue;
+    await startDriverMissionAlert({
+      type: "driver_offer",
+      orderId,
+      playLocalNotification: true,
+    });
+  }
 }
 
 async function fetchPendingDeliveryOffers(driverUserId: string) {
@@ -246,6 +277,7 @@ async function fetchPendingTaxiOffers(driverUserId: string) {
 }
 
 async function fetchPendingMissionOffers(driverUserId: string) {
+  await fetchPendingFoodOffers(driverUserId);
   await fetchPendingDeliveryOffers(driverUserId);
   await fetchPendingTaxiOffers(driverUserId);
 }
@@ -260,8 +292,8 @@ function onAppStateChange(state: AppStateStatus) {
     }
     return;
   }
-  // Background / locked: stop in-app loop; OS push channel covers sound.
-  void setRinging(false);
+  // Background / locked: keep in-app long-ring alive (audio background mode).
+  // Do not call setRinging(false) here — that was silencing offers when leaving Driver UI.
 }
 
 export async function startDriverMissionAlertService(
@@ -280,6 +312,14 @@ export async function startDriverMissionAlertService(
   await mmdAudio.init();
 
   channel = subscribePostgresChannel(`driver-mission-alert-${uid}`, [
+    {
+      event: "*",
+      table: "driver_order_offers",
+      filter: `driver_id=eq.${uid}`,
+      callback: () => {
+        void fetchPendingFoodOffers(uid);
+      },
+    },
     {
       event: "*",
       table: "delivery_request_driver_offers",

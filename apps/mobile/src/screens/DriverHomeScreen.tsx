@@ -23,6 +23,7 @@ import {
   type AppStateStatus,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MapFloatingButton } from "../components/driver/map/MapFloatingButton";
 import { DriverHomePremiumSheet } from "../components/driver/home/DriverHomePremiumSheet";
@@ -443,6 +444,19 @@ function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined)
   const kind = normalizeKind(order.kind);
   const status = normalizeStatus(order.status);
 
+  // Terminal / closed jobs must never appear in available or offer lists.
+  if (
+    status === "canceled" ||
+    status === "cancelled" ||
+    status === "expired" ||
+    status === "rejected" ||
+    status === "refunded" ||
+    status === "completed" ||
+    status === "delivered"
+  ) {
+    return false;
+  }
+
   if (kind === "food") return status === "ready";
   if (kind === "pickup_dropoff") return status === "pending";
 
@@ -458,6 +472,49 @@ function isOrderVisibleForDriver(order: Partial<DriverOrder> | null | undefined)
   }
 
   return false;
+}
+
+const DRIVER_ASSIGNED_EXCLUDED_STATUSES =
+  '("delivered","canceled","cancelled","expired","rejected","refunded","completed")';
+
+function isTerminalDriverStatus(status: unknown): boolean {
+  const s = normalizeStatus(status);
+  return (
+    s === "delivered" ||
+    s === "canceled" ||
+    s === "cancelled" ||
+    s === "expired" ||
+    s === "rejected" ||
+    s === "refunded" ||
+    s === "completed"
+  );
+}
+
+function declinedOrdersStorageKey(driverId: string) {
+  return `@mmd/driver_declined_orders:${driverId}`;
+}
+
+async function loadDeclinedOrderKeys(driverId: string): Promise<Set<string>> {
+  try {
+    const raw = await AsyncStorage.getItem(declinedOrdersStorageKey(driverId));
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.map((v) => String(v)).filter(Boolean).slice(-500));
+  } catch {
+    return new Set();
+  }
+}
+
+async function persistDeclinedOrderKeys(driverId: string, keys: Set<string>) {
+  try {
+    await AsyncStorage.setItem(
+      declinedOrdersStorageKey(driverId),
+      JSON.stringify(Array.from(keys).slice(-500)),
+    );
+  } catch {
+    /* ignore storage failures */
+  }
 }
 
 function getBestDriverAmount(order: Partial<DriverOrder> | null | undefined) {
@@ -807,6 +864,26 @@ export function DriverHomeScreen() {
   useEffect(() => {
     sheetMaxRef.current = isOnline ? SHEET_MAX_ONLINE_Y : SHEET_MAX_OFFLINE_Y;
   }, [isOnline]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const uid = String(data?.user?.id ?? "").trim();
+        if (!uid || cancelled) return;
+        const keys = await loadDeclinedOrderKeys(uid);
+        if (!cancelled) {
+          declinedOrderKeysRef.current = keys;
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     Animated.timing(topHudAnim, {
@@ -1482,7 +1559,7 @@ export function DriverHomeScreen() {
             ),
         )
           .eq("driver_id", driverId)
-          .not("status", "in", '("delivered","canceled")')
+          .not("status", "in", DRIVER_ASSIGNED_EXCLUDED_STATUSES)
           .order("created_at", { ascending: false });
 
         if (mineError) throw mineError;
@@ -1500,7 +1577,7 @@ export function DriverHomeScreen() {
             ),
         )
           .eq("driver_id", driverId)
-          .not("status", "in", '("delivered","canceled")')
+          .not("status", "in", DRIVER_ASSIGNED_EXCLUDED_STATUSES)
           .order("created_at", { ascending: false });
 
         if (myDeliveryRequestsError) throw myDeliveryRequestsError;
@@ -1622,7 +1699,9 @@ export function DriverHomeScreen() {
           return statusVisible && hasPickupCoordinates && (!driverLocation || withinDispatchMiles);
         });
 
-        const myList = [...myOrderList, ...myDeliveryList, ...marketplaceMineList];
+        const myList = [...myOrderList, ...myDeliveryList, ...marketplaceMineList].filter(
+          (o) => !isTerminalDriverStatus(o.status),
+        );
 
         setAvailableOrders(visibleAvailable);
         setMyOrders(myList);
@@ -2090,7 +2169,18 @@ export function DriverHomeScreen() {
 
       if (offer) {
         const entityKey = getOrderEntityKey(offer);
-        if (entityKey) declinedOrderKeysRef.current.add(entityKey);
+        if (entityKey) {
+          declinedOrderKeysRef.current.add(entityKey);
+          try {
+            const { data } = await supabase.auth.getUser();
+            const uid = String(data?.user?.id ?? "").trim();
+            if (uid) {
+              await persistDeclinedOrderKeys(uid, declinedOrderKeysRef.current);
+            }
+          } catch {
+            /* ignore */
+          }
+        }
       }
 
       if (offer?.offer_id) {
@@ -2132,7 +2222,20 @@ export function DriverHomeScreen() {
     if (countdown <= 0) {
       const offer = activeOffer;
       const entityKey = getOrderEntityKey(offer);
-      if (entityKey) declinedOrderKeysRef.current.add(entityKey);
+      if (entityKey) {
+        declinedOrderKeysRef.current.add(entityKey);
+        void (async () => {
+          try {
+            const { data } = await supabase.auth.getUser();
+            const uid = String(data?.user?.id ?? "").trim();
+            if (uid) {
+              await persistDeclinedOrderKeys(uid, declinedOrderKeysRef.current);
+            }
+          } catch {
+            /* ignore */
+          }
+        })();
+      }
 
       if (offer?.offer_id) {
         const rpcName =

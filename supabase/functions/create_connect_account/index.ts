@@ -243,16 +243,44 @@ serve(async (req) => {
 
     // Créer le compte Stripe si absent
     if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: "express",
+      const baseAccountParams = {
+        type: "express" as const,
         country: connectCountry,
-        // Recommandé: transfers + card_payments
-        capabilities: {
-          transfers: { requested: true },
-          card_payments: { requested: true },
-        },
         metadata: { user_id: userId, role, country: connectCountry },
-      });
+      };
+
+      let account;
+      try {
+        // Prefer transfers + card_payments when the market supports both.
+        account = await stripe.accounts.create({
+          ...baseAccountParams,
+          capabilities: {
+            transfers: { requested: true },
+            card_payments: { requested: true },
+          },
+        });
+      } catch (createErr: any) {
+        const createMsg = String(createErr?.message ?? createErr ?? "");
+        // Many African Express markets support payouts/transfers without card_payments.
+        if (
+          /card_payments|capabilities|country.*not.*supported|invalid.*country/i.test(
+            createMsg,
+          )
+        ) {
+          console.warn(
+            "create_connect_account: retry Express create with transfers-only",
+            { country: connectCountry, message: createMsg },
+          );
+          account = await stripe.accounts.create({
+            ...baseAccountParams,
+            capabilities: {
+              transfers: { requested: true },
+            },
+          });
+        } else {
+          throw createErr;
+        }
+      }
 
       accountId = account.id;
 
@@ -396,13 +424,20 @@ serve(async (req) => {
     });
   } catch (e: any) {
     console.error("create_connect_account fatal:", e);
-    const msg = e?.message ?? "Server error";
-    const code =
-      typeof e?.code === "string"
-        ? e.code
-        : /must be live|sk_live/i.test(msg)
-          ? "stripe_secret_key_must_be_live"
-          : "stripe_connect_error";
-    return json(req, { error: code, message: msg, details: msg }, 500);
+    const msg = String(e?.raw?.message ?? e?.message ?? "Server error");
+    const code = /must be live|sk_live/i.test(msg)
+      ? "stripe_secret_key_must_be_live"
+      : "stripe_connect_error";
+    return json(
+      req,
+      {
+        error: code,
+        message: msg,
+        details: msg,
+        stripe_type: typeof e?.type === "string" ? e.type : null,
+        stripe_code: typeof e?.code === "string" ? e.code : null,
+      },
+      500,
+    );
   }
 });

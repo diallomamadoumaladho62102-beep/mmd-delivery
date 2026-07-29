@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { notifyClientOrderCancelled } from "@/lib/clientPushNotifications";
 import { notifyOrderCancelledEmail } from "@/lib/transactionalEmails";
 import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
+import { expirePendingDriverOrderOffers } from "@/lib/expirePendingDriverOffers";
 import { assertRestaurantOrderEligible } from "@/lib/restaurantOrderAccess";
 import { triggerSmartDispatchForOrder } from "@/lib/triggerSmartDispatch";
 import {
@@ -381,6 +382,7 @@ export async function POST(req: NextRequest) {
         // Crédit MMD: free a still-held reservation (no-op once captured; the
         // refund path re-credits captured amounts on paid orders).
         await releaseEntityCredit(supabaseAdmin, "food_order", orderId);
+        await expirePendingDriverOrderOffers(supabaseAdmin, orderId);
         try {
           const { releaseEntityMarketing } = await import(
             "@/lib/marketing/marketingCheckoutLifecycle"
@@ -457,6 +459,7 @@ export async function POST(req: NextRequest) {
 
         // Crédit MMD: free a still-held reservation (no-op once captured).
         await releaseEntityCredit(supabaseAdmin, "food_order", orderId);
+        await expirePendingDriverOrderOffers(supabaseAdmin, orderId);
         try {
           const { releaseEntityMarketing } = await import(
             "@/lib/marketing/marketingCheckoutLifecycle"
@@ -620,6 +623,8 @@ export async function POST(req: NextRequest) {
       if (eventError) {
         console.log("order_events insert error:", eventError.message);
       }
+
+      await expirePendingDriverOrderOffers(supabaseAdmin, orderId);
 
       return successResponse({
         by: "restaurant",
