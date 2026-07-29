@@ -65,6 +65,13 @@ export async function PATCH(req: NextRequest) {
     return json({ ok: false, error: "invalid_json" }, 400);
   }
 
+  // GET returns these for clients; old mobile builds re-spread them into PATCH.
+  // Strip server-owned echo fields instead of 403 so store builds keep working.
+  const serverOwnedEchoFields = ["driver_user_id", "updated_at", "created_at"] as const;
+  for (const key of serverOwnedEchoFields) {
+    if (key in body) delete body[key];
+  }
+
   const allowedKeys = new Set([
     "food_delivery_enabled",
     "package_delivery_enabled",

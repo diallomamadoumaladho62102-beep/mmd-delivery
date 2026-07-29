@@ -6,12 +6,48 @@ import { logTechnicalError, toUserFacingError } from "./userFacingError";
 const PREFS_CACHE_KEY = "mmd.driver.service_preferences.v1";
 const VEHICLE_CACHE_KEY = "mmd.driver.vehicle_snapshot.v1";
 
+/** Only these keys may be sent on PATCH /api/driver/service-preferences. */
+const SERVICE_PREFERENCE_PATCH_KEYS = [
+  "food_delivery_enabled",
+  "package_delivery_enabled",
+  "taxi_rides_enabled",
+  "accept_also_standard_rides",
+] as const;
+
 export type DriverServicePreferences = {
   food_delivery_enabled: boolean;
   package_delivery_enabled: boolean;
   taxi_rides_enabled: boolean;
   accept_also_standard_rides: boolean;
 };
+
+export function normalizeDriverServicePreferences(
+  raw: unknown,
+): DriverServicePreferences {
+  const row = (raw ?? {}) as Record<string, unknown>;
+  return {
+    food_delivery_enabled: Boolean(row.food_delivery_enabled),
+    package_delivery_enabled: Boolean(row.package_delivery_enabled),
+    taxi_rides_enabled: Boolean(row.taxi_rides_enabled),
+    accept_also_standard_rides: Boolean(row.accept_also_standard_rides),
+  };
+}
+
+/**
+ * Strip server-owned fields (driver_user_id, updated_at, …) before PATCH.
+ * GET preferences include those fields; spreading them into PATCH caused 403 forbidden_field.
+ */
+export function sanitizeDriverServicePreferencesPatch(
+  patch: Partial<DriverServicePreferences> & Record<string, unknown>,
+): Partial<DriverServicePreferences> {
+  const out: Partial<DriverServicePreferences> = {};
+  for (const key of SERVICE_PREFERENCE_PATCH_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(patch, key) && patch[key] !== undefined) {
+      out[key] = Boolean(patch[key]);
+    }
+  }
+  return out;
+}
 
 export type VehicleCategoryStatus = {
   category: string;
@@ -77,7 +113,7 @@ export async function fetchDriverServicePreferences(): Promise<{
   try {
     const body = await authFetch("/api/driver/service-preferences");
     const result = {
-      preferences: body.preferences as DriverServicePreferences,
+      preferences: normalizeDriverServicePreferences(body.preferences),
       has_any_enabled: Boolean(body.has_any_enabled),
     };
     await AsyncStorage.setItem(PREFS_CACHE_KEY, JSON.stringify(result));
@@ -86,9 +122,13 @@ export async function fetchDriverServicePreferences(): Promise<{
     const cached = await AsyncStorage.getItem(PREFS_CACHE_KEY);
     if (cached) {
       try {
-        return JSON.parse(cached) as {
+        const parsed = JSON.parse(cached) as {
           preferences: DriverServicePreferences;
           has_any_enabled: boolean;
+        };
+        return {
+          preferences: normalizeDriverServicePreferences(parsed.preferences),
+          has_any_enabled: Boolean(parsed.has_any_enabled),
         };
       } catch {
         // Corrupt cache — drop it and surface the original network error.
@@ -100,13 +140,17 @@ export async function fetchDriverServicePreferences(): Promise<{
 }
 
 export async function updateDriverServicePreferences(
-  patch: Partial<DriverServicePreferences>,
+  patch: Partial<DriverServicePreferences> & Record<string, unknown>,
 ): Promise<DriverServicePreferences> {
+  const sanitized = sanitizeDriverServicePreferencesPatch(patch);
+  if (Object.keys(sanitized).length === 0) {
+    throw new Error("no_preference_fields");
+  }
   const body = await authFetch("/api/driver/service-preferences", {
     method: "PATCH",
-    body: JSON.stringify(patch),
+    body: JSON.stringify(sanitized),
   });
-  const preferences = body.preferences as DriverServicePreferences;
+  const preferences = normalizeDriverServicePreferences(body.preferences);
   await AsyncStorage.setItem(
     PREFS_CACHE_KEY,
     JSON.stringify({
