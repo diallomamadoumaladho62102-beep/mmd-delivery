@@ -204,7 +204,9 @@ export function DriverWorkAccountScreen() {
 
       // ✅ Optionnel: resync Stripe
       try {
-        const { error: syncErr } = await supabase.functions.invoke("check_connect_status");
+        const { error: syncErr } = await supabase.functions.invoke("check_connect_status", {
+          body: { role: "driver" },
+        });
         if (syncErr) console.log("check_connect_status error:", syncErr);
       } catch (e) {
         console.log("check_connect_status exception:", e);

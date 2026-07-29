@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPayoutMethodsForRecipient } from "@/lib/payoutMethodRouting";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
+import { stripe } from "@/lib/stripe";
 import {
   deriveStripeConnectStatus,
   stripeConnectStatusLabel,
@@ -19,24 +20,30 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
   CI: "XOF",
 };
 
+/** Keep UI + admin_pay_driver_now aligned (hardcoded $20 in RPC). */
+export const DRIVER_CASHOUT_MINIMUM_CENTS = 2000;
+
+/** Match admin_pay_driver_now rolling 24h window. */
+export const DRIVER_CASHOUT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 function toNumber(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : 0;
-}
-
-function isSameLocalDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
 }
 
 function currencyForCountry(countryCode: string): string {
   return CURRENCY_BY_COUNTRY[normalizeCountryCode(countryCode)] ?? "USD";
 }
 
-async function computeDriverAvailableCents(
+function isWithinCashoutCooldown(lastCashoutAt: string | null, now = new Date()): boolean {
+  if (!lastCashoutAt) return false;
+  const last = new Date(lastCashoutAt).getTime();
+  if (!Number.isFinite(last)) return false;
+  return now.getTime() - last < DRIVER_CASHOUT_COOLDOWN_MS;
+}
+
+/** Exported for parity tests vs SQL admin_pay_driver_now available set. */
+export async function computeDriverAvailableCents(
   supabaseAdmin: SupabaseClient,
   driverUserId: string
 ): Promise<number> {
@@ -164,6 +171,8 @@ export type DriverWalletSummary = {
   stripe_status_message: string;
   can_cashout: boolean;
   cashout_block_reason: string | null;
+  /** True when stripe_status / can_cashout used live Stripe retrieve. */
+  stripe_live_verified: boolean;
 };
 
 export async function buildDriverWalletSummary(
@@ -193,26 +202,55 @@ export async function buildDriverWalletSummary(
 
   const defaultMethod =
     payoutMethods.find((method) => method.available) ?? payoutMethods[0] ?? null;
-  const minimumPayoutCents = defaultMethod?.minimum_payout_cents ?? 2000;
+  // Never advertise a lower minimum than the SQL cashout RPC ($20).
+  const minimumPayoutCents = Math.max(
+    DRIVER_CASHOUT_MINIMUM_CENTS,
+    defaultMethod?.minimum_payout_cents ?? DRIVER_CASHOUT_MINIMUM_CENTS,
+  );
 
   const stripeAccountId = profile?.stripe_account_id
     ? String(profile.stripe_account_id)
     : null;
-  const stripeOnboarded = Boolean(profile?.stripe_onboarded);
+
+  let stripeOnboarded = Boolean(profile?.stripe_onboarded);
+  let detailsSubmitted: boolean | null = stripeOnboarded ? true : null;
+  let chargesEnabled: boolean | null = stripeOnboarded ? true : null;
+  let payoutsEnabled: boolean | null = stripeOnboarded ? true : null;
+  let stripeLiveVerified = false;
+
+  // Same live triad as POST /api/wallet/driver-cashout — never enable cashout
+  // from the DB boolean alone when an Express account id exists.
+  if (stripeAccountId) {
+    try {
+      const connectAccount = await stripe.accounts.retrieve(stripeAccountId);
+      detailsSubmitted = Boolean(connectAccount.details_submitted);
+      chargesEnabled = Boolean(connectAccount.charges_enabled);
+      payoutsEnabled = Boolean(connectAccount.payouts_enabled);
+      stripeOnboarded = detailsSubmitted && chargesEnabled && payoutsEnabled;
+      stripeLiveVerified = true;
+    } catch {
+      // Fail closed for cashout eligibility when Stripe is unreachable.
+      detailsSubmitted = false;
+      chargesEnabled = false;
+      payoutsEnabled = false;
+      stripeOnboarded = false;
+      stripeLiveVerified = false;
+    }
+  }
+
   const stripeStatus = deriveStripeConnectStatus({
     stripe_account_id: stripeAccountId,
-    details_submitted: stripeOnboarded ? true : null,
-    charges_enabled: stripeOnboarded ? true : null,
-    payouts_enabled: stripeOnboarded ? true : null,
+    details_submitted: detailsSubmitted,
+    charges_enabled: chargesEnabled,
+    payouts_enabled: payoutsEnabled,
   });
-  const cashoutBlockedToday = Boolean(
-    lastCashoutAt && isSameLocalDay(new Date(lastCashoutAt), new Date())
-  );
+
+  const cashoutBlockedCooldown = isWithinCashoutCooldown(lastCashoutAt);
 
   let cashoutBlockReason: string | null = null;
   if (!stripeAccountId || !stripeOnboarded) {
     cashoutBlockReason = "stripe_setup_required";
-  } else if (cashoutBlockedToday) {
+  } else if (cashoutBlockedCooldown) {
     cashoutBlockReason = "already_cashed_out_today";
   } else if (availableCents < minimumPayoutCents) {
     cashoutBlockReason = "below_minimum";
@@ -228,7 +266,7 @@ export async function buildDriverWalletSummary(
     available_cents: availableCents,
     pending_cents: pendingCents,
     minimum_payout_cents: minimumPayoutCents,
-    cashout_blocked_today: cashoutBlockedToday,
+    cashout_blocked_today: cashoutBlockedCooldown,
     last_cashout_at: lastCashoutAt,
     stripe_account_id: stripeAccountId,
     stripe_onboarded: stripeOnboarded,
@@ -237,5 +275,6 @@ export async function buildDriverWalletSummary(
     stripe_status_message: stripeConnectUserMessage(stripeStatus),
     can_cashout: canCashout,
     cashout_block_reason: cashoutBlockReason,
+    stripe_live_verified: stripeLiveVerified,
   };
 }

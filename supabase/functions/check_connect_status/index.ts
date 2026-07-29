@@ -92,7 +92,22 @@ serve(async (req) => {
 
     const userId = userData.user.id;
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
-    const roleRaw = String(body?.role ?? "driver").toLowerCase();
+    const roleRaw = String(body?.role ?? "").trim().toLowerCase();
+    if (
+      roleRaw !== "driver" &&
+      roleRaw !== "restaurant" &&
+      roleRaw !== "seller" &&
+      roleRaw !== "merchant"
+    ) {
+      return json(
+        req,
+        {
+          error: "invalid_role",
+          message: "role must be driver|restaurant|seller",
+        },
+        400,
+      );
+    }
     const role =
       roleRaw === "restaurant"
         ? "restaurant"

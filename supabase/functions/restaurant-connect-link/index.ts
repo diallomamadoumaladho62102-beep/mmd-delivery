@@ -7,6 +7,7 @@ import {
   getEdgeSupabaseUrl,
 } from "../_shared/supabaseKeys.ts";
 import { buildCorsHeaders } from "../_shared/cors.ts";
+import { resolveStripeConnectCountry } from "../_shared/stripeConnectCountry.ts";
 
 
 // --- ENV ---
@@ -88,6 +89,61 @@ async function stripePOST(path: string, body: Record<string, string>) {
   return out;
 }
 
+type RestaurantProfileRow = {
+  user_id: string;
+  stripe_account_id: string | null;
+  stripe_onboarding_status?: string | null;
+  stripe_charges_enabled?: boolean | null;
+  stripe_payouts_enabled?: boolean | null;
+  stripe_details_submitted?: boolean | null;
+  city?: string | null;
+  state?: string | null;
+  country_code?: string | null;
+  country?: string | null;
+};
+
+/** Select city/state/country_code when present; fall back if columns missing. */
+async function loadRestaurantProfile(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<{ data: RestaurantProfileRow | null; error: { message: string } | null }> {
+  const base =
+    "user_id, stripe_account_id, stripe_onboarding_status, stripe_charges_enabled, stripe_payouts_enabled, stripe_details_submitted";
+  const attempts = [
+    `${base}, city, state, country_code`,
+    `${base}, city, state`,
+    `${base}, city, country_code`,
+    base,
+  ];
+
+  let lastErr: { message: string } | null = null;
+  for (const select of attempts) {
+    const { data, error } = await supabaseAdmin
+      .from("restaurant_profiles")
+      .select(select)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!error) {
+      return { data: (data as RestaurantProfileRow | null) ?? null, error: null };
+    }
+
+    lastErr = error;
+    const msg = String(error.message ?? "");
+    // Missing column → try narrower select; other errors → stop.
+    if (!/column|does not exist|Could not find/i.test(msg)) {
+      return { data: null, error };
+    }
+    console.log(
+      "restaurant-connect-link: profile select fallback after",
+      select,
+      msg,
+    );
+  }
+
+  return { data: null, error: lastErr };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: buildCorsHeaders(req) });
@@ -152,20 +208,10 @@ Deno.serve(async (req) => {
     );
 
     // 1) Charger le restaurant profile via user_id
-    const { data: profile, error: profErr } = await supabaseAdmin
-      .from("restaurant_profiles")
-      .select(
-        `
-        user_id,
-        stripe_account_id,
-        stripe_onboarding_status,
-        stripe_charges_enabled,
-        stripe_payouts_enabled,
-        stripe_details_submitted
-      `
-      )
-      .eq("user_id", userId)
-      .maybeSingle();
+    const { data: profile, error: profErr } = await loadRestaurantProfile(
+      supabaseAdmin,
+      userId,
+    );
 
     if (profErr) throw profErr;
     if (!profile) {
@@ -174,6 +220,20 @@ Deno.serve(async (req) => {
         404
       );
     }
+
+    const connectCountry = resolveStripeConnectCountry({
+      bodyCountryCode: body?.country_code ?? body?.countryCode,
+      profileCountryCode: (profile as any)?.country_code,
+      city: (profile as any)?.city,
+      state: (profile as any)?.state,
+      country: (profile as any)?.country,
+    });
+    console.log("restaurant-connect-link: chosen country", connectCountry, {
+      body_country_code: body?.country_code ?? body?.countryCode ?? null,
+      profile_country_code: (profile as any)?.country_code ?? null,
+      city: (profile as any)?.city ?? null,
+      state: (profile as any)?.state ?? null,
+    });
 
     let stripeAccountId = profile.stripe_account_id as string | null;
 
@@ -203,13 +263,41 @@ Deno.serve(async (req) => {
     }
 
     if (!stripeAccountId) {
-      const acct = await stripePOST("accounts", {
+      const baseAccountBody: Record<string, string> = {
         type: "express",
-        country: "US",
-        "capabilities[card_payments][requested]": "true",
-        "capabilities[transfers][requested]": "true",
+        country: connectCountry,
         "metadata[supabase_user_id]": userId,
-      });
+        "metadata[country]": connectCountry,
+      };
+
+      let acct;
+      try {
+        // Prefer transfers + card_payments when the market supports both.
+        acct = await stripePOST("accounts", {
+          ...baseAccountBody,
+          "capabilities[card_payments][requested]": "true",
+          "capabilities[transfers][requested]": "true",
+        });
+      } catch (createErr: any) {
+        const createMsg = String(createErr?.message ?? createErr ?? "");
+        // Many African Express markets support payouts/transfers without card_payments.
+        if (
+          /card_payments|capabilities|country.*not.*supported|invalid.*country/i.test(
+            createMsg,
+          )
+        ) {
+          console.warn(
+            "restaurant-connect-link: retry Express create with transfers-only",
+            { country: connectCountry, message: createMsg },
+          );
+          acct = await stripePOST("accounts", {
+            ...baseAccountBody,
+            "capabilities[transfers][requested]": "true",
+          });
+        } else {
+          throw createErr;
+        }
+      }
 
       stripeAccountId = acct.id as string;
 
@@ -235,6 +323,7 @@ Deno.serve(async (req) => {
     return json(req, {
       url: link.url,
       stripe_account_id: stripeAccountId,
+      country: connectCountry,
     });
   } catch (e: any) {
     console.log("restaurant-connect-link error:", e);

@@ -205,7 +205,8 @@ export function DriverAccountScreen() {
 
       try {
         const { error: syncErr } = await supabase.functions.invoke(
-          "check_connect_status"
+          "check_connect_status",
+          { body: { role: "driver" } },
         );
         if (syncErr) console.log("check_connect_status error:", syncErr);
       } catch (e) {

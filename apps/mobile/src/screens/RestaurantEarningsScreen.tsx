@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
 import { supabase } from "../lib/supabase";
+import { getApiBaseUrl } from "../lib/apiBase";
 import { clearSelectedRole } from "../lib/authRole";
 import ScreenHeader from "../components/navigation/ScreenHeader";
 import { startStripeOnboarding } from "../utils/stripe";
@@ -91,6 +92,10 @@ export function RestaurantEarningsScreen() {
   const [payoutLoading, setPayoutLoading] = useState(false);
   const [payoutProfile, setPayoutProfile] =
     useState<RestaurantPayoutProfile | null>(null);
+
+  const [serverPendingPayout, setServerPendingPayout] = useState<number | null>(
+    null,
+  );
 
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("this_month");
@@ -253,6 +258,7 @@ export function RestaurantEarningsScreen() {
               setError(null);
               setRestaurantId(null);
               setPayoutProfile(null);
+              setServerPendingPayout(null);
 
               navigation.reset({
                 index: 0,
@@ -351,6 +357,57 @@ export function RestaurantEarningsScreen() {
     }
   }, []);
 
+  const fetchFinancialOverview = useCallback(async () => {
+    try {
+      const apiBase = String(getApiBaseUrl() ?? "").replace(/\/+$/, "").trim();
+      if (!apiBase) {
+        setServerPendingPayout(null);
+        return;
+      }
+
+      const {
+        data: { session },
+        error: sessionErr,
+      } = await supabase.auth.getSession();
+      if (sessionErr) throw sessionErr;
+
+      const accessToken = session?.access_token?.trim();
+      if (!accessToken) {
+        setServerPendingPayout(null);
+        return;
+      }
+
+      const response = await fetch(
+        `${apiBase}/api/restaurant/financial/overview`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json?.ok || !json?.data) {
+        logTechnicalError(
+          "restaurant.earnings.financial_overview",
+          json?.error ?? `HTTP ${response.status}`,
+        );
+        setServerPendingPayout(null);
+        return;
+      }
+
+      const data = json.data as {
+        pendingPayout?: unknown;
+      };
+
+      const pending = Number(data.pendingPayout);
+      setServerPendingPayout(Number.isFinite(pending) ? pending : null);
+    } catch (e) {
+      logTechnicalError("restaurant.earnings.fetchFinancialOverview", e);
+      setServerPendingPayout(null);
+    }
+  }, []);
+
   const fetchEarnings = useCallback(async () => {
     if (!restaurantId) {
       setRows([]);
@@ -392,13 +449,16 @@ export function RestaurantEarningsScreen() {
         `and(dropoff_code_verified_at.is.null,created_at.gte.${startISO},created_at.lt.${endISO})`,
       ].join(",");
 
-      const { data, error } = await supabase
-        .from("orders")
-        .select(selectCols)
-        .or(`restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`)
-        .eq("status", "delivered")
-        .or(monthFilterOr)
-        .returns<Row[]>();
+      const [{ data, error },] = await Promise.all([
+        supabase
+          .from("orders")
+          .select(selectCols)
+          .or(`restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`)
+          .eq("status", "delivered")
+          .or(monthFilterOr)
+          .returns<Row[]>(),
+        fetchFinancialOverview(),
+      ]);
 
       if (error) throw error;
 
@@ -425,7 +485,7 @@ export function RestaurantEarningsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, monthFilter, monthBounds, t]);
+  }, [restaurantId, monthFilter, monthBounds, t, fetchFinancialOverview]);
 
   const syncRestaurantConnectStatus = useCallback(async () => {
     try {
@@ -510,6 +570,9 @@ export function RestaurantEarningsScreen() {
     () => sum(unpaidDelivered, "restaurant_net_amount"),
     [unpaidDelivered]
   );
+
+  const displayAvailableNet =
+    serverPendingPayout != null ? serverPendingPayout : availableNet;
 
   const paidNet = useMemo(
     () => sum(paidDeliveredReal, "restaurant_net_amount"),
@@ -1306,7 +1369,7 @@ export function RestaurantEarningsScreen() {
                 marginTop: 6,
               }}
             >
-              {money(availableNet, currency)}
+              {money(displayAvailableNet, currency)}
             </Text>
             <Text style={{ color: "#64748B", marginTop: 6, fontWeight: "800" }}>
               {t(
@@ -1314,6 +1377,12 @@ export function RestaurantEarningsScreen() {
                 "Basé sur {{n}} commande(s) livrée(s) non payée(s)",
                 { n: unpaidDelivered.length }
               )}
+              {serverPendingPayout != null
+                ? ` · ${t(
+                    "restaurant.earnings.kpi.available.serverHint",
+                    "source: serveur",
+                  )}`
+                : ""}
             </Text>
           </View>
 

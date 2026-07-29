@@ -646,7 +646,9 @@ export function DriverProfileScreen() {
 
   const refreshStripeStatus = useCallback(async (uid: string) => {
     try {
-      const { error: syncErr } = await supabase.functions.invoke("check_connect_status");
+      const { error: syncErr } = await supabase.functions.invoke("check_connect_status", {
+        body: { role: "driver" },
+      });
       if (syncErr) {
         console.log("check_connect_status error:", syncErr);
       }
