@@ -2,7 +2,7 @@
  * Taxi pay-then-create: quote checkout intents + materialize paid ride after Stripe.
  * No taxi_rides row exists until PaymentIntent succeeds.
  */
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
@@ -18,10 +18,7 @@ import {
 } from "@/lib/taxiStripeAmounts";
 import { assertTaxiCheckoutCurrencyAllowed } from "@/lib/taxiCurrencyGuard";
 import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
-import {
-  buildStripeCheckoutReturnUrls,
-  resolvePublicSiteOrigin,
-} from "@/lib/productionSite";
+import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { captureEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 
 export const TAXI_QUOTE_CHECKOUT_TTL_MS = 30 * 60 * 1000;
@@ -140,14 +137,12 @@ export async function openTaxiQuoteCheckoutSession(params: {
 > {
   const currency = String(params.snapshot.currency ?? "USD").toUpperCase();
   const currencyCheck = assertTaxiCheckoutCurrencyAllowed(currency);
-  if (!currencyCheck.ok) {
+  if (currencyCheck.ok === false) {
     return { ok: false, error: currencyCheck.error, status: 400 };
   }
-  const stripeGate = assertStripeCheckoutAllowed({
-    countryCode: params.snapshot.country_code,
-  });
-  if (!stripeGate.ok) {
-    return { ok: false, error: stripeGate.error, status: 403 };
+  const stripeGate = assertStripeCheckoutAllowed(params.snapshot.country_code);
+  if (stripeGate.ok === false) {
+    return { ok: false, error: stripeGate.message, status: 403 };
   }
 
   const amountCents = alignTaxiAmountCentsForZeroDecimal(
@@ -516,12 +511,4 @@ export async function resolveTaxiQuoteCheckoutPayment(params: {
     paymentIntent: params.paymentIntent,
     metadata: params.metadata,
   });
-}
-
-export function newQuoteCheckoutClientReference(): string {
-  return randomUUID();
-}
-
-export function publicSiteHint(): string {
-  return resolvePublicSiteOrigin();
 }

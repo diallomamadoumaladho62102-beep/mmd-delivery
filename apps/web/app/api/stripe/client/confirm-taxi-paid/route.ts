@@ -233,16 +233,15 @@ async function confirmQuoteCheckoutPaid(params: {
     source: "confirm-taxi-paid:quote_checkout",
   });
 
-  if (!result.ok) {
+  if (result.ok === false) {
+    const err = result.error;
     return taxiJson(
       {
         ok: false,
-        error: result.error,
+        error: err,
         quote_checkout_id: params.quoteCheckoutId,
       },
-      result.error.includes("not_succeeded") || result.error === "amount_mismatch"
-        ? 409
-        : 500,
+      err.includes("not_succeeded") || err === "amount_mismatch" ? 409 : 500,
     );
   }
 

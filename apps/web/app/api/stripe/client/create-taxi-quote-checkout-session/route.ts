@@ -574,7 +574,7 @@ export async function POST(req: NextRequest) {
       supabaseAdmin: auth.supabaseAdmin,
       snapshot,
     });
-    if (!intent.ok) {
+    if (intent.ok === false) {
       return taxiJson({ ok: false, error: intent.error }, 500);
     }
 
@@ -585,7 +585,7 @@ export async function POST(req: NextRequest) {
       userEmail: auth.user.email,
       snapshot,
     });
-    if (!checkout.ok) {
+    if (checkout.ok === false) {
       return taxiJson(
         { ok: false, error: checkout.error },
         checkout.status ?? 500,

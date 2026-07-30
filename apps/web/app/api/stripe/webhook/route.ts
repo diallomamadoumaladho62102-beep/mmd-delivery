@@ -1513,7 +1513,7 @@ async function handleCheckoutCompletedLikeEvent(
         source: `webhook:${event.type}:quote_checkout`,
       });
 
-      if (!quoteResult.ok) {
+      if (quoteResult.ok === false) {
         return json(
           {
             received: true,
@@ -2404,7 +2404,7 @@ async function handlePaymentIntentSucceeded(
         paymentIntent: pi,
       });
 
-      if (!quoteResult.ok) {
+      if (quoteResult.ok === false) {
         return json(
           {
             received: true,
