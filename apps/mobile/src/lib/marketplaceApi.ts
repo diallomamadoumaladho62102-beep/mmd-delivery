@@ -327,6 +327,8 @@ export async function updateMarketplaceSellerOrderStatus(input: {
 }): Promise<{
   order: Record<string, unknown>;
   stripe_refund_deferred?: boolean;
+  refund_status?: string | null;
+  stripe_refund_id?: string | null;
   message?: string;
 }> {
   const path = await buildMarketplacePath("/api/marketplace/orders/seller-status", {});
