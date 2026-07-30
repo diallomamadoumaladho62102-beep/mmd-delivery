@@ -5,6 +5,11 @@ import {
   buildEntityFinancialTimeline,
 } from "@/lib/finance/buildEntityFinancialTimeline";
 import type { FinancialActorRole } from "@/lib/finance/financialTimelineTypes";
+import {
+  filterApplicableFareLines,
+  resolveTaxiFareLinesForDisplay,
+  type TaxiFareComponentLine,
+} from "@/lib/taxi/taxiFareComponents";
 import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
 
 export type TaxiReceiptFareLine = {
@@ -78,13 +83,6 @@ export type TaxiReceiptPayload = {
   };
 };
 
-function moneyToCents(value: unknown): number {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  // taxi_pricing stores major units (e.g. 2.50), ride stores cents
-  return Math.round(n * 100);
-}
-
 function siteBaseUrl(): string {
   return (
     String(process.env.NEXT_PUBLIC_SITE_URL ?? "").trim().replace(/\/$/, "") ||
@@ -139,154 +137,21 @@ function buildMapStaticUrl(ride: Record<string, unknown>): string | null {
 }
 
 /**
- * Reconstruct fare component lines from pricing snapshot + ride metrics.
- * Only emits lines backed by real DB values (no invented surge/tolls/parking).
+ * Reconstruct fare component lines from pricing + ride scalars.
+ * Prefer stored fare_components when present (extensible catalog).
+ * Only emits applicable (non-zero) lines — never invents surge/tolls/parking.
  */
 export function buildTaxiFareLines(params: {
   ride: Record<string, unknown>;
   pricing: Record<string, unknown> | null;
 }): TaxiReceiptFareLine[] {
-  const { ride, pricing } = params;
-  const lines: TaxiReceiptFareLine[] = [];
-  const distanceMiles = Number(ride.distance_miles ?? 0);
-  const durationMinutes = Number(ride.duration_minutes ?? 0);
-
-  if (pricing) {
-    const base = moneyToCents(pricing.base_fare);
-    if (base > 0) {
-      lines.push({
-        key: "base",
-        label_key: "taxi.receipt.fare.base",
-        amount_cents: base,
-        kind: "charge",
-      });
-    }
-    const perMile = Number(pricing.per_mile ?? 0);
-    if (Number.isFinite(perMile) && perMile > 0 && distanceMiles > 0) {
-      lines.push({
-        key: "distance",
-        label_key: "taxi.receipt.fare.distance",
-        amount_cents: Math.round(perMile * distanceMiles * 100),
-        kind: "charge",
-      });
-    }
-    const perMinute = Number(pricing.per_minute ?? 0);
-    if (Number.isFinite(perMinute) && perMinute > 0 && durationMinutes > 0) {
-      lines.push({
-        key: "time",
-        label_key: "taxi.receipt.fare.time",
-        amount_cents: Math.round(perMinute * durationMinutes * 100),
-        kind: "charge",
-      });
-    }
-    const booking = moneyToCents(pricing.booking_fee);
-    if (booking > 0) {
-      lines.push({
-        key: "booking_fee",
-        label_key: "taxi.receipt.fare.bookingFee",
-        amount_cents: booking,
-        kind: "charge",
-      });
-    }
-  }
-
-  const waitFee = Math.round(Number(ride.wait_fee_amount_cents ?? 0));
-  if (waitFee > 0) {
-    lines.push({
-      key: "wait",
-      label_key: "taxi.receipt.fare.wait",
-      amount_cents: waitFee,
-      kind: "charge",
-    });
-  }
-
-  const serviceFee = Math.round(Number(ride.service_fee_cents ?? 0));
-  if (serviceFee > 0) {
-    lines.push({
-      key: "service_fee",
-      label_key: "taxi.receipt.fare.regulatory",
-      amount_cents: serviceFee,
-      kind: "charge",
-    });
-  }
-
-  const snap = snapshotFromRideRow(ride as any);
-  if (snap.tax_cents > 0) {
-    lines.push({
-      key: "tax",
-      label_key: "taxi.receipt.fare.tax",
-      amount_cents: snap.tax_cents,
-      kind: "charge",
-    });
-  }
-  if (snap.promo_discount_cents > 0) {
-    lines.push({
-      key: "promo",
-      label_key: "taxi.receipt.fare.promo",
-      amount_cents: -snap.promo_discount_cents,
-      kind: "discount",
-    });
-  }
-  if (snap.loyalty_discount_cents > 0) {
-    lines.push({
-      key: "loyalty",
-      label_key: "taxi.receipt.fare.loyalty",
-      amount_cents: -snap.loyalty_discount_cents,
-      kind: "discount",
-    });
-  }
-  if (snap.shared_discount_cents > 0) {
-    lines.push({
-      key: "shared",
-      label_key: "taxi.receipt.fare.shared",
-      amount_cents: -snap.shared_discount_cents,
-      kind: "discount",
-    });
-  }
-  if (snap.mmd_credit_cents > 0) {
-    lines.push({
-      key: "credit",
-      label_key: "taxi.receipt.fare.walletCredit",
-      amount_cents: -snap.mmd_credit_cents,
-      kind: "discount",
-    });
-  }
-  if (snap.mmd_plus_discount_cents > 0) {
-    lines.push({
-      key: "mmd_plus",
-      label_key: "taxi.receipt.fare.mmdPlus",
-      amount_cents: -snap.mmd_plus_discount_cents,
-      kind: "discount",
-    });
-  }
-
-  const tip = Math.round(Number(ride.tip_cents ?? 0));
-  if (tip > 0) {
-    lines.push({
-      key: "tip",
-      label_key: "taxi.receipt.fare.tip",
-      amount_cents: tip,
-      kind: "charge",
-    });
-  }
-
-  const refundStatus = String(ride.refund_status ?? "").toLowerCase();
-  if (refundStatus === "refunded" || refundStatus === "partially_refunded") {
-    const refundAmount =
-      refundStatus === "refunded"
-        ? Math.round(Number(ride.total_cents ?? 0))
-        : Math.round(Number(ride.total_cents ?? 0));
-    if (refundAmount > 0) {
-      lines.push({
-        key: "refund",
-        label_key: "taxi.receipt.fare.refund",
-        amount_cents: -refundAmount,
-        kind: "discount",
-      });
-    }
-  }
-
-  return lines;
+  const resolved = resolveTaxiFareLinesForDisplay(params);
+  return filterApplicableFareLines(resolved).map((line: TaxiFareComponentLine) => ({
+    key: String(line.key),
+    label_key: line.label_key,
+    amount_cents: line.amount_cents,
+    kind: line.kind === "total" ? "info" : line.kind === "discount" ? "discount" : "charge",
+  }));
 }
 
 export async function buildTaxiReceiptPayload(
@@ -347,7 +212,7 @@ export async function buildTaxiReceiptPayload(
     const { data: pricingRow } = await supabaseAdmin
       .from("taxi_pricing")
       .select(
-        "id, base_fare, per_mile, per_minute, min_fare, booking_fee, class_multiplier"
+        "id, base_fare, per_mile, per_minute, min_fare, booking_fee, class_multiplier, surge_multiplier, airport_fee, cleaning_fee"
       )
       .eq("id", pricingSnapshotId)
       .maybeSingle();

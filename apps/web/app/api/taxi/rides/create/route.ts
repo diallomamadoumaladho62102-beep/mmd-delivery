@@ -33,6 +33,7 @@ import {
   normalizeTaxiReturnMode,
   normalizeTaxiTripMode,
 } from "@/lib/taxiTripMode";
+import { buildTaxiFareComponentsDoc } from "@/lib/taxi/taxiFareComponents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -403,6 +404,45 @@ export async function POST(req: NextRequest) {
     });
     const netTotalCents = pricedSnapshot.total_cents;
 
+    let pricingRow: Record<string, unknown> | null = null;
+    const pricingId = String(quoteWithServiceFee.pricing_id ?? "").trim();
+    if (pricingId) {
+      const fullSelect =
+        "id, base_fare, per_mile, per_minute, min_fare, booking_fee, class_multiplier, surge_multiplier, airport_fee, cleaning_fee";
+      const legacySelect =
+        "id, base_fare, per_mile, per_minute, min_fare, booking_fee, class_multiplier";
+      let pricingData: Record<string, unknown> | null = null;
+      const full = await auth.supabaseAdmin
+        .from("taxi_pricing")
+        .select(fullSelect)
+        .eq("id", pricingId)
+        .maybeSingle();
+      if (full.error) {
+        const legacy = await auth.supabaseAdmin
+          .from("taxi_pricing")
+          .select(legacySelect)
+          .eq("id", pricingId)
+          .maybeSingle();
+        pricingData = (legacy.data as Record<string, unknown> | null) ?? null;
+      } else {
+        pricingData = (full.data as Record<string, unknown> | null) ?? null;
+      }
+      pricingRow = pricingData;
+    }
+
+    const fareComponents = buildTaxiFareComponentsDoc({
+      currency: String(quoteWithServiceFee.currency ?? "USD"),
+      distanceMiles: route.distanceMiles,
+      durationMinutes: route.durationMinutes,
+      pricing: pricingRow,
+      ride: {
+        ...quoteWithServiceFee,
+        distance_miles: route.distanceMiles,
+        duration_minutes: route.durationMinutes,
+        mmd_plus_discount_cents: mmdPlusDiscountCents,
+      },
+    });
+
     let businessMemberId: string | null = null;
     let businessApprovalStatus = "not_required";
 
@@ -466,9 +506,7 @@ export async function POST(req: NextRequest) {
       electricSearchUntil = new Date(Date.now() + seconds * 1000).toISOString();
     }
 
-    const { data: ride, error: insertError } = await auth.supabaseAdmin
-      .from("taxi_rides")
-      .insert({
+    const rideInsertBase = {
         client_user_id: auth.user.id,
         vehicle_class: vehicleClass,
         status: "quoted",
@@ -524,9 +562,27 @@ export async function POST(req: NextRequest) {
         return_mode: returnMode,
         return_wait_minutes: returnWaitMinutes,
         return_scheduled_at: returnScheduledAt,
-      })
+      };
+
+    let { data: ride, error: insertError } = await auth.supabaseAdmin
+      .from("taxi_rides")
+      .insert({ ...rideInsertBase, fare_components: fareComponents })
       .select("*")
       .single();
+
+    // Backward compatible until fare_components migration is applied.
+    if (
+      insertError &&
+      /fare_components|column/i.test(String(insertError.message ?? ""))
+    ) {
+      const retry = await auth.supabaseAdmin
+        .from("taxi_rides")
+        .insert(rideInsertBase)
+        .select("*")
+        .single();
+      ride = retry.data;
+      insertError = retry.error;
+    }
 
     if (insertError || !ride) {
       return taxiJson(
