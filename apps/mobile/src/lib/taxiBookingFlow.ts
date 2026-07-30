@@ -3,7 +3,8 @@
  *
  * Architecture note (Enterprise):
  * - Quote = estimate only (no taxi_rides row).
- * - Confirm & pay currently inserts an unpaid reservation row, then Stripe Checkout.
+ * - Stripe Checkout is pay-then-create: no taxi_rides row until payment is confirmed.
+ * - Local mobile money still creates an unpaid reservation first (needs an entity id).
  * - Server dispatch / offers / driver_id assignment require payment_status=paid.
  * - Client must never present unpaid reservations as "Finding your driver".
  */

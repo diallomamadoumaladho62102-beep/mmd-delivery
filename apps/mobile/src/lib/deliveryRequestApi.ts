@@ -112,6 +112,46 @@ export async function createDeliveryRequest(
   };
 }
 
+/** Pay-then-create: Stripe Checkout from quote — no delivery_requests row until paid. */
+export function startDeliveryCheckoutFromQuote(
+  payload: CreateDeliveryRequestPayload & { expectedQuoteTotalCents?: number },
+  scope?: { countryCode?: string | null; lat?: number; lng?: number }
+) {
+  return deliveryRequestFetch(
+    "/api/stripe/client/create-delivery-quote-checkout-session",
+    {
+      request_type: payload.request_type,
+      title: payload.title,
+      description: payload.description,
+      pickup_address: payload.pickup_address,
+      dropoff_address: payload.dropoff_address,
+      pickup_contact_name: payload.pickup_contact_name,
+      pickup_phone: payload.pickup_phone,
+      dropoff_contact_name: payload.dropoff_contact_name,
+      dropoff_phone: payload.dropoff_phone,
+      pickup_lat: payload.pickup_lat,
+      pickup_lng: payload.pickup_lng,
+      dropoff_lat: payload.dropoff_lat,
+      dropoff_lng: payload.dropoff_lng,
+      dropoff_location_id: payload.dropoff_location_id,
+      promo_code: payload.promo_code,
+      leave_at_door: payload.leave_at_door,
+      expectedQuoteTotalCents: payload.expectedQuoteTotalCents,
+    },
+    scope
+  );
+}
+
+export async function confirmDeliveryQuoteCheckoutPaid(
+  deliveryCheckoutId: string,
+  sessionId?: string | null
+) {
+  return deliveryRequestFetch("/api/stripe/client/confirm-delivery-request-paid", {
+    delivery_checkout_id: deliveryCheckoutId,
+    ...(sessionId ? { session_id: sessionId } : {}),
+  });
+}
+
 export async function syncPaidDeliveryRequestOrder(
   deliveryRequestId: string,
   scope?: { countryCode?: string | null; lat?: number; lng?: number }

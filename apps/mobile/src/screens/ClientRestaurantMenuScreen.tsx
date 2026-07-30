@@ -16,14 +16,21 @@ import { useNavigation, useRoute, type RouteProp } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import * as WebBrowser from "expo-web-browser";
 import { API_BASE_URL } from "../lib/apiBase";
-import { startCheckoutForOrder } from "../../lib/payments";
-import { createFoodOrder, quoteFoodOrder, type FoodOrderPricingPayload } from "../lib/foodOrderApi";
+import {
+  confirmFoodQuoteCheckoutPaid,
+  createFoodOrder,
+  quoteFoodOrder,
+  startFoodCheckoutFromQuote,
+  type FoodOrderPricingPayload,
+} from "../lib/foodOrderApi";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
 import { supabase } from "../lib/supabase";
 import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
+import { shouldOfferLocalMobileMoney } from "../lib/localPayments";
 import { logTechnicalError, toUserFacingError } from "../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientRestaurantMenu">;
@@ -976,32 +983,107 @@ export function ClientRestaurantMenuScreen() {
       const pickupValue = normalizeAddress(pickup);
       const dropoffValue = normalizeAddress(dropoff);
 
-      const { orderId, pricing } = await createFoodOrder(
+      const scope = {
+        countryCode: market.countryCode,
+        lat: dropoffCoords.lat,
+        lng: dropoffCoords.lng,
+      };
+
+      const orderPayload = {
+        restaurant_id: restaurantId,
+        restaurant_name: activeRestaurantProfile.restaurant_name || restaurantName,
+        pickup_address: pickupValue,
+        dropoff_address: dropoffValue,
+        pickup_lat: pickupCoords.lat,
+        pickup_lng: pickupCoords.lng,
+        dropoff_lat: dropoffCoords.lat,
+        dropoff_lng: dropoffCoords.lng,
+        items: cart.map((item) => ({
+          item_id: item.id,
+          quantity: item.quantity,
+        })),
+        leave_at_door: leaveAtDoor,
+      };
+
+      const expectedQuoteTotalCents = Number.isFinite(Number(serverPricing?.total_cents))
+        ? Math.round(Number(serverPricing?.total_cents))
+        : undefined;
+
+      // Local mobile money still needs an entity id today.
+      if (market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)) {
+        const { orderId, pricing } = await createFoodOrder(orderPayload, scope);
+        setServerPricing(pricing);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "ClientOrderDetails", params: { orderId } }],
+        });
+        return;
+      }
+
+      // Stripe pay-then-create: no orders row until payment is confirmed.
+      const checkout = await startFoodCheckoutFromQuote(
         {
-          restaurant_id: restaurantId,
-          restaurant_name: activeRestaurantProfile.restaurant_name || restaurantName,
-          pickup_address: pickupValue,
-          dropoff_address: dropoffValue,
-          pickup_lat: pickupCoords.lat,
-          pickup_lng: pickupCoords.lng,
-          dropoff_lat: dropoffCoords.lat,
-          dropoff_lng: dropoffCoords.lng,
-          items: cart.map((item) => ({
-            item_id: item.id,
-            quantity: item.quantity,
-          })),
-          leave_at_door: leaveAtDoor,
+          ...orderPayload,
+          ...(expectedQuoteTotalCents && expectedQuoteTotalCents > 0
+            ? { expectedQuoteTotalCents }
+            : {}),
         },
-        {
-          countryCode: market.countryCode,
-          lat: dropoffCoords.lat,
-          lng: dropoffCoords.lng,
-        }
+        scope
       );
 
-      setServerPricing(pricing);
+      if (!checkout?.ok || !checkout?.url || !checkout?.food_checkout_id) {
+        throw new Error(
+          String(checkout?.error ?? checkout?.message ?? "").trim() ||
+            tr(
+              "clientRestaurantMenu.createOrderError",
+              "Impossible de créer la commande pour le moment."
+            )
+        );
+      }
 
-      await startCheckoutForOrder(orderId, sessionData.session.access_token);
+      const foodCheckoutId = String(checkout.food_checkout_id);
+      const sessionId = checkout.session_id ? String(checkout.session_id) : null;
+
+      await WebBrowser.openBrowserAsync(String(checkout.url));
+
+      let confirmResult: {
+        ok?: boolean;
+        already?: boolean;
+        already_paid?: boolean;
+        order_id?: string;
+        orderId?: string;
+        payment_status?: string;
+        db_status?: string;
+      } | null = null;
+      let confirmThrew = false;
+      try {
+        confirmResult = await confirmFoodQuoteCheckoutPaid(foodCheckoutId, sessionId);
+      } catch {
+        confirmThrew = true;
+      }
+
+      const orderId = String(
+        confirmResult?.order_id ?? confirmResult?.orderId ?? ""
+      ).trim();
+      const paidOk =
+        !confirmThrew &&
+        Boolean(orderId) &&
+        (confirmResult?.ok === true ||
+          confirmResult?.already === true ||
+          confirmResult?.already_paid === true ||
+          String(confirmResult?.payment_status ?? confirmResult?.db_status ?? "")
+            .toLowerCase() === "paid");
+
+      if (!paidOk) {
+        Alert.alert(
+          tr("clientRestaurantMenu.payment.title", "Paiement"),
+          tr(
+            "clientRestaurantMenu.payment.notCompleted",
+            "Le paiement n’a pas été terminé. Aucune commande n’a été créée."
+          )
+        );
+        return;
+      }
 
       navigation.reset({
         index: 0,
@@ -1601,8 +1683,8 @@ export function ClientRestaurantMenuScreen() {
             }}
           >
             {creating
-              ? tr("clientRestaurantMenu.create.creating", "Création de la commande…")
-              : tr("clientRestaurantMenu.create.confirm", "Confirmer et créer la commande MMD")}
+              ? tr("clientRestaurantMenu.create.paying", "Paiement en cours…")
+              : tr("clientRestaurantMenu.create.confirm", "Payer et confirmer la commande MMD")}
           </Text>
         </TouchableOpacity>
       </ScrollView>

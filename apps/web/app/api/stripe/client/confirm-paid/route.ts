@@ -21,6 +21,8 @@ import {
 } from "@/lib/requirePaymentIntentSucceeded";
 import { ORDER_CONFIRM_PAID_SELECT } from "@/lib/orderPaymentSelect";
 import { resolveOrderPlatformCountry } from "@/lib/platformCountryResolver";
+import { materializePaidFoodOrderFromQuoteCheckout } from "@/lib/food/foodCheckoutFromQuote";
+import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +30,10 @@ export const dynamic = "force-dynamic";
 type Body = {
   orderId?: string;
   order_id?: string;
+  foodCheckoutId?: string;
+  food_checkout_id?: string;
+  sessionId?: string;
+  session_id?: string;
 };
 
 type OrderRow = {
@@ -231,6 +237,133 @@ function extractBearerToken(req: NextRequest): string | null {
   return auth.startsWith("Bearer ") ? auth.slice(7).trim() : null;
 }
 
+function pickFoodCheckoutId(body: Body): string | null {
+  const raw = body.foodCheckoutId ?? body.food_checkout_id ?? null;
+  const id = String(raw ?? "").trim();
+  return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+}
+
+async function confirmFoodQuoteCheckoutPaid(params: {
+  supabaseAdmin: SupabaseClient;
+  userId: string;
+  foodCheckoutId: string;
+  sessionId?: string | null;
+}) {
+  const { data: intent, error: intentError } = await params.supabaseAdmin
+    .from("food_checkout_intents")
+    .select(
+      "id,client_user_id,status,amount_cents,currency,stripe_checkout_session_id,stripe_payment_intent_id,order_id,expires_at",
+    )
+    .eq("id", params.foodCheckoutId)
+    .maybeSingle();
+
+  if (intentError) {
+    return json({ ok: false, error: intentError.message }, 500);
+  }
+  if (!intent) {
+    return json({ ok: false, error: "Food checkout not found" }, 404);
+  }
+  if (String(intent.client_user_id) !== params.userId) {
+    return json({ ok: false, error: "Forbidden" }, 403);
+  }
+
+  if (intent.order_id) {
+    return json({
+      ok: true,
+      already: true,
+      already_paid: true,
+      payment_status: "paid",
+      db_status: "paid",
+      order_id: String(intent.order_id),
+      orderId: String(intent.order_id),
+      food_checkout_id: params.foodCheckoutId,
+      pay_then_create: true,
+    });
+  }
+
+  const sessionId =
+    String(params.sessionId ?? "").trim() ||
+    String(intent.stripe_checkout_session_id ?? "").trim() ||
+    null;
+
+  if (!sessionId) {
+    return json(
+      {
+        ok: false,
+        error: "Stripe payment not confirmed yet",
+        food_checkout_id: params.foodCheckoutId,
+      },
+      409,
+    );
+  }
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent"],
+    });
+  } catch (e: unknown) {
+    return json(
+      {
+        ok: false,
+        error: e instanceof Error ? e.message : "stripe_session_retrieve_failed",
+        food_checkout_id: params.foodCheckoutId,
+      },
+      502,
+    );
+  }
+
+  const paid =
+    String(session.payment_status).toLowerCase() === "paid" ||
+    String(session.status).toLowerCase() === "complete";
+  if (!paid) {
+    return json(
+      {
+        ok: false,
+        error: "Stripe payment not confirmed yet",
+        food_checkout_id: params.foodCheckoutId,
+        payment_status: session.payment_status,
+      },
+      409,
+    );
+  }
+
+  const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
+  const result = await materializePaidFoodOrderFromQuoteCheckout({
+    supabaseAdmin: params.supabaseAdmin,
+    foodCheckoutId: params.foodCheckoutId,
+    sessionId,
+    paymentIntentId,
+    expectedAmountCents: getStripeAmountFromCheckoutSession(session),
+    source: "confirm-paid:food_quote_checkout",
+  });
+
+  if (result.ok === false) {
+    const err = result.error;
+    return json(
+      {
+        ok: false,
+        error: err,
+        food_checkout_id: params.foodCheckoutId,
+      },
+      err.includes("not_succeeded") || err === "amount_mismatch" ? 409 : 500,
+    );
+  }
+
+  return json({
+    ok: true,
+    already: result.already_paid === true,
+    already_paid: result.already_paid === true,
+    payment_status: "paid",
+    db_status: "paid",
+    order_id: result.order_id,
+    orderId: result.order_id,
+    food_checkout_id: params.foodCheckoutId,
+    pay_then_create: true,
+    created: result.created === true,
+  });
+}
+
 async function verifyOrderPaidState(opts: {
   supabaseUrl: string;
   serviceKey: string;
@@ -341,6 +474,17 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await parseBody(req);
+
+    const foodCheckoutId = pickFoodCheckoutId(body);
+    if (foodCheckoutId) {
+      return confirmFoodQuoteCheckoutPaid({
+        supabaseAdmin,
+        userId: user.id,
+        foodCheckoutId,
+        sessionId: body.sessionId ?? body.session_id ?? null,
+      });
+    }
+
     const orderId = String(body.order_id ?? body.orderId ?? "").trim();
 
     if (!orderId) {

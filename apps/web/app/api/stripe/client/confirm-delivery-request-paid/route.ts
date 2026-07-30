@@ -18,6 +18,8 @@ import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWa
 import { toUserFacingError } from "@/lib/userFacingError";
 import { DELIVERY_REQUEST_CONFIRM_PAID_SELECT } from "@/lib/deliveryRequestPaymentSelect";
 import { resolveDeliveryRequestPlatformCountry } from "@/lib/platformCountryResolver";
+import { materializePaidDeliveryRequestFromQuoteCheckout } from "@/lib/delivery/deliveryCheckoutFromQuote";
+import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,10 @@ export const dynamic = "force-dynamic";
 type Body = {
   deliveryRequestId?: string;
   delivery_request_id?: string;
+  deliveryCheckoutId?: string;
+  delivery_checkout_id?: string;
+  sessionId?: string;
+  session_id?: string;
 };
 
 type DeliveryRequestRow = {
@@ -336,6 +342,148 @@ async function stripePaymentLooksPaid(
   };
 }
 
+function pickDeliveryCheckoutId(body: Body): string | null {
+  const raw = body.deliveryCheckoutId ?? body.delivery_checkout_id ?? null;
+  const id = String(raw ?? "").trim();
+  return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
+}
+
+async function confirmDeliveryQuoteCheckoutPaid(params: {
+  supabaseAdmin: SupabaseClient;
+  userId: string;
+  deliveryCheckoutId: string;
+  sessionId?: string | null;
+}) {
+  const { data: intent, error: intentError } = await params.supabaseAdmin
+    .from("delivery_checkout_intents")
+    .select(
+      "id,client_user_id,status,amount_cents,currency,stripe_checkout_session_id,stripe_payment_intent_id,delivery_request_id,expires_at",
+    )
+    .eq("id", params.deliveryCheckoutId)
+    .maybeSingle();
+
+  if (intentError) {
+    return json({ ok: false, error: intentError.message }, 500);
+  }
+  if (!intent) {
+    return json({ ok: false, error: "Delivery checkout not found" }, 404);
+  }
+  if (String(intent.client_user_id) !== params.userId) {
+    return json({ ok: false, error: "Forbidden" }, 403);
+  }
+
+  if (intent.delivery_request_id) {
+    const deliveryRequestId = String(intent.delivery_request_id);
+    const syncResult = await syncPaidDeliveryRequestOrder(
+      params.supabaseAdmin,
+      deliveryRequestId,
+      params.userId,
+    );
+    return json({
+      ok: true,
+      already: true,
+      already_paid: true,
+      stripe_paid: true,
+      payment_status: "paid",
+      delivery_request_id: deliveryRequestId,
+      deliveryRequestId,
+      delivery_checkout_id: params.deliveryCheckoutId,
+      pay_then_create: true,
+      order_id: syncResult.ok ? syncResult.orderId : null,
+    });
+  }
+
+  const sessionId =
+    String(params.sessionId ?? "").trim() ||
+    String(intent.stripe_checkout_session_id ?? "").trim() ||
+    null;
+
+  if (!sessionId) {
+    return json(
+      {
+        ok: false,
+        error: "Stripe payment not confirmed yet",
+        delivery_checkout_id: params.deliveryCheckoutId,
+      },
+      409,
+    );
+  }
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent"],
+    });
+  } catch (e: unknown) {
+    return json(
+      {
+        ok: false,
+        error: e instanceof Error ? e.message : "stripe_session_retrieve_failed",
+        delivery_checkout_id: params.deliveryCheckoutId,
+      },
+      502,
+    );
+  }
+
+  const paid =
+    String(session.payment_status).toLowerCase() === "paid" ||
+    String(session.status).toLowerCase() === "complete";
+  if (!paid) {
+    return json(
+      {
+        ok: false,
+        error: "Stripe payment not confirmed yet",
+        delivery_checkout_id: params.deliveryCheckoutId,
+        payment_status: session.payment_status,
+      },
+      409,
+    );
+  }
+
+  const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
+  const result = await materializePaidDeliveryRequestFromQuoteCheckout({
+    supabaseAdmin: params.supabaseAdmin,
+    deliveryCheckoutId: params.deliveryCheckoutId,
+    sessionId,
+    paymentIntentId,
+    expectedAmountCents: getStripeAmountFromCheckoutSession(session),
+    source: "confirm-delivery-request-paid:quote_checkout",
+  });
+
+  if (result.ok === false) {
+    const err = result.error;
+    return json(
+      {
+        ok: false,
+        error: err,
+        delivery_checkout_id: params.deliveryCheckoutId,
+      },
+      err.includes("not_succeeded") || err === "amount_mismatch" ? 409 : 500,
+    );
+  }
+
+  const deliveryRequestId = result.delivery_request_id;
+  const syncResult = await syncPaidDeliveryRequestOrder(
+    params.supabaseAdmin,
+    deliveryRequestId,
+    params.userId,
+  );
+
+  return json({
+    ok: true,
+    already: result.already_paid === true,
+    already_paid: result.already_paid === true,
+    stripe_paid: true,
+    payment_status: "paid",
+    delivery_request_id: deliveryRequestId,
+    deliveryRequestId,
+    delivery_checkout_id: params.deliveryCheckoutId,
+    pay_then_create: true,
+    created: result.created === true,
+    order_id: syncResult.ok ? syncResult.orderId : null,
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const token = extractBearerToken(req);
@@ -357,6 +505,16 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await parseBody(req);
+
+    const deliveryCheckoutId = pickDeliveryCheckoutId(body);
+    if (deliveryCheckoutId) {
+      return confirmDeliveryQuoteCheckoutPaid({
+        supabaseAdmin,
+        userId: user.id,
+        deliveryCheckoutId,
+        sessionId: body.sessionId ?? body.session_id ?? null,
+      });
+    }
 
     let requestedId = "";
     try {

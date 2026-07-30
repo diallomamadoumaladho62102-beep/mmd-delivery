@@ -14,6 +14,7 @@ import {
   isDeliverySharePctError,
 } from "@/lib/deliveryShareApiError";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
+import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,19 @@ export async function POST(req: NextRequest) {
       lat: fields.dropoffLat,
       lng: fields.dropoffLng,
     });
+
+    // Stripe markets: pay-then-create via delivery_checkout_intents.
+    if (!usesLocalMobileMoney(countryCode)) {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: "use_quote_checkout",
+          message:
+            "Stripe delivery requests must be paid before creation. Use /api/stripe/client/create-delivery-quote-checkout-session.",
+        },
+        400,
+      );
+    }
 
     const safeTitle =
       fields.title ||

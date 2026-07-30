@@ -124,3 +124,38 @@ export async function createFoodOrder(
     pricing: body.pricing as FoodOrderPricingPayload,
   };
 }
+
+/** Pay-then-create: Stripe Checkout from quote — no orders row until paid. */
+export function startFoodCheckoutFromQuote(
+  payload: CreateFoodOrderPayload & { expectedQuoteTotalCents?: number },
+  scope?: { countryCode?: string | null; lat?: number; lng?: number }
+) {
+  return foodOrderFetch(
+    "/api/stripe/client/create-food-quote-checkout-session",
+    {
+      restaurant_id: payload.restaurant_id,
+      restaurant_name: payload.restaurant_name,
+      pickup_address: payload.pickup_address,
+      dropoff_address: payload.dropoff_address,
+      pickup_lat: payload.pickup_lat,
+      pickup_lng: payload.pickup_lng,
+      dropoff_lat: payload.dropoff_lat,
+      dropoff_lng: payload.dropoff_lng,
+      items: payload.items,
+      promo_code: payload.promo_code,
+      leave_at_door: payload.leave_at_door,
+      expectedQuoteTotalCents: payload.expectedQuoteTotalCents,
+    },
+    scope
+  );
+}
+
+export async function confirmFoodQuoteCheckoutPaid(
+  foodCheckoutId: string,
+  sessionId?: string | null
+) {
+  return foodOrderFetch("/api/stripe/client/confirm-paid", {
+    food_checkout_id: foodCheckoutId,
+    ...(sessionId ? { session_id: sessionId } : {}),
+  });
+}

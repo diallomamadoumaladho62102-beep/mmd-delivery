@@ -15,6 +15,7 @@ import {
 import { createFoodOrderServerSide } from "@/lib/foodOrderService";
 import { assertRestaurantCanAcceptOrders } from "@/lib/restaurantAcceptGate";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
+import { usesLocalMobileMoney } from "@/lib/paymentProviderRouting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +42,20 @@ export async function POST(req: NextRequest) {
       lat: fields.dropoffLat,
       lng: fields.dropoffLng,
     });
+
+    // Stripe markets: pay-then-create via food_checkout_intents.
+    // Unpaid order rows are only allowed for local mobile-money markets.
+    if (!usesLocalMobileMoney(countryCode)) {
+      return mmdLocationJson(
+        {
+          ok: false,
+          error: "use_quote_checkout",
+          message:
+            "Stripe food orders must be paid before creation. Use /api/stripe/client/create-food-quote-checkout-session.",
+        },
+        400,
+      );
+    }
 
     const restaurantGate = await assertRestaurantCanAcceptOrders(
       auth.supabaseAdmin,

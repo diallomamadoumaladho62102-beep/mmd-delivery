@@ -77,6 +77,13 @@ export type MarketplaceDraftMergeItem = {
 };
 
 /**
+ * Marketplace draft rows (`status=draft|pending_checkout`) are the durable
+ * shopping cart — not operational orders. Dispatch / seller fulfillment only
+ * begin after Stripe payment confirms (`paid`). Live checkout stays feature-
+ * flagged OFF until certification. This differs from Food/Taxi Stripe (pure
+ * intent tables) because multi-item inventory + delivery shadow + commission
+ * freeze need a server-side cart before Checkout Session creation.
+ *
  * Merge draft cart items by product_id.
  * Incoming quantities overwrite matching products; products only in existing stay.
  * With replaceItems=true, only incoming items are kept.

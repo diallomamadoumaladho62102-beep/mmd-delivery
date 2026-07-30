@@ -20,6 +20,7 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { supabase } from "../lib/supabase";
 import { API_BASE_URL } from "../lib/apiBase";
 import { fetchMapboxComputeDistance } from "../lib/mapboxComputeDistance";
+import * as WebBrowser from "expo-web-browser";
 import { startCheckoutForDeliveryRequest } from "../utils/stripe";
 import { PaymentMethodPicker } from "../components/PaymentMethodPicker";
 import { type PaymentMethodOption } from "../lib/paymentMethodsApi";
@@ -37,8 +38,10 @@ import { useTranslation } from "react-i18next";
 import { useClientPlatformFeatures } from "../hooks/useClientPlatformFeatures";
 import { resolveMarketScopeFromFeatures } from "../lib/marketScope";
 import {
+  confirmDeliveryQuoteCheckoutPaid,
   createDeliveryRequest,
   quoteDeliveryRequest,
+  startDeliveryCheckoutFromQuote,
   syncPaidDeliveryRequestOrder,
   type DeliveryRequestPricingPayload,
 } from "../lib/deliveryRequestApi";
@@ -264,6 +267,7 @@ export function DeliveryRequestScreen() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
   const [lastCreatedId, setLastCreatedId] = useState<string | null>(null);
+  const [requestPaid, setRequestPaid] = useState(false);
   const [serverPricing, setServerPricing] = useState<DeliveryRequestPricingPayload | null>(null);
 
   const autoEstimateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -306,8 +310,15 @@ export function DeliveryRequestScreen() {
   }, [distanceMiles, etaMinutes, deliveryFee]);
 
   const canPay = useMemo(() => {
-    return Boolean(lastCreatedId) && !submitting && !estimating && !pricingLoading && !paying;
-  }, [lastCreatedId, submitting, estimating, pricingLoading, paying]);
+    return (
+      Boolean(lastCreatedId) &&
+      !requestPaid &&
+      !submitting &&
+      !estimating &&
+      !pricingLoading &&
+      !paying
+    );
+  }, [lastCreatedId, requestPaid, submitting, estimating, pricingLoading, paying]);
 
   const requestCardStyle = (active: boolean) => ({
     backgroundColor: active ? "rgba(37,99,235,0.20)" : "#0F172A",
@@ -791,41 +802,135 @@ export function DeliveryRequestScreen() {
         );
       }
 
-      const { deliveryRequestId, pricing } = await createDeliveryRequest(
+      const scope = {
+        countryCode: market.countryCode,
+        lat: dropoffCoords.lat,
+        lng: dropoffCoords.lng,
+      };
+
+      const requestPayload = {
+        request_type: requestType,
+        title: safeTitle,
+        description: safeDescription || null,
+        pickup_address: safePickup,
+        dropoff_address: safeDropoff,
+        pickup_contact_name: safePickupContactName || null,
+        pickup_phone: safePickupPhone || null,
+        dropoff_contact_name: safeDropoffContactName || null,
+        dropoff_phone: safeDropoffPhone || null,
+        pickup_lat: pickupCoords.lat,
+        pickup_lng: pickupCoords.lng,
+        dropoff_lat: dropoffCoords.lat,
+        dropoff_lng: dropoffCoords.lng,
+        dropoff_location_id: dropoffLocationId,
+        leave_at_door: requestType === "package" ? leaveAtDoor : false,
+      } as const;
+
+      // Local mobile money still needs an entity id today.
+      if (market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)) {
+        const { deliveryRequestId, pricing } = await createDeliveryRequest(
+          requestPayload,
+          scope
+        );
+
+        setServerPricing(pricing);
+        setDeliveryFee(roundMoney(pricing.delivery_fee));
+        setLastCreatedId(deliveryRequestId);
+        setRequestPaid(false);
+
+        Alert.alert(
+          tr("deliveryRequest.alerts.createdTitle", "Demande créée ✅"),
+          tr("deliveryRequest.alerts.createdBody", "Demande de livraison créée. Appuie sur Payer maintenant pour finaliser le paiement.")
+        );
+
+        console.log("delivery_requests created:", deliveryRequestId);
+        return;
+      }
+
+      const expectedQuoteTotalCents = Number.isFinite(Number(serverPricing?.total_cents))
+        ? Math.round(Number(serverPricing?.total_cents))
+        : undefined;
+
+      // Stripe pay-then-create: no delivery_requests row until payment is confirmed.
+      const checkout = await startDeliveryCheckoutFromQuote(
         {
-          request_type: requestType,
-          title: safeTitle,
-          description: safeDescription || null,
-          pickup_address: safePickup,
-          dropoff_address: safeDropoff,
-          pickup_contact_name: safePickupContactName || null,
-          pickup_phone: safePickupPhone || null,
-          dropoff_contact_name: safeDropoffContactName || null,
-          dropoff_phone: safeDropoffPhone || null,
-          pickup_lat: pickupCoords.lat,
-          pickup_lng: pickupCoords.lng,
-          dropoff_lat: dropoffCoords.lat,
-          dropoff_lng: dropoffCoords.lng,
-          dropoff_location_id: dropoffLocationId,
-          leave_at_door: requestType === "package" ? leaveAtDoor : false,
+          ...requestPayload,
+          ...(expectedQuoteTotalCents && expectedQuoteTotalCents > 0
+            ? { expectedQuoteTotalCents }
+            : {}),
         },
-        {
-          countryCode: market.countryCode,
-          lat: dropoffCoords.lat,
-          lng: dropoffCoords.lng,
-        }
+        scope
       );
 
-      setServerPricing(pricing);
-      setDeliveryFee(roundMoney(pricing.delivery_fee));
+      if (!checkout?.ok || !checkout?.url || !checkout?.delivery_checkout_id) {
+        throw new Error(
+          String(checkout?.error ?? checkout?.message ?? "").trim() ||
+            tr("deliveryRequest.errors.createFailed", "Impossible de créer la demande.")
+        );
+      }
+
+      const deliveryCheckoutId = String(checkout.delivery_checkout_id);
+      const sessionId = checkout.session_id ? String(checkout.session_id) : null;
+
+      await WebBrowser.openBrowserAsync(String(checkout.url));
+
+      let confirmResult: {
+        ok?: boolean;
+        already?: boolean;
+        already_paid?: boolean;
+        stripe_paid?: boolean;
+        delivery_request_id?: string;
+        payment_status?: string;
+      } | null = null;
+      let confirmThrew = false;
+      try {
+        confirmResult = await confirmDeliveryQuoteCheckoutPaid(
+          deliveryCheckoutId,
+          sessionId
+        );
+      } catch {
+        confirmThrew = true;
+      }
+
+      const deliveryRequestId = String(
+        confirmResult?.delivery_request_id ?? ""
+      ).trim();
+      const paidOk =
+        !confirmThrew &&
+        Boolean(deliveryRequestId) &&
+        (confirmResult?.ok === true ||
+          confirmResult?.already === true ||
+          confirmResult?.already_paid === true ||
+          confirmResult?.stripe_paid === true ||
+          String(confirmResult?.payment_status ?? "").toLowerCase() === "paid");
+
+      if (!paidOk) {
+        Alert.alert(
+          tr("deliveryRequest.payment.title", "Paiement"),
+          tr(
+            "deliveryRequest.payment.notCompletedNoRequest",
+            "Le paiement n’a pas été terminé. Aucune demande de livraison n’a été créée."
+          )
+        );
+        return;
+      }
+
       setLastCreatedId(deliveryRequestId);
+      setRequestPaid(true);
+
+      let orderId: string | null = null;
+      try {
+        orderId = await createOrderFromPaidDeliveryRequest(deliveryRequestId, user.id);
+      } catch (syncErr) {
+        console.warn("delivery sync-order after quote checkout:", syncErr);
+      }
 
       Alert.alert(
-        tr("deliveryRequest.alerts.createdTitle", "Demande créée ✅"),
-        tr("deliveryRequest.alerts.createdBody", "Demande de livraison créée. Appuie sur Payer maintenant pour finaliser le paiement.")
+        tr("deliveryRequest.payment.successTitle", "Paiement réussi ✅"),
+        orderId
+          ? tr("deliveryRequest.payment.successOrderVisible", "Ton paiement est confirmé et la commande est maintenant visible pour les chauffeurs.")
+          : tr("deliveryRequest.payment.successBody", "Ton paiement est confirmé.")
       );
-
-      console.log("delivery_requests created:", deliveryRequestId);
     } catch (e: unknown) {
       console.error("❌ create request error:", e);
       Alert.alert(tr("common.error", "Erreur"), toUserFacingError(e, tr("deliveryRequest.errors.createFailed", "Impossible de créer la demande.")));
@@ -849,12 +954,13 @@ export function DeliveryRequestScreen() {
     title,
     description,
     requestType,
-    deliveryFee,
-    distanceMiles,
-    etaMinutes,
+    leaveAtDoor,
+    dropoffLocationId,
     pickupCoords,
     dropoffCoords,
-    currency,
+    market.countryCode,
+    serverPricing,
+    createOrderFromPaidDeliveryRequest,
   ]);
 
   const handlePay = useCallback(async () => {
@@ -910,6 +1016,8 @@ export function DeliveryRequestScreen() {
 
       const orderId = await createOrderFromPaidDeliveryRequest(lastCreatedId, user.id);
 
+      setRequestPaid(true);
+
       Alert.alert(
         tr("deliveryRequest.payment.successTitle", "Paiement réussi ✅"),
         orderId
@@ -962,6 +1070,7 @@ export function DeliveryRequestScreen() {
         }
 
         const orderId = await createOrderFromPaidDeliveryRequest(lastCreatedId, user.id);
+        setRequestPaid(true);
         Alert.alert(
           tr("deliveryRequest.payment.successTitle", "Paiement réussi ✅"),
           orderId
@@ -1413,13 +1522,20 @@ export function DeliveryRequestScreen() {
               }}
             >
               <Text style={{ color: "#86EFAC", fontSize: 14, fontWeight: "800" }}>
-                {tr("deliveryRequest.created.cardTitle", "Demande de livraison créée")}
+                {requestPaid
+                  ? tr("deliveryRequest.created.paidCardTitle", "Demande de livraison payée")
+                  : tr("deliveryRequest.created.cardTitle", "Demande de livraison créée")}
               </Text>
               <Text style={{ color: "#D1FAE5", fontSize: 13, marginTop: 6 }}>
                 ID: {lastCreatedId.slice(0, 8)}
               </Text>
               <Text style={{ color: "#D1FAE5", fontSize: 13, marginTop: 6 }}>
-                {tr("deliveryRequest.created.payHint", "Tu peux maintenant continuer vers le paiement sécurisé.")}
+                {requestPaid
+                  ? tr(
+                      "deliveryRequest.created.paidHint",
+                      "Paiement confirmé. Les chauffeurs peuvent maintenant voir ta demande."
+                    )
+                  : tr("deliveryRequest.created.payHint", "Tu peux maintenant continuer vers le paiement sécurisé.")}
               </Text>
             </View>
           ) : null}
@@ -1483,11 +1599,17 @@ export function DeliveryRequestScreen() {
                   fontWeight: "800",
                 }}
               >
-                {tr("deliveryRequest.actions.create", "Créer la demande de livraison")}
+                {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode)
+                  ? tr("deliveryRequest.actions.create", "Créer la demande de livraison")
+                  : tr(
+                      "deliveryRequest.actions.payAndConfirm",
+                      "Payer et confirmer la livraison"
+                    )}
               </Text>
             )}
           </TouchableOpacity>
 
+          {market.countryCode && shouldOfferLocalMobileMoney(market.countryCode) ? (
           <TouchableOpacity
             onPress={handlePay}
             activeOpacity={0.9}
@@ -1516,6 +1638,7 @@ export function DeliveryRequestScreen() {
               </Text>
             )}
           </TouchableOpacity>
+          ) : null}
 
           <TouchableOpacity
             onPress={safeBack}

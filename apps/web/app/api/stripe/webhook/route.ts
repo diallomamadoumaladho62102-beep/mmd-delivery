@@ -42,6 +42,14 @@ import {
   resolveTaxiQuoteCheckoutPayment,
 } from "@/lib/taxi/taxiCheckoutFromQuote";
 import {
+  pickFoodQuoteCheckoutId,
+  resolveFoodQuoteCheckoutPayment,
+} from "@/lib/food/foodCheckoutFromQuote";
+import {
+  pickDeliveryQuoteCheckoutId,
+  resolveDeliveryQuoteCheckoutPayment,
+} from "@/lib/delivery/deliveryCheckoutFromQuote";
+import {
   getMarketplaceStripeAmountFromCheckoutSession,
   getMarketplaceStripeAmountFromPaymentIntent,
   handleMarketplaceStripePayment,
@@ -1442,9 +1450,16 @@ async function handleCheckoutCompletedLikeEvent(
   const session = event.data.object as Stripe.Checkout.Session;
   const metadata = (session.metadata ?? null) as Record<string, unknown> | null;
 
+  const foodCheckoutId = pickFoodQuoteCheckoutId(metadata);
+  const deliveryCheckoutId = pickDeliveryQuoteCheckoutId(metadata);
+
   const orderId =
     pickOrderIdFromMetadata(metadata) ||
-    (session.client_reference_id
+    // Never treat quote-checkout intent ids as order ids.
+    (!foodCheckoutId &&
+    !deliveryCheckoutId &&
+    !pickTaxiQuoteCheckoutId(metadata) &&
+    session.client_reference_id
       ? String(session.client_reference_id).trim()
       : null);
 
@@ -1628,6 +1643,70 @@ async function handleCheckoutCompletedLikeEvent(
       seller_order_id: sellerOrderId,
       already_paid: marketplaceResult.already_paid ?? false,
       ignored: marketplaceResult.ignored,
+      type: event.type,
+    });
+  }
+
+  // Food pay-then-create (no order_id until payment confirms).
+  if (foodCheckoutId && !orderId) {
+    const foodResult = await resolveFoodQuoteCheckoutPayment({
+      supabaseAdmin,
+      metadata,
+      sessionId,
+      paymentIntentId,
+      expectedAmountCents: sessionAmountTotal,
+      source: `webhook:${event.type}:food_quote_checkout`,
+    });
+    if (foodResult.ok === false) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: foodResult.error,
+          food_checkout_id: foodCheckoutId,
+        },
+        foodResult.ignored ? 200 : 500,
+      );
+    }
+    return json({
+      received: true,
+      ok: true,
+      order_id: foodResult.order_id,
+      food_checkout_id: foodCheckoutId,
+      already_paid: foodResult.already_paid ?? false,
+      pay_then_create: true,
+      type: event.type,
+    });
+  }
+
+  // Package delivery pay-then-create.
+  if (deliveryCheckoutId && !deliveryRequestId) {
+    const deliveryResult = await resolveDeliveryQuoteCheckoutPayment({
+      supabaseAdmin,
+      metadata,
+      sessionId,
+      paymentIntentId,
+      expectedAmountCents: sessionAmountTotal,
+      source: `webhook:${event.type}:delivery_quote_checkout`,
+    });
+    if (deliveryResult.ok === false) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: deliveryResult.error,
+          delivery_checkout_id: deliveryCheckoutId,
+        },
+        deliveryResult.ignored ? 200 : 500,
+      );
+    }
+    return json({
+      received: true,
+      ok: true,
+      delivery_request_id: deliveryResult.delivery_request_id,
+      delivery_checkout_id: deliveryCheckoutId,
+      already_paid: deliveryResult.already_paid ?? false,
+      pay_then_create: true,
       type: event.type,
     });
   }
@@ -2507,6 +2586,70 @@ async function handlePaymentIntentSucceeded(
       seller_order_id: sellerOrderId,
       already_paid: marketplaceResult.already_paid ?? false,
       ignored: marketplaceResult.ignored,
+      type: event.type,
+    });
+  }
+
+  const foodCheckoutIdPi = pickFoodQuoteCheckoutId(metadata);
+  if (foodCheckoutIdPi && !orderIdFromMd) {
+    const foodResult = await resolveFoodQuoteCheckoutPayment({
+      supabaseAdmin,
+      metadata,
+      paymentIntentId,
+      expectedAmountCents: piAmount,
+      source: "webhook:payment_intent.succeeded:food_quote_checkout",
+      paymentIntent: pi,
+    });
+    if (foodResult.ok === false) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: foodResult.error,
+          food_checkout_id: foodCheckoutIdPi,
+        },
+        foodResult.ignored ? 200 : 500,
+      );
+    }
+    return json({
+      received: true,
+      ok: true,
+      order_id: foodResult.order_id,
+      food_checkout_id: foodCheckoutIdPi,
+      already_paid: foodResult.already_paid ?? false,
+      pay_then_create: true,
+      type: event.type,
+    });
+  }
+
+  const deliveryCheckoutIdPi = pickDeliveryQuoteCheckoutId(metadata);
+  if (deliveryCheckoutIdPi && !deliveryRequestIdFromMd) {
+    const deliveryResult = await resolveDeliveryQuoteCheckoutPayment({
+      supabaseAdmin,
+      metadata,
+      paymentIntentId,
+      expectedAmountCents: piAmount,
+      source: "webhook:payment_intent.succeeded:delivery_quote_checkout",
+      paymentIntent: pi,
+    });
+    if (deliveryResult.ok === false) {
+      return json(
+        {
+          received: true,
+          ok: false,
+          error: deliveryResult.error,
+          delivery_checkout_id: deliveryCheckoutIdPi,
+        },
+        deliveryResult.ignored ? 200 : 500,
+      );
+    }
+    return json({
+      received: true,
+      ok: true,
+      delivery_request_id: deliveryResult.delivery_request_id,
+      delivery_checkout_id: deliveryCheckoutIdPi,
+      already_paid: deliveryResult.already_paid ?? false,
+      pay_then_create: true,
       type: event.type,
     });
   }

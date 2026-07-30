@@ -31,6 +31,11 @@ export type CreateDeliveryRequestInput = {
   countryCode: string;
   promoCode?: string | null;
   leaveAtDoor?: boolean;
+  /** When set, insert as already paid (pay-then-create materialize). */
+  settlePaid?: {
+    stripeSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+  } | null;
 };
 
 export type CreateDeliveryRequestResult = DeliveryRequestPricingResult & {
@@ -56,6 +61,8 @@ export async function createDeliveryRequestServerSide(
 
   const pickupCode = Math.random().toString(36).slice(2, 8).toUpperCase();
   const dropoffCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const settlePaid = input.settlePaid ?? null;
+  const paidNow = settlePaid ? new Date().toISOString() : null;
 
   const { data, error } = await input.supabaseAdmin
     .from("delivery_requests")
@@ -63,7 +70,10 @@ export async function createDeliveryRequestServerSide(
       created_by: input.clientId,
       client_user_id: input.clientId,
       status: "pending",
-      payment_status: "unpaid",
+      payment_status: settlePaid ? "paid" : "unpaid",
+      paid_at: paidNow,
+      stripe_session_id: settlePaid?.stripeSessionId ?? null,
+      stripe_payment_intent_id: settlePaid?.stripePaymentIntentId ?? null,
       kind: "delivery",
       request_type: input.requestType,
       title: input.title.trim(),
