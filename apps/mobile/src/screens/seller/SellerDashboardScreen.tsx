@@ -327,6 +327,15 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 {t("seller.actions.orders", "View orders")}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate("SellerWallet")}
+              style={buttonStyle(false, true)}
+            >
+              <Text style={{ color: APP_COLORS.onAccent, fontWeight: "700" }}>
+                {t("seller.actions.wallet", "Seller wallet")}
+              </Text>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>

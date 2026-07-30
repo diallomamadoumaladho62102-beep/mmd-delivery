@@ -15,6 +15,12 @@ export type SharedWalletSummary = {
   /** Earnings not yet SCT'd to Connect (or pending Express bank payout). */
   awaiting_transfer_cents: number;
   pending_cents: number;
+  /** Seller: total net already transferred (paid payouts). */
+  paid_out_cents?: number;
+  /** Seller: cumulative platform commission fees. */
+  platform_fees_cents?: number;
+  /** Seller: refunded order totals. */
+  refunded_cents?: number;
   can_cashout: boolean;
   cashout_block_reason: string | null;
   note: string | null;
@@ -113,19 +119,45 @@ export async function buildSellerWalletSummary(
     .filter(Boolean);
 
   let awaitingTransferCents = 0;
+  let paidOutCents = 0;
+  let platformFeesCents = 0;
+  let refundedCents = 0;
+
   if (sellerIds.length > 0) {
-    const { data: payouts, error: payoutErr } = await supabaseAdmin
-      .from("marketplace_seller_payouts")
-      .select("seller_net_amount_cents, status")
-      .in("seller_id", sellerIds)
-      .in("status", ["pending", "approved"]);
+    const [{ data: payouts, error: payoutErr }, { data: refunds, error: refundErr }] =
+      await Promise.all([
+        supabaseAdmin
+          .from("marketplace_seller_payouts")
+          .select("seller_net_amount_cents, platform_fee_cents, status")
+          .in("seller_id", sellerIds),
+        supabaseAdmin
+          .from("seller_orders")
+          .select("total_cents, refund_status")
+          .in("seller_id", sellerIds)
+          .in("refund_status", ["refunded", "partially_refunded"]),
+      ]);
 
     if (payoutErr && payoutErr.code !== "42P01") {
       throw new Error(payoutErr.message);
     }
+    if (refundErr && refundErr.code !== "42P01") {
+      throw new Error(refundErr.message);
+    }
 
-    awaitingTransferCents = (payouts ?? []).reduce((sum, row) => {
-      return sum + Math.max(0, Math.round(Number(row.seller_net_amount_cents ?? 0)));
+    for (const row of payouts ?? []) {
+      const net = Math.max(0, Math.round(Number(row.seller_net_amount_cents ?? 0)));
+      const fee = Math.max(0, Math.round(Number(row.platform_fee_cents ?? 0)));
+      const status = String(row.status ?? "").toLowerCase();
+      platformFeesCents += fee;
+      if (status === "pending" || status === "approved") {
+        awaitingTransferCents += net;
+      } else if (status === "paid") {
+        paidOutCents += net;
+      }
+    }
+
+    refundedCents = (refunds ?? []).reduce((sum, row) => {
+      return sum + Math.max(0, Math.round(Number(row.total_cents ?? 0)));
     }, 0);
   }
 
@@ -134,9 +166,12 @@ export async function buildSellerWalletSummary(
     country_code: countryCode,
     currency,
     balance_cents: balanceCents,
-    available_cents: 0,
+    available_cents: paidOutCents,
     awaiting_transfer_cents: awaitingTransferCents,
     pending_cents: awaitingTransferCents,
+    paid_out_cents: paidOutCents,
+    platform_fees_cents: platformFeesCents,
+    refunded_cents: refundedCents,
     can_cashout: false,
     cashout_block_reason: "express_auto_payout",
     note:

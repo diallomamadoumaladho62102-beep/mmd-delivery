@@ -12,6 +12,10 @@ export type WalletSummaryResponse = {
   /** Unpaid delivery earnings awaiting platform→Connect SCT. */
   awaiting_transfer_cents?: number;
   pending_cents?: number;
+  paid_out_cents?: number;
+  platform_fees_cents?: number;
+  refunded_cents?: number;
+  note?: string | null;
   minimum_payout_cents?: number;
   cashout_blocked_today?: boolean;
   last_cashout_at?: string | null;

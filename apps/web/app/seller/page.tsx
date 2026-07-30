@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 
@@ -200,6 +201,12 @@ export default function SellerDashboardPage() {
           {error}
         </p>
       ) : null}
+
+      <div className="mb-4 flex flex-wrap gap-3 text-sm">
+        <Link href="/seller/wallet" className="text-sky-700 underline">
+          Seller wallet
+        </Link>
+      </div>
 
       <form onSubmit={saveProfile} className="space-y-3 rounded-xl border border-slate-200 p-4">
         <h2 className="font-medium text-slate-900">Profile & media</h2>

@@ -101,6 +101,7 @@ export type RootStackParamList = {
   SellerDashboard: undefined;
   SellerProducts: undefined;
   SellerOrders: undefined;
+  SellerWallet: undefined;
 
   MarketplaceHome: undefined;
   MarketplaceProductList: {
@@ -177,6 +178,8 @@ export type RootStackParamList = {
     returnScheduledAt?: string;
   };
   TaxiRideTracking: { rideId: string };
+  TaxiTip: { rideId: string };
+  BusinessWallet: { businessAccountId?: string } | undefined;
   TaxiHistory: undefined;
   TaxiFavorites: undefined;
   TaxiLoyalty: undefined;
@@ -602,6 +605,7 @@ export function AppNavigator({
       r === "SellerGate" ||
       r === "SellerOnboarding" ||
       r === "SellerDashboard" ||
+      r === "SellerWallet" ||
       r === "SellerProducts" ||
       r === "SellerOrders"
     );
@@ -631,6 +635,8 @@ export function AppNavigator({
       r === "TaxiHome" ||
       r === "TaxiQuote" ||
       r === "TaxiRideTracking" ||
+      r === "TaxiTip" ||
+      r === "BusinessWallet" ||
       r === "TaxiHistory" ||
       r === "TaxiFavorites" ||
       r === "TaxiLoyalty" ||
@@ -646,6 +652,7 @@ export function AppNavigator({
       r === "SellerGate" ||
       r === "SellerOnboarding" ||
       r === "SellerDashboard" ||
+      r === "SellerWallet" ||
       r === "SellerProducts" ||
       r === "SellerOrders"
     );
@@ -1209,6 +1216,12 @@ export function AppNavigator({
             require("../screens/seller/SellerOrdersScreen").default
           }
         />
+        <Stack.Screen
+          name="SellerWallet"
+          getComponent={() =>
+            require("../screens/seller/SellerWalletScreen").default
+          }
+        />
 
         <Stack.Screen
           name="MarketplaceHome"
@@ -1314,6 +1327,18 @@ export function AppNavigator({
           name="TaxiRideTracking"
           getComponent={() =>
             require("../screens/taxi/TaxiRideTrackingScreen").default
+          }
+        />
+        <Stack.Screen
+          name="TaxiTip"
+          getComponent={() =>
+            require("../screens/taxi/TaxiTipScreen").default
+          }
+        />
+        <Stack.Screen
+          name="BusinessWallet"
+          getComponent={() =>
+            require("../screens/taxi/BusinessWalletScreen").default
           }
         />
         <Stack.Screen

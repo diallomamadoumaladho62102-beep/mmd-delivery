@@ -790,6 +790,12 @@ export default function TaxiHomeScreen() {
           </Text>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={() => navigation.navigate("BusinessWallet")}>
+          <Text style={{ color: "#93C5FD", textAlign: "center" }}>
+            {t("taxi.home.businessWallet", "Business Wallet")}
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={() => navigation.navigate("TaxiScheduled")}>
           <Text style={{ color: "#93C5FD", textAlign: "center" }}>
             {t("taxi.home.scheduled", "Scheduled rides")}

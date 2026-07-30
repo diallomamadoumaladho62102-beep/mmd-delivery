@@ -727,6 +727,21 @@ export default function TaxiRideTrackingScreen() {
           chatHint={t("taxi.tracking.chatHint", "Chat Driver")}
           shareHint={t("taxi.tracking.shareHint", "Share Trip details")}
         />
+
+        {status === "completed" ? (
+          <TouchableOpacity
+            style={styles.tipBtn}
+            onPress={() => navigation.navigate("TaxiTip", { rideId })}
+            accessibilityRole="button"
+            accessibilityLabel={t("taxi.tip.title", "Tip your driver")}
+          >
+            <Text style={styles.tipLabel}>
+              {Number(ride?.tip_cents ?? 0) > 0 || ride?.tip_paid_out
+                ? t("taxi.tip.view", "View tip")
+                : t("taxi.tip.cta", "Tip your driver")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -785,6 +800,18 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     fontWeight: "700",
     fontSize: 13,
+  },
+  tipBtn: {
+    marginTop: 14,
+    backgroundColor: "#22C55E",
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  tipLabel: {
+    color: "#052E16",
+    fontWeight: "900",
+    fontSize: 15,
   },
   fareChip: {
     alignSelf: "flex-start",
