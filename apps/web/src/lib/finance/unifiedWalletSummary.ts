@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import { getRestaurantFinancialOverview } from "@/lib/restaurantFinancialOverview";
+import { currencyForPlatformCountry } from "@/lib/platformCurrency";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
 
 export type SharedWalletSummary = {
@@ -27,18 +28,8 @@ export type SharedWalletSummary = {
   money_out_model: typeof MONEY_OUT_MODEL;
 };
 
-const CURRENCY_BY_COUNTRY: Record<string, string> = {
-  US: "USD",
-  CA: "CAD",
-  GB: "GBP",
-  FR: "EUR",
-  GN: "GNF",
-  SN: "XOF",
-  CI: "XOF",
-};
-
 function currencyForCountry(countryCode: string): string {
-  return CURRENCY_BY_COUNTRY[normalizeCountryCode(countryCode)] ?? "USD";
+  return currencyForPlatformCountry(normalizeCountryCode(countryCode));
 }
 
 /**

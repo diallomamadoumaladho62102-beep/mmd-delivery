@@ -7,6 +7,7 @@ import {
 } from "@/lib/finance/unifiedWalletSummary";
 import { getWalletBalance } from "@/lib/payoutTransactionService";
 import type { WalletAccountType } from "@/lib/payoutTypes";
+import { currencyForPlatformCountry } from "@/lib/platformCurrency";
 import { normalizeCountryCode } from "@/lib/paymentProviderRouting";
 
 export const runtime = "nodejs";
@@ -19,16 +20,6 @@ const ACCOUNT_TYPES = new Set<WalletAccountType>([
   "partner",
   "client",
 ]);
-
-const CURRENCY_BY_COUNTRY: Record<string, string> = {
-  US: "USD",
-  CA: "CAD",
-  GB: "GBP",
-  FR: "EUR",
-  GN: "GNF",
-  SN: "XOF",
-  CI: "XOF",
-};
 
 export async function GET(req: NextRequest) {
   const token = getBearerToken(req);
@@ -49,7 +40,9 @@ export async function GET(req: NextRequest) {
   }
 
   const countryCode = normalizeCountryCode(url.searchParams.get("country_code") ?? "US");
-  const currency = String(url.searchParams.get("currency") ?? CURRENCY_BY_COUNTRY[countryCode] ?? "USD")
+  const currency = String(
+    url.searchParams.get("currency") ?? currencyForPlatformCountry(countryCode)
+  )
     .trim()
     .toUpperCase();
 

@@ -582,10 +582,95 @@ export async function startStripeOnboarding(
 }
 
 /**
- * Charge a post-delivery driver tip via Stripe PaymentSheet.
- * Requires tip_cents already set on the order (submit_order_review_and_tip).
- * Webhook payment_intent.succeeded (kind=driver_tip) SCT's tip to Connect.
+ * Shared PaymentSheet present flow for tip PaymentIntents (food + taxi).
  */
+async function presentTipPaymentSheet(params: {
+  clientSecret: string;
+  merchantCountryCode: string;
+  logScope: string;
+  context: Record<string, unknown>;
+}): Promise<boolean> {
+  const stripeNative = await import("@stripe/stripe-react-native");
+  const initPaymentSheet = stripeNative.initPaymentSheet;
+  const presentPaymentSheet = stripeNative.presentPaymentSheet;
+
+  const paymentSheetOptions: Record<string, unknown> = {
+    merchantDisplayName: "MMD Delivery",
+    paymentIntentClientSecret: params.clientSecret,
+    allowsDelayedPaymentMethods: false,
+  };
+
+  if (Platform.OS === "ios") {
+    paymentSheetOptions.applePay = {
+      merchantCountryCode: params.merchantCountryCode,
+    };
+  } else if (Platform.OS === "android") {
+    paymentSheetOptions.googlePay = {
+      merchantCountryCode: params.merchantCountryCode,
+      testEnv: String(process.env.EXPO_PUBLIC_STRIPE_PK ?? "").startsWith(
+        "pk_test_"
+      ),
+    };
+  }
+
+  const init = await initPaymentSheet(paymentSheetOptions as any);
+  if (init.error) {
+    logTechnicalError(`${params.logScope}.initPaymentSheet`, init.error, params.context);
+    throw new Error(mapStripePaymentError(init.error));
+  }
+
+  const present = await presentPaymentSheet();
+  if (present.error) {
+    if (present.error.code === "Canceled") {
+      throw new Error("Paiement du tip annulé.");
+    }
+    logTechnicalError(
+      `${params.logScope}.presentPaymentSheet`,
+      present.error,
+      params.context
+    );
+    throw new Error(mapStripePaymentError(present.error));
+  }
+
+  return true;
+}
+
+function assertTipPaymentSheetAvailable(): boolean {
+  if (Platform.OS === "ios" && isExpoGo()) {
+    Alert.alert(
+      "Paiement tip indisponible sur iPhone (Expo Go)",
+      "Le tip Stripe natif nécessite un development build ou un vrai build iOS."
+    );
+    return false;
+  }
+  return true;
+}
+
+function parseTipIntentResponse(d: JsonRecord): {
+  alreadyPaid: boolean;
+  clientSecret: string | null;
+  merchantCountryCode: string;
+} {
+  if (
+    d?.error === "tip_already_transferred" ||
+    d?.error === "tip_payment_already_succeeded"
+  ) {
+    return { alreadyPaid: true, clientSecret: null, merchantCountryCode: "US" };
+  }
+  if (typeof d?.error === "string" && d.error.trim()) {
+    throw new Error(String(d.error));
+  }
+  const clientSecret =
+    asNonEmptyString(d?.client_secret) ??
+    asNonEmptyString(d?.clientSecret) ??
+    asNonEmptyString(d?.payment_intent_client_secret);
+  const merchantCountryCode =
+    asNonEmptyString(d?.merchantCountryCode) ??
+    asNonEmptyString(d?.merchant_country_code) ??
+    "US";
+  return { alreadyPaid: false, clientSecret, merchantCountryCode };
+}
+
 /**
  * Charge a post-ride taxi tip via Stripe PaymentSheet.
  * Creates tip PI (kind=taxi_driver_tip); webhook SCTs 100% to driver Connect.
@@ -598,26 +683,16 @@ export async function payTaxiTipWithPaymentSheet(params: {
   const tipCents = Math.max(0, Math.round(Number(params.tipCents ?? 0)));
   if (!taxiRideId) throw new Error("taxiRideId manquant.");
   if (tipCents < 50) throw new Error("Minimum tip is $0.50.");
-
-  if (Platform.OS === "ios" && isExpoGo()) {
-    Alert.alert(
-      "Paiement tip indisponible sur iPhone (Expo Go)",
-      "Le tip Stripe natif nécessite un development build ou un vrai build iOS."
-    );
-    return false;
-  }
+  if (!assertTipPaymentSheetAvailable()) return false;
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
   const accessToken = session?.access_token?.trim();
-  if (!accessToken) {
-    throw new Error("You must be logged in.");
-  }
+  if (!accessToken) throw new Error("You must be logged in.");
 
-  const base = apiBase();
   const data = await postJsonWithRetry<JsonRecord | null>(
-    `${base}/api/stripe/client/create-taxi-tip-payment-intent`,
+    `${apiBase()}/api/stripe/client/create-taxi-tip-payment-intent`,
     accessToken,
     {
       taxi_ride_id: taxiRideId,
@@ -627,25 +702,9 @@ export async function payTaxiTipWithPaymentSheet(params: {
     { attempts: 2, timeoutMs: NETWORK_TIMEOUT_MS }
   );
 
-  const d = (data ?? {}) as JsonRecord;
-
-  if (
-    d?.error === "tip_already_transferred" ||
-    d?.error === "tip_payment_already_succeeded"
-  ) {
-    return true;
-  }
-
-  if (typeof d?.error === "string" && d.error.trim()) {
-    throw new Error(String(d.error));
-  }
-
-  const clientSecret =
-    asNonEmptyString(d?.client_secret) ??
-    asNonEmptyString(d?.clientSecret) ??
-    asNonEmptyString(d?.payment_intent_client_secret);
-
-  if (!clientSecret) {
+  const parsed = parseTipIntentResponse((data ?? {}) as JsonRecord);
+  if (parsed.alreadyPaid) return true;
+  if (!parsed.clientSecret) {
     throw new Error(
       toUserFacingError(
         null,
@@ -654,156 +713,54 @@ export async function payTaxiTipWithPaymentSheet(params: {
     );
   }
 
-  const stripeNative = await import("@stripe/stripe-react-native");
-  const initPaymentSheet = stripeNative.initPaymentSheet;
-  const presentPaymentSheet = stripeNative.presentPaymentSheet;
-
-  const merchantCountryCode =
-    asNonEmptyString(d?.merchantCountryCode) ??
-    asNonEmptyString(d?.merchant_country_code) ??
-    "US";
-
-  const paymentSheetOptions: Record<string, unknown> = {
-    merchantDisplayName: "MMD Delivery",
-    paymentIntentClientSecret: clientSecret,
-    allowsDelayedPaymentMethods: false,
-  };
-
-  if (Platform.OS === "ios") {
-    paymentSheetOptions.applePay = { merchantCountryCode };
-  } else if (Platform.OS === "android") {
-    paymentSheetOptions.googlePay = {
-      merchantCountryCode,
-      testEnv: String(process.env.EXPO_PUBLIC_STRIPE_PK ?? "").startsWith(
-        "pk_test_"
-      ),
-    };
-  }
-
-  const init = await initPaymentSheet(paymentSheetOptions as any);
-  if (init.error) {
-    logTechnicalError("payments.taxiTip.initPaymentSheet", init.error, {
-      taxiRideId,
-    });
-    throw new Error(mapStripePaymentError(init.error));
-  }
-
-  const present = await presentPaymentSheet();
-  if (present.error) {
-    if (present.error.code === "Canceled") {
-      throw new Error("Paiement du tip annulé.");
-    }
-    logTechnicalError("payments.taxiTip.presentPaymentSheet", present.error, {
-      taxiRideId,
-    });
-    throw new Error(mapStripePaymentError(present.error));
-  }
-
-  return true;
+  return presentTipPaymentSheet({
+    clientSecret: parsed.clientSecret,
+    merchantCountryCode: parsed.merchantCountryCode,
+    logScope: "payments.taxiTip",
+    context: { taxiRideId },
+  });
 }
 
+/**
+ * Charge a post-delivery driver tip via Stripe PaymentSheet.
+ * Requires tip_cents already set on the order (submit_order_review_and_tip).
+ * Webhook payment_intent.succeeded (kind=driver_tip) SCT's tip to Connect.
+ */
 export async function payTipWithPaymentSheet(orderId: string): Promise<boolean> {
   const normalizedOrderId = orderId?.trim();
-  if (!normalizedOrderId) {
-    throw new Error("orderId manquant.");
-  }
-
-  if (Platform.OS === "ios" && isExpoGo()) {
-    Alert.alert(
-      "Paiement tip indisponible sur iPhone (Expo Go)",
-      "Le tip Stripe natif nécessite un development build ou un vrai build iOS."
-    );
-    return false;
-  }
+  if (!normalizedOrderId) throw new Error("orderId manquant.");
+  if (!assertTipPaymentSheetAvailable()) return false;
 
   const {
     data: { session },
   } = await supabase.auth.getSession();
   const accessToken = session?.access_token?.trim();
-  if (!accessToken) {
-    throw new Error("You must be logged in.");
-  }
-
-  const base = apiBase();
+  if (!accessToken) throw new Error("You must be logged in.");
 
   const data = await postJsonWithRetry<JsonRecord | null>(
-    `${base}/api/stripe/client/create-tip-payment-intent`,
+    `${apiBase()}/api/stripe/client/create-tip-payment-intent`,
     accessToken,
     { order_id: normalizedOrderId, orderId: normalizedOrderId },
     { attempts: 2, timeoutMs: NETWORK_TIMEOUT_MS }
   );
 
-  const d = (data ?? {}) as JsonRecord;
-
-  if (
-    d?.error === "tip_already_transferred" ||
-    d?.error === "tip_payment_already_succeeded"
-  ) {
-    return true;
-  }
-
-  if (typeof d?.error === "string" && d.error.trim()) {
-    throw new Error(String(d.error));
-  }
-
-  const clientSecret =
-    asNonEmptyString(d?.client_secret) ??
-    asNonEmptyString(d?.clientSecret) ??
-    asNonEmptyString(d?.payment_intent_client_secret);
-
-  if (!clientSecret) {
+  const parsed = parseTipIntentResponse((data ?? {}) as JsonRecord);
+  if (parsed.alreadyPaid) return true;
+  if (!parsed.clientSecret) {
     throw new Error(
       toUserFacingError(
         null,
-        "Le paiement du tip n'a pas pu être initialisé. Réessayez.",
+        "Le paiement du tip n'a pas pu être initialisé. Réessayez."
       )
     );
   }
 
-  const stripeNative = await import("@stripe/stripe-react-native");
-  const initPaymentSheet = stripeNative.initPaymentSheet;
-  const presentPaymentSheet = stripeNative.presentPaymentSheet;
-
-  const merchantCountryCode =
-    asNonEmptyString(d?.merchantCountryCode) ??
-    asNonEmptyString(d?.merchant_country_code) ??
-    "US";
-
-  const paymentSheetOptions: Record<string, unknown> = {
-    merchantDisplayName: "MMD Delivery",
-    paymentIntentClientSecret: clientSecret,
-    allowsDelayedPaymentMethods: false,
-  };
-
-  if (Platform.OS === "ios") {
-    paymentSheetOptions.applePay = { merchantCountryCode };
-  } else if (Platform.OS === "android") {
-    paymentSheetOptions.googlePay = {
-      merchantCountryCode,
-      testEnv: String(process.env.EXPO_PUBLIC_STRIPE_PK ?? "").startsWith("pk_test_"),
-    };
-  }
-
-  const init = await initPaymentSheet(paymentSheetOptions as any);
-  if (init.error) {
-    logTechnicalError("payments.tip.initPaymentSheet", init.error, {
-      orderId: normalizedOrderId,
-    });
-    throw new Error(mapStripePaymentError(init.error));
-  }
-
-  const present = await presentPaymentSheet();
-  if (present.error) {
-    if (present.error.code === "Canceled") {
-      throw new Error("Paiement du tip annulé.");
-    }
-    logTechnicalError("payments.tip.presentPaymentSheet", present.error, {
-      orderId: normalizedOrderId,
-    });
-    throw new Error(mapStripePaymentError(present.error));
-  }
-
-  return true;
+  return presentTipPaymentSheet({
+    clientSecret: parsed.clientSecret,
+    merchantCountryCode: parsed.merchantCountryCode,
+    logScope: "payments.tip",
+    context: { orderId: normalizedOrderId },
+  });
 }
 
 export async function payOrderWithPaymentSheet(orderId: string): Promise<boolean> {

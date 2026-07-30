@@ -126,17 +126,12 @@ export function inferCountryCode(input?: {
   return CURRENCY_COUNTRY[currency] ?? "US";
 }
 
+import i18n from "../i18n";
+import { formatMoneyFromCents } from "../i18n/formatters";
+
+/** Locale-aware wallet money — delegates to shared i18n formatters. */
 export function formatWalletAmount(cents: number, currency = "USD"): string {
-  const value = (Number(cents) || 0) / 100;
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-      maximumFractionDigits: currency === "GNF" || currency === "XOF" ? 0 : 2,
-    }).format(value);
-  } catch {
-    return `${value.toFixed(2)} ${currency}`;
-  }
+  return formatMoneyFromCents(cents, currency, i18n.language);
 }
 
 async function authFetch<T>(

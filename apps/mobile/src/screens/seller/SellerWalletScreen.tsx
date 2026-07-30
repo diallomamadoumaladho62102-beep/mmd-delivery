@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   StyleSheet,
   Alert,
@@ -19,6 +18,15 @@ import { formatWalletAmount, fetchWalletSummary } from "../../lib/walletApi";
 import { startStripeOnboarding } from "../../utils/stripe";
 import { toUserFacingError } from "../../lib/userFacingError";
 import { APP_COLORS } from "../../theme/appTheme";
+import { financialStatusColor } from "../../components/wallet/walletStatusColor";
+import {
+  WalletEmptyState,
+  WalletErrorState,
+  WalletHistoryRow,
+  WalletLoadingState,
+  WalletSummaryCard,
+} from "../../components/wallet/WalletPrimitives";
+import { formatDateTime } from "../../i18n/formatters";
 import {
   normalizeStripeConnectStatus,
   stripeConnectStatusLabel,
@@ -40,16 +48,8 @@ type ActivityItem = {
   created_at: string;
 };
 
-function statusColor(status: string) {
-  const s = status.toLowerCase();
-  if (["paid", "posted", "refunded"].includes(s)) return "#22C55E";
-  if (["failed", "canceled", "cancelled", "refund_failed"].includes(s))
-    return "#FCA5A5";
-  return "#F59E0B";
-}
-
 export default function SellerWalletScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -114,13 +114,9 @@ export default function SellerWalletScreen() {
       setAwaitingCents(
         Number(summary.awaiting_transfer_cents ?? summary.pending_cents ?? 0)
       );
-      setPaidOutCents(Number((summary as { paid_out_cents?: number }).paid_out_cents ?? 0));
-      setFeesCents(
-        Number((summary as { platform_fees_cents?: number }).platform_fees_cents ?? 0)
-      );
-      setRefundedCents(
-        Number((summary as { refunded_cents?: number }).refunded_cents ?? 0)
-      );
+      setPaidOutCents(Number(summary.paid_out_cents ?? 0));
+      setFeesCents(Number(summary.platform_fees_cents ?? 0));
+      setRefundedCents(Number(summary.refunded_cents ?? 0));
       setNote(summary.note ?? null);
       setItems(activityRes.items ?? []);
 
@@ -136,9 +132,14 @@ export default function SellerWalletScreen() {
         setStripeMessage(stripeConnectUserMessage(code));
       }
     } catch (e) {
-      setError(toUserFacingError(e, "Unable to load seller wallet"));
+      setError(
+        toUserFacingError(
+          e,
+          t("seller.wallet.loadFailed", "Unable to load seller wallet")
+        )
+      );
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -155,9 +156,7 @@ export default function SellerWalletScreen() {
           fallbackRoute="SellerDashboard"
           variant="dark"
         />
-        <View style={styles.centered}>
-          <ActivityIndicator color={APP_COLORS.accent} />
-        </View>
+        <WalletLoadingState label={t("common.loading", "Loading…")} />
       </SafeAreaView>
     );
   }
@@ -187,25 +186,26 @@ export default function SellerWalletScreen() {
         }
       >
         {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity onPress={() => void refresh()}>
-              <Text style={styles.retry}>{t("common.retry", "Retry")}</Text>
-            </TouchableOpacity>
-          </View>
+          <WalletErrorState
+            message={error}
+            retryLabel={t("common.retry", "Retry")}
+            onRetry={() => void refresh()}
+          />
         ) : null}
 
-        <View style={styles.card}>
-          <Text style={styles.muted}>
-            {t("seller.wallet.awaiting", "Awaiting transfer")}
-          </Text>
-          <Text style={styles.balance}>{fmt(awaitingCents)}</Text>
+        <WalletSummaryCard
+          label={t("seller.wallet.awaiting", "Awaiting transfer")}
+          amount={fmt(awaitingCents)}
+          footnote={note}
+        >
           <View style={styles.statRow}>
             <View style={styles.stat}>
               <Text style={styles.muted}>
                 {t("seller.wallet.paidOut", "Paid out")}
               </Text>
-              <Text style={styles.statValue}>{fmt(paidOutCents || availableCents)}</Text>
+              <Text style={styles.statValue}>
+                {fmt(paidOutCents || availableCents)}
+              </Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.muted}>
@@ -220,11 +220,10 @@ export default function SellerWalletScreen() {
               <Text style={styles.statValue}>{fmt(refundedCents)}</Text>
             </View>
           </View>
-          {note ? <Text style={styles.note}>{note}</Text> : null}
           <Text style={styles.note}>
             {t("seller.wallet.ledger", "Ledger")}: {fmt(balanceCents)}
           </Text>
-        </View>
+        </WalletSummaryCard>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>
@@ -242,6 +241,7 @@ export default function SellerWalletScreen() {
                 )
               );
             }}
+            accessibilityRole="button"
           >
             <Text style={styles.primaryLabel}>
               {t("seller.wallet.manageConnect", "Manage payouts")}
@@ -261,59 +261,41 @@ export default function SellerWalletScreen() {
         </Text>
 
         {items.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTitle}>
-              {t("seller.wallet.emptyTitle", "No payouts yet")}
-            </Text>
-            <Text style={styles.emptyBody}>
-              {t(
-                "seller.wallet.emptyBody",
-                "When marketplace orders are paid, seller payouts and transfers appear here."
-              )}
-            </Text>
-            <TouchableOpacity
-              style={styles.linkBtn}
-              onPress={() => navigation.navigate("SellerOrders")}
-            >
-              <Text style={styles.linkLabel}>
-                {t("seller.wallet.viewOrders", "View orders")}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <WalletEmptyState
+            title={t("seller.wallet.emptyTitle", "No payouts yet")}
+            body={t(
+              "seller.wallet.emptyBody",
+              "When marketplace orders are paid, seller payouts and transfers appear here."
+            )}
+            actionLabel={t("seller.wallet.viewOrders", "View orders")}
+            onAction={() => navigation.navigate("SellerOrders")}
+          />
         ) : (
           items.map((item) => (
-            <View key={item.id} style={styles.txRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.txTitle}>{item.title}</Text>
-                <Text style={styles.txMeta}>
-                  {new Date(item.created_at).toLocaleString()} ·{" "}
-                  <Text style={{ color: statusColor(item.status) }}>
-                    {item.status}
-                  </Text>
-                </Text>
-                {item.subtitle ? (
-                  <Text style={styles.txMeta}>{item.subtitle}</Text>
-                ) : null}
-                {item.stripe_transfer_id ? (
-                  <Text style={styles.txMeta}>SCT {item.stripe_transfer_id}</Text>
-                ) : null}
-                {item.stripe_refund_id ? (
-                  <Text style={styles.txMeta}>Refund {item.stripe_refund_id}</Text>
-                ) : null}
-              </View>
-              <Text
-                style={[
-                  styles.txAmount,
-                  {
-                    color:
-                      item.direction === "credit" ? "#86EFAC" : "#FCA5A5",
-                  },
-                ]}
-              >
-                {item.direction === "credit" ? "+" : "−"}
-                {fmt(item.amount_cents)}
-              </Text>
-            </View>
+            <WalletHistoryRow
+              key={item.id}
+              title={item.title}
+              meta={`${formatDateTime(item.created_at, i18n.language)} · ${item.status}`}
+              amount={`${item.direction === "credit" ? "+" : "−"}${fmt(item.amount_cents)}`}
+              amountColor={
+                item.direction === "credit"
+                  ? financialStatusColor("paid")
+                  : financialStatusColor(item.status)
+              }
+              detail={
+                [
+                  item.subtitle,
+                  item.stripe_transfer_id
+                    ? `SCT ${item.stripe_transfer_id}`
+                    : null,
+                  item.stripe_refund_id
+                    ? `Refund ${item.stripe_refund_id}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || null
+              }
+            />
           ))
         )}
       </ScrollView>
@@ -323,7 +305,6 @@ export default function SellerWalletScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: APP_COLORS.bg },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
   content: { padding: 16, paddingBottom: 40 },
   card: {
     backgroundColor: "rgba(15,23,42,0.86)",
@@ -334,7 +315,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   muted: { color: "#94A3B8", fontWeight: "700", fontSize: 12 },
-  balance: { color: "#F8FAFC", fontSize: 32, fontWeight: "900", marginTop: 6 },
   statRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   stat: { flex: 1 },
   statValue: { color: "#E2E8F0", fontWeight: "800", marginTop: 4 },
@@ -354,33 +334,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryLabel: { color: "#0F172A", fontWeight: "900" },
-  txRow: {
-    flexDirection: "row",
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(148,163,184,0.12)",
-  },
-  txTitle: { color: "#F8FAFC", fontWeight: "800" },
-  txMeta: { color: "#94A3B8", fontSize: 12, marginTop: 3 },
-  txAmount: { fontWeight: "900" },
-  errorBox: {
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(239,68,68,0.12)",
-    marginBottom: 12,
-  },
-  errorText: { color: "#FCA5A5", fontWeight: "700" },
-  retry: { color: "#F59E0B", fontWeight: "800", marginTop: 8 },
-  emptyBox: {
-    padding: 18,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.16)",
-    marginTop: 8,
-  },
-  emptyTitle: { color: "#F8FAFC", fontWeight: "900", marginBottom: 6 },
-  emptyBody: { color: "#94A3B8", lineHeight: 20 },
-  linkBtn: { marginTop: 12 },
-  linkLabel: { color: "#93C5FD", fontWeight: "800" },
 });

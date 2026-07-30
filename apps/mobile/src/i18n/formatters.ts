@@ -65,3 +65,69 @@ export function formatDate(
 export function localeForDate(language?: string | null): string {
   return intlLocaleTag(language);
 }
+
+/** Prefer app language; fall back to device region for unit system. */
+export function usesMetricUnits(language?: string | null): boolean {
+  const tag = intlLocaleTag(language);
+  // US customary for en-US; metric otherwise (including fr, es, ar, zh, ff).
+  return !tag.toLowerCase().startsWith("en-us");
+}
+
+export function formatDistance(
+  distanceMiles: number | null | undefined,
+  language?: string | null,
+  options?: { maximumFractionDigits?: number }
+): string {
+  const miles = Number(distanceMiles);
+  if (!Number.isFinite(miles) || miles < 0) return "—";
+  const digits = options?.maximumFractionDigits ?? 1;
+  const locale = intlLocaleTag(language);
+  if (usesMetricUnits(language)) {
+    const km = miles * 1.60934;
+    return new Intl.NumberFormat(locale, {
+      style: "unit",
+      unit: "kilometer",
+      unitDisplay: "short",
+      maximumFractionDigits: digits,
+    }).format(km);
+  }
+  return new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "mile",
+    unitDisplay: "short",
+    maximumFractionDigits: digits,
+  }).format(miles);
+}
+
+export function formatDurationMinutes(
+  minutes: number | null | undefined,
+  language?: string | null
+): string {
+  const mins = Math.round(Number(minutes));
+  if (!Number.isFinite(mins) || mins < 0) return "—";
+  const locale = intlLocaleTag(language);
+  if (mins < 60) {
+    return new Intl.NumberFormat(locale, {
+      style: "unit",
+      unit: "minute",
+      unitDisplay: "short",
+      maximumFractionDigits: 0,
+    }).format(mins);
+  }
+  const hours = Math.floor(mins / 60);
+  const rem = mins % 60;
+  const hourPart = new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "hour",
+    unitDisplay: "short",
+    maximumFractionDigits: 0,
+  }).format(hours);
+  if (rem <= 0) return hourPart;
+  const minPart = new Intl.NumberFormat(locale, {
+    style: "unit",
+    unit: "minute",
+    unitDisplay: "short",
+    maximumFractionDigits: 0,
+  }).format(rem);
+  return `${hourPart} ${minPart}`;
+}

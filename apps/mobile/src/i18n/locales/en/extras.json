@@ -310,6 +310,66 @@
       "driverAssigned": "Driver assigned",
       "lookingForDriver": "Looking for a driver…",
       "defaultTitle": "Ride"
+    },
+    "receipt": {
+      "title": "Receipt",
+      "view": "View receipt",
+      "invoice": "Invoice",
+      "ride": "Ride",
+      "trip": "Trip",
+      "tripMap": "Trip map",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "wait": "Wait",
+      "driver": "Driver",
+      "rating": "Rating",
+      "payment": "Payment",
+      "totalPaid": "Total paid",
+      "history": "Financial history",
+      "support": "Support",
+      "helpCenter": "Help center",
+      "actions": "Actions",
+      "downloadPdf": "Download PDF",
+      "share": "Share",
+      "addTip": "Add a tip",
+      "rebook": "Book again",
+      "contactSupport": "Contact support",
+      "paymentRef": "Payment ref",
+      "businessWallet": "Business wallet",
+      "card": "Card",
+      "loadFailed": "Unable to load receipt",
+      "missingRide": "Missing ride id",
+      "emptyTitle": "No receipt",
+      "emptyBody": "This ride has no receipt yet.",
+      "pdfFailed": "Unable to create PDF",
+      "fare": {
+        "base": "Base fare",
+        "distance": "Distance",
+        "time": "Time",
+        "bookingFee": "Booking fee",
+        "wait": "Wait time",
+        "regulatory": "Regulatory / service fee",
+        "tax": "Tax",
+        "promo": "Promotion",
+        "loyalty": "Loyalty points",
+        "shared": "Shared ride discount",
+        "walletCredit": "Wallet credit",
+        "mmdPlus": "MMD+",
+        "tip": "Tip",
+        "refund": "Refund"
+      }
+    }
+  },
+  "finance": {
+    "event": {
+      "payment": "Payment",
+      "tip": "Tip",
+      "refund": "Refund",
+      "wallet_credit": "Wallet credit",
+      "driver_commission": "Driver commission",
+      "stripe_transfer": "Stripe Connect transfer",
+      "seller_payout": "Seller payout",
+      "platform_commission": "Platform commission"
     }
   },
   "client": {
@@ -467,6 +527,16 @@
     }
   },
   "restaurant": {
+    "wallet": {
+      "title": "Restaurant wallet",
+      "available": "Available",
+      "awaiting": "Awaiting transfer",
+      "paidOut": "Paid out",
+      "history": "History",
+      "loadFailed": "Unable to load restaurant wallet",
+      "emptyTitle": "No activity yet",
+      "emptyBody": "Completed orders and payouts will appear here."
+    },
     "commandCenter": {
       "title": "Command Center",
       "dashboard": "Dashboard",

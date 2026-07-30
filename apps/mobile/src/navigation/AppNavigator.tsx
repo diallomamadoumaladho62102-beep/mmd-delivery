@@ -179,7 +179,9 @@ export type RootStackParamList = {
   };
   TaxiRideTracking: { rideId: string };
   TaxiTip: { rideId: string };
+  TaxiReceipt: { rideId: string };
   BusinessWallet: { businessAccountId?: string } | undefined;
+  RestaurantWallet: undefined;
   TaxiHistory: undefined;
   TaxiFavorites: undefined;
   TaxiLoyalty: undefined;
@@ -636,7 +638,9 @@ export function AppNavigator({
       r === "TaxiQuote" ||
       r === "TaxiRideTracking" ||
       r === "TaxiTip" ||
+      r === "TaxiReceipt" ||
       r === "BusinessWallet" ||
+      r === "RestaurantWallet" ||
       r === "TaxiHistory" ||
       r === "TaxiFavorites" ||
       r === "TaxiLoyalty" ||
@@ -699,6 +703,7 @@ export function AppNavigator({
         r === "RestaurantOrders" ||
         r === "RestaurantOrderDetails" ||
         r === "RestaurantEarnings" ||
+        r === "RestaurantWallet" ||
         r === "RestaurantFinancialCenter" ||
         r === "RestaurantTax" ||
         r === "RestaurantLanguage" ||
@@ -1336,9 +1341,21 @@ export function AppNavigator({
           }
         />
         <Stack.Screen
+          name="TaxiReceipt"
+          getComponent={() =>
+            require("../screens/taxi/TaxiReceiptScreen").default
+          }
+        />
+        <Stack.Screen
           name="BusinessWallet"
           getComponent={() =>
             require("../screens/taxi/BusinessWalletScreen").default
+          }
+        />
+        <Stack.Screen
+          name="RestaurantWallet"
+          getComponent={() =>
+            require("../screens/restaurant/RestaurantWalletScreen").default
           }
         />
         <Stack.Screen

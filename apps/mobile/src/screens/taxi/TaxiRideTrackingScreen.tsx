@@ -729,18 +729,30 @@ export default function TaxiRideTrackingScreen() {
         />
 
         {status === "completed" ? (
-          <TouchableOpacity
-            style={styles.tipBtn}
-            onPress={() => navigation.navigate("TaxiTip", { rideId })}
-            accessibilityRole="button"
-            accessibilityLabel={t("taxi.tip.title", "Tip your driver")}
-          >
-            <Text style={styles.tipLabel}>
-              {Number(ride?.tip_cents ?? 0) > 0 || ride?.tip_paid_out
-                ? t("taxi.tip.view", "View tip")
-                : t("taxi.tip.cta", "Tip your driver")}
-            </Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.tipBtn}
+              onPress={() => navigation.navigate("TaxiReceipt", { rideId })}
+              accessibilityRole="button"
+              accessibilityLabel={t("taxi.receipt.title", "Receipt")}
+            >
+              <Text style={styles.tipLabel}>
+                {t("taxi.receipt.view", "View receipt")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.tipBtn}
+              onPress={() => navigation.navigate("TaxiTip", { rideId })}
+              accessibilityRole="button"
+              accessibilityLabel={t("taxi.tip.title", "Tip your driver")}
+            >
+              <Text style={styles.tipLabel}>
+                {Number(ride?.tip_cents ?? 0) > 0 || ride?.tip_paid_out
+                  ? t("taxi.tip.view", "View tip")
+                  : t("taxi.tip.cta", "Tip your driver")}
+              </Text>
+            </TouchableOpacity>
+          </>
         ) : null}
       </ScrollView>
     </View>

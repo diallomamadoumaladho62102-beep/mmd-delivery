@@ -74,8 +74,18 @@ export default function TaxiHistoryScreen() {
 
               return (
                 <TouchableOpacity
-                  onPress={() =>
-                    navigation.navigate("TaxiRideTracking", { rideId })
+                  onPress={() => {
+                    if (String(item.status ?? "").toLowerCase() === "completed") {
+                      navigation.navigate("TaxiReceipt", { rideId });
+                    } else {
+                      navigation.navigate("TaxiRideTracking", { rideId });
+                    }
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    String(item.status ?? "").toLowerCase() === "completed"
+                      ? t("taxi.receipt.view", "View receipt")
+                      : t("taxi.history.tapToTrack", "Tap to track")
                   }
                   style={{
                     padding: 14,

@@ -19,6 +19,7 @@ import { getApiBaseUrl } from "../../lib/apiBase";
 import { formatWalletAmount } from "../../lib/walletApi";
 import { toUserFacingError } from "../../lib/userFacingError";
 import { APP_COLORS } from "../../theme/appTheme";
+import { financialStatusColor } from "../../components/wallet/walletStatusColor";
 import * as WebBrowser from "expo-web-browser";
 
 type Summary = {
@@ -70,10 +71,7 @@ async function authJson(path: string, init?: RequestInit) {
 }
 
 function statusColor(status: string) {
-  const s = status.toLowerCase();
-  if (s === "paid" || s === "posted" || s === "refunded") return "#22C55E";
-  if (s === "failed" || s === "canceled") return "#FCA5A5";
-  return "#F59E0B";
+  return financialStatusColor(status);
 }
 
 export default function BusinessWalletScreen() {

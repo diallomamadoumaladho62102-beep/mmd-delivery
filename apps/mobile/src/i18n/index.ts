@@ -25,6 +25,9 @@ export {
   formatMoney,
   formatMoneyFromCents,
   formatDateTime,
+  formatDate,
+  formatDistance,
+  formatDurationMinutes,
   intlLocaleTag,
   localeForDate,
 } from "./formatters";
