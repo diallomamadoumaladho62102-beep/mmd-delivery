@@ -197,9 +197,67 @@ export async function startTaxiCheckout(taxiRideId: string) {
   });
 }
 
+/** Pay-then-create: Stripe Checkout from quote — no taxi_rides row until paid. */
+export function startTaxiCheckoutFromQuote(
+  input: TaxiQuoteInput & {
+    clientNotes?: string;
+    expectedQuoteTotalCents?: number;
+    preferredDriverId?: string;
+    promoCode?: string;
+    stops?: { address?: string; lat?: number; lng?: number }[];
+    sharedRide?: boolean;
+    premiumDriverOnly?: boolean;
+    preferElectricOrHybrid?: boolean;
+    clientPreferences?: Record<string, boolean>;
+    ambiancePreference?: "quiet" | "music" | "conversation" | "none";
+    businessAccountId?: string;
+    businessTripType?: "personal" | "business";
+  },
+) {
+  return taxiPost("/api/stripe/client/create-taxi-quote-checkout-session", {
+    pickupAddress: input.pickupAddress,
+    dropoffAddress: input.dropoffAddress,
+    pickupLocationId: input.pickupLocationId,
+    dropoffLocationId: input.dropoffLocationId,
+    pickupLat: input.pickupLat,
+    pickupLng: input.pickupLng,
+    dropoffLat: input.dropoffLat,
+    dropoffLng: input.dropoffLng,
+    vehicleClass: input.vehicleClass ?? "standard",
+    passengerCount: input.passengerCount ?? 1,
+    countryCode: requireCountryCode(input.countryCode),
+    clientNotes: input.clientNotes ?? "",
+    expectedQuoteTotalCents: input.expectedQuoteTotalCents,
+    preferredDriverId: input.preferredDriverId,
+    promoCode: input.promoCode,
+    stops: input.stops,
+    sharedRide: input.sharedRide ?? false,
+    premiumDriverOnly: input.premiumDriverOnly ?? false,
+    preferElectricOrHybrid: input.preferElectricOrHybrid ?? false,
+    clientPreferences: input.clientPreferences ?? {},
+    ambiancePreference: input.ambiancePreference ?? "none",
+    businessAccountId: input.businessAccountId,
+    businessTripType: input.businessTripType ?? "personal",
+    tripMode: input.tripMode,
+    returnMode: input.returnMode,
+    returnWaitMinutes: input.returnWaitMinutes,
+    returnScheduledAt: input.returnScheduledAt,
+  });
+}
+
 export async function confirmTaxiPaid(taxiRideId: string) {
   return taxiPost("/api/stripe/client/confirm-taxi-paid", {
     taxi_ride_id: taxiRideId,
+  });
+}
+
+export async function confirmTaxiQuoteCheckoutPaid(
+  quoteCheckoutId: string,
+  sessionId?: string | null,
+) {
+  return taxiPost("/api/stripe/client/confirm-taxi-paid", {
+    quote_checkout_id: quoteCheckoutId,
+    ...(sessionId ? { session_id: sessionId } : {}),
   });
 }
 

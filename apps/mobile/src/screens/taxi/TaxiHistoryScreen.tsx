@@ -85,7 +85,11 @@ export default function TaxiHistoryScreen() {
                   accessibilityLabel={
                     String(item.status ?? "").toLowerCase() === "completed"
                       ? t("taxi.receipt.view", "View receipt")
-                      : t("taxi.history.tapToTrack", "Tap to track")
+                      : ["unpaid", "pending_payment", "processing"].includes(
+                            String(item.payment_status ?? "").toLowerCase(),
+                          )
+                        ? t("taxi.history.tapToPay", "Tap to complete payment")
+                        : t("taxi.history.tapToTrack", "Tap to track")
                   }
                   style={{
                     padding: 14,

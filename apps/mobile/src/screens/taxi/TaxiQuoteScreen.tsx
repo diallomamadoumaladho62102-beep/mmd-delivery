@@ -17,13 +17,13 @@ import { useTranslation } from "react-i18next";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import * as WebBrowser from "expo-web-browser";
 import {
-  confirmTaxiPaid,
+  confirmTaxiQuoteCheckoutPaid,
   createTaxiRide,
   fetchTaxiBusinessAccounts,
   fetchTaxiFavoriteDrivers,
   fetchTaxiLoyaltyRewards,
   quoteTaxiRide,
-  startTaxiCheckout,
+  startTaxiCheckoutFromQuote,
   validateTaxiPromotion,
   type TaxiVehicleClass,
 } from "../../lib/taxiClientApi";
@@ -50,7 +50,6 @@ import {
   shouldOfferLocalMobileMoney,
   startLocalPaymentForMethod,
 } from "../../lib/localPayments";
-import { applyCheckoutCredit } from "../../lib/loyaltyApi";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "TaxiQuote">;
 type QuoteRoute = RouteProp<RootStackParamList, "TaxiQuote">;
@@ -327,43 +326,44 @@ export default function TaxiQuoteScreen() {
     payingRef.current = true;
     setPaying(true);
     try {
-      const created = await createTaxiRide({
-        pickupAddress,
-        dropoffAddress,
-        pickupLocationId: pickupLocationId || undefined,
-        dropoffLocationId: dropoffLocationId || undefined,
-        pickupLat: hasCoords ? pickupLat : undefined,
-        pickupLng: hasCoords ? pickupLng : undefined,
-        dropoffLat: hasCoords ? dropoffLat : undefined,
-        dropoffLng: hasCoords ? dropoffLng : undefined,
-        vehicleClass: vehicleClass as TaxiVehicleClass,
-        countryCode,
-        expectedQuoteTotalCents: netTotalCents,
-        preferredDriverId: preferredDriverId ?? undefined,
-        promoCode: promoCode.trim() || undefined,
-        rewardId: rewardId ?? undefined,
-        sharedRide,
-        premiumDriverOnly,
-        preferElectricOrHybrid: params.preferElectricOrHybrid === true,
-        clientPreferences: params.clientPreferences ?? {},
-        ambiancePreference: params.ambiancePreference ?? "none",
-        businessAccountId:
-          businessRide && businessAccountId ? businessAccountId : undefined,
-        businessTripType: businessRide && businessAccountId ? "business" : "personal",
-        stops: rideStops,
-        tripMode: params.tripMode,
-        returnMode: params.returnMode,
-        returnWaitMinutes: params.returnWaitMinutes,
-        returnScheduledAt: params.returnScheduledAt,
-      });
-
-      if (!created?.ok || !created?.ride?.id) {
-        throw new Error(created?.error ?? "Failed to create ride");
-      }
-
-      const rideId = String(created.ride.id);
-
+      // Local mobile money still needs an entity id today. Stripe Checkout is
+      // pay-then-create (no taxi_rides row until payment is confirmed).
       if (shouldOfferLocalMobileMoney(countryCode)) {
+        const created = await createTaxiRide({
+          pickupAddress,
+          dropoffAddress,
+          pickupLocationId: pickupLocationId || undefined,
+          dropoffLocationId: dropoffLocationId || undefined,
+          pickupLat: hasCoords ? pickupLat : undefined,
+          pickupLng: hasCoords ? pickupLng : undefined,
+          dropoffLat: hasCoords ? dropoffLat : undefined,
+          dropoffLng: hasCoords ? dropoffLng : undefined,
+          vehicleClass: vehicleClass as TaxiVehicleClass,
+          countryCode,
+          expectedQuoteTotalCents: netTotalCents,
+          preferredDriverId: preferredDriverId ?? undefined,
+          promoCode: promoCode.trim() || undefined,
+          rewardId: rewardId ?? undefined,
+          sharedRide,
+          premiumDriverOnly,
+          preferElectricOrHybrid: params.preferElectricOrHybrid === true,
+          clientPreferences: params.clientPreferences ?? {},
+          ambiancePreference: params.ambiancePreference ?? "none",
+          businessAccountId:
+            businessRide && businessAccountId ? businessAccountId : undefined,
+          businessTripType: businessRide && businessAccountId ? "business" : "personal",
+          stops: rideStops,
+          tripMode: params.tripMode,
+          returnMode: params.returnMode,
+          returnWaitMinutes: params.returnWaitMinutes,
+          returnScheduledAt: params.returnScheduledAt,
+        });
+
+        if (!created?.ok || !created?.ride?.id) {
+          throw new Error(created?.error ?? "Failed to create ride");
+        }
+
+        const rideId = String(created.ride.id);
         const { data, error } = await supabase.auth.getSession();
         const accessToken = data.session?.access_token;
         if (error || !accessToken) {
@@ -384,53 +384,77 @@ export default function TaxiQuoteScreen() {
         return;
       }
 
-      // Reserve loyalty credit against the ride before opening Stripe Checkout.
-      try {
-        const credit = await applyCheckoutCredit({
-          entityType: "taxi_ride",
-          entityId: rideId,
-          mode: "max",
-        });
-        if (credit?.credit_applied_cents && Number(credit.credit_applied_cents) > 0) {
-          console.log("taxi checkout credit applied", credit.credit_applied_cents);
-        }
-      } catch (creditErr) {
-        console.log("taxi checkout credit apply skipped:", creditErr);
-      }
+      const checkout = await startTaxiCheckoutFromQuote({
+        pickupAddress,
+        dropoffAddress,
+        pickupLocationId: pickupLocationId || undefined,
+        dropoffLocationId: dropoffLocationId || undefined,
+        pickupLat: hasCoords ? pickupLat : undefined,
+        pickupLng: hasCoords ? pickupLng : undefined,
+        dropoffLat: hasCoords ? dropoffLat : undefined,
+        dropoffLng: hasCoords ? dropoffLng : undefined,
+        vehicleClass: vehicleClass as TaxiVehicleClass,
+        countryCode,
+        expectedQuoteTotalCents: netTotalCents,
+        preferredDriverId: preferredDriverId ?? undefined,
+        promoCode: promoCode.trim() || undefined,
+        sharedRide,
+        premiumDriverOnly,
+        preferElectricOrHybrid: params.preferElectricOrHybrid === true,
+        clientPreferences: params.clientPreferences ?? {},
+        ambiancePreference: params.ambiancePreference ?? "none",
+        businessAccountId:
+          businessRide && businessAccountId ? businessAccountId : undefined,
+        businessTripType: businessRide && businessAccountId ? "business" : "personal",
+        stops: rideStops,
+        tripMode: params.tripMode,
+        returnMode: params.returnMode,
+        returnWaitMinutes: params.returnWaitMinutes,
+        returnScheduledAt: params.returnScheduledAt,
+      });
 
-      const checkout = await startTaxiCheckout(rideId);
-
-      if (checkout?.already_paid || checkout?.wallet_paid) {
-        navigation.replace("TaxiRideTracking", { rideId });
-        return;
-      }
-
-      if (!checkout?.url) {
+      if (!checkout?.ok || !checkout?.url || !checkout?.quote_checkout_id) {
         throw new Error(checkout?.error ?? "Checkout URL missing");
       }
 
+      const quoteCheckoutId = String(checkout.quote_checkout_id);
+      const sessionId = checkout.session_id ? String(checkout.session_id) : null;
+
       await WebBrowser.openBrowserAsync(String(checkout.url));
 
-      let confirmResult: { ok?: boolean; already_paid?: boolean } | null = null;
+      let confirmResult: {
+        ok?: boolean;
+        already_paid?: boolean;
+        payment_status?: string;
+        taxi_ride_id?: string;
+      } | null = null;
       let confirmThrew = false;
       try {
-        confirmResult = await confirmTaxiPaid(rideId);
+        confirmResult = await confirmTaxiQuoteCheckoutPaid(quoteCheckoutId, sessionId);
       } catch {
         confirmThrew = true;
       }
 
       const next = nextActionAfterCheckoutReturn({ confirmResult, confirmThrew });
       if (next !== "go_tracking") {
-        // Abandoned Checkout / closed browser: unpaid ride expires via expires_at.
-        // Do not cancel immediately (webhook race with a successful charge).
         Alert.alert(
           t("taxi.quote.payment", "Payment"),
           t(
             "taxi.quote.paymentNotCompleted",
-            "Payment was not completed. Unpaid rides expire automatically; you can request a new quote when ready."
+            "Payment was not completed. No ride was created. You can request a new quote when ready."
           )
         );
         return;
+      }
+
+      const rideId = String(confirmResult?.taxi_ride_id ?? "").trim();
+      if (!rideId) {
+        throw new Error(
+          t(
+            "taxi.quote.rideNotReady",
+            "Payment confirmed but the ride is not ready yet. Please refresh your rides list.",
+          ),
+        );
       }
 
       navigation.replace("TaxiRideTracking", { rideId });

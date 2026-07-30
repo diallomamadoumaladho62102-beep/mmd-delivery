@@ -32,10 +32,15 @@ import {
 import { recordProductionCriticalError } from "@/lib/productionMonitoring";
 import {
   getStripeAmountFromCheckoutSession as getTaxiCheckoutAmountCents,
+  getStripeAmountFromPaymentIntent as getTaxiPaymentIntentAmountCents,
   handleTaxiStripePayment,
   isTaxiStripeModule,
   pickTaxiRideIdFromMetadata,
 } from "@/lib/taxiStripeWebhook";
+import {
+  pickTaxiQuoteCheckoutId,
+  resolveTaxiQuoteCheckoutPayment,
+} from "@/lib/taxi/taxiCheckoutFromQuote";
 import {
   getMarketplaceStripeAmountFromCheckoutSession,
   getMarketplaceStripeAmountFromPaymentIntent,
@@ -1482,23 +1487,60 @@ async function handleCheckoutCompletedLikeEvent(
 
   if (isTaxiStripeModule(metadata)) {
     const taxiRideId = pickTaxiRideIdFromMetadata(metadata);
-
-    if (!taxiRideId) {
-      return json({
-        received: true,
-        ignored: "missing taxi_ride_id for module=taxi",
-        type: event.type,
-      });
-    }
+    const quoteCheckoutId = pickTaxiQuoteCheckoutId(metadata);
 
     if (!isCheckoutSessionActuallyPaid(session)) {
       return json({
         received: true,
         ok: true,
         taxi_ride_id: taxiRideId,
+        quote_checkout_id: quoteCheckoutId,
         type: event.type,
         ignored: "session_not_paid",
         payment_status: session.payment_status,
+      });
+    }
+
+    // Pay-then-create: materialize ride only after Stripe confirms payment.
+    if (!taxiRideId && quoteCheckoutId) {
+      const quoteResult = await resolveTaxiQuoteCheckoutPayment({
+        supabaseAdmin,
+        metadata,
+        sessionId,
+        paymentIntentId,
+        expectedAmountCents: getTaxiCheckoutAmountCents(session),
+        expectedCurrency: sessionCurrency,
+        source: `webhook:${event.type}:quote_checkout`,
+      });
+
+      if (!quoteResult.ok) {
+        return json(
+          {
+            received: true,
+            ok: false,
+            error: quoteResult.error,
+            quote_checkout_id: quoteCheckoutId,
+          },
+          quoteResult.ignored ? 200 : 500,
+        );
+      }
+
+      return json({
+        received: true,
+        ok: true,
+        taxi_ride_id: quoteResult.taxi_ride_id,
+        quote_checkout_id: quoteCheckoutId,
+        already_paid: quoteResult.already_paid ?? false,
+        pay_then_create: true,
+        type: event.type,
+      });
+    }
+
+    if (!taxiRideId) {
+      return json({
+        received: true,
+        ignored: "missing taxi_ride_id for module=taxi",
+        type: event.type,
       });
     }
 
@@ -2348,6 +2390,42 @@ async function handlePaymentIntentSucceeded(
 
   if (isTaxiStripeModule(metadata)) {
     const taxiRideId = pickTaxiRideIdFromMetadata(metadata);
+    const quoteCheckoutId = pickTaxiQuoteCheckoutId(metadata);
+
+    // Pay-then-create: materialize ride only after PaymentIntent succeeds.
+    if (!taxiRideId && quoteCheckoutId) {
+      const quoteResult = await resolveTaxiQuoteCheckoutPayment({
+        supabaseAdmin,
+        metadata,
+        paymentIntentId,
+        expectedAmountCents: getTaxiPaymentIntentAmountCents(pi),
+        expectedCurrency: piCurrency,
+        source: "webhook:payment_intent.succeeded:quote_checkout",
+        paymentIntent: pi,
+      });
+
+      if (!quoteResult.ok) {
+        return json(
+          {
+            received: true,
+            ok: false,
+            error: quoteResult.error,
+            quote_checkout_id: quoteCheckoutId,
+          },
+          quoteResult.ignored ? 200 : 500,
+        );
+      }
+
+      return json({
+        received: true,
+        ok: true,
+        taxi_ride_id: quoteResult.taxi_ride_id,
+        quote_checkout_id: quoteCheckoutId,
+        already_paid: quoteResult.already_paid ?? false,
+        pay_then_create: true,
+        type: event.type,
+      });
+    }
 
     if (!taxiRideId) {
       return json({
@@ -2361,7 +2439,7 @@ async function handlePaymentIntentSucceeded(
       supabaseAdmin,
       taxiRideId,
       paymentIntentId,
-      expectedAmountCents: getStripeAmountFromPaymentIntent(pi),
+      expectedAmountCents: getTaxiPaymentIntentAmountCents(pi),
       expectedCurrency: piCurrency,
       source: "webhook:payment_intent.succeeded",
       paymentIntent: pi,

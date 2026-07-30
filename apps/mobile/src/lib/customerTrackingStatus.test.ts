@@ -3,6 +3,7 @@ import {
   bearingDegrees,
   buildCustomerTrackingLabels,
   firstNameFromDisplayName,
+  isTaxiAwaitingPayment,
   resolveCustomerTrackingPhase,
 } from "./customerTrackingStatus";
 
@@ -10,10 +11,64 @@ assert.equal(firstNameFromDisplayName("Mamadou Maladho Diallo"), "Mamadou");
 assert.equal(firstNameFromDisplayName(""), "");
 
 assert.equal(
+  isTaxiAwaitingPayment({ status: "quoted", paymentStatus: "unpaid" }),
+  true,
+);
+assert.equal(
+  isTaxiAwaitingPayment({
+    status: "pending_payment",
+    paymentStatus: "processing",
+  }),
+  true,
+);
+assert.equal(
+  isTaxiAwaitingPayment({ status: "paid", paymentStatus: "paid" }),
+  false,
+);
+
+assert.equal(
+  resolveCustomerTrackingPhase("quoted", {
+    hasDriver: false,
+    hasLiveGps: false,
+    etaMinutes: null,
+    paymentStatus: "unpaid",
+  }),
+  "awaiting_payment",
+);
+assert.equal(
+  resolveCustomerTrackingPhase("pending_payment", {
+    hasDriver: false,
+    hasLiveGps: false,
+    etaMinutes: null,
+    paymentStatus: "processing",
+  }),
+  "awaiting_payment",
+);
+assert.equal(
+  resolveCustomerTrackingPhase("paid", {
+    hasDriver: false,
+    hasLiveGps: false,
+    etaMinutes: null,
+    paymentStatus: "paid",
+  }),
+  "searching",
+);
+assert.equal(
+  resolveCustomerTrackingPhase("dispatching", {
+    hasDriver: false,
+    hasLiveGps: false,
+    etaMinutes: null,
+    paymentStatus: "paid",
+  }),
+  "searching",
+);
+
+assert.equal(
   resolveCustomerTrackingPhase("accepted", {
     hasDriver: true,
     hasLiveGps: true,
     etaMinutes: 8,
+    paymentStatus: "paid",
   }),
   "on_the_way",
 );
@@ -22,6 +77,7 @@ assert.equal(
     hasDriver: true,
     hasLiveGps: true,
     etaMinutes: 2,
+    paymentStatus: "paid",
   }),
   "arriving_soon",
 );
@@ -30,6 +86,7 @@ assert.equal(
     hasDriver: true,
     hasLiveGps: false,
     etaMinutes: null,
+    paymentStatus: "paid",
   }),
   "assigned",
 );
@@ -38,12 +95,27 @@ assert.equal(
     hasDriver: true,
     hasLiveGps: true,
     etaMinutes: 0,
+    paymentStatus: "paid",
   }),
   "arrived",
 );
 
+const awaitingLabels = buildCustomerTrackingLabels({
+  status: "quoted",
+  paymentStatus: "unpaid",
+  hasDriver: false,
+  hasLiveGps: false,
+  etaMinutes: null,
+  driverName: null,
+  distanceLabel: null,
+  t: (_key, fallback) => fallback,
+});
+assert.equal(awaitingLabels.phase, "awaiting_payment");
+assert.match(awaitingLabels.bannerStatus, /payment/i);
+
 const labels = buildCustomerTrackingLabels({
   status: "accepted",
+  paymentStatus: "paid",
   hasDriver: true,
   hasLiveGps: true,
   etaMinutes: 2,

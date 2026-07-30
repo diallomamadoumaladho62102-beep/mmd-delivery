@@ -21,11 +21,13 @@ import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import type { RootStackParamList } from "../../navigation/AppNavigator";
 import { textAlignStart } from "../../i18n/rtl";
+import * as WebBrowser from "expo-web-browser";
 import {
   cancelTaxiRide,
   confirmTaxiPaid,
   fetchTaxiRide,
   formatTaxiCents,
+  startTaxiCheckout,
 } from "../../lib/taxiClientApi";
 import {
   subscribePostgresChannel,
@@ -46,7 +48,10 @@ import { toCoordinatePoint } from "../../lib/coordinates";
 import { resolveEtaEndpoints } from "../../lib/liveTripTracking";
 import { startMaskedCall } from "../../lib/maskedCall";
 import { readCustomerTrackingIdentification } from "../../lib/customerTrackingIdentification";
-import { buildCustomerTrackingLabels } from "../../lib/customerTrackingStatus";
+import {
+  buildCustomerTrackingLabels,
+  isTaxiAwaitingPayment,
+} from "../../lib/customerTrackingStatus";
 import {
   formatTripDistance,
   resolveNavigationLocale,
@@ -97,6 +102,7 @@ export default function TaxiRideTrackingScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [startingCheckout, setStartingCheckout] = useState(false);
   const [calling, setCalling] = useState(false);
   const mountedRef = useRef(true);
 
@@ -222,9 +228,10 @@ export default function TaxiRideTrackingScreen() {
   const status = String(ride?.status ?? "").toLowerCase();
   const paymentStatus = String(ride?.payment_status ?? "").toLowerCase();
   const canCancel = CANCELABLE.has(status) && !ride?.driver_id;
-  const awaitingPayment =
-    PAYMENT_PENDING.has(paymentStatus) ||
-    (paymentStatus === "unpaid" && status === "pending_payment");
+  const awaitingPayment = isTaxiAwaitingPayment({
+    status,
+    paymentStatus,
+  });
 
   const pickupCoord = useMemo(
     () => toCoordinatePoint(ride?.pickup_lat, ride?.pickup_lng),
@@ -353,15 +360,18 @@ export default function TaxiRideTrackingScreen() {
     () =>
       buildCustomerTrackingLabels({
         status,
-        hasDriver: Boolean(ride?.driver_id),
-        hasLiveGps: hasLiveDriver,
-        etaMinutes,
+        paymentStatus,
+        hasDriver: Boolean(ride?.driver_id) && !awaitingPayment,
+        hasLiveGps: hasLiveDriver && !awaitingPayment,
+        etaMinutes: awaitingPayment ? null : etaMinutes,
         driverName: identification?.driverName ?? null,
-        distanceLabel,
+        distanceLabel: awaitingPayment ? null : distanceLabel,
         t: (key, fallback, vars) => t(key, fallback, vars),
       }),
     [
       status,
+      paymentStatus,
+      awaitingPayment,
       ride?.driver_id,
       hasLiveDriver,
       etaMinutes,
@@ -373,8 +383,50 @@ export default function TaxiRideTrackingScreen() {
 
   const mapHeight = resolveMapHeight(windowHeight, insets.top);
 
+  async function handlePayNow() {
+    if (startingCheckout || confirmingPayment) return;
+    setStartingCheckout(true);
+    try {
+      const checkout = await startTaxiCheckout(rideId);
+      if (checkout?.already_paid || checkout?.wallet_paid) {
+        await load();
+        return;
+      }
+      if (!checkout?.url) {
+        throw new Error(
+          checkout?.error ??
+            t("taxi.quote.paymentFailed", "Unable to start payment"),
+        );
+      }
+      await WebBrowser.openBrowserAsync(String(checkout.url));
+      try {
+        await confirmTaxiPaid(rideId);
+      } catch {
+        // Webhook may still settle; refresh either way.
+      }
+      await load();
+    } catch (e: unknown) {
+      Alert.alert(
+        t("taxi.quote.payment", "Payment"),
+        e instanceof Error
+          ? e.message
+          : t("taxi.quote.paymentFailed", "Unable to start payment"),
+      );
+    } finally {
+      setStartingCheckout(false);
+    }
+  }
+
   async function handleRetryPayment() {
-    await load();
+    setConfirmingPayment(true);
+    try {
+      await confirmTaxiPaid(rideId);
+      await load();
+    } catch {
+      await load();
+    } finally {
+      setConfirmingPayment(false);
+    }
   }
 
   async function handleCallDriver() {
@@ -618,21 +670,37 @@ export default function TaxiRideTrackingScreen() {
             </Text>
             <Text style={styles.paymentBody}>
               {t(
-                "taxi.ride.paymentPendingBody",
-                "If you already paid, we will confirm automatically. You can also retry now.",
+                "taxi.ride.paymentRequiredBeforeDispatch",
+                "No driver is assigned until payment succeeds. Complete payment to start driver search.",
               )}
             </Text>
             <TouchableOpacity
-              onPress={() => void handleRetryPayment()}
-              disabled={confirmingPayment}
+              onPress={() => void handlePayNow()}
+              disabled={startingCheckout || confirmingPayment}
               style={styles.paymentBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t("taxi.ride.payNow", "Pay now")}
             >
               <Text style={styles.paymentBtnLabel}>
-                {confirmingPayment
-                  ? t("taxi.ride.confirming", "Confirming…")
-                  : t("taxi.ride.retryPayment", "Retry payment confirmation")}
+                {startingCheckout
+                  ? t("taxi.ride.openingCheckout", "Opening checkout…")
+                  : t("taxi.ride.payNow", "Pay now")}
               </Text>
             </TouchableOpacity>
+            {PAYMENT_PENDING.has(paymentStatus) ? (
+              <TouchableOpacity
+                onPress={() => void handleRetryPayment()}
+                disabled={confirmingPayment || startingCheckout}
+                style={[styles.paymentBtn, { marginTop: 8, backgroundColor: "#334155" }]}
+                accessibilityRole="button"
+              >
+                <Text style={styles.paymentBtnLabel}>
+                  {confirmingPayment
+                    ? t("taxi.ride.confirming", "Confirming…")
+                    : t("taxi.ride.retryPayment", "I already paid — confirm")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : null}
 

@@ -29,9 +29,26 @@ test("payment succeeded → tracking", () => {
     }),
     "go_tracking"
   );
+  assert.equal(
+    nextActionAfterCheckoutReturn({
+      confirmResult: { ok: true, taxi_ride_id: "11111111-1111-1111-1111-111111111111" },
+      confirmThrew: false,
+    }),
+    "go_tracking"
+  );
 });
 
-test("payment refused / unpaid → stay and await expiry (no immediate cancel)", () => {
+test("pay-then-create without ride id stays on quote", () => {
+  assert.equal(
+    nextActionAfterCheckoutReturn({
+      confirmResult: { ok: true, taxi_ride_id: "" },
+      confirmThrew: false,
+    }),
+    "stay_on_quote_await_expiry"
+  );
+});
+
+test("payment refused / unpaid → stay (no ride created)", () => {
   assert.equal(
     nextActionAfterCheckoutReturn({
       confirmResult: { ok: false, error: "not_paid" },
@@ -41,7 +58,7 @@ test("payment refused / unpaid → stay and await expiry (no immediate cancel)",
   );
 });
 
-test("user closes Checkout / confirm throws → stay and await expiry", () => {
+test("user closes Checkout / confirm throws → stay (no ride created)", () => {
   assert.equal(
     nextActionAfterCheckoutReturn({
       confirmResult: null,
@@ -51,7 +68,7 @@ test("user closes Checkout / confirm throws → stay and await expiry", () => {
   );
 });
 
-test("timeout / network blip treated as not paid yet (no cancel race)", () => {
+test("timeout / network blip treated as not paid yet", () => {
   assert.equal(
     nextActionAfterCheckoutReturn({
       confirmResult: null,

@@ -1,9 +1,13 @@
 /**
  * Pure status copy for the premium client tracking chrome.
  * Maps real taxi_rides.status values — never invents progress.
+ *
+ * Payment gate: unpaid / pending_payment / processing must NEVER look like
+ * driver search or assignment. Dispatch only starts after payment_status=paid.
  */
 
 export type CustomerTrackingPhase =
+  | "awaiting_payment"
   | "searching"
   | "assigned"
   | "on_the_way"
@@ -23,22 +27,64 @@ export type CustomerTrackingLabels = {
 };
 
 const CANCELLED = new Set(["cancelled", "canceled", "expired", "failed"]);
-const SEARCHING = new Set(["paid", "dispatching", "quoted", "pending_payment"]);
+/** Only post-payment statuses may show "Finding your driver". */
+const SEARCHING = new Set(["paid", "dispatching"]);
 const ASSIGNED = new Set(["accepted"]);
 const ARRIVED = new Set(["driver_arrived"]);
 const IN_PROGRESS = new Set(["in_progress", "picked_up"]);
 const COMPLETED = new Set(["completed"]);
+const AWAITING_PAYMENT_STATUS = new Set([
+  "draft",
+  "quoted",
+  "pending_payment",
+]);
+
+export function isTaxiAwaitingPayment(input: {
+  status?: string | null;
+  paymentStatus?: string | null;
+}): boolean {
+  const payment = String(input.paymentStatus ?? "")
+    .toLowerCase()
+    .trim();
+  const status = String(input.status ?? "")
+    .toLowerCase()
+    .trim();
+  if (payment === "paid" || payment === "refunded") return false;
+  if (payment === "pending_payment" || payment === "processing" || payment === "unpaid") {
+    return true;
+  }
+  // Defensive: quoted/draft without an explicit paid payment_status.
+  if (AWAITING_PAYMENT_STATUS.has(status) && payment !== "paid") {
+    return true;
+  }
+  return false;
+}
 
 export function resolveCustomerTrackingPhase(
   status: string,
-  opts: { hasDriver: boolean; hasLiveGps: boolean; etaMinutes: number | null },
+  opts: {
+    hasDriver: boolean;
+    hasLiveGps: boolean;
+    etaMinutes: number | null;
+    paymentStatus?: string | null;
+  },
 ): CustomerTrackingPhase {
   const s = String(status ?? "").toLowerCase().trim();
   if (CANCELLED.has(s)) return "cancelled";
   if (COMPLETED.has(s)) return "completed";
+
+  if (
+    isTaxiAwaitingPayment({
+      status: s,
+      paymentStatus: opts.paymentStatus,
+    })
+  ) {
+    return "awaiting_payment";
+  }
+
   if (IN_PROGRESS.has(s)) return "in_progress";
   if (ARRIVED.has(s)) return "arrived";
-  if (ASSIGNED.has(s)) {
+  if (ASSIGNED.has(s) && opts.hasDriver) {
     if (!opts.hasLiveGps) return "assigned";
     if (
       opts.etaMinutes != null &&
@@ -49,7 +95,8 @@ export function resolveCustomerTrackingPhase(
     }
     return "on_the_way";
   }
-  if (SEARCHING.has(s) || (!opts.hasDriver && !CANCELLED.has(s))) {
+  // Searching only after paid — never treat unpaid quoted as dispatch.
+  if (SEARCHING.has(s) || (opts.hasDriver === false && (s === "paid" || s === "dispatching"))) {
     return "searching";
   }
   return "unknown";
@@ -63,6 +110,7 @@ export function firstNameFromDisplayName(name: string | null | undefined): strin
 
 export function buildCustomerTrackingLabels(input: {
   status: string;
+  paymentStatus?: string | null;
   hasDriver: boolean;
   hasLiveGps: boolean;
   etaMinutes: number | null;
@@ -74,6 +122,7 @@ export function buildCustomerTrackingLabels(input: {
     hasDriver: input.hasDriver,
     hasLiveGps: input.hasLiveGps,
     etaMinutes: input.etaMinutes,
+    paymentStatus: input.paymentStatus,
   });
   const first = firstNameFromDisplayName(input.driverName);
   const who = first || input.t("taxi.tracking.driverFallback", "Driver");
@@ -83,6 +132,20 @@ export function buildCustomerTrackingLabels(input: {
   );
 
   switch (phase) {
+    case "awaiting_payment":
+      return {
+        phase,
+        liveTitle: input.t("taxi.tracking.liveTitle", "Live tracking"),
+        liveSubtitle: input.t(
+          "taxi.tracking.awaitingPayment",
+          "Payment required",
+        ),
+        bannerStatus: input.t(
+          "taxi.tracking.bannerAwaitingPayment",
+          "Complete payment to find a driver",
+        ),
+        safetyLine,
+      };
     case "searching":
       return {
         phase,

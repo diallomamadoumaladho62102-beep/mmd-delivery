@@ -1,22 +1,15 @@
 /**
- * Create an unpaid taxi_rides row (legacy / local mobile-money path).
- * Stripe Checkout clients MUST use /api/stripe/client/create-taxi-quote-checkout-session
- * (pay-then-create) — no ride until payment is confirmed.
+ * Stripe Checkout from a taxi quote — NO taxi_rides row until payment succeeds.
+ * POST body matches /api/taxi/rides/create (minus creating the ride).
  */
 import { NextRequest } from "next/server";
-import { taxiUnpaidExpiresAt } from "@/lib/taxiUnpaidExpiry";
-import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { applyOwnedLocationIdsToTaxiInput } from "@/lib/mmdLocationSnapshot";
 import { resolveTaxiMultiStopRoute } from "@/lib/taxiMapbox";
 import { requireTaxiApiUser, taxiJson } from "@/lib/taxiApi";
 import { normalizeTaxiCountryCode } from "@/lib/taxiCountries";
 import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { resolveTaxiPickupCity } from "@/lib/taxiCityDetection";
-import {
-  assertTaxiQuotePriceMatches,
-  calculateTaxiFinalPriceSnapshot,
-  snapshotFromRideRow,
-} from "@/lib/taxiFinalPrice";
+import { calculateTaxiFinalPriceSnapshot } from "@/lib/taxiFinalPrice";
 import { resolveMmdPlusCheckoutBenefits } from "@/lib/mmdPlus/mmdPlusEngine";
 import {
   applyTaxiServiceFeeToQuote,
@@ -29,7 +22,10 @@ import {
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { assertCanStartServiceFromOrigin } from "@/lib/originCountyServiceGate";
 import { shouldApplyCountyCommercialOverride } from "@/lib/platformScopeFlags";
-import type { TaxiAmbiancePreference, TaxiClientPreferences } from "@/lib/taxiClientPreferences";
+import type {
+  TaxiAmbiancePreference,
+  TaxiClientPreferences,
+} from "@/lib/taxiClientPreferences";
 import { validateRouteClaimsServer } from "@/lib/geoTrust";
 import {
   buildRoundTripRouteInput,
@@ -39,6 +35,11 @@ import {
   normalizeTaxiTripMode,
 } from "@/lib/taxiTripMode";
 import { buildTaxiFareComponentsDoc } from "@/lib/taxi/taxiFareComponents";
+import {
+  createTaxiCheckoutIntent,
+  openTaxiQuoteCheckoutSession,
+  type TaxiCheckoutIntentSnapshot,
+} from "@/lib/taxi/taxiCheckoutFromQuote";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -68,8 +69,6 @@ type Body = {
   preferred_driver_id?: string;
   promoCode?: string;
   promo_code?: string;
-  rewardId?: string;
-  reward_id?: string;
   stops?: { address?: string; lat?: number; lng?: number }[];
   sharedRide?: boolean;
   shared_ride?: boolean;
@@ -100,7 +99,10 @@ function parseClientPreferences(body: Body): {
   ambiance: TaxiAmbiancePreference;
   preferElectricOrHybrid: boolean;
 } {
-  const raw = (body.clientPreferences ?? body.client_preferences ?? {}) as Record<string, unknown>;
+  const raw = (body.clientPreferences ?? body.client_preferences ?? {}) as Record<
+    string,
+    unknown
+  >;
   const ambiance = String(
     body.ambiancePreference ?? body.ambiance_preference ?? raw.ambiance ?? "none",
   ).trim() as TaxiAmbiancePreference;
@@ -136,34 +138,30 @@ export async function POST(req: NextRequest) {
 
     const body = (await req.json().catch(() => ({}))) as Body;
     const vehicleClass = String(
-      body.vehicleClass ?? body.vehicle_class ?? "standard"
+      body.vehicleClass ?? body.vehicle_class ?? "standard",
     ).trim();
     const passengerCount = Math.max(
       1,
-      Number(body.passengerCount ?? body.passenger_count ?? 1)
+      Number(body.passengerCount ?? body.passenger_count ?? 1),
     );
     const manualCountryCode = normalizeTaxiCountryCode(
-      body.countryCode ?? body.country_code ?? "US"
+      body.countryCode ?? body.country_code ?? "US",
     );
-    const clientNotes = String(
-      body.clientNotes ?? body.client_notes ?? ""
-    ).trim();
+    const clientNotes = String(body.clientNotes ?? body.client_notes ?? "").trim();
     const preferredDriverId = String(
-      body.preferredDriverId ?? body.preferred_driver_id ?? ""
+      body.preferredDriverId ?? body.preferred_driver_id ?? "",
     ).trim();
     const promoCode = String(body.promoCode ?? body.promo_code ?? "").trim();
-    const rewardId = String(body.rewardId ?? body.reward_id ?? "").trim();
-    const sharedRide =
-      body.sharedRide === true || body.shared_ride === true;
+    const sharedRide = body.sharedRide === true || body.shared_ride === true;
     const premiumDriverOnly =
       body.premiumDriverOnly === true || body.premium_driver_only === true;
     const parsedPrefs = parseClientPreferences(body);
     const preferElectricOrHybrid = parsedPrefs.preferElectricOrHybrid;
     const businessAccountId = String(
-      body.businessAccountId ?? body.business_account_id ?? ""
+      body.businessAccountId ?? body.business_account_id ?? "",
     ).trim();
     const businessTripType = String(
-      body.businessTripType ?? body.business_trip_type ?? "personal"
+      body.businessTripType ?? body.business_trip_type ?? "personal",
     ).trim();
 
     if (preferredDriverId) {
@@ -177,7 +175,6 @@ export async function POST(req: NextRequest) {
       if (favoriteError) {
         return taxiJson({ ok: false, error: favoriteError.message }, 500);
       }
-
       if (!favorite?.id) {
         return taxiJson({ ok: false, error: "preferred_driver_not_favorited" }, 400);
       }
@@ -195,7 +192,6 @@ export async function POST(req: NextRequest) {
       dropoffLat: body.dropoffLat,
       dropoffLng: body.dropoffLng,
     });
-
     if (locationInput.ok === false) {
       return taxiJson({ ok: false, error: locationInput.error }, locationInput.status);
     }
@@ -213,7 +209,6 @@ export async function POST(req: NextRequest) {
       returnMode,
       body.returnScheduledAt ?? body.return_scheduled_at,
     );
-
     if (returnMode === "scheduled" && !returnScheduledAt) {
       return taxiJson({ ok: false, error: "return_scheduled_at_required" }, 400);
     }
@@ -247,11 +242,9 @@ export async function POST(req: NextRequest) {
       pickupLat: route.pickupLat,
       pickupLng: route.pickupLng,
     });
-
     if (countryResult.ok === false) {
       return taxiJson({ ok: false, ...countryResult }, 400);
     }
-
     const countryCode = countryResult.resolution.countryCode;
 
     await validateRouteClaimsServer({
@@ -280,7 +273,7 @@ export async function POST(req: NextRequest) {
       auth.supabaseAdmin,
       countryCode,
       "taxi",
-      "active"
+      "active",
     );
     if (platformCheck.ok === false) {
       return taxiJson({ ok: false, ...platformCheck }, 403);
@@ -310,33 +303,30 @@ export async function POST(req: NextRequest) {
             message: originGate.message,
             actions: originGate.actions,
           },
-          403
+          403,
         );
       }
     }
 
     const launchConfig = await fetchTaxiCountryLaunchConfig(
       auth.supabaseAdmin,
-      countryCode
+      countryCode,
     );
     if (!launchConfig) {
       return taxiJson({ ok: false, error: "country_launch_config_missing" }, 400);
     }
-
     if (sharedRide) {
       const sharedCheck = assertTaxiLaunchFeature(launchConfig, "shared");
       if (sharedCheck.ok === false) {
         return taxiJson({ ok: false, ...sharedCheck }, 400);
       }
     }
-
     if (premiumDriverOnly) {
       const premiumCheck = assertTaxiLaunchFeature(launchConfig, "premium");
       if (premiumCheck.ok === false) {
         return taxiJson({ ok: false, ...premiumCheck }, 400);
       }
     }
-
     if (businessTripType === "business" && businessAccountId) {
       const businessCheck = assertTaxiLaunchFeature(launchConfig, "business");
       if (businessCheck.ok === false) {
@@ -352,13 +342,11 @@ export async function POST(req: NextRequest) {
         p_vehicle_class: vehicleClass,
         p_country_code: countryCode,
         p_passenger_count: passengerCount,
-      }
+      },
     );
-
     if (quoteError) {
       return taxiJson({ ok: false, error: quoteError.message }, 500);
     }
-
     const quoteObj = (quote ?? {}) as Record<string, unknown>;
     if (quoteObj.ok === false) {
       return taxiJson({ ok: false, ...quoteObj }, 400);
@@ -372,24 +360,23 @@ export async function POST(req: NextRequest) {
     });
     const quoteWithServiceFee = mergeTaxiServiceFeeIntoQuote(
       quoteObj,
-      serviceFeeQuote
+      serviceFeeQuote,
     );
 
     const expectedQuoteTotalCents = Math.round(
-      Number(
-        body.expectedQuoteTotalCents ?? body.expected_quote_total_cents ?? 0
-      )
+      Number(body.expectedQuoteTotalCents ?? body.expected_quote_total_cents ?? 0),
     );
     if (!Number.isFinite(expectedQuoteTotalCents) || expectedQuoteTotalCents <= 0) {
       return taxiJson(
         {
           ok: false,
           error: "expected_quote_required",
-          message: "A current server quote is required before creating a ride.",
+          message: "A current server quote is required before checkout.",
         },
         400,
       );
     }
+
     const quoteGrossCents = Math.round(Number(quoteWithServiceFee.total_cents ?? 0));
 
     const mmdPlusBenefits = await resolveMmdPlusCheckoutBenefits(auth.supabaseAdmin, {
@@ -403,11 +390,25 @@ export async function POST(req: NextRequest) {
       subtotal_cents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
       tax_cents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
       gross_total_cents: Math.round(
-        Number(quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0)
+        Number(
+          quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0,
+        ),
       ),
       mmd_plus_discount_cents: mmdPlusDiscountCents,
     });
     const netTotalCents = pricedSnapshot.total_cents;
+
+    if (Math.abs(netTotalCents - expectedQuoteTotalCents) > 1) {
+      return taxiJson(
+        {
+          ok: false,
+          error: "quote_price_changed",
+          expected_quote_total_cents: expectedQuoteTotalCents,
+          current_total_cents: netTotalCents,
+        },
+        409,
+      );
+    }
 
     let pricingRow: Record<string, unknown> | null = null;
     const pricingId = String(quoteWithServiceFee.pricing_id ?? "").trim();
@@ -416,7 +417,6 @@ export async function POST(req: NextRequest) {
         "id, base_fare, per_mile, per_minute, min_fare, booking_fee, class_multiplier, surge_multiplier, airport_fee, cleaning_fee";
       const legacySelect =
         "id, base_fare, per_mile, per_minute, min_fare, booking_fee, class_multiplier";
-      let pricingData: Record<string, unknown> | null = null;
       const full = await auth.supabaseAdmin
         .from("taxi_pricing")
         .select(fullSelect)
@@ -428,11 +428,10 @@ export async function POST(req: NextRequest) {
           .select(legacySelect)
           .eq("id", pricingId)
           .maybeSingle();
-        pricingData = (legacy.data as Record<string, unknown> | null) ?? null;
+        pricingRow = (legacy.data as Record<string, unknown> | null) ?? null;
       } else {
-        pricingData = (full.data as Record<string, unknown> | null) ?? null;
+        pricingRow = (full.data as Record<string, unknown> | null) ?? null;
       }
-      pricingRow = pricingData;
     }
 
     const fareComponents = buildTaxiFareComponentsDoc({
@@ -450,7 +449,6 @@ export async function POST(req: NextRequest) {
 
     let businessMemberId: string | null = null;
     let businessApprovalStatus = "not_required";
-
     if (businessTripType === "business" && businessAccountId) {
       const { data: businessCheck, error: businessError } =
         await auth.supabaseAdmin.rpc("validate_taxi_business_ride", {
@@ -458,16 +456,13 @@ export async function POST(req: NextRequest) {
           p_business_account_id: businessAccountId,
           p_amount_cents: quoteGrossCents,
         });
-
       if (businessError) {
         return taxiJson({ ok: false, error: businessError.message }, 500);
       }
-
       const businessObj = (businessCheck ?? {}) as Record<string, unknown>;
       if (businessObj.ok === false) {
         return taxiJson({ ok: false, ...businessObj }, 400);
       }
-
       const { data: memberRow } = await auth.supabaseAdmin
         .from("taxi_business_members")
         .select("id")
@@ -475,7 +470,6 @@ export async function POST(req: NextRequest) {
         .eq("user_id", auth.user.id)
         .eq("active", true)
         .maybeSingle();
-
       businessMemberId = memberRow?.id ? String(memberRow.id) : null;
       businessApprovalStatus =
         businessObj.requires_approval === true ? "pending" : "approved";
@@ -502,375 +496,120 @@ export async function POST(req: NextRequest) {
     if (preferElectricOrHybrid) {
       const { data: electricSeconds } = await auth.supabaseAdmin.rpc(
         "resolve_electric_search_seconds",
-        {
-          p_country_code: countryCode,
-          p_city: pickupCity,
-        },
+        { p_country_code: countryCode, p_city: pickupCity },
       );
       const seconds = Number(electricSeconds ?? 30);
       electricSearchUntil = new Date(Date.now() + seconds * 1000).toISOString();
     }
 
-    const rideInsertBase = {
-        client_user_id: auth.user.id,
-        vehicle_class: vehicleClass,
-        status: "quoted",
-        pickup_address: pickupAddress,
-        pickup_lat: route.pickupLat,
-        pickup_lng: route.pickupLng,
-        pickup_city: pickupCity,
-        pickup_location_id: locationInput.pickupLocationId,
-        dropoff_address: dropoffAddress,
-        dropoff_lat: route.dropoffLat,
-        dropoff_lng: route.dropoffLng,
-        dropoff_location_id: locationInput.dropoffLocationId,
-        distance_miles: route.distanceMiles,
-        duration_minutes: route.durationMinutes,
-        country_code: countryCode,
-        currency: String(quoteWithServiceFee.currency ?? "USD"),
-        pricing_snapshot_id: quoteWithServiceFee.pricing_id ?? null,
-        subtotal_cents: quoteWithServiceFee.subtotal_cents ?? 0,
-        tax_cents: quoteWithServiceFee.tax_cents ?? 0,
-        platform_fee_cents: quoteWithServiceFee.platform_fee_cents ?? 0,
-        driver_payout_cents: quoteWithServiceFee.driver_payout_cents ?? 0,
-        service_fee_cents: quoteWithServiceFee.service_fee_cents ?? 0,
-        service_fee_pct: quoteWithServiceFee.service_fee_pct ?? 0,
-        service_fee_enabled: quoteWithServiceFee.service_fee_enabled === true,
-        service_fee_fixed_cents: quoteWithServiceFee.service_fee_fixed_cents ?? 0,
-        total_cents: netTotalCents,
-        gross_total_cents:
+    const snapshot: TaxiCheckoutIntentSnapshot = {
+      version: 1,
+      client_user_id: auth.user.id,
+      country_code: countryCode,
+      currency: String(quoteWithServiceFee.currency ?? "USD"),
+      amount_cents: netTotalCents,
+      vehicle_class: vehicleClass,
+      passenger_count: passengerCount,
+      pickup_address: pickupAddress,
+      dropoff_address: dropoffAddress,
+      pickup_lat: route.pickupLat,
+      pickup_lng: route.pickupLng,
+      dropoff_lat: route.dropoffLat,
+      dropoff_lng: route.dropoffLng,
+      pickup_location_id: locationInput.pickupLocationId,
+      dropoff_location_id: locationInput.dropoffLocationId,
+      pickup_city: pickupCity,
+      distance_miles: route.distanceMiles,
+      duration_minutes: route.durationMinutes,
+      pricing_snapshot_id: String(quoteWithServiceFee.pricing_id ?? "") || null,
+      subtotal_cents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
+      tax_cents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
+      platform_fee_cents: Math.round(Number(quoteWithServiceFee.platform_fee_cents ?? 0)),
+      driver_payout_cents: Math.round(Number(quoteWithServiceFee.driver_payout_cents ?? 0)),
+      service_fee_cents: Math.round(Number(quoteWithServiceFee.service_fee_cents ?? 0)),
+      service_fee_pct: Number(quoteWithServiceFee.service_fee_pct ?? 0),
+      service_fee_enabled: quoteWithServiceFee.service_fee_enabled === true,
+      service_fee_fixed_cents: Math.round(
+        Number(quoteWithServiceFee.service_fee_fixed_cents ?? 0),
+      ),
+      gross_total_cents: Math.round(
+        Number(
           quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0,
-        mmd_plus_discount_cents: mmdPlusDiscountCents,
-        passenger_count: passengerCount,
-        client_notes: clientNotes || null,
-        payment_status: "unpaid",
-        expires_at: taxiUnpaidExpiresAt(),
-        preferred_driver_id: preferredDriverId || null,
-        stop_count: route.stops.length,
-        premium_driver_only: premiumDriverOnly,
-        prefer_electric_or_hybrid: preferElectricOrHybrid,
-        electric_search_until: electricSearchUntil,
-        electric_search_expired: false,
-        client_preferences: parsedPrefs.clientPreferences,
-        ambiance_preference: parsedPrefs.ambiance,
-        business_account_id:
-          businessTripType === "business" && businessAccountId
-            ? businessAccountId
-            : null,
-        business_member_id: businessMemberId,
-        business_trip_type:
-          businessTripType === "business" && businessAccountId
-            ? "business"
-            : "personal",
-        business_approval_status: businessApprovalStatus,
-        trip_mode: tripMode,
-        return_mode: returnMode,
-        return_wait_minutes: returnWaitMinutes,
-        return_scheduled_at: returnScheduledAt,
-      };
+        ),
+      ),
+      mmd_plus_discount_cents: mmdPlusDiscountCents,
+      fare_components: fareComponents as unknown as Record<string, unknown>,
+      stops: route.stops.map((stop) => ({
+        stop_order: stop.stopOrder,
+        address: stop.address,
+        lat: stop.lat,
+        lng: stop.lng,
+      })),
+      preferred_driver_id: preferredDriverId || null,
+      premium_driver_only: premiumDriverOnly,
+      prefer_electric_or_hybrid: preferElectricOrHybrid,
+      electric_search_until: electricSearchUntil,
+      client_preferences: parsedPrefs.clientPreferences,
+      ambiance_preference: parsedPrefs.ambiance,
+      client_notes: clientNotes || null,
+      business_account_id:
+        businessTripType === "business" && businessAccountId
+          ? businessAccountId
+          : null,
+      business_member_id: businessMemberId,
+      business_trip_type:
+        businessTripType === "business" && businessAccountId
+          ? "business"
+          : "personal",
+      business_approval_status: businessApprovalStatus,
+      trip_mode: tripMode,
+      return_mode: returnMode,
+      return_wait_minutes: returnWaitMinutes,
+      return_scheduled_at: returnScheduledAt,
+      is_shared_ride: sharedRide,
+      promo_code: promoCode || null,
+    };
 
-    let { data: ride, error: insertError } = await auth.supabaseAdmin
-      .from("taxi_rides")
-      .insert({ ...rideInsertBase, fare_components: fareComponents })
-      .select("*")
-      .single();
-
-    // Backward compatible until fare_components migration is applied.
-    if (
-      insertError &&
-      /fare_components|column/i.test(String(insertError.message ?? ""))
-    ) {
-      const retry = await auth.supabaseAdmin
-        .from("taxi_rides")
-        .insert(rideInsertBase)
-        .select("*")
-        .single();
-      ride = retry.data;
-      insertError = retry.error;
-    }
-
-    if (insertError || !ride) {
-      return taxiJson(
-        { ok: false, error: insertError?.message ?? "Failed to create ride" },
-        500
-      );
-    }
-
-    if (route.stops.length > 0) {
-      const { error: stopsError } = await auth.supabaseAdmin
-        .from("taxi_ride_stops")
-        .insert(
-          route.stops.map((stop) => ({
-            taxi_ride_id: ride.id,
-            stop_order: stop.stopOrder,
-            address: stop.address,
-            lat: stop.lat,
-            lng: stop.lng,
-          }))
-        );
-
-      if (stopsError) {
-        return taxiJson({ ok: false, error: stopsError.message }, 500);
-      }
-    }
-
-    let promotionResult: Record<string, unknown> | null = null;
-    let marketingReserveResult: Record<string, unknown> | null = null;
-
-    // Phase 7.1: marketing reserve is the primary promo path for Taxi.
-    try {
-      const { reserveAndAttachMarketing } = await import(
-        "@/lib/marketing/marketingCheckoutLifecycle"
-      );
-      const { userHasActiveMmdPlus, isLikelyFirstOrder } = await import(
-        "@/lib/marketing/marketingEngine"
-      );
-      const [hasPlus, firstOrder] = await Promise.all([
-        userHasActiveMmdPlus(auth.supabaseAdmin, auth.user.id),
-        isLikelyFirstOrder(auth.supabaseAdmin, auth.user.id, "taxi"),
-      ]);
-      const marketingAttach = await reserveAndAttachMarketing(auth.supabaseAdmin, {
-        kind: "taxi",
-        entityId: String(ride.id),
-        userId: auth.user.id,
-        subtotalCents: Number(quoteWithServiceFee.subtotal_cents ?? 0),
-        deliveryFeeCents: 0,
-        promoCode: promoCode || null,
-        countryCode,
-        city: pickupCity,
-        hasMmdPlus: hasPlus,
-        isFirstOrder: firstOrder,
-      });
-      marketingReserveResult = marketingAttach as unknown as Record<string, unknown>;
-      if (!marketingAttach.ok && marketingAttach.fail_closed) {
-        await auth.supabaseAdmin.from("taxi_rides").delete().eq("id", ride.id);
-        return taxiJson(
-          {
-            ok: false,
-            error: marketingAttach.error ?? "Impossible de réserver la promotion",
-          },
-          400
-        );
-      }
-      if (marketingAttach.marketing_discount_cents > 0) {
-        const nextTotal = Math.max(
-          0,
-          Number(netTotalCents) - marketingAttach.marketing_discount_cents
-        );
-        await auth.supabaseAdmin
-          .from("taxi_rides")
-          .update({
-            total_cents: nextTotal,
-            marketing_discount_cents: marketingAttach.marketing_discount_cents,
-            marketing_reservation_id: marketingAttach.marketing_reservation_id,
-            marketing_campaign_ids: marketingAttach.marketing_campaign_ids,
-          })
-          .eq("id", ride.id);
-        promotionResult = {
-          ok: true,
-          source: "marketing",
-          discount_cents: marketingAttach.marketing_discount_cents,
-          reservation_id: marketingAttach.marketing_reservation_id,
-        };
-      }
-    } catch (e) {
-      console.warn(
-        "[marketing] taxi reserve fail-open",
-        e instanceof Error ? e.message : e
-      );
-    }
-
-    // Legacy taxi_promotions only if marketing did not apply a discount.
-    if (
-      promoCode &&
-      !(
-        promotionResult &&
-        Number((promotionResult as { discount_cents?: number }).discount_cents ?? 0) > 0
-      )
-    ) {
-      const { data: promoData, error: promoError } = await auth.supabaseAdmin.rpc(
-        "apply_taxi_promotion_to_ride",
-        {
-          p_ride_id: String(ride.id),
-          p_code: promoCode,
-        }
-      );
-
-      if (promoError) {
-        return taxiJson({ ok: false, error: promoError.message }, 500);
-      }
-
-      const promoObj = (promoData ?? {}) as Record<string, unknown>;
-      if (promoObj.ok === false) {
-        const msg = String(promoObj.error ?? promoObj.message ?? "");
-        if (msg === "promo_handled_by_marketing_engine") {
-          // Marketing owns the code; keep fail-open unless client required it.
-          if (!marketingReserveResult) {
-            return taxiJson({ ok: false, ...promoObj }, 400);
-          }
-        } else {
-          return taxiJson({ ok: false, ...promoObj }, 400);
-        }
-      } else {
-        promotionResult = promoObj;
-      }
-    }
-
-    let rewardResult: Record<string, unknown> | null = null;
-    if (rewardId) {
-      const { data: rewardData, error: rewardError } = await auth.supabaseAdmin.rpc(
-        "apply_taxi_loyalty_reward_to_ride",
-        {
-          p_ride_id: String(ride.id),
-          p_reward_id: rewardId,
-          p_user_id: auth.user.id,
-        }
-      );
-
-      if (rewardError) {
-        return taxiJson({ ok: false, error: rewardError.message }, 500);
-      }
-
-      const rewardObj = (rewardData ?? {}) as Record<string, unknown>;
-      if (rewardObj.ok === false) {
-        return taxiJson({ ok: false, ...rewardObj }, 400);
-      }
-
-      rewardResult = rewardObj;
-    }
-
-    let sharedRideResult: Record<string, unknown> | null = null;
-    if (sharedRide) {
-      const { data: sharedData, error: sharedError } =
-        await auth.supabaseAdmin.rpc("create_or_join_taxi_shared_ride", {
-          p_ride_id: String(ride.id),
-        });
-
-      if (sharedError) {
-        return taxiJson({ ok: false, error: sharedError.message }, 500);
-      }
-
-      sharedRideResult = (sharedData ?? {}) as Record<string, unknown>;
-      if (sharedRideResult.ok === false) {
-        return taxiJson({ ok: false, ...sharedRideResult }, 400);
-      }
-
-      await logTaxiEventServer(auth.supabaseAdmin, {
-        rideId: String(ride.id),
-        eventType: "shared_ride_matched",
-        oldStatus: "quoted",
-        newStatus: "quoted",
-        actorId: auth.user.id,
-        triggeredRole: "client",
-        description: sharedRideResult.joined
-          ? "Client joined shared ride group"
-          : "Client created shared ride group",
-        metadata: sharedRideResult,
-      });
-
-      const { data: refreshedRide } = await auth.supabaseAdmin
-        .from("taxi_rides")
-        .select("*")
-        .eq("id", ride.id)
-        .maybeSingle();
-
-      if (refreshedRide) {
-        Object.assign(ride, refreshedRide);
-      }
-    }
-
-    if (
-      businessTripType === "business" &&
-      businessAccountId &&
-      businessApprovalStatus === "approved"
-    ) {
-      await auth.supabaseAdmin.rpc("record_taxi_business_billing_event", {
-        p_business_account_id: businessAccountId,
-        p_taxi_ride_id: String(ride.id),
-        p_member_user_id: auth.user.id,
-        p_amount_cents: Number(ride.total_cents ?? quoteGrossCents),
-        p_event_type: "ride_authorized",
-        p_metadata: { source: "ride_create" },
-      });
-    }
-
-    if (promoCode || rewardId) {
-      const { data: refreshedRide } = await auth.supabaseAdmin
-        .from("taxi_rides")
-        .select("*")
-        .eq("id", ride.id)
-        .maybeSingle();
-
-      if (refreshedRide) {
-        Object.assign(ride, refreshedRide);
-      }
-    }
-
-    const finalPrice = snapshotFromRideRow(ride);
-    const driftCheck = assertTaxiQuotePriceMatches(
-      expectedQuoteTotalCents,
-      finalPrice
-    );
-    if (driftCheck.ok === false) {
-      // Do not leave an unpaid/orphan ride behind when the submitted quote was
-      // falsified or legitimately drifted. Stops are removed by FK cascade.
-      await auth.supabaseAdmin
-        .from("taxi_rides")
-        .delete()
-        .eq("id", ride.id)
-        .eq("client_user_id", auth.user.id)
-        .eq("payment_status", "unpaid");
-      return taxiJson(
-        {
-          ok: false,
-          error: driftCheck.error,
-          expected_total_cents: driftCheck.expected_total_cents,
-          actual_total_cents: driftCheck.actual_total_cents,
-          price_snapshot: finalPrice,
-          message:
-            "The quoted price changed before booking. Please review the updated estimate.",
-        },
-        409
-      );
-    }
-
-    await logTaxiEventServer(auth.supabaseAdmin, {
-      rideId: String(ride.id),
-      eventType: "ride_created",
-      oldStatus: null,
-      newStatus: "quoted",
-      actorId: auth.user.id,
-      triggeredRole: "client",
-      description: "Client created taxi ride",
-      metadata: { quote: quoteObj },
+    const intent = await createTaxiCheckoutIntent({
+      supabaseAdmin: auth.supabaseAdmin,
+      snapshot,
     });
+    if (!intent.ok) {
+      return taxiJson({ ok: false, error: intent.error }, 500);
+    }
 
-    await logTaxiEventServer(auth.supabaseAdmin, {
-      rideId: String(ride.id),
-      eventType: "ride_quoted",
-      oldStatus: null,
-      newStatus: "quoted",
-      actorId: auth.user.id,
-      triggeredRole: "client",
-      description: "Taxi ride quoted",
-      metadata: { quote: quoteObj },
+    const checkout = await openTaxiQuoteCheckoutSession({
+      supabaseAdmin: auth.supabaseAdmin,
+      intentId: intent.intentId,
+      userId: auth.user.id,
+      userEmail: auth.user.email,
+      snapshot,
     });
+    if (!checkout.ok) {
+      return taxiJson(
+        { ok: false, error: checkout.error },
+        checkout.status ?? 500,
+      );
+    }
 
     return taxiJson({
       ok: true,
-      ride,
-      quote: quoteObj,
-      price_snapshot: finalPrice,
-      promotion: promotionResult,
-      reward: rewardResult,
-      shared_ride: sharedRideResult,
+      pay_then_create: true,
+      quote_checkout_id: intent.intentId,
+      session_id: checkout.sessionId,
+      url: checkout.url,
+      amount_cents: netTotalCents,
+      currency: snapshot.currency,
+      taxi_ride_id: null,
     });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Server error";
-    return taxiJson({ ok: false, error: message }, 500);
+    console.error("[create-taxi-quote-checkout-session]", e);
+    return taxiJson(
+      {
+        ok: false,
+        error: e instanceof Error ? e.message : "checkout_failed",
+      },
+      500,
+    );
   }
-}
-
-export async function GET() {
-  return taxiJson({ error: "Method not allowed" }, 405);
 }

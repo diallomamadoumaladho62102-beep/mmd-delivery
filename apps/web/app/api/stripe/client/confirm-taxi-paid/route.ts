@@ -16,6 +16,8 @@ import {
 import { assertPlatformFeature } from "@/lib/platformLaunchControl";
 import { bridgeStripeWalletFromPaidTaxiRide } from "@/lib/stripeInboundWalletBridge";
 import { enqueueTaxiPaidFailOpen } from "@/lib/finance/financeEvents";
+import { materializePaidTaxiRideFromQuoteCheckout } from "@/lib/taxi/taxiCheckoutFromQuote";
+import { getStripeAmountFromCheckoutSession } from "@/lib/taxiStripeWebhook";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +65,10 @@ async function healTaxiPaidSideEffects(params: {
 type Body = {
   taxiRideId?: string;
   taxi_ride_id?: string;
+  quoteCheckoutId?: string;
+  quote_checkout_id?: string;
+  sessionId?: string;
+  session_id?: string;
 };
 
 function getBearer(req: NextRequest) {
@@ -77,6 +83,12 @@ function paymentIntentIdFromUnknown(value: unknown): string | null {
     if (typeof maybeId === "string" && maybeId.trim()) return maybeId.trim();
   }
   return null;
+}
+
+function pickQuoteCheckoutId(body: Body): string | null {
+  const raw = body.quoteCheckoutId ?? body.quote_checkout_id ?? null;
+  const id = String(raw ?? "").trim();
+  return /^[0-9a-f-]{36}$/i.test(id) ? id : null;
 }
 
 async function stripePaymentLooksPaid(ride: {
@@ -127,6 +139,125 @@ async function stripePaymentLooksPaid(ride: {
   return { paid: false, payment_intent_id: paymentIntentId || null, source: "none" as const };
 }
 
+async function confirmQuoteCheckoutPaid(params: {
+  supabaseAdmin: ReturnType<typeof getSupabaseAdminClient>;
+  userId: string;
+  quoteCheckoutId: string;
+  sessionId?: string | null;
+}) {
+  const { data: intent, error: intentError } = await params.supabaseAdmin
+    .from("taxi_checkout_intents")
+    .select(
+      "id,client_user_id,status,amount_cents,currency,stripe_checkout_session_id,stripe_payment_intent_id,taxi_ride_id,expires_at",
+    )
+    .eq("id", params.quoteCheckoutId)
+    .maybeSingle();
+
+  if (intentError) {
+    return taxiJson({ error: intentError.message }, 500);
+  }
+  if (!intent) {
+    return taxiJson({ error: "Quote checkout not found" }, 404);
+  }
+  if (String(intent.client_user_id) !== params.userId) {
+    return taxiJson({ error: "Forbidden" }, 403);
+  }
+
+  if (intent.taxi_ride_id) {
+    return taxiJson({
+      ok: true,
+      already: true,
+      already_paid: true,
+      payment_status: "paid",
+      taxi_ride_id: String(intent.taxi_ride_id),
+      quote_checkout_id: params.quoteCheckoutId,
+      pay_then_create: true,
+    });
+  }
+
+  const sessionId =
+    String(params.sessionId ?? "").trim() ||
+    String(intent.stripe_checkout_session_id ?? "").trim() ||
+    null;
+
+  if (!sessionId) {
+    return taxiJson(
+      {
+        ok: false,
+        error: "Stripe payment not confirmed yet",
+        quote_checkout_id: params.quoteCheckoutId,
+      },
+      409,
+    );
+  }
+
+  let session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["payment_intent"],
+    });
+  } catch (e: unknown) {
+    return taxiJson(
+      {
+        ok: false,
+        error: e instanceof Error ? e.message : "stripe_session_retrieve_failed",
+        quote_checkout_id: params.quoteCheckoutId,
+      },
+      502,
+    );
+  }
+
+  const paid =
+    String(session.payment_status).toLowerCase() === "paid" ||
+    String(session.status).toLowerCase() === "complete";
+  if (!paid) {
+    return taxiJson(
+      {
+        ok: false,
+        error: "Stripe payment not confirmed yet",
+        quote_checkout_id: params.quoteCheckoutId,
+        payment_status: session.payment_status,
+      },
+      409,
+    );
+  }
+
+  const paymentIntentId = paymentIntentIdFromUnknown(session.payment_intent);
+  const result = await materializePaidTaxiRideFromQuoteCheckout({
+    supabaseAdmin: params.supabaseAdmin,
+    quoteCheckoutId: params.quoteCheckoutId,
+    sessionId,
+    paymentIntentId,
+    expectedAmountCents: getStripeAmountFromCheckoutSession(session),
+    expectedCurrency: session.currency,
+    source: "confirm-taxi-paid:quote_checkout",
+  });
+
+  if (!result.ok) {
+    return taxiJson(
+      {
+        ok: false,
+        error: result.error,
+        quote_checkout_id: params.quoteCheckoutId,
+      },
+      result.error.includes("not_succeeded") || result.error === "amount_mismatch"
+        ? 409
+        : 500,
+    );
+  }
+
+  return taxiJson({
+    ok: true,
+    already: result.already_paid === true,
+    already_paid: result.already_paid === true,
+    payment_status: "paid",
+    taxi_ride_id: result.taxi_ride_id,
+    quote_checkout_id: params.quoteCheckoutId,
+    pay_then_create: true,
+    created: result.created === true,
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const token = getBearer(req);
@@ -135,14 +266,6 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json().catch(() => ({}))) as Body;
-    let taxiRideId = "";
-
-    try {
-      taxiRideId = getTaxiRideId(body as Record<string, unknown>);
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : "Invalid request";
-      return taxiJson({ error: message }, 400);
-    }
 
     const supabaseUser = getSupabaseUserClient(token);
     const supabaseAdmin = getSupabaseAdminClient();
@@ -154,6 +277,24 @@ export async function POST(req: NextRequest) {
 
     if (userErr || !user?.id) {
       return taxiJson({ error: "Invalid token" }, 401);
+    }
+
+    const quoteCheckoutId = pickQuoteCheckoutId(body);
+    if (quoteCheckoutId) {
+      return confirmQuoteCheckoutPaid({
+        supabaseAdmin,
+        userId: user.id,
+        quoteCheckoutId,
+        sessionId: body.sessionId ?? body.session_id ?? null,
+      });
+    }
+
+    let taxiRideId = "";
+    try {
+      taxiRideId = getTaxiRideId(body as Record<string, unknown>);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Invalid request";
+      return taxiJson({ error: message }, 400);
     }
 
     const { data: ride, error: rideError } = await supabaseAdmin
@@ -204,8 +345,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Idempotent heal: finance taxi_paid + dispatch if still missing after a
-      // prior confirm that marked paid but failed side-effects.
       await healTaxiPaidSideEffects({
         supabaseAdmin,
         origin: req.nextUrl.origin,
