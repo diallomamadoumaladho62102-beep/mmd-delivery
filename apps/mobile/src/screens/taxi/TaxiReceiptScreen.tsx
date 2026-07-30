@@ -197,7 +197,17 @@ export default function TaxiReceiptScreen() {
             style={styles.map}
             accessibilityLabel={t("taxi.receipt.tripMap", "Trip map")}
           />
-        ) : null}
+        ) : (
+          <View
+            style={styles.mapFallback}
+            accessibilityRole="text"
+            accessibilityLabel={t("taxi.receipt.mapUnavailable", "Trip map unavailable")}
+          >
+            <Text style={styles.meta}>
+              {t("taxi.receipt.mapUnavailable", "Trip map unavailable")}
+            </Text>
+          </View>
+        )}
         <View style={styles.card}>
           <Text style={styles.label}>{t("taxi.receipt.pickup", "Pickup")}</Text>
           <Text style={styles.value}>{receipt.trip.pickup_address}</Text>
@@ -464,6 +474,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 12,
     backgroundColor: "#0f172a",
+  },
+  mapFallback: {
+    width: "100%",
+    minHeight: 72,
+    borderRadius: 14,
+    marginBottom: 12,
+    backgroundColor: "rgba(15,23,42,0.86)",
+    borderWidth: 1,
+    borderColor: "rgba(148,163,184,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
   },
   avatar: { width: 56, height: 56, borderRadius: 28 },
   avatarFallback: { backgroundColor: "#1e293b" },

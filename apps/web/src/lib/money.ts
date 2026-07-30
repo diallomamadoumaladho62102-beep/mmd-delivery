@@ -1,7 +1,19 @@
-// src/lib/money.ts
-export function formatCurrency(n?: number | null, currency = "USD", locale = "fr-FR") {
+import {
+  formatMoney as formatMoneyI18n,
+  formatMoneyFromCents,
+} from "@/i18n/formatters";
+
+/**
+ * @deprecated Prefer `@/i18n/formatters` (`formatMoney` / `formatMoneyFromCents`)
+ * for locale-aware formatting. Kept as a thin alias for existing call sites.
+ */
+export function formatCurrency(
+  n?: number | null,
+  currency = "USD",
+  locale = "fr-FR"
+) {
   const v = typeof n === "number" ? n : 0;
-  return new Intl.NumberFormat(locale, { style: "currency", currency }).format(v);
+  return formatMoneyI18n(v, currency, locale);
 }
 
-
+export { formatMoneyFromCents };

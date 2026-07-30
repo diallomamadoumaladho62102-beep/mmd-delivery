@@ -318,6 +318,7 @@
       "ride": "Ride",
       "trip": "Trip",
       "tripMap": "Trip map",
+      "mapUnavailable": "Trip map unavailable",
       "pickup": "Pickup",
       "dropoff": "Dropoff",
       "wait": "Wait",

@@ -31,6 +31,12 @@ import {
   stripeConnectUserMessage,
   type StripeConnectStatusCode,
 } from "../lib/stripeConnectStatus";
+import {
+  WalletEmptyState,
+  WalletHistoryRow,
+} from "../components/wallet/WalletPrimitives";
+import { financialStatusColor } from "../components/wallet/walletStatusColor";
+import { formatDateTime } from "../i18n/formatters";
 
 const BG = "#020617";
 const CARD = "rgba(15,23,42,0.86)";
@@ -90,10 +96,7 @@ async function getFunctionErrorPayload(error: any): Promise<{ code?: string; mes
 }
 
 function payoutStatusColor(status: string) {
-  const value = String(status ?? "").toLowerCase();
-  if (value === "paid" || value === "completed") return GREEN;
-  if (value === "failed" || value === "canceled") return RED;
-  return "#F59E0B";
+  return financialStatusColor(status);
 }
 
 export function DriverWalletScreen() {
@@ -123,15 +126,7 @@ export function DriverWalletScreen() {
   const [ledgerHistory, setLedgerHistory] = useState<WalletLedgerEntry[]>([]);
   const [payoutTransactions, setPayoutTransactions] = useState<PayoutTransactionItem[]>([]);
 
-  const localeForDates = useMemo(() => {
-    const lng = String(i18n.language || "en").toLowerCase();
-    if (lng.startsWith("fr")) return "fr-FR";
-    if (lng.startsWith("es")) return "es-ES";
-    if (lng.startsWith("ar")) return "ar";
-    if (lng.startsWith("zh")) return "zh-CN";
-    if (lng.startsWith("ff")) return "fr-FR";
-    return "en-US";
-  }, [i18n.language]);
+  const localeForDates = i18n.language;
 
   const fmtMoney = useCallback(
     (cents: number) => formatWalletAmount(cents, currency),
@@ -493,7 +488,7 @@ export function DriverWalletScreen() {
             </View>
 
             {loading ? (
-              <View style={styles.loadingRow}>
+              <View style={styles.loadingRow} accessibilityRole="progressbar">
                 <ActivityIndicator color="#fff" />
                 <Text style={styles.loadingText}>{t("common.loading", "Loading…")}</Text>
               </View>
@@ -530,6 +525,9 @@ export function DriverWalletScreen() {
                   disabled={loading || !canCashout}
                   style={[styles.cashoutButton, canCashout ? styles.cashoutReady : styles.cashoutDisabled]}
                   activeOpacity={0.88}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: loading || !canCashout }}
+                  accessibilityLabel={t("driver.wallet.available.cashoutButton", "Cash out")}
                 >
                   <Text style={[styles.cashoutText, !canCashout && { color: "#94A3B8" }]}>
                     {t("driver.wallet.available.cashoutButton", "Cash out")}
@@ -670,11 +668,12 @@ export function DriverWalletScreen() {
               <Text style={styles.infoTitle}>{t("driver.wallet.available.lastCashout", "Last cash out")}</Text>
               <Text style={styles.infoSub}>
                 {lastCashoutAt
-                  ? new Date(lastCashoutAt).toLocaleString(localeForDates)
+                  ? formatDateTime(lastCashoutAt, localeForDates)
                   : payoutBuckets.lastPayout
-                    ? `${fmtMoney(payoutBuckets.lastPayout.amount_cents)} • ${new Date(
+                    ? `${fmtMoney(payoutBuckets.lastPayout.amount_cents)} • ${formatDateTime(
                         payoutBuckets.lastPayout.created_at,
-                      ).toLocaleString(localeForDates)}`
+                        localeForDates,
+                      )}`
                     : t("common.dash", "—")}
               </Text>
             </View>
@@ -684,38 +683,42 @@ export function DriverWalletScreen() {
             <View style={styles.listCard}>
               <Text style={styles.listTitle}>{t("driver.wallet.payouts.title", "Recent payouts")}</Text>
               {payoutTransactions.slice(0, 8).map((item) => (
-                <View key={item.id} style={styles.listRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.listPrimary}>{fmtMoney(item.amount_cents)}</Text>
-                    <Text style={styles.listSecondary}>
-                      {item.provider} • {new Date(item.created_at).toLocaleString(localeForDates)}
-                      {item.failure_reason ? ` • ${item.failure_reason}` : ""}
-                    </Text>
-                  </View>
-                  <Text style={[styles.listStatus, { color: payoutStatusColor(item.status) }]}>
-                    {item.status}
-                  </Text>
-                </View>
+                <WalletHistoryRow
+                  key={item.id}
+                  title={fmtMoney(item.amount_cents)}
+                  meta={`${item.provider} • ${formatDateTime(item.created_at, localeForDates)}${
+                    item.failure_reason ? ` • ${item.failure_reason}` : ""
+                  }`}
+                  amount={String(item.status)}
+                  amountColor={payoutStatusColor(item.status)}
+                />
               ))}
             </View>
-          ) : null}
+          ) : (
+            <WalletEmptyState
+              title={t("driver.wallet.payouts.emptyTitle", "No payouts yet")}
+              body={t(
+                "driver.wallet.payouts.emptyBody",
+                "Completed cash outs will appear here.",
+              )}
+            />
+          )}
 
           {ledgerHistory.length > 0 ? (
             <View style={styles.listCard}>
               <Text style={styles.listTitle}>{t("driver.wallet.history.title", "Wallet history")}</Text>
               {ledgerHistory.slice(0, 8).map((item) => (
-                <View key={item.id} style={styles.listRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.listPrimary}>
-                      {item.direction === "credit" ? "+" : "-"}
-                      {fmtMoney(item.amount_cents)}
-                    </Text>
-                    <Text style={styles.listSecondary}>
-                      {item.description ?? item.reference_type} •{" "}
-                      {new Date(item.created_at).toLocaleString(localeForDates)}
-                    </Text>
-                  </View>
-                </View>
+                <WalletHistoryRow
+                  key={item.id}
+                  title={item.description ?? item.reference_type}
+                  meta={formatDateTime(item.created_at, localeForDates)}
+                  amount={`${item.direction === "credit" ? "+" : "−"}${fmtMoney(item.amount_cents)}`}
+                  amountColor={
+                    item.direction === "credit"
+                      ? financialStatusColor("paid")
+                      : financialStatusColor("pending")
+                  }
+                />
               ))}
             </View>
           ) : null}

@@ -11,6 +11,8 @@ export const WEB_LOCALE_LABELS: Record<WebLocale, string> = {
   ff: "Pulaar / Fulfulde",
 };
 
+import { TAXI_RECEIPT_EN, TAXI_RECEIPT_FR } from "./taxiReceiptMessages";
+
 type MessageTree = Record<string, string>;
 
 const EN: MessageTree = {
@@ -39,6 +41,7 @@ const EN: MessageTree = {
   "restaurant.title": "Restaurant portal",
   "seller.title": "Seller portal",
   "marketplace.title": "Marketplace",
+  ...TAXI_RECEIPT_EN,
 };
 
 const FR: MessageTree = {
@@ -67,6 +70,7 @@ const FR: MessageTree = {
   "restaurant.title": "Espace restaurant",
   "seller.title": "Espace vendeur",
   "marketplace.title": "Marketplace",
+  ...TAXI_RECEIPT_FR,
 };
 
 const ES: MessageTree = {

@@ -308,6 +308,7 @@
       "ride": "Course",
       "trip": "Trajet",
       "tripMap": "Carte du trajet",
+      "mapUnavailable": "Carte du trajet indisponible",
       "pickup": "Départ",
       "dropoff": "Arrivée",
       "wait": "Attente",
