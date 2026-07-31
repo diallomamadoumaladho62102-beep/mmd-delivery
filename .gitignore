@@ -104,3 +104,7 @@ docs/phase-integrate-e2e-report.txt
 scripts/phase-*.sh
 scripts/phase-*.mjs
 scripts/stripe-prod-*.cjs
+
+# Local official branding backup archive (do not commit binaries)
+docs/branding-archive/
+
