@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getBearerToken, getSupabaseAdminClient, getSupabaseUserClient, mmdLocationJson } from "@/lib/mmdLocationCore";
 import { buildDriverWalletSummary } from "@/lib/driverWalletService";
+import { MONEY_OUT_MODEL } from "@/lib/finance/moneyOutArchitecture";
 import {
   buildRestaurantWalletSummary,
   buildSellerWalletSummary,
@@ -20,6 +21,9 @@ const ACCOUNT_TYPES = new Set<WalletAccountType>([
   "partner",
   "client",
 ]);
+
+const CLIENT_WALLET_NOTE =
+  "Personal clients use MMD credit for checkout discounts. The ledger shows payment activity (charges and refunds). There is no Connect cashout; top-up is Business-wallet only.";
 
 export async function GET(req: NextRequest) {
   const token = getBearerToken(req);
@@ -74,6 +78,64 @@ export async function GET(req: NextRequest) {
         countryCode
       );
       return mmdLocationJson({ ok: true, ...summary });
+    }
+
+    if (accountType === "client") {
+      const userId = data.user.id;
+      const [balanceCents, availableRes, ledgerRes] = await Promise.all([
+        getWalletBalance(supabaseAdmin, "client", userId, currency),
+        supabaseAdmin.rpc("mmd_credit_available_cents", { p_user_id: userId }),
+        supabaseAdmin
+          .from("wallet_ledger")
+          .select("direction, amount_cents, reference_type")
+          .eq("account_type", "client")
+          .eq("account_user_id", userId)
+          .limit(500),
+      ]);
+
+      if (availableRes.error) {
+        throw new Error(availableRes.error.message);
+      }
+      if (ledgerRes.error && ledgerRes.error.code !== "42P01") {
+        throw new Error(ledgerRes.error.message);
+      }
+
+      const availableRaw = availableRes.data;
+      const availableCents =
+        availableRaw != null && Number.isFinite(Number(availableRaw))
+          ? Math.max(0, Math.round(Number(availableRaw)))
+          : 0;
+
+      let refundedCents = 0;
+      let creditsCents = 0;
+      let debitsCents = 0;
+      for (const row of ledgerRes.data ?? []) {
+        const amt = Math.max(0, Math.round(Number((row as { amount_cents?: unknown }).amount_cents ?? 0)));
+        const direction = String((row as { direction?: unknown }).direction ?? "").toLowerCase();
+        const refType = String((row as { reference_type?: unknown }).reference_type ?? "").toLowerCase();
+        if (direction === "credit") {
+          creditsCents += amt;
+          if (refType.includes("refund")) refundedCents += amt;
+        } else if (direction === "debit") {
+          debitsCents += amt;
+        }
+      }
+
+      return mmdLocationJson({
+        ok: true,
+        account_type: "client",
+        country_code: countryCode,
+        currency,
+        balance_cents: balanceCents,
+        available_cents: availableCents,
+        refunded_cents: refundedCents,
+        credits_cents: creditsCents,
+        debits_cents: debitsCents,
+        can_cashout: false,
+        cashout_block_reason: "client_spend_wallet",
+        note: CLIENT_WALLET_NOTE,
+        money_out_model: MONEY_OUT_MODEL,
+      });
     }
 
     const balanceCents = await getWalletBalance(

@@ -86,7 +86,9 @@ export type ClientHomeV4ViewProps = {
   onNavigateDelivery: () => void;
   onNavigateMarketplace: () => void;
   onNavigateInbox: () => void;
+  onNavigateNotifications?: () => void;
   onNavigateProfile: () => void;
+  onNavigateSettings?: () => void;
   onNavigateOrders: () => void;
   onNavigateRewards: () => void;
   onNavigateMmdPlus: () => void;
@@ -345,7 +347,10 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
             </View>
             <View style={styles.onlineDot} />
           </View>
-          <PressCard onPress={props.onNavigateInbox} style={styles.iconBtn}>
+          <PressCard
+            onPress={props.onNavigateNotifications ?? props.onNavigateInbox}
+            style={styles.iconBtn}
+          >
             <Ionicons name="notifications-outline" size={17} color={V4.textPrimary} />
             {props.activeOrdersCount > 0 ? <View style={styles.notifDot} /> : null}
           </PressCard>
@@ -521,7 +526,7 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
           </View>
         ) : null}
 
-        {/* MMD Rewards */}
+        {/* MMD Rewards + Wallet */}
         <PressCard onPress={props.onNavigateRewards} style={styles.rewardsCard}>
           <Text style={styles.rewardsEyebrow}>
             {props.ts("client.home.rewards.title", "MMD Rewards")}
@@ -558,6 +563,27 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
               <Ionicons name="chevron-forward" size={14} color={V4.green} />
             </View>
           </View>
+        </PressCard>
+
+        <PressCard
+          onPress={props.onNavigateWallet ?? props.onNavigateRewards}
+          style={styles.walletNearLoyalty}
+        >
+          <View style={styles.walletNearLoyaltyLeft}>
+            <Ionicons name="wallet-outline" size={18} color={V4.green} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.walletNearLoyaltyTitle}>
+                {props.ts("client.home.wallet.title", "Wallet")}
+              </Text>
+              <Text style={styles.walletNearLoyaltySub} numberOfLines={1}>
+                {props.ts(
+                  "client.home.wallet.subtitle",
+                  "MMD credit & payment history",
+                )}
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={14} color={V4.green} />
         </PressCard>
 
         {/* Recent activity */}
@@ -649,9 +675,14 @@ export function ClientHomeV4View(props: ClientHomeV4ViewProps) {
           <Ionicons name="chatbubble-ellipses-outline" size={22} color={V4.textSoft} />
           <Text style={styles.tabLabel}>{props.ts("client.home.tabs.inbox", "Inbox")}</Text>
         </PressCard>
-        <PressCard onPress={props.onNavigateProfile} style={styles.tabItem}>
-          <Ionicons name="person-outline" size={22} color={V4.textSoft} />
-          <Text style={styles.tabLabel}>{props.ts("client.home.tabs.account", "Account")}</Text>
+        <PressCard
+          onPress={props.onNavigateSettings ?? props.onNavigateProfile}
+          style={styles.tabItem}
+        >
+          <Ionicons name="settings-outline" size={22} color={V4.textSoft} />
+          <Text style={styles.tabLabel}>
+            {props.ts("client.home.tabs.settings", "Settings")}
+          </Text>
         </PressCard>
       </View>
 
@@ -949,6 +980,37 @@ const styles = StyleSheet.create({
   },
   progressFill: { height: "100%", backgroundColor: V4.green, borderRadius: 999 },
   rewardsLinkRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 2 },
+  walletNearLoyalty: {
+    marginTop: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: V4.border,
+    backgroundColor: V4.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  walletNearLoyaltyLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minWidth: 0,
+  },
+  walletNearLoyaltyTitle: {
+    color: V4.textPrimary,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  walletNearLoyaltySub: {
+    color: V4.textSoft,
+    fontWeight: "600",
+    fontSize: 12,
+    marginTop: 2,
+  },
   activityRow: {
     flexDirection: "row",
     alignItems: "center",

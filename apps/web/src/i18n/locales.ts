@@ -12,6 +12,7 @@ export const WEB_LOCALE_LABELS: Record<WebLocale, string> = {
 };
 
 import { TAXI_RECEIPT_EN, TAXI_RECEIPT_FR } from "./taxiReceiptMessages";
+import { ORDER_RECEIPT_EN, ORDER_RECEIPT_FR } from "./orderReceiptMessages";
 
 type MessageTree = Record<string, string>;
 
@@ -42,6 +43,7 @@ const EN: MessageTree = {
   "seller.title": "Seller portal",
   "marketplace.title": "Marketplace",
   ...TAXI_RECEIPT_EN,
+  ...ORDER_RECEIPT_EN,
 };
 
 const FR: MessageTree = {
@@ -71,6 +73,7 @@ const FR: MessageTree = {
   "seller.title": "Espace vendeur",
   "marketplace.title": "Marketplace",
   ...TAXI_RECEIPT_FR,
+  ...ORDER_RECEIPT_FR,
 };
 
 const ES: MessageTree = {

@@ -274,6 +274,148 @@ export async function buildEntityFinancialTimeline(
     }
   }
 
+  if (entityType === "order") {
+    const { data: order } = await supabaseAdmin
+      .from("orders")
+      .select(
+        "id,total,total_cents,net_charge_cents,grand_total,currency,payment_status,refund_status,stripe_payment_intent_id,tip_cents,mmd_credit_applied_cents,paid_at,created_at,updated_at"
+      )
+      .eq("id", entityId)
+      .maybeSingle();
+
+    if (order) {
+      const currency = String(order.currency ?? "USD");
+      const amount = Math.round(
+        Number(
+          order.net_charge_cents ??
+            order.total_cents ??
+            (Number(order.grand_total ?? order.total ?? 0) * 100)
+        ) || 0
+      );
+      if (order.paid_at || order.payment_status === "paid") {
+        events.push({
+          id: `ord_pay_${order.id}`,
+          kind: "payment_intent",
+          status: String(order.payment_status ?? "paid"),
+          amount_cents: amount,
+          currency,
+          direction: "debit",
+          title_key: "finance.event.payment",
+          title_fallback: "Payment",
+          entity_type: "order",
+          entity_id: entityId,
+          occurred_at: String(order.paid_at ?? order.created_at),
+          references: {
+            payment_intent_id: order.stripe_payment_intent_id
+              ? String(order.stripe_payment_intent_id)
+              : null,
+          },
+        });
+      }
+      if (Number(order.mmd_credit_applied_cents ?? 0) > 0) {
+        events.push({
+          id: `ord_credit_${order.id}`,
+          kind: "credit",
+          status: "applied",
+          amount_cents: Math.round(Number(order.mmd_credit_applied_cents)),
+          currency,
+          direction: "credit",
+          title_key: "finance.event.wallet_credit",
+          title_fallback: "Wallet credit",
+          entity_type: "order",
+          entity_id: entityId,
+          occurred_at: String(order.paid_at ?? order.created_at),
+        });
+      }
+      if (Number(order.tip_cents ?? 0) > 0) {
+        events.push({
+          id: `ord_tip_${order.id}`,
+          kind: "tip",
+          status: "paid",
+          amount_cents: Math.round(Number(order.tip_cents)),
+          currency,
+          direction: "debit",
+          title_key: "finance.event.tip",
+          title_fallback: "Tip",
+          entity_type: "order",
+          entity_id: entityId,
+          occurred_at: String(order.updated_at ?? order.created_at),
+        });
+      }
+      if (order.refund_status) {
+        events.push({
+          id: `ord_refund_${order.id}`,
+          kind: "refund",
+          status: String(order.refund_status),
+          amount_cents: amount,
+          currency,
+          direction: "credit",
+          title_key: "finance.event.refund",
+          title_fallback: "Refund",
+          entity_type: "order",
+          entity_id: entityId,
+          occurred_at: String(order.updated_at ?? order.created_at),
+        });
+      }
+    }
+  }
+
+  if (entityType === "delivery_request") {
+    const { data: request } = await supabaseAdmin
+      .from("delivery_requests")
+      .select(
+        "id,total,total_cents,net_charge_cents,currency,payment_status,stripe_payment_intent_id,mmd_credit_applied_cents,paid_at,created_at,updated_at"
+      )
+      .eq("id", entityId)
+      .maybeSingle();
+
+    if (request) {
+      const currency = String(request.currency ?? "USD");
+      const amount = Math.round(
+        Number(
+          request.net_charge_cents ??
+            request.total_cents ??
+            (Number(request.total ?? 0) * 100)
+        ) || 0
+      );
+      if (request.paid_at || request.payment_status === "paid") {
+        events.push({
+          id: `dr_pay_${request.id}`,
+          kind: "payment_intent",
+          status: String(request.payment_status ?? "paid"),
+          amount_cents: amount,
+          currency,
+          direction: "debit",
+          title_key: "finance.event.payment",
+          title_fallback: "Payment",
+          entity_type: "delivery_request",
+          entity_id: entityId,
+          occurred_at: String(request.paid_at ?? request.created_at),
+          references: {
+            payment_intent_id: request.stripe_payment_intent_id
+              ? String(request.stripe_payment_intent_id)
+              : null,
+          },
+        });
+      }
+      if (Number(request.mmd_credit_applied_cents ?? 0) > 0) {
+        events.push({
+          id: `dr_credit_${request.id}`,
+          kind: "credit",
+          status: "applied",
+          amount_cents: Math.round(Number(request.mmd_credit_applied_cents)),
+          currency,
+          direction: "credit",
+          title_key: "finance.event.wallet_credit",
+          title_fallback: "Wallet credit",
+          entity_type: "delivery_request",
+          entity_id: entityId,
+          occurred_at: String(request.paid_at ?? request.created_at),
+        });
+      }
+    }
+  }
+
   if (entityType === "business_account") {
     const { data: entries } = await supabaseAdmin
       .from("taxi_business_wallet_entries")

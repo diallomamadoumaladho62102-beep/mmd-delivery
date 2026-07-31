@@ -15,6 +15,9 @@ export type WalletSummaryResponse = {
   paid_out_cents?: number;
   platform_fees_cents?: number;
   refunded_cents?: number;
+  /** Client ledger display helpers (optional). */
+  credits_cents?: number;
+  debits_cents?: number;
   note?: string | null;
   minimum_payout_cents?: number;
   cashout_blocked_today?: boolean;
@@ -26,6 +29,7 @@ export type WalletSummaryResponse = {
   stripe_status_message?: string;
   can_cashout?: boolean;
   cashout_block_reason?: string | null;
+  money_out_model?: Record<string, string>;
   error?: string;
 };
 

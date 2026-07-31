@@ -661,5 +661,47 @@
     "errors": {
       "deliveryShareInvalid": "La configuration de livraison est temporairement indisponible. Réessayez plus tard ou contactez le support."
     }
+  },
+  "order": {
+    "receipt": {
+      "title": "Reçu",
+      "view": "Voir le reçu",
+      "invoice": "Facture",
+      "order": "Commande",
+      "package": "Colis",
+      "delivery": "Livraison",
+      "tripMap": "Carte de livraison",
+      "mapUnavailable": "Carte de livraison indisponible",
+      "pickup": "Enlèvement",
+      "dropoff": "Livraison",
+      "restaurant": "Restaurant",
+      "driver": "Chauffeur",
+      "payment": "Paiement",
+      "totalPaid": "Total payé",
+      "history": "Historique financier",
+      "support": "Support",
+      "helpCenter": "Centre d'aide",
+      "actions": "Actions",
+      "downloadPdf": "Télécharger le PDF",
+      "share": "Partager",
+      "contactSupport": "Contacter le support",
+      "paymentRef": "Référence de paiement",
+      "businessWallet": "Portefeuille entreprise",
+      "card": "Carte",
+      "loadFailed": "Impossible de charger le reçu",
+      "missingId": "Identifiant manquant",
+      "emptyTitle": "Aucun reçu",
+      "emptyBody": "Cette commande n'a pas encore de reçu.",
+      "pdfFailed": "Impossible de créer le PDF",
+      "fare": {
+        "subtotal": "Sous-total",
+        "tax": "Taxes",
+        "serviceFee": "Frais de service",
+        "deliveryFee": "Frais de livraison",
+        "promo": "Promotion",
+        "walletCredit": "Crédit portefeuille",
+        "tip": "Pourboire"
+      }
+    }
   }
 }

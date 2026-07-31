@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import Constants from "expo-constants";
 import ScreenHeader from "../../components/navigation/ScreenHeader";
 import { supabase } from "../../lib/supabase";
 import { getApiBaseUrl } from "../../lib/apiBase";
@@ -347,6 +348,25 @@ export default function BusinessWalletScreen() {
               <TouchableOpacity style={styles.linkBtn} onPress={() => void onConnect()}>
                 <Text style={styles.linkLabel}>
                   {t("business.wallet.connect", "Manage Stripe Connect")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.linkBtn}
+                onPress={() => {
+                  const extra = (Constants.expoConfig?.extra as Record<string, unknown>) ?? {};
+                  const webBase = String(
+                    extra.EXPO_PUBLIC_WEB_BASE_URL ||
+                      (typeof process !== "undefined"
+                        ? process.env?.EXPO_PUBLIC_WEB_BASE_URL
+                        : "") ||
+                      getApiBaseUrl() ||
+                      "https://www.mmddelivery.com"
+                  ).replace(/\/$/, "");
+                  void WebBrowser.openBrowserAsync(`${webBase}/business`);
+                }}
+              >
+                <Text style={styles.linkLabel}>
+                  {t("business.wallet.manageTeam", "Manage team")}
                 </Text>
               </TouchableOpacity>
             </View>

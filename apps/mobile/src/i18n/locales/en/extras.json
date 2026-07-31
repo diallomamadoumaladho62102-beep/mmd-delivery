@@ -671,5 +671,47 @@
     "errors": {
       "deliveryShareInvalid": "Delivery pricing is temporarily unavailable. Please try again later or contact support."
     }
+  },
+  "order": {
+    "receipt": {
+      "title": "Receipt",
+      "view": "View receipt",
+      "invoice": "Invoice",
+      "order": "Order",
+      "package": "Package",
+      "delivery": "Delivery",
+      "tripMap": "Delivery map",
+      "mapUnavailable": "Delivery map unavailable",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff",
+      "restaurant": "Restaurant",
+      "driver": "Driver",
+      "payment": "Payment",
+      "totalPaid": "Total paid",
+      "history": "Financial history",
+      "support": "Support",
+      "helpCenter": "Help center",
+      "actions": "Actions",
+      "downloadPdf": "Download PDF",
+      "share": "Share",
+      "contactSupport": "Contact support",
+      "paymentRef": "Payment ref",
+      "businessWallet": "Business wallet",
+      "card": "Card",
+      "loadFailed": "Unable to load receipt",
+      "missingId": "Missing id",
+      "emptyTitle": "No receipt",
+      "emptyBody": "This order has no receipt yet.",
+      "pdfFailed": "Unable to create PDF",
+      "fare": {
+        "subtotal": "Subtotal",
+        "tax": "Tax",
+        "serviceFee": "Service fee",
+        "deliveryFee": "Delivery fee",
+        "promo": "Promotion",
+        "walletCredit": "Wallet credit",
+        "tip": "Tip"
+      }
+    }
   }
 }

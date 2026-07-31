@@ -1927,6 +1927,27 @@ export function ClientOrderDetailsScreen() {
               </Card>
             )}
 
+            {(isPaid || order.status === "delivered") && (
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate("FoodOrderReceipt", { orderId: order.id })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={ts("order.receipt.title", "Receipt")}
+                style={{
+                  marginBottom: 14,
+                  backgroundColor: "#22C55E",
+                  borderRadius: 16,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#052E16", fontWeight: "900", fontSize: 15 }}>
+                  {ts("order.receipt.view", "View receipt")}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
               <Card style={{ flex: 1, minWidth: 260 }}>
                 <Text style={{ color: "white", fontSize: 14, fontWeight: "900", marginBottom: 10 }}>

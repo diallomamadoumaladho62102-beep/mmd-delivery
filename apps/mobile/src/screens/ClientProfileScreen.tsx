@@ -570,6 +570,35 @@ export function ClientProfileScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 40 }}
         >
+        <TouchableOpacity
+          onPress={() => navigation.navigate("ClientSettings")}
+          activeOpacity={0.85}
+          style={{
+            marginBottom: 14,
+            backgroundColor: "#0B1220",
+            borderColor: "#1E293B",
+            borderWidth: 1,
+            borderRadius: 14,
+            paddingVertical: 14,
+            paddingHorizontal: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <View>
+            <Text style={{ color: "#E5E7EB", fontWeight: "900", fontSize: 15 }}>
+              {t("client.profile.openSettings", "Settings")}
+            </Text>
+            <Text style={{ color: "#94A3B8", fontWeight: "700", marginTop: 3, fontSize: 12 }}>
+              {t(
+                "client.profile.openSettingsHint",
+                "Language, notifications, security & more"
+              )}
+            </Text>
+          </View>
+          <Text style={{ color: "#93C5FD", fontWeight: "900", fontSize: 20 }}>›</Text>
+        </TouchableOpacity>
 
         {/* Avatar */}
         <View

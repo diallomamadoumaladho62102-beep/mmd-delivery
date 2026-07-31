@@ -1323,6 +1323,33 @@ export function ClientDeliveryRequestDetailsScreen() {
             </View>
           </View>
 
+          {(String(data.payment_status ?? "").toLowerCase() === "paid" ||
+            ["delivered", "completed"].includes(
+              String(data.status ?? "").toLowerCase()
+            )) && (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("DeliveryRequestReceipt", {
+                  deliveryRequestId: data.requestId,
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={t("order.receipt.title", "Receipt")}
+              activeOpacity={0.85}
+              style={{
+                marginBottom: 14,
+                backgroundColor: "#22C55E",
+                borderRadius: 16,
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "#052E16", fontWeight: "900", fontSize: 15 }}>
+                {t("order.receipt.view", "View receipt")}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {canCancel && (
             <View style={{ marginBottom: 14 }}>
               <TouchableOpacity

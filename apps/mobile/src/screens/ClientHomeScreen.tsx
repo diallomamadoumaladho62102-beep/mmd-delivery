@@ -1413,7 +1413,13 @@ export function ClientHomeScreen() {
         onNavigateDelivery={() => navigation.navigate("DeliveryRequest" as never)}
         onNavigateMarketplace={handleNavigateMarketplace}
         onNavigateInbox={() => navigation.navigate("ClientInbox" as never)}
+        onNavigateNotifications={() =>
+          navigation.navigate("ClientNotificationCenter" as never)
+        }
         onNavigateProfile={() => navigation.navigate("ClientProfile" as never)}
+        onNavigateSettings={() =>
+          navigation.navigate("ClientSettings" as never)
+        }
         onNavigateOrders={handleOpenFeaturedOrder}
         onNavigateRewards={() =>
           navigation.navigate("LoyaltyHub", { role: "client" })
@@ -1423,7 +1429,7 @@ export function ClientHomeScreen() {
           navigation.navigate("MmdAi", { source: "home_tab" })
         }
         onNavigateWallet={() =>
-          navigation.navigate("LoyaltyHub", { role: "client" })
+          navigation.navigate("ClientWallet" as never)
         }
         onOpenOrder={(item) => handleOpenOrderItem(item as ClientItem)}
         onOpenChat={handleOpenChat}

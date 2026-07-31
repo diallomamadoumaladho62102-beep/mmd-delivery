@@ -76,6 +76,11 @@ export type RootStackParamList = {
   RestaurantAuth: undefined;
 
   ClientProfile: undefined;
+  ClientWallet: undefined;
+  ClientSettings: undefined;
+  ClientSecurity: undefined;
+  ClientNotificationCenter: undefined;
+  DriverNotificationCenter: undefined;
   DeleteAccount: { role: "client" | "driver" | "restaurant" };
   LocationPickerTest: undefined;
   MMDLocationPicker: {
@@ -180,6 +185,8 @@ export type RootStackParamList = {
   TaxiRideTracking: { rideId: string };
   TaxiTip: { rideId: string };
   TaxiReceipt: { rideId: string };
+  FoodOrderReceipt: { orderId: string };
+  DeliveryRequestReceipt: { deliveryRequestId: string };
   BusinessWallet: { businessAccountId?: string } | undefined;
   RestaurantWallet: undefined;
   TaxiHistory: undefined;
@@ -631,6 +638,10 @@ export function AppNavigator({
       r === "Promotions" ||
       r === "MmdAi" ||
       r === "ClientProfile" ||
+      r === "ClientWallet" ||
+      r === "ClientSettings" ||
+      r === "ClientSecurity" ||
+      r === "ClientNotificationCenter" ||
       r === "DeleteAccount" ||
       (__DEV__ ? r === "LocationPickerTest" : false) ||
       r === "MMDLocationPicker" ||
@@ -639,6 +650,8 @@ export function AppNavigator({
       r === "TaxiRideTracking" ||
       r === "TaxiTip" ||
       r === "TaxiReceipt" ||
+      r === "FoodOrderReceipt" ||
+      r === "DeliveryRequestReceipt" ||
       r === "BusinessWallet" ||
       r === "RestaurantWallet" ||
       r === "TaxiHistory" ||
@@ -690,7 +703,8 @@ export function AppNavigator({
       r === "DriverBenefits" ||
       r === "DriverServices" ||
       r === "DriverVehicles" ||
-      r === "DriverVehicle"
+      r === "DriverVehicle" ||
+      r === "DriverNotificationCenter"
     );
   }, []);
 
@@ -1149,6 +1163,38 @@ export function AppNavigator({
           }
         />
         <Stack.Screen
+          name="ClientWallet"
+          getComponent={() =>
+            require("../screens/ClientWalletScreen").default
+          }
+        />
+        <Stack.Screen
+          name="ClientSettings"
+          getComponent={() =>
+            require("../screens/ClientSettingsScreen").ClientSettingsScreen
+          }
+        />
+        <Stack.Screen
+          name="ClientSecurity"
+          getComponent={() =>
+            require("../screens/ClientSecurityScreen").ClientSecurityScreen
+          }
+        />
+        <Stack.Screen
+          name="ClientNotificationCenter"
+          getComponent={() =>
+            require("../screens/ClientNotificationCenterScreen")
+              .ClientNotificationCenterScreen
+          }
+        />
+        <Stack.Screen
+          name="DriverNotificationCenter"
+          getComponent={() =>
+            require("../screens/ClientNotificationCenterScreen")
+              .DriverNotificationCenterScreen
+          }
+        />
+        <Stack.Screen
           name="DeleteAccount"
           getComponent={() =>
             require("../screens/DeleteAccountScreen").DeleteAccountScreen
@@ -1344,6 +1390,18 @@ export function AppNavigator({
           name="TaxiReceipt"
           getComponent={() =>
             require("../screens/taxi/TaxiReceiptScreen").default
+          }
+        />
+        <Stack.Screen
+          name="FoodOrderReceipt"
+          getComponent={() =>
+            require("../screens/FoodOrderReceiptScreen").default
+          }
+        />
+        <Stack.Screen
+          name="DeliveryRequestReceipt"
+          getComponent={() =>
+            require("../screens/DeliveryRequestReceiptScreen").default
           }
         />
         <Stack.Screen

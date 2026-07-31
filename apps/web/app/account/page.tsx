@@ -380,12 +380,20 @@ export default function AccountPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="px-3 py-1.5 rounded-full border text-xs"
-          >
-            Se déconnecter
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            <button
+              onClick={() => router.push("/account/notifications")}
+              className="px-3 py-1.5 rounded-full border text-xs"
+            >
+              Notifications
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1.5 rounded-full border text-xs"
+            >
+              Se déconnecter
+            </button>
+          </div>
         </div>
 
         <div className="border rounded-xl p-4 space-y-2">
