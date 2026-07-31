@@ -6,7 +6,7 @@ Status as of the final product-polish pass. Code may be ready while **founders /
 
 | Item | Evidence |
 |------|----------|
-| High-frequency dispatch | GitHub Actions `Production dispatch crons` every 3 min — recent runs **success** |
+| High-frequency dispatch | GitHub Actions `Production dispatch crons` every 3 min — recent runs **success**. Set `EXTERNAL_DISPATCH_CRON_CONFIGURED=true` in Vercel when documenting cert status (ops sign-off; code already live). |
 | Daily money / ops | Vercel Hobby crons (`daily-money`, `daily-ops`) |
 | Food / Taxi / Package Stripe pay-then-create | Live on `main` |
 | Stripe Connect hybrid payouts (food/taxi) | Code path live-capable; Edge batch disabled by default |

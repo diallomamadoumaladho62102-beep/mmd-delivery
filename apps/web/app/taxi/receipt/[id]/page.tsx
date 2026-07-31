@@ -10,6 +10,7 @@ import {
   formatDurationMinutes,
   formatMoneyFromCents,
 } from "@/i18n/formatters";
+import { ReceiptPrintBar } from "@/components/ReceiptPrintBar";
 
 type Receipt = {
   company: {
@@ -159,6 +160,7 @@ export default function TaxiReceiptWebPage() {
         color: "#0f172a",
       }}
     >
+      <ReceiptPrintBar label={t("taxi.receipt.print")} />
       <header
         style={{
           borderBottom: "2px solid #0f172a",
