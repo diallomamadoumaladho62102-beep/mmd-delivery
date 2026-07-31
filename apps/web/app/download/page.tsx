@@ -41,7 +41,7 @@ export default function DownloadPage() {
           }}
         >
           <Image
-            src="/brand/mmd-logo.png"
+            src="/brand/mmd-logo-transparent-v2.png"
             alt="MMD Delivery"
             width={240}
             height={160}
@@ -49,9 +49,8 @@ export default function DownloadPage() {
             style={{
               width: 240,
               height: 160,
-              borderRadius: 36,
               objectFit: "contain",
-              boxShadow: "0 16px 50px rgba(249,115,22,0.35)",
+              filter: "drop-shadow(0 14px 28px rgba(0,0,0,0.5))",
             }}
           />
 

@@ -22,12 +22,12 @@ export default function GlobalError({
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16 text-center text-white">
       <div className="max-w-lg">
         <Image
-          src="/brand/mmd-logo.png"
+          src="/brand/mmd-logo-transparent-v2.png"
           alt="MMD Delivery — We Deliver With Heart"
           width={280}
           height={181}
           priority
-          className="mx-auto h-auto w-60 rounded-xl bg-white object-contain shadow-2xl"
+          className="mx-auto h-auto w-60 object-contain drop-shadow-[0_10px_22px_rgba(0,0,0,0.55)]"
         />
         <p className="mt-8 text-sm font-semibold uppercase tracking-[0.16em] text-red-300">
           Error 500

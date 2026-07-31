@@ -18,6 +18,7 @@ import {
 import { CANONICAL_SITE_ORIGIN } from "@/lib/productionSite";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
+  resolveSiteLogo,
   siteChipClass,
   siteContainerClass,
   siteGradientTextClass,
@@ -101,7 +102,7 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
   const tagline =
     settings.tagline ||
     "A modern platform for taxi, food, packages, marketplace shopping, and business logistics.";
-  const logo = settings.logo_url || siteTheme.logoSrc;
+  const logo = resolveSiteLogo(settings.logo_url);
 
   return (
     <section className="border-b border-white/5">
@@ -113,9 +114,9 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
             <SiteImage
               src={logo}
               alt={`${brand} — ${slogan}`}
-              width={96}
-              height={64}
-              className="h-16 w-24 rounded-xl bg-white object-contain shadow-lg shadow-orange-500/25 ring-1 ring-white/20"
+              width={112}
+              height={72}
+              className="h-[4.5rem] w-28 object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)]"
               priority
             />
             <div>

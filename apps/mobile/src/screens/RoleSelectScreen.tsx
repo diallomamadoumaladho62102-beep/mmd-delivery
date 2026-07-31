@@ -239,7 +239,6 @@ export function RoleSelectScreen() {
               width: 180,
               height: 116,
               marginBottom: 16,
-              borderRadius: 18,
             }}
             resizeMode="contain"
           />

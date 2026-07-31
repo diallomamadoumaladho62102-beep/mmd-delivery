@@ -94,12 +94,12 @@ export default function AuthPage() {
           <section className="flex flex-col justify-center bg-gray-900 px-6 py-8 text-white md:px-10 md:py-12">
             <div className="mb-6">
               <Image
-                src="/brand/mmd-logo.png"
+                src="/brand/mmd-logo-transparent-v2.png"
                 alt="MMD Delivery — We Deliver With Heart"
                 width={156}
                 height={104}
                 priority
-                className="h-24 w-36 rounded-2xl bg-white object-contain shadow-lg shadow-orange-500/20"
+                className="h-24 w-36 object-contain drop-shadow-[0_7px_14px_rgba(0,0,0,0.5)]"
               />
             </div>
 

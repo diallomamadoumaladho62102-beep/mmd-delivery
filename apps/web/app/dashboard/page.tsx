@@ -87,12 +87,12 @@ export default function DashboardHubPage() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[#040716] text-slate-300">
         <Image
-          src="/brand/mmd-logo.png"
+          src="/brand/mmd-logo-transparent-v2.png"
           alt="MMD Delivery"
           width={180}
           height={116}
           priority
-          className="h-auto w-44 rounded-xl bg-white object-contain"
+          className="h-auto w-44 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.5)]"
         />
         <span>Loading…</span>
       </main>
@@ -103,12 +103,12 @@ export default function DashboardHubPage() {
     <main className="min-h-screen bg-[#040716] px-4 py-12 text-white">
       <div className="mx-auto max-w-3xl">
         <Image
-          src="/brand/mmd-logo.png"
+          src="/brand/mmd-logo-transparent-v2.png"
           alt="MMD Delivery — We Deliver With Heart"
           width={180}
           height={116}
           priority
-          className="mb-6 h-auto w-44 rounded-xl bg-white object-contain"
+          className="mb-6 h-auto w-44 object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.5)]"
         />
         <p className="text-sm font-semibold uppercase tracking-[0.14em] text-orange-300">
           MMD Delivery

@@ -6,6 +6,7 @@ import type { SiteMenuItem, SiteSettingsPayload } from "@/lib/siteCms";
 import NewsletterForm from "./NewsletterForm";
 import SiteImage from "./SiteImage";
 import {
+  resolveSiteLogo,
   siteContainerClass,
   siteCssVars,
   siteLinkClass,
@@ -41,7 +42,7 @@ export default function SiteShell({
   overlays = [],
 }: SiteShellProps) {
   const brand = settings.brand_name || siteTheme.brandName;
-  const logo = settings.logo_url || siteTheme.logoSrc;
+  const logo = resolveSiteLogo(settings.logo_url);
   const slogan = settings.slogan || "We Deliver With Heart";
   const [navOpen, setNavOpen] = useState(false);
   const navId = useId();
@@ -157,9 +158,9 @@ export default function SiteShell({
             <SiteImage
               src={logo}
               alt={`${brand} — ${slogan}`}
-              width={96}
-              height={64}
-              className="h-14 w-[5.25rem] rounded-xl bg-white object-contain shadow-lg shadow-orange-500/25 ring-1 ring-white/20 sm:h-16 sm:w-24"
+              width={104}
+              height={67}
+              className="h-14 w-[5.5rem] object-contain drop-shadow-[0_5px_10px_rgba(0,0,0,0.45)] sm:h-16 sm:w-[6.5rem]"
               priority
             />
             <span className="min-w-0">
@@ -250,9 +251,9 @@ export default function SiteShell({
                 <SiteImage
                   src={logo}
                   alt={`${brand} — ${slogan}`}
-                  width={80}
-                  height={52}
-                  className="h-[3.25rem] w-20 rounded-lg bg-white object-contain ring-1 ring-white/15"
+                  width={88}
+                  height={57}
+                  className="h-[3.25rem] w-[5.5rem] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.45)]"
                 />
                 <div>
                   <span className="block font-semibold text-white">{brand}</span>

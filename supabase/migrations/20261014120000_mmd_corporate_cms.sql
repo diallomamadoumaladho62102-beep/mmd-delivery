@@ -302,7 +302,7 @@ values (
     'support_phone', '+1 (929) 492-4563',
     'support_phone_tel', '+19294924563',
     'address', 'United States',
-    'logo_url', '/brand/mmd-logo.png',
+    'logo_url', '/brand/mmd-logo-transparent-v2.png',
     'hero_image_url', '/brand/hero/hero-rider.webp',
     'store_links', jsonb_build_object(
       'ios', 'https://www.mmddelivery.com/download',

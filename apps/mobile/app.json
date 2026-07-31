@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#050816"
     },
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
@@ -81,7 +81,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "monochromeImage": "./assets/monochrome-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#050816"
       },
       "permissions": [
         "INTERNET",

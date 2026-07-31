@@ -203,7 +203,7 @@ export default ({ config }) => {
     splash: {
       image: "./apps/mobile/assets/splash-logo.png",
       resizeMode: "contain",
-      backgroundColor: "#ffffff",
+      backgroundColor: "#050816",
     },
 
     ios: {
@@ -275,7 +275,7 @@ export default ({ config }) => {
       adaptiveIcon: {
         foregroundImage: "./apps/mobile/assets/adaptive-icon.png",
         monochromeImage: "./apps/mobile/assets/monochrome-icon.png",
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "#050816",
       },
     },
 

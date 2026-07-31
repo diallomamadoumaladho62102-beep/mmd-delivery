@@ -24,9 +24,9 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [
         { url: "/icon.png", type: "image/png", sizes: "128x128" },
-        { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
-        { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
-        { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
+          { url: "/favicon-transparent-v2-16.png", type: "image/png", sizes: "16x16" },
+          { url: "/favicon-transparent-v2-32.png", type: "image/png", sizes: "32x32" },
+          { url: "/favicon-transparent-v2-48.png", type: "image/png", sizes: "48x48" },
       ],
       apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
     },
@@ -36,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: webT("app.description", locale),
       images: [
         {
-          url: "/brand/og-default.png",
+              url: "/brand/og-transparent-v2.png",
           width: 1200,
           height: 630,
           alt: "MMD Delivery — We Deliver With Heart",
@@ -47,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
       title: webT("app.title", locale),
       description: webT("app.description", locale),
-      images: ["/brand/twitter-card.png"],
+      images: ["/brand/twitter-transparent-v2.png"],
     },
   };
 }

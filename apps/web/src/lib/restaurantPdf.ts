@@ -66,10 +66,8 @@ async function loadLogoPngBytes(): Promise<Uint8Array | null> {
   const cwd = process.cwd();
 
   const candidates = [
-    path.join(cwd, "apps", "web", "public", "brand", "mmd-logo.png"),
-    path.join(cwd, "public", "brand", "mmd-logo.png"),
-    path.join(cwd, "apps", "web", "public", "mmd-logo.png"),
-    path.join(cwd, "public", "mmd-logo.png"),
+    path.join(cwd, "apps", "web", "public", "brand", "mmd-logo-transparent-v2.png"),
+    path.join(cwd, "public", "brand", "mmd-logo-transparent-v2.png"),
   ];
 
   for (const filePath of candidates) {

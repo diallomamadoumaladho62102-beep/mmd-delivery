@@ -434,7 +434,6 @@ export function RestaurantAuthScreen() {
                 width: 180,
                 height: 116,
                 alignSelf: "center",
-                borderRadius: 18,
                 marginBottom: 20,
               }}
               resizeMode="contain"

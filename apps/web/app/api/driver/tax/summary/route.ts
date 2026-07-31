@@ -173,10 +173,8 @@ async function loadLogoPngBytes(): Promise<Uint8Array | null> {
   if (envPath) candidates.push(envPath);
 
   const cwd = process.cwd();
-  candidates.push(path.join(cwd, "public", "brand", "mmd-logo.png"));
-  candidates.push(path.join(cwd, "public", "mmd-logo.png"));
-  candidates.push(path.join(cwd, "apps", "web", "public", "brand", "mmd-logo.png"));
-  candidates.push(path.join(cwd, "apps", "web", "public", "mmd-logo.png"));
+  candidates.push(path.join(cwd, "public", "brand", "mmd-logo-transparent-v2.png"));
+  candidates.push(path.join(cwd, "apps", "web", "public", "brand", "mmd-logo-transparent-v2.png"));
 
   for (const p of candidates) {
     try {
@@ -1170,7 +1168,7 @@ export async function GET(req: NextRequest) {
         logo: {
           used: logoUsed,
           hint:
-            "To use your real logo PNG, add /public/brand/mmd-logo.png (recommended) or set env MMD_LOGO_PNG_PATH.",
+            "To use the official transparent logo PNG, add /public/brand/mmd-logo-transparent-v2.png or set env MMD_LOGO_PNG_PATH.",
         },
       },
       { status: 200, headers: { "Cache-Control": "no-store" } }

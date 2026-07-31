@@ -984,7 +984,6 @@ export function DriverAuthScreen() {
             width: 180,
             height: 116,
             alignSelf: "center",
-            borderRadius: 18,
             marginBottom: 18,
           }}
           resizeMode="contain"

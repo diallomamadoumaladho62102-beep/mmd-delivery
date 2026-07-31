@@ -49,7 +49,7 @@ export function renderTransactionalEmailHtml(
                 <table role="presentation" cellspacing="0" cellpadding="0">
                   <tr>
                     <td style="padding-right:14px;">
-                      <img src="https://www.mmddelivery.com/brand/email-logo.png"
+                      <img src="https://www.mmddelivery.com/brand/email-logo-transparent-v2.png"
                            width="64" height="64" alt="MMD Delivery"
                            style="display:block;width:64px;height:64px;border-radius:14px;" />
                     </td>

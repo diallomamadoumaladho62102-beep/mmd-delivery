@@ -5,9 +5,9 @@
 
 export const siteTheme = {
   brandName: "MMD Delivery",
-  logoSrc: "/brand/mmd-logo.png",
+  logoSrc: "/brand/mmd-logo-transparent-v2.png",
   heroImageSrc: "/brand/hero/hero-rider.webp",
-  ogImageSrc: "/brand/og-default.png",
+  ogImageSrc: "/brand/og-transparent-v2.png",
   fontFamily:
     'var(--font-sora), "Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   colors: {
@@ -22,6 +22,18 @@ export const siteTheme = {
     amber: "#f59e0b",
   },
 } as const;
+
+const legacyLogoPaths = new Set([
+  "/brand/mmd-logo.png",
+  "/brand/mmd-logo.webp",
+]);
+
+export function resolveSiteLogo(logoUrl?: string | null) {
+  const candidate = logoUrl?.trim();
+  return !candidate || legacyLogoPaths.has(candidate)
+    ? siteTheme.logoSrc
+    : candidate;
+}
 
 /** Root class for corporate pages (scopes CSS vars + font). */
 export const siteRootClass =
