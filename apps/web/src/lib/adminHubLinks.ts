@@ -96,6 +96,12 @@ export const ADMIN_HUB_LINKS: AdminHubLink[] = [
     permission: "marketing.read",
   },
   {
+    href: "/admin/site",
+    title: "Corporate Website",
+    description: "CMS: pages, blog, media, SEO",
+    permission: "marketing.read",
+  },
+  {
     href: "/admin/tasks",
     title: "Tasks",
     description: "Internal Control Center work queue",

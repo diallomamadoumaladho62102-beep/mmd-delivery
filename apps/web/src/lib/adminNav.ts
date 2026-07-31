@@ -205,6 +205,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         permission: "marketing.read",
       },
       {
+        href: "/admin/site",
+        label: "Corporate Website",
+        permission: "marketing.read",
+      },
+      {
         href: "/admin/test-records",
         label: "Test Records",
         permission: "test_records.read",

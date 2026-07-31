@@ -14,6 +14,7 @@ const OPS_PATHS = [
   "/api/cron/vehicle-eligibility-refresh",
   "/api/cron/expire-mmd-plus",
   "/api/cron/expire-marketing",
+  "/api/cron/site-cms-promote",
 ] as const;
 
 function json(body: Record<string, unknown>, status = 200) {

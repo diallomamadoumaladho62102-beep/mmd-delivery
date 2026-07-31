@@ -4,11 +4,13 @@ import "./globals.css";
 import { normalizeWebLocale, webDir, webT } from "../src/i18n/locales";
 import { WebI18nProvider } from "../src/components/WebI18nProvider";
 import WebVitalsReporter from "../src/components/WebVitalsReporter";
+import { CANONICAL_SITE_ORIGIN } from "../src/lib/productionSite";
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies();
   const locale = normalizeWebLocale(cookieStore.get("mmd_web_locale")?.value);
   return {
+    metadataBase: new URL(CANONICAL_SITE_ORIGIN),
     title: webT("app.title", locale),
     description: webT("app.description", locale),
   };
