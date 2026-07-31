@@ -10,7 +10,7 @@ import type { FinancialActorRole } from "@/lib/finance/financialTimelineTypes";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type RouteContext = { params: Promise<{ id: string }> };
+type RouteContext = { params: Promise<{ orderId: string }> };
 
 /**
  * Food order customer receipt.
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     const auth = await requireMmdLocationApiUser(req);
     if (auth.ok === false) return auth.response;
 
-    const { id } = await context.params;
+    const { orderId } = await context.params;
     const profileRole = await getProfileRole(auth.supabaseAdmin, auth.user.id);
 
     let role: FinancialActorRole = "client";
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, context: RouteContext) {
     else if (profileRole === "driver") role = "driver";
 
     const result = await buildFoodOrderReceiptPayload(auth.supabaseAdmin, {
-      orderId: id,
+      orderId,
       role,
       viewerUserId: auth.user.id,
     });

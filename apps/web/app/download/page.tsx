@@ -43,11 +43,11 @@ export default function DownloadPage() {
           <Image
             src="/brand/mmd-logo.png"
             alt="MMD Delivery"
-            width={160}
+            width={240}
             height={160}
             priority
             style={{
-              width: 160,
+              width: 240,
               height: 160,
               borderRadius: 36,
               objectFit: "contain",

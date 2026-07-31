@@ -45,10 +45,10 @@ function Splash(): React.JSX.Element {
       }}
     >
       <Image
-        source={require("./assets/brand/mmd-logo.png")}
+        source={require("./assets/splash-logo.png")}
         style={{
-          width: 140,
-          height: 140,
+          width: 240,
+          height: 160,
           marginBottom: 24,
         }}
         resizeMode="contain"

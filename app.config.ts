@@ -160,6 +160,8 @@ export default ({ config }) => {
         "expo-notifications",
         {
           sounds: expoNotificationSounds,
+          icon: "./apps/mobile/assets/notification-icon.png",
+          color: "#D90429",
         },
       ],
       [
@@ -199,7 +201,7 @@ export default ({ config }) => {
     runtimeVersion: "1.0.0",
 
     splash: {
-      image: "./apps/mobile/assets/brand/mmd-logo.png",
+      image: "./apps/mobile/assets/splash-logo.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff",
     },
@@ -207,6 +209,7 @@ export default ({ config }) => {
     ios: {
       ...existingIos,
       bundleIdentifier: IOS_BUNDLE_ID,
+      icon: "./apps/mobile/assets/ios-marketing-icon.png",
       supportsTablet: true,
       associatedDomains: [
         "applinks:www.mmddelivery.com",
@@ -271,7 +274,8 @@ export default ({ config }) => {
       ],
       adaptiveIcon: {
         foregroundImage: "./apps/mobile/assets/adaptive-icon.png",
-        backgroundColor: "#FF8C00",
+        monochromeImage: "./apps/mobile/assets/monochrome-icon.png",
+        backgroundColor: "#FFFFFF",
       },
     },
 

@@ -12,6 +12,7 @@
     "test:performance": "pnpm --dir apps/web test:performance && node scripts/bundle-size-report.mjs",
     "test:ui": "pnpm --dir apps/mobile test:ui && pnpm --dir apps/web test:ui",
     "lighthouse:smoke": "node scripts/lighthouse-smoke.mjs",
+    "brand:generate": "node scripts/generate-brand-assets.mjs",
     "audit:deps": "node scripts/dependency-audit.mjs",
     "android": "expo run:android",
     "ios": "expo run:ios"

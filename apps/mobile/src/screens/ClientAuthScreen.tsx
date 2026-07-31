@@ -655,6 +655,18 @@ export function ClientAuthScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View>
+            <Image
+              source={require("../../assets/brand/mmd-logo-ui.png")}
+              style={{
+                width: 180,
+                height: 116,
+                alignSelf: "center",
+                borderRadius: 18,
+                marginBottom: 20,
+              }}
+              resizeMode="contain"
+              accessibilityLabel="MMD Delivery"
+            />
             <Text
               style={{
                 fontSize: 26,

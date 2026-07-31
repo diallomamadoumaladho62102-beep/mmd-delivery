@@ -156,10 +156,10 @@ export default function SiteShell({
           >
             <SiteImage
               src={logo}
-              alt={brand}
-              width={64}
+              alt={`${brand} — ${slogan}`}
+              width={96}
               height={64}
-              className="h-14 w-14 rounded-2xl object-cover shadow-lg shadow-orange-500/35 ring-1 ring-orange-400/30 sm:h-16 sm:w-16"
+              className="h-14 w-[5.25rem] rounded-xl bg-white object-contain shadow-lg shadow-orange-500/25 ring-1 ring-white/20 sm:h-16 sm:w-24"
               priority
             />
             <span className="min-w-0">
@@ -249,10 +249,10 @@ export default function SiteShell({
               <div className="flex items-center gap-3">
                 <SiteImage
                   src={logo}
-                  alt={brand}
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 rounded-xl object-cover ring-1 ring-orange-400/25"
+                  alt={`${brand} — ${slogan}`}
+                  width={80}
+                  height={52}
+                  className="h-[3.25rem] w-20 rounded-lg bg-white object-contain ring-1 ring-white/15"
                 />
                 <div>
                   <span className="block font-semibold text-white">{brand}</span>

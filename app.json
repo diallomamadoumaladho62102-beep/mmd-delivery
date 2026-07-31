@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./apps/mobile/assets/icon.png",
     "splash": {
-      "image": "./apps/mobile/assets/brand/mmd-logo.png",
+      "image": "./apps/mobile/assets/splash-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,11 +16,13 @@
       "permissions": ["INTERNET"],
       "adaptiveIcon": {
         "foregroundImage": "./apps/mobile/assets/adaptive-icon.png",
-        "backgroundColor": "#FF8C00"
+        "monochromeImage": "./apps/mobile/assets/monochrome-icon.png",
+        "backgroundColor": "#FFFFFF"
       }
     },
     "ios": {
       "bundleIdentifier": "com.maladho2025.mmddelivery",
+      "icon": "./apps/mobile/assets/ios-marketing-icon.png",
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false

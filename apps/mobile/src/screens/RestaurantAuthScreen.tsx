@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   KeyboardAvoidingView,
+  Image,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -427,6 +428,18 @@ export function RestaurantAuthScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View>
+            <Image
+              source={require("../../assets/brand/mmd-logo-ui.png")}
+              style={{
+                width: 180,
+                height: 116,
+                alignSelf: "center",
+                borderRadius: 18,
+                marginBottom: 20,
+              }}
+              resizeMode="contain"
+              accessibilityLabel="MMD Delivery"
+            />
             <Text style={{ color: "white", fontSize: 22, fontWeight: "700", marginBottom: 8 }}>
               {title}
             </Text>

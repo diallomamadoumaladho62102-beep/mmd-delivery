@@ -234,12 +234,12 @@ export function RoleSelectScreen() {
           }}
         >
           <Image
-            source={require("../../assets/icon.png")}
+            source={require("../../assets/brand/mmd-logo-ui.png")}
             style={{
-              width: 96,
-              height: 96,
+              width: 180,
+              height: 116,
               marginBottom: 16,
-              borderRadius: 24,
+              borderRadius: 18,
             }}
             resizeMode="contain"
           />

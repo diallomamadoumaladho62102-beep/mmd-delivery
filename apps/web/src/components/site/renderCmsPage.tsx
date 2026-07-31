@@ -112,10 +112,10 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
           <div className="mb-6 flex items-center gap-4">
             <SiteImage
               src={logo}
-              alt={brand}
-              width={64}
+              alt={`${brand} — ${slogan}`}
+              width={96}
               height={64}
-              className="h-16 w-16 rounded-2xl object-cover shadow-lg shadow-orange-500/30 ring-1 ring-orange-400/30"
+              className="h-16 w-24 rounded-xl bg-white object-contain shadow-lg shadow-orange-500/25 ring-1 ring-white/20"
               priority
             />
             <div>

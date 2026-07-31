@@ -6,6 +6,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "userInterfaceStyle": "automatic",
     "runtimeVersion": "1.0.0",
     "updates": {
@@ -16,6 +21,8 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
+          "color": "#D90429",
           "sounds": [
             "./assets/sounds/mmd_signature_driver_60s.wav",
             "./assets/sounds/mmd_signature_restaurant_120s.wav",
@@ -73,7 +80,8 @@
       "package": "com.maladho2025.mmddelivery",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FF8C00"
+        "monochromeImage": "./assets/monochrome-icon.png",
+        "backgroundColor": "#FFFFFF"
       },
       "permissions": [
         "INTERNET",
@@ -112,6 +120,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.maladho2025.mmddelivery",
+      "icon": "./assets/ios-marketing-icon.png",
       "supportsTablet": true,
       "associatedDomains": [
         "applinks:www.mmddelivery.com",

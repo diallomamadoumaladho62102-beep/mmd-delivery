@@ -263,7 +263,7 @@ function RestaurantMapPin({ label }: { label: string }) {
         }}
       >
         <Image
-          source={require("../../assets/brand/mmd-logo.png")}
+          source={require("../../assets/brand/mmd-logo-ui.png")}
           style={{ width: 34, height: 34 }}
           resizeMode="contain"
         />

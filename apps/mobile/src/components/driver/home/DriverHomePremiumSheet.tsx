@@ -332,7 +332,7 @@ export function DriverHomePremiumSheet({
               style={styles.offlineLogoBox}
             >
               <Image
-                source={require("../../../../assets/brand/mmd-logo.png")}
+                source={require("../../../../assets/brand/mmd-logo-ui.png")}
                 style={styles.offlineLogo}
                 resizeMode="contain"
               />
@@ -371,7 +371,7 @@ export function DriverHomePremiumSheet({
             <View style={styles.smartTop}>
               <Animated.View style={[styles.logoBox, radarPulseStyle]}>
                 <Image
-                  source={require("../../../../assets/brand/mmd-logo.png")}
+                  source={require("../../../../assets/brand/mmd-logo-ui.png")}
                   style={styles.logo}
                   resizeMode="contain"
                 />
@@ -605,12 +605,12 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#F97316",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
-  logo: { width: 56, height: 56 },
+  logo: { width: 44, height: 30 },
   smartMid: { flex: 1, minWidth: 0 },
   smartTitleRow: {
     flexDirection: "row",
@@ -685,13 +685,13 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 13,
-    backgroundColor: "#F97316",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
     marginBottom: 10,
   },
-  offlineLogo: { width: 60, height: 60 },
+  offlineLogo: { width: 48, height: 32 },
   offlineTitle: {
     color: "#FFFFFF",
     fontSize: 17,

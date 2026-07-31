@@ -96,10 +96,10 @@ export default function AuthPage() {
               <Image
                 src="/brand/mmd-logo.png"
                 alt="MMD Delivery — We Deliver With Heart"
-                width={104}
+                width={156}
                 height={104}
                 priority
-                className="h-24 w-24 rounded-2xl object-contain shadow-lg shadow-orange-500/25"
+                className="h-24 w-36 rounded-2xl bg-white object-contain shadow-lg shadow-orange-500/20"
               />
             </div>
 

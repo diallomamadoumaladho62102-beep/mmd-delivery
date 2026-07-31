@@ -978,6 +978,18 @@ export function DriverAuthScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
         showsVerticalScrollIndicator={false}
       >
+        <Image
+          source={require("../../assets/brand/mmd-logo-ui.png")}
+          style={{
+            width: 180,
+            height: 116,
+            alignSelf: "center",
+            borderRadius: 18,
+            marginBottom: 18,
+          }}
+          resizeMode="contain"
+          accessibilityLabel="MMD Delivery"
+        />
         <Card
           title={
             mode === "signup"

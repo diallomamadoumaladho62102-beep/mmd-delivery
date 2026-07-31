@@ -24,14 +24,30 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [
         { url: "/icon.png", type: "image/png", sizes: "128x128" },
-        { url: "/brand/mmd-logo.webp", type: "image/webp", sizes: "512x512" },
+        { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+        { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+        { url: "/favicon-48x48.png", type: "image/png", sizes: "48x48" },
       ],
       apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
     },
+    manifest: "/manifest.webmanifest",
     openGraph: {
       title: webT("app.title", locale),
       description: webT("app.description", locale),
-      images: [{ url: "/brand/og-default.jpg", width: 1200, height: 630 }],
+      images: [
+        {
+          url: "/brand/og-default.png",
+          width: 1200,
+          height: 630,
+          alt: "MMD Delivery — We Deliver With Heart",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: webT("app.title", locale),
+      description: webT("app.description", locale),
+      images: ["/brand/twitter-card.png"],
     },
   };
 }

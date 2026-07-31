@@ -106,10 +106,10 @@ export default function SignupLanding() {
           <Image
             src="/brand/mmd-logo.png"
             alt="MMD Delivery — We Deliver With Heart"
-            width={112}
+            width={168}
             height={112}
             priority
-            className="h-28 w-28 rounded-2xl object-contain opacity-100 shadow-lg shadow-orange-500/20"
+            className="h-28 w-40 rounded-2xl bg-white object-contain opacity-100 shadow-lg shadow-orange-500/20"
           />
         </div>
       </div>
