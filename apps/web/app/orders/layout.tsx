@@ -21,7 +21,6 @@ export default function OrdersLayout({
         // Pages publiques à laisser passer
         const isPublic =
           pathname === "/orders/new" ||
-          pathname.startsWith("/orders/demo") ||
           pathname.includes("/orders/new");
 
         if (isPublic) {

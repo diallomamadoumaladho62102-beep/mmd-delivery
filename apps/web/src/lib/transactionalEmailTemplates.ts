@@ -25,7 +25,7 @@ export function renderTransactionalEmailHtml(
     template.ctaLabel && template.ctaUrl
       ? `<p style="margin:28px 0 0;">
           <a href="${escapeHtml(template.ctaUrl)}"
-             style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:700;">
+             style="display:inline-block;background:#f97316;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:700;">
             ${escapeHtml(template.ctaLabel)}
           </a>
         </p>`
@@ -45,8 +45,20 @@ export function renderTransactionalEmailHtml(
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
             <tr>
-              <td style="padding:24px 28px;background:linear-gradient(135deg,#0f172a,#1d4ed8);color:#ffffff;">
-                <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.85;">MMD Delivery</div>
+              <td style="padding:24px 28px;background:#0f172a;color:#ffffff;">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="padding-right:14px;">
+                      <img src="https://www.mmddelivery.com/brand/email-logo.png"
+                           width="64" height="64" alt="MMD Delivery"
+                           style="display:block;width:64px;height:64px;border-radius:14px;" />
+                    </td>
+                    <td>
+                      <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#fb923c;">MMD Delivery</div>
+                      <div style="margin-top:4px;font-size:12px;color:#cbd5e1;">We Deliver With Heart</div>
+                    </td>
+                  </tr>
+                </table>
                 <h1 style="margin:10px 0 0;font-size:28px;line-height:1.2;">${headline}</h1>
               </td>
             </tr>

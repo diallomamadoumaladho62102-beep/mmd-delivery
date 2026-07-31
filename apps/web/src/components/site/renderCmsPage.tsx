@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import BlockRenderer from "@/components/site/BlockRenderer";
+import HeroShowcase from "@/components/site/HeroShowcase";
 import SiteAnalytics from "@/components/site/SiteAnalytics";
 import SiteImage from "@/components/site/SiteImage";
 import SiteShell from "@/components/site/SiteShell";
@@ -17,6 +18,7 @@ import {
 import { CANONICAL_SITE_ORIGIN } from "@/lib/productionSite";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
+  siteChipClass,
   siteContainerClass,
   siteGradientTextClass,
   sitePrimaryBtnClass,
@@ -100,67 +102,56 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
     settings.tagline ||
     "A modern platform for taxi, food, packages, marketplace shopping, and business logistics.";
   const logo = settings.logo_url || siteTheme.logoSrc;
-  const hero = settings.hero_image_url || siteTheme.heroImageSrc;
 
   return (
     <section className="border-b border-white/5">
       <div
-        className={`${siteContainerClass} grid items-center gap-10 py-16 lg:grid-cols-2 lg:py-24`}
+        className={`${siteContainerClass} grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24`}
       >
-        <div>
+        <div className="min-w-0">
           <div className="mb-6 flex items-center gap-4">
             <SiteImage
               src={logo}
               alt={brand}
-              width={56}
-              height={56}
-              className="h-14 w-14 rounded-2xl object-cover shadow-lg shadow-orange-500/30"
+              width={64}
+              height={64}
+              className="h-16 w-16 rounded-2xl object-cover shadow-lg shadow-orange-500/30 ring-1 ring-orange-400/30"
               priority
             />
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-orange-300">
                 {brand}
               </p>
-              <p className="text-slate-400">{slogan}</p>
+              <p className="text-slate-300">{slogan}</p>
             </div>
           </div>
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
             <span className={siteGradientTextClass}>{slogan}</span>
           </h1>
-          <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-300">{tagline}</p>
-          <ul className="mt-6 flex flex-wrap gap-2" aria-label="Benefits">
+          <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200">{tagline}</p>
+          <ul className="mt-7 flex flex-wrap gap-2.5" aria-label="Benefits">
             {[
               "Secure Stripe payments",
               "Live GPS tracking",
               "Smart dispatch",
               "Unified wallets",
             ].map((b) => (
-              <li
-                key={b}
-                className="inline-flex rounded-lg border border-orange-400/25 bg-orange-500/10 px-3 py-1.5 text-sm text-orange-100"
-              >
+              <li key={b} className={siteChipClass}>
                 {b}
               </li>
             ))}
           </ul>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/download" data-site-event="store_click_web" className={sitePrimaryBtnClass}>
+          <div className="mt-9 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Link href="/download" data-site-event="store_click_web" className={`${sitePrimaryBtnClass} w-full`}>
               Download the app
             </Link>
-            <Link href="/contact" className={siteSecondaryBtnClass}>
+            <Link href="/contact" className={`${siteSecondaryBtnClass} w-full`}>
               Contact us
             </Link>
           </div>
         </div>
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/50">
-          <SiteImage
-            src={hero}
-            alt={slogan}
-            fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover"
-          />
+        <div className="min-w-0">
+          <HeroShowcase brand={brand} />
         </div>
       </div>
     </section>

@@ -105,11 +105,11 @@ export default function SignupLanding() {
         <div className="flex justify-center pt-12">
           <Image
             src="/brand/mmd-logo.png"
-            alt="MMD Delivery Logo"
-            width={88}
-            height={88}
+            alt="MMD Delivery — We Deliver With Heart"
+            width={112}
+            height={112}
             priority
-            className="h-auto w-auto opacity-95"
+            className="h-28 w-28 rounded-2xl object-contain opacity-100 shadow-lg shadow-orange-500/20"
           />
         </div>
       </div>

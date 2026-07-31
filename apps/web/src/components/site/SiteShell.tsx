@@ -145,28 +145,30 @@ export default function SiteShell({
         </div>
       ))}
 
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/85 backdrop-blur-md">
         <div
-          className={`${siteContainerClass} flex h-16 items-center justify-between gap-4`}
+          className={`${siteContainerClass} flex h-[4.5rem] items-center justify-between gap-4 sm:h-20`}
         >
           <Link
             href="/"
-            className="flex min-w-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
+            className="flex min-w-0 items-center gap-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
             aria-label={brand}
           >
             <SiteImage
               src={logo}
               alt={brand}
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl object-cover shadow-md shadow-orange-500/30"
+              width={64}
+              height={64}
+              className="h-14 w-14 rounded-2xl object-cover shadow-lg shadow-orange-500/35 ring-1 ring-orange-400/30 sm:h-16 sm:w-16"
               priority
             />
-            <span className="truncate">
-              <span className="block text-sm font-semibold tracking-tight text-white sm:text-base">
+            <span className="min-w-0">
+              <span className="block truncate text-base font-semibold tracking-tight text-white sm:text-lg">
                 {brand}
               </span>
-              <span className="hidden text-xs text-slate-400 sm:block">{slogan}</span>
+              <span className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">
+                {slogan}
+              </span>
             </span>
           </Link>
 
@@ -240,35 +242,35 @@ export default function SiteShell({
 
       <main id="site-main">{children}</main>
 
-      <footer className="mt-8 border-t border-white/10 bg-slate-950/60">
-        <div className={`${siteContainerClass} py-12`}>
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
+      <footer className="mt-10 border-t border-white/10 bg-slate-950/80">
+        <div className={`${siteContainerClass} py-14`}>
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-3">
                 <SiteImage
                   src={logo}
                   alt={brand}
-                  width={36}
-                  height={36}
-                  className="h-9 w-9 rounded-lg object-cover"
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 rounded-xl object-cover ring-1 ring-orange-400/25"
                 />
-                <span className="font-semibold text-white">{brand}</span>
+                <div>
+                  <span className="block font-semibold text-white">{brand}</span>
+                  <span className="text-xs text-slate-400">{slogan}</span>
+                </div>
               </div>
               <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-400">
                 {settings.footer_blurb ||
                   settings.tagline ||
                   "Modern delivery infrastructure for clients, drivers, restaurants, sellers, and businesses."}
               </p>
-              <div className="mt-6">
-                <NewsletterForm />
-              </div>
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
-                Links
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-200">
+                Explore
               </h2>
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-4 space-y-2.5">
                 {footerItems.map((item) => (
                   <li key={item.id}>
                     <Link
@@ -277,7 +279,7 @@ export default function SiteShell({
                       rel={
                         item.target === "_blank" ? "noopener noreferrer" : undefined
                       }
-                      className="text-sm text-slate-400 hover:text-orange-300"
+                      className="text-sm text-slate-400 transition-colors hover:text-orange-300"
                     >
                       {item.label}
                     </Link>
@@ -287,10 +289,10 @@ export default function SiteShell({
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-300">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-200">
                 Contact
               </h2>
-              <ul className="mt-4 space-y-2 text-sm text-slate-400">
+              <ul className="mt-4 space-y-2.5 text-sm text-slate-400">
                 {settings.support_email ? (
                   <li>
                     <a
@@ -314,14 +316,14 @@ export default function SiteShell({
                 {settings.address ? <li>{settings.address}</li> : null}
               </ul>
               {socials.length > 0 ? (
-                <ul className="mt-4 flex flex-wrap gap-3">
+                <ul className="mt-5 flex flex-wrap gap-3">
                   {socials.map(([name, url]) => (
                     <li key={name}>
                       <a
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm capitalize text-slate-400 hover:text-orange-300"
+                        className="inline-flex rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs capitalize text-slate-300 transition-colors hover:border-orange-400/40 hover:text-orange-200"
                       >
                         {name}
                       </a>
@@ -330,11 +332,18 @@ export default function SiteShell({
                 </ul>
               ) : null}
             </div>
+
+            <div>
+              <NewsletterForm />
+            </div>
           </div>
 
-          <p className="mt-10 border-t border-white/10 pt-6 text-xs text-slate-500">
-            © {year} {brand}. All rights reserved.
-          </p>
+          <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              © {year} {brand}. All rights reserved.
+            </p>
+            <p className="text-slate-600">Taxi · Food · Package · Marketplace · Business</p>
+          </div>
         </div>
       </footer>
 

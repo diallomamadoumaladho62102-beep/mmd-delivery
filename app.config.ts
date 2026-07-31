@@ -270,7 +270,7 @@ export default ({ config }) => {
         },
       ],
       adaptiveIcon: {
-        foregroundImage: "./apps/mobile/assets/icon.png",
+        foregroundImage: "./apps/mobile/assets/adaptive-icon.png",
         backgroundColor: "#FF8C00",
       },
     },

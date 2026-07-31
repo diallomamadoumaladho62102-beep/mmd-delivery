@@ -72,7 +72,7 @@
     "android": {
       "package": "com.maladho2025.mmddelivery",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FF8C00"
       },
       "permissions": [

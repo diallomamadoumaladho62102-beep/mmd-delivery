@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const IOS_URL = "https://www.mmddelivery.com";
 const ANDROID_URL = "https://www.mmddelivery.com";
 const FALLBACK_URL = "https://www.mmddelivery.com";
@@ -38,14 +40,17 @@ export default function DownloadPage() {
             textAlign: "center",
           }}
         >
-          <img
+          <Image
             src="/brand/mmd-logo.png"
             alt="MMD Delivery"
+            width={160}
+            height={160}
+            priority
             style={{
-              width: 118,
-              height: 118,
-              borderRadius: 30,
-              objectFit: "cover",
+              width: 160,
+              height: 160,
+              borderRadius: 36,
+              objectFit: "contain",
               boxShadow: "0 16px 50px rgba(249,115,22,0.35)",
             }}
           />

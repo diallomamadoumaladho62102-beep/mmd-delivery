@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const screensDir = path.join(__dirname, "..", "src", "screens");
 
 /** Dev-only test screen — not user-facing production UI. */
-const ALLOWLIST = new Set(["LocationPickerTestScreen.tsx"]);
+const ALLOWLIST = new Set([]);
 
 function walk(dir, out = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

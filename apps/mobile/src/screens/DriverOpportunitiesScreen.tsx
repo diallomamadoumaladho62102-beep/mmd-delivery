@@ -573,83 +573,8 @@ export function DriverOpportunitiesScreen() {
     if (error) console.log("setJoinedOnServer upsert error", error);
   }, []);
 
-  const allOpps: Opportunity[] = useMemo(
-    () => [
-      {
-        id: "opp_lga_peak",
-        category: "airports",
-        dayOffset: 0,
-        timeRange: "21 h 00 – 00 h 00",
-        title: t("driver.opps.demo.lga.title", "Revenus maximal à LGA"),
-        subtitle: t("driver.opps.demo.lga.subtitle", "Estimation de revenus très élevés"),
-        distanceText: t("driver.opps.demo.lga.distance", "À 7.4 mi de distance"),
-        tag: t("driver.opps.tags.recommended", "Recommandé"),
-        ctaLabel: t("driver.opps.actions.join", "S’inscrire"),
-        emoji: "✈️",
-      },
-      {
-        id: "opp_jfk_queue",
-        category: "airports",
-        dayOffset: 1,
-        timeRange: "18 h 00 – 22 h 00",
-        title: t("driver.opps.demo.jfk.title", "Zone JFK : forte demande"),
-        subtitle: t("driver.opps.demo.jfk.subtitle", "Positionne-toi avant le pic du soir."),
-        distanceText: t("driver.opps.demo.jfk.distance", "Zone aéroport"),
-        tag: t("driver.opps.tags.soon", "Bientôt"),
-        ctaLabel: t("driver.opps.actions.view", "Voir"),
-        emoji: "🛬",
-      },
-      {
-        id: "opp_reservations_morning",
-        category: "reservations",
-        dayOffset: 1,
-        timeRange: "06 h 00 – 10 h 00",
-        title: t("driver.opps.demo.resMorning.title", "Bloc Réservations du matin"),
-        subtitle: t("driver.opps.demo.resMorning.subtitle", "Active les réservations pour sécuriser tes courses."),
-        distanceText: t("driver.opps.demo.resMorning.distance", "Rayon: 3–5 miles"),
-        tag: t("driver.opps.tags.new", "Nouveau"),
-        ctaLabel: t("driver.opps.actions.activate", "Activer"),
-        emoji: "📅",
-      },
-      {
-        id: "opp_event_brooklyn",
-        category: "events",
-        dayOffset: 3,
-        timeRange: "22 h 30 – 23 h 30",
-        title: t("driver.opps.demo.bkEvent.title", "Événement : forte demande à Brooklyn"),
-        subtitle: t("driver.opps.demo.bkEvent.subtitle", "Prépare-toi à des demandes plus élevées dans la zone."),
-        distanceText: t("driver.opps.demo.bkEvent.distance", "Zone évènement"),
-        tag: t("driver.opps.tags.soon", "Bientôt"),
-        ctaLabel: t("driver.opps.actions.view", "Voir"),
-        emoji: "🎟️",
-      },
-      {
-        id: "opp_boost_airport",
-        category: "promotions",
-        dayOffset: 0,
-        timeRange: "22 h 00 – 00 h 00",
-        title: t("driver.opps.demo.boost.title", "Obtiens +4,50 $ US de plus sur chaque course"),
-        subtitle: t("driver.opps.demo.boost.subtitle", "Amplificateur+ • Courses seulement"),
-        distanceText: t("driver.opps.demo.boost.distance", "Zone aéroport"),
-        tag: t("driver.opps.tags.boost", "Boost"),
-        ctaLabel: t("driver.opps.actions.join", "S’inscrire"),
-        emoji: "💸",
-      },
-      {
-        id: "opp_promo_night",
-        category: "promotions",
-        dayOffset: 2,
-        timeRange: "20 h 00 – 02 h 00",
-        title: t("driver.opps.demo.night.title", "Bonus nuit : +2,00 $ par course"),
-        subtitle: t("driver.opps.demo.night.subtitle", "Valable sur certaines zones."),
-        distanceText: t("driver.opps.demo.night.distance", "Zones sélectionnées"),
-        tag: t("driver.opps.tags.promo", "Promo"),
-        ctaLabel: t("driver.opps.actions.view", "Voir"),
-        emoji: "🌙",
-      },
-    ],
-    [t]
-  );
+  // Production: no hardcoded demo opportunities. Empty until a real feed exists.
+  const allOpps: Opportunity[] = useMemo(() => [], []);
 
   const savedCount = useMemo(() => Object.values(savedIds).filter(Boolean).length, [savedIds]);
 

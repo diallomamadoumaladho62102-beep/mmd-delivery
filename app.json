@@ -4,7 +4,7 @@
     "slug": "mmd-delivery",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./apps/mobile/assets/icon.png",
     "splash": {
       "image": "./apps/mobile/assets/brand/mmd-logo.png",
       "resizeMode": "contain",
@@ -15,8 +15,8 @@
       "package": "com.maladho2025.mmddelivery",
       "permissions": ["INTERNET"],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./apps/mobile/assets/adaptive-icon.png",
+        "backgroundColor": "#FF8C00"
       }
     },
     "ios": {

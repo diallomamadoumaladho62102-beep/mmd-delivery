@@ -21,6 +21,18 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(CANONICAL_SITE_ORIGIN),
     title: webT("app.title", locale),
     description: webT("app.description", locale),
+    icons: {
+      icon: [
+        { url: "/icon.png", type: "image/png", sizes: "128x128" },
+        { url: "/brand/mmd-logo.webp", type: "image/webp", sizes: "512x512" },
+      ],
+      apple: [{ url: "/apple-icon.png", sizes: "180x180" }],
+    },
+    openGraph: {
+      title: webT("app.title", locale),
+      description: webT("app.description", locale),
+      images: [{ url: "/brand/og-default.jpg", width: 1200, height: 630 }],
+    },
   };
 }
 

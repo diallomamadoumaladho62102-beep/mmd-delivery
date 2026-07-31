@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SiteBlockRow } from "@/lib/siteCms";
 import ContactForm from "./ContactForm";
+import HeroShowcase from "./HeroShowcase";
 import SiteImage from "./SiteImage";
 import { renderSimpleMarkdown } from "./simpleMarkdown";
 import {
@@ -75,13 +76,16 @@ function CtaButtons({
     .filter((btn) => btn.label && btn.href);
   if (!cleaned.length) return null;
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {cleaned.map((btn, i) => (
         <Link
           key={`${btn.href}-${btn.label}-${i}`}
           href={btn.href}
           data-site-event={btn.event || undefined}
-          className={primary && i === 0 ? sitePrimaryBtnClass : siteSecondaryBtnClass}
+          className={
+            (primary && i === 0 ? sitePrimaryBtnClass : siteSecondaryBtnClass) +
+            " w-full"
+          }
         >
           {btn.label}
         </Link>
@@ -104,38 +108,53 @@ function SectionWrap({
   );
 }
 
+function ServiceIcon({ label }: { label: string }) {
+  const letter = (label.trim()[0] || "M").toUpperCase();
+  return (
+    <span
+      className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/30 via-orange-500/20 to-rose-500/20 text-sm font-bold text-orange-100 ring-1 ring-orange-400/30"
+      aria-hidden
+    >
+      {letter}
+    </span>
+  );
+}
+
 function HeroBlock({ payload }: { payload: Record<string, unknown> }) {
   const headline = str(payload.headline, siteTheme.brandName);
   const subheadline = str(payload.subheadline);
   const eyebrow = str(payload.eyebrow);
-  const imageUrl = str(payload.image_url, siteTheme.heroImageSrc);
   const benefits = asArray<string>(payload.benefits).filter(
     (b) => typeof b === "string" && b.trim(),
   );
   const primary = asArray<CtaButton>(payload.primary_ctas);
   const secondary = asArray<CtaButton>(payload.secondary_ctas);
+  const useShowcase =
+    payload.showcase !== false &&
+    payload.showcase !== "image" &&
+    String(payload.showcase ?? "services") === "services";
 
   return (
-    <section className="relative overflow-hidden border-b border-white/5">
+    <section className="relative border-b border-white/5">
       <div
-        className={`${siteContainerClass} grid items-center gap-10 py-16 lg:grid-cols-2 lg:py-24`}
+        className={`${siteContainerClass} grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:py-24`}
       >
-        <div>
+        <div className="min-w-0">
           {eyebrow ? (
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.14em] text-orange-300/90">
+            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-orange-300">
               {eyebrow}
             </p>
           ) : null}
-          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
             <span className={siteGradientTextClass}>{headline}</span>
           </h1>
           {subheadline ? (
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-300">
+            <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200">
               {subheadline}
             </p>
           ) : null}
           {benefits.length > 0 ? (
-            <ul className="mt-6 flex flex-wrap gap-2" aria-label="Benefits">
+            <ul className="mt-7 flex flex-wrap gap-2.5" aria-label="Benefits">
               {benefits.map((b) => (
                 <li key={b} className={siteChipClass}>
                   {b}
@@ -143,22 +162,28 @@ function HeroBlock({ payload }: { payload: Record<string, unknown> }) {
               ))}
             </ul>
           ) : null}
-          <div className="mt-8 space-y-3">
+          <div className="mt-9 space-y-4">
             <CtaButtons buttons={primary} primary />
             {secondary.length > 0 ? (
               <CtaButtons buttons={secondary} primary={false} />
             ) : null}
           </div>
         </div>
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/50">
-          <SiteImage
-            src={imageUrl}
-            alt={headline}
-            fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover motion-safe:animate-[fadeIn_0.8s_ease-out]"
-          />
+        <div className="min-w-0">
+          {useShowcase ? (
+            <HeroShowcase brand={siteTheme.brandName} />
+          ) : (
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/50">
+              <SiteImage
+                src={str(payload.image_url, siteTheme.heroImageSrc)}
+                alt={headline}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -174,7 +199,7 @@ function ServicesBlock({ payload }: { payload: Record<string, unknown> }) {
       {str(payload.subtitle) ? (
         <p className={siteSubheadingClass}>{str(payload.subtitle)}</p>
       ) : null}
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-10 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item, i) => {
           const title = str(item.title);
           const description = str(item.description);
@@ -182,6 +207,7 @@ function ServicesBlock({ payload }: { payload: Record<string, unknown> }) {
           const key = str(item.key, `${title}-${i}`);
           const inner = (
             <>
+              <ServiceIcon label={title} />
               <h3 className="text-lg font-semibold text-white">{title}</h3>
               {description ? (
                 <p className="mt-2 text-sm leading-relaxed text-slate-400">{description}</p>
@@ -212,6 +238,7 @@ function FeaturesBlock({ payload }: { payload: Record<string, unknown> }) {
       <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((item, i) => (
           <div key={`${str(item.title)}-${i}`} className={siteCardClass}>
+            <ServiceIcon label={str(item.title)} />
             <h3 className="text-base font-semibold text-white">{str(item.title)}</h3>
             {str(item.description) ? (
               <p className="mt-2 text-sm text-slate-400">{str(item.description)}</p>
@@ -390,7 +417,7 @@ function BlogTeaserBlock({
           >
             <h3 className="text-lg font-semibold text-white">{post.title}</h3>
             {post.excerpt ? (
-              <p className="mt-2 line-clamp-3 text-sm text-slate-400">{post.excerpt}</p>
+              <p className="mt-2 text-sm text-slate-400">{post.excerpt}</p>
             ) : null}
             {post.published_at ? (
               <p className="mt-3 text-xs text-slate-500">

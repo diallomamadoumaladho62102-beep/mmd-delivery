@@ -82,7 +82,6 @@ export type RootStackParamList = {
   ClientNotificationCenter: undefined;
   DriverNotificationCenter: undefined;
   DeleteAccount: { role: "client" | "driver" | "restaurant" };
-  LocationPickerTest: undefined;
   MMDLocationPicker: {
     countryCode?: string;
     title?: string;
@@ -643,7 +642,6 @@ export function AppNavigator({
       r === "ClientSecurity" ||
       r === "ClientNotificationCenter" ||
       r === "DeleteAccount" ||
-      (__DEV__ ? r === "LocationPickerTest" : false) ||
       r === "MMDLocationPicker" ||
       r === "TaxiHome" ||
       r === "TaxiQuote" ||
@@ -1200,16 +1198,6 @@ export function AppNavigator({
             require("../screens/DeleteAccountScreen").DeleteAccountScreen
           }
         />
-        {__DEV__ ? (
-          <Stack.Screen
-            name="LocationPickerTest"
-            getComponent={() =>
-              require("../screens/LocationPickerTestScreen").default
-            }
-            options={{ title: "Africa Location Test" }}
-          />
-        ) : null}
-
         <Stack.Screen
           name="MMDLocationPicker"
           getComponent={() =>

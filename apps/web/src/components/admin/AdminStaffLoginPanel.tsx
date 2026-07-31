@@ -244,11 +244,11 @@ export default function AdminStaffLoginPanel() {
             <div className="mb-6">
               <Image
                 src="/brand/mmd-logo.png"
-                alt="MMD Delivery Logo"
-                width={84}
-                height={84}
+                alt="MMD Delivery — We Deliver With Heart"
+                width={104}
+                height={104}
                 priority
-                className="h-20 w-20 rounded-xl object-contain"
+                className="h-24 w-24 rounded-2xl object-contain shadow-lg shadow-orange-500/25"
               />
             </div>
 
