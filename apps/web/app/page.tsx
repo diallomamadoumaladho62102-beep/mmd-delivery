@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const { supabase, settings } = await loadSiteChrome();
     const home = await getPublishedPageBySlug(supabase, "home");
-    return buildPageMetadata(home?.page.seo, settings, siteTheme.brandName);
+    return buildPageMetadata(home?.page.seo, settings, siteTheme.brandName, "/");
   } catch {
     return { title: siteTheme.brandName };
   }

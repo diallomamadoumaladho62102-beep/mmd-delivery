@@ -303,7 +303,7 @@ values (
     'support_phone_tel', '+19294924563',
     'address', 'United States',
     'logo_url', '/brand/mmd-logo.png',
-    'hero_image_url', '/brand/hero/hero-rider.png',
+    'hero_image_url', '/brand/hero/hero-rider.webp',
     'store_links', jsonb_build_object(
       'ios', 'https://www.mmddelivery.com/download',
       'android', 'https://www.mmddelivery.com/download',
@@ -344,8 +344,8 @@ cross join (
     ('Services', '/#services', 10),
     ('Company', '/company', 20),
     ('Drivers', '/drivers', 30),
-    ('Restaurants', '/restaurants', 40),
-    ('Business', '/business', 50),
+    ('Restaurants', '/p/restaurants', 40),
+    ('Business', '/p/business', 50),
     ('Blog', '/blog', 60),
     ('Contact', '/contact', 70)
 ) as x(label, href, sort_order)
@@ -393,7 +393,7 @@ begin
     'eyebrow', 'MMD Delivery',
     'headline', 'We Deliver With Heart',
     'subheadline', 'A modern platform for taxi, food, packages, marketplace shopping, and business logistics — secure payments, live GPS, and smart dispatch.',
-    'image_url', '/brand/hero/hero-rider.png',
+    'image_url', '/brand/hero/hero-rider.webp',
     'primary_ctas', jsonb_build_array(
       jsonb_build_object('label', 'App Store', 'href', '/download', 'event', 'store_click_ios'),
       jsonb_build_object('label', 'Google Play', 'href', '/download', 'event', 'store_click_android'),

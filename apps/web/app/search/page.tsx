@@ -34,6 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
       { title: "Search — MMD Delivery", robots: "noindex,follow" },
       settings,
       "Search",
+      "/search",
     );
   } catch {
     return { title: "Search", robots: "noindex,follow" };

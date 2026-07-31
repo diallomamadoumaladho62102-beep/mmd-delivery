@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import BlockRenderer from "@/components/site/BlockRenderer";
 import SiteAnalytics from "@/components/site/SiteAnalytics";
+import SiteImage from "@/components/site/SiteImage";
 import SiteShell from "@/components/site/SiteShell";
 import {
   getMenuItems,
@@ -39,6 +40,7 @@ export function buildPageMetadata(
   seo: SiteSeoFields | undefined,
   settings: SiteSettingsPayload,
   fallbackTitle?: string,
+  path = "/",
 ): Metadata {
   const siteSeo = (settings.seo ?? {}) as SiteSeoFields;
   const title =
@@ -52,15 +54,23 @@ export function buildPageMetadata(
     siteSeo.description ||
     settings.tagline ||
     "Taxi, food, packages, marketplace and business tools — one modern platform.";
-  const canonical = seo?.canonical || undefined;
-  const ogImage = seo?.og_image || siteSeo.og_image || settings.hero_image_url;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const canonical =
+    seo?.canonical ||
+    siteSeo.canonical ||
+    `${CANONICAL_SITE_ORIGIN}${normalizedPath === "/" ? "" : normalizedPath}`;
+  const ogImage =
+    seo?.og_image ||
+    siteSeo.og_image ||
+    siteTheme.ogImageSrc ||
+    settings.hero_image_url;
   const robots = seo?.robots || siteSeo.robots || "index,follow";
 
   return {
     title,
     description,
     metadataBase: new URL(CANONICAL_SITE_ORIGIN),
-    alternates: canonical ? { canonical } : undefined,
+    alternates: { canonical },
     robots,
     openGraph: {
       title: seo?.og_title || title,
@@ -99,13 +109,13 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
       >
         <div>
           <div className="mb-6 flex items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <SiteImage
               src={logo}
-              alt=""
+              alt={brand}
               width={56}
               height={56}
               className="h-14 w-14 rounded-2xl object-cover shadow-lg shadow-orange-500/30"
+              priority
             />
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-orange-300">
@@ -142,12 +152,14 @@ export function FallbackHome({ settings }: { settings: SiteSettingsPayload }) {
             </Link>
           </div>
         </div>
-        <div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/50">
+          <SiteImage
             src={hero}
-            alt=""
-            className="w-full rounded-3xl object-cover shadow-2xl shadow-black/50"
+            alt={slogan}
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover"
           />
         </div>
       </div>
@@ -208,7 +220,13 @@ export async function cmsPageMetadata(slug: string, fallbackTitle?: string): Pro
       getSiteSettings(supabase),
       getPublishedPageBySlug(supabase, slug),
     ]);
-    return buildPageMetadata(pageData?.page.seo, settings, fallbackTitle);
+    const path =
+      slug === "home"
+        ? "/"
+        : slug === "business" || slug === "restaurants"
+          ? `/p/${slug}`
+          : `/${slug}`;
+    return buildPageMetadata(pageData?.page.seo, settings, fallbackTitle, path);
   } catch {
     return {
       title: fallbackTitle || siteTheme.brandName,

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SiteBlockRow } from "@/lib/siteCms";
 import ContactForm from "./ContactForm";
+import SiteImage from "./SiteImage";
 import { renderSimpleMarkdown } from "./simpleMarkdown";
 import {
   siteCardClass,
@@ -65,22 +66,26 @@ function CtaButtons({
   buttons: CtaButton[];
   primary?: boolean;
 }) {
-  if (!buttons.length) return null;
+  const cleaned = buttons
+    .map((btn) => ({
+      label: typeof btn.label === "string" ? btn.label.trim() : "",
+      href: typeof btn.href === "string" ? btn.href.trim() : "",
+      event: btn.event,
+    }))
+    .filter((btn) => btn.label && btn.href);
+  if (!cleaned.length) return null;
   return (
     <div className="flex flex-wrap gap-3">
-      {buttons.map((btn, i) => {
-        if (!btn.label || !btn.href) return null;
-        return (
-          <Link
-            key={`${btn.href}-${btn.label}-${i}`}
-            href={btn.href}
-            data-site-event={btn.event || undefined}
-            className={primary && i === 0 ? sitePrimaryBtnClass : siteSecondaryBtnClass}
-          >
-            {btn.label}
-          </Link>
-        );
-      })}
+      {cleaned.map((btn, i) => (
+        <Link
+          key={`${btn.href}-${btn.label}-${i}`}
+          href={btn.href}
+          data-site-event={btn.event || undefined}
+          className={primary && i === 0 ? sitePrimaryBtnClass : siteSecondaryBtnClass}
+        >
+          {btn.label}
+        </Link>
+      ))}
     </div>
   );
 }
@@ -145,12 +150,14 @@ function HeroBlock({ payload }: { payload: Record<string, unknown> }) {
             ) : null}
           </div>
         </div>
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/50">
+          <SiteImage
             src={imageUrl}
-            alt=""
-            className="w-full rounded-3xl object-cover shadow-2xl shadow-black/50 motion-safe:animate-[fadeIn_0.8s_ease-out]"
+            alt={headline}
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            className="object-cover motion-safe:animate-[fadeIn_0.8s_ease-out]"
           />
         </div>
       </div>
@@ -417,6 +424,7 @@ function VideoBlock({ payload }: { payload: Record<string, unknown> }) {
             src={src.includes("embed") ? src : src}
             title={title}
             className="h-full w-full"
+            loading="lazy"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
@@ -442,8 +450,13 @@ function PartnersBlock({ payload }: { payload: Record<string, unknown> }) {
           const logo = str(item.logo_url ?? item.logo);
           const href = str(item.url ?? item.href);
           const content = logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo} alt={name} className="h-10 w-auto object-contain opacity-80" />
+            <SiteImage
+              src={logo}
+              alt={name}
+              width={160}
+              height={40}
+              className="h-10 w-auto object-contain opacity-80"
+            />
           ) : (
             <span className="text-sm font-medium text-slate-300">{name}</span>
           );
@@ -557,12 +570,15 @@ function GalleryBlock({ payload }: { payload: Record<string, unknown> }) {
             key={i}
             className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/40"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={str(item.src ?? item.url)}
-              alt={str(item.alt, str(item.caption))}
-              className="aspect-[4/3] w-full object-cover"
-            />
+            <div className="relative aspect-[4/3] w-full">
+              <SiteImage
+                src={str(item.src ?? item.url)}
+                alt={str(item.alt, str(item.caption) || "Gallery image")}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover"
+              />
+            </div>
             {str(item.caption) ? (
               <figcaption className="px-3 py-2 text-xs text-slate-400">
                 {str(item.caption)}

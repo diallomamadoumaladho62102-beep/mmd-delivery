@@ -3,6 +3,8 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 import type { SiteMenuItem, SiteSettingsPayload } from "@/lib/siteCms";
+import NewsletterForm from "./NewsletterForm";
+import SiteImage from "./SiteImage";
 import {
   siteContainerClass,
   siteCssVars,
@@ -53,6 +55,21 @@ export default function SiteShell({
       /* ignore */
     }
   }, []);
+
+  const popup = overlays.find(
+    (o) => !dismissed[o.id] && (o.kind === "popup" || o.placement === "modal"),
+  );
+
+  useEffect(() => {
+    if (!popup) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && popup && popup.dismissible !== false) {
+        dismissOverlay(popup.id);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [popup]);
 
   function dismissOverlay(id: string) {
     setDismissed((prev) => {
@@ -135,14 +152,15 @@ export default function SiteShell({
           <Link
             href="/"
             className="flex min-w-0 items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
+            aria-label={brand}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <SiteImage
               src={logo}
-              alt=""
+              alt={brand}
               width={40}
               height={40}
               className="h-10 w-10 rounded-xl object-cover shadow-md shadow-orange-500/30"
+              priority
             />
             <span className="truncate">
               <span className="block text-sm font-semibold tracking-tight text-white sm:text-base">
@@ -181,6 +199,7 @@ export default function SiteShell({
             className="inline-flex items-center justify-center rounded-lg border border-white/15 px-3 py-2 text-sm font-medium text-white lg:hidden"
             aria-expanded={navOpen}
             aria-controls={navId}
+            aria-label={navOpen ? "Close menu" : "Open menu"}
             onClick={() => setNavOpen((v) => !v)}
           >
             {navOpen ? "Close" : "Menu"}
@@ -226,10 +245,9 @@ export default function SiteShell({
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <SiteImage
                   src={logo}
-                  alt=""
+                  alt={brand}
                   width={36}
                   height={36}
                   className="h-9 w-9 rounded-lg object-cover"
@@ -241,6 +259,9 @@ export default function SiteShell({
                   settings.tagline ||
                   "Modern delivery infrastructure for clients, drivers, restaurants, sellers, and businesses."}
               </p>
+              <div className="mt-6">
+                <NewsletterForm />
+              </div>
             </div>
 
             <div>

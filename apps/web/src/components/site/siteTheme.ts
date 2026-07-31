@@ -6,8 +6,10 @@
 export const siteTheme = {
   brandName: "MMD Delivery",
   logoSrc: "/brand/mmd-logo.png",
-  heroImageSrc: "/brand/hero/hero-rider.png",
-  fontFamily: '"Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  heroImageSrc: "/brand/hero/hero-rider.webp",
+  ogImageSrc: "/brand/og-default.jpg",
+  fontFamily:
+    'var(--font-sora), "Sora", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   colors: {
     navy: "#020617",
     navyElevated: "#0b1220",

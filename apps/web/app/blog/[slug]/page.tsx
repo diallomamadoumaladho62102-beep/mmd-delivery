@@ -33,6 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
       settings,
       String(post.title),
+      `/blog/${slug}`,
     );
   } catch {
     return { title: "Blog" };

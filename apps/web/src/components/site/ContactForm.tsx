@@ -50,7 +50,7 @@ export default function ContactForm({ title, subtitle }: Props) {
     "focus:border-orange-400/50 focus:outline-none focus:ring-1 focus:ring-orange-400/40";
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-xl space-y-4" noValidate>
+    <form onSubmit={onSubmit} className="mx-auto max-w-xl space-y-4">
       {title ? <h3 className="text-xl font-semibold text-white">{title}</h3> : null}
       {subtitle ? <p className="text-sm text-slate-400">{subtitle}</p> : null}
 

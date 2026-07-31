@@ -23,6 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
       { title: "Blog — MMD Delivery", description: "News and updates from MMD Delivery." },
       settings,
       "Blog",
+      "/blog",
     );
   } catch {
     return { title: "Blog — MMD Delivery" };
