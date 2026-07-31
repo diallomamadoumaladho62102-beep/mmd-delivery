@@ -325,6 +325,8 @@ await writeOpaqueIcon(
 
 await writeOpaqueIcon("apps/mobile/assets/icon.png", 1024, 0.8);
 await writeOpaqueIcon("apps/mobile/assets/ios-marketing-icon.png", 1024, 0.8);
+await writeOpaqueIcon("assets/icon.png", 1024, 0.8);
+fs.writeFileSync(path.join(root, "assets/brand/mmd-logo.png"), webLogoPng);
 await writeTransparentSquare(
   "apps/mobile/assets/adaptive-icon.png",
   1024,
@@ -391,6 +393,8 @@ for (const legacyPath of [
 
 for (const relativePath of [
   "assets/brand/mmd-logo-master.png",
+  "assets/brand/mmd-logo.png",
+  "assets/icon.png",
   "apps/web/public/brand/mmd-logo-transparent-v2.png",
   "apps/web/public/brand/mmd-logo-transparent-v2.webp",
   "apps/web/public/brand/email-logo-transparent-v2.png",
