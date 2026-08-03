@@ -11,6 +11,7 @@ type Order = {
   payment_status: string | null;
   subtotal: number | null;
   total: number | null;
+  total_cents: number | null;
   currency: string | null;
   restaurant_name: string | null;
   created_at: string;
@@ -21,6 +22,14 @@ function formatMoney(value: number | null | undefined, currency = "USD") {
     style: "currency",
     currency,
   }).format(value ?? 0);
+}
+
+function formatOrderListTotal(order: Order): string {
+  const currency = order.currency ?? "USD";
+  if (order.total_cents != null && Number.isFinite(order.total_cents)) {
+    return formatMoney(order.total_cents / 100, currency);
+  }
+  return formatMoney(order.total ?? order.subtotal, currency);
 }
 
 function formatDate(value: string) {
@@ -166,11 +175,7 @@ export default function AdminOrdersPage() {
                         </div>
                       ) : null}
                       <div className="text-sm text-slate-600">
-                        Total:{" "}
-                        {formatMoney(
-                          order.total ?? order.subtotal,
-                          order.currency ?? "USD"
-                        )}
+                        Total (charge): {formatOrderListTotal(order)}
                       </div>
                       <div className="text-xs text-slate-500">
                         {formatDate(order.created_at)}

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("orders")
       .select(
-        "id, status, kind, payment_status, subtotal, total, currency, restaurant_name, driver_id, created_at, paid_at, delivered_confirmed_at"
+        "id, status, kind, payment_status, subtotal, total, total_cents, currency, restaurant_name, driver_id, created_at, paid_at, delivered_confirmed_at"
       )
       .order("created_at", { ascending: false })
       .limit(limit);

@@ -143,68 +143,196 @@ async function detectArtworkBounds(transparentSource, padding = 24) {
 }
 
 const transparentMaster = await removeConnectedWhiteBackground();
-const artworkBounds = await detectArtworkBounds(transparentMaster);
+const artworkBounds = await detectArtworkBounds(transparentMaster, 8);
 const croppedMaster = await sharp(transparentMaster)
   .extract(artworkBounds)
   .png({ compressionLevel: 9 })
   .toBuffer();
 
-async function resizedArtwork(size, safeArea) {
-  const target = Math.round(size * safeArea);
+/**
+ * Official APRÈS app-icon: heart body ≈ 90% of the useful square height
+ * (matches validated maquette scale). Left flames reach the icon edge as in APRÈS.
+ */
+const APP_ICON_SAFE_AREA = 0.9;
+/** Android adaptive foreground (full-bleed layer; launcher mask crops edges). */
+const ADAPTIVE_FG_SAFE_AREA = 0.86;
+/**
+ * Exact night-blue from the validated AVANT/APRÈS icon maquette (#050816).
+ * Not white. Not pure black. Blends with the logo with no visible frame.
+ */
+const APP_ICON_BG = { r: 5, g: 8, b: 22, alpha: 1 };
+
+/**
+ * Optical center of the heart body (ignores left speed-streak asymmetry).
+ * Columns with a tall opaque span are treated as the heart core.
+ */
+async function detectOpticalAnchor(sourceBuffer) {
+  const { data, info } = await sharp(sourceBuffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const colSpan = new Float64Array(info.width);
+  let maxSpan = 0;
+  for (let x = 0; x < info.width; x += 1) {
+    let minY = info.height;
+    let maxY = -1;
+    for (let y = 0; y < info.height; y += 1) {
+      const a = data[(y * info.width + x) * info.channels + 3];
+      if (a <= 8) continue;
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+    const span = maxY >= 0 ? maxY - minY + 1 : 0;
+    colSpan[x] = span;
+    maxSpan = Math.max(maxSpan, span);
+  }
+  const threshold = maxSpan * 0.55;
+  let sumX = 0;
+  let sumY = 0;
+  let weight = 0;
+  for (let x = 0; x < info.width; x += 1) {
+    if (colSpan[x] < threshold) continue;
+    for (let y = 0; y < info.height; y += 1) {
+      const a = data[(y * info.width + x) * info.channels + 3];
+      if (a <= 8) continue;
+      sumX += x * a;
+      sumY += y * a;
+      weight += a;
+    }
+  }
+  if (weight <= 0) {
+    return { cx: info.width / 2, cy: info.height / 2, width: info.width, height: info.height };
+  }
+  return {
+    cx: sumX / weight,
+    cy: sumY / weight,
+    width: info.width,
+    height: info.height,
+  };
+}
+
+/**
+ * Scale artwork for APRÈS:
+ * - app-icon: heart-core height ≈ safeArea, optically centered (maquette scale)
+ * - contain: fit-inside for transparent UI derivatives
+ */
+async function resizedArtwork(size, safeArea, mode = "contain") {
+  if (mode !== "app-icon") {
+    const target = Math.round(size * safeArea);
+    const resized = await sharp(croppedMaster)
+      .resize(target, target, { fit: "inside", withoutEnlargement: false })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+    const resizedMetadata = await sharp(resized).metadata();
+    const anchor = await detectOpticalAnchor(resized);
+    return { resized, resizedMetadata, target, anchor };
+  }
+
+  const coreAnchor = await detectOpticalAnchor(croppedMaster);
+  const { data, info } = await sharp(croppedMaster)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const colSpan = new Float64Array(info.width);
+  let maxSpan = 0;
+  for (let x = 0; x < info.width; x += 1) {
+    let minY = info.height;
+    let maxY = -1;
+    for (let y = 0; y < info.height; y += 1) {
+      const a = data[(y * info.width + x) * info.channels + 3];
+      if (a <= 8) continue;
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+    const span = maxY >= 0 ? maxY - minY + 1 : 0;
+    colSpan[x] = span;
+    maxSpan = Math.max(maxSpan, span);
+  }
+  const threshold = maxSpan * 0.55;
+  let coreMinY = info.height;
+  let coreMaxY = -1;
+  for (let x = 0; x < info.width; x += 1) {
+    if (colSpan[x] < threshold) continue;
+    for (let y = 0; y < info.height; y += 1) {
+      const a = data[(y * info.width + x) * info.channels + 3];
+      if (a <= 8) continue;
+      coreMinY = Math.min(coreMinY, y);
+      coreMaxY = Math.max(coreMaxY, y);
+    }
+  }
+  const coreHeight = Math.max(1, coreMaxY - coreMinY + 1);
+  const targetHeartHeight = Math.round(size * safeArea);
+  const scale = targetHeartHeight / coreHeight;
+  const resizedWidth = Math.max(1, Math.round(info.width * scale));
+  const resizedHeight = Math.max(1, Math.round(info.height * scale));
   const resized = await sharp(croppedMaster)
-    .resize(target, target, { fit: "inside", withoutEnlargement: false })
+    .resize(resizedWidth, resizedHeight, { fit: "fill" })
     .png({ compressionLevel: 9 })
     .toBuffer();
   const resizedMetadata = await sharp(resized).metadata();
-  return { resized, resizedMetadata, target };
+  return {
+    resized,
+    resizedMetadata,
+    target: targetHeartHeight,
+    anchor: {
+      cx: coreAnchor.cx * scale,
+      cy: coreAnchor.cy * scale,
+      width: resizedWidth,
+      height: resizedHeight,
+    },
+  };
 }
 
-async function transparentSquare(size, safeArea = 0.88) {
-  const { resized, resizedMetadata, target } = await resizedArtwork(
+async function compositeOnCanvas(size, background, safeArea, mode) {
+  const { resized, resizedMetadata, target, anchor } = await resizedArtwork(
     size,
     safeArea,
+    mode,
   );
+  const width = resizedMetadata.width ?? target;
+  const height = resizedMetadata.height ?? target;
+  const left = Math.round(size / 2 - (anchor?.cx ?? width / 2));
+  const top = Math.round(size / 2 - (anchor?.cy ?? height / 2));
+  // Crop the overlapping region so the composite piece never exceeds the canvas.
+  const srcLeft = Math.max(0, -left);
+  const srcTop = Math.max(0, -top);
+  const dstLeft = Math.max(0, left);
+  const dstTop = Math.max(0, top);
+  const copyW = Math.max(1, Math.min(width - srcLeft, size - dstLeft));
+  const copyH = Math.max(1, Math.min(height - srcTop, size - dstTop));
+  const piece = await sharp(resized)
+    .extract({ left: srcLeft, top: srcTop, width: copyW, height: copyH })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
   return sharp({
     create: {
       width: size,
       height: size,
       channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      background,
     },
   })
-    .composite([
-      {
-        input: resized,
-        left: Math.floor((size - (resizedMetadata.width ?? target)) / 2),
-        top: Math.floor((size - (resizedMetadata.height ?? target)) / 2),
-      },
-    ])
+    .composite([{ input: piece, left: dstLeft, top: dstTop }])
     .png({ compressionLevel: 9 })
     .toBuffer();
 }
 
-async function opaqueAppIcon(size, safeArea = 0.82) {
-  const { resized, resizedMetadata, target } = await resizedArtwork(
+async function transparentSquare(size, safeArea = 0.88, mode = "contain") {
+  return compositeOnCanvas(
     size,
+    { r: 0, g: 0, b: 0, alpha: 0 },
     safeArea,
+    mode,
   );
-  return sharp({
-    create: {
-      width: size,
-      height: size,
-      channels: 4,
-      background: { r: 5, g: 8, b: 22, alpha: 1 },
-    },
-  })
-    .composite([
-      {
-        input: resized,
-        left: Math.floor((size - (resizedMetadata.width ?? target)) / 2),
-        top: Math.floor((size - (resizedMetadata.height ?? target)) / 2),
-      },
-    ])
-    .png({ compressionLevel: 9 })
-    .toBuffer();
+}
+
+async function opaqueAppIcon(
+  size,
+  safeArea = APP_ICON_SAFE_AREA,
+  background = APP_ICON_BG,
+  mode = "app-icon",
+) {
+  return compositeOnCanvas(size, background, safeArea, mode);
 }
 
 async function transparentMonochromeIcon(size, safeArea = 0.78) {
@@ -256,11 +384,68 @@ async function writeTransparentSquare(relativePath, size, safeArea = 0.88) {
   );
 }
 
-async function writeOpaqueIcon(relativePath, size, safeArea = 0.82) {
+async function writeOpaqueIcon(
+  relativePath,
+  size,
+  safeArea = APP_ICON_SAFE_AREA,
+  mode = "app-icon",
+) {
   fs.writeFileSync(
     path.join(root, relativePath),
-    await opaqueAppIcon(size, safeArea),
+    await opaqueAppIcon(size, safeArea, APP_ICON_BG, mode),
   );
+}
+
+async function writeAdaptiveBackground(relativePath, size) {
+  fs.writeFileSync(
+    path.join(root, relativePath),
+    await sharp({
+      create: {
+        width: size,
+        height: size,
+        channels: 4,
+        background: APP_ICON_BG,
+      },
+    })
+      .png({ compressionLevel: 9 })
+      .toBuffer(),
+  );
+}
+
+async function writeAndroidMipmaps(foreground1024, monochrome1024) {
+  const resRoot = path.join(root, "android/app/src/main/res");
+  const densities = [
+    { name: "mdpi", launcher: 48, foreground: 108 },
+    { name: "hdpi", launcher: 72, foreground: 162 },
+    { name: "xhdpi", launcher: 96, foreground: 216 },
+    { name: "xxhdpi", launcher: 144, foreground: 324 },
+    { name: "xxxhdpi", launcher: 192, foreground: 432 },
+  ];
+  const opaque1024 = await opaqueAppIcon(1024, APP_ICON_SAFE_AREA);
+  for (const density of densities) {
+    const dir = path.join(resRoot, `mipmap-${density.name}`);
+    fs.mkdirSync(dir, { recursive: true });
+    const launcher = await sharp(opaque1024)
+      .resize(density.launcher, density.launcher)
+      .webp({ quality: 92 })
+      .toBuffer();
+    fs.writeFileSync(path.join(dir, "ic_launcher.webp"), launcher);
+    fs.writeFileSync(path.join(dir, "ic_launcher_round.webp"), launcher);
+    fs.writeFileSync(
+      path.join(dir, "ic_launcher_foreground.webp"),
+      await sharp(foreground1024)
+        .resize(density.foreground, density.foreground)
+        .webp({ quality: 92, alphaQuality: 100 })
+        .toBuffer(),
+    );
+    fs.writeFileSync(
+      path.join(dir, "ic_launcher_monochrome.webp"),
+      await sharp(monochrome1024)
+        .resize(density.foreground, density.foreground)
+        .webp({ quality: 92, alphaQuality: 100 })
+        .toBuffer(),
+    );
+  }
 }
 
 const webLogoPng = await sharp(croppedMaster)
@@ -286,7 +471,7 @@ await writeTransparentSquare(
   512,
 );
 await writeTransparentSquare("apps/web/app/icon.png", 128, 0.92);
-await writeOpaqueIcon("apps/web/app/apple-icon.png", 180, 0.8);
+await writeOpaqueIcon("apps/web/app/apple-icon.png", 180, APP_ICON_SAFE_AREA);
 await writeTransparentSquare(
   "apps/web/public/favicon-transparent-v2-16.png",
   16,
@@ -316,31 +501,44 @@ await writeOpaqueIcon(
   "apps/web/public/brand/icons/maskable-192-transparent-v2.png",
   192,
   0.68,
+  "contain",
 );
 await writeOpaqueIcon(
   "apps/web/public/brand/icons/maskable-512-transparent-v2.png",
   512,
   0.68,
+  "contain",
 );
 
-await writeOpaqueIcon("apps/mobile/assets/icon.png", 1024, 0.8);
-await writeOpaqueIcon("apps/mobile/assets/ios-marketing-icon.png", 1024, 0.8);
-await writeOpaqueIcon("assets/icon.png", 1024, 0.8);
-fs.writeFileSync(path.join(root, "assets/brand/mmd-logo.png"), webLogoPng);
-await writeTransparentSquare(
-  "apps/mobile/assets/adaptive-icon.png",
+await writeOpaqueIcon("apps/mobile/assets/icon.png", 1024, APP_ICON_SAFE_AREA);
+await writeOpaqueIcon(
+  "apps/mobile/assets/ios-marketing-icon.png",
   1024,
-  0.68,
+  APP_ICON_SAFE_AREA,
+);
+await writeOpaqueIcon("assets/icon.png", 1024, APP_ICON_SAFE_AREA);
+fs.writeFileSync(path.join(root, "assets/brand/mmd-logo.png"), webLogoPng);
+fs.writeFileSync(
+  path.join(root, "apps/mobile/assets/adaptive-icon.png"),
+  await transparentSquare(1024, ADAPTIVE_FG_SAFE_AREA, "app-icon"),
+);
+await writeAdaptiveBackground(
+  "apps/mobile/assets/adaptive-icon-background.png",
+  1024,
 );
 await writeTransparentSquare("apps/mobile/assets/splash-logo.png", 1024, 0.82);
-fs.writeFileSync(
-  path.join(mobileAssets, "monochrome-icon.png"),
-  await transparentMonochromeIcon(1024, 0.72),
-);
+const monochrome1024 = await transparentMonochromeIcon(1024, 0.72);
+fs.writeFileSync(path.join(mobileAssets, "monochrome-icon.png"), monochrome1024);
 fs.writeFileSync(
   path.join(mobileAssets, "notification-icon.png"),
   await transparentMonochromeIcon(96, 0.8),
 );
+const adaptiveForeground1024 = await transparentSquare(
+  1024,
+  ADAPTIVE_FG_SAFE_AREA,
+  "app-icon",
+);
+await writeAndroidMipmaps(adaptiveForeground1024, monochrome1024);
 
 const socialLogo = await sharp(croppedMaster)
   .resize(500, 360, { fit: "inside", withoutEnlargement: false })
@@ -415,6 +613,7 @@ for (const relativePath of [
   "apps/mobile/assets/icon.png",
   "apps/mobile/assets/ios-marketing-icon.png",
   "apps/mobile/assets/adaptive-icon.png",
+  "apps/mobile/assets/adaptive-icon-background.png",
   "apps/mobile/assets/monochrome-icon.png",
   "apps/mobile/assets/notification-icon.png",
   "apps/mobile/assets/splash-logo.png",
