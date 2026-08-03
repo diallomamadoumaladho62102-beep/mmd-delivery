@@ -27,11 +27,13 @@ import { useSafeBackNavigation } from "../navigation/navigationBack";
 import { useLiveDriverLocation } from "../hooks/useLiveDriverLocation";
 import { useLiveTripEta } from "../hooks/useLiveTripEta";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { useSmoothedDriverMarker } from "../hooks/useSmoothedDriverMarker";
 import { LiveTripMap } from "../components/tracking/LiveTripMap";
 import { LiveEtaBanner } from "../components/tracking/LiveEtaBanner";
 import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { toCoordinatePoint } from "../lib/coordinates";
 import { getApiBaseUrl } from "../lib/apiBase";
+import { VerificationCodeCard } from "../components/shared/VerificationCodeCard";
 
 const API_URL = getApiBaseUrl();
 
@@ -802,6 +804,7 @@ export function ClientDeliveryRequestDetailsScreen() {
     if (!liveDriverLocation) return null;
     return toCoordinatePoint(liveDriverLocation.lat, liveDriverLocation.lng);
   }, [liveDriverLocation]);
+  const smoothedDriver = useSmoothedDriverMarker(driverCoord);
 
   const etaEndpoints = useMemo(
     () =>
@@ -1071,17 +1074,29 @@ export function ClientDeliveryRequestDetailsScreen() {
               <LiveTripMap
                 pickup={pickupCoord}
                 dropoff={dropoffCoord}
-                driver={driverCoord}
+                driver={
+                  smoothedDriver
+                    ? {
+                        latitude: smoothedDriver.latitude,
+                        longitude: smoothedDriver.longitude,
+                      }
+                    : driverCoord
+                }
+                driverHeadingDeg={smoothedDriver?.headingDeg ?? null}
+                driverMoving={smoothedDriver?.moving ?? false}
                 routeGeometry={liveEta.eta?.geometry ?? null}
                 height={240}
-                stale={liveEta.stale || liveEta.offline}
+                showRezoom
+                customerChrome
+                hideInternalBadge
+                stale={liveEta.stale || liveEta.offline || network.quality === "offline"}
                 badgeText={
                   data.driver_id && !driverCoord
                     ? t(
                         "client.deliveryRequest.waitingDriverGps",
                         "Waiting for driver GPS…"
                       )
-                    : liveEta.offline
+                    : liveEta.offline || network.quality === "offline"
                       ? t("client.deliveryRequest.offline", "Offline — map may be stale")
                       : null
                 }
@@ -1387,40 +1402,36 @@ export function ClientDeliveryRequestDetailsScreen() {
             </View>
           )}
 
-          <CodeCard
-            title={t("client.deliveryRequest.pickupCode", "Pickup code")}
+          <VerificationCodeCard
+            title={t(
+              "client.deliveryRequest.pickupCodeTitle",
+              "Your Pickup Verification Code",
+            )}
             code={data.pickup_code}
-            subtitle={
-              codesAvailable
-                ? t(
-                    "client.deliveryRequest.pickupCodeHint",
-                    "Give this code to the person handing the package to the driver. The driver will need this code + a pickup photo to confirm collection."
-                  )
-                : t(
-                    "client.deliveryRequest.pickupCodePending",
-                    "The pickup code will appear here as soon as the linked delivery order is available."
-                  )
-            }
-            accent="rgba(96,165,250,0.45)"
-            notAvailableLabel={t("client.deliveryRequest.notAvailableYet", "Not available yet")}
+            subtitle={t(
+              "client.deliveryRequest.pickupCodeHintOtp",
+              "Show this code to the driver at collection. No photo is required when the code is used.",
+            )}
+            pendingLabel={t(
+              "client.deliveryRequest.pickupCodePending",
+              "The pickup code will appear here as soon as the linked delivery order is available.",
+            )}
           />
 
-          <CodeCard
-            title={t("client.deliveryRequest.dropoffCode", "Dropoff code")}
+          <VerificationCodeCard
+            title={t(
+              "client.deliveryRequest.dropoffCodeTitle",
+              "Your Delivery Verification Code",
+            )}
             code={data.dropoff_code}
-            subtitle={
-              codesAvailable
-                ? t(
-                    "client.deliveryRequest.dropoffCodeHint",
-                    "Share this code with the recipient. The driver will need this code + a delivery photo to confirm dropoff."
-                  )
-                : t(
-                    "client.deliveryRequest.dropoffCodePending",
-                    "The dropoff code will appear here as soon as the linked delivery order is available."
-                  )
-            }
-            accent="rgba(52,211,153,0.45)"
-            notAvailableLabel={t("client.deliveryRequest.notAvailableYet", "Not available yet")}
+            subtitle={t(
+              "client.deliveryRequest.dropoffCodeHintOtp",
+              "Share this code with the recipient. The driver enters it to confirm delivery — no photo required.",
+            )}
+            pendingLabel={t(
+              "client.deliveryRequest.dropoffCodePending",
+              "The dropoff code will appear here as soon as the linked delivery order is available.",
+            )}
           />
 
           <InfoCard label={t("client.deliveryRequest.pickupAddress", "Pickup address")} value={data.pickup_address ?? dash} />

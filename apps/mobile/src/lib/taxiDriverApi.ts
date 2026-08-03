@@ -69,8 +69,13 @@ export function arriveTaxiPickup(
   });
 }
 
-export function startTaxiRide(rideId: string) {
-  return taxiPost("/api/taxi/rides/start", { taxi_ride_id: rideId });
+export function startTaxiRide(rideId: string, pickupCode: string) {
+  return taxiPost("/api/taxi/rides/start", {
+    taxi_ride_id: rideId,
+    pickup_code: String(pickupCode ?? "")
+      .replace(/\D/g, "")
+      .slice(0, 4),
+  });
 }
 
 export function completeTaxiRide(

@@ -80,9 +80,28 @@ export async function GET(req: NextRequest, context: RouteContext) {
       ride as Record<string, unknown>,
     );
 
+    const isDriverViewer =
+      String((ride as { driver_id?: string | null }).driver_id ?? "") ===
+      auth.user.id;
+    const isClientViewer =
+      String((ride as { client_user_id?: string | null }).client_user_id ?? "") ===
+      auth.user.id;
+
+    // Drivers must never auto-see the boarding OTP.
+    const safeRide =
+      isDriverViewer && !isClientViewer && !isStaffRole(role)
+        ? (() => {
+            const {
+              pickup_verification_code: _hiddenCode,
+              ...rest
+            } = enrichedRide as Record<string, unknown>;
+            return rest;
+          })()
+        : enrichedRide;
+
     return taxiJson({
       ok: true,
-      ride: enrichedRide,
+      ride: safeRide,
       stops: stops ?? [],
       scheduled,
     });

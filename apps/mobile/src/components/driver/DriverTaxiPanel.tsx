@@ -30,8 +30,6 @@ import {
 } from "../../lib/taxiDriverApi";
 import { subscribeTaxiOfferPushRefresh } from "../../lib/taxiPushEvents";
 import { getFreshPosition } from "../../lib/locationPermissionState";
-import { DriverWaitTimerPanel } from "./DriverWaitTimerPanel";
-import { TaxiSafetyRecordingPanel } from "../taxi/TaxiSafetyRecordingPanel";
 import {
   filterActiveTaxiOffers,
   formatOfferCountdown,
@@ -40,6 +38,10 @@ import {
   startDriverMissionAlert,
   stopDriverMissionAlert,
 } from "../../lib/driverMissionAlertService";
+import { DriverTaxiActiveRideCard } from "./DriverTaxiActiveRideCard";
+import { startMaskedCall } from "../../lib/maskedCall";
+import { driverArrivedWaitTimer } from "../../lib/waitTimerApi";
+import * as Location from "expo-location";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -282,34 +284,86 @@ export function DriverTaxiPanel({
     }
   }
 
-  async function lifecycle(action: "arrive" | "start" | "complete") {
+  async function lifecycle(action: "arrive" | "complete") {
     const rideId = String(activeRide?.id ?? "");
     if (!rideId || actionLockRef.current) return;
     actionLockRef.current = true;
 
     setActionId(rideId);
     try {
-      if (action === "arrive" || action === "complete") {
-        const pos = await getFreshPosition({ timeoutMs: 8000 });
-        if (
-          pos.state !== "fresh" &&
-          pos.state !== "cached" &&
-          pos.state !== "weak_accuracy"
-        ) {
-          throw new Error("GPS required to confirm arrival or completion.");
-        }
-        const coords = { lat: pos.latitude, lng: pos.longitude };
-        if (action === "arrive") await arriveTaxiPickup(rideId, coords);
-        if (action === "complete") await completeTaxiRide(rideId, coords);
-      } else {
-        await startTaxiRide(rideId);
+      const pos = await getFreshPosition({ timeoutMs: 8000 });
+      if (
+        pos.state !== "fresh" &&
+        pos.state !== "cached" &&
+        pos.state !== "weak_accuracy"
+      ) {
+        throw new Error("GPS required to confirm arrival or completion.");
       }
+      const coords = { lat: pos.latitude, lng: pos.longitude };
+      if (action === "arrive") {
+        await arriveTaxiPickup(rideId, coords);
+        // Also start customer wait timer (OTP boarding is separate).
+        try {
+          const { data } = await supabase.auth.getSession();
+          const token = data.session?.access_token;
+          if (token) {
+            const loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            await driverArrivedWaitTimer(token, {
+              entity_type: "taxi_ride",
+              entity_id: rideId,
+              driver_lat: loc.coords.latitude,
+              driver_lng: loc.coords.longitude,
+            });
+          }
+        } catch (waitErr) {
+          console.log("[DriverTaxiPanel] wait timer arrive:", waitErr);
+        }
+      }
+      if (action === "complete") await completeTaxiRide(rideId, coords);
       await refresh();
     } catch (e: unknown) {
       Alert.alert("Taxi", toUserFacingError(e, "Action failed"));
     } finally {
       actionLockRef.current = false;
       setActionId(null);
+    }
+  }
+
+  async function verifyPickupAndStart(pickupCode: string) {
+    const rideId = String(activeRide?.id ?? "");
+    if (!rideId || actionLockRef.current) {
+      throw new Error("Please wait and try again.");
+    }
+    actionLockRef.current = true;
+    setActionId(rideId);
+    try {
+      await startTaxiRide(rideId, pickupCode);
+      await refresh();
+    } catch (e: unknown) {
+      // Surface inline error in the OTP modal (bank-style UX).
+      throw e instanceof Error
+        ? e
+        : new Error(toUserFacingError(e, "Invalid pickup code"));
+    } finally {
+      actionLockRef.current = false;
+      setActionId(null);
+    }
+  }
+
+  async function callClient() {
+    const rideId = String(activeRide?.id ?? "");
+    if (!rideId) return;
+    try {
+      await startMaskedCall({
+        orderId: rideId,
+        callerRole: "driver",
+        targetRole: "client",
+        sourceTable: "taxi_rides",
+      });
+    } catch (e: unknown) {
+      Alert.alert("Call", toUserFacingError(e, "Unable to start masked call"));
     }
   }
 
@@ -338,6 +392,85 @@ export function DriverTaxiPanel({
     return null;
   }
 
+  if (activeRide) {
+    return (
+      <View
+        pointerEvents="box-none"
+        style={[styles.wrap, elevated ? styles.wrapElevated : null]}
+      >
+        {loading ? (
+          <ActivityIndicator color="#F59E0B" style={{ marginVertical: 8 }} />
+        ) : null}
+        <DriverTaxiActiveRideCard
+          rideId={rideId}
+          status={status}
+          pickupAddress={String(activeRide.pickup_address ?? "")}
+          dropoffAddress={String(activeRide.dropoff_address ?? "")}
+          payoutLabel={formatDriverPayout(
+            activeRide.driver_payout_cents,
+            String(activeRide.currency ?? "USD"),
+          )}
+          vehicleClass={
+            String(
+              activeRide.vehicle_class ?? features?.vehicle_class ?? "STANDARD",
+            ) || "STANDARD"
+          }
+          paymentLabel={
+            String(activeRide.payment_method ?? "").toLowerCase() === "cash"
+              ? "Cash"
+              : String(activeRide.payment_status ?? "").toLowerCase() === "paid"
+                ? "Paid"
+                : null
+          }
+          preferenceLines={
+            (activeRide.client_preference_lines as Array<{
+              emoji: string;
+              label: string;
+            }>) ?? []
+          }
+          stops={
+            (activeRide.taxi_ride_stops as Array<{
+              stop_order: number;
+              address?: string;
+              status?: string;
+            }>) ?? []
+          }
+          actionId={actionId}
+          onNavigate={(stage) =>
+            navigation.navigate("DriverMap", {
+              orderId: rideId,
+              sourceTable: "taxi_rides",
+              destinationStage: stage,
+            })
+          }
+          onChat={() => navigation.navigate("DriverTaxiChat", { rideId })}
+          onCall={() => void callClient()}
+          onArrive={() => void lifecycle("arrive")}
+          onVerifyPickupCode={async (code) => {
+            await verifyPickupAndStart(code);
+          }}
+          onComplete={() => void lifecycle("complete")}
+          onCancel={() => void handleDriverCancel()}
+          onArriveStop={(stopOrder) =>
+            void arriveTaxiStop(rideId, stopOrder)
+              .then(refresh)
+              .catch((e: unknown) =>
+                Alert.alert("Taxi", toUserFacingError(e, "Failed")),
+              )
+          }
+          onCompleteStop={(stopOrder) =>
+            void completeTaxiStop(rideId, stopOrder)
+              .then(refresh)
+              .catch((e: unknown) =>
+                Alert.alert("Taxi", toUserFacingError(e, "Failed")),
+              )
+          }
+          onNoShowCanceled={() => void refresh()}
+        />
+      </View>
+    );
+  }
+
   return (
     <View
       pointerEvents="box-none"
@@ -345,9 +478,7 @@ export function DriverTaxiPanel({
     >
       <View style={[styles.card, elevated ? styles.cardElevated : null]}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>
-            {activeRide ? "Active taxi ride" : "Incoming taxi offer"}
-          </Text>
+          <Text style={styles.title}>Incoming taxi offer</Text>
           {features?.vehicle_class ? (
             <Text style={styles.badge}>{features.vehicle_class}</Text>
           ) : null}
@@ -358,156 +489,7 @@ export function DriverTaxiPanel({
 
         {loading ? <ActivityIndicator color="#F59E0B" style={{ marginVertical: 8 }} /> : null}
 
-        {activeRide ? (
-          <View style={styles.section}>
-            <Text style={styles.meta}>{formatStatus(status)}</Text>
-            <Text style={styles.meta} numberOfLines={1}>
-              {String(activeRide.pickup_address ?? "")}
-            </Text>
-            <Text style={styles.meta} numberOfLines={1}>
-              → {String(activeRide.dropoff_address ?? "")}
-            </Text>
-            {(activeRide.taxi_ride_stops as { stop_order: number; address?: string; status?: string }[] | undefined)
-              ?.sort((a, b) => a.stop_order - b.stop_order)
-              .map((stop) => (
-                <View key={stop.stop_order} style={{ marginTop: 6 }}>
-                  <Text style={styles.meta} numberOfLines={1}>
-                    Stop {stop.stop_order}: {String(stop.address ?? "")} ({stop.status})
-                  </Text>
-                  {status === "in_progress" ? (
-                    <View style={styles.row}>
-                      <TouchableOpacity
-                        style={styles.secondaryBtn}
-                        onPress={() =>
-                          arriveTaxiStop(rideId, stop.stop_order)
-                            .then(refresh)
-                            .catch((e: unknown) =>
-                              Alert.alert("Taxi", toUserFacingError(e, "Failed"))
-                            )
-                        }
-                      >
-                        <Text style={styles.secondaryText}>Arrive stop</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.secondaryBtn}
-                        onPress={() =>
-                          completeTaxiStop(rideId, stop.stop_order)
-                            .then(refresh)
-                            .catch((e: unknown) =>
-                              Alert.alert("Taxi", toUserFacingError(e, "Failed"))
-                            )
-                        }
-                      >
-                        <Text style={styles.secondaryText}>Complete stop</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-            <Text style={styles.payout}>
-              {formatDriverPayout(
-                activeRide.driver_payout_cents,
-                String(activeRide.currency ?? "USD")
-              )}
-            </Text>
-            {(activeRide.client_preference_lines as Array<{ emoji: string; label: string }> | undefined)
-              ?.length ? (
-              <View style={styles.prefsBox}>
-                <Text style={styles.prefsTitle}>Client Preferences</Text>
-                {(activeRide.client_preference_lines as Array<{ emoji: string; label: string }>).map(
-                  (line) => (
-                    <Text key={line.label} style={styles.prefLine}>
-                      {line.emoji} {line.label}
-                    </Text>
-                  ),
-                )}
-              </View>
-            ) : null}
-
-            <TaxiSafetyRecordingPanel rideId={rideId} role="driver" rideActive />
-
-            <View style={styles.row}>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={() =>
-                  navigation.navigate("DriverMap", {
-                    orderId: rideId,
-                    sourceTable: "taxi_rides",
-                    destinationStage:
-                      status === "in_progress" ? "dropoff" : "pickup",
-                  })
-                }
-              >
-                <Text style={styles.secondaryText}>Navigate</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={() =>
-                  navigation.navigate("DriverTaxiChat", { rideId })
-                }
-              >
-                <Text style={styles.secondaryText}>Chat</Text>
-              </TouchableOpacity>
-            </View>
-
-            {status === "accepted" || status === "driver_arrived" ? (
-              <DriverWaitTimerPanel
-                entityType="taxi_ride"
-                entityId={rideId}
-                mode="taxi"
-                onTaxiNoShowCanceled={() => void refresh()}
-              />
-            ) : null}
-
-            {status === "accepted" ? (
-              <LifecycleBtn
-                label="Arrive at pickup"
-                loading={actionId === rideId}
-                onPress={() => lifecycle("arrive")}
-              />
-            ) : null}
-            {status === "driver_arrived" ? (
-              <LifecycleBtn
-                label="Start ride"
-                loading={actionId === rideId}
-                onPress={() => lifecycle("start")}
-              />
-            ) : null}
-            {status === "in_progress" ? (
-              <LifecycleBtn
-                label="Complete ride"
-                loading={actionId === rideId}
-                onPress={() => lifecycle("complete")}
-              />
-            ) : null}
-            {status === "accepted" || status === "driver_arrived" ? (
-              <TouchableOpacity
-                style={styles.rejectBtn}
-                disabled={actionId === rideId}
-                onPress={() => {
-                  Alert.alert(
-                    "Cancel ride",
-                    "Cancel this taxi ride? Payment refund (if any) is handled by admin.",
-                    [
-                      { text: "Keep ride", style: "cancel" },
-                      {
-                        text: "Cancel ride",
-                        style: "destructive",
-                        onPress: () => void handleDriverCancel(),
-                      },
-                    ],
-                  );
-                }}
-              >
-                <Text style={styles.rejectText}>
-                  {actionId === rideId ? "…" : "Cancel ride"}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
-
-        {!activeRide && activeOffers.length > 0 ? (
+        {activeOffers.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Taxi offers</Text>
             {activeOffers.slice(0, 3).map((offer) => {
@@ -592,36 +574,12 @@ export function DriverTaxiPanel({
           </View>
         ) : null}
 
-        {!activeRide && activeOffers.length === 0 && !loading ? (
+        {activeOffers.length === 0 && !loading ? (
           <Text style={styles.empty}>No taxi offers right now.</Text>
         ) : null}
       </View>
     </View>
   );
-}
-
-function LifecycleBtn({
-  label,
-  onPress,
-  loading,
-}: {
-  label: string;
-  onPress: () => void;
-  loading: boolean;
-}) {
-  return (
-    <TouchableOpacity
-      style={styles.lifecycleBtn}
-      onPress={onPress}
-      disabled={loading}
-    >
-      <Text style={styles.lifecycleText}>{loading ? "…" : label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function formatStatus(status: string) {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 const styles = StyleSheet.create({

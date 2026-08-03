@@ -44,6 +44,7 @@ import { TripRouteCard } from "../../components/tracking/TripRouteCard";
 import { DriverProfileCard } from "../../components/tracking/DriverProfileCard";
 import { SafetyAudioCard } from "../../components/tracking/SafetyAudioCard";
 import { TrackingBottomActions } from "../../components/tracking/TrackingBottomActions";
+import { VerificationCodeCard } from "../../components/shared/VerificationCodeCard";
 import { toCoordinatePoint } from "../../lib/coordinates";
 import { resolveEtaEndpoints } from "../../lib/liveTripTracking";
 import { startMaskedCall } from "../../lib/maskedCall";
@@ -639,6 +640,27 @@ export default function TaxiRideTrackingScreen() {
           etaLabel={etaLabel}
           safetyLine={trackingLabels.safetyLine}
         />
+
+        {status === "accepted" || status === "driver_arrived" ? (
+          <VerificationCodeCard
+            title={t(
+              "taxi.ride.pickupCodeTitle",
+              "Your Pickup Verification Code",
+            )}
+            code={
+              (ride?.pickup_verification_code as string | null | undefined) ??
+              null
+            }
+            subtitle={t(
+              "taxi.ride.pickupCodeHint",
+              "Show this code to your driver before entering the vehicle.",
+            )}
+            pendingLabel={t(
+              "taxi.ride.pickupCodePending",
+              "Your boarding code will appear here once the driver is assigned.",
+            )}
+          />
+        ) : null}
 
         {fareLabel ? (
           <View style={styles.fareChip} accessibilityRole="text">

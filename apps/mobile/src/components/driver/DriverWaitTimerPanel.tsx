@@ -32,6 +32,8 @@ type Props = {
   entityType: WaitTimerEntityType;
   entityId: string;
   mode: "delivery" | "taxi";
+  /** Premium styling for the floating taxi ride card. */
+  variant?: "default" | "premium";
   onDepositAuthorized?: (proofPhotoUrl: string) => void;
   onTaxiNoShowCanceled?: () => void;
 };
@@ -57,6 +59,7 @@ export function DriverWaitTimerPanel({
   entityType,
   entityId,
   mode,
+  variant = "default",
   onDepositAuthorized,
   onTaxiNoShowCanceled,
 }: Props) {
@@ -295,11 +298,15 @@ export function DriverWaitTimerPanel({
   const currency = status?.currency ?? "USD";
   const arrived = Boolean(status?.driver_arrived_at || status?.wait_timer_started_at);
 
+  const premium = variant === "premium";
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, premium && styles.cardPremium]}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>
-          {tr("driver.waitTimer.title", "Chronomètre d’attente client")}
+        <Text style={[styles.title, premium && styles.titlePremium]}>
+          {premium
+            ? "Customer wait time"
+            : tr("driver.waitTimer.title", "Chronomètre d’attente client")}
         </Text>
         {refreshing ? <ActivityIndicator size="small" color="#94A3B8" /> : null}
       </View>
@@ -309,33 +316,65 @@ export function DriverWaitTimerPanel({
       ) : null}
 
       {!arrived ? (
-        <TouchableOpacity
-          style={[styles.primaryBtn, loading && styles.disabled]}
-          disabled={loading}
-          onPress={() => void onArrived()}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.primaryText}>
-              {tr("driver.waitTimer.arrivedCta", "Je suis arrivé")}
-            </Text>
-          )}
-        </TouchableOpacity>
+        premium ? (
+          <View style={styles.premiumIdleRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.meta}>
+                Free wait time: {timer?.free_wait_minutes ?? 5} min
+              </Text>
+            </View>
+            <Text style={[styles.timer, styles.timerPremium]}>00:00</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.primaryBtn, loading && styles.disabled]}
+            disabled={loading}
+            onPress={() => void onArrived()}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryText}>
+                {tr("driver.waitTimer.arrivedCta", "Je suis arrivé")}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )
       ) : (
         <>
-          <Text style={styles.timer}>{formatTimer(timer?.elapsed_seconds ?? 0)}</Text>
-          <Text style={styles.meta}>
-            {tr("driver.waitTimer.freeWait", "Attente gratuite")}: {timer?.free_wait_minutes ?? 5}{" "}
-            min • {tr("driver.waitTimer.lateFee", "Frais")}:{" "}
-            {formatWaitFee(timer?.wait_fee_cents ?? 0, currency)}
-          </Text>
-          {(timer?.remaining_free_seconds ?? 0) > 0 ? (
-            <Text style={styles.meta}>
-              {tr("driver.waitTimer.freeRemaining", "Temps gratuit restant")}:{" "}
-              {formatTimer(timer?.remaining_free_seconds ?? 0)}
-            </Text>
-          ) : null}
+          {premium ? (
+            <View style={styles.premiumIdleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.meta}>
+                  Free wait time: {timer?.free_wait_minutes ?? 5} min
+                </Text>
+                {(timer?.remaining_free_seconds ?? 0) > 0 ? (
+                  <Text style={styles.meta}>
+                    Free remaining: {formatTimer(timer?.remaining_free_seconds ?? 0)}
+                  </Text>
+                ) : null}
+              </View>
+              <Text style={[styles.timer, styles.timerPremium]}>
+                {formatTimer(timer?.elapsed_seconds ?? 0)}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.timer}>{formatTimer(timer?.elapsed_seconds ?? 0)}</Text>
+              <Text style={styles.meta}>
+                {tr("driver.waitTimer.freeWait", "Attente gratuite")}:{" "}
+                {timer?.free_wait_minutes ?? 5} min •{" "}
+                {tr("driver.waitTimer.lateFee", "Frais")}:{" "}
+                {formatWaitFee(timer?.wait_fee_cents ?? 0, currency)}
+              </Text>
+              {(timer?.remaining_free_seconds ?? 0) > 0 ? (
+                <Text style={styles.meta}>
+                  {tr("driver.waitTimer.freeRemaining", "Temps gratuit restant")}:{" "}
+                  {formatTimer(timer?.remaining_free_seconds ?? 0)}
+                </Text>
+              ) : null}
+            </>
+          )}
 
           {mode === "delivery" && status?.leave_at_door === false ? (
             <Text style={styles.hint}>
@@ -388,6 +427,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(148,163,184,0.18)",
   },
+  cardPremium: {
+    marginTop: 0,
+    borderRadius: 18,
+    backgroundColor: "rgba(30,41,59,0.88)",
+    borderColor: "rgba(245,158,11,0.25)",
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -395,8 +440,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   title: { color: "#E2E8F0", fontWeight: "900", fontSize: 14, flex: 1 },
+  titlePremium: { color: "#F8FAFC", fontSize: 14 },
+  premiumIdleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   errorText: { color: "#FCA5A5", fontSize: 12, fontWeight: "700", marginBottom: 8 },
   timer: { color: "#F8FAFC", fontWeight: "900", fontSize: 32, letterSpacing: 1 },
+  timerPremium: { color: "#FBBF24", fontSize: 28 },
   meta: { color: "#94A3B8", fontWeight: "700", fontSize: 12, marginTop: 6 },
   hint: { color: "#64748B", fontSize: 11, marginTop: 8, lineHeight: 16 },
   primaryBtn: {
