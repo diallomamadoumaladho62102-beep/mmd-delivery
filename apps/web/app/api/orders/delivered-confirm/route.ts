@@ -562,8 +562,8 @@ export async function POST(req: NextRequest) {
       return json({ error: "Order not found" }, 404);
     }
 
-    let proofPhotoUrl = "";
-
+    // OTP-first: proof photo optional when the driver verified a delivery code.
+    let proofPhotoUrl: string | null = null;
     try {
       if (
         orderGate.leave_at_door === true &&
@@ -571,17 +571,13 @@ export async function POST(req: NextRequest) {
       ) {
         const fromBody = String(body.proof_photo_url ?? "").trim();
         const fromDeposit = String(orderGate.dropoff_photo_url ?? "").trim();
-        proofPhotoUrl = normalizeProofPhotoUrl(fromBody || fromDeposit, orderId);
+        const raw = fromBody || fromDeposit;
+        if (raw) proofPhotoUrl = normalizeProofPhotoUrl(raw, orderId);
       } else {
-        proofPhotoUrl = normalizeProofPhotoUrl(body.proof_photo_url, orderId);
+        const raw = String(body.proof_photo_url ?? "").trim();
+        if (raw) proofPhotoUrl = normalizeProofPhotoUrl(raw, orderId);
       }
-    } catch (e) {
-      const message = getErrorMessage(e);
-
-      if (message === "Missing proof_photo_url") {
-        return json({ error: "Missing proof_photo_url" }, 400);
-      }
-
+    } catch {
       return json({ error: "Invalid proof_photo_url" }, 400);
     }
 
@@ -628,28 +624,30 @@ export async function POST(req: NextRequest) {
       return json({ error: mapped.error }, mapped.status);
     }
 
-    try {
-      await persistDropoffProof({
-        supabaseAdmin,
-        orderId,
-        proofPhotoUrl,
-      });
-    } catch (persistErr) {
-      const persistMessage = getErrorMessage(persistErr);
+    if (proofPhotoUrl) {
+      try {
+        await persistDropoffProof({
+          supabaseAdmin,
+          orderId,
+          proofPhotoUrl,
+        });
+      } catch (persistErr) {
+        const persistMessage = getErrorMessage(persistErr);
 
-      console.error("[delivered-confirm] delivery proof persistence failed", {
-        order_id: orderId,
-        user_id: user.id,
-        message: persistMessage,
-      });
+        console.error("[delivered-confirm] delivery proof persistence failed", {
+          order_id: orderId,
+          user_id: user.id,
+          message: persistMessage,
+        });
 
-      return json(
-        {
-          error: "Delivery confirmed but proof photo could not be saved",
-          delivery_confirmed: true,
-        },
-        500
-      );
+        return json(
+          {
+            error: "Delivery confirmed but proof photo could not be saved",
+            delivery_confirmed: true,
+          },
+          500
+        );
+      }
     }
 
     let lateFeeBilling: Awaited<ReturnType<typeof chargeWaitLateFeeIfEligible>> | null =

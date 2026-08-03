@@ -4,10 +4,8 @@ import {
   fromStripeAmount,
   toStripeAmount,
 } from "./taxiStripeAmounts";
-import {
-  calculateTaxiFinalPriceSnapshot,
-  isQuotePriceWithinTolerance,
-} from "./taxiFinalPrice";
+import { isQuotePriceWithinTolerance } from "./taxiFinalPrice";
+import { computeTaxiFinalPrice } from "./pricingEngine/engine/compute/taxiFinalPrice";
 
 function test(name: string, fn: () => void) {
   try {
@@ -56,7 +54,7 @@ test("USD keeps cent precision on Stripe", () => {
 });
 
 test("final price snapshot includes tax and shared discount", () => {
-  const snap = calculateTaxiFinalPriceSnapshot({
+  const snap = computeTaxiFinalPrice({
     subtotal_cents: 10000,
     tax_cents: 800,
     shared_ride: true,
@@ -67,11 +65,11 @@ test("final price snapshot includes tax and shared discount", () => {
 });
 
 test("quote drift tolerance accepts promo-adjusted net total", () => {
-  const gross = calculateTaxiFinalPriceSnapshot({
+  const gross = computeTaxiFinalPrice({
     subtotal_cents: 2000,
     tax_cents: 160,
   });
-  const withPromo = calculateTaxiFinalPriceSnapshot({
+  const withPromo = computeTaxiFinalPrice({
     subtotal_cents: 2000,
     tax_cents: 160,
     promo_discount_cents: 300,

@@ -3,7 +3,6 @@ import { stripe } from "@/lib/stripe";
 import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import { buildStripeCheckoutLineItems } from "@/lib/stripeCheckoutBreakdown";
 import {
-  computeMarketplaceCheckoutShadow,
   type MarketplaceCheckoutShadow,
 } from "@/lib/marketplaceCheckout";
 import {
@@ -13,6 +12,7 @@ import {
 import { isMarketplaceCheckoutLiveEnvEnabled } from "@/lib/marketplaceLiveCheckout";
 import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
+import { quoteMarketplaceSot } from "@/lib/pricingEngine";
 
 type ApprovedSellerRow = {
   id: string;
@@ -98,16 +98,22 @@ async function assertActiveOrderProducts(
   });
 
   // Always price from live catalog — never trust stale cart line prices.
-  return computeMarketplaceCheckoutShadow(
+  // Phase 5F — PE exclusive SoT.
+  const pe = quoteMarketplaceSot(
     items.map((item) => ({
       price_cents: activeById.get(String(item.product_id)) ?? 0,
       quantity: item.quantity,
     })),
     {
-      deliveryFeeCents: order.delivery_fee_cents,
+      deliveryFeeCents: order.delivery_fee_cents ?? undefined,
       serviceFeeConfig,
     }
   );
+  const { pe: _peMeta, ...totals } = pe;
+  return {
+    ...totals,
+    pricing_engine_version: "marketplace_checkout_shadow_v2",
+  } satisfies MarketplaceCheckoutShadow;
 }
 
 export async function prepareMarketplaceLiveCheckoutOrder(
@@ -146,7 +152,20 @@ export async function prepareMarketplaceLiveCheckoutOrder(
   }
 
   const seller = await assertApprovedSeller(supabaseAdmin, order.seller_id);
-  const totals = await assertActiveOrderProducts(supabaseAdmin, order);
+  const totalsBase = await assertActiveOrderProducts(supabaseAdmin, order);
+
+  const totals: MarketplaceCheckoutShadow = {
+    subtotal_cents: totalsBase.subtotal_cents,
+    delivery_fee_cents: totalsBase.delivery_fee_cents,
+    service_fee_cents: totalsBase.service_fee_cents,
+    service_fee_pct: totalsBase.service_fee_pct,
+    service_fee_enabled: totalsBase.service_fee_enabled,
+    service_fee_fixed_cents: totalsBase.service_fee_fixed_cents,
+    total_cents: totalsBase.total_cents,
+    checkout_enabled: totalsBase.checkout_enabled,
+    pricing_engine_version: "marketplace_checkout_shadow_v2",
+    message: totalsBase.message,
+  };
 
   if (totals.total_cents <= 0) throw new Error("Invalid order total");
 

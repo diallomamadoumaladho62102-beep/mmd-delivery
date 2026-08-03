@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  computeMarketplaceCheckoutShadow,
   type MarketplaceCheckoutShadow,
 } from "@/lib/marketplaceCheckout";
 import { persistMarketplaceDeliveryShadow } from "@/lib/marketplaceDeliveryShadow";
@@ -11,6 +10,7 @@ import {
   resolveMarketingOffers,
   userHasActiveMmdPlus,
 } from "@/lib/marketing/marketingEngine";
+import { quoteMarketplaceSot } from "@/lib/pricingEngine";
 
 export type MarketplaceDraftItemInput = {
   product_id: string;
@@ -438,7 +438,7 @@ export async function upsertMarketplaceDraftOrder(
     countryCode: params.countryCode ?? undefined,
   });
 
-  const shadowBase = computeMarketplaceCheckoutShadow(
+  const shadowBase = quoteMarketplaceSot(
     lineItems.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
@@ -502,6 +502,10 @@ export async function upsertMarketplaceDraftOrder(
   };
 
   const currency = lineItems[0]?.currency ?? "USD";
+
+  // Phase 5F — PE already computed shadowBase; marketing-adjusted total is SoT.
+  (shadow as Record<string, unknown>).charge_path = "engine";
+  (shadow as Record<string, unknown>).engine_quote_snapshot_id = null;
 
   const orderPayload = {
     seller_id: params.sellerId,
@@ -650,13 +654,13 @@ export async function runMarketplaceCheckoutShadow(
     region: order.region_code ?? undefined,
   });
 
-  const shadowBase = computeMarketplaceCheckoutShadow(
+  const shadowBase = quoteMarketplaceSot(
     items.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
     })),
     {
-      deliveryFeeCents: order.delivery_fee_cents,
+      deliveryFeeCents: order.delivery_fee_cents ?? undefined,
       serviceFeeConfig,
     }
   );
@@ -734,6 +738,9 @@ export async function runMarketplaceCheckoutShadow(
         }
       : undefined,
   };
+
+  (shadow as Record<string, unknown>).charge_path = "engine";
+  (shadow as Record<string, unknown>).engine_quote_snapshot_id = null;
 
   const nextStatus = shadow.checkout_enabled ? "pending_checkout" : "draft";
 

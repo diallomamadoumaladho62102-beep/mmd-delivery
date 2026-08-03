@@ -86,9 +86,9 @@ export function countryCodeFromFoodAuthScope(scope: {
   return code;
 }
 
-export function buildFoodPricingResponse(pricing: Awaited<
-  ReturnType<typeof import("@/lib/foodOrderServerPricing").computeFoodOrderPricing>
->) {
+export function buildFoodPricingResponse(
+  pricing: import("@/lib/foodOrderServerPricing").FoodOrderPricingResult
+) {
   return {
     country_code: pricing.countryCode,
     currency: pricing.currency,

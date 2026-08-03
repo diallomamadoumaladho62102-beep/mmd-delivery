@@ -388,7 +388,7 @@ export async function POST(req: NextRequest) {
     const body = await parseBody(req);
 
     let orderId = "";
-    let proofPhotoUrl = "";
+    let proofPhotoUrl: string | null = null;
 
     try {
       orderId = normalizeOrderId(body.order_id ?? body.orderId);
@@ -402,14 +402,14 @@ export async function POST(req: NextRequest) {
       return json({ error: "Invalid order_id" }, 400);
     }
 
-    try {
-      proofPhotoUrl = normalizeProofPhotoUrl(body.proof_photo_url, orderId);
-    } catch (e) {
-      const message = getErrorMessage(e);
-      if (message === "Missing proof_photo_url") {
-        return json({ error: "Missing proof_photo_url" }, 400);
+    // OTP-first: proof photo is optional when the driver verified a code.
+    const rawProof = String(body.proof_photo_url ?? "").trim();
+    if (rawProof) {
+      try {
+        proofPhotoUrl = normalizeProofPhotoUrl(rawProof, orderId);
+      } catch {
+        return json({ error: "Invalid proof_photo_url" }, 400);
       }
-      return json({ error: "Invalid proof_photo_url" }, 400);
     }
 
     const { data: orderGate, error: orderGateErr } = await supabaseAdmin
@@ -468,28 +468,30 @@ export async function POST(req: NextRequest) {
       return json({ error: mapped.error }, mapped.status);
     }
 
-    try {
-      await persistPickupProof({
-        supabaseAdmin,
-        orderId,
-        proofPhotoUrl,
-      });
-    } catch (persistErr) {
-      const persistMessage = getErrorMessage(persistErr);
+    if (proofPhotoUrl) {
+      try {
+        await persistPickupProof({
+          supabaseAdmin,
+          orderId,
+          proofPhotoUrl,
+        });
+      } catch (persistErr) {
+        const persistMessage = getErrorMessage(persistErr);
 
-      console.error("[pickup-confirm] pickup proof persistence failed", {
-        order_id: orderId,
-        user_id: user.id,
-        message: persistMessage,
-      });
+        console.error("[pickup-confirm] pickup proof persistence failed", {
+          order_id: orderId,
+          user_id: user.id,
+          message: persistMessage,
+        });
 
-      return json(
-        {
-          error: "Pickup confirmed but proof photo could not be saved",
-          pickup_confirmed: true,
-        },
-        500
-      );
+        return json(
+          {
+            error: "Pickup confirmed but proof photo could not be saved",
+            pickup_confirmed: true,
+          },
+          500
+        );
+      }
     }
 
     try {

@@ -14,9 +14,9 @@ import { resolveTaxiCountryWithDetection } from "@/lib/taxiCountryDetection";
 import { resolveTaxiPickupCity } from "@/lib/taxiCityDetection";
 import {
   assertTaxiQuotePriceMatches,
-  calculateTaxiFinalPriceSnapshot,
   snapshotFromRideRow,
 } from "@/lib/taxiFinalPrice";
+import { quoteRideFinalSot } from "@/lib/pricingEngine";
 import { resolveMmdPlusCheckoutBenefits } from "@/lib/mmdPlus/mmdPlusEngine";
 import {
   applyTaxiServiceFeeToQuote,
@@ -399,13 +399,14 @@ export async function POST(req: NextRequest) {
       deliveryFeeCents: 0,
     });
     const mmdPlusDiscountCents = Math.max(0, mmdPlusBenefits.order_discount_cents || 0);
-    const pricedSnapshot = calculateTaxiFinalPriceSnapshot({
+    const pricedSnapshot = quoteRideFinalSot({
       subtotal_cents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
       tax_cents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
       gross_total_cents: Math.round(
         Number(quoteWithServiceFee.gross_total_cents ?? quoteWithServiceFee.total_cents ?? 0)
       ),
       mmd_plus_discount_cents: mmdPlusDiscountCents,
+      shared_ride: sharedRide,
     });
     const netTotalCents = pricedSnapshot.total_cents;
 

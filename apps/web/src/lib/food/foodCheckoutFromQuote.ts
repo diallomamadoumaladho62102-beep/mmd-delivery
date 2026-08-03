@@ -22,7 +22,10 @@ import {
 import { completeFoodOrderAfterPayment } from "@/lib/foodOrderPaymentCompletion";
 import { enqueuePaymentSucceeded } from "@/lib/finance/financeEvents";
 import { bridgeStripeWalletFromPaidOrder } from "@/lib/stripeInboundWalletBridge";
-import type { FoodOrderLineInput } from "@/lib/foodOrderServerPricing";
+import type {
+  FoodOrderLineInput,
+  FoodOrderPricingResult,
+} from "@/lib/foodOrderServerPricing";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 
 export const FOOD_QUOTE_CHECKOUT_TTL_MS = 30 * 60 * 1000;
@@ -44,6 +47,11 @@ export type FoodCheckoutIntentSnapshot = {
   leave_at_door?: boolean;
   currency: string;
   amount_cents: number;
+  /** Phase 5F — always engine on hot path. */
+  charge_path?: "legacy" | "engine";
+  pricing_snapshot_id?: string | null;
+  /** Phase 5F — frozen PE quote for materialize (no re-price). */
+  frozen_pricing?: FoodOrderPricingResult | null;
 };
 
 export function hashFoodCheckoutSnapshot(snapshot: FoodCheckoutIntentSnapshot): string {
@@ -269,6 +277,7 @@ export async function materializePaidFoodOrderFromQuoteCheckout(params: {
       countryCode: snapshot.country_code,
       promoCode: snapshot.promo_code,
       leaveAtDoor: snapshot.leave_at_door === true,
+      frozenPricing: snapshot.frozen_pricing ?? null,
       settlePaid: {
         stripeSessionId: sessionId,
         stripePaymentIntentId: paymentIntentId,

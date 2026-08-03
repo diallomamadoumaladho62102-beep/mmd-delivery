@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       lng: fields.dropoffLng,
     });
 
+    // Phase 5F — PE exclusive SoT.
     const pricing = await quoteDeliveryRequestServerSide({
       supabaseAdmin: auth.supabaseAdmin,
       pickupAddress: fields.pickupAddress,
@@ -56,7 +57,12 @@ export async function POST(req: NextRequest) {
 
     return mmdLocationJson({
       ok: true,
-      quote: buildDeliveryPricingResponse(pricing),
+      quote: {
+        ...buildDeliveryPricingResponse(pricing),
+        total_cents: pricing.totalCents,
+        charge_path: "engine",
+        pricing_snapshot_id: null,
+      },
     });
   } catch (error) {
     if (isDeliverySharePctError(error)) {

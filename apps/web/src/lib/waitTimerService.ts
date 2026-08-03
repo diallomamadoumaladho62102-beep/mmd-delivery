@@ -8,6 +8,7 @@ import {
   type WaitTimerEntityType,
   type WaitTimerRow,
 } from "@/lib/waitTimerTypes";
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
 
 type EntityContext = {
   entityType: WaitTimerEntityType;
@@ -538,7 +539,10 @@ export async function cancelTaxiNoShow(
   const nowIso = new Date().toISOString();
   const currency = String(ctx.row.currency ?? "USD").toUpperCase();
   const ridePriceCents = Number(ctx.row.total_cents ?? 0);
-  const compensationCents = Math.round(ridePriceCents * 0.05) + waitFeeCents;
+  const compensationCents =
+    Math.round(
+      ridePriceCents * getPricingBusinessDefault("taxi_no_show_compensation_pct")
+    ) + waitFeeCents;
 
   const { error } = await supabaseAdmin
     .from("taxi_rides")

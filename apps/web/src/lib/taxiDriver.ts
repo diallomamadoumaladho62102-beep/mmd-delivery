@@ -28,6 +28,16 @@ export function mapTaxiRpcError(errorCode: string): {
     case "already_assigned":
     case "ride_not_paid":
       return { status: 409, message: "Ride or offer status changed" };
+    case "invalid_pickup_code":
+      return {
+        status: 400,
+        message: "Invalid pickup code. Ask the client again and retry.",
+      };
+    case "pickup_code_required":
+      return {
+        status: 400,
+        message: "Pickup verification code is required to start the ride.",
+      };
     default:
       return { status: 400, message: errorCode || "Request failed" };
   }

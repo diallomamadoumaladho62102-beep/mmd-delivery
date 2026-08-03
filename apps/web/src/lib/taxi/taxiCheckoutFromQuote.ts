@@ -77,6 +77,10 @@ export type TaxiCheckoutIntentSnapshot = {
   return_scheduled_at?: string | null;
   is_shared_ride?: boolean;
   promo_code?: string | null;
+  /** Phase 4 Pricing Engine charge path (defaults legacy when absent). */
+  charge_path?: "legacy" | "engine";
+  /** Immutable Pricing Engine quote snapshot id (not taxi_pricing.id). */
+  engine_quote_snapshot_id?: string | null;
 };
 
 export function hashTaxiCheckoutSnapshot(

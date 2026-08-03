@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import {
-  computeDeliveryPricing,
-  type DeliveryPricingResult,
-} from "@/lib/deliveryPricing";
+  computeDeliveryFeeV1,
+  type DeliveryFeeV1Result,
+} from "@/lib/pricingEngine/engine/compute/deliveryFeeV1";
+
+type DeliveryPricingResult = DeliveryFeeV1Result;
 import { getZoneBoostFromCoords } from "@/lib/driverZones";
 import { createFoodOrderWithDelivery } from "@/lib/createFoodOrderWithDelivery";
 
@@ -351,7 +353,7 @@ export default function NewOrderPage() {
 
       // Preview only — authoritative fee comes from server quote/create which
       // loads both delivery_driver_pct + delivery_platform_pct from pricing_config.
-      let pricing = computeDeliveryPricing(
+      let pricing = computeDeliveryFeeV1(
         { distanceMiles, durationMinutes },
         { driverSharePct: 80, platformSharePct: 20 }
       );

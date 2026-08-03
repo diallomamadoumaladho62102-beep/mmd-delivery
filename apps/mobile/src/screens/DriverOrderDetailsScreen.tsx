@@ -8,7 +8,6 @@ import {
   ScrollView,
   Alert,
   Modal,
-  TextInput,
   Platform,
   Linking,
   Image,
@@ -45,6 +44,7 @@ import {
 } from "../lib/driverMarketplaceApi";
 import { applyMarketplaceCoordsToOrder } from "../lib/marketplaceDriverNavigation";
 import { DriverWaitTimerPanel } from "../components/driver/DriverWaitTimerPanel";
+import { OtpDigitInput } from "../components/shared/OtpDigitInput";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverOrderDetails">;
 type DriverOrderDetailsRoute = RouteProp<RootStackParamList, "DriverOrderDetails">;
@@ -763,6 +763,8 @@ export function DriverOrderDetailsScreen() {
   const [canceling, setCanceling] = useState(false);
   const [verifyingKind, setVerifyingKind] = useState<VerifyKind | null>(null);
   const [codeInput, setCodeInput] = useState("");
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeSuccess, setCodeSuccess] = useState(false);
   const [submittingCode, setSubmittingCode] = useState(false);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [proofPhotoUri, setProofPhotoUri] = useState<string | null>(null);
@@ -1496,13 +1498,18 @@ export function DriverOrderDetailsScreen() {
     if (kind === "pickup" && !canPickup) return;
     if (kind === "dropoff" && !canDeliver) return;
     setCodeInput("");
+    setCodeError(null);
+    setCodeSuccess(false);
     setProofPhotoUri(null);
     setVerifyingKind(kind);
   }
 
   function closeCodeModal() {
+    if (submittingCode || codeSuccess) return;
     setVerifyingKind(null);
     setCodeInput("");
+    setCodeError(null);
+    setCodeSuccess(false);
     setProofPhotoUri(null);
     setProofPhotoPreparing(false);
     setSubmittingCode(false);
@@ -1955,78 +1962,52 @@ export function DriverOrderDetailsScreen() {
     );
   }
 
-  async function handleSubmitCode() {
+  async function handleSubmitCode(rawCode?: string) {
     if (!order || !verifyingKind || !myUserId || !isAssignedDriver) return;
+    if (submittingCode || codeSuccess) return;
 
-    const normalizedCode = normalizeVerificationCode(codeInput);
+    const normalizedCode = normalizeVerificationCode(rawCode ?? codeInput).slice(
+      0,
+      6,
+    );
 
-    if (!normalizedCode) {
-      Alert.alert(
-        t("driver.orderDetails.codeMissingTitle", "Code manquant"),
-        t("driver.orderDetails.codeMissingBody", "Entre le code de vérification.")
-      );
-      return;
-    }
-
-    if (!proofPhotoUri) {
-      Alert.alert(
-        t("driver.orderDetails.photo.requiredTitle", "Photo requise"),
+    if (normalizedCode.length < 4) {
+      setCodeError(
         t(
-          "driver.orderDetails.photo.requiredBody",
-          "Prends une photo de preuve avant de valider."
-        )
+          "driver.orderDetails.codeMissingBody",
+          "Enter the full verification code.",
+        ),
       );
       return;
     }
 
-    if (proofPhotoPreparing) {
-      Alert.alert(
-        t("driver.orderDetails.photo.preparingTitle", "Photo en préparation"),
-        t(
-          "driver.orderDetails.photo.preparingBody",
-          "Attends que la photo soit prête avant de valider."
-        )
-      );
-      return;
-    }
-
+    // OTP-first: photo is optional. When a code is provided, no photo is required.
     try {
       setSubmittingCode(true);
-
-      console.log("[MMD_PROOF] handleSubmitCode START", {
-        orderId: order?.id,
-        source: getOrderSourceTable(order),
-        kind: verifyingKind,
-        proofPhotoUri: proofPhotoUri?.slice(0, 80),
-      });
-
-      try {
-        const precheck = await readProofPhotoBytesFromLocalUri(proofPhotoUri);
-        console.log("[MMD_PROOF] STEP photo precheck OK", {
-          byteSize: precheck.bytes.byteLength,
-        });
-      } catch (photoCheckError: any) {
-        console.log("[MMD_PROOF] STEP photo precheck FAIL", {
-          message: photoCheckError?.message,
-          name: photoCheckError?.name,
-        });
-        setProofPhotoUri(null);
-        Alert.alert(
-          t("common.error", "Erreur"),
-          getProofPhotoErrorMessage(t, photoCheckError)
-        );
-        return;
-      }
+      setCodeError(null);
 
       const kind = verifyingKind;
+      let proofPhotoUrl: string | null = null;
 
-      if (getOrderSourceTable(order) === "delivery_requests") {
+      if (proofPhotoUri) {
+        if (proofPhotoPreparing) {
+          setCodeError(
+            t(
+              "driver.orderDetails.photo.preparingBody",
+              "Wait until the photo is ready before confirming.",
+            ),
+          );
+          return;
+        }
         const uploaded = await uploadProofPhoto({
           orderId: order.id,
           kind,
           photoUri: proofPhotoUri,
         });
+        proofPhotoUrl = uploaded.publicUrl;
+      }
 
+      if (getOrderSourceTable(order) === "delivery_requests") {
         const {
           confirmDeliveryRequestPickup,
           confirmDeliveryRequestDelivered,
@@ -2036,39 +2017,30 @@ export function DriverOrderDetailsScreen() {
           await confirmDeliveryRequestPickup({
             deliveryRequestId: order.id,
             pickupCode: normalizedCode,
-            proofPhotoUrl: uploaded.publicUrl,
+            proofPhotoUrl,
           });
         } else {
           await confirmDeliveryRequestDelivered({
             deliveryRequestId: order.id,
             dropoffCode: normalizedCode,
-            proofPhotoUrl: uploaded.publicUrl,
+            proofPhotoUrl,
           });
         }
 
+        setCodeSuccess(true);
         await fetchOrder();
-        closeCodeModal();
-
-        Alert.alert(
-          t("common.success", "Succès"),
-          kind === "pickup"
-            ? t("driver.orderDetails.codePickupOk", "Code de retrait validé ✅")
-            : t("driver.orderDetails.codeDropoffOk", "Code de livraison validé ✅")
-        );
+        setTimeout(() => {
+          setVerifyingKind(null);
+          setCodeInput("");
+          setCodeError(null);
+          setCodeSuccess(false);
+          setProofPhotoUri(null);
+          setProofPhotoPreparing(false);
+          setSubmittingCode(false);
+          setProofUploading(false);
+        }, 700);
         return;
       }
-
-      const uploaded = await uploadProofPhoto({
-        orderId: order.id,
-        kind,
-        photoUri: proofPhotoUri,
-      });
-
-      console.log("[MMD_PROOF] STEP verify_order_code CALL", {
-        orderId: order.id,
-        kind,
-        codeLen: normalizedCode.length,
-      });
 
       const { data, error } = await supabase.rpc("verify_order_code", {
         p_order_id: order.id,
@@ -2076,22 +2048,16 @@ export function DriverOrderDetailsScreen() {
         p_code_type: kind,
       });
 
-      console.log("[MMD_PROOF] STEP verify_order_code RESULT", {
-        rpcError: error?.message ?? null,
-        success: (data as any)?.success,
-        rpcMessage: (data as any)?.message,
-      });
-
       if (error) {
         console.error("Erreur RPC verify_order_code:", error);
-        Alert.alert(
-          t("common.error", "Erreur"),
+        setCodeError(
           error.message ??
             t(
               "driver.orderDetails.codeServerError",
-              "Erreur serveur pendant la vérification du code."
-            )
+              "Server error while verifying the code.",
+            ),
         );
+        setCodeInput("");
         return;
       }
 
@@ -2099,23 +2065,35 @@ export function DriverOrderDetailsScreen() {
       const message =
         (data as any)?.message ??
         (kind === "pickup"
-          ? t("driver.orderDetails.codePickupOk", "Code de retrait validé ✅")
-          : t("driver.orderDetails.codeDropoffOk", "Code de livraison validé ✅"));
+          ? t("driver.orderDetails.codePickupOk", "Pickup code verified")
+          : t("driver.orderDetails.codeDropoffOk", "Delivery code verified"));
 
       if (!success) {
         console.log("verify_order_code mobile data", data);
-        Alert.alert(
-          t("driver.orderDetails.codeInvalidTitle", "Code invalide"),
-          message
+        setCodeError(
+          message ||
+            t(
+              "driver.orderDetails.codeInvalidTitle",
+              "Incorrect code. Ask again and retry.",
+            ),
         );
+        setCodeInput("");
         return;
       }
 
-      await callConfirmRoute(kind, order.id, uploaded.publicUrl);
+      await callConfirmRoute(kind, order.id, proofPhotoUrl);
+      setCodeSuccess(true);
       await fetchOrder();
-      closeCodeModal();
-
-      Alert.alert(t("common.success", "Succès"), message);
+      setTimeout(() => {
+        setVerifyingKind(null);
+        setCodeInput("");
+        setCodeError(null);
+        setCodeSuccess(false);
+        setProofPhotoUri(null);
+        setProofPhotoPreparing(false);
+        setSubmittingCode(false);
+        setProofUploading(false);
+      }, 700);
     } catch (e: any) {
       console.error("[MMD_PROOF] handleSubmitCode CATCH", {
         message: e?.message,
@@ -2123,16 +2101,16 @@ export function DriverOrderDetailsScreen() {
         stack: e?.stack,
       });
       console.error("Erreur handleSubmitCode:", e);
-      Alert.alert(
-        t("common.error", "Erreur"),
+      setCodeError(
         e?.message ??
           t(
             "driver.orderDetails.codeVerifyError",
-            "Impossible de vérifier le code pour le moment."
-          )
+            "Could not verify the code right now.",
+          ),
       );
+      setCodeInput("");
     } finally {
-      setSubmittingCode(false);
+      if (!codeSuccess) setSubmittingCode(false);
     }
   }
 
@@ -2963,8 +2941,8 @@ export function DriverOrderDetailsScreen() {
               }}
             >
               {isPickupDropoff
-                ? t("driver.orderDetails.verify.pickupBtnPd", "Verify pickup (code + photo)")
-                : t("driver.orderDetails.verify.pickupBtn", "Valider retrait (code + photo)")}
+                ? t("driver.orderDetails.verify.pickupBtnPd", "Verify Pickup Code")
+                : t("driver.orderDetails.verify.pickupBtn", "Verify Pickup Code")}
             </Text>
           </TouchableOpacity>
 
@@ -2989,8 +2967,8 @@ export function DriverOrderDetailsScreen() {
               }}
             >
               {isPickupDropoff
-                ? t("driver.orderDetails.verify.dropoffBtnPd", "Verify dropoff (code + photo)")
-                : t("driver.orderDetails.verify.dropoffBtn", "Valider livraison (code + photo)")}
+                ? t("driver.orderDetails.verify.dropoffBtnPd", "Verify Delivery Code")
+                : t("driver.orderDetails.verify.dropoffBtn", "Verify Delivery Code")}
             </Text>
           </TouchableOpacity>
 
@@ -3366,128 +3344,68 @@ export function DriverOrderDetailsScreen() {
           >
             <Text style={{ color: "#F9FAFB", fontSize: 16, fontWeight: "900", marginBottom: 8 }}>
               {verifyingKind === "pickup"
-                ? isPickupDropoff
-                  ? t("driver.orderDetails.modal.pickupTitlePd", "Pickup verification")
-                  : t("driver.orderDetails.modal.pickupTitle", "Code de retrait")
-                : isPickupDropoff
-                ? t("driver.orderDetails.modal.dropoffTitlePd", "Dropoff verification")
-                : t("driver.orderDetails.modal.dropoffTitle", "Code de livraison")}
+                ? t("driver.orderDetails.modal.pickupTitle", "Verify Pickup Code")
+                : t("driver.orderDetails.modal.dropoffTitle", "Verify Delivery Code")}
             </Text>
 
-            <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 10 }}>
-              {isPickupDropoff
-                ? verifyingKind === "pickup"
-                  ? t(
-                      "driver.orderDetails.modal.hintPickupPd",
-                      "Demande le code à la personne qui remet le colis, puis prends une photo de preuve."
-                    )
-                  : t(
-                      "driver.orderDetails.modal.hintDropoffPd",
-                      "Demande le code au destinataire, puis prends une photo de preuve de remise."
-                    )
+            <Text style={{ color: "#9CA3AF", fontSize: 13, marginBottom: 14 }}>
+              {verifyingKind === "pickup"
+                ? t(
+                    "driver.orderDetails.modal.hintPickupOtp",
+                    "Ask for the pickup code. The keyboard opens automatically — no photo is required.",
+                  )
                 : t(
-                    "driver.orderDetails.modal.hint",
-                    "Demande le code à la personne (restaurant ou client) et saisis-le."
+                    "driver.orderDetails.modal.hintDropoffOtp",
+                    "Ask the recipient for the delivery code. The keyboard opens automatically — no photo is required.",
                   )}
             </Text>
 
-            <TextInput
+            <OtpDigitInput
+              length={6}
               value={codeInput}
-              onChangeText={(value) => setCodeInput(normalizeVerificationCode(value))}
-              placeholder={t("driver.orderDetails.modal.placeholder", "Ex : ABC123")}
-              placeholderTextColor="#6B7280"
-              autoCapitalize="characters"
-              style={{
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: "#4B5563",
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                color: "#F9FAFB",
-                marginBottom: 12,
+              onChange={(value) => {
+                setCodeInput(normalizeVerificationCode(value).slice(0, 6));
+                if (codeError) setCodeError(null);
               }}
+              onComplete={(digits) => void handleSubmitCode(digits)}
+              autoFocus
+              disabled={submittingCode || proofUploading || proofPhotoPreparing}
+              error={codeError}
+              success={codeSuccess}
+              mode="alphanumeric"
             />
 
-            <TouchableOpacity
-              onPress={takeProofPhoto}
-              disabled={submittingCode || proofUploading || proofPhotoPreparing}
-              style={{
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: "#334155",
-                backgroundColor: "#0F172A",
-                paddingVertical: 12,
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <Text style={{ color: "#BFDBFE", fontSize: 13, fontWeight: "800" }}>
-                {proofPhotoPreparing
-                  ? t("driver.orderDetails.photo.preparing", "Préparation de la photo...")
-                  : proofPhotoUri
-                    ? t("driver.orderDetails.photo.retake", "Reprendre la photo")
-                    : t("driver.orderDetails.photo.take", "Prendre la photo de preuve")}
-              </Text>
-            </TouchableOpacity>
-
-            {proofPhotoUri ? (
+            {submittingCode ? (
               <View
                 style={{
-                  borderRadius: 14,
-                  overflow: "hidden",
-                  borderWidth: 1,
-                  borderColor: "#1F2937",
-                  marginBottom: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  marginTop: 12,
                 }}
               >
-                <Image
-                  source={{ uri: proofPhotoUri }}
-                  style={{ width: "100%", height: 180, backgroundColor: "#111827" }}
-                  resizeMode="cover"
-                />
+                <ActivityIndicator color="#A78BFA" />
+                <Text style={{ color: "#C4B5FD", fontSize: 13, fontWeight: "700" }}>
+                  {t("driver.orderDetails.modal.verifying", "Verifying…")}
+                </Text>
               </View>
             ) : null}
 
-            <Text style={{ color: "#6B7280", fontSize: 11, marginBottom: 12 }}>
-              {t(
-                "driver.orderDetails.photo.requiredHint",
-                "Le code et la photo sont obligatoires pour valider cette étape."
-              )}
-            </Text>
-
-            <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 14 }}>
               <TouchableOpacity
                 onPress={closeCodeModal}
-                disabled={submittingCode || proofUploading || proofPhotoPreparing}
+                disabled={submittingCode || proofUploading || proofPhotoPreparing || codeSuccess}
                 style={{
                   paddingVertical: 10,
                   paddingHorizontal: 14,
                   borderRadius: 999,
                   borderWidth: 1,
                   borderColor: "#4B5563",
-                  marginRight: 8,
                 }}
               >
                 <Text style={{ color: "#E5E7EB", fontSize: 13, fontWeight: "700" }}>
-                  {t("common.cancel", "Annuler")}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleSubmitCode}
-                disabled={submittingCode || proofUploading || proofPhotoPreparing}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  borderRadius: 999,
-                  backgroundColor: "#22C55E",
-                  opacity: submittingCode || proofUploading || proofPhotoPreparing ? 0.6 : 1,
-                }}
-              >
-                <Text style={{ color: "white", fontSize: 13, fontWeight: "900" }}>
-                  {submittingCode || proofUploading || proofPhotoPreparing
-                    ? t("driver.orderDetails.modal.verifying", "Vérification...")
-                    : t("driver.orderDetails.modal.submit", "Valider")}
+                  {t("common.cancel", "Cancel")}
                 </Text>
               </TouchableOpacity>
             </View>

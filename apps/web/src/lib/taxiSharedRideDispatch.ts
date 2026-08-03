@@ -1,8 +1,13 @@
 import { resolveInitialTaxiDispatchWave } from "@/lib/taxiPremiumDispatch";
 import { triggerTaxiRideDispatch } from "@/lib/scheduleTaxiRideDispatch";
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
 
-export const TAXI_SHARED_RIDE_DISCOUNT_PERCENT = 15;
-export const TAXI_SHARED_RIDE_MATCH_WINDOW_MINUTES = 15;
+export const TAXI_SHARED_RIDE_DISCOUNT_PERCENT = getPricingBusinessDefault(
+  "taxi_shared_ride_discount_percent"
+);
+export const TAXI_SHARED_RIDE_MATCH_WINDOW_MINUTES = getPricingBusinessDefault(
+  "taxi_shared_ride_match_window_minutes"
+);
 
 export type TaxiDispatchRetryDecision = {
   shouldRetry: boolean;

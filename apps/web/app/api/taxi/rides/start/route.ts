@@ -13,6 +13,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     let rideId = "";
+    const pickupCode = String(
+      (body as Record<string, unknown>)?.pickup_code ??
+        (body as Record<string, unknown>)?.pickup_verification_code ??
+        "",
+    )
+      .replace(/\D/g, "")
+      .slice(0, 4);
 
     try {
       rideId = getTaxiRideId(body as Record<string, unknown>);
@@ -21,8 +28,21 @@ export async function POST(req: NextRequest) {
       return taxiJson({ ok: false, error: message }, 400);
     }
 
+    if (pickupCode.length !== 4) {
+      return taxiJson(
+        {
+          ok: false,
+          error:
+            "Enter the 4-digit pickup code from the client to start the ride.",
+          reason_code: "pickup_code_required",
+        },
+        400,
+      );
+    }
+
     const { data, error } = await auth.supabaseUser.rpc("driver_start_taxi_ride", {
       p_ride_id: rideId,
+      p_pickup_code: pickupCode,
     });
 
     if (error) {
@@ -42,7 +62,7 @@ export async function POST(req: NextRequest) {
       newStatus: "in_progress",
       actorId: auth.user.id,
       triggeredRole: "driver",
-      description: "Driver started taxi ride via API",
+      description: "Driver started taxi ride after pickup code verification",
     });
 
     return taxiJson({ ok: true, taxi_ride_id: rideId, result });

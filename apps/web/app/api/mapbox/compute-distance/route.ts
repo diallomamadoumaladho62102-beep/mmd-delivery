@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  computeDeliveryPricing,
-  METERS_PER_MILE,
-} from "@/lib/deliveryPricing";
+import { METERS_PER_MILE } from "@/lib/deliveryPricing";
+import { computeDeliveryFeeV1 } from "@/lib/pricingEngine/engine/compute/deliveryFeeV1";
 import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine";
 import { assertMapboxComputeDistanceAccess } from "@/lib/mapboxRouteSecurity";
 import { tryGetServerMapboxToken } from "@/lib/mapboxToken";
@@ -197,7 +195,7 @@ export async function POST(req: NextRequest) {
 
     // Estimate only (client preview). Food/errand quote+create load BOTH
     // delivery_driver_pct and delivery_platform_pct from Admin pricing_config.
-    const deliveryPrice = computeDeliveryPricing(
+    const deliveryPrice = computeDeliveryFeeV1(
       { distanceMiles, durationMinutes: etaMinutes },
       { driverSharePct: 80, platformSharePct: 20 }
     );

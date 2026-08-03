@@ -41,15 +41,27 @@ export async function GET(req: NextRequest) {
       return taxiJson({ ok: false, error: error.message }, 500);
     }
 
+    // Never expose boarding OTP to the driver — client must communicate it.
     const ride = data
-      ? {
-          ...data,
-          client_preference_lines: formatClientPreferencesForDriver({
-            clientPreferences: data.client_preferences as Record<string, unknown>,
-            preferElectricOrHybrid: data.prefer_electric_or_hybrid === true,
-            ambiance: String(data.ambiance_preference ?? "none"),
-          }),
-        }
+      ? (() => {
+          const {
+            pickup_verification_code: _hiddenCode,
+            ...safeRide
+          } = data as Record<string, unknown> & {
+            pickup_verification_code?: string | null;
+          };
+          return {
+            ...safeRide,
+            client_preference_lines: formatClientPreferencesForDriver({
+              clientPreferences: data.client_preferences as Record<
+                string,
+                unknown
+              >,
+              preferElectricOrHybrid: data.prefer_electric_or_hybrid === true,
+              ambiance: String(data.ambiance_preference ?? "none"),
+            }),
+          };
+        })()
       : null;
 
     return taxiJson({ ok: true, ride });

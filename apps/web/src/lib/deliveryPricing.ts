@@ -1,3 +1,5 @@
+import { getPricingBusinessDefaults } from "@/lib/pricingEngine/config/businessDefaults";
+
 export type DeliveryPricingResult = {
   deliveryFee: number; // ce que le client paie pour la livraison
   platformFee: number; // part MMD Delivery
@@ -34,13 +36,16 @@ export class DeliveryPricingConfigError extends Error {
   }
 }
 
+const _d = getPricingBusinessDefaults();
+
+/** Phase 1: values from pricing business defaults (parity with legacy hardcodes). */
 export const DEFAULT_DELIVERY_PRICING_CONFIG: Required<DeliveryPricingConfig> = {
-  baseFare: 2.5,
-  perMile: 0.9,
-  perMinute: 0.15,
-  minFare: 3.49,
-  driverSharePct: 80,
-  platformSharePct: 20,
+  baseFare: _d.delivery_base_fare,
+  perMile: _d.delivery_per_mile,
+  perMinute: _d.delivery_per_minute,
+  minFare: _d.delivery_min_fare,
+  driverSharePct: _d.delivery_driver_share_pct,
+  platformSharePct: _d.delivery_platform_share_pct,
 };
 
 /**
@@ -75,8 +80,10 @@ export function requirePositiveDeliveryFeeRates(input: {
 }
 
 /** Soft ceiling: fees above this vs computed raw fare or absolute level need audit. */
-export const DELIVERY_FEE_ABNORMAL_MULTIPLIER = 8;
-export const DELIVERY_FEE_ABNORMAL_ABSOLUTE_USD = 40;
+export const DELIVERY_FEE_ABNORMAL_MULTIPLIER =
+  _d.delivery_fee_abnormal_multiplier;
+export const DELIVERY_FEE_ABNORMAL_ABSOLUTE_USD =
+  _d.delivery_fee_abnormal_absolute_usd;
 
 function assertFiniteNonNegative(value: number, field: string): void {
   if (!Number.isFinite(value)) {
@@ -429,36 +436,32 @@ export function explainDeliveryFee(
  * platformFee + driverPayout = deliveryFee
  * (driver share is the residual after platformSharePct, consistent with admin 80/20)
  */
+/**
+ * Phase 6 — thin PE adapter for remaining helper callers / tests.
+ * Prefer `computeDeliveryFeeV1` from `@/lib/pricingEngine` in new code.
+ */
 export function computeDeliveryPricing(
   { distanceMiles, durationMinutes }: DeliveryPricingParams,
   config?: DeliveryPricingConfig
 ): DeliveryPricingResult {
-  assertFiniteNonNegative(distanceMiles, "distanceMiles");
-  assertFiniteNonNegative(durationMinutes, "durationMinutes");
-
-  const normalizedConfig = normalizeDeliveryPricingConfig(config);
-
-  const rawFare =
-    normalizedConfig.baseFare +
-    distanceMiles * normalizedConfig.perMile +
-    durationMinutes * normalizedConfig.perMinute;
-
-  const deliveryFee = round2(Math.max(normalizedConfig.minFare, rawFare));
-
-  const platformFee = round2(
-    deliveryFee * (normalizedConfig.platformSharePct / 100)
-  );
-
-  // Prefer residual so platformFee + driverPayout always equals deliveryFee.
-  // When shares sum to 100 this matches driverSharePct; when under 100 the
-  // residual (including unallocated %) goes to the driver — never to vendor %.
-  const driverPayout = round2(deliveryFee - platformFee);
-
-  return {
-    deliveryFee,
-    platformFee,
-    driverPayout,
+  const { computeDeliveryFeeV1 } = require("./pricingEngine/engine/compute/deliveryFeeV1") as {
+    computeDeliveryFeeV1: (
+      params: DeliveryPricingParams,
+      cfg?: DeliveryPricingConfig
+    ) => DeliveryPricingResult;
   };
+  const normalizedConfig = normalizeDeliveryPricingConfig(config);
+  return computeDeliveryFeeV1(
+    { distanceMiles, durationMinutes },
+    {
+      baseFare: normalizedConfig.baseFare,
+      perMile: normalizedConfig.perMile,
+      perMinute: normalizedConfig.perMinute,
+      minFare: normalizedConfig.minFare,
+      driverSharePct: normalizedConfig.driverSharePct,
+      platformSharePct: normalizedConfig.platformSharePct,
+    }
+  );
 }
 
 // 💰 Fonction utilitaire chauffeur

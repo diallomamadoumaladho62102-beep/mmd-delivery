@@ -1,7 +1,10 @@
 import { Audio } from "expo-av";
-import * as ImagePicker from "expo-image-picker";
+import type { CameraView } from "expo-camera";
 
 let activeRecording: Audio.Recording | null = null;
+let driverCameraRef: CameraView | null = null;
+let driverRecordingPromise: Promise<{ uri: string } | undefined> | null = null;
+let driverRecordingActive = false;
 
 export async function requestClientAudioPermissions(): Promise<boolean> {
   const permission = await Audio.requestPermissionsAsync();
@@ -39,28 +42,70 @@ export async function stopClientAudioCapture(): Promise<{
   return { uri, mimeType: "audio/m4a", extension: "m4a" };
 }
 
+/** Bind the in-app CameraView used for background safety video (never system camera). */
+export function bindDriverSafetyCamera(ref: CameraView | null) {
+  driverCameraRef = ref;
+}
+
+export function isDriverSafetyVideoRecording(): boolean {
+  return driverRecordingActive;
+}
+
+/**
+ * Start in-app video recording immediately via the bound CameraView.
+ * Does not open the system Camera app and does not leave MMD Delivery.
+ */
+export async function startDriverSafetyVideoCapture(): Promise<void> {
+  if (!driverCameraRef) {
+    throw new Error("camera_not_ready");
+  }
+  if (driverRecordingActive) return;
+
+  driverRecordingActive = true;
+  try {
+    driverRecordingPromise = driverCameraRef.recordAsync({
+      maxDuration: 3600,
+    });
+  } catch (error) {
+    driverRecordingActive = false;
+    driverRecordingPromise = null;
+    throw error;
+  }
+}
+
+/**
+ * Stop in-app recording and return the captured file for upload.
+ */
+export async function stopDriverSafetyVideoCapture(): Promise<{
+  uri: string;
+  mimeType: string;
+  extension: string;
+} | null> {
+  if (!driverCameraRef || !driverRecordingActive) {
+    driverRecordingActive = false;
+    driverRecordingPromise = null;
+    return null;
+  }
+
+  try {
+    driverCameraRef.stopRecording();
+    const result = await driverRecordingPromise;
+    driverRecordingActive = false;
+    driverRecordingPromise = null;
+    if (!result?.uri) return null;
+    return { uri: result.uri, mimeType: "video/mp4", extension: "mp4" };
+  } catch (error) {
+    driverRecordingActive = false;
+    driverRecordingPromise = null;
+    throw error;
+  }
+}
+
+/** @deprecated Use start/stopDriverSafetyVideoCapture — kept only for type compatibility. */
 export async function captureDriverSafetyVideo(): Promise<{
   uri: string;
   mimeType: string;
   extension: string;
 } | null> {
-  const permission = await ImagePicker.requestCameraPermissionsAsync();
-  if (!permission.granted) {
-    throw new Error("camera_permission_denied");
-  }
-
-  const result = await ImagePicker.launchCameraAsync({
-    mediaTypes: ["videos"],
-    videoMaxDuration: 3600,
-    quality: 0.8,
-  });
-
-  if (result.canceled || !result.assets?.[0]?.uri) {
-    return null;
-  }
-
-  const asset = result.assets[0];
-  const mimeType = asset.mimeType ?? "video/mp4";
-  const extension = mimeType.includes("quicktime") ? "mov" : "mp4";
-  return { uri: asset.uri, mimeType, extension };
+  return stopDriverSafetyVideoCapture();
 }

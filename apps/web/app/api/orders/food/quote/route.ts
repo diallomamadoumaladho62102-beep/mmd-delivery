@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Phase 5F — PE exclusive SoT (no dual-path / shadow on hot path).
     const pricing = await quoteFoodOrderServerSide({
       supabaseAdmin: auth.supabaseAdmin,
       restaurantUserId: fields.restaurantUserId,
@@ -73,7 +74,12 @@ export async function POST(req: NextRequest) {
 
     return mmdLocationJson({
       ok: true,
-      quote: buildFoodPricingResponse(pricing),
+      quote: {
+        ...buildFoodPricingResponse(pricing),
+        total_cents: pricing.totalCents,
+        charge_path: "engine",
+        pricing_snapshot_id: null,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";

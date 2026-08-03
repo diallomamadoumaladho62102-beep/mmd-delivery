@@ -55,6 +55,7 @@ import { LiveEtaBanner } from "../components/tracking/LiveEtaBanner";
 import { resolveEtaEndpoints } from "../lib/liveTripTracking";
 import { startMaskedCall } from "../lib/maskedCall";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import { VerificationCodeCard } from "../components/shared/VerificationCodeCard";
 
 function isValidCoordinate(latValue: unknown, lngValue: unknown) {
   const lat = Number(latValue);
@@ -1860,46 +1861,51 @@ export function ClientOrderDetailsScreen() {
 
         {!loading && !errorMsg && order && (
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 44 }}>
-            <Card style={{ marginBottom: 14 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <Text style={{ color: "white", fontSize: 14, fontWeight: "900" }}>
-                    🔐 {ts("client.orderDetails.dropoffCodeTitleShort", "Secure delivery code")}
-                  </Text>
-                  <Text style={{ color: "#94A3B8", fontSize: 12, marginTop: 6, lineHeight: 16 }}>
-                    {ts("client.orderDetails.dropoffCodeHint", "Share this code with the driver at dropoff only.")}
-                  </Text>
-                </View>
-
+            <View style={{ marginBottom: 14 }}>
+              <VerificationCodeCard
+                title={ts(
+                  "client.orderDetails.dropoffCodeTitle",
+                  "Your Delivery Verification Code",
+                )}
+                code={order.dropoff_code}
+                subtitle={ts(
+                  "client.orderDetails.dropoffCodeHintOtp",
+                  "Show this code to your driver at dropoff. No photo is required when the code is used.",
+                )}
+              />
+              {order.dropoff_code ? (
                 <TouchableOpacity
                   onPress={copyDropoffCode}
                   style={{
-                    paddingHorizontal: 12,
+                    alignSelf: "center",
+                    marginTop: -4,
+                    marginBottom: 8,
+                    paddingHorizontal: 14,
                     paddingVertical: 9,
                     borderRadius: 999,
                     borderWidth: 1,
-                    borderColor: codeCopied ? "rgba(34,197,94,0.40)" : "rgba(148,163,184,0.18)",
-                    backgroundColor: codeCopied ? "rgba(34,197,94,0.12)" : "rgba(2,6,23,0.60)",
+                    borderColor: codeCopied
+                      ? "rgba(34,197,94,0.40)"
+                      : "rgba(148,163,184,0.18)",
+                    backgroundColor: codeCopied
+                      ? "rgba(34,197,94,0.12)"
+                      : "rgba(2,6,23,0.60)",
                   }}
                 >
-                  <Text style={{ color: codeCopied ? "#86EFAC" : "#E5E7EB", fontWeight: "900", fontSize: 12 }}>
-                    {codeCopied ? "Copied ✅" : ts("common.copy", "Copy")}
+                  <Text
+                    style={{
+                      color: codeCopied ? "#86EFAC" : "#E5E7EB",
+                      fontWeight: "900",
+                      fontSize: 12,
+                    }}
+                  >
+                    {codeCopied
+                      ? "Copied ✅"
+                      : ts("common.copy", "Copy")}
                   </Text>
                 </TouchableOpacity>
-              </View>
-
-              <Text
-                style={{
-                  color: "#F9FAFB",
-                  fontSize: 30,
-                  fontWeight: "900",
-                  letterSpacing: 2,
-                  marginTop: 14,
-                }}
-              >
-                {formatCodeSpaced(order.dropoff_code)}
-              </Text>
-            </Card>
+              ) : null}
+            </View>
 
             {order.status === "delivered" && (
               <Card

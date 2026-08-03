@@ -56,7 +56,15 @@
         "expo-image-picker",
         {
           "photosPermission": "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
-          "cameraPermission": "MMD Delivery uses the camera to capture delivery proof photos, location reference photos, and profile pictures."
+          "cameraPermission": "MMD Delivery uses the camera for in-app safety recording and optional delivery proof photos, without leaving the app."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "MMD Delivery records in-app safety videos during taxi rides without opening the system Camera app.",
+          "microphonePermission": "MMD Delivery may record audio with in-app safety video for incident protection.",
+          "recordAudioAndroid": true
         }
       ],
       [
@@ -80,6 +88,7 @@
       "package": "com.maladho2025.mmddelivery",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png",
         "monochromeImage": "./assets/monochrome-icon.png",
         "backgroundColor": "#050816"
       },
@@ -136,7 +145,7 @@
         "NSLocationWhenInUseUsageDescription": "MMD Delivery uses your location to show nearby restaurants, set pickup and drop-off points, and help drivers navigate during active deliveries and taxi rides.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
         "NSLocationAlwaysUsageDescription": "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
-        "NSCameraUsageDescription": "MMD Delivery uses the camera to capture delivery proof photos, location reference photos, and profile pictures.",
+        "NSCameraUsageDescription": "MMD Delivery uses the camera for in-app safety video recording and optional delivery proof photos, without opening the system Camera app.",
         "NSMicrophoneUsageDescription": "MMD Delivery uses the microphone during optional in-ride safety recordings when you choose to start an audio or video safety recording.",
         "NSPhotoLibraryUsageDescription": "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
         "LSApplicationQueriesSchemes": [

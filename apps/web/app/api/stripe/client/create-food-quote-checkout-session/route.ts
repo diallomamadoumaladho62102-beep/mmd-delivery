@@ -12,12 +12,12 @@ import {
 } from "@/lib/foodOrderApiShared";
 import { assertRestaurantCanAcceptOrders } from "@/lib/restaurantAcceptGate";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
-import { computeFoodOrderPricing } from "@/lib/foodOrderServerPricing";
 import {
   createFoodCheckoutIntent,
   openFoodQuoteCheckoutSession,
   type FoodCheckoutIntentSnapshot,
 } from "@/lib/food/foodCheckoutFromQuote";
+import { quoteFoodSot } from "@/lib/pricingEngine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       fields.restaurantName ||
       String(restaurantProfile.restaurant_name ?? "Restaurant");
 
-    const pricing = await computeFoodOrderPricing({
+    const pricing = await quoteFoodSot({
       supabaseAdmin: auth.supabaseAdmin,
       restaurantUserId: fields.restaurantUserId,
       items: fields.items,
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       clientUserId: auth.user.id,
     });
 
-    const amountCents = Math.round(Number(pricing.totalCents ?? pricing.total * 100));
+    const amountCents = Math.round(Number(pricing.totalCents));
     if (!amountCents || amountCents <= 0) {
       return mmdLocationJson({ ok: false, error: "invalid_quote_total" }, 400);
     }
@@ -125,6 +125,9 @@ export async function POST(req: NextRequest) {
       leave_at_door: fields.leaveAtDoor === true,
       currency: String(pricing.currency ?? "USD").toUpperCase(),
       amount_cents: amountCents,
+      charge_path: "engine",
+      pricing_snapshot_id: null,
+      frozen_pricing: pricing,
     };
 
     const intent = await createFoodCheckoutIntent({
@@ -158,6 +161,8 @@ export async function POST(req: NextRequest) {
       amount_cents: amountCents,
       currency: snapshot.currency,
       order_id: null,
+      charge_path: "engine",
+      pricing_snapshot_id: null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";

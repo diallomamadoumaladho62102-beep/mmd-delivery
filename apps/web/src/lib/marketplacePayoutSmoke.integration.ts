@@ -139,10 +139,31 @@ async function main() {
   const { seller, productId } = await pickSellerAndProduct(admin);
   ok("seller/product", seller.id);
 
+  const country = seller.country_code ?? "GN";
+  const { data: dropoffLoc, error: dropoffErr } = await admin
+    .from("location_points")
+    .insert({
+      owner_user_id: userId,
+      country_code: country,
+      city_name: "Conakry",
+      pin_lat: 9.5092,
+      pin_lng: -13.7122,
+      formatted_address: "Smoke dropoff, Conakry, GN",
+      directions_text: "Marketplace payout smoke dropoff pin Conakry",
+      location_source: "pin",
+    })
+    .select("id")
+    .single();
+  if (dropoffErr || !dropoffLoc?.id) {
+    fail(`dropoff location fixture failed: ${dropoffErr?.message ?? "missing id"}`);
+  }
+  ok("dropoff location", dropoffLoc.id);
+
   const order = await upsertMarketplaceDraftOrder(admin, {
     clientUserId: userId,
     sellerId: seller.id,
-    countryCode: seller.country_code ?? "GN",
+    countryCode: country,
+    dropoffLocationId: dropoffLoc.id,
     items: [{ product_id: productId, quantity: 1 }],
   });
   ok("draft order", order.id);

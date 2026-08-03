@@ -1,4 +1,9 @@
-import { TAXI_SHARED_RIDE_DISCOUNT_PERCENT } from "@/lib/taxiSharedRideDispatch";
+/**
+ * Taxi price helpers — final net formula owned by Pricing Engine.
+ * Ride-row snapshot + drift checks (still used by create / checkout integrity).
+ */
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
+import { computeTaxiFinalPrice } from "@/lib/pricingEngine/engine/compute/taxiFinalPrice";
 
 export type TaxiFinalPriceSnapshot = {
   subtotal_cents: number;
@@ -13,93 +18,12 @@ export type TaxiFinalPriceSnapshot = {
   total_cents: number;
 };
 
-export const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
-export const QUOTE_DRIFT_TOLERANCE_RATIO = 0.02;
-
-export function calculateTaxiFinalPriceSnapshot(input: {
-  subtotal_cents: number;
-  tax_cents: number;
-  gross_total_cents?: number;
-  promo_discount_cents?: number;
-  loyalty_discount_cents?: number;
-  shared_discount_cents?: number;
-  mmd_credit_cents?: number;
-  /** MMD+ order discount — cumulative with loyalty / promo / credit. */
-  mmd_plus_discount_cents?: number;
-  shared_ride?: boolean;
-}): TaxiFinalPriceSnapshot {
-  const subtotal_cents = Math.max(0, Math.round(Number(input.subtotal_cents ?? 0)));
-  const tax_cents = Math.max(0, Math.round(Number(input.tax_cents ?? 0)));
-  const gross_total_cents = Math.max(
-    0,
-    Math.round(Number(input.gross_total_cents ?? subtotal_cents + tax_cents))
-  );
-
-  let shared_discount_cents = Math.max(
-    0,
-    Math.round(Number(input.shared_discount_cents ?? 0))
-  );
-
-  if (
-    input.shared_ride === true &&
-    input.shared_discount_cents == null &&
-    shared_discount_cents === 0
-  ) {
-    shared_discount_cents = Math.round(
-      gross_total_cents * (TAXI_SHARED_RIDE_DISCOUNT_PERCENT / 100)
-    );
-  }
-
-  const promo_discount_cents = Math.max(
-    0,
-    Math.round(Number(input.promo_discount_cents ?? 0))
-  );
-  const loyalty_discount_cents = Math.max(
-    0,
-    Math.round(Number(input.loyalty_discount_cents ?? 0))
-  );
-  const mmd_credit_cents = Math.max(
-    0,
-    Math.round(Number(input.mmd_credit_cents ?? 0))
-  );
-  const mmd_plus_discount_cents = Math.max(
-    0,
-    Math.round(Number(input.mmd_plus_discount_cents ?? 0))
-  );
-
-  const total_discount_cents =
-    promo_discount_cents +
-    loyalty_discount_cents +
-    shared_discount_cents +
-    mmd_credit_cents +
-    mmd_plus_discount_cents;
-  const total_cents = Math.max(0, gross_total_cents - total_discount_cents);
-
-  return {
-    subtotal_cents,
-    tax_cents,
-    gross_total_cents,
-    promo_discount_cents,
-    loyalty_discount_cents,
-    shared_discount_cents,
-    mmd_credit_cents,
-    mmd_plus_discount_cents,
-    total_discount_cents,
-    total_cents,
-  };
-}
-
-export function snapshotFromQuoteRpc(
-  quote: Record<string, unknown>,
-  options?: { shared_ride?: boolean }
-): TaxiFinalPriceSnapshot {
-  return calculateTaxiFinalPriceSnapshot({
-    subtotal_cents: Number(quote.subtotal_cents ?? 0),
-    tax_cents: Number(quote.tax_cents ?? 0),
-    gross_total_cents: Number(quote.total_cents ?? 0),
-    shared_ride: options?.shared_ride === true,
-  });
-}
+export const QUOTE_DRIFT_TOLERANCE_CENTS = getPricingBusinessDefault(
+  "taxi_quote_drift_tolerance_cents"
+);
+export const QUOTE_DRIFT_TOLERANCE_RATIO = getPricingBusinessDefault(
+  "taxi_quote_drift_tolerance_ratio"
+);
 
 export type TaxiRidePriceFields = {
   subtotal_cents?: number | null;
@@ -109,7 +33,6 @@ export type TaxiRidePriceFields = {
   loyalty_discount_cents?: number | null;
   shared_discount_cents?: number | null;
   mmd_credit_applied_cents?: number | null;
-  /** Optional runtime/DB field for MMD+ taxi discount. */
   mmd_plus_discount_cents?: number | null;
   total_cents?: number | null;
 };
@@ -125,7 +48,7 @@ export function snapshotFromRideRow(ride: TaxiRidePriceFields): TaxiFinalPriceSn
     )
   );
 
-  return calculateTaxiFinalPriceSnapshot({
+  return computeTaxiFinalPrice({
     subtotal_cents,
     tax_cents,
     gross_total_cents,

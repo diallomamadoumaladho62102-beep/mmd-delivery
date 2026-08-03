@@ -9,6 +9,7 @@ import {
   stripeConnectUserMessage,
   type StripeConnectStatusCode,
 } from "@/lib/stripeConnectStatus";
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
 
 const CURRENCY_BY_COUNTRY: Record<string, string> = {
   US: "USD",
@@ -20,11 +21,15 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
   CI: "XOF",
 };
 
-/** Minimum Cash Out from Connect available balance ($20). */
-export const DRIVER_CASHOUT_MINIMUM_CENTS = 2000;
+/** Minimum Cash Out from Connect available balance ($20). Phase 1 config. */
+export const DRIVER_CASHOUT_MINIMUM_CENTS = getPricingBusinessDefault(
+  "driver_cashout_minimum_cents"
+);
 
-/** Rolling 24h cashout cooldown window. */
-export const DRIVER_CASHOUT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+/** Rolling 24h cashout cooldown window. Phase 1 config. */
+export const DRIVER_CASHOUT_COOLDOWN_MS = getPricingBusinessDefault(
+  "driver_cashout_cooldown_ms"
+);
 
 function toNumber(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
