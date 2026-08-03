@@ -8,12 +8,27 @@ type DrRow = {
   status: string | null;
   payment_status: string | null;
   total: number | null;
+  total_cents: number | null;
   currency: string | null;
   driver_id: string | null;
   pickup_address: string | null;
   dropoff_address: string | null;
   created_at: string;
 };
+
+function formatDrTotal(r: DrRow): string {
+  const currency = r.currency ?? "USD";
+  if (r.total_cents != null && Number.isFinite(r.total_cents)) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(r.total_cents / 100);
+  }
+  if (r.total != null) {
+    return `${r.total} ${currency}`;
+  }
+  return "—";
+}
 
 export default function AdminDeliveryRequestsPage() {
   return (
@@ -39,10 +54,9 @@ export default function AdminDeliveryRequestsPage() {
               { key: "status", label: "Statut" },
               { key: "payment_status", label: "Paiement" },
               {
-                key: "total",
-                label: "Total",
-                render: (r) =>
-                  r.total != null ? `${r.total} ${r.currency ?? "USD"}` : "—",
+                key: "total_cents",
+                label: "Total (charge)",
+                render: (r) => formatDrTotal(r),
               },
               {
                 key: "driver_id",

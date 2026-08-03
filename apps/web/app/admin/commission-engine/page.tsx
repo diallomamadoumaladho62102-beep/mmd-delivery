@@ -40,11 +40,57 @@ function CommissionEngineInner() {
   const [partnerLabel, setPartnerLabel] = useState<string | null>(null);
   const [loyaltyBenefits, setLoyaltyBenefits] = useState<LoyaltyBenefit[]>([]);
   const [audit, setAudit] = useState<Array<Record<string, unknown>>>([]);
+  const [orderIdLookup, setOrderIdLookup] = useState("");
+  const [orderSnapshots, setOrderSnapshots] = useState<
+    Array<Record<string, unknown>>
+  >([]);
+  const [orderCommission, setOrderCommission] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const [orderLookupError, setOrderLookupError] = useState<string | null>(null);
 
   const [ratePct, setRatePct] = useState("12");
   const [fixedFee, setFixedFee] = useState("0");
   const [reason, setReason] = useState("");
   const [overrideStatus, setOverrideStatus] = useState("active");
+
+  const lookupOrderSnapshot = useCallback(async () => {
+    const id = orderIdLookup.trim();
+    if (!id) return;
+    setOrderLookupError(null);
+    setOrderSnapshots([]);
+    setOrderCommission(null);
+    setLoading(true);
+    const [snapHttp, commHttp] = await Promise.all([
+      adminFetch(
+        `/api/admin/commission-engine/snapshots?orderId=${encodeURIComponent(id)}&limit=20`
+      ),
+      adminFetch(`/api/admin/commissions?limit=200`),
+    ]);
+    setLoading(false);
+    const snapRes = (await snapHttp.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    if (!snapHttp.ok || snapRes.ok === false) {
+      setOrderLookupError(String(snapRes.error ?? "Snapshot introuvable"));
+    } else {
+      setOrderSnapshots(
+        (snapRes.snapshots as Array<Record<string, unknown>>) ?? []
+      );
+    }
+    const commRes = (await commHttp.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
+    if (commHttp.ok && Array.isArray(commRes.items)) {
+      const match = (commRes.items as Array<Record<string, unknown>>).find(
+        (r) => String(r.order_id) === id
+      );
+      setOrderCommission(match ?? null);
+    }
+  }, [orderIdLookup]);
 
   const lookup = useCallback(async () => {
     setLoading(true);
@@ -122,10 +168,101 @@ function CommissionEngineInner() {
   return (
     <div className="space-y-6">
       <section className={CARD}>
-        <h2 className="text-lg font-semibold">Rechercher un partenaire</h2>
+        <h2 className="text-lg font-semibold">
+          Snapshot commande (montants historiques)
+        </h2>
         <p className="mt-1 text-sm text-slate-600">
-          Consulter la commission actuelle et la règle gagnante (fidélité → override → contrat →
-          campagne → tarifs).
+          Affiche les commissions <strong>enregistrées</strong> pour une commande
+          (snapshot / <code>order_commissions</code>). Ce n’est pas un recalcul
+          avec les taux actuels.
+        </p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="text-sm flex-1">
+            Order ID
+            <input
+              className={INPUT}
+              value={orderIdLookup}
+              onChange={(e) => setOrderIdLookup(e.target.value)}
+              placeholder="uuid de la commande"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void lookupOrderSnapshot()}
+            disabled={!orderIdLookup.trim() || loading}
+            className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Charger le snapshot
+          </button>
+        </div>
+        {orderLookupError && (
+          <p className="mt-3 text-sm text-red-600">{orderLookupError}</p>
+        )}
+        {orderCommission && (
+          <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm">
+            <div className="font-semibold text-emerald-900">
+              order_commissions (persisté)
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div>
+                Plateforme: {String(orderCommission.platform_amount ?? "—")}{" "}
+                {String(orderCommission.currency ?? "")}
+              </div>
+              <div>
+                Chauffeur: {String(orderCommission.driver_amount ?? "—")}
+              </div>
+              <div>
+                Restaurant: {String(orderCommission.restaurant_amount ?? "—")}
+              </div>
+            </div>
+          </div>
+        )}
+        {orderSnapshots.length > 0 && (
+          <ul className="mt-4 space-y-2 text-sm">
+            {orderSnapshots.map((s) => (
+              <li
+                key={String(s.id ?? s.order_id)}
+                className="rounded-lg border border-slate-100 px-3 py-2"
+              >
+                <span className="font-medium">
+                  {String(s.rule_type ?? "snapshot")} ·{" "}
+                  {String(s.rate_pct ?? "—")}%
+                </span>
+                <span className="text-slate-500">
+                  {" "}
+                  · partner {String(s.partner_type ?? "")} ·{" "}
+                  {s.resolved_at
+                    ? new Date(String(s.resolved_at)).toLocaleString("fr-FR")
+                    : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!orderLookupError &&
+          orderIdLookup &&
+          !loading &&
+          orderSnapshots.length === 0 &&
+          !orderCommission && (
+            <p className="mt-3 text-sm text-slate-500">
+              Aucun snapshot / commission persistée pour cet ID (ou pas encore
+              chargé).
+            </p>
+          )}
+      </section>
+
+      <section className={CARD}>
+        <h2 className="text-lg font-semibold">
+          Aperçu des taux actuels (preview)
+        </h2>
+        <p className="mt-1 text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+          <strong>Attention :</strong> cet aperçu résout les taux{" "}
+          <em>actuels</em> (fidélité → override → contrat → campagne → tarifs).
+          Il ne remplace pas le snapshot d’une commande déjà facturée. Pour
+          l’historique, utilisez la section Snapshot ci-dessus.
+        </p>
+        <p className="mt-2 text-sm text-slate-600">
+          Consulter la règle gagnante pour un partenaire (configuration live).
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <label className="text-sm">
@@ -177,8 +314,13 @@ function CommissionEngineInner() {
       {resolved && (
         <section className={CARD}>
           <h2 className="text-lg font-semibold">
-            Commission actuelle{partnerLabel ? ` — ${partnerLabel}` : ""}
+            Preview taux actuels
+            {partnerLabel ? ` — ${partnerLabel}` : ""}
           </h2>
+          <p className="text-xs text-amber-700 mb-2">
+            Non historique — ne pas utiliser comme montant facturé d’une
+            commande passée.
+          </p>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <div className="text-xs uppercase text-slate-500">Taux plateforme</div>
@@ -296,7 +438,8 @@ export default function CommissionEngineAdminPage() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         <h1 className="text-2xl font-bold">Moteur de commissions</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Contrats, commissions personnalisées et résolution unique Food / Marketplace.
+          Snapshots historiques par commande, contrats, overrides, et aperçu des
+          taux actuels (preview uniquement).
         </p>
         <div className="mt-6">
           <CommissionEngineInner />

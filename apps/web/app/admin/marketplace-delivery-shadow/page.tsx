@@ -53,10 +53,30 @@ export default function AdminMarketplaceDeliveryShadowPage() {
   return (
     <AdminGate requiredPermission="users.sellers.read">
       <div style={{ padding: 24, color: "#E2E8F0" }}>
-        <h1 style={{ fontSize: 28, marginBottom: 8 }}>Marketplace Delivery Shadow</h1>
+        <h1 style={{ fontSize: 28, marginBottom: 8 }}>
+          Marketplace Delivery Shadow (simulation)
+        </h1>
+        <div
+          style={{
+            color: "#FDE68A",
+            background: "#422006",
+            border: "1px solid #854D0E",
+            borderRadius: 12,
+            padding: "12px 14px",
+            marginBottom: 20,
+            fontSize: 14,
+            lineHeight: 1.45,
+          }}
+        >
+          <strong>Ce n’est pas le flux Stripe facturé.</strong> Les montants
+          « shadow » sont des simulations de livraison / dispatch readiness
+          uniquement — pas le total client encaissé, pas un PaymentIntent, pas un
+          payout. Pour les montants réels, utilisez Marketplace Orders /
+          Marketplace Payouts.
+        </div>
         <p style={{ color: "#94A3B8", marginBottom: 20 }}>
-          Simulated delivery quotes and dispatch readiness only — no live dispatch, no driver
-          notifications, no Stripe.
+          Simulated delivery quotes and dispatch readiness only — no live
+          dispatch, no driver notifications, no charged Stripe checkout.
         </p>
 
         {!canView ? (
@@ -101,15 +121,21 @@ export default function AdminMarketplaceDeliveryShadowPage() {
                     {row.dropoff?.formatted_address ?? row.dropoff_location_id ?? "—"}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Customer delivery (shadow): </span>
+                    <span style={{ color: "#94A3B8" }}>
+                      Customer delivery (simulé, non facturé):{" "}
+                    </span>
                     {formatMoney(row.customer_delivery_total_shadow_cents)}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Driver earning (shadow): </span>
+                    <span style={{ color: "#94A3B8" }}>
+                      Driver earning (simulé, non facturé):{" "}
+                    </span>
                     {formatMoney(row.driver_earning_shadow_cents)}
                   </div>
                   <div>
-                    <span style={{ color: "#94A3B8" }}>Platform margin (shadow): </span>
+                    <span style={{ color: "#94A3B8" }}>
+                      Platform margin (simulé, non facturé):{" "}
+                    </span>
                     {formatMoney(row.platform_margin_shadow_cents)}
                   </div>
                   <div>

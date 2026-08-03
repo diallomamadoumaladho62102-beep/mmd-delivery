@@ -128,4 +128,11 @@ Nouveau composant : `apps/mobile/src/components/shared/OtpDigitInput.tsx`
 
 ## 7. Git
 
-Voir confirmation finale après commit / push / merge `main`.
+| Étape | Statut |
+|------|--------|
+| Commit | `ad09f3d8` — `feat(taxi/delivery): finalize OTP pickup and premium driver ride card` |
+| Push | `origin/cursor/pe-phase-5b-independence` |
+| PR | https://github.com/diallomamadoumaladho62102-beep/mmd-delivery/pull/67 |
+| Merge `main` | `948fd4bd` — commit OTP présent sur `origin/main` |
+
+> Note: le checkout local de `main` était bloqué par des fichiers WIP non liés (icon/home/admin). Fusion effectuée via PR GitHub sans force-push.

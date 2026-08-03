@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const orderKind = String(params.get("orderKind") ?? "").trim();
     const partnerType = String(params.get("partnerType") ?? "").trim();
     const partnerUserId = String(params.get("partnerUserId") ?? "").trim();
+    const orderId = String(params.get("orderId") ?? "").trim();
     const ruleType = String(params.get("ruleType") ?? "").trim();
     const country = String(params.get("countryCode") ?? "").trim();
     const limit = Math.min(200, Math.max(1, Number(params.get("limit") ?? 100) || 100));
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
     if (orderKind) query = query.eq("order_kind", orderKind);
     if (partnerType) query = query.eq("partner_type", partnerType);
     if (partnerUserId) query = query.eq("partner_user_id", partnerUserId);
+    if (orderId) query = query.eq("order_id", orderId);
     if (ruleType) query = query.eq("rule_type", ruleType);
     if (country) query = query.eq("country_code", country.toUpperCase());
 

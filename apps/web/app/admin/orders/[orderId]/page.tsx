@@ -41,6 +41,8 @@ type OrderRow = {
   subtotal: number | null;
   tax: number | null;
   total: number | null;
+  total_cents: number | null;
+  payment_status: string | null;
   currency: string | null;
   distance_miles: number | null;
   eta_minutes: number | null;
@@ -79,6 +81,16 @@ function formatMoney(
     style: "currency",
     currency,
   }).format(value);
+}
+
+/** Prefer persisted charge cents when present (PE / Stripe SoT). */
+function formatOrderTotal(
+  order: Pick<OrderRow, "total" | "total_cents" | "currency">
+): string {
+  if (order.total_cents != null && Number.isFinite(order.total_cents)) {
+    return formatMoney(order.total_cents / 100, order.currency || "USD");
+  }
+  return formatMoney(order.total, order.currency || "USD");
 }
 
 function statusLabel(status: OrderStatus): string {
@@ -238,6 +250,8 @@ export default function AdminOrderPage() {
               subtotal,
               tax,
               total,
+              total_cents,
+              payment_status,
               currency,
               distance_miles,
               eta_minutes,
@@ -297,7 +311,21 @@ export default function AdminOrderPage() {
   const deliveryPlatformFee = order?.platform_delivery_fee ?? 0;
   const mmdTotalCommission = restaurantCommission + deliveryPlatformFee;
   const driverPayout = order?.driver_delivery_payout ?? 0;
-  const mmdGrossMargin = mmdTotalCommission - driverPayout;
+  /** Persisté : part plateforme uniquement (ne pas retrancher le payout chauffeur). */
+  const mmdPlatformTake = mmdTotalCommission;
+  const restaurantRatePct =
+    order?.restaurant_commission_rate != null
+      ? order.restaurant_commission_rate * 100
+      : null;
+  const deliveryFee = order?.delivery_fee ?? 0;
+  const driverSharePct =
+    deliveryFee > 0 && driverPayout != null
+      ? (driverPayout / deliveryFee) * 100
+      : null;
+  const platformSharePct =
+    deliveryFee > 0 && deliveryPlatformFee != null
+      ? (deliveryPlatformFee / deliveryFee) * 100
+      : null;
 
   const effectiveClientId =
     order?.client_id ?? order?.client_user_id ?? order?.user_id ?? null;
@@ -612,9 +640,18 @@ export default function AdminOrderPage() {
             />
             <InfoRow label="Taxes" value={formatMoney(order.tax, currency)} />
             <InfoRow
-              label="Total client"
-              value={formatMoney(order.total, currency)}
+              label="Total client (persisté)"
+              value={formatOrderTotal(order)}
             />
+            {order.payment_status ? (
+              <InfoRow label="Statut paiement" value={order.payment_status} />
+            ) : null}
+            {order.total_cents != null ? (
+              <InfoRow
+                label="Total cents (charge)"
+                value={`${order.total_cents} ¢`}
+              />
+            ) : null}
           </div>
         </SectionCard>
 
@@ -629,13 +666,13 @@ export default function AdminOrderPage() {
 
         <SectionCard
           title="Commission restaurant (plats)"
-          subtitle="Calcul basé sur le taux configuré sur la commande"
+          subtitle="Montants et taux persistés sur la commande (pas de recalcul)"
         >
           <InfoRow
             label="Taux MMD (sur plats)"
             value={
-              order.restaurant_commission_rate != null
-                ? `${(order.restaurant_commission_rate * 100).toFixed(2)} %`
+              restaurantRatePct != null
+                ? `${restaurantRatePct.toFixed(2)} %`
                 : "—"
             }
           />
@@ -649,14 +686,17 @@ export default function AdminOrderPage() {
           />
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Calcul basé sur 15% MMD / 85% restaurant sur le montant des plats
-            (ou le taux configuré si différent).
+            Valeurs enregistrées sur la commande
+            {restaurantRatePct != null
+              ? ` (taux persisté ${restaurantRatePct.toFixed(2)} % MMD)`
+              : ""}
+            . Aucun recalcul avec les taux admin actuels.
           </p>
         </SectionCard>
 
         <SectionCard
           title="Commission MMD & rémunération chauffeur"
-          subtitle="Répartition sur les frais de livraison"
+          subtitle="Répartition persistée des frais de livraison"
         >
           <InfoRow
             label="Frais de livraison (client)"
@@ -672,15 +712,17 @@ export default function AdminOrderPage() {
           />
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Basé sur la répartition actuelle : 80% chauffeur / 20% plateforme
-            sur les frais de livraison. Ces règles pourront être ajustées dans
-            le panneau admin MMD Delivery.
+            Parts persistées sur cette commande
+            {driverSharePct != null && platformSharePct != null
+              ? ` (~${driverSharePct.toFixed(1)} % chauffeur / ~${platformSharePct.toFixed(1)} % plateforme)`
+              : ""}
+            . Ce ne sont pas les taux configurés « actuels » du panneau Pricing.
           </p>
         </SectionCard>
 
         <SectionCard
           title="Résumé financier MMD (par commande)"
-          subtitle="Vue simplifiée de la marge brute"
+          subtitle="Somme des parts plateforme persistées"
         >
           <InfoRow
             label="Commission MMD sur plats"
@@ -691,22 +733,18 @@ export default function AdminOrderPage() {
             value={formatMoney(deliveryPlatformFee, currency)}
           />
           <InfoRow
-            label="Commission totale MMD (plats + livraison)"
-            value={formatMoney(mmdTotalCommission, currency)}
+            label="Total part plateforme MMD"
+            value={formatMoney(mmdPlatformTake, currency)}
           />
           <InfoRow
-            label="Rémunération chauffeur"
+            label="Rémunération chauffeur (persistée)"
             value={formatMoney(driverPayout, currency)}
-          />
-          <InfoRow
-            label="Marge brute MMD (approx.)"
-            value={formatMoney(mmdGrossMargin, currency)}
           />
 
           <p className="mt-3 text-[11px] text-slate-500">
-            Marge brute MMD ≈ (commission sur plats + commission sur livraison)
-            - rémunération chauffeur. Les frais de carte, taxes, marketing, etc.
-            viendront encore réduire cette marge.
+            Total part plateforme = commission plats + part livraison plateforme
+            (montants persistés). Le payout chauffeur n’est pas retranché de cette
+            part — il est déjà séparé. Frais carte / marketing hors ce résumé.
           </p>
         </SectionCard>
 

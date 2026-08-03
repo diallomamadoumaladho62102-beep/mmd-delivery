@@ -648,7 +648,26 @@
   },
   "roleSelect": {
     "title": "Choose your mode",
-    "subtitle": "Choisissez un rôle pour accéder à l'interface correspondante.",
+    "subtitle": "Sélectionnez un rôle pour accéder à l'interface correspondante.",
+    "taglineHeart": "We deliver with heart ❤️",
+    "taglineModes": "Taxi • Delivery • Business",
+    "taglineFast": "Fast, simple and reliable 🚀",
+    "advantages": {
+      "secure": "Secure Payments",
+      "fast": "Fast Delivery",
+      "tracking": "Live Tracking",
+      "support": "24/7 Support"
+    },
+    "roleSubtitles": {
+      "client": "Order a taxi, delivery or anything",
+      "driver": "Drive, deliver and earn with us",
+      "restaurant": "Manage your restaurant",
+      "seller": "Sell and grow your business"
+    },
+    "footer": {
+      "safe": "Your data is safe with us",
+      "trusted": "Trusted by thousands"
+    },
     "roles": {
       "client": "Client",
       "driver": "Chauffeur",

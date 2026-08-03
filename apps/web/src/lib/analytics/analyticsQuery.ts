@@ -25,6 +25,27 @@ function withLiveTripFilter<T extends { eq: unknown; is: unknown; or: unknown }>
   };
 }
 
+/** GMV / revenue: only rows actually charged (Stripe paid). */
+function withPaidOnly<T extends { eq: unknown }>(
+  apply?: (q: T) => T
+): (q: T) => T {
+  return (q: T) => {
+    let query = (q as T & { eq: (c: string, v: string) => T }).eq(
+      "payment_status",
+      "paid"
+    );
+    if (apply) query = apply(query);
+    return query;
+  };
+}
+
+function paidTripSum(
+  table: "orders" | "delivery_requests" | "taxi_rides",
+  applyRange: (q: any) => any
+): (q: any) => any {
+  return withLiveTripFilter(table, withPaidOnly(applyRange));
+}
+
 function num(value: unknown): number {
   const n = Number(value ?? 0);
   return Number.isFinite(n) ? n : 0;
@@ -220,25 +241,25 @@ async function liveGlobalMetrics(
     safeCount(supabase, "orders", withLiveTripFilter("orders", (q) =>
       q.gte("created_at", startIso(monthFrom)).lte("created_at", endIso(today))
     )),
-    safeCount(supabase, "orders", withLiveTripFilter("orders", range)),
-    safeSumCents(supabase, "orders", "total_cents", withLiveTripFilter("orders", range)),
+    safeCount(supabase, "orders", paidTripSum("orders", range)),
+    safeSumCents(supabase, "orders", "total_cents", paidTripSum("orders", range)),
     safeCount(supabase, "orders", withLiveTripFilter("orders", (q) =>
       range(q).in("status", ["canceled", "cancelled"])
     )),
-    safeCount(supabase, "delivery_requests", withLiveTripFilter("delivery_requests", range)),
+    safeCount(supabase, "delivery_requests", paidTripSum("delivery_requests", range)),
     safeSumCents(
       supabase,
       "delivery_requests",
       "total_cents",
-      withLiveTripFilter("delivery_requests", range)
+      paidTripSum("delivery_requests", range)
     ),
-    safeCount(supabase, "taxi_rides", withLiveTripFilter("taxi_rides", range)),
-    safeSumCents(supabase, "taxi_rides", "total_cents", withLiveTripFilter("taxi_rides", range)),
+    safeCount(supabase, "taxi_rides", paidTripSum("taxi_rides", range)),
+    safeSumCents(supabase, "taxi_rides", "total_cents", paidTripSum("taxi_rides", range)),
     safeCount(supabase, "taxi_rides", withLiveTripFilter("taxi_rides", (q) =>
       range(q).ilike("status", "%cancel%")
     )),
-    safeCount(supabase, "seller_orders", range),
-    safeSumCents(supabase, "seller_orders", "total_cents", range),
+    safeCount(supabase, "seller_orders", withPaidOnly(range)),
+    safeSumCents(supabase, "seller_orders", "total_cents", withPaidOnly(range)),
     safeCount(supabase, "profiles"),
     safeCount(supabase, "profiles", (q) =>
       q.gte("created_at", from).lte("created_at", to)
@@ -266,13 +287,13 @@ async function liveGlobalMetrics(
     commissions_cents: await safeSumCents(
       supabase,
       "order_commissions",
-      "platform_fee_cents",
+      "platform_cents",
       range
     ),
     mmd_revenue_cents: await safeSumCents(
       supabase,
       "order_commissions",
-      "platform_fee_cents",
+      "platform_cents",
       range
     ),
     users_total: usersTotal,
@@ -395,12 +416,12 @@ async function liveModuleMetrics(
   }
 
   if (module === "food") {
-    const orders = await safeCount(supabase, "orders", withLiveTripFilter("orders", range));
+    const orders = await safeCount(supabase, "orders", paidTripSum("orders", range));
     const sales = await safeSumCents(
       supabase,
       "orders",
       "total_cents",
-      withLiveTripFilter("orders", range)
+      paidTripSum("orders", range)
     );
     const canceled = await safeCount(
       supabase,
@@ -423,13 +444,13 @@ async function liveModuleMetrics(
         commissions_cents: await safeSumCents(
           supabase,
           "order_commissions",
-          "platform_fee_cents",
+          "platform_cents",
           range
         ),
         restaurants: await safeCount(
           supabase,
           "orders",
-          withLiveTripFilter("orders", (q) => range(q).not("restaurant_user_id", "is", null))
+          paidTripSum("orders", (q) => range(q).not("restaurant_user_id", "is", null))
         ),
         avg_delivery_sec: 0,
         primary: orders,
@@ -443,13 +464,13 @@ async function liveModuleMetrics(
     const deliveries = await safeCount(
       supabase,
       "delivery_requests",
-      withLiveTripFilter("delivery_requests", range)
+      paidTripSum("delivery_requests", range)
     );
     const revenue = await safeSumCents(
       supabase,
       "delivery_requests",
       "total_cents",
-      withLiveTripFilter("delivery_requests", range)
+      paidTripSum("delivery_requests", range)
     );
     series = await loadCachedSeries(supabase, "delivery", "gmv_cents", filters);
     return {
@@ -470,12 +491,12 @@ async function liveModuleMetrics(
   }
 
   if (module === "taxi") {
-    const rides = await safeCount(supabase, "taxi_rides", withLiveTripFilter("taxi_rides", range));
+    const rides = await safeCount(supabase, "taxi_rides", paidTripSum("taxi_rides", range));
     const revenue = await safeSumCents(
       supabase,
       "taxi_rides",
       "total_cents",
-      withLiveTripFilter("taxi_rides", range)
+      paidTripSum("taxi_rides", range)
     );
     const canceled = await safeCount(
       supabase,
@@ -500,8 +521,13 @@ async function liveModuleMetrics(
   }
 
   if (module === "marketplace" || module === "sellers") {
-    const orders = await safeCount(supabase, "seller_orders", range);
-    const gmv = await safeSumCents(supabase, "seller_orders", "total_cents", range);
+    const orders = await safeCount(supabase, "seller_orders", withPaidOnly(range));
+    const gmv = await safeSumCents(
+      supabase,
+      "seller_orders",
+      "total_cents",
+      withPaidOnly(range)
+    );
     const sellers = await safeCount(supabase, "sellers");
     return {
       metrics: {
@@ -634,24 +660,42 @@ async function liveModuleMetrics(
         supabase,
         "orders",
         "total_cents",
-        withLiveTripFilter("orders", range)
+        paidTripSum("orders", range)
+      )) +
+      (await safeSumCents(
+        supabase,
+        "delivery_requests",
+        "total_cents",
+        paidTripSum("delivery_requests", range)
       )) +
       (await safeSumCents(
         supabase,
         "taxi_rides",
         "total_cents",
-        withLiveTripFilter("taxi_rides", range)
+        paidTripSum("taxi_rides", range)
       )) +
-      (await safeSumCents(supabase, "seller_orders", "total_cents", range));
+      (await safeSumCents(
+        supabase,
+        "seller_orders",
+        "total_cents",
+        withPaidOnly(range)
+      ));
+    const foodPlatform = await safeSumCents(
+      supabase,
+      "order_commissions",
+      "platform_cents",
+      range
+    );
+    const taxiPlatform = await safeSumCents(
+      supabase,
+      "taxi_commissions",
+      "platform_cents",
+      range
+    );
     return {
       metrics: {
         revenue_cents: revenue,
-        commissions_cents: await safeSumCents(
-          supabase,
-          "order_commissions",
-          "platform_fee_cents",
-          range
-        ),
+        commissions_cents: foodPlatform + taxiPlatform,
         payouts_cents: await safeSumCents(
           supabase,
           "payout_transactions",
@@ -699,7 +743,7 @@ async function liveModuleMetrics(
       supabase,
       "orders",
       "total_cents",
-      withLiveTripFilter("orders", range)
+      paidTripSum("orders", range)
     );
     return {
       metrics: {
@@ -707,7 +751,7 @@ async function liveModuleMetrics(
         commissions_cents: await safeSumCents(
           supabase,
           "order_commissions",
-          "platform_fee_cents",
+          "platform_cents",
           range
         ),
         primary: sales,
