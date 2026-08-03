@@ -156,3 +156,12 @@ Périmètre couvert : Quotes / Checkouts (chemins PE) · Paiements (trust/Stripe
 
 **Le Pricing Engine est désormais l’unique moteur de calcul de charge de MMD Delivery.**  
 La migration dual-path (legacy ↔ engine) est **terminée**.
+
+## 11. Finalisation ops (post-COMPLETION)
+
+Voir [`PHASE-6-MIGRATION-FINAL-CLOSURE.md`](./PHASE-6-MIGRATION-FINAL-CLOSURE.md) :
+
+- Commit `f49a2400` poussé sur `cursor/pe-phase-5b-independence`
+- Preview `dpl_8epiPfGtHGtJEJQepLxU4q6UUGvy` + Production `dpl_GENV2yDJGVWRanp55DvCrRNJjGmV` (alias www)
+- Env `PRICING_ENGINE_*` absentes Preview/Production
+- Smoke Live Quote→Checkout OK ; paiements Live validés (merged_pass)
