@@ -1,31 +1,25 @@
-// apps/mobile/src/screens/RestaurantOrderDetailsScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StatusBar,
   ActivityIndicator,
-  TouchableOpacity,
   Alert,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
-  Image,
+  StatusBar,
   StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
-import { useSafeBackNavigation } from "../navigation/navigationBack";
 import { API_BASE_URL } from "../lib/apiBase";
+import { requestOrderPrint } from "../lib/restaurantOrderAutomationApi";
 import { supabase } from "../lib/supabase";
 import {
   subscribePostgresChannel,
   unsubscribeSupabaseChannel,
 } from "../lib/supabaseRealtime";
-import { startMaskedCall } from "../lib/maskedCall";
-import { requestOrderPrint } from "../lib/restaurantOrderAutomationApi";
 
 type OrderStatus =
   | "pending"
@@ -38,10 +32,10 @@ type OrderStatus =
 
 type OrderItem = {
   name: string;
-  category?: string | null;
   quantity: number;
-  unit_price: number;
-  line_total?: number | null;
+  options?: unknown;
+  notes?: unknown;
+  category?: string | null;
 };
 
 type Order = {
@@ -53,408 +47,206 @@ type Order = {
   client_id: string | null;
   client_user_id?: string | null;
   restaurant_name: string | null;
-  currency: string | null;
-  subtotal: number | null;
-  tax: number | null;
-  total: number | null;
-  restaurant_commission_rate: number | null;
-  restaurant_commission_amount: number | null;
-  restaurant_net_amount: number | null;
   pickup_address: string | null;
   dropoff_address: string | null;
-  distance_miles: number | null;
-  eta_minutes: number | null;
-  delivery_fee: number | null;
   pickup_code: string | null;
-  driver_id: string | null;
   items_json: unknown;
+  leave_at_door: boolean | null;
+  payment_status: string | null;
+  kind: string | null;
 };
 
-type BasicProfile = {
+type ClientProfile = {
   id: string;
   full_name: string | null;
-  avatar_url: string | null;
+  phone?: string | null;
 };
 
-type DriverProfile = BasicProfile;
-type ClientProfile = BasicProfile;
-
-type CallingTarget = "client" | "driver" | "admin";
-
-const AVATARS_BUCKET = "avatars";
-
-function isHttpUrl(value: string | null | undefined) {
-  return /^https?:\/\//i.test(String(value || "").trim());
-}
-
-function resolveAvatarUrl(value: string | null | undefined) {
-  const clean = String(value || "").trim();
-  if (!clean) return null;
-  if (isHttpUrl(clean)) return clean;
-
-  const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(clean);
-  return data?.publicUrl || null;
-}
-
-function getProfileDisplayName(
-  profile: BasicProfile | null,
-  fallback: string,
-  fallbackId?: string | null
-) {
-  const name = profile?.full_name?.trim();
-  if (name) return name;
-
-  const id = String(fallbackId || "").trim();
-  if (id) return `${fallback} ${id.slice(0, 8)}`;
-
-  return fallback;
-}
+const SELECT_FIELDS = [
+  "id",
+  "status",
+  "created_at",
+  "restaurant_id",
+  "restaurant_user_id",
+  "client_id",
+  "client_user_id",
+  "restaurant_name",
+  "pickup_address",
+  "dropoff_address",
+  "pickup_code",
+  "items_json",
+  "leave_at_door",
+  "payment_status",
+  "kind",
+].join(",");
 
 function getApiUrl(path: string) {
-  const raw = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
-
-  if (!raw) throw new Error("API_BASE_URL manquant.");
-  if (!/^https?:\/\//i.test(raw)) {
+  const base = String(API_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (!base || !/^https?:\/\//i.test(base)) {
     throw new Error("API_BASE_URL doit être une URL absolue.");
   }
-
-  return `${raw}${path.startsWith("/") ? path : `/${path}`}`;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-function parseItems(itemsJson: unknown): OrderItem[] {
-  if (!itemsJson) return [];
-  if (Array.isArray(itemsJson)) return itemsJson as OrderItem[];
-
-  if (typeof itemsJson === "string") {
-    try {
-      const parsed = JSON.parse(itemsJson);
-      return Array.isArray(parsed) ? (parsed as OrderItem[]) : [];
-    } catch {
-      return [];
-    }
+function parseItems(value: unknown): OrderItem[] {
+  if (Array.isArray(value)) return value as OrderItem[];
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as OrderItem[]) : [];
+  } catch {
+    return [];
   }
+}
 
+function textLines(value: unknown): string[] {
+  if (typeof value === "string") return value.trim() ? [value.trim()] : [];
+  if (Array.isArray(value)) return value.flatMap(textLines);
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap(textLines);
+  }
   return [];
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
-  return (first + last).toUpperCase() || "DR";
+function statusLabel(status: OrderStatus) {
+  const labels: Record<OrderStatus, string> = {
+    pending: "EN ATTENTE",
+    accepted: "ACCEPTÉE",
+    prepared: "EN PRÉPARATION",
+    ready: "PRÊTE",
+    dispatched: "EN LIVRAISON",
+    delivered: "LIVRÉE",
+    canceled: "ANNULÉE",
+  };
+  return labels[status];
 }
 
 function canRestaurantCancel(status: OrderStatus) {
-  return status === "pending" || status === "accepted" || status === "prepared";
-}
-
-function isFinalStatus(status: OrderStatus) {
-  return status === "delivered" || status === "canceled";
+  return ["pending", "accepted", "prepared"].includes(status);
 }
 
 function canMoveToStatus(current: OrderStatus, next: OrderStatus) {
-  if (current === "pending" && next === "accepted") return true;
-  if (current === "accepted" && next === "prepared") return true;
-  if (current === "prepared" && next === "ready") return true;
-  return false;
+  return (
+    (current === "pending" && next === "accepted") ||
+    (current === "accepted" && next === "prepared") ||
+    (current === "prepared" && next === "ready")
+  );
 }
 
-function statusEventType(next: OrderStatus) {
-  if (next === "accepted") return "restaurant_accept";
-  if (next === "prepared") return "restaurant_prepared";
-  if (next === "ready") return "restaurant_ready";
-  if (next === "canceled") return "restaurant_cancel";
-  return "restaurant_status_change";
-}
-
-function withOptionalOrderTimestamps(next: OrderStatus) {
-  const nowIso = new Date().toISOString();
-  const payload: Record<string, any> = {
-    status: next,
-    updated_at: nowIso,
-  };
-
-  if (next === "accepted") payload.restaurant_accepted_at = nowIso;
-  if (next === "prepared") payload.restaurant_prepared_at = nowIso;
-  if (next === "ready") payload.ready_at = nowIso;
-  if (next === "canceled") payload.canceled_at = nowIso;
-
-  return { payload, nowIso };
-}
-
-export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
+export function RestaurantOrderDetailsScreen({ route }: any) {
   const { t, i18n } = useTranslation();
-  const safeBack = useSafeBackNavigation("RestaurantCommandCenter");
   const { orderId } = (route.params ?? {}) as { orderId?: string };
-
   const [order, setOrder] = useState<Order | null>(null);
+  const [client, setClient] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [calling, setCalling] = useState<CallingTarget | null>(null);
-  const [pickupCode, setPickupCode] = useState("");
-  const [driver, setDriver] = useState<DriverProfile | null>(null);
-  const [driverLoading, setDriverLoading] = useState(false);
-  const [client, setClient] = useState<ClientProfile | null>(null);
-  const [clientLoading, setClientLoading] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [restaurantUserId, setRestaurantUserId] = useState<string | null>(null);
 
-  const localeTag = useMemo(() => {
-    const lng = String(i18n.language || "en").toLowerCase();
-    if (lng.startsWith("fr")) return "fr-FR";
-    if (lng.startsWith("es")) return "es-ES";
-    if (lng.startsWith("ar")) return "ar";
-    if (lng.startsWith("zh")) return "zh";
-    if (lng.startsWith("ff")) return "ff";
-    return "en-US";
-  }, [i18n.language]);
+  const locale = useMemo(
+    () => (String(i18n.language).toLowerCase().startsWith("fr") ? "fr-FR" : "en-US"),
+    [i18n.language],
+  );
 
-  const selectFields = useMemo(
+  const createdAt = useMemo(
+    () => (order?.created_at ? new Date(order.created_at).toLocaleString(locale) : "—"),
+    [locale, order?.created_at],
+  );
+  const items = useMemo(() => parseItems(order?.items_json), [order?.items_json]);
+  const kitchenNotes = useMemo(
     () =>
-      [
-        "id",
-        "status",
-        "created_at",
-        "restaurant_id",
-        "restaurant_user_id",
-        "client_id",
-        "client_user_id",
-        "restaurant_name",
-        "currency",
-        "subtotal",
-        "tax",
-        "total",
-        "restaurant_commission_rate",
-        "restaurant_commission_amount",
-        "restaurant_net_amount",
-        "pickup_address",
-        "dropoff_address",
-        "distance_miles",
-        "eta_minutes",
-        "delivery_fee",
-        "pickup_code",
-        "driver_id",
-        "items_json",
-        "payment_status",
-        "kind",
-      ].join(","),
-    []
+      items.flatMap((item) =>
+        textLines(item.notes).map((note) => `${item.name}: ${note}`),
+      ),
+    [items],
   );
-
-  const fmtDateTime = useCallback(
-    (iso?: string | null) => {
-      if (!iso) return t("common.na", "—");
-      return new Date(iso).toLocaleString(localeTag);
-    },
-    [localeTag, t]
-  );
-
-  const money = useCallback(
-    (value: number | null | undefined, currency: string) => {
-      if (value == null || Number.isNaN(value)) return t("common.na", "—");
-      return `${Number(value).toFixed(2)} ${currency}`;
-    },
-    [t]
-  );
-
-  const restaurantStatusLabel = useCallback(
-    (status: OrderStatus, driverId: string | null) => {
-      if (status === "ready") {
-        return driverId
-          ? t("order.status.readyDriverAssigned", "Prête – chauffeur assigné")
-          : t("order.status.readyWaitingDriver", "Prête – en attente d’un chauffeur");
-      }
-
-      switch (status) {
-        case "pending":
-          return t("order.status.pending", "En attente");
-        case "accepted":
-          return t("order.status.accepted", "Acceptée");
-        case "prepared":
-          return t("order.status.prepared", "En préparation");
-        case "dispatched":
-          return t("order.status.dispatched", "En livraison");
-        case "delivered":
-          return t("order.status.delivered", "Livrée");
-        case "canceled":
-          return t("order.status.canceled", "Annulée");
-        default:
-          return String(status);
-      }
-    },
-    [t]
-  );
-
 
   const resolveRestaurantUser = useCallback(async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) throw error;
-
-    const uid = data?.user?.id ?? null;
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError) throw authError;
+    const uid = authData.user?.id;
     if (!uid) {
-      throw new Error(
-        t("auth.errors.sessionExpired", "Session expirée. Reconnecte-toi puis réessaie.")
-      );
+      throw new Error(t("auth.errors.sessionExpired", "Session expirée. Reconnecte-toi puis réessaie."));
     }
 
-    const { data: roleProfile, error: roleError } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", uid)
       .maybeSingle();
-
-    if (roleError) {
-      console.log("RestaurantOrderDetails role check error:", roleError);
-    }
-
-    const role = String((roleProfile as any)?.role || "").trim().toLowerCase();
-
-    if (role && role !== "restaurant") {
-      throw new Error(
-        t(
-          "order.errors.restaurantOnly",
-          "Cette page est réservée au compte restaurant."
-        )
-      );
+    if (profileError || String((profile as { role?: string } | null)?.role || "").toLowerCase() !== "restaurant") {
+      throw new Error(t("order.errors.restaurantOnly", "Cette page est réservée au compte restaurant."));
     }
 
     setRestaurantUserId(uid);
     return uid;
   }, [t]);
 
-  const orderBelongsToRestaurant = useCallback((row: any, uid: string) => {
-    return (
-      String(row?.restaurant_user_id || "") === uid ||
-      String(row?.restaurant_id || "") === uid
-    );
-  }, []);
-
-  const fetchOrder = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      const uid = await resolveRestaurantUser();
-
-      const { data, error } = await supabase
-        .from("orders")
-        .select(selectFields)
-        .eq("id", orderId)
-        .maybeSingle();
-
-      if (error || !data) {
-        throw error ?? new Error(t("order.errors.notFound", "Commande introuvable."));
+  const validateOrder = useCallback(
+    (row: any, uid: string) => {
+      const belongsToRestaurant =
+        String(row?.restaurant_user_id || "") === uid ||
+        String(row?.restaurant_id || "") === uid;
+      if (!belongsToRestaurant) {
+        throw new Error(t("order.errors.notAllowed", "Tu n’as pas accès à cette commande."));
       }
-
-      if (!orderBelongsToRestaurant(data, uid)) {
-        throw new Error(
-          t(
-            "order.errors.notAllowed",
-            "Tu n’as pas accès à cette commande."
-          )
-        );
+      if (String(row?.payment_status || "").toLowerCase() !== "paid") {
+        throw new Error(t("order.errors.awaitingPayment", "Cette commande n’est pas encore payée et n’est pas visible."));
       }
-
-      if (String((data as any).payment_status ?? "").toLowerCase() !== "paid") {
-        throw new Error(
-          t(
-            "order.errors.awaitingPayment",
-            "Cette commande n’est pas encore payée et n’est pas visible."
-          )
-        );
-      }
-
-      if (String((data as any).kind ?? "food").toLowerCase() !== "food") {
-        throw new Error(
-          t(
-            "order.errors.notFoodOrder",
-            "Cette commande n’est pas une commande restaurant."
-          )
-        );
-      }
-
-      const nextOrder = data as unknown as Order;
-      setOrder(nextOrder);
-      setPickupCode(nextOrder.pickup_code ?? "");
-    } catch (e: any) {
-      Alert.alert(
-        t("common.errorTitle", "Erreur"),
-        e?.message ?? t("order.errors.load", "Impossible de charger la commande.")
-      );
-      setOrder(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [orderBelongsToRestaurant, orderId, resolveRestaurantUser, selectFields, t]);
-
-  const refetchOrderSilent = useCallback(async () => {
-    const uid = restaurantUserId ?? (await resolveRestaurantUser());
-
-    const { data, error } = await supabase
-      .from("orders")
-      .select(selectFields)
-      .eq("id", orderId)
-      .maybeSingle();
-
-    if (error || !data) {
-      throw error ?? new Error(t("order.errors.notFound", "Commande introuvable."));
-    }
-
-    if (!orderBelongsToRestaurant(data, uid)) {
-      throw new Error(
-        t(
-          "order.errors.notAllowed",
-          "Tu n’as pas accès à cette commande."
-        )
-      );
-    }
-
-    const nextOrder = data as unknown as Order;
-    setOrder(nextOrder);
-    setPickupCode(nextOrder.pickup_code ?? "");
-
-    return nextOrder;
-  }, [orderBelongsToRestaurant, orderId, resolveRestaurantUser, restaurantUserId, selectFields, t]);
-
-  const fetchProfile = useCallback(async (profileId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url")
-      .eq("id", profileId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return (data as unknown as BasicProfile) ?? null;
-  }, []);
-
-  const fetchDriver = useCallback(
-    async (driverId: string) => {
-      setDriverLoading(true);
-
-      try {
-        const profile = await fetchProfile(driverId);
-        setDriver(profile as DriverProfile | null);
-      } catch {
-        setDriver(null);
-      } finally {
-        setDriverLoading(false);
+      if (String(row?.kind || "").toLowerCase() !== "food") {
+        throw new Error(t("order.errors.notFoodOrder", "Cette commande n’est pas une commande restaurant."));
       }
     },
-    [fetchProfile]
+    [t],
   );
 
-  const fetchClient = useCallback(
-    async (clientId: string) => {
-      setClientLoading(true);
+  const loadClient = useCallback(async (clientId: string | null) => {
+    if (!clientId) {
+      setClient(null);
+      return;
+    }
 
+    const query = () =>
+      supabase.from("profiles").select("id, full_name, phone").eq("id", clientId).maybeSingle();
+    const { data, error } = await query();
+    if (!error) {
+      setClient((data as ClientProfile | null) ?? null);
+      return;
+    }
+
+    // Phone is optional in deployments that have not added the column yet.
+    const fallback = await supabase.from("profiles").select("id, full_name").eq("id", clientId).maybeSingle();
+    setClient((fallback.data as ClientProfile | null) ?? null);
+  }, []);
+
+  const fetchOrder = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
       try {
-        const profile = await fetchProfile(clientId);
-        setClient(profile as ClientProfile | null);
-      } catch {
-        setClient(null);
+        const uid = restaurantUserId ?? (await resolveRestaurantUser());
+        const { data, error } = await supabase
+          .from("orders")
+          .select(SELECT_FIELDS)
+          .eq("id", orderId)
+          .maybeSingle();
+        if (error || !data) throw error ?? new Error(t("order.errors.notFound", "Commande introuvable."));
+
+        validateOrder(data, uid);
+        const nextOrder = data as unknown as Order;
+        setOrder(nextOrder);
+        void loadClient(nextOrder.client_user_id ?? nextOrder.client_id);
+        return nextOrder;
+      } catch (error: any) {
+        if (!silent) {
+          Alert.alert(t("common.errorTitle", "Erreur"), error?.message ?? t("order.errors.load", "Impossible de charger la commande."));
+        }
+        setOrder(null);
+        return null;
       } finally {
-        setClientLoading(false);
+        if (!silent) setLoading(false);
       }
     },
-    [fetchProfile]
+    [loadClient, orderId, resolveRestaurantUser, restaurantUserId, t, validateOrder],
   );
 
   useEffect(() => {
@@ -467,188 +259,70 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
         event: "*",
         table: "orders",
         filter: `id=eq.${orderId}`,
-        callback: () => {
-          void refetchOrderSilent().catch(() => {});
-        },
+        callback: () => void fetchOrder(true),
       },
     ]);
-
     return () => {
       void unsubscribeSupabaseChannel(channel);
     };
-  }, [orderId, refetchOrderSilent]);
+  }, [fetchOrder, orderId]);
 
-  useEffect(() => {
-    const driverId = order?.driver_id ?? null;
-
-    if (!driverId) {
-      setDriver(null);
-      return;
-    }
-
-    void fetchDriver(driverId);
-  }, [order?.driver_id, fetchDriver]);
-
-  useEffect(() => {
-    const clientId = order?.client_user_id ?? order?.client_id ?? null;
-
-    if (!clientId) {
-      setClient(null);
-      return;
-    }
-
-    void fetchClient(clientId);
-  }, [order?.client_id, order?.client_user_id, fetchClient]);
-
-  const startOrderCall = useCallback(
-    async (targetRole: CallingTarget) => {
-      if (!order?.id || calling || updating) return;
-
-      if (isFinalStatus(order.status)) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t("order.call.finalOrder", "Les appels sont désactivés pour cette commande.")
-        );
-        return;
-      }
-
-      if (targetRole === "client" && !(order.client_id ?? order.client_user_id)) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t("order.call.clientMissing", "Client introuvable pour cette commande.")
-        );
-        return;
-      }
-
-      if (targetRole === "driver" && !order.driver_id) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t("order.call.driverMissing", "Aucun chauffeur n’est encore assigné à cette commande.")
-        );
-        return;
-      }
-
-      setCalling(targetRole);
-
+  const updateStatus = useCallback(
+    async (next: "accepted" | "prepared" | "ready") => {
+      if (!order || updating || !restaurantUserId || !canMoveToStatus(order.status, next)) return;
+      setUpdating(true);
       try {
-        await startMaskedCall({
-          orderId: order.id,
-          callerRole: "restaurant",
-          targetRole,
-        });
+        const { postRestaurantOrderStatus } = await import("../lib/restaurantOrderStatusApi");
+        await postRestaurantOrderStatus({ orderId: order.id, status: next });
+        await fetchOrder(true);
+      } catch (error: any) {
+        Alert.alert(t("common.errorTitle", "Erreur"), error?.message ?? t("order.errors.update", "Impossible de mettre à jour le statut."));
       } finally {
-        setCalling(null);
+        setUpdating(false);
       }
     },
-    [
-      calling,
-      order?.client_id,
-      order?.client_user_id,
-      order?.driver_id,
-      order?.id,
-      order?.status,
-      t,
-      updating,
-    ]
+    [fetchOrder, order, restaurantUserId, t, updating],
   );
 
-  const callClient = useCallback(() => {
-    void startOrderCall("client");
-  }, [startOrderCall]);
-
-  const callDriver = useCallback(() => {
-    void startOrderCall("driver");
-  }, [startOrderCall]);
-
-  const callAdmin = useCallback(() => {
-    void startOrderCall("admin");
-  }, [startOrderCall]);
-
-
-  const openRestaurantChat = useCallback(
-    (targetRole: CallingTarget) => {
-      if (!order?.id || updating) return;
-
-      if (isFinalStatus(order.status)) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t(
-            "order.chat.finalOrder",
-            "Les messages sont désactivés pour cette commande."
-          )
-        );
-        return;
-      }
-
-      if (targetRole === "client" && !(order.client_id ?? order.client_user_id)) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t("order.chat.clientMissing", "Client introuvable pour cette commande.")
-        );
-        return;
-      }
-
-      if (targetRole === "driver" && !order.driver_id) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t(
-            "order.chat.driverMissing",
-            "Aucun chauffeur n’est encore assigné à cette commande."
-          )
-        );
-        return;
-      }
-
-      navigation.navigate("RestaurantChat", {
-        orderId: order.id,
-        targetRole,
+  const cancelOrder = useCallback(async () => {
+    if (!order || updating || !canRestaurantCancel(order.status)) return;
+    setUpdating(true);
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session?.access_token) throw new Error(error?.message || "Session expirée.");
+      const response = await fetch(getApiUrl("/api/orders/cancel"), {
+        method: "POST",
+        headers: { Authorization: `Bearer ${data.session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id, role: "restaurant" }),
       });
-    },
-    [
-      navigation,
-      order?.client_id,
-      order?.client_user_id,
-      order?.driver_id,
-      order?.id,
-      order?.status,
-      t,
-      updating,
-    ]
-  );
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error || t("order.errors.cancel", "Impossible d’annuler cette commande."));
+      await fetchOrder(true);
+    } catch (error: any) {
+      Alert.alert(t("common.errorTitle", "Erreur"), error?.message ?? t("order.errors.cancel", "Impossible d’annuler cette commande."));
+    } finally {
+      setUpdating(false);
+    }
+  }, [fetchOrder, order, t, updating]);
 
-  const messageClient = useCallback(() => {
-    openRestaurantChat("client");
-  }, [openRestaurantChat]);
+  const confirmCancel = useCallback(() => {
+    if (!order) return;
+    Alert.alert(
+      order.status === "pending" ? "Refuser la commande" : "Annuler la commande",
+      "Confirmer cette action ?",
+      [{ text: "Non", style: "cancel" }, { text: "Confirmer", style: "destructive", onPress: () => void cancelOrder() }],
+    );
+  }, [cancelOrder, order]);
 
-  const messageDriver = useCallback(() => {
-    openRestaurantChat("driver");
-  }, [openRestaurantChat]);
-
-  const messageAdmin = useCallback(() => {
-    openRestaurantChat("admin");
-  }, [openRestaurantChat]);
-
-  const [printing, setPrinting] = useState(false);
-
-  const handlePrintOrder = useCallback(
+  const handlePrint = useCallback(
     async (source: "manual" | "reprint") => {
       if (!order || printing) return;
       setPrinting(true);
       try {
         await requestOrderPrint(order.id, source);
-        Alert.alert(
-          "Impression",
-          source === "reprint"
-            ? "Réimpression lancée."
-            : "Ticket ajouté à la file d'impression.",
-        );
+        Alert.alert("Impression", source === "reprint" ? "Réimpression lancée." : "Ticket ajouté à la file d’impression.");
       } catch (error) {
-        Alert.alert(
-          "Impression",
-          error instanceof Error
-            ? error.message
-            : "Impossible de lancer l'impression.",
-        );
+        Alert.alert("Impression", error instanceof Error ? error.message : "Impossible de lancer l’impression.");
       } finally {
         setPrinting(false);
       }
@@ -656,860 +330,159 @@ export function RestaurantOrderDetailsScreen({ route, navigation }: any) {
     [order, printing],
   );
 
-  const updateStatus = useCallback(
-    async (next: OrderStatus) => {
-      if (!order || updating) return;
-
-      if (!restaurantUserId) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t("auth.errors.sessionExpired", "Session expirée. Reconnecte-toi puis réessaie.")
-        );
-        return;
-      }
-
-      if (isFinalStatus(order.status)) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t("order.errors.finalStatus", "Cette commande est déjà terminée. Le statut ne peut plus changer.")
-        );
-        return;
-      }
-
-      if (!canMoveToStatus(order.status, next)) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          t("order.errors.statusTransition", "Transition de statut non autorisée.")
-        );
-        return;
-      }
-
-      setUpdating(true);
-
-      try {
-        const { postRestaurantOrderStatus } = await import("../lib/restaurantOrderStatusApi");
-        await postRestaurantOrderStatus({
-          orderId: order.id,
-          status: next as "accepted" | "prepared" | "ready",
-        });
-
-        const { data, error: reloadError } = await supabase
-          .from("orders")
-          .select(selectFields)
-          .eq("id", order.id)
-          .eq("kind", "food")
-          .eq("payment_status", "paid")
-          .or(`restaurant_user_id.eq.${restaurantUserId},restaurant_id.eq.${restaurantUserId}`)
-          .maybeSingle();
-
-        if (reloadError) throw reloadError;
-
-        if (!data) {
-          throw new Error(
-            t("order.errors.statusChanged", "Le statut a changé. Recharge la commande puis réessaie.")
-          );
-        }
-
-        const nextOrder = data as unknown as Order;
-        setOrder(nextOrder);
-        setPickupCode(nextOrder.pickup_code ?? "");
-      } catch (e: any) {
-        Alert.alert(
-          t("common.errorTitle", "Erreur"),
-          e?.message ?? t("order.errors.update", "Impossible de mettre à jour le statut.")
-        );
-      } finally {
-        setUpdating(false);
-      }
-    },
-    [order, restaurantUserId, selectFields, t, updating]
-  );
-
-  const cancelOrderByRestaurant = useCallback(async () => {
-    if (!order || updating) return;
-
-    if (!canRestaurantCancel(order.status)) {
-      Alert.alert(
-        t("common.errorTitle", "Erreur"),
-        t("order.errors.restaurantCancelNotAllowed", "Cette commande ne peut plus être annulée par le restaurant.")
-      );
-      return;
-    }
-
-    setUpdating(true);
-
-    try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw new Error(sessionError.message || "Session invalide.");
-      }
-
-      const token = sessionData.session?.access_token;
-
-      if (!token) {
-        throw new Error(
-          t("auth.errors.sessionExpired", "Session expirée. Reconnecte-toi puis réessaie.")
-        );
-      }
-
-      const response = await fetch(getApiUrl("/api/orders/cancel"), {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          orderId: order.id,
-          role: "restaurant",
-        }),
-      });
-
-      const result = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(
-          result?.error ?? t("order.errors.cancel", "Impossible d’annuler cette commande.")
-        );
-      }
-
-      await refetchOrderSilent();
-
-      Alert.alert(
-        t("common.successTitle", "Succès"),
-        order.status === "pending"
-          ? t("order.actions.rejectSuccess", "Commande refusée. Refund client requis selon la règle.")
-          : t("order.actions.cancelSuccess", "Commande annulée. Refund client requis selon la règle.")
-      );
-    } catch (e: any) {
-      Alert.alert(
-        t("common.errorTitle", "Erreur"),
-        e?.message ?? t("order.errors.cancel", "Impossible d’annuler cette commande.")
-      );
-    } finally {
-      setUpdating(false);
-    }
-  }, [order, refetchOrderSilent, t, updating]);
-
-  const confirmRestaurantCancel = useCallback(() => {
-    if (!order || updating) return;
-
-    const isReject = order.status === "pending";
-
-    Alert.alert(
-      isReject
-        ? t("order.actions.rejectTitle", "Refuser la commande")
-        : t("order.actions.cancelTitle", "Annuler la commande"),
-      isReject
-        ? t("order.actions.rejectConfirm", "Confirmer le refus de cette commande ? Le client devra être remboursé selon la règle.")
-        : t("order.actions.cancelConfirm", "Confirmer l’annulation ? Le client devra être remboursé selon la règle."),
-      [
-        { text: t("common.cancel", "Non"), style: "cancel" },
-        {
-          text: isReject
-            ? t("order.actions.reject", "Refuser")
-            : t("order.actions.cancel", "Annuler"),
-          style: "destructive",
-          onPress: () => {
-            void cancelOrderByRestaurant();
-          },
-        },
-      ]
-    );
-  }, [cancelOrderByRestaurant, order, t, updating]);
-
-  const currency = order?.currency ?? "USD";
-  const items = useMemo(() => (order ? parseItems(order.items_json) : []), [order]);
-
-  const itemsPlusTax = useMemo(() => {
-    const subtotal = order?.subtotal ?? 0;
-    const tax = order?.tax ?? 0;
-    return subtotal + tax;
-  }, [order?.subtotal, order?.tax]);
-
   if (loading) {
-    return (
-      <SafeAreaView style={styles.screen}>
-        <StatusBar barStyle="light-content" />
-        <View style={styles.center}>
-          <ActivityIndicator />
-          <Text style={styles.loadingText}>{t("common.loading", "Chargement…")}</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <SafeAreaView style={styles.screen}><StatusBar barStyle="light-content" /><View style={styles.center}><ActivityIndicator color="#F5C542" /><Text style={styles.muted}>Chargement…</Text></View></SafeAreaView>;
   }
 
   if (!order) {
-    return (
-      <SafeAreaView style={styles.screen} edges={["bottom", "left", "right"]}>
-        <StatusBar barStyle="light-content" />
-        <ScreenHeader
-          title={t("order.details.title", "Order details")}
-          fallbackRoute="RestaurantCommandCenter"
-          variant="dark"
-        />
-        <View style={styles.emptyState}>
-          <Text style={styles.textWhite}>
-            {t("order.errors.notFound", "Commande introuvable.")}
-          </Text>
-          <TouchableOpacity onPress={safeBack} style={styles.backButton}>
-            <Text style={styles.linkText}>{t("common.back", "← Retour")}</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
+    return <SafeAreaView style={styles.screen}><StatusBar barStyle="light-content" /><ScreenHeader title="Commande" fallbackRoute="RestaurantCommandCenter" variant="dark" /><View style={styles.center}><Text style={styles.empty}>Commande introuvable.</Text></View></SafeAreaView>;
   }
 
-  const canAccept = order.status === "pending";
-  const canPrepare = order.status === "accepted";
-  const canReady = order.status === "prepared";
-  const canCancel = canRestaurantCancel(order.status);
+  const clientId = order.client_user_id ?? order.client_id;
+  const firstName = client?.full_name?.trim().split(/\s+/)[0];
+  const clientName = firstName || (clientId ? `Client ${clientId.slice(0, 8)}` : "Client");
   const canPrint = ["accepted", "prepared", "ready", "dispatched"].includes(order.status);
-  const callDisabled = !!calling || updating || isFinalStatus(order.status);
-
-  const clientId = order.client_user_id ?? order.client_id ?? null;
-
-  const clientName = clientId
-    ? getProfileDisplayName(
-        client,
-        t("order.client.fallback", "Client"),
-        clientId
-      )
-    : t("order.client.unknown", "Client introuvable");
-
-  const driverName = order.driver_id
-    ? getProfileDisplayName(
-        driver,
-        t("order.driver.fallbackShort", "Chauffeur"),
-        order.driver_id
-      )
-    : null;
-
-  const clientAvatarUrl = resolveAvatarUrl(client?.avatar_url);
-  const driverAvatarUrl = resolveAvatarUrl(driver?.avatar_url);
 
   return (
     <SafeAreaView style={styles.screen} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="light-content" />
-
       <ScreenHeader
-        title={t("order.details.title", {
-          defaultValue: "Commande #{{id}}",
-          id: order.id.slice(0, 8),
-        })}
+        title={`Commande #${order.id.slice(0, 8)}`}
         fallbackRoute="RestaurantCommandCenter"
         variant="dark"
+        rightSlot={<View style={styles.statusPill}><Text style={styles.statusText}>{statusLabel(order.status)}</Text></View>}
       />
-
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.card}>
-            <InfoLine
-              label={t("order.details.statusLabel", "Statut")}
-              value={restaurantStatusLabel(order.status, order.driver_id)}
-            />
-
-            <InfoLine
-              label={t("order.details.createdAt", "Créée")}
-              value={fmtDateTime(order.created_at)}
-            />
-
-            <InfoLine
-              label={t("order.details.totalItemsTaxes", "Total (plats + taxes)")}
-              value={money(itemsPlusTax, currency)}
-              strong
-            />
-
-            <InfoLine
-              label={t("order.details.netRestaurant", "Net restaurant")}
-              value={money(order.restaurant_net_amount, currency)}
-              success
-            />
-          </View>
-
-          <View style={styles.actions}>
-            {canAccept && (
-              <ActionButton
-                label={
-                  updating
-                    ? t("common.updating", "Mise à jour…")
-                    : t("order.actions.accept", "Accepter la commande")
-                }
-                color="#EA580C"
-                disabled={updating}
-                onPress={() => updateStatus("accepted")}
-              />
-            )}
-
-            {canPrepare && (
-              <ActionButton
-                label={
-                  updating
-                    ? t("common.updating", "Mise à jour…")
-                    : t("order.actions.toPreparing", "Passer en préparation")
-                }
-                color="#F97316"
-                disabled={updating}
-                onPress={() => updateStatus("prepared")}
-              />
-            )}
-
-            {canReady && (
-              <ActionButton
-                label={
-                  updating
-                    ? t("common.updating", "Mise à jour…")
-                    : t("order.actions.ready", "Commande prête (READY)")
-                }
-                color="#16A34A"
-                disabled={updating}
-                onPress={() => updateStatus("ready")}
-              />
-            )}
-
-            {canCancel && (
-              <ActionButton
-                label={
-                  updating
-                    ? t("common.updating", "Mise à jour…")
-                    : order.status === "pending"
-                      ? t("order.actions.reject", "Refuser la commande")
-                      : t("order.actions.cancel", "Annuler la commande")
-                }
-                color="#DC2626"
-                disabled={updating}
-                onPress={confirmRestaurantCancel}
-              />
-            )}
-
-            {canPrint && (
-              <>
-                <ActionButton
-                  label={printing ? "Impression…" : "Imprimer ticket"}
-                  color="#0F766E"
-                  disabled={printing || updating}
-                  onPress={() => handlePrintOrder("manual")}
-                />
-                <ActionButton
-                  label={printing ? "Impression…" : "Réimprimer"}
-                  color="#115E59"
-                  disabled={printing || updating}
-                  onPress={() => handlePrintOrder("reprint")}
-                />
-              </>
-            )}
-
-            {!canAccept && !canPrepare && !canReady && !canCancel && !canPrint && (
-              <View style={styles.notice}>
-                <Text style={styles.mutedText}>
-                  {t("order.actions.none", "Aucune action restaurant requise maintenant.")}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              {t("order.details.supportSection", "Support")}
-            </Text>
-            <Text style={styles.paragraph}>
-              {t(
-                "order.details.supportHelp",
-                "Besoin d’aide sur cette commande ? Appelle le support MMD sans partager ton vrai numéro."
-              )}
-            </Text>
-            <ActionButton
-              label={
-                calling === "admin"
-                  ? t("order.call.callingAdmin", "Appel support…")
-                  : t("order.call.admin", "Call MMD support")
-              }
-              color="#7C3AED"
-              disabled={callDisabled}
-              onPress={callAdmin}
-            />
-            <ActionButton
-              label={t("order.chat.admin", "Message MMD support")}
-              color="#6D28D9"
-              disabled={callDisabled}
-              onPress={messageAdmin}
-            />
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              {t("order.details.restaurantSection", "Restaurant")}
-            </Text>
-
-            <Text style={styles.boldText}>
-              {order.restaurant_name ?? t("common.na", "—")}
-            </Text>
-
-            <InfoLine
-              label={t("order.details.pickupAddress", "Adresse de récupération")}
-              value={order.pickup_address ?? t("common.na", "—")}
-            />
-
-            <Text style={styles.labelText}>
-              {t("order.details.pickupCodeHelp", "Code pickup à donner au chauffeur :")}
-            </Text>
-
-            <TextInput
-              value={pickupCode || t("common.na", "—")}
-              editable={false}
-              style={styles.pickupCodeInput}
-            />
-
-            <View style={styles.contactMiniCard}>
-              <ProfileHeader
-                title={t("order.details.clientSection", "Client")}
-                subtitle={t(
-                  "order.client.profileHint",
-                  "Profil client lié à cette commande"
-                )}
-                avatarUrl={clientAvatarUrl}
-                name={clientName}
-                loading={clientLoading}
-                fallbackEmoji="👤"
-              />
-
-              <ActionButton
-                label={
-                  calling === "client"
-                    ? t("order.call.callingClient", "Appel client…")
-                    : t("order.call.client", "Call client")
-                }
-                color="#2563EB"
-                disabled={callDisabled || !clientId}
-                onPress={callClient}
-              />
-              <ActionButton
-                label={t("order.chat.client", "Message client")}
-                color="#1D4ED8"
-                disabled={callDisabled || !clientId}
-                onPress={messageClient}
-              />
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          <View style={styles.restaurantRow}>
+            <View style={styles.iconCircle}><Ionicons name="restaurant" size={22} color="#0B0F1A" /></View>
+            <View style={styles.flex}>
+              <Text style={styles.restaurantName}>{order.restaurant_name || "Restaurant"}</Text>
+              <Text style={styles.address}>{order.pickup_address || "Adresse de récupération indisponible"}</Text>
             </View>
           </View>
-
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              {t("order.details.driverSection", "Chauffeur")}
-            </Text>
-
-            {!order.driver_id ? (
-              <Text style={styles.mutedText}>
-                {t("order.driver.none", "Aucun chauffeur n’est encore assigné à cette commande.")}
-              </Text>
-            ) : (
-              <>
-                <ProfileHeader
-                  title={t("order.details.driverSection", "Chauffeur")}
-                  subtitle={t("order.driver.profile", "Profil chauffeur assigné")}
-                  avatarUrl={driverAvatarUrl}
-                  name={driverName ?? t("order.driver.title", "Chauffeur")}
-                  loading={driverLoading}
-                  fallbackEmoji="🚚"
-                />
-
-                <ActionButton
-                  label={
-                    calling === "driver"
-                      ? t("order.call.callingDriver", "Appel chauffeur…")
-                      : t("order.call.driver", "Call driver")
-                  }
-                  color="#0EA5E9"
-                  disabled={callDisabled}
-                  onPress={callDriver}
-                />
-                <ActionButton
-                  label={t("order.chat.driver", "Message driver")}
-                  color="#0284C7"
-                  disabled={callDisabled}
-                  onPress={messageDriver}
-                />
-              </>
-            )}
+          <View style={styles.metaRow}>
+            <Text style={styles.meta}>{createdAt}</Text>
+            <Text style={styles.deliveryType}>LIVRAISON</Text>
           </View>
+        </View>
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              {t("order.details.summary", "Récapitulatif de la commande")}
-            </Text>
+        <View style={styles.pickupCard}>
+          <Ionicons name="lock-closed" size={22} color="#8A6500" />
+          <Text style={styles.pickupLabel}>CODE PICKUP</Text>
+          <Text style={styles.pickupCode}>{order.pickup_code || "—"}</Text>
+          <Text style={styles.pickupHelp}>Communiquez ce code uniquement au livreur.</Text>
+        </View>
 
-            {items.length === 0 ? (
-              <Text style={styles.mutedText}>
-                {t("order.details.noItems", "Aucun article.")}
-              </Text>
-            ) : (
-              items.map((item, index) => {
-                const line = item.line_total ?? item.unit_price * item.quantity;
+        <Section icon="person-outline" title="CLIENT">
+          <Text style={styles.primaryText}>{clientName}</Text>
+          {client?.phone ? <Text style={styles.secondaryText}>{client.phone}</Text> : null}
+        </Section>
 
-                return (
-                  <View
-                    key={`${item.name}-${index}`}
-                    style={[styles.itemRow, index > 0 && styles.itemBorder]}
-                  >
-                    <Text style={styles.boldText}>{item.name}</Text>
+        <Section icon="location-outline" title="ADRESSE DE LIVRAISON">
+          <Text style={styles.primaryText}>{order.dropoff_address || "Adresse indisponible"}</Text>
+        </Section>
 
-                    {item.category ? (
-                      <Text style={styles.mutedText}>{item.category}</Text>
-                    ) : null}
+        {order.leave_at_door ? (
+          <Section icon="hand-left-outline" title="INSTRUCTIONS CLIENT">
+            <Text style={styles.primaryText}>Laisser à la porte</Text>
+          </Section>
+        ) : null}
 
-                    <Text style={styles.mutedText}>
-                      {t("order.details.qty", {
-                        defaultValue: "Qté {{q}}",
-                        q: item.quantity,
-                      })}{" "}
-                      — {money(item.unit_price, currency)}
-                      {t("order.details.perUnit", " / unité")}
-                    </Text>
+        <Section icon="receipt-outline" title="DÉTAILS DE LA COMMANDE">
+          {items.length ? items.map((item, index) => (
+            <View key={`${item.name}-${index}`} style={[styles.itemRow, index > 0 && styles.itemDivider]}>
+              <View style={styles.quantityBadge}><Text style={styles.quantityText}>{item.quantity}</Text></View>
+              <View style={styles.flex}>
+                <Text style={styles.itemName}>{item.name}</Text>
+                {item.category ? <Text style={styles.optionText}>{item.category}</Text> : null}
+                {textLines(item.options).map((option, optionIndex) => <Text key={`${option}-${optionIndex}`} style={styles.optionText}>• {option}</Text>)}
+              </View>
+            </View>
+          )) : <Text style={styles.secondaryText}>Aucun article.</Text>}
+        </Section>
 
-                    <Text style={styles.itemTotal}>
-                      {t("order.details.line", "Ligne")} : {money(line, currency)}
-                    </Text>
-                  </View>
-                );
-              })
-            )}
+        {kitchenNotes.length ? (
+          <View style={styles.notesCard}>
+            <View style={styles.sectionHeading}><Ionicons name="restaurant-outline" size={18} color="#F5C542" /><Text style={styles.notesTitle}>NOTES CUISINE</Text></View>
+            {kitchenNotes.map((note, index) => <Text key={`${note}-${index}`} style={styles.noteText}>• {note}</Text>)}
           </View>
+        ) : null}
 
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              {t("order.details.totalsRestaurant", "Totaux (restaurant)")}
-            </Text>
-
-            <InfoLine
-              label={t("order.details.subtotal", "Subtotal (plats)")}
-              value={money(order.subtotal, currency)}
-            />
-
-            <InfoLine
-              label={t("order.details.taxes", "Taxes")}
-              value={money(order.tax, currency)}
-            />
-
-            <InfoLine
-              label={t("order.details.itemsPlusTax", "Total plats + taxes")}
-              value={money(itemsPlusTax, currency)}
-              strong
-            />
-
-            <InfoLine
-              label={t("order.details.commission", "Commission restaurant")}
-              value={`${money(order.restaurant_commission_amount, currency)}${
-                order.restaurant_commission_rate != null
-                  ? ` (${(order.restaurant_commission_rate * 100).toFixed(0)}%)`
-                  : ""
-              }`}
-              danger
-            />
-
-            <InfoLine
-              label={t("order.details.netRestaurant", "Net restaurant")}
-              value={money(order.restaurant_net_amount, currency)}
-              success
-            />
+        {(order.status === "pending" || order.status === "accepted" || order.status === "prepared") ? (
+          <View style={styles.workflow}>
+            {order.status === "pending" ? <WorkflowButton label="Accepter" icon="checkmark-circle-outline" onPress={() => void updateStatus("accepted")} disabled={updating} /> : null}
+            {order.status === "accepted" ? <WorkflowButton label="Préparation" icon="flame-outline" onPress={() => void updateStatus("prepared")} disabled={updating} /> : null}
+            {order.status === "prepared" ? <WorkflowButton label="Prête" icon="checkmark-done-outline" onPress={() => void updateStatus("ready")} disabled={updating} /> : null}
+            {canRestaurantCancel(order.status) ? <WorkflowButton label={order.status === "pending" ? "Refuser" : "Annuler"} icon="close-circle-outline" onPress={confirmCancel} disabled={updating} destructive /> : null}
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        ) : null}
+
+        {canPrint ? (
+          <View style={styles.printRow}>
+            <TouchableOpacity style={[styles.printButton, styles.printButtonDark, printing && styles.disabled]} disabled={printing || updating} onPress={() => void handlePrint("manual")}><Ionicons name="print-outline" size={18} color="#F8FAFC" /><Text style={styles.printDarkText}>{printing ? "Impression…" : "Imprimer"}</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.printButton, styles.printButtonGold, printing && styles.disabled]} disabled={printing || updating} onPress={() => void handlePrint("reprint")}><Ionicons name="refresh-outline" size={18} color="#0B0F1A" /><Text style={styles.printGoldText}>Réimprimer</Text></TouchableOpacity>
+          </View>
+        ) : null}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-
-function ProfileHeader({
-  title,
-  subtitle,
-  avatarUrl,
-  name,
-  loading,
-  fallbackEmoji,
-}: {
-  title: string;
-  subtitle: string;
-  avatarUrl: string | null;
-  name: string;
-  loading?: boolean;
-  fallbackEmoji: string;
-}) {
-  return (
-    <View style={styles.profileRow}>
-      {avatarUrl ? (
-        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-      ) : (
-        <View style={styles.avatarFallback}>
-          <Text style={styles.avatarEmoji}>{fallbackEmoji}</Text>
-          <Text style={styles.avatarInitialsSmall}>{initials(name)}</Text>
-        </View>
-      )}
-
-      <View style={styles.flex}>
-        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.profileTitle}>
-          {title}
-        </Text>
-        <Text numberOfLines={1} ellipsizeMode="tail" style={styles.profileName}>
-          {name}
-        </Text>
-        <Text numberOfLines={2} ellipsizeMode="tail" style={styles.mutedText}>
-          {loading ? "Chargement du profil…" : subtitle}
-        </Text>
-      </View>
-    </View>
-  );
+function Section({ icon, title, children }: { icon: keyof typeof Ionicons.glyphMap; title: string; children: React.ReactNode }) {
+  return <View style={styles.card}><View style={styles.sectionHeading}><Ionicons name={icon} size={18} color="#F5C542" /><Text style={styles.sectionTitle}>{title}</Text></View>{children}</View>;
 }
 
-function InfoLine({
-  label,
-  value,
-  strong,
-  success,
-  danger,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-  success?: boolean;
-  danger?: boolean;
-}) {
-  return (
-    <Text style={styles.infoLine}>
-      {label} :{" "}
-      <Text
-        style={[
-          styles.infoValue,
-          strong && styles.strongValue,
-          success && styles.successValue,
-          danger && styles.dangerValue,
-        ]}
-      >
-        {value}
-      </Text>
-    </Text>
-  );
-}
-
-function ActionButton({
-  label,
-  color,
-  disabled,
-  onPress,
-}: {
-  label: string;
-  color: string;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      disabled={disabled}
-      onPress={onPress}
-      activeOpacity={0.85}
-      style={[
-        styles.actionButton,
-        { backgroundColor: color },
-        disabled && styles.disabledButton,
-      ]}
-    >
-      <Text style={styles.actionButtonText}>{label}</Text>
-    </TouchableOpacity>
-  );
+function WorkflowButton({ label, icon, onPress, disabled, destructive }: { label: string; icon: keyof typeof Ionicons.glyphMap; onPress: () => void; disabled: boolean; destructive?: boolean }) {
+  return <TouchableOpacity onPress={onPress} disabled={disabled} style={[styles.workflowButton, destructive && styles.destructiveButton, disabled && styles.disabled]}><Ionicons name={icon} size={17} color={destructive ? "#FCA5A5" : "#F5C542"} /><Text style={[styles.workflowText, destructive && styles.destructiveText]}>{disabled ? "Mise à jour…" : label}</Text></TouchableOpacity>;
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: "#111827",
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    color: "white",
-    marginTop: 8,
-  },
-  emptyState: {
-    flex: 1,
-    padding: 16,
-  },
-  textWhite: {
-    color: "white",
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  backButton: {
-    marginBottom: 12,
-  },
-  linkText: {
-    color: "#60A5FA",
-  },
-  card: {
-    marginTop: 12,
-    backgroundColor: "#020617",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#1F2937",
-  },
-  title: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  sectionTitle: {
-    color: "white",
-    fontWeight: "800",
-    marginBottom: 8,
-  },
-  infoLine: {
-    color: "#9CA3AF",
-    marginTop: 6,
-  },
-  infoValue: {
-    color: "#E5E7EB",
-  },
-  strongValue: {
-    color: "#F9FAFB",
-    fontWeight: "900",
-  },
-  successValue: {
-    color: "#22C55E",
-    fontWeight: "900",
-  },
-  dangerValue: {
-    color: "#FCA5A5",
-    fontWeight: "900",
-  },
-  actions: {
-    marginTop: 12,
-    gap: 10,
-  },
-  actionButton: {
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  disabledButton: {
-    opacity: 0.55,
-  },
-  actionButtonText: {
-    color: "white",
-    textAlign: "center",
-    fontWeight: "900",
-  },
-  notice: {
-    backgroundColor: "#0B1220",
-    borderWidth: 1,
-    borderColor: "#1F2937",
-    borderRadius: 12,
-    padding: 12,
-  },
-  paragraph: {
-    color: "#9CA3AF",
-    lineHeight: 19,
-  },
-  mutedText: {
-    color: "#9CA3AF",
-    marginTop: 4,
-  },
-  boldText: {
-    color: "#E5E7EB",
-    fontWeight: "800",
-  },
-  labelText: {
-    color: "#9CA3AF",
-    marginTop: 10,
-    fontWeight: "700",
-  },
-  pickupCodeInput: {
-    marginTop: 8,
-    backgroundColor: "#0B1220",
-    borderWidth: 1,
-    borderColor: "#1F2937",
-    borderRadius: 10,
-    padding: 12,
-    color: "white",
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    letterSpacing: 2,
-  },
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  contactMiniCard: {
-    marginTop: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#1F2937",
-    backgroundColor: "#0B1220",
-    padding: 12,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "#1F2937",
-    backgroundColor: "#0B1220",
-  },
-  avatarFallback: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "#1F2937",
-    backgroundColor: "#0B1220",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  avatarEmoji: {
-    fontSize: 22,
-    lineHeight: 24,
-  },
-  avatarInitialsSmall: {
-    color: "#E5E7EB",
-    fontWeight: "900",
-    fontSize: 10,
-    marginTop: 1,
-  },
-  profileTitle: {
-    color: "#93C5FD",
-    fontWeight: "900",
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  profileName: {
-    color: "#E5E7EB",
-    fontWeight: "900",
-    fontSize: 16,
-    marginTop: 2,
-  },
-  itemRow: {
-    paddingVertical: 10,
-  },
-  itemBorder: {
-    borderTopWidth: 1,
-    borderTopColor: "#111827",
-  },
-  itemTotal: {
-    color: "#F9FAFB",
-    marginTop: 4,
-    fontWeight: "800",
-  },
+  screen: { flex: 1, backgroundColor: "#0B0F1A" },
+  flex: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  content: { padding: 16, paddingBottom: 32, gap: 14 },
+  muted: { color: "#94A3B8", marginTop: 10 },
+  empty: { color: "#F8FAFC", fontSize: 16 },
+  statusPill: { backgroundColor: "#F5C542", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6 },
+  statusText: { color: "#0B0F1A", fontSize: 10, fontWeight: "900", letterSpacing: .5 },
+  card: { backgroundColor: "#020617", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "#1E293B" },
+  restaurantRow: { flexDirection: "row", gap: 12, alignItems: "center" },
+  iconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#F5C542", alignItems: "center", justifyContent: "center" },
+  restaurantName: { color: "#F8FAFC", fontSize: 17, fontWeight: "800" },
+  address: { color: "#94A3B8", marginTop: 3, lineHeight: 19 },
+  metaRow: { borderTopWidth: 1, borderTopColor: "#172033", paddingTop: 12, marginTop: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  meta: { color: "#64748B", fontSize: 12 },
+  deliveryType: { color: "#F5C542", fontSize: 11, fontWeight: "800", letterSpacing: .8 },
+  pickupCard: { backgroundColor: "#F8FAFC", borderRadius: 22, padding: 20, alignItems: "center", borderWidth: 2, borderColor: "#F5C542" },
+  pickupLabel: { color: "#8A6500", fontWeight: "900", fontSize: 12, letterSpacing: 1.8, marginTop: 8 },
+  pickupCode: { color: "#0B0F1A", fontSize: 40, lineHeight: 48, fontWeight: "900", letterSpacing: 5, marginVertical: 6 },
+  pickupHelp: { color: "#475569", fontSize: 12, textAlign: "center" },
+  sectionHeading: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  sectionTitle: { color: "#F5C542", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
+  primaryText: { color: "#F8FAFC", fontSize: 16, fontWeight: "700", lineHeight: 22 },
+  secondaryText: { color: "#94A3B8", marginTop: 5, lineHeight: 19 },
+  itemRow: { flexDirection: "row", gap: 12, paddingVertical: 10 },
+  itemDivider: { borderTopWidth: 1, borderTopColor: "#172033" },
+  quantityBadge: { width: 28, height: 28, borderRadius: 8, backgroundColor: "#F5C542", alignItems: "center", justifyContent: "center" },
+  quantityText: { color: "#0B0F1A", fontWeight: "900" },
+  itemName: { color: "#F8FAFC", fontSize: 16, fontWeight: "800" },
+  optionText: { color: "#94A3B8", marginTop: 4, lineHeight: 18 },
+  notesCard: { backgroundColor: "#251E09", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "#5C4810" },
+  notesTitle: { color: "#F5C542", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
+  noteText: { color: "#FDE68A", lineHeight: 21, marginTop: 4 },
+  workflow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  workflowButton: { flexGrow: 1, flexBasis: "45%", minHeight: 44, flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center", backgroundColor: "#131C2E", borderWidth: 1, borderColor: "#334155", borderRadius: 12, paddingHorizontal: 10 },
+  workflowText: { color: "#F8FAFC", fontWeight: "800" },
+  destructiveButton: { borderColor: "#7F1D1D", backgroundColor: "#220C10" },
+  destructiveText: { color: "#FCA5A5" },
+  printRow: { flexDirection: "row", gap: 10, marginTop: 2 },
+  printButton: { flex: 1, minHeight: 52, borderRadius: 14, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
+  printButtonDark: { backgroundColor: "#172033", borderWidth: 1, borderColor: "#334155" },
+  printButtonGold: { backgroundColor: "#F5C542" },
+  printDarkText: { color: "#F8FAFC", fontWeight: "900" },
+  printGoldText: { color: "#0B0F1A", fontWeight: "900" },
+  disabled: { opacity: .5 },
 });
 
 export default RestaurantOrderDetailsScreen;

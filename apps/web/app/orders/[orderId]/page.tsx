@@ -1072,9 +1072,17 @@ export default function OrderPage() {
           )}
 
           {order.pickup_code && (isRestaurant || isAdmin) && (
-            <p className="text-xs font-semibold text-emerald-700 mt-1">
-              Code de retrait à donner au chauffeur : {order.pickup_code}
-            </p>
+            <div className="mt-3 rounded-xl border-2 border-amber-400 bg-white px-3 py-3 text-center">
+              <p className="text-[11px] font-black uppercase tracking-wide text-amber-700">
+                🔐 Code Pickup
+              </p>
+              <p className="mt-1 text-3xl font-black tracking-[0.2em] text-black">
+                {order.pickup_code}
+              </p>
+              <p className="mt-1 text-[11px] text-slate-600">
+                Communiquez ce code uniquement au livreur.
+              </p>
+            </div>
           )}
 
           {isDriver && (
@@ -1086,42 +1094,15 @@ export default function OrderPage() {
 
         {isRestaurant && !isAdmin ? (
           <div className="border rounded-lg p-3 bg-white space-y-2 text-sm">
-            <h2 className="text-sm font-semibold mb-1">Chauffeur</h2>
-
-            {!order.driver_id ? (
-              <p className="text-xs text-gray-500">
-                Aucun chauffeur n’est encore assigné à cette commande.
+            <h2 className="text-sm font-semibold mb-1">Livraison</h2>
+            {order.dropoff_address ? (
+              <p className="text-xs text-gray-600">
+                Adresse de livraison : {order.dropoff_address}
               </p>
             ) : (
-              <div className="flex items-center gap-3">
-                {driverAvatarSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={driverAvatarSrc}
-                    alt={driver?.full_name ?? "Chauffeur"}
-                    className="w-12 h-12 rounded-full border object-cover"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-gray-100 text-xs font-bold">
-                    {(
-                      driver?.full_name?.trim()?.[0] ??
-                      order.driver_id.slice(0, 1) ??
-                      "D"
-                    ).toUpperCase()}
-                  </div>
-                )}
-
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate">
-                    {driver?.full_name?.trim() ||
-                      `Chauffeur ${order.driver_id.slice(0, 8)}`}
-                  </div>
-
-                  <div className="text-xs text-gray-500">
-                    {driverLoading ? "Chargement du profil…" : "Profil chauffeur"}
-                  </div>
-                </div>
-              </div>
+              <p className="text-xs text-gray-500">
+                Identifiez le livreur uniquement avec le code pickup.
+              </p>
             )}
           </div>
         ) : (
@@ -1131,12 +1112,6 @@ export default function OrderPage() {
             {(isClient || isDriver || isAdmin) && order.dropoff_address && (
               <p className="text-xs text-gray-600">
                 Adresse de livraison : {order.dropoff_address}
-              </p>
-            )}
-
-            {isRestaurant && order.dropoff_address && (
-              <p className="text-xs text-gray-500">
-                Adresse client : gérée par le chauffeur.
               </p>
             )}
 
@@ -1152,9 +1127,11 @@ export default function OrderPage() {
               {order.eta_minutes != null ? `${order.eta_minutes} min` : "—"}
             </p>
 
-            <p className="text-xs text-gray-600">
-              Frais de livraison : {formatMoney(order.delivery_fee, currency)}
-            </p>
+            {(isClient || isAdmin) && (
+              <p className="text-xs text-gray-600">
+                Frais de livraison : {formatMoney(order.delivery_fee, currency)}
+              </p>
+            )}
 
             {order.dropoff_code && isAdmin && (
               <p className="text-xs font-semibold text-emerald-700 mt-2">
@@ -1172,7 +1149,7 @@ export default function OrderPage() {
         )}
       </section>
 
-      {(isClient || isAdmin || isRestaurant) && (
+      {(isClient || isAdmin) && (
         <section className="mt-2 border rounded-lg p-3 bg-white space-y-2">
           <h2 className="text-sm font-semibold">Suivi du chauffeur live</h2>
 
@@ -1207,39 +1184,49 @@ export default function OrderPage() {
                     <p className="text-[11px] text-gray-500">{item.category}</p>
                   )}
 
-                  <p className="text-[11px] text-gray-500">
-                    Qté {item.quantity} —{" "}
-                    {formatMoney(item.unit_price, currency)} / unité
-                  </p>
+                  {isRestaurant && !isAdmin ? (
+                    <p className="text-[11px] text-gray-500">
+                      Qté {item.quantity}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-gray-500">
+                      Qté {item.quantity} —{" "}
+                      {formatMoney(item.unit_price, currency)} / unité
+                    </p>
+                  )}
                 </div>
 
-                <p className="text-xs font-semibold">
-                  {formatMoney(item.line_total, currency)}
-                </p>
+                {!isRestaurant || isAdmin ? (
+                  <p className="text-xs font-semibold">
+                    {formatMoney(item.line_total, currency)}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
         )}
 
-        <div className="pt-2 border-t mt-2 space-y-1 text-sm">
-          <p>
-            <span className="font-medium">Montant plats :</span>{" "}
-            {formatMoney(order.subtotal, currency)}
-          </p>
+        {(!isRestaurant || isAdmin) && (
+          <div className="pt-2 border-t mt-2 space-y-1 text-sm">
+            <p>
+              <span className="font-medium">Montant plats :</span>{" "}
+              {formatMoney(order.subtotal, currency)}
+            </p>
 
-          <p>
-            <span className="font-medium">Taxes :</span>{" "}
-            {formatMoney(order.tax ?? 0, currency)}
-          </p>
+            <p>
+              <span className="font-medium">Taxes :</span>{" "}
+              {formatMoney(order.tax ?? 0, currency)}
+            </p>
 
-          <p>
-            <span className="font-medium">Total :</span>{" "}
-            {formatMoney(
-              order.total ?? (order.subtotal ?? 0) + (order.tax ?? 0),
-              currency
-            )}
-          </p>
-        </div>
+            <p>
+              <span className="font-medium">Total :</span>{" "}
+              {formatMoney(
+                order.total ?? (order.subtotal ?? 0) + (order.tax ?? 0),
+                currency
+              )}
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );

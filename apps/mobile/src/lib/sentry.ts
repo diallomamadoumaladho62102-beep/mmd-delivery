@@ -79,7 +79,7 @@ export function initMobileSentry(): boolean {
   const dsn = readDsn();
   if (!dsn) return false;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // Dynamic require keeps Metro optional when the native module is absent in some builds.
     sentryModule = require("@sentry/react-native") as SentryModule;
     sentryModule.init({
       dsn,

@@ -92,9 +92,10 @@ export async function GET(req: NextRequest, context: RouteContext) {
       isDriverViewer && !isClientViewer && !isStaffRole(role)
         ? (() => {
             const {
-              pickup_verification_code: _hiddenCode,
+              pickup_verification_code: _omitPickupCode,
               ...rest
             } = enrichedRide as Record<string, unknown>;
+            void _omitPickupCode;
             return rest;
           })()
         : enrichedRide;

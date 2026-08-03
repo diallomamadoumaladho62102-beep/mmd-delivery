@@ -16,7 +16,6 @@ function loadMapboxModule(): typeof MapboxGL | null {
   if (mapboxModule) return mapboxModule;
   try {
     // Lazy require: avoid initializing Mapbox native bindings at app bootstrap.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     mapboxModule = require("@rnmapbox/maps").default as typeof MapboxGL;
     return mapboxModule;
   } catch (error) {

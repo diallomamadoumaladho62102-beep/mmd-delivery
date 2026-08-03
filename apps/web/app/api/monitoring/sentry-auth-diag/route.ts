@@ -133,23 +133,39 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const issuesRes = await fetch(
-    `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(project)}/issues/?query=is:unresolved&limit=1`,
-    { headers, cache: "no-store" }
-  );
-  const unresolvedApprox = issuesRes.headers.get("x-hits")
-    ? Number(issuesRes.headers.get("x-hits"))
-    : null;
-  let unresolvedSample: string[] = [];
-  if (issuesRes.ok) {
-    const issues = (await issuesRes.json().catch(() => [])) as Array<{
-      title?: string;
-      shortId?: string;
-    }>;
-    unresolvedSample = issues
-      .slice(0, 5)
-      .map((i) => `${i.shortId ?? "?"}: ${String(i.title ?? "").slice(0, 80)}`);
+  const mobileProject = String(
+    process.env.SENTRY_PROJECT_MOBILE ?? "mmd-delivery-mobile"
+  ).trim();
+
+  async function listUnresolved(projectSlug: string, limit = 25) {
+    const res = await fetch(
+      `https://sentry.io/api/0/projects/${encodeURIComponent(org)}/${encodeURIComponent(projectSlug)}/issues/?query=is:unresolved&limit=${limit}`,
+      { headers, cache: "no-store" }
+    );
+    const approx = res.headers.get("x-hits")
+      ? Number(res.headers.get("x-hits"))
+      : null;
+    let sample: string[] = [];
+    if (res.ok) {
+      const issues = (await res.json().catch(() => [])) as Array<{
+        title?: string;
+        shortId?: string;
+        count?: string | number;
+        lastSeen?: string;
+      }>;
+      sample = issues.slice(0, limit).map((i) => {
+        const count = i.count != null ? ` x${i.count}` : "";
+        const seen = i.lastSeen ? ` @${String(i.lastSeen).slice(0, 10)}` : "";
+        return `${i.shortId ?? "?"}${count}${seen}: ${String(i.title ?? "").slice(0, 120)}`;
+      });
+    }
+    return { status: res.status, xHits: Number.isFinite(approx as number) ? approx : null, sample };
   }
+
+  const issuesRes = await listUnresolved(project, 25);
+  const mobileIssuesRes = await listUnresolved(mobileProject, 25);
+  const unresolvedApprox = issuesRes.xHits;
+  const unresolvedSample = issuesRes.sample;
 
   const commitSha = String(
     process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? ""
@@ -210,6 +226,7 @@ export async function POST(request: NextRequest) {
           : null,
         sample: unresolvedSample,
       },
+      unresolvedIssuesMobile: mobileIssuesRes,
     },
     guidance: {
       replaceIn: [
@@ -222,6 +239,7 @@ export async function POST(request: NextRequest) {
         "Sentry Organization Auth Token (sntrys_…) with project:releases, project:releases:org, org:read (and sourcemaps upload scopes)",
       expectedOrg: org,
       expectedWebProject: project,
+      expectedMobileProject: mobileProject,
     },
   });
 }

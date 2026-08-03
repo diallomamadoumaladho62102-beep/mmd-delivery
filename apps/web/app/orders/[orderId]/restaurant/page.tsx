@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
-import { getAvatarSrc } from "@/lib/avatarUrl";
 
 type OrderStatus =
   | "pending"
@@ -18,8 +17,9 @@ type OrderItem = {
   name: string;
   category?: string | null;
   quantity: number;
-  unit_price: number;
-  line_total: number;
+  options?: unknown;
+  notes?: string | null;
+  note?: string | null;
 };
 
 type OrderRow = {
@@ -27,41 +27,31 @@ type OrderRow = {
   status: OrderStatus;
   created_at: string;
   restaurant_name: string | null;
-  subtotal: number | null;
-  tax: number | null;
-  total: number | null;
-  currency: string | null;
-  items_json: OrderItem[] | null;
-  distance_miles: number | null;
-  eta_minutes: number | null;
-  delivery_fee: number | null;
+  pickup_address: string | null;
+  dropoff_address: string | null;
   pickup_code: string | null;
-  dropoff_code: string | null;
-  driver_id?: string | null;
-};
-
-type DriverProfile = {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
+  leave_at_door: boolean | null;
+  items_json: OrderItem[] | null;
+  client_user_id?: string | null;
+  client_id?: string | null;
 };
 
 function statusLabelForRestaurant(s: OrderStatus): string {
   switch (s) {
     case "pending":
-      return "En attente (à accepter)";
+      return "EN ATTENTE";
     case "accepted":
-      return "Acceptée (en attente de préparation)";
+      return "ACCEPTÉE";
     case "prepared":
-      return "En préparation terminée (à vérifier)";
+      return "EN PRÉPARATION";
     case "ready":
-      return "Prête (en attente du driver)";
+      return "PRÊTE";
     case "dispatched":
-      return "En livraison";
+      return "EN LIVRAISON";
     case "delivered":
-      return "Livrée";
+      return "LIVRÉE";
     case "canceled":
-      return "Annulée";
+      return "ANNULÉE";
     default:
       return s;
   }
@@ -70,10 +60,37 @@ function statusLabelForRestaurant(s: OrderStatus): string {
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString();
+    return new Date(iso).toLocaleString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
   } catch {
     return iso;
   }
+}
+
+function formatOptions(options: unknown): string[] {
+  if (!options) return [];
+  if (typeof options === "string") {
+    const t = options.trim();
+    return t ? [t] : [];
+  }
+  if (Array.isArray(options)) {
+    return options
+      .map((opt) => {
+        if (typeof opt === "string") return opt.trim();
+        if (opt && typeof opt === "object") {
+          const row = opt as Record<string, unknown>;
+          return String(row.name ?? row.label ?? "").trim();
+        }
+        return "";
+      })
+      .filter(Boolean);
+  }
+  return [];
 }
 
 export default function RestaurantOrderPage() {
@@ -82,29 +99,10 @@ export default function RestaurantOrderPage() {
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<OrderRow | null>(null);
-  const [driver, setDriver] = useState<DriverProfile | null>(null);
-  const [driverLoading, setDriverLoading] = useState(false);
+  const [clientLabel, setClientLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState<false | OrderStatus>(false);
-
-  async function loadDriver(driverId: string) {
-    setDriverLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, avatar_url")
-        .eq("id", driverId)
-        .maybeSingle();
-
-      if (error) throw error;
-      setDriver((data as DriverProfile) ?? null);
-    } catch {
-      setDriver(null);
-    } finally {
-      setDriverLoading(false);
-    }
-  }
 
   async function loadOrder() {
     if (!orderId) return;
@@ -120,20 +118,16 @@ export default function RestaurantOrderPage() {
         status,
         created_at,
         restaurant_name,
-        subtotal,
-        tax,
-        total,
-        currency,
-        items_json,
-        distance_miles,
-        eta_minutes,
-        delivery_fee,
+        pickup_address,
+        dropoff_address,
         pickup_code,
-        dropoff_code,
-        driver_id,
+        leave_at_door,
+        items_json,
+        client_user_id,
+        client_id,
         payment_status,
         kind
-      `
+      `,
       )
       .eq("id", orderId)
       .eq("kind", "food")
@@ -156,29 +150,26 @@ export default function RestaurantOrderPage() {
     const typedOrder = data as OrderRow;
     setOrder(typedOrder);
 
-    if (typedOrder.driver_id) {
-      await loadDriver(typedOrder.driver_id);
+    const clientId = String(typedOrder.client_user_id ?? typedOrder.client_id ?? "").trim();
+    if (clientId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", clientId)
+        .maybeSingle();
+      const full = String(profile?.full_name ?? "").trim();
+      setClientLabel(full ? full.split(/\s+/)[0] : `Client ${clientId.slice(0, 8)}`);
     } else {
-      setDriver(null);
+      setClientLabel(null);
     }
 
     setLoading(false);
   }
 
   useEffect(() => {
-    loadOrder();
+    void loadOrder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
-
-  useEffect(() => {
-    if (!order?.driver_id) {
-      setDriver(null);
-      return;
-    }
-
-    loadDriver(order.driver_id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.driver_id]);
 
   async function updateStatus(nextStatus: OrderStatus) {
     if (!order) return;
@@ -222,7 +213,7 @@ export default function RestaurantOrderPage() {
       setErr(
         e instanceof Error
           ? e.message
-          : "Impossible de mettre à jour le statut de la commande."
+          : "Impossible de mettre à jour le statut de la commande.",
       );
     } finally {
       setSaving(false);
@@ -243,7 +234,7 @@ export default function RestaurantOrderPage() {
     }
 
     const ok = window.confirm(
-      "Confirmer l’annulation ? Le client devra être remboursé selon la règle."
+      "Confirmer l’annulation ? Le client devra être remboursé selon la règle.",
     );
 
     if (!ok) return;
@@ -291,47 +282,59 @@ export default function RestaurantOrderPage() {
     }
   }
 
+  const kitchenNotes = useMemo(() => {
+    if (!order?.items_json?.length) return "";
+    return order.items_json
+      .map((item) => String(item.notes ?? item.note ?? "").trim())
+      .filter(Boolean)
+      .join(" · ");
+  }, [order?.items_json]);
+
   if (loading) {
     return (
-      <main className="max-w-3xl mx-auto px-4 py-6">
-        <p className="text-sm text-gray-600">Chargement de la commande…</p>
+      <main className="min-h-screen bg-[#0B0F1A] text-white">
+        <div className="max-w-3xl mx-auto px-4 py-8 text-sm text-slate-400">
+          Chargement de la commande…
+        </div>
       </main>
     );
   }
 
-  if (err) {
+  if (err && !order) {
     return (
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-3">
-        <button
-          type="button"
-          onClick={() => router.push("/orders/restaurant")}
-          className="text-xs text-blue-600 underline"
-        >
-          ← Retour à la liste des commandes
-        </button>
-        <p className="text-sm text-red-600">Erreur : {err}</p>
+      <main className="min-h-screen bg-[#0B0F1A] text-white">
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-3">
+          <button
+            type="button"
+            onClick={() => router.push("/orders/restaurant")}
+            className="text-xs text-amber-300 underline"
+          >
+            ← Retour à la liste des commandes
+          </button>
+          <p className="text-sm text-red-400">Erreur : {err}</p>
+        </div>
       </main>
     );
   }
 
   if (!order) {
     return (
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-3">
-        <button
-          type="button"
-          onClick={() => router.push("/orders/restaurant")}
-          className="text-xs text-blue-600 underline"
-        >
-          ← Retour à la liste des commandes
-        </button>
-        <p className="text-sm text-gray-600">Commande introuvable.</p>
+      <main className="min-h-screen bg-[#0B0F1A] text-white">
+        <div className="max-w-3xl mx-auto px-4 py-8 space-y-3">
+          <button
+            type="button"
+            onClick={() => router.push("/orders/restaurant")}
+            className="text-xs text-amber-300 underline"
+          >
+            ← Retour à la liste des commandes
+          </button>
+          <p className="text-sm text-slate-400">Commande introuvable.</p>
+        </div>
       </main>
     );
   }
 
   const shortId = order.id.slice(0, 8);
-  const currency = order.currency || "USD";
-
   const canAccept = order.status === "pending";
   const canPrepared = order.status === "accepted";
   const canReady = order.status === "prepared";
@@ -339,228 +342,195 @@ export default function RestaurantOrderPage() {
     order.status === "pending" ||
     order.status === "accepted" ||
     order.status === "prepared";
-
-  const driverAvatarSrc = driver ? getAvatarSrc(driver.avatar_url) : null;
+  const instructions = order.leave_at_door
+    ? "Laisser à la porte."
+    : null;
 
   return (
-    <main className="max-w-3xl mx-auto px-4 py-6 space-y-5">
-      <button
-        type="button"
-        onClick={() => router.push("/orders/restaurant")}
-        className="text-xs text-blue-600 underline"
-      >
-        ← Retour aux commandes du restaurant
-      </button>
-
-      <header className="space-y-1">
-        <h1 className="text-xl font-bold">Commande #{shortId}</h1>
-        <p className="text-sm text-gray-600">
-          Gestion de la commande côté restaurant.
-        </p>
-
-        <div className="inline-flex items-center rounded-full border bg-blue-50 border-blue-200 px-3 py-1 text-xs font-medium text-blue-700 mt-2">
-          Statut : {statusLabelForRestaurant(order.status)}
+    <main className="min-h-screen bg-[#0B0F1A] text-white">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => router.push("/orders/restaurant")}
+            className="text-sm text-slate-300 hover:text-white"
+          >
+            ← Retour
+          </button>
+          <span className="rounded-full bg-[#F5C542] px-3 py-1 text-xs font-black uppercase tracking-wide text-black">
+            {statusLabelForRestaurant(order.status)}
+          </span>
         </div>
 
-        <p className="text-xs text-gray-500">
-          Créée le : {formatDate(order.created_at)}
-        </p>
-      </header>
-
-      <section className="border rounded-xl bg-white p-4 space-y-1 text-sm">
-        <h2 className="text-sm font-semibold text-gray-800">Restaurant</h2>
-        <p>{order.restaurant_name || "Nom de restaurant non renseigné"}</p>
-      </section>
-
-      <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
-        <h2 className="text-sm font-semibold text-gray-800">Chauffeur</h2>
-
-        {!order.driver_id ? (
-          <p className="text-xs text-gray-500">
-            Aucun chauffeur n’est encore assigné à cette commande.
+        <header className="space-y-1">
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#F5C542]">
+            MMD Delivery
           </p>
-        ) : (
-          <div className="flex items-center gap-3">
-            {driverAvatarSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={driverAvatarSrc}
-                alt={driver?.full_name ?? "Driver"}
-                className="w-12 h-12 rounded-full border object-cover"
-              />
-            ) : (
-              <div className="w-12 h-12 rounded-full border flex items-center justify-center bg-gray-100 text-xs font-bold">
-                DR
-              </div>
-            )}
+          <h1 className="text-2xl font-black">Commande #{shortId}</h1>
+          <p className="text-sm text-slate-400">{formatDate(order.created_at)}</p>
+        </header>
 
-            <div className="min-w-0">
-              <div className="text-sm font-semibold truncate">
-                {driver?.full_name?.trim() ||
-                  `Chauffeur ${order.driver_id.slice(0, 8)}`}
-              </div>
-              <div className="text-xs text-gray-500">
-                {driverLoading ? "Chargement du profil…" : "Profil chauffeur"}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                La livraison est entièrement gérée par le chauffeur.
-              </div>
+        {err ? <p className="text-sm text-red-400">{err}</p> : null}
+
+        <section className="rounded-2xl border border-slate-800 bg-[#020617] p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F5C542] text-xl text-black">
+              🍽️
+            </div>
+            <div>
+              <p className="text-lg font-black">
+                {order.restaurant_name || "Restaurant"}
+              </p>
+              <p className="text-sm text-slate-400">
+                {order.pickup_address || "—"}
+              </p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Livraison
+              </p>
             </div>
           </div>
-        )}
-      </section>
+        </section>
 
-      <section className="border rounded-xl bg-gray-50 p-4 space-y-2 text-sm">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Code de vérification
-        </h2>
-        <p>
-          <span className="font-medium">Code de ramassage :</span>{" "}
-          {order.pickup_code ?? "—"}
-        </p>
-        <p className="text-xs text-gray-500">
-          Le restaurant doit montrer ce code au chauffeur au moment du pickup.
-        </p>
-      </section>
+        <section className="rounded-3xl border-2 border-[#F5C542]/70 bg-white px-4 py-6 text-center text-black shadow-[0_0_40px_rgba(245,197,66,0.15)]">
+          <p className="text-sm font-black tracking-wide text-amber-700">
+            🔐 CODE PICKUP
+          </p>
+          <p className="mt-2 text-5xl font-black tracking-[0.2em]">
+            {order.pickup_code || "······"}
+          </p>
+          <p className="mt-3 text-sm text-slate-600">
+            Communiquez ce code uniquement au livreur.
+          </p>
+        </section>
 
-      <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Récapitulatif de la commande
-        </h2>
+        <section className="rounded-2xl border border-slate-800 bg-[#020617] p-4 space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Client
+          </p>
+          <p className="font-semibold">{clientLabel || "Client"}</p>
 
-        <div className="space-y-2">
-          {order.items_json && order.items_json.length > 0 ? (
-            order.items_json.map((item, idx) => (
-              <div
-                key={idx}
-                className="flex items-start justify-between text-sm"
-              >
-                <div>
-                  <p className="font-medium">{item.name}</p>
-                  {item.category ? (
-                    <p className="text-xs text-gray-500">{item.category}</p>
-                  ) : null}
-                  <p className="text-xs text-gray-500">
-                    Qté {item.quantity} — {item.unit_price.toFixed(2)}{" "}
-                    {currency} / unité
-                  </p>
-                </div>
-                <div className="text-sm font-medium">
-                  {item.line_total.toFixed(2)} {currency}
-                </div>
-              </div>
-            ))
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pt-2">
+            Adresse de livraison
+          </p>
+          <p className="text-sm text-slate-200">
+            {order.dropoff_address || "—"}
+          </p>
+
+          {instructions ? (
+            <>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 pt-2">
+                Instructions du client
+              </p>
+              <p className="text-sm text-slate-200">{instructions}</p>
+            </>
+          ) : null}
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-[#020617] p-4 space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Détails de la commande
+          </p>
+          {(order.items_json ?? []).length === 0 ? (
+            <p className="text-sm text-slate-400">Aucun article.</p>
           ) : (
-            <p className="text-sm text-gray-600">
-              Aucun détail d&apos;article pour cette commande.
-            </p>
+            order.items_json!.map((item, idx) => {
+              const options = formatOptions(item.options);
+              const note = String(item.notes ?? item.note ?? "").trim();
+              return (
+                <div
+                  key={`${item.name}-${idx}`}
+                  className="flex items-start gap-3 border-t border-slate-800 pt-3 first:border-t-0 first:pt-0"
+                >
+                  <span className="rounded-md bg-[#F5C542] px-2 py-1 text-xs font-black text-black">
+                    {item.quantity}x
+                  </span>
+                  <div>
+                    <p className="font-bold">{item.name}</p>
+                    {options.map((opt) => (
+                      <p key={opt} className="text-sm text-slate-400">
+                        {opt}
+                      </p>
+                    ))}
+                    {note ? (
+                      <p className="text-sm text-amber-200/90">※ {note}</p>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
           )}
-        </div>
+        </section>
 
-        <div className="border-t pt-3 space-y-1 text-sm">
-          <p>
-            Montant :{" "}
-            <span className="font-semibold">
-              {order.subtotal != null
-                ? `${order.subtotal.toFixed(2)} ${currency}`
-                : "—"}
-            </span>
+        {kitchenNotes ? (
+          <section className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
+            <p className="text-sm font-black text-[#F5C542]">
+              👨‍🍳 Note cuisine
+            </p>
+            <p className="mt-2 text-base font-semibold text-amber-100">
+              {kitchenNotes}
+            </p>
+          </section>
+        ) : null}
+
+        <section className="rounded-2xl border border-slate-800 bg-[#020617] p-4 space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Préparation
           </p>
-          <p>
-            Taxes :{" "}
-            <span className="font-semibold">
-              {order.tax != null ? `${order.tax.toFixed(2)} ${currency}` : "—"}
-            </span>
-          </p>
-          <p>
-            Total :{" "}
-            <span className="font-semibold">
-              {order.total != null
-                ? `${order.total.toFixed(2)} ${currency}`
-                : "—"}
-            </span>
-          </p>
-        </div>
-      </section>
-
-      <section className="border rounded-xl bg-white p-4 space-y-3 text-sm">
-        <h2 className="text-sm font-semibold text-gray-800">
-          Actions restaurant
-        </h2>
-
-        <p className="text-xs text-gray-500">
-          Flux normal : acceptation → préparation → prête pour le chauffeur.
-        </p>
-
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            disabled={!canAccept || !!saving}
-            onClick={() => updateStatus("accepted")}
-            className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
-              canAccept && !saving
-                ? "bg-blue-600 text-white hover:bg-blue-700"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {saving === "accepted" ? "Mise à jour..." : "Accepter la commande"}
-          </button>
-
-          <button
-            type="button"
-            disabled={!canPrepared || !!saving}
-            onClick={() => updateStatus("prepared")}
-            className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
-              canPrepared && !saving
-                ? "bg-amber-500 text-white hover:bg-amber-600"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {saving === "prepared" ? "Mise à jour..." : "Passer en préparation"}
-          </button>
-
-          <button
-            type="button"
-            disabled={!canReady || !!saving}
-            onClick={() => updateStatus("ready")}
-            className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
-              canReady && !saving
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {saving === "ready"
-              ? "Mise à jour..."
-              : "Marquer comme prête pour le chauffeur"}
-          </button>
-
-          <button
-            type="button"
-            disabled={!canCancel || !!saving}
-            onClick={handleCancel}
-            className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
-              canCancel && !saving
-                ? "bg-red-600 text-white hover:bg-red-700"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {saving === "canceled"
-              ? "Annulation..."
-              : order.status === "pending"
-                ? "Refuser la commande"
-                : "Annuler la commande"}
-          </button>
-        </div>
-      </section>
-
-      <div className="flex flex-wrap gap-3 pt-2">
-        <button
-          type="button"
-          onClick={() => router.push(`/orders/${order.id}/chat`)}
-          className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-50 text-xs font-medium"
-        >
-          🗨️ Ouvrir le chat de la commande
-        </button>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={!canAccept || !!saving}
+              onClick={() => void updateStatus("accepted")}
+              className={`rounded-xl px-3 py-3 text-sm font-bold ${
+                canAccept && !saving
+                  ? "bg-orange-600 text-white"
+                  : "bg-slate-800 text-slate-500"
+              }`}
+            >
+              {saving === "accepted" ? "…" : "Accepter"}
+            </button>
+            <button
+              type="button"
+              disabled={!canPrepared || !!saving}
+              onClick={() => void updateStatus("prepared")}
+              className={`rounded-xl px-3 py-3 text-sm font-bold ${
+                canPrepared && !saving
+                  ? "bg-amber-500 text-black"
+                  : "bg-slate-800 text-slate-500"
+              }`}
+            >
+              {saving === "prepared" ? "…" : "En préparation"}
+            </button>
+            <button
+              type="button"
+              disabled={!canReady || !!saving}
+              onClick={() => void updateStatus("ready")}
+              className={`rounded-xl px-3 py-3 text-sm font-bold ${
+                canReady && !saving
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-800 text-slate-500"
+              }`}
+            >
+              {saving === "ready" ? "…" : "Marquer prête"}
+            </button>
+            <button
+              type="button"
+              disabled={!canCancel || !!saving}
+              onClick={() => void handleCancel()}
+              className={`rounded-xl px-3 py-3 text-sm font-bold ${
+                canCancel && !saving
+                  ? "bg-red-700 text-white"
+                  : "bg-slate-800 text-slate-500"
+              }`}
+            >
+              {saving === "canceled"
+                ? "…"
+                : order.status === "pending"
+                  ? "Refuser"
+                  : "Annuler"}
+            </button>
+          </div>
+        </section>
       </div>
     </main>
   );

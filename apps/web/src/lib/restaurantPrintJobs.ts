@@ -8,13 +8,23 @@ export type PrintTicketPayload = {
   order_id: string;
   order_number: string;
   restaurant_name: string;
+  restaurant_address?: string | null;
   created_at: string | null;
+  order_type?: string | null;
+  client_label?: string | null;
+  dropoff_address?: string | null;
+  delivery_instructions?: string | null;
+  kitchen_notes?: string | null;
   items: Array<{
     name: string;
     quantity: number;
+    /** Compatibility only — never shown on kitchen tickets. */
     line_total?: number | null;
     options?: unknown;
+    notes?: string | null;
+    category?: string | null;
   }>;
+  /** Compatibility only — never shown on kitchen tickets. */
   total: number | null;
   currency: string | null;
   pickup_code: string | null;
@@ -30,6 +40,27 @@ function shortOrderNumber(orderId: string): string {
   return orderId.replace(/-/g, "").slice(0, 8).toUpperCase();
 }
 
+function extractKitchenNotes(items: Array<Record<string, unknown>>): string | null {
+  const notes = items
+    .map((line) =>
+      String(line.notes ?? line.note ?? line.kitchen_note ?? "").trim(),
+    )
+    .filter(Boolean);
+  return notes.length ? notes.join(" · ") : null;
+}
+
+function mapItems(itemsJson: unknown) {
+  if (!Array.isArray(itemsJson)) return [];
+  return itemsJson.map((line: Record<string, unknown>) => ({
+    name: String(line.name ?? "Item"),
+    quantity: Number(line.quantity ?? 1) || 1,
+    line_total: null,
+    options: line.options ?? line.variants ?? line.extras ?? null,
+    notes: String(line.notes ?? line.note ?? "").trim() || null,
+    category: line.category != null ? String(line.category) : null,
+  }));
+}
+
 export async function buildPrintPayloadForOrder(
   supabaseAdmin: SupabaseClient,
   input: {
@@ -42,33 +73,57 @@ export async function buildPrintPayloadForOrder(
   const { data: order } = await supabaseAdmin
     .from("orders")
     .select(
-      "id,created_at,items_json,total,grand_total,currency,pickup_code,dropoff_code,leave_at_door",
+      "id,created_at,items_json,pickup_code,dropoff_code,leave_at_door,dropoff_address,pickup_address,client_user_id,client_id,restaurant_name",
     )
     .eq("id", input.orderId)
     .maybeSingle();
 
   if (!order) return null;
 
-  const items = Array.isArray(order.items_json)
-    ? order.items_json.map((line: Record<string, unknown>) => ({
-        name: String(line.name ?? "Item"),
-        quantity: Number(line.quantity ?? 1),
-        line_total: Number(line.line_total ?? 0),
-        options: line.options ?? null,
-      }))
-    : [];
+  const items = mapItems(order.items_json);
+  const clientId = String(order.client_user_id ?? order.client_id ?? "").trim();
+  let clientLabel: string | null = clientId
+    ? `Client ${clientId.slice(0, 8)}`
+    : null;
+
+  if (clientId) {
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", clientId)
+      .maybeSingle();
+    const name = String(profile?.full_name ?? "").trim();
+    if (name) {
+      const first = name.split(/\s+/)[0] ?? name;
+      clientLabel = first;
+    }
+  }
+
+  const deliveryInstructions = order.leave_at_door
+    ? "Laisser à la porte"
+    : null;
 
   return {
     order_id: order.id,
     order_number: shortOrderNumber(order.id),
-    restaurant_name: input.restaurantName,
+    restaurant_name: input.restaurantName || String(order.restaurant_name ?? "Restaurant"),
+    restaurant_address: order.pickup_address ?? null,
     created_at: order.created_at ?? null,
+    order_type: "Livraison",
+    client_label: clientLabel,
+    dropoff_address: order.dropoff_address ?? null,
+    delivery_instructions: deliveryInstructions,
+    kitchen_notes: extractKitchenNotes(
+      Array.isArray(order.items_json)
+        ? (order.items_json as Array<Record<string, unknown>>)
+        : [],
+    ),
     items,
-    total: Number(order.grand_total ?? order.total ?? 0),
-    currency: order.currency ?? null,
+    total: null,
+    currency: null,
     pickup_code: order.pickup_code ?? null,
     dropoff_code: order.dropoff_code ?? null,
-    special_instructions: order.leave_at_door ? "Laisser à la porte" : null,
+    special_instructions: deliveryInstructions,
     show_qr_code: input.settings.print_show_qr_code,
     show_special_instructions: input.settings.print_special_instructions,
     paper_width: input.settings.print_paper_width,
@@ -140,16 +195,32 @@ export async function queueRestaurantTestPrintJob(input: {
     order_id: "00000000-0000-0000-0000-000000000000",
     order_number: "TEST0001",
     restaurant_name: String(profile?.restaurant_name ?? "Restaurant"),
+    restaurant_address: "123 Main Street",
     created_at: new Date().toISOString(),
+    order_type: "Livraison",
+    client_label: "Awa",
+    dropoff_address: "45 Avenue de la Paix",
+    delivery_instructions: "Ne pas sonner. Laisser à la porte.",
+    kitchen_notes: "Sans oignons · Bien emballer",
     items: [
-      { name: "Burger Classic", quantity: 2, line_total: 24.5 },
-      { name: "Frites", quantity: 1, line_total: 4.5 },
+      {
+        name: "Burger Classic",
+        quantity: 2,
+        line_total: null,
+        options: ["Regular", "Sans oignon"],
+      },
+      {
+        name: "Frites",
+        quantity: 1,
+        line_total: null,
+        options: ["Sauce à part"],
+      },
     ],
-    total: 29,
-    currency: "USD",
-    pickup_code: "ABC123",
-    dropoff_code: "654321",
-    special_instructions: "Sans oignons — test impression MMD",
+    total: null,
+    currency: null,
+    pickup_code: "BHZ3Y3",
+    dropoff_code: null,
+    special_instructions: "Ne pas sonner. Laisser à la porte.",
     show_qr_code: input.settings.print_show_qr_code,
     show_special_instructions: input.settings.print_special_instructions,
     paper_width: input.settings.print_paper_width,

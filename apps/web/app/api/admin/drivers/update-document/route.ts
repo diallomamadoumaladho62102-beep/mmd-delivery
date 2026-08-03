@@ -21,12 +21,19 @@ function badRequest(message: string) {
 }
 
 function isDocumentStatus(value: unknown): value is DocumentStatus {
+  if (typeof value !== "string") return false;
+  const normalized = value.trim().toLowerCase();
   return (
-    value === "pending" ||
-    value === "approved" ||
-    value === "rejected" ||
-    value === "incomplete"
+    normalized === "pending" ||
+    normalized === "approved" ||
+    normalized === "rejected" ||
+    normalized === "incomplete"
   );
+}
+
+function normalizeDocumentStatus(value: unknown): DocumentStatus | null {
+  if (!isDocumentStatus(value)) return null;
+  return value.trim().toLowerCase() as DocumentStatus;
 }
 
 function normalizeText(value: unknown): string | null {
@@ -92,12 +99,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!isDocumentStatus(body?.status)) {
+    const status = normalizeDocumentStatus(body?.status);
+    if (!status) {
       return badRequest("status must be pending, approved, rejected or incomplete.");
     }
 
     const patch = {
-      status: body.status,
+      status,
       reviewed_at: now,
       reviewed_by: admin.userId,
       review_notes: reviewNotes,
