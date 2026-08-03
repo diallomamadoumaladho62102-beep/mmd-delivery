@@ -40,6 +40,7 @@ import {
   openTaxiQuoteCheckoutSession,
   type TaxiCheckoutIntentSnapshot,
 } from "@/lib/taxi/taxiCheckoutFromQuote";
+import { selectRideChargePath } from "@/lib/pricingEngine/charge/selectRideChargePath";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -396,7 +397,43 @@ export async function POST(req: NextRequest) {
       ),
       mmd_plus_discount_cents: mmdPlusDiscountCents,
     });
-    const netTotalCents = pricedSnapshot.total_cents;
+    const pricedTotalCents = pricedSnapshot.total_cents;
+
+    const rideSelection = await selectRideChargePath({
+      capture: {
+        currency: String(quoteWithServiceFee.currency ?? "USD"),
+        subtotal_cents: Math.round(Number(quoteWithServiceFee.subtotal_cents ?? 0)),
+        tax_cents: Math.round(Number(quoteWithServiceFee.tax_cents ?? 0)),
+        service_fee_cents: Math.round(
+          Number(quoteWithServiceFee.service_fee_cents ?? 0),
+        ),
+        platform_fee_cents: Math.round(
+          Number(quoteWithServiceFee.platform_fee_cents ?? 0),
+        ),
+        driver_payout_cents: Math.round(
+          Number(quoteWithServiceFee.driver_payout_cents ?? 0),
+        ),
+        shared_ride: sharedRide,
+        shared_discount_cents: Math.round(
+          Number(quoteWithServiceFee.shared_discount_cents ?? 0),
+        ),
+        promo_discount_cents: Math.round(
+          Number(quoteWithServiceFee.promo_discount_cents ?? 0),
+        ),
+        loyalty_discount_cents: Math.round(
+          Number(quoteWithServiceFee.loyalty_discount_cents ?? 0),
+        ),
+        mmd_credit_cents: Math.round(
+          Number(quoteWithServiceFee.mmd_credit_cents ?? 0),
+        ),
+        mmd_plus_discount_cents: mmdPlusDiscountCents,
+        total_cents: pricedTotalCents,
+      },
+      countryCode,
+      canaryKey: auth.user.id,
+      supabaseAdmin: auth.supabaseAdmin,
+    });
+    const netTotalCents = rideSelection.customerTotalCents;
 
     if (Math.abs(netTotalCents - expectedQuoteTotalCents) > 1) {
       return taxiJson(
@@ -568,6 +605,8 @@ export async function POST(req: NextRequest) {
       return_scheduled_at: returnScheduledAt,
       is_shared_ride: sharedRide,
       promo_code: promoCode || null,
+      charge_path: rideSelection.chargePath,
+      engine_quote_snapshot_id: rideSelection.snapshot?.snapshotId ?? null,
     };
 
     const intent = await createTaxiCheckoutIntent({
@@ -599,6 +638,8 @@ export async function POST(req: NextRequest) {
       session_id: checkout.sessionId,
       url: checkout.url,
       amount_cents: netTotalCents,
+      charge_path: rideSelection.chargePath,
+      engine_quote_snapshot_id: rideSelection.snapshot?.snapshotId ?? null,
       currency: snapshot.currency,
       taxi_ride_id: null,
     });

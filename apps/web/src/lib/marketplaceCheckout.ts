@@ -2,6 +2,7 @@ import type { ServiceFeeConfig } from "@/lib/clientServiceFee";
 import {
   computeClientServiceFeeFromCentsBase,
 } from "@/lib/clientServiceFee";
+import { getPricingBusinessDefaults } from "@/lib/pricingEngine/config/businessDefaults";
 
 export type MarketplaceCheckoutItemInput = {
   price_cents: number;
@@ -30,8 +31,15 @@ function roundCents(value: number): number {
   return Math.max(0, Math.round(value));
 }
 
+const _mkt = getPricingBusinessDefaults();
+
 const DEFAULT_SHADOW_DELIVERY_FEE = (subtotalCents: number) =>
-  roundCents(Math.max(299, subtotalCents * 0.08));
+  roundCents(
+    Math.max(
+      _mkt.marketplace_delivery_fee_floor_cents,
+      subtotalCents * _mkt.marketplace_delivery_fee_pct
+    )
+  );
 
 /**
  * Shadow checkout totals — respects admin service fee config when provided.

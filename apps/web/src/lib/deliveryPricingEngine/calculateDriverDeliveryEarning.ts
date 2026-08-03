@@ -2,10 +2,13 @@ import type {
   DriverDeliveryEarningInput,
   DriverDeliveryEarningResult,
 } from "./types";
+import { getPricingBusinessDefaults } from "@/lib/pricingEngine/config/businessDefaults";
+
+const _d = getPricingBusinessDefaults();
 
 const DEFAULTS = {
-  basePerMile: 0.72,
-  basePerMinute: 0.12,
+  basePerMile: _d.delivery_v2_driver_per_mile,
+  basePerMinute: _d.delivery_v2_driver_per_minute,
   driverScore: 50,
   driverRanking: 50,
   activeDriversInZone: 1,
@@ -72,7 +75,12 @@ export function calculateDriverDeliveryEarning(
       ? 1
       : round2(1 + demandLevel * Math.min(0.2, 5 / activeDriversInZone));
   const demandMultiplier = round2(1 + demandLevel * 0.15);
-  const pickupAdjustment = round2(Math.min(pickupDistanceMiles * 0.05, 0.75));
+  const pickupAdjustment = round2(
+    Math.min(
+      pickupDistanceMiles * _d.delivery_v2_pickup_per_mile,
+      _d.delivery_v2_pickup_cap
+    )
+  );
 
   const earning = round2(
     Math.max(

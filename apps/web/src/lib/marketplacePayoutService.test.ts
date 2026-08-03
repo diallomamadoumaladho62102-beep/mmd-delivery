@@ -270,14 +270,27 @@ async function main() {
     assert.equal(result.executed, 0);
   });
 
-  await test("flag ON executes zero when no approved live payouts queued", async () => {
+  await test("flag ON without E2E ready is ignored by hard gate", async () => {
     process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED = "true";
+    delete process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY;
+    const { admin } = createMockAdmin();
+    const result = await executeMarketplacePayouts(admin);
+    assert.equal(result.ok, true);
+    assert.equal(result.executed, 0);
+    assert.equal(result.failed ?? 0, 0);
+    assert.equal(result.ignored, "marketplace_seller_payouts_e2e_not_ready");
+  });
+
+  await test("flag ON + E2E ready executes zero when no approved live payouts queued", async () => {
+    process.env.MARKETPLACE_PAYOUTS_LIVE_ENABLED = "true";
+    process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY = "true";
     const { admin } = createMockAdmin();
     const result = await executeMarketplacePayouts(admin);
     assert.equal(result.ok, true);
     assert.equal(result.executed, 0);
     assert.equal(result.failed ?? 0, 0);
     assert.equal(result.ignored, undefined);
+    delete process.env.MARKETPLACE_SELLER_PAYOUTS_E2E_READY;
   });
 
   await test("simulate payout does not call Stripe", async () => {

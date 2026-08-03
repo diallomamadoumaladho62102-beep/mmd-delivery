@@ -14,6 +14,9 @@ import {
   isDeliverySharePctError,
 } from "@/lib/deliveryShareApiError";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
+import { schedulePricingShadowCompare } from "@/lib/pricingEngine/shadow/runShadowCompare";
+import { buildPackageComparablePair } from "@/lib/pricingEngine/engine/adapters/packageAdapter";
+import { selectPackageChargePath } from "@/lib/pricingEngine/charge/selectFoodPackageCharge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,6 +44,7 @@ export async function POST(req: NextRequest) {
       lng: fields.dropoffLng,
     });
 
+    const legacyStarted = Date.now();
     const pricing = await quoteDeliveryRequestServerSide({
       supabaseAdmin: auth.supabaseAdmin,
       pickupAddress: fields.pickupAddress,
@@ -53,10 +57,50 @@ export async function POST(req: NextRequest) {
       countryCode,
       promoCode: fields.promoCode,
     });
+    const legacyLatencyMs = Date.now() - legacyStarted;
+
+    schedulePricingShadowCompare({
+      legacyLatencyMs,
+      deps: { supabaseAdmin: auth.supabaseAdmin },
+      buildPair: () =>
+        buildPackageComparablePair({
+          currency: pricing.currency,
+          subtotal: pricing.subtotal,
+          tax: pricing.tax,
+          deliveryFee: pricing.deliveryFee,
+          serviceFee: pricing.serviceFee,
+          discounts: pricing.discounts,
+          totalCents: pricing.totalCents,
+          driverPayoutEstimate: pricing.driverPayoutEstimate,
+          deliveryFeeRaw: pricing.deliveryFeeRaw,
+        }),
+    });
+
+    const selection = await selectPackageChargePath({
+      pricing: {
+        currency: pricing.currency,
+        subtotal: pricing.subtotal,
+        tax: pricing.tax,
+        deliveryFee: pricing.deliveryFee,
+        serviceFee: pricing.serviceFee,
+        discounts: pricing.discounts,
+        totalCents: pricing.totalCents,
+        driverPayoutEstimate: pricing.driverPayoutEstimate,
+        deliveryFeeRaw: pricing.deliveryFeeRaw,
+        countryCode,
+      },
+      canaryKey: auth.user.id,
+      supabaseAdmin: auth.supabaseAdmin,
+    });
 
     return mmdLocationJson({
       ok: true,
-      quote: buildDeliveryPricingResponse(pricing),
+      quote: {
+        ...buildDeliveryPricingResponse(pricing),
+        total_cents: selection.customerTotalCents,
+        charge_path: selection.chargePath,
+        pricing_snapshot_id: selection.snapshot?.snapshotId ?? null,
+      },
     });
   } catch (error) {
     if (isDeliverySharePctError(error)) {

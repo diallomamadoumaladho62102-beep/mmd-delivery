@@ -13,6 +13,7 @@ import {
 import { isMarketplaceCheckoutLiveEnvEnabled } from "@/lib/marketplaceLiveCheckout";
 import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
+import { selectMarketplaceChargePath } from "@/lib/pricingEngine/charge/selectMarketplaceChargePath";
 
 type ApprovedSellerRow = {
   id: string;
@@ -146,7 +147,27 @@ export async function prepareMarketplaceLiveCheckoutOrder(
   }
 
   const seller = await assertApprovedSeller(supabaseAdmin, order.seller_id);
-  const totals = await assertActiveOrderProducts(supabaseAdmin, order);
+  const totalsBase = await assertActiveOrderProducts(supabaseAdmin, order);
+
+  const mktSelection = await selectMarketplaceChargePath({
+    capture: {
+      currency: String(order.currency ?? "USD"),
+      subtotal_cents: totalsBase.subtotal_cents,
+      delivery_fee_cents: totalsBase.delivery_fee_cents,
+      service_fee_cents: totalsBase.service_fee_cents,
+      total_cents: totalsBase.total_cents,
+      driver_earning_cents: order.driver_earning_shadow_cents ?? null,
+      platform_fee_cents: order.platform_margin_shadow_cents ?? null,
+    },
+    countryCode: order.country_code,
+    canaryKey: params.clientUserId,
+    supabaseAdmin,
+  });
+
+  const totals: MarketplaceCheckoutShadow = {
+    ...totalsBase,
+    total_cents: mktSelection.customerTotalCents,
+  };
 
   if (totals.total_cents <= 0) throw new Error("Invalid order total");
 

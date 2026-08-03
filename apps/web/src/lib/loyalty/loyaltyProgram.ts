@@ -5,6 +5,8 @@
  * compute derived values for display and request validation.
  */
 
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
+
 export type LoyaltyTierConfig = {
   code: string;
   label: string;
@@ -142,7 +144,9 @@ export function formatCredit(cents: number, currency = "USD"): string {
  * so a normal Stripe payment always occurs. Full (100%) coverage would require a
  * separate no-charge settlement path and is intentionally out of scope here.
  */
-export const MIN_RESIDUAL_CHARGE_CENTS = 50;
+export const MIN_RESIDUAL_CHARGE_CENTS = getPricingBusinessDefault(
+  "mmd_credit_min_residual_cents"
+);
 
 export type CreditMode = "none" | "partial" | "max";
 

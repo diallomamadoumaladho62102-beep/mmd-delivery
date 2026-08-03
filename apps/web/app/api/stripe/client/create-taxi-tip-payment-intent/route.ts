@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { PAYMENT_METADATA_SCHEMA_VERSION } from "@/lib/requirePaymentIntentSucceeded";
 import { requireTaxiApiUser, taxiJson, normalizeStatus } from "@/lib/taxiApi";
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,11 +20,12 @@ export async function POST(req: NextRequest) {
       body.taxi_ride_id ?? body.taxiRideId ?? body.ride_id ?? ""
     ).trim();
     const tipCents = Math.max(0, Math.round(Number(body.tip_cents ?? body.amount_cents ?? 0)));
+    const minTipCents = getPricingBusinessDefault("taxi_tip_min_cents");
 
     if (!taxiRideId) {
       return taxiJson({ ok: false, error: "taxi_ride_id_required" }, 400);
     }
-    if (tipCents < 50) {
+    if (tipCents < minTipCents) {
       return taxiJson({ ok: false, error: "min_tip_50_cents" }, 400);
     }
 

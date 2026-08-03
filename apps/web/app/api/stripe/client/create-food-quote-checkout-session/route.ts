@@ -18,6 +18,7 @@ import {
   openFoodQuoteCheckoutSession,
   type FoodCheckoutIntentSnapshot,
 } from "@/lib/food/foodCheckoutFromQuote";
+import { selectFoodChargePath } from "@/lib/pricingEngine/charge/selectFoodPackageCharge";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,7 +89,13 @@ export async function POST(req: NextRequest) {
       clientUserId: auth.user.id,
     });
 
-    const amountCents = Math.round(Number(pricing.totalCents ?? pricing.total * 100));
+    const selection = await selectFoodChargePath({
+      pricing,
+      canaryKey: auth.user.id,
+      supabaseAdmin: auth.supabaseAdmin,
+    });
+
+    const amountCents = Math.round(Number(selection.customerTotalCents));
     if (!amountCents || amountCents <= 0) {
       return mmdLocationJson({ ok: false, error: "invalid_quote_total" }, 400);
     }
@@ -125,6 +132,8 @@ export async function POST(req: NextRequest) {
       leave_at_door: fields.leaveAtDoor === true,
       currency: String(pricing.currency ?? "USD").toUpperCase(),
       amount_cents: amountCents,
+      charge_path: selection.chargePath,
+      pricing_snapshot_id: selection.snapshot?.snapshotId ?? null,
     };
 
     const intent = await createFoodCheckoutIntent({
@@ -158,6 +167,8 @@ export async function POST(req: NextRequest) {
       amount_cents: amountCents,
       currency: snapshot.currency,
       order_id: null,
+      charge_path: selection.chargePath,
+      pricing_snapshot_id: selection.snapshot?.snapshotId ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";

@@ -2,14 +2,17 @@ import type {
   CustomerDeliveryPriceInput,
   CustomerDeliveryPriceResult,
 } from "./types";
+import { getPricingBusinessDefaults } from "@/lib/pricingEngine/config/businessDefaults";
+
+const _d = getPricingBusinessDefaults();
 
 const DEFAULTS = {
-  baseFee: 2.5,
-  perMinute: 0.15,
-  perMile: 0.9,
-  serviceFee: 0.99,
-  surgeMultiplier: 1,
-  minTotal: 3.49,
+  baseFee: _d.delivery_v2_base_fee,
+  perMinute: _d.delivery_v2_per_minute,
+  perMile: _d.delivery_v2_per_mile,
+  serviceFee: _d.delivery_v2_service_fee,
+  surgeMultiplier: _d.delivery_v2_surge_multiplier,
+  minTotal: _d.delivery_v2_min_total,
 } as const;
 
 function assertNonNegative(value: number, field: string): void {

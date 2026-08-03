@@ -11,6 +11,9 @@ import {
   resolveMarketingOffers,
   userHasActiveMmdPlus,
 } from "@/lib/marketing/marketingEngine";
+import { schedulePricingShadowCompare } from "@/lib/pricingEngine/shadow/runShadowCompare";
+import { buildMarketplaceComparablePair } from "@/lib/pricingEngine/engine/adapters/marketplaceAdapter";
+import { selectMarketplaceChargePath } from "@/lib/pricingEngine/charge/selectMarketplaceChargePath";
 
 export type MarketplaceDraftItemInput = {
   product_id: string;
@@ -446,6 +449,19 @@ export async function upsertMarketplaceDraftOrder(
     { serviceFeeConfig }
   );
 
+  schedulePricingShadowCompare({
+    legacyLatencyMs: 0,
+    deps: { supabaseAdmin },
+    buildPair: () =>
+      buildMarketplaceComparablePair({
+        currency: String(lineItems[0]?.currency ?? "USD"),
+        subtotal_cents: shadowBase.subtotal_cents,
+        delivery_fee_cents: shadowBase.delivery_fee_cents,
+        service_fee_cents: shadowBase.service_fee_cents,
+        total_cents: shadowBase.total_cents,
+      }),
+  });
+
   const [hasPlus, firstOrder] = await Promise.all([
     userHasActiveMmdPlus(supabaseAdmin, params.clientUserId),
     isLikelyFirstOrder(supabaseAdmin, params.clientUserId, "marketplace"),
@@ -502,6 +518,23 @@ export async function upsertMarketplaceDraftOrder(
   };
 
   const currency = lineItems[0]?.currency ?? "USD";
+
+  const mktSelection = await selectMarketplaceChargePath({
+    capture: {
+      currency: String(currency),
+      subtotal_cents: shadow.subtotal_cents,
+      delivery_fee_cents: shadow.delivery_fee_cents,
+      service_fee_cents: shadow.service_fee_cents,
+      total_cents: shadow.total_cents,
+    },
+    countryCode: params.countryCode ?? null,
+    canaryKey: params.clientUserId,
+    supabaseAdmin,
+  });
+  shadow.total_cents = mktSelection.customerTotalCents;
+  (shadow as Record<string, unknown>).charge_path = mktSelection.chargePath;
+  (shadow as Record<string, unknown>).engine_quote_snapshot_id =
+    mktSelection.snapshot?.snapshotId ?? null;
 
   const orderPayload = {
     seller_id: params.sellerId,
@@ -661,6 +694,19 @@ export async function runMarketplaceCheckoutShadow(
     }
   );
 
+  schedulePricingShadowCompare({
+    legacyLatencyMs: 0,
+    deps: { supabaseAdmin },
+    buildPair: () =>
+      buildMarketplaceComparablePair({
+        currency: String(order.currency ?? "USD"),
+        subtotal_cents: shadowBase.subtotal_cents,
+        delivery_fee_cents: shadowBase.delivery_fee_cents,
+        service_fee_cents: shadowBase.service_fee_cents,
+        total_cents: shadowBase.total_cents,
+      }),
+  });
+
   const [hasPlusPreview, firstOrderPreview] = order.client_user_id
     ? await Promise.all([
         userHasActiveMmdPlus(supabaseAdmin, order.client_user_id),
@@ -734,6 +780,25 @@ export async function runMarketplaceCheckoutShadow(
         }
       : undefined,
   };
+
+  const mktSelection = await selectMarketplaceChargePath({
+    capture: {
+      currency: String(order.currency ?? "USD"),
+      subtotal_cents: shadow.subtotal_cents,
+      delivery_fee_cents: shadow.delivery_fee_cents,
+      service_fee_cents: shadow.service_fee_cents,
+      total_cents: shadow.total_cents,
+      driver_earning_cents: order.driver_earning_shadow_cents ?? null,
+      platform_fee_cents: order.platform_margin_shadow_cents ?? null,
+    },
+    countryCode: order.country_code,
+    canaryKey: params.clientUserId,
+    supabaseAdmin,
+  });
+  shadow.total_cents = mktSelection.customerTotalCents;
+  (shadow as Record<string, unknown>).charge_path = mktSelection.chargePath;
+  (shadow as Record<string, unknown>).engine_quote_snapshot_id =
+    mktSelection.snapshot?.snapshotId ?? null;
 
   const nextStatus = shadow.checkout_enabled ? "pending_checkout" : "draft";
 

@@ -1,15 +1,20 @@
-export const WAIT_TIMER_FREE_MINUTES = 5;
+import { getPricingBusinessDefaults } from "@/lib/pricingEngine/config/businessDefaults";
 
-export const WAIT_FEE_TIER1_RATE_CENTS = 25; // $0.25/min
-export const WAIT_FEE_TIER1_MINUTES = 3;
+const _d = getPricingBusinessDefaults();
 
-export const WAIT_FEE_TIER2_RATE_CENTS = 30; // $0.30/min
-export const WAIT_FEE_TIER2_MINUTES = 5;
+export const WAIT_TIMER_FREE_MINUTES = _d.wait_timer_free_minutes;
 
-export const WAIT_FEE_MAX_CENTS = 225; // $2.25
+export const WAIT_FEE_TIER1_RATE_CENTS = _d.wait_fee_tier1_rate_cents;
+export const WAIT_FEE_TIER1_MINUTES = _d.wait_fee_tier1_minutes;
 
-export const DRIVER_ARRIVAL_MAX_METERS = 50;
-export const DRIVER_ARRIVAL_MANUAL_REVIEW_METERS = 150;
+export const WAIT_FEE_TIER2_RATE_CENTS = _d.wait_fee_tier2_rate_cents;
+export const WAIT_FEE_TIER2_MINUTES = _d.wait_fee_tier2_minutes;
+
+export const WAIT_FEE_MAX_CENTS = _d.wait_fee_max_cents;
+
+export const DRIVER_ARRIVAL_MAX_METERS = _d.driver_arrival_max_meters;
+export const DRIVER_ARRIVAL_MANUAL_REVIEW_METERS =
+  _d.driver_arrival_manual_review_meters;
 
 export const WAIT_TIMER_ENTITY_TYPES = ["order", "delivery_request", "taxi_ride"] as const;
 export type WaitTimerEntityType = (typeof WAIT_TIMER_ENTITY_TYPES)[number];

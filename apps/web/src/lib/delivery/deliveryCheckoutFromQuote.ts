@@ -45,6 +45,9 @@ export type DeliveryCheckoutIntentSnapshot = {
   leave_at_door?: boolean;
   currency: string;
   amount_cents: number;
+  /** Phase 3 Pricing Engine charge path (defaults legacy when absent). */
+  charge_path?: "legacy" | "engine";
+  pricing_snapshot_id?: string | null;
 };
 
 export function hashDeliveryCheckoutSnapshot(

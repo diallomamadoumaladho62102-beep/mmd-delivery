@@ -1,4 +1,5 @@
 import { TAXI_SHARED_RIDE_DISCOUNT_PERCENT } from "@/lib/taxiSharedRideDispatch";
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
 
 export type TaxiFinalPriceSnapshot = {
   subtotal_cents: number;
@@ -13,8 +14,12 @@ export type TaxiFinalPriceSnapshot = {
   total_cents: number;
 };
 
-export const QUOTE_DRIFT_TOLERANCE_CENTS = 50;
-export const QUOTE_DRIFT_TOLERANCE_RATIO = 0.02;
+export const QUOTE_DRIFT_TOLERANCE_CENTS = getPricingBusinessDefault(
+  "taxi_quote_drift_tolerance_cents"
+);
+export const QUOTE_DRIFT_TOLERANCE_RATIO = getPricingBusinessDefault(
+  "taxi_quote_drift_tolerance_ratio"
+);
 
 export function calculateTaxiFinalPriceSnapshot(input: {
   subtotal_cents: number;

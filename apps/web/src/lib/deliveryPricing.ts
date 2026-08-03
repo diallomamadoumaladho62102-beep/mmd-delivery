@@ -1,3 +1,5 @@
+import { getPricingBusinessDefaults } from "@/lib/pricingEngine/config/businessDefaults";
+
 export type DeliveryPricingResult = {
   deliveryFee: number; // ce que le client paie pour la livraison
   platformFee: number; // part MMD Delivery
@@ -34,13 +36,16 @@ export class DeliveryPricingConfigError extends Error {
   }
 }
 
+const _d = getPricingBusinessDefaults();
+
+/** Phase 1: values from pricing business defaults (parity with legacy hardcodes). */
 export const DEFAULT_DELIVERY_PRICING_CONFIG: Required<DeliveryPricingConfig> = {
-  baseFare: 2.5,
-  perMile: 0.9,
-  perMinute: 0.15,
-  minFare: 3.49,
-  driverSharePct: 80,
-  platformSharePct: 20,
+  baseFare: _d.delivery_base_fare,
+  perMile: _d.delivery_per_mile,
+  perMinute: _d.delivery_per_minute,
+  minFare: _d.delivery_min_fare,
+  driverSharePct: _d.delivery_driver_share_pct,
+  platformSharePct: _d.delivery_platform_share_pct,
 };
 
 /**
@@ -75,8 +80,10 @@ export function requirePositiveDeliveryFeeRates(input: {
 }
 
 /** Soft ceiling: fees above this vs computed raw fare or absolute level need audit. */
-export const DELIVERY_FEE_ABNORMAL_MULTIPLIER = 8;
-export const DELIVERY_FEE_ABNORMAL_ABSOLUTE_USD = 40;
+export const DELIVERY_FEE_ABNORMAL_MULTIPLIER =
+  _d.delivery_fee_abnormal_multiplier;
+export const DELIVERY_FEE_ABNORMAL_ABSOLUTE_USD =
+  _d.delivery_fee_abnormal_absolute_usd;
 
 function assertFiniteNonNegative(value: number, field: string): void {
   if (!Number.isFinite(value)) {

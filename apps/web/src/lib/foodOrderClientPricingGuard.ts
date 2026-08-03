@@ -3,8 +3,12 @@ import {
   roundPlatformMoney,
   PLATFORM_CURRENCY_BY_COUNTRY,
 } from "./platformCurrency";
+import { getPricingBusinessDefault } from "@/lib/pricingEngine/config/businessDefaults";
 
-export const FOOD_LEGACY_TAX_RATE = 0.0888;
+/** Phase 1: from pricing business defaults (parity). */
+export const FOOD_LEGACY_TAX_RATE = getPricingBusinessDefault(
+  "food_legacy_tax_rate"
+);
 
 export {
   currencyForPlatformCountry,

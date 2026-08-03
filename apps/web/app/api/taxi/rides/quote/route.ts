@@ -25,6 +25,9 @@ import {
   normalizeTaxiTripMode,
 } from "@/lib/taxiTripMode";
 import { resolveTaxiAddressConfig } from "@/lib/taxiAddressConfig";
+import { schedulePricingShadowCompare } from "@/lib/pricingEngine/shadow/runShadowCompare";
+import { buildRideComparablePair } from "@/lib/pricingEngine/engine/adapters/rideAdapter";
+import { selectRideChargePath } from "@/lib/pricingEngine/charge/selectRideChargePath";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -315,6 +318,35 @@ export async function POST(req: NextRequest) {
 
     const addressConfig = resolveTaxiAddressConfig(countryCode, countryRow?.metadata);
 
+    const legacyLatencyMs = 0;
+    const rideCapture = {
+      currency: String(quoteWithServiceFee.currency ?? "USD"),
+      subtotal_cents: priceSnapshot.subtotal_cents,
+      tax_cents: priceSnapshot.tax_cents,
+      service_fee_cents: Number(quoteWithServiceFee.service_fee_cents ?? 0),
+      platform_fee_cents: Number(quoteWithServiceFee.platform_fee_cents ?? 0),
+      driver_payout_cents: Number(quoteWithServiceFee.driver_payout_cents ?? 0),
+      shared_ride: sharedRide,
+      shared_discount_cents: priceSnapshot.shared_discount_cents,
+      promo_discount_cents: priceSnapshot.promo_discount_cents,
+      loyalty_discount_cents: priceSnapshot.loyalty_discount_cents,
+      mmd_credit_cents: priceSnapshot.mmd_credit_cents,
+      mmd_plus_discount_cents: priceSnapshot.mmd_plus_discount_cents,
+      total_cents: priceSnapshot.total_cents,
+    };
+    schedulePricingShadowCompare({
+      legacyLatencyMs,
+      deps: { supabaseAdmin: auth.supabaseAdmin },
+      buildPair: () => buildRideComparablePair(rideCapture),
+    });
+
+    const selection = await selectRideChargePath({
+      capture: rideCapture,
+      countryCode,
+      canaryKey: auth.user.id,
+      supabaseAdmin: auth.supabaseAdmin,
+    });
+
     return taxiJson({
       ok: true,
       country_resolution: countryResult.resolution,
@@ -326,8 +358,11 @@ export async function POST(req: NextRequest) {
       quote: {
         ...quoteWithServiceFee,
         ...priceSnapshot,
+        total_cents: selection.customerTotalCents,
         shared_ride: sharedRide,
         shared_discount_percent: priceSnapshot.shared_discount_cents > 0 ? 15 : 0,
+        charge_path: selection.chargePath,
+        engine_quote_snapshot_id: selection.snapshot?.snapshotId ?? null,
       },
       route: {
         pickupLat: route.pickupLat,
