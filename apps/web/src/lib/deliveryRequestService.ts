@@ -1,10 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  computeDeliveryRequestPricing,
-  type DeliveryRequestPricingResult,
-} from "@/lib/deliveryRequestServerPricing";
+import type { DeliveryRequestPricingResult } from "@/lib/deliveryRequestServerPricing";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import { roundPlatformMoney } from "@/lib/platformCurrency";
+import { quotePackageSot } from "@/lib/pricingEngine";
 
 function toFiniteNumber(value: unknown, fallback = 0) {
   const num = Number(value);
@@ -36,6 +34,8 @@ export type CreateDeliveryRequestInput = {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
   } | null;
+  /** Phase 5F — freeze PE quote on materialize. */
+  frozenPricing?: DeliveryRequestPricingResult | null;
 };
 
 export type CreateDeliveryRequestResult = DeliveryRequestPricingResult & {
@@ -45,19 +45,25 @@ export type CreateDeliveryRequestResult = DeliveryRequestPricingResult & {
 export async function createDeliveryRequestServerSide(
   input: CreateDeliveryRequestInput
 ): Promise<CreateDeliveryRequestResult> {
-  const pricing = await computeDeliveryRequestPricing({
-    supabaseAdmin: input.supabaseAdmin,
-    pickupAddress: input.pickupAddress,
-    dropoffAddress: input.dropoffAddress,
-    pickupLat: input.pickupLat,
-    pickupLng: input.pickupLng,
-    dropoffLat: input.dropoffLat,
-    dropoffLng: input.dropoffLng,
-    countryCode: input.countryCode,
-    promoCode: input.promoCode,
-    subtotal: 0,
-    clientUserId: input.clientId,
-  });
+  // Phase 5F — PE SoT for package and ride-type DR (same package fee engine).
+  const pricing =
+    input.frozenPricing ??
+    (await quotePackageSot({
+      supabaseAdmin: input.supabaseAdmin,
+      pickupAddress: input.pickupAddress,
+      dropoffAddress: input.dropoffAddress,
+      pickupLat: input.pickupLat,
+      pickupLng: input.pickupLng,
+      dropoffLat: input.dropoffLat,
+      dropoffLng: input.dropoffLng,
+      countryCode: input.countryCode,
+      promoCode: input.promoCode,
+      subtotal: 0,
+      clientUserId: input.clientId,
+    }));
+
+  const chargedTotalCents = Math.round(Number(pricing.totalCents ?? 0));
+  const chargedTotal = roundPlatformMoney(chargedTotalCents / 100);
 
   const pickupCode = Math.random().toString(36).slice(2, 8).toUpperCase();
   const dropoffCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -101,8 +107,8 @@ export async function createDeliveryRequestServerSide(
       service_fee_pct: pricing.serviceFeePct,
       service_fee_enabled: pricing.serviceFeeEnabled,
       service_fee_fixed_cents: pricing.serviceFeeFixedCents,
-      total: pricing.total,
-      total_cents: pricing.totalCents,
+      total: chargedTotal,
+      total_cents: chargedTotalCents,
       currency: pricing.currency,
       leave_at_door: input.leaveAtDoor === true,
     })
@@ -163,10 +169,10 @@ export async function createDeliveryRequestServerSide(
         marketingDeliveryDiscount: pricing.marketingDeliveryDiscountAmount,
         discounts: pricing.discounts,
         deliveryFee: pricing.deliveryFee,
-        total: pricing.total,
+        total: chargedTotal,
         subtotalCents: Math.round(Number(pricing.subtotal ?? 0) * 100),
         deliveryFeeCents: Math.round(Number(pricing.deliveryFee ?? 0) * 100),
-        totalCents: pricing.totalCents,
+        totalCents: chargedTotalCents,
         tax: pricing.tax,
         serviceFee: pricing.serviceFee,
       });
@@ -186,6 +192,8 @@ export async function createDeliveryRequestServerSide(
 
   return {
     ...pricing,
+    total: chargedTotal,
+    totalCents: chargedTotalCents,
     deliveryRequestId,
   };
 }
@@ -232,7 +240,7 @@ export async function validateDeliveryRequestBeforeCheckout(
     lng: data.dropoff_lng,
   });
 
-  const pricing = await computeDeliveryRequestPricing({
+  const pricing = await quotePackageSot({
     supabaseAdmin,
     pickupAddress: String(data.pickup_address ?? ""),
     dropoffAddress: String(data.dropoff_address ?? ""),
@@ -246,15 +254,17 @@ export async function validateDeliveryRequestBeforeCheckout(
     clientUserId: data.client_user_id ?? data.created_by ?? null,
   });
 
+  const expectedTotal = roundPlatformMoney(pricing.totalCents / 100);
+
   const storedTotal = roundPlatformMoney(
     toFiniteNumber(data.total)
   );
-  const delta = Math.abs(storedTotal - pricing.total);
+  const delta = Math.abs(storedTotal - expectedTotal);
 
   if (delta > 0.02) {
     return {
       ok: false,
-      error: `delivery_request_pricing_mismatch: stored=${storedTotal} expected=${pricing.total}`,
+      error: `delivery_request_pricing_mismatch: stored=${storedTotal} expected=${expectedTotal}`,
     };
   }
 
@@ -354,7 +364,7 @@ export async function syncPaidDeliveryRequestOrder(
 export async function quoteDeliveryRequestServerSide(
   input: Omit<CreateDeliveryRequestInput, "clientId" | "title" | "description" | "requestType">
 ) {
-  return computeDeliveryRequestPricing({
+  return quotePackageSot({
     supabaseAdmin: input.supabaseAdmin,
     pickupAddress: input.pickupAddress,
     dropoffAddress: input.dropoffAddress,
@@ -365,5 +375,6 @@ export async function quoteDeliveryRequestServerSide(
     countryCode: input.countryCode,
     promoCode: input.promoCode,
     subtotal: 0,
+    clientUserId: null,
   });
 }

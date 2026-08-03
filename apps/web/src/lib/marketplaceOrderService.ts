@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  computeMarketplaceCheckoutShadow,
   type MarketplaceCheckoutShadow,
 } from "@/lib/marketplaceCheckout";
 import { persistMarketplaceDeliveryShadow } from "@/lib/marketplaceDeliveryShadow";
@@ -11,9 +10,7 @@ import {
   resolveMarketingOffers,
   userHasActiveMmdPlus,
 } from "@/lib/marketing/marketingEngine";
-import { schedulePricingShadowCompare } from "@/lib/pricingEngine/shadow/runShadowCompare";
-import { buildMarketplaceComparablePair } from "@/lib/pricingEngine/engine/adapters/marketplaceAdapter";
-import { selectMarketplaceChargePath } from "@/lib/pricingEngine/charge/selectMarketplaceChargePath";
+import { quoteMarketplaceSot } from "@/lib/pricingEngine";
 
 export type MarketplaceDraftItemInput = {
   product_id: string;
@@ -441,26 +438,13 @@ export async function upsertMarketplaceDraftOrder(
     countryCode: params.countryCode ?? undefined,
   });
 
-  const shadowBase = computeMarketplaceCheckoutShadow(
+  const shadowBase = quoteMarketplaceSot(
     lineItems.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
     })),
     { serviceFeeConfig }
   );
-
-  schedulePricingShadowCompare({
-    legacyLatencyMs: 0,
-    deps: { supabaseAdmin },
-    buildPair: () =>
-      buildMarketplaceComparablePair({
-        currency: String(lineItems[0]?.currency ?? "USD"),
-        subtotal_cents: shadowBase.subtotal_cents,
-        delivery_fee_cents: shadowBase.delivery_fee_cents,
-        service_fee_cents: shadowBase.service_fee_cents,
-        total_cents: shadowBase.total_cents,
-      }),
-  });
 
   const [hasPlus, firstOrder] = await Promise.all([
     userHasActiveMmdPlus(supabaseAdmin, params.clientUserId),
@@ -519,22 +503,9 @@ export async function upsertMarketplaceDraftOrder(
 
   const currency = lineItems[0]?.currency ?? "USD";
 
-  const mktSelection = await selectMarketplaceChargePath({
-    capture: {
-      currency: String(currency),
-      subtotal_cents: shadow.subtotal_cents,
-      delivery_fee_cents: shadow.delivery_fee_cents,
-      service_fee_cents: shadow.service_fee_cents,
-      total_cents: shadow.total_cents,
-    },
-    countryCode: params.countryCode ?? null,
-    canaryKey: params.clientUserId,
-    supabaseAdmin,
-  });
-  shadow.total_cents = mktSelection.customerTotalCents;
-  (shadow as Record<string, unknown>).charge_path = mktSelection.chargePath;
-  (shadow as Record<string, unknown>).engine_quote_snapshot_id =
-    mktSelection.snapshot?.snapshotId ?? null;
+  // Phase 5F — PE already computed shadowBase; marketing-adjusted total is SoT.
+  (shadow as Record<string, unknown>).charge_path = "engine";
+  (shadow as Record<string, unknown>).engine_quote_snapshot_id = null;
 
   const orderPayload = {
     seller_id: params.sellerId,
@@ -683,29 +654,16 @@ export async function runMarketplaceCheckoutShadow(
     region: order.region_code ?? undefined,
   });
 
-  const shadowBase = computeMarketplaceCheckoutShadow(
+  const shadowBase = quoteMarketplaceSot(
     items.map((item) => ({
       price_cents: item.price_cents,
       quantity: item.quantity,
     })),
     {
-      deliveryFeeCents: order.delivery_fee_cents,
+      deliveryFeeCents: order.delivery_fee_cents ?? undefined,
       serviceFeeConfig,
     }
   );
-
-  schedulePricingShadowCompare({
-    legacyLatencyMs: 0,
-    deps: { supabaseAdmin },
-    buildPair: () =>
-      buildMarketplaceComparablePair({
-        currency: String(order.currency ?? "USD"),
-        subtotal_cents: shadowBase.subtotal_cents,
-        delivery_fee_cents: shadowBase.delivery_fee_cents,
-        service_fee_cents: shadowBase.service_fee_cents,
-        total_cents: shadowBase.total_cents,
-      }),
-  });
 
   const [hasPlusPreview, firstOrderPreview] = order.client_user_id
     ? await Promise.all([
@@ -781,24 +739,8 @@ export async function runMarketplaceCheckoutShadow(
       : undefined,
   };
 
-  const mktSelection = await selectMarketplaceChargePath({
-    capture: {
-      currency: String(order.currency ?? "USD"),
-      subtotal_cents: shadow.subtotal_cents,
-      delivery_fee_cents: shadow.delivery_fee_cents,
-      service_fee_cents: shadow.service_fee_cents,
-      total_cents: shadow.total_cents,
-      driver_earning_cents: order.driver_earning_shadow_cents ?? null,
-      platform_fee_cents: order.platform_margin_shadow_cents ?? null,
-    },
-    countryCode: order.country_code,
-    canaryKey: params.clientUserId,
-    supabaseAdmin,
-  });
-  shadow.total_cents = mktSelection.customerTotalCents;
-  (shadow as Record<string, unknown>).charge_path = mktSelection.chargePath;
-  (shadow as Record<string, unknown>).engine_quote_snapshot_id =
-    mktSelection.snapshot?.snapshotId ?? null;
+  (shadow as Record<string, unknown>).charge_path = "engine";
+  (shadow as Record<string, unknown>).engine_quote_snapshot_id = null;
 
   const nextStatus = shadow.checkout_enabled ? "pending_checkout" : "draft";
 

@@ -1,12 +1,14 @@
 /**
- * In-process + optional DB Quote Snapshot store (Phase 3+ Food/Package/Ride).
- * Snapshots are immutable SoT after engine charge selection.
+ * In-process + optional DB Quote Snapshot store.
+ * Phase 6: charge_path for new rows is always engine (legacy retained for historical reads).
  */
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PRICING_ENGINE_ALGORITHM_SEMVER } from "../engine/assembleQuote";
-import type { ComparableQuote } from "../shadow/comparableQuote";
-import type { ChargePath } from "../flagTypes";
+import type {
+  ChargePath,
+  ComparableQuote,
+} from "../contracts/comparableQuote";
 
 export type CutoverQuoteService = "food" | "package" | "ride" | "marketplace";
 

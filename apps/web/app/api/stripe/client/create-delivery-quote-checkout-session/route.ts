@@ -10,14 +10,13 @@ import {
   readDeliveryRequestFields,
   validateDeliveryRequestFields,
 } from "@/lib/deliveryRequestApiShared";
-import { computeDeliveryRequestPricing } from "@/lib/deliveryRequestServerPricing";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
 import {
   createDeliveryCheckoutIntent,
   openDeliveryQuoteCheckoutSession,
   type DeliveryCheckoutIntentSnapshot,
 } from "@/lib/delivery/deliveryCheckoutFromQuote";
-import { selectPackageChargePath } from "@/lib/pricingEngine/charge/selectFoodPackageCharge";
+import { quotePackageSot } from "@/lib/pricingEngine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,7 +57,7 @@ export async function POST(req: NextRequest) {
       fields.title ||
       (fields.requestType === "ride" ? "Private ride request" : "Package delivery");
 
-    const pricing = await computeDeliveryRequestPricing({
+    const pricing = await quotePackageSot({
       supabaseAdmin: auth.supabaseAdmin,
       pickupAddress: fields.pickupAddress,
       dropoffAddress: fields.dropoffAddress,
@@ -72,35 +71,7 @@ export async function POST(req: NextRequest) {
       clientUserId: auth.user.id,
     });
 
-    // Phase 3 cutover: Package only. Delivery "ride" request_type stays legacy.
-    const selection =
-      fields.requestType === "package"
-        ? await selectPackageChargePath({
-            pricing: {
-              currency: pricing.currency,
-              subtotal: pricing.subtotal,
-              tax: pricing.tax,
-              deliveryFee: pricing.deliveryFee,
-              serviceFee: pricing.serviceFee,
-              discounts: pricing.discounts,
-              totalCents: pricing.totalCents,
-              driverPayoutEstimate: pricing.driverPayoutEstimate,
-              deliveryFeeRaw: pricing.deliveryFeeRaw,
-              countryCode,
-            },
-            canaryKey: auth.user.id,
-            supabaseAdmin: auth.supabaseAdmin,
-          })
-        : {
-            chargePath: "legacy" as const,
-            customerTotalCents: Math.round(Number(pricing.totalCents ?? 0)),
-            engineQuote: null,
-            snapshot: null,
-            failOpen: false,
-            reason: "delivery_ride_out_of_phase3_scope",
-          };
-
-    const amountCents = Math.round(Number(selection.customerTotalCents));
+    const amountCents = Math.round(Number(pricing.totalCents));
     if (!amountCents || amountCents <= 0) {
       return mmdLocationJson({ ok: false, error: "invalid_quote_total" }, 400);
     }
@@ -142,8 +113,9 @@ export async function POST(req: NextRequest) {
       leave_at_door: fields.leaveAtDoor === true,
       currency: String(pricing.currency ?? "USD").toUpperCase(),
       amount_cents: amountCents,
-      charge_path: selection.chargePath,
-      pricing_snapshot_id: selection.snapshot?.snapshotId ?? null,
+      charge_path: "engine",
+      pricing_snapshot_id: null,
+      frozen_pricing: pricing,
     };
 
     const intent = await createDeliveryCheckoutIntent({
@@ -177,8 +149,8 @@ export async function POST(req: NextRequest) {
       amount_cents: amountCents,
       currency: snapshot.currency,
       delivery_request_id: null,
-      charge_path: selection.chargePath,
-      pricing_snapshot_id: selection.snapshot?.snapshotId ?? null,
+      charge_path: "engine",
+      pricing_snapshot_id: null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";

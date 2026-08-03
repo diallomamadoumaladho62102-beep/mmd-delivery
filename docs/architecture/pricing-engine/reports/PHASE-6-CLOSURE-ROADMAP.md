@@ -427,7 +427,8 @@ Cocher **uniquement avec preuves** (liens métriques / CI / env / SQL) :
 |---|---|---|
 | `PHASE-6-CLOSURE-ROADMAP — APPROUVÉ` | 2026-08-03 | **Validé** — 5 phases 5B→5C→5D→5E→6 |
 | Suppressions legacy / flags / Kill Switch / Shadow | — | **Interdites** jusqu’à Phase 6 approuvée post-5E |
-| Suite | 2026-08-03 | [`PHASE-5B-COMPLETION.md`](./PHASE-5B-COMPLETION.md) — en attente validation |
+| Délégation 5B→5E | 2026-08-03 | Exécutée — verdict [`PHASE-5E-COMPLETION.md`](./PHASE-5E-COMPLETION.md) **NO GO** |
+| Suite ops | — | [`PHASE-5D-CUTOVER-RUNBOOK.md`](./PHASE-5D-CUTOVER-RUNBOOK.md) puis re-proof Hard Gate |
 
 ---
 

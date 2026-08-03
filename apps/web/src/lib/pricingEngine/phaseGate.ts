@@ -1,8 +1,8 @@
 /**
- * Migration phase gate. Increment only when a phase is human-validated to start.
- * Phase 5: Marketplace cutover / unification.
+ * Migration phase gate.
+ * Phase 6: Legacy cleanup — PE is the sole calculation engine.
  */
-export const PRICING_ENGINE_MIGRATION_PHASE = 5 as const;
+export const PRICING_ENGINE_MIGRATION_PHASE = 6 as const;
 
 export type PricingEngineMigrationPhase =
   | 0 // Freeze

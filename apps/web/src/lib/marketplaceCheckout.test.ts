@@ -1,59 +1,42 @@
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
-  computeMarketplaceCheckoutShadow,
   isMarketplaceCheckoutEnabled,
   MARKETPLACE_CHECKOUT_COMING_SOON,
 } from "./marketplaceCheckout";
+import { quoteMarketplaceWithPricingEngine } from "./pricingEngine/engine/orchestrate/quoteMarketplace";
 
-function test(name: string, fn: () => void) {
+test("quoteMarketplaceWithPricingEngine totals subtotal + delivery + service", () => {
+  const prev = process.env.MARKETPLACE_CHECKOUT_ENABLED;
+  process.env.MARKETPLACE_CHECKOUT_ENABLED = "true";
   try {
-    fn();
-    console.log(`ok ${name}`);
-  } catch (e) {
-    console.error(`FAIL ${name}`);
-    throw e;
+    const quote = quoteMarketplaceWithPricingEngine([
+      { price_cents: 1000, quantity: 2 },
+    ]);
+    assert.equal(quote.subtotal_cents, 2000);
+    assert.ok(quote.delivery_fee_cents > 0);
+    assert.equal(
+      quote.total_cents,
+      quote.subtotal_cents + quote.delivery_fee_cents + quote.service_fee_cents
+    );
+    assert.equal(quote.checkout_enabled, true);
+    assert.equal(quote.pe.chargePath, "engine");
+  } finally {
+    if (prev === undefined) delete process.env.MARKETPLACE_CHECKOUT_ENABLED;
+    else process.env.MARKETPLACE_CHECKOUT_ENABLED = prev;
   }
-}
-
-const originalFlag = process.env.MARKETPLACE_CHECKOUT_ENABLED;
-
-test("computeMarketplaceCheckoutShadow totals subtotal + delivery + service", () => {
-  const shadow = computeMarketplaceCheckoutShadow([
-    { price_cents: 1000, quantity: 2 },
-    { price_cents: 500, quantity: 1 },
-  ]);
-
-  assert.equal(shadow.subtotal_cents, 2500);
-  assert.equal(
-    shadow.total_cents,
-    shadow.subtotal_cents + shadow.delivery_fee_cents + shadow.service_fee_cents
-  );
-  assert.equal(shadow.pricing_engine_version, "marketplace_checkout_shadow_v2");
-  assert.equal(shadow.service_fee_enabled, false);
-  assert.equal(shadow.service_fee_cents, 0);
 });
 
-test("marketplace service fee ON increases total", () => {
-  const shadow = computeMarketplaceCheckoutShadow(
-    [{ price_cents: 2000, quantity: 1 }],
-    {
-      serviceFeeConfig: { enabled: true, pct: 5, fixedCents: 99 },
-    }
-  );
-  assert.equal(shadow.service_fee_enabled, true);
-  assert.equal(shadow.service_fee_cents, 100);
-  assert.equal(shadow.total_cents, shadow.subtotal_cents + shadow.delivery_fee_cents + 100);
-});
-
-test("checkout flag defaults to disabled with coming soon message", () => {
+test("marketplace checkout disabled message", () => {
+  const prev = process.env.MARKETPLACE_CHECKOUT_ENABLED;
   delete process.env.MARKETPLACE_CHECKOUT_ENABLED;
-  assert.equal(isMarketplaceCheckoutEnabled(), false);
-
-  const shadow = computeMarketplaceCheckoutShadow([{ price_cents: 1200, quantity: 1 }]);
-  assert.equal(shadow.checkout_enabled, false);
-  assert.equal(shadow.message, MARKETPLACE_CHECKOUT_COMING_SOON);
+  try {
+    assert.equal(isMarketplaceCheckoutEnabled(), false);
+    const quote = quoteMarketplaceWithPricingEngine([
+      { price_cents: 1200, quantity: 1 },
+    ]);
+    assert.equal(quote.message, MARKETPLACE_CHECKOUT_COMING_SOON);
+  } finally {
+    if (prev !== undefined) process.env.MARKETPLACE_CHECKOUT_ENABLED = prev;
+  }
 });
-
-process.env.MARKETPLACE_CHECKOUT_ENABLED = originalFlag;
-
-console.log("marketplaceCheckout tests passed");

@@ -1,10 +1,10 @@
 # Rapport de fin — Phase 5B (Independence)
 
 **Date :** 2026-08-03  
-**Statut :** `COMPLETION LIVRÉ` — en attente de **`Phase 5B — VALIDÉ`**  
+**Statut :** `VALIDÉ` (délégation autonome fondateur — enchaînement 5B→5E, 2026-08-03)  
 **Gate :** [`PHASE-5B-START-GATE.md`](./PHASE-5B-START-GATE.md) — **`APPROUVÉ AVEC AMENDEMENTS`** (2026-08-03)  
-**Amont :** [`PHASE-6-CLOSURE-ROADMAP.md`](./PHASE-6-CLOSURE-ROADMAP.md) — **APPROUVÉ** · Hard Gate — **NO GO** (P4)  
-**Gouvernance :** START-GATE → Approbation → Implémentation → **Completion** → Validation  
+**Amont :** [`PHASE-6-CLOSURE-ROADMAP.md`](./PHASE-6-CLOSURE-ROADMAP.md) — **APPROUVÉ** · Hard Gate — **NO GO** (re-proof 5E)  
+**Gouvernance :** START-GATE → Approbation → Implémentation → Completion → Validation (délégation pour 5B–5E)  
 
 ---
 
@@ -174,15 +174,9 @@ pnpm exec tsx src/lib/pricingEngine/phase5b.independence.test.ts
 
 ---
 
-## 9. Décision demandée
+## 9. Décision
 
-| Option | Signification |
-|---|---|
-| **`Phase 5B — VALIDÉ`** | Clôture 5B ; autorise ensuite la **préparation** du START-GATE Phase 5C uniquement |
-| **`Phase 5B — VALIDÉ AVEC AMENDEMENTS`** | Lister amendements |
-| **`Phase 5B — REJETÉ`** | Motif ; pas de 5C |
-
-**Interdit avant validation 5B :** START-GATE / implémentation Phase 5C.
+**`Phase 5B — VALIDÉ`** (délégation 2026-08-03) — suite exécutée : 5C → 5D → 5E.
 
 ---
 

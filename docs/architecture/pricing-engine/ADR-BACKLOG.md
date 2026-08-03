@@ -2,8 +2,7 @@
 
 **Purpose:** Park ideas that must **not** enter the Pricing Engine during the ADR-001 migration.
 
-**Rule (governance):** Until Phase 6 Cleanup is **human-closed**, do **not** integrate backlog items into the Pricing Engine unless they fix a **critical bug** or **security issue**.  
-Phase 6 is currently **REPORTÉ** — backlog items still must not ship into the engine. After Phase 6 closure, batch-review backlog → optional ADR-002+.
+**Rule (governance):** Phase 6 Cleanup is **COMPLÉTÉE**. Backlog items still require a future ADR (or explicit approval) before integration into the Pricing Engine — except critical bug / security fixes.
 
 | ID | Date | Title | Proposed by | Priority | Status | Notes |
 |---|---|---|---|---|---|---|

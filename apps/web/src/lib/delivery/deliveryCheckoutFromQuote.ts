@@ -15,6 +15,7 @@ import {
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { toStripeAmount } from "@/lib/taxiStripeAmounts";
 import { createDeliveryRequestServerSide } from "@/lib/deliveryRequestService";
+import type { DeliveryRequestPricingResult } from "@/lib/deliveryRequestServerPricing";
 import { triggerDeliveryRequestDispatch } from "@/lib/triggerDeliveryRequestDispatch";
 import { enqueuePaymentSucceeded } from "@/lib/finance/financeEvents";
 import { bridgeStripeWalletFromPaidDeliveryRequest } from "@/lib/stripeInboundWalletBridge";
@@ -45,9 +46,10 @@ export type DeliveryCheckoutIntentSnapshot = {
   leave_at_door?: boolean;
   currency: string;
   amount_cents: number;
-  /** Phase 3 Pricing Engine charge path (defaults legacy when absent). */
+  /** Phase 5F — always engine on hot path. */
   charge_path?: "legacy" | "engine";
   pricing_snapshot_id?: string | null;
+  frozen_pricing?: DeliveryRequestPricingResult | null;
 };
 
 export function hashDeliveryCheckoutSnapshot(
@@ -287,6 +289,7 @@ export async function materializePaidDeliveryRequestFromQuoteCheckout(params: {
       countryCode: snapshot.country_code,
       promoCode: snapshot.promo_code,
       leaveAtDoor: snapshot.leave_at_door === true,
+      frozenPricing: snapshot.frozen_pricing ?? null,
       settlePaid: {
         stripeSessionId: sessionId,
         stripePaymentIntentId: paymentIntentId,

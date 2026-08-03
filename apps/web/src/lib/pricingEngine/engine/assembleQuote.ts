@@ -1,11 +1,14 @@
-import type { ComparableQuote, PricingServiceKind } from "../shadow/comparableQuote";
+import type {
+  ComparableQuote,
+  PricingServiceKind,
+} from "../contracts/comparableQuote";
 import { PRICING_ENGINE_MIGRATION_PHASE } from "../phaseGate";
 
-export const PRICING_ENGINE_ALGORITHM_SEMVER = "5.0.0-marketplace";
+export const PRICING_ENGINE_ALGORITHM_SEMVER = "6.0.0";
 
 /**
- * Rate → Tax → Fee → Promotion → Policy(0) → Commission → Validation → Snapshot
- * Phase 2: assembles a ComparableQuote from captured line amounts (no Mapbox/Stripe).
+ * Assemble a ComparableQuote from captured line amounts (no Mapbox/Stripe).
+ * Used for optional Quote Snapshot persistence — not dual-path compare.
  */
 export function assembleComparableQuoteFromParts(input: {
   service: PricingServiceKind;
@@ -28,8 +31,6 @@ export function assembleComparableQuoteFromParts(input: {
     input.feeCents -
     input.promotionCents;
 
-  // Food/package: promotions may already be folded into base (subtotal after discount).
-  // Validation: customer total must match provided total; component identity is authoritative.
   if (!Number.isFinite(input.customerTotalCents)) {
     return { ok: false, reason: "invalid_customer_total" };
   }

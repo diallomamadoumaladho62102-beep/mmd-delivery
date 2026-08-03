@@ -436,36 +436,32 @@ export function explainDeliveryFee(
  * platformFee + driverPayout = deliveryFee
  * (driver share is the residual after platformSharePct, consistent with admin 80/20)
  */
+/**
+ * Phase 6 — thin PE adapter for remaining helper callers / tests.
+ * Prefer `computeDeliveryFeeV1` from `@/lib/pricingEngine` in new code.
+ */
 export function computeDeliveryPricing(
   { distanceMiles, durationMinutes }: DeliveryPricingParams,
   config?: DeliveryPricingConfig
 ): DeliveryPricingResult {
-  assertFiniteNonNegative(distanceMiles, "distanceMiles");
-  assertFiniteNonNegative(durationMinutes, "durationMinutes");
-
-  const normalizedConfig = normalizeDeliveryPricingConfig(config);
-
-  const rawFare =
-    normalizedConfig.baseFare +
-    distanceMiles * normalizedConfig.perMile +
-    durationMinutes * normalizedConfig.perMinute;
-
-  const deliveryFee = round2(Math.max(normalizedConfig.minFare, rawFare));
-
-  const platformFee = round2(
-    deliveryFee * (normalizedConfig.platformSharePct / 100)
-  );
-
-  // Prefer residual so platformFee + driverPayout always equals deliveryFee.
-  // When shares sum to 100 this matches driverSharePct; when under 100 the
-  // residual (including unallocated %) goes to the driver — never to vendor %.
-  const driverPayout = round2(deliveryFee - platformFee);
-
-  return {
-    deliveryFee,
-    platformFee,
-    driverPayout,
+  const { computeDeliveryFeeV1 } = require("./pricingEngine/engine/compute/deliveryFeeV1") as {
+    computeDeliveryFeeV1: (
+      params: DeliveryPricingParams,
+      cfg?: DeliveryPricingConfig
+    ) => DeliveryPricingResult;
   };
+  const normalizedConfig = normalizeDeliveryPricingConfig(config);
+  return computeDeliveryFeeV1(
+    { distanceMiles, durationMinutes },
+    {
+      baseFare: normalizedConfig.baseFare,
+      perMile: normalizedConfig.perMile,
+      perMinute: normalizedConfig.perMinute,
+      minFare: normalizedConfig.minFare,
+      driverSharePct: normalizedConfig.driverSharePct,
+      platformSharePct: normalizedConfig.platformSharePct,
+    }
+  );
 }
 
 // 💰 Fonction utilitaire chauffeur

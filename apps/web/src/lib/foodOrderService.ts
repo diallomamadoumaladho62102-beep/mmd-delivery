@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logDeliveryPricingV2Shadow } from "@/lib/deliveryPricingEngine";
 import {
-  computeFoodOrderPricing,
   loadRestaurantMenuLines,
   roundFoodMoney,
   toFiniteFoodNumber,
@@ -9,6 +8,7 @@ import {
   type FoodOrderPricingResult,
 } from "@/lib/foodOrderServerPricing";
 import { inferPlatformCountryCode } from "@/lib/platformLaunchControl";
+import { quoteFoodSot } from "@/lib/pricingEngine";
 
 export type CreateFoodOrderInput = {
   supabaseAdmin: SupabaseClient;
@@ -30,6 +30,10 @@ export type CreateFoodOrderInput = {
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
   } | null;
+  /**
+   * Phase 5F — freeze checkout quote (no re-price). Used by pay-then-create materialize.
+   */
+  frozenPricing?: FoodOrderPricingResult | null;
 };
 
 export type CreateFoodOrderResult = FoodOrderPricingResult & {
@@ -75,20 +79,26 @@ export async function createFoodOrderServerSide(
     throw new Error("Adresse pickup/dropoff manquante");
   }
 
-  const pricing = await computeFoodOrderPricing({
-    supabaseAdmin,
-    restaurantUserId,
-    items,
-    pickupAddress,
-    dropoffAddress,
-    pickupLat,
-    pickupLng,
-    dropoffLat,
-    dropoffLng,
-    countryCode,
-    promoCode,
-    clientUserId: clientId,
-  });
+  // Phase 5F — PE exclusive SoT (Kill Switch bridge inside quoteFoodSot).
+  const pricing =
+    input.frozenPricing ??
+    (await quoteFoodSot({
+      supabaseAdmin,
+      restaurantUserId,
+      items,
+      pickupAddress,
+      dropoffAddress,
+      pickupLat,
+      pickupLng,
+      dropoffLat,
+      dropoffLng,
+      countryCode,
+      promoCode,
+      clientUserId: clientId,
+    }));
+
+  const chargedTotalCents = Math.round(Number(pricing.totalCents));
+  const chargedTotal = roundFoodMoney(chargedTotalCents / 100);
 
   const pickupCode = Math.random().toString(36).slice(2, 8).toUpperCase();
   const dropoffCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -119,7 +129,7 @@ export async function createFoodOrderServerSide(
       subtotal: pricing.subtotal,
       tax: pricing.tax,
       discounts: pricing.discounts,
-      total: pricing.total,
+      total: chargedTotal,
       // Feed generated grand_total (items_subtotal + tax_amount + delivery_fee - discounts)
       items_subtotal: pricing.subtotal,
       tax_amount: pricing.tax,
@@ -212,10 +222,10 @@ export async function createFoodOrderServerSide(
         marketingDeliveryDiscount: pricing.marketingDeliveryDiscountAmount,
         discounts: pricing.discounts,
         deliveryFee: pricing.deliveryFee,
-        total: pricing.total,
+        total: chargedTotal,
         subtotalCents: Math.round(pricing.subtotal * 100),
         deliveryFeeCents: Math.round(pricing.deliveryFee * 100),
-        totalCents: Math.round(pricing.total * 100),
+        totalCents: chargedTotalCents,
         tax: pricing.tax,
         serviceFee: pricing.serviceFee,
       });
@@ -302,6 +312,8 @@ export async function createFoodOrderServerSide(
 
   return {
     ...pricing,
+    total: chargedTotal,
+    totalCents: chargedTotalCents,
     orderId,
     commissions:
       commissionData && typeof commissionData === "object"
@@ -391,7 +403,7 @@ export async function validateFoodOrderBeforeCheckout(
     lng: data.dropoff_lng,
   });
 
-  const pricing = await computeFoodOrderPricing({
+  const pricing = await quoteFoodSot({
     supabaseAdmin,
     restaurantUserId,
     items: lines,
@@ -407,15 +419,17 @@ export async function validateFoodOrderBeforeCheckout(
       data.client_user_id ?? data.client_id ?? data.user_id ?? data.created_by ?? null,
   });
 
+  const expectedTotal = roundFoodMoney(pricing.totalCents / 100);
+
   const storedTotal = roundFoodMoney(
     toFiniteFoodNumber(data.grand_total, toFiniteFoodNumber(data.total))
   );
-  const delta = Math.abs(storedTotal - pricing.total);
+  const delta = Math.abs(storedTotal - expectedTotal);
 
   if (delta > 0.02) {
     return {
       ok: false,
-      error: `food_order_pricing_mismatch: stored=${storedTotal} expected=${pricing.total}`,
+      error: `food_order_pricing_mismatch: stored=${storedTotal} expected=${expectedTotal}`,
     };
   }
 
@@ -433,7 +447,7 @@ export async function validateFoodOrderBeforeCheckout(
 export async function quoteFoodOrderServerSide(
   input: Omit<CreateFoodOrderInput, "clientId" | "restaurantName">
 ) {
-  return computeFoodOrderPricing({
+  return quoteFoodSot({
     supabaseAdmin: input.supabaseAdmin,
     restaurantUserId: input.restaurantUserId,
     items: input.items,
@@ -445,6 +459,7 @@ export async function quoteFoodOrderServerSide(
     dropoffLng: input.dropoffLng,
     countryCode: input.countryCode,
     promoCode: input.promoCode,
+    clientUserId: null,
   });
 }
 
