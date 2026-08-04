@@ -224,10 +224,62 @@ export default function AdminStaffPage() {
     }
     setCreateEmail("");
     setCreateName("");
-    setNotice(
-      `Administrator created with role ${roleDisplayName(createRole as never)}. They now appear in this list.`
-    );
+    const invite = body.invite as
+      | {
+          sent?: boolean;
+          skipped?: boolean;
+          error?: string | null;
+          auth_user_created?: boolean;
+        }
+      | undefined;
+    if (invite?.sent) {
+      setNotice(
+        `Administrator created (${roleDisplayName(createRole as never)}). An invitation email was sent so they can set their password and sign in.`
+      );
+    } else if (invite?.skipped) {
+      setNotice(
+        `Administrator created (${roleDisplayName(createRole as never)}), but invitation email was skipped (email provider not configured). Use “Resend invite”.`
+      );
+    } else if (invite?.error) {
+      setNotice(
+        `Administrator created (${roleDisplayName(createRole as never)}), but invitation email failed: ${invite.error}. Use “Resend invite”.`
+      );
+    } else {
+      setNotice(
+        `Administrator created with role ${roleDisplayName(createRole as never)}. They now appear in this list.`
+      );
+    }
     void load();
+  }
+
+  async function resendInvite(userId: string) {
+    setSavingId(userId);
+    setNotice(null);
+    const res = await adminFetch("/api/admin/admins", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, action: "resend_invite" }),
+    });
+    const body = await res.json().catch(() => ({}));
+    setSavingId(null);
+    if (!res.ok || !body.ok) {
+      alert(body.error ?? "Failed to resend invite");
+      return;
+    }
+    const invite = body.invite as
+      | { sent?: boolean; skipped?: boolean; error?: string | null }
+      | undefined;
+    if (invite?.sent) {
+      setNotice("Invitation email resent. The administrator can set their password from the link.");
+    } else if (invite?.skipped) {
+      setNotice(
+        "Invite link generated but email was skipped (provider not configured)."
+      );
+    } else {
+      setNotice(
+        `Could not send invitation: ${invite?.error ?? "unknown error"}`
+      );
+    }
   }
 
   return (
@@ -581,6 +633,14 @@ export default function AdminStaffPage() {
                           >
                             Audit
                           </Link>
+                          <button
+                            type="button"
+                            disabled={savingId === row.id}
+                            onClick={() => void resendInvite(row.id)}
+                            className="rounded-lg border border-indigo-300 px-2 py-1 text-xs font-medium text-indigo-800"
+                          >
+                            Resend invite
+                          </button>
                           {row.account_status === "suspended" ? (
                             <button
                               type="button"
