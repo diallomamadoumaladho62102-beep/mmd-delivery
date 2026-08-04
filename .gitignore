@@ -79,6 +79,7 @@ ios/
 
 .tmp-pg-diag/
 .tmp/
+tmp/
 
 # Local web probe artifacts
 apps/web/.tmp/
