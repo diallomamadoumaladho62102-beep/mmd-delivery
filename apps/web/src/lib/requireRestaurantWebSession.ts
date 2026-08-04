@@ -52,7 +52,7 @@ export async function requireRestaurantWebSession(options?: {
     prof?.role === "super_admin" ||
     prof?.role === "admin";
 
-  // Founder keeps profiles.role='admin' but may still operate a restaurant
+  // Founder keeps profiles.role='super_admin' but may still operate a restaurant
   // profile without creating a duplicate auth user.
   if (!isRestaurantRole && !isFounderAdmin) {
     redirect("/choose-role");

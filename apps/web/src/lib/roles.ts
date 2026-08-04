@@ -149,5 +149,3 @@ export function canAccessDriver(role: UserRole): boolean {
 export function canAccessClient(role: UserRole): boolean {
   return hasAnyRole(role, CLIENT_ACCESS_ROLES);
 }
-
-export type { PublicRole, StaffRole };

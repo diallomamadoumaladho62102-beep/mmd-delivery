@@ -5,9 +5,12 @@
     "moduleResolution": "bundler",
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["react", "react-native"]
+    "types": ["react", "react-native"],
+    "paths": {
+      "@mmd/platform-roles": ["../../shared/platformRoles.ts"]
+    }
   },
-  "include": ["src", "App.tsx", "index.js"],
+  "include": ["src", "App.tsx", "index.js", "../../shared/platformRoles.ts"],
   "exclude": [
     "node_modules",
     "**/*.test.ts",

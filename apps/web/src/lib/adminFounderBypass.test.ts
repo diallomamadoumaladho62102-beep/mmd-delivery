@@ -33,43 +33,46 @@ test("Founder authorized on every permission string", () => {
 });
 
 test("Super Admin authorized only via role permissions", () => {
-  assert.equal(hasPermission("admin", "dispatch.manage"), true);
-  assert.equal(hasPermission("admin", "finance.export"), true);
+  assert.equal(hasPermission("super_admin", "dispatch.manage"), true);
+  assert.equal(hasPermission("super_admin", "finance.export"), true);
   assert.equal(
-    sessionHasPermission({ role: "admin", isFounder: false }, "users.admins.manage"),
+    sessionHasPermission(
+      { role: "super_admin", isFounder: false },
+      "users.admins.manage"
+    ),
     true
   );
 });
 
 test("Finance refused on Dispatch", () => {
-  assert.equal(hasPermission("finance", "dispatch.read"), false);
-  assert.equal(hasPermission("finance", "dispatch.manage"), false);
+  assert.equal(hasPermission("finance_admin", "dispatch.read"), false);
+  assert.equal(hasPermission("finance_admin", "dispatch.manage"), false);
   const groups = filterNavGroups({
-    role: "finance",
+    role: "finance_admin",
     isFounder: false,
-    hasPermission: (p) => hasPermission("finance", p),
+    hasPermission: (p) => hasPermission("finance_admin", p),
   });
   const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
   assert.equal(hrefs.includes("/admin/dispatch"), false);
 });
 
 test("Ops (dispatch) refused on Finance hub modules", () => {
-  assert.equal(hasPermission("ops", "finance.export"), false);
-  assert.equal(hasPermission("ops", "payouts.retry"), false);
+  assert.equal(hasPermission("operations_admin", "finance.export"), false);
+  assert.equal(hasPermission("operations_admin", "payouts.retry"), false);
   const groups = filterNavGroups({
-    role: "ops",
+    role: "operations_admin",
     isFounder: false,
-    hasPermission: (p) => hasPermission("ops", p),
+    hasPermission: (p) => hasPermission("operations_admin", p),
   });
   const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
   assert.equal(hrefs.includes("/admin/commission-engine"), false);
 });
 
 test("Support limited to its modules", () => {
-  assert.equal(hasPermission("support", "communication.chats"), true);
-  assert.equal(hasPermission("support", "users.admins.manage"), false);
-  assert.equal(hasPermission("support", "pricing.write"), false);
-  assert.equal(hasPermission("support", "dispatch.manage"), false);
+  assert.equal(hasPermission("support_admin", "communication.chats"), true);
+  assert.equal(hasPermission("support_admin", "users.admins.manage"), false);
+  assert.equal(hasPermission("support_admin", "pricing.write"), false);
+  assert.equal(hasPermission("support_admin", "dispatch.manage"), false);
 });
 
 test("non-admin user refused", () => {
@@ -84,22 +87,29 @@ test("non-admin user refused", () => {
 });
 
 test("client-forged founder flag without server isFounder is meaningless for role perms", () => {
-  // UI must use server /api/admin/me isFounder — raw role spoofing fails.
   assert.equal(hasPermission("client", "users.admins.manage"), false);
   assert.equal(
-    sessionHasPermission({ role: "finance", isFounder: false }, "dispatch.manage"),
+    sessionHasPermission(
+      { role: "finance_admin", isFounder: false },
+      "dispatch.manage"
+    ),
     false
   );
 });
 
 test("Founder nav includes Staff, Teams, Tasks, People Ops", () => {
   const groups = filterNavGroups({
-    role: "admin",
+    role: "super_admin",
     isFounder: true,
     hasPermission: () => false,
   });
   const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
-  for (const href of ["/admin/staff", "/admin/teams", "/admin/tasks", "/admin/hr"]) {
+  for (const href of [
+    "/admin/staff",
+    "/admin/teams",
+    "/admin/tasks",
+    "/admin/hr",
+  ]) {
     assert.equal(hrefs.includes(href), true, href);
   }
 });

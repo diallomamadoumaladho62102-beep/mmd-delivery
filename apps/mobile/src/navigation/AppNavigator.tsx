@@ -555,7 +555,7 @@ export function AppNavigator({
       if (!error) {
         const dbRole = normalizeAppRole((data as any)?.role);
         const isFounder = (data as any)?.is_founder === true;
-        // Founder/admin keeps profiles.role='admin' but may operate any public
+        // Founder/admin keeps profiles.role='super_admin' but may operate any public
         // surface via selected role (single auth user, no duplicates).
         if ((isFounder || dbRole === "admin") && selectedRole) {
           return selectedRole;
