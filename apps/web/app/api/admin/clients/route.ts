@@ -156,19 +156,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Auth email confirmation (batch via admin API — limited page size)
+    // Auth email confirmation — parallel per page (avoids sequential N+1 latency).
+    // Future: denormalize email_confirmed_at onto profiles to remove Auth round-trips.
     const emailVerifiedById = new Map<string, boolean>();
-    for (const id of ids) {
-      try {
-        const { data: authUser } = await supabase.auth.admin.getUserById(id);
-        emailVerifiedById.set(
-          id,
-          Boolean(authUser.user?.email_confirmed_at),
-        );
-      } catch {
-        emailVerifiedById.set(id, false);
-      }
-    }
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const { data: authUser } = await supabase.auth.admin.getUserById(id);
+          emailVerifiedById.set(id, Boolean(authUser.user?.email_confirmed_at));
+        } catch {
+          emailVerifiedById.set(id, false);
+        }
+      }),
+    );
 
     let enriched = items.map((row) => {
       const id = String(row.id);

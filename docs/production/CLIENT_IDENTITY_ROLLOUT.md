@@ -72,3 +72,8 @@ Shared scorer: `shared/profileCompleteness.ts` (`@mmd/profile-completeness`).
 
 - No payment / order / wallet mutations in this rollout (wallet shown read-only in admin).
 - Phone uniqueness only among **verified + active + client**.
+
+## Performance notes
+
+- Admin CRM loads Auth `email_confirmed_at` via parallel `getUserById` for the current page (not sequential).
+- Future optimization: denormalize `email_confirmed_at` onto `profiles` (or a small RPC) to remove Auth Admin round-trips entirely.

@@ -1,12 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import {
+  checkPhoneVerificationRequest,
+  startPhoneVerificationRequest,
+} from "@mmd/phone-verify-api";
+import { supabase } from "@/lib/supabaseBrowser";
 
 type Props = {
   phone: string;
   verified: boolean;
   onVerified?: (phoneE164: string) => void;
 };
+
+async function getAccessToken(): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token?.trim() ?? "";
+}
+
+function apiBaseUrl(): string {
+  return typeof window !== "undefined" ? window.location.origin : "";
+}
 
 export default function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
   const [code, setCode] = useState("");
@@ -26,15 +42,15 @@ export default function PhoneVerifyCard({ phone, verified, onVerified }: Props) 
     setBusy(true);
     setError(null);
     setNotice(null);
-    const res = await fetch("/api/auth/phone/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone }),
+    const token = await getAccessToken();
+    const started = await startPhoneVerificationRequest({
+      apiBaseUrl: apiBaseUrl(),
+      accessToken: token,
+      phone,
     });
-    const body = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok || !body.ok) {
-      setError(body.error ?? "Unable to send code");
+    if (!started.ok) {
+      setError(started.error ?? "Unable to send code");
       return;
     }
     setNotice("Verification code sent by SMS.");
@@ -43,19 +59,20 @@ export default function PhoneVerifyCard({ phone, verified, onVerified }: Props) 
   async function check() {
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/auth/phone/check", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone, code }),
+    const token = await getAccessToken();
+    const checked = await checkPhoneVerificationRequest({
+      apiBaseUrl: apiBaseUrl(),
+      accessToken: token,
+      phone,
+      code,
     });
-    const body = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok || !body.ok) {
-      setError(body.error ?? "Invalid code");
+    if (!checked.ok) {
+      setError(checked.error ?? "Invalid code");
       return;
     }
     setNotice("Phone verified.");
-    onVerified?.(String(body.phone_e164 ?? phone));
+    onVerified?.(String(checked.phone_e164 ?? phone));
   }
 
   return (

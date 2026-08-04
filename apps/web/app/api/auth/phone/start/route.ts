@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/apiRateLimit";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveRequestUser } from "@/lib/requestUser";
 import {
   isPhoneOtpEnabled,
   isTwilioVerifyConfigured,
@@ -36,10 +36,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await supabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await resolveRequestUser(request);
     if (!user) return json({ ok: false, error: "Unauthorized" }, 401);
 
     const rate = checkRateLimit({

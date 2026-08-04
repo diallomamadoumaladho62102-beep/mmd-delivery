@@ -751,20 +751,27 @@ export function AppNavigator({
   const isClientProfileComplete = React.useCallback(
     async (uid: string): Promise<boolean> => {
       try {
-        const [{ data, error }, { data: profile }] = await Promise.all([
-          supabase
-            .from("client_profiles")
-            .select(
-              "phone, address, default_address, full_name, avatar_url, city",
-            )
-            .eq("user_id", uid)
-            .maybeSingle(),
-          supabase
-            .from("profiles")
-            .select("email, phone_verified_at, phone, phone_e164")
-            .eq("id", uid)
-            .maybeSingle(),
-        ]);
+        const [{ data, error }, { data: profile }, { data: addr }] =
+          await Promise.all([
+            supabase
+              .from("client_profiles")
+              .select(
+                "phone, address, default_address, full_name, avatar_url, city",
+              )
+              .eq("user_id", uid)
+              .maybeSingle(),
+            supabase
+              .from("profiles")
+              .select("email, phone_verified_at, phone, phone_e164")
+              .eq("id", uid)
+              .maybeSingle(),
+            supabase
+              .from("client_addresses")
+              .select("address_line1, latitude, longitude, lat, lng")
+              .eq("user_id", uid)
+              .eq("is_default", true)
+              .maybeSingle(),
+          ]);
 
         if (error) {
           console.log("client_profiles check error:", error.message);
@@ -784,6 +791,9 @@ export function AppNavigator({
           data: { user },
         } = await supabase.auth.getUser();
 
+        const lat = Number(addr?.latitude ?? addr?.lat);
+        const lng = Number(addr?.longitude ?? addr?.lng);
+
         return scoreClientProfileComplete(
           {
             fullName: (data as any)?.full_name,
@@ -793,8 +803,12 @@ export function AppNavigator({
             phoneVerified: Boolean(profile?.phone_verified_at),
             avatarUrl: (data as any)?.avatar_url,
             addressLine:
-              (data as any)?.address || (data as any)?.default_address,
+              addr?.address_line1 ||
+              (data as any)?.address ||
+              (data as any)?.default_address,
             city: (data as any)?.city,
+            latitude: Number.isFinite(lat) ? lat : null,
+            longitude: Number.isFinite(lng) ? lng : null,
           },
           {
             requirePhoneVerified: requirePhone,

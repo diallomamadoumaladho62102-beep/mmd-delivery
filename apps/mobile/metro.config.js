@@ -18,6 +18,10 @@ config.resolver.extraNodeModules = {
     workspaceRoot,
     "shared/profileCompleteness.ts",
   ),
+  "@mmd/phone-verify-api": path.resolve(
+    workspaceRoot,
+    "shared/phoneVerifyApi.ts",
+  ),
 };
 
 config.resolver.blockList = [

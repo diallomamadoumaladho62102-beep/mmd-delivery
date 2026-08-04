@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/apiRateLimit";
+import { resolveRequestUser } from "@/lib/requestUser";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { supabaseServer } from "@/lib/supabaseServer";
 import {
   checkPhoneVerification,
   isPhoneOtpEnabled,
@@ -37,10 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await supabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await resolveRequestUser(request);
     if (!user) return json({ ok: false, error: "Unauthorized" }, 401);
 
     const rate = checkRateLimit({

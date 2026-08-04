@@ -295,6 +295,11 @@ export default function ClientProfilePage() {
         ) : (
           <span className="block text-xs mt-1">Profil complet.</span>
         )}
+        {completeness.checks.address_verified ? (
+          <span className="mt-1 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+            Adresse vérifiée
+          </span>
+        ) : null}
       </div>
 
       {err && <p className="text-sm text-red-600">{err}</p>}

@@ -10,7 +10,8 @@
     "paths": {
       "@mmd/platform-roles": ["../../shared/platformRoles.ts"],
       "@mmd/social-links": ["../../shared/socialLinks.ts"],
-      "@mmd/profile-completeness": ["../../shared/profileCompleteness.ts"]
+      "@mmd/profile-completeness": ["../../shared/profileCompleteness.ts"],
+      "@mmd/phone-verify-api": ["../../shared/phoneVerifyApi.ts"]
     }
   },
   "include": [
@@ -19,7 +20,8 @@
     "index.js",
     "../../shared/platformRoles.ts",
     "../../shared/socialLinks.ts",
-    "../../shared/profileCompleteness.ts"
+    "../../shared/profileCompleteness.ts",
+    "../../shared/phoneVerifyApi.ts"
   ],
   "exclude": [
     "node_modules",
