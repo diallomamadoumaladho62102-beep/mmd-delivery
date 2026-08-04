@@ -13,7 +13,8 @@
     "test:ui": "pnpm --dir apps/mobile test:ui && pnpm --dir apps/web test:ui",
     "lighthouse:smoke": "node scripts/lighthouse-smoke.mjs",
     "brand:generate": "node scripts/generate-brand-assets.mjs",
-    "brand:social-qr": "node scripts/generate-social-qr.mjs",
+    "brand:social-qr": "pnpm exec tsx scripts/generate-social-qr.mts",
+    "brand:social-verify": "pnpm exec tsx scripts/verify-social-links.mts",
     "audit:deps": "node scripts/dependency-audit.mjs",
     "android": "expo run:android",
     "ios": "expo run:ios"

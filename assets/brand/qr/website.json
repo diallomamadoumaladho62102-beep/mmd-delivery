@@ -1,10 +1,27 @@
 {
   "stem": "website",
+  "label": "Website",
   "url": "https://www.mmddelivery.com",
   "widthPx": 2048,
   "errorCorrectionLevel": "H",
   "formats": [
     "png",
     "svg"
+  ],
+  "kits": [
+    "business-cards",
+    "referral-cards",
+    "loyalty-cards",
+    "flyers",
+    "posters",
+    "restaurant-materials",
+    "driver-welcome-kit",
+    "merchant-kit",
+    "vehicle-stickers",
+    "roll-up-banners",
+    "presentation-slides",
+    "brochures",
+    "email-signatures",
+    "packaging-inserts"
   ]
 }

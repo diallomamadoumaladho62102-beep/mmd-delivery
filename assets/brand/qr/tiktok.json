@@ -1,10 +1,21 @@
 {
   "stem": "tiktok",
+  "label": "TikTok (Canonical)",
   "url": "https://www.tiktok.com/@mmddelivery",
   "widthPx": 2048,
   "errorCorrectionLevel": "H",
   "formats": [
     "png",
     "svg"
+  ],
+  "kits": [
+    "business-cards",
+    "flyers",
+    "posters",
+    "driver-welcome-kit",
+    "merchant-kit",
+    "roll-up-banners",
+    "brochures",
+    "email-signatures"
   ]
 }

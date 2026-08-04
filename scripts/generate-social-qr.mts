@@ -1,41 +1,26 @@
 /**
  * Generate high-resolution printable QR codes (PNG + SVG) for official socials.
+ * URLs come only from shared/socialLinks.ts (SSOT).
  *
- * Usage: node scripts/generate-social-qr.mjs
+ * Usage: pnpm brand:social-qr
  */
 import { mkdirSync, writeFileSync, copyFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { SOCIAL_QR_TARGETS } from "../shared/socialLinks.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 const require = createRequire(resolve(root, "package.json"));
 
-const targets = [
-  {
-    stem: "website",
-    url: "https://www.mmddelivery.com",
-  },
-  {
-    stem: "tiktok",
-    url: "https://www.tiktok.com/@mmddelivery",
-  },
-  {
-    stem: "tiktok-share",
-    url: "https://www.tiktok.com/@mmddelivery?_r=1&_t=ZP-98awmQSESJ5",
-  },
-  {
-    stem: "instagram",
-    url: "https://www.instagram.com/mmddelivery?igsh=d3o1YXR3M3g1Z3dq&utm_source=ig_contact_invite",
-  },
-  {
-    stem: "facebook",
-    url: "https://www.facebook.com/share/1FF11rBXwE/?mibextid=wwXIfr",
-  },
-];
+const targets = SOCIAL_QR_TARGETS.map((t) => ({
+  stem: t.fileStem,
+  url: t.url,
+  label: t.label,
+  kits: t.kits,
+}));
 
 const outDirs = [
   resolve(root, "assets/brand/qr"),
@@ -45,7 +30,7 @@ const outDirs = [
 
 for (const dir of outDirs) mkdirSync(dir, { recursive: true });
 
-async function loadQrcode() {
+function loadQrcode() {
   try {
     return require("qrcode");
   } catch {
@@ -62,8 +47,7 @@ async function loadQrcode() {
   }
 }
 
-const QRCode = await loadQrcode();
-void pathToFileURL;
+const QRCode = loadQrcode();
 const masterDir = outDirs[0];
 
 for (const target of targets) {
@@ -87,16 +71,17 @@ for (const target of targets) {
   });
   writeFileSync(svgPath, svg, "utf8");
 
-  // Manifest sidecar for print tooling
   writeFileSync(
     resolve(masterDir, `${target.stem}.json`),
     JSON.stringify(
       {
         stem: target.stem,
+        label: target.label,
         url: target.url,
         widthPx: 2048,
         errorCorrectionLevel: "H",
         formats: ["png", "svg"],
+        kits: target.kits,
       },
       null,
       2,
@@ -112,30 +97,17 @@ for (const target of targets) {
   console.log(`generated ${target.stem} → ${target.url}`);
 }
 
-// Index for marketing kits
 const index = {
   generatedAt: new Date().toISOString(),
+  source: "shared/socialLinks.ts",
   targets: targets.map((t) => ({
-    ...t,
+    stem: t.stem,
+    label: t.label,
+    url: t.url,
     png: `/brand/qr/${t.stem}.png`,
     svg: `/brand/qr/${t.stem}.svg`,
+    kits: t.kits,
   })),
-  kits: [
-    "business-cards",
-    "referral-cards",
-    "loyalty-cards",
-    "flyers",
-    "posters",
-    "restaurant-materials",
-    "driver-welcome-kit",
-    "merchant-kit",
-    "vehicle-stickers",
-    "roll-up-banners",
-    "presentation-slides",
-    "brochures",
-    "email-signatures",
-    "packaging-inserts",
-  ],
 };
 writeFileSync(
   resolve(masterDir, "index.json"),

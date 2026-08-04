@@ -1,10 +1,20 @@
 {
   "stem": "facebook",
+  "label": "Facebook",
   "url": "https://www.facebook.com/share/1FF11rBXwE/?mibextid=wwXIfr",
   "widthPx": 2048,
   "errorCorrectionLevel": "H",
   "formats": [
     "png",
     "svg"
+  ],
+  "kits": [
+    "business-cards",
+    "flyers",
+    "posters",
+    "restaurant-materials",
+    "merchant-kit",
+    "brochures",
+    "email-signatures"
   ]
 }
