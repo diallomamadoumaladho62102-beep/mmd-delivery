@@ -1,17 +1,19 @@
-import { normalizeUserRole, type UserRole } from "@/lib/roles";
+import type { UserRole } from "@/lib/roles";
+import {
+  CREATABLE_STAFF_ROLES,
+  STAFF_ROLES,
+  SUPER_ADMIN_ROLE,
+  normalizeStaffRole as normalizeCanonicalStaffRole,
+  roleDisplayName as canonicalRoleDisplayName,
+  type StaffRole,
+} from "@mmd/platform-roles";
 
-/** Founder / super admin — `profiles.role = 'admin'` */
-export const SUPER_ADMIN_ROLE = "admin" as const;
-
-export const STAFF_ROLES = [
-  "admin",
-  "ops",
-  "finance",
-  "support",
-  "review",
-] as const;
-
-export type StaffRole = (typeof STAFF_ROLES)[number];
+export {
+  CREATABLE_STAFF_ROLES,
+  STAFF_ROLES,
+  SUPER_ADMIN_ROLE,
+  type StaffRole,
+};
 
 export type AdminPermission =
   | "hub.access"
@@ -116,7 +118,7 @@ export type AdminPermission =
   | "test_records.read";
 
 const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
-  admin: new Set<AdminPermission>([
+  super_admin: new Set<AdminPermission>([
     "hub.access",
     "users.clients.read",
     "users.clients.manage",
@@ -218,7 +220,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "supervision.read",
     "test_records.read",
   ]),
-  ops: new Set<AdminPermission>([
+  operations_admin: new Set<AdminPermission>([
     "hub.access",
     "users.clients.read",
     "users.clients.manage",
@@ -273,7 +275,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "finance.partners.read",
     "supervision.read",
   ]),
-  finance: new Set<AdminPermission>([
+  finance_admin: new Set<AdminPermission>([
     "hub.access",
     "payments.read",
     "payments.sync",
@@ -334,7 +336,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "audit.read",
     "supervision.read",
   ]),
-  support: new Set<AdminPermission>([
+  support_admin: new Set<AdminPermission>([
     "hub.access",
     "users.clients.read",
     "users.drivers.read",
@@ -356,7 +358,7 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
     "finance.transactions.lookup",
     "supervision.read",
   ]),
-  review: new Set<AdminPermission>([
+  review_admin: new Set<AdminPermission>([
     "hub.access",
     "users.drivers.manage",
     "drivers.identity.read",
@@ -372,12 +374,11 @@ const ROLE_PERMISSIONS: Record<StaffRole, ReadonlySet<AdminPermission>> = {
 };
 
 export function isStaffRole(role: UserRole): role is StaffRole {
-  if (!role) return false;
-  return (STAFF_ROLES as readonly string[]).includes(role);
+  return normalizeCanonicalStaffRole(role) !== null;
 }
 
 export function isSuperAdmin(role: UserRole): boolean {
-  return role === SUPER_ADMIN_ROLE;
+  return normalizeCanonicalStaffRole(role) === SUPER_ADMIN_ROLE;
 }
 
 /**
@@ -389,48 +390,36 @@ export function effectiveStaffRole(params: {
   isFounder?: boolean | null;
 }): StaffRole | null {
   if (params.isFounder === true) return SUPER_ADMIN_ROLE;
-  return normalizeStaffRole(params.role);
+  return normalizeCanonicalStaffRole(params.role);
 }
 
 export function canStaffAccessHub(role: UserRole): boolean {
-  return isStaffRole(role) && hasPermission(role, "hub.access");
+  const staff = normalizeCanonicalStaffRole(role);
+  return !!staff && ROLE_PERMISSIONS[staff].has("hub.access");
 }
 
 export function hasPermission(
   role: UserRole,
   permission: AdminPermission
 ): boolean {
-  if (!role || !isStaffRole(role)) return false;
-  return ROLE_PERMISSIONS[role].has(permission);
+  const staff = normalizeCanonicalStaffRole(role);
+  if (!staff) return false;
+  return ROLE_PERMISSIONS[staff].has(permission);
 }
 
 export function getStaffPermissions(role: UserRole): AdminPermission[] {
-  if (!role || !isStaffRole(role)) return [];
-  return Array.from(ROLE_PERMISSIONS[role]);
+  const staff = normalizeCanonicalStaffRole(role);
+  if (!staff) return [];
+  return Array.from(ROLE_PERMISSIONS[staff]);
 }
 
 export function roleDisplayName(
   role: UserRole,
   opts?: { isFounder?: boolean | null }
 ): string {
-  if (opts?.isFounder === true) return "Fondateur";
-  switch (role) {
-    case "admin":
-      return "Super Admin";
-    case "ops":
-      return "Operations Admin";
-    case "finance":
-      return "Finance Admin";
-    case "support":
-      return "Support Admin";
-    case "review":
-      return "Review Admin";
-    default:
-      return role ?? "—";
-  }
+  return canonicalRoleDisplayName(role, opts);
 }
 
 export function normalizeStaffRole(value: unknown): StaffRole | null {
-  const role = normalizeUserRole(value);
-  return isStaffRole(role) ? role : null;
+  return normalizeCanonicalStaffRole(value);
 }

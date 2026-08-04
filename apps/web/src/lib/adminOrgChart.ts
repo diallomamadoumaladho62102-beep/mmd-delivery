@@ -28,7 +28,7 @@ export const MMD_ORG_CHART: OrgNode = {
     {
       id: "super-admin",
       title: "Super Admin",
-      roleKey: "admin",
+      roleKey: "super_admin",
       department: "Executive",
     },
     {
@@ -40,13 +40,13 @@ export const MMD_ORG_CHART: OrgNode = {
         {
           id: "finance-managers",
           title: "Finance Managers",
-          roleKey: "finance",
+          roleKey: "finance_admin",
           department: "Finance",
         },
         {
           id: "payout-managers",
           title: "Payout Managers",
-          roleKey: "finance",
+          roleKey: "finance_admin",
           department: "Finance",
         },
       ],
@@ -60,19 +60,19 @@ export const MMD_ORG_CHART: OrgNode = {
         {
           id: "dispatch-managers",
           title: "Dispatch Managers",
-          roleKey: "ops",
+          roleKey: "operations_admin",
           department: "Operations",
         },
         {
           id: "support-managers",
           title: "Support Managers",
-          roleKey: "support",
+          roleKey: "support_admin",
           department: "Support",
         },
         {
           id: "driver-verification",
           title: "Driver Verification",
-          roleKey: "review",
+          roleKey: "review_admin",
           department: "Trust & Safety",
         },
       ],
@@ -107,23 +107,23 @@ export const MMD_ORG_CHART: OrgNode = {
 export function staffRolesForOrgNode(roleKey: OrgNodeRole): StaffRole[] {
   switch (roleKey) {
     case "founder":
-    case "admin":
-      return ["admin"];
-    case "finance":
+    case "super_admin":
+      return ["super_admin"];
+    case "finance_admin":
     case "finance_director":
-      return ["finance"];
-    case "ops":
+      return ["finance_admin"];
+    case "operations_admin":
     case "ops_director":
     case "marketplace_director":
     case "taxi_director":
-      return ["ops"];
-    case "support":
-      return ["support"];
-    case "review":
+      return ["operations_admin"];
+    case "support_admin":
+      return ["support_admin"];
+    case "review_admin":
     case "safety_director":
-      return ["review"];
+      return ["review_admin"];
     case "ai_director":
-      return ["admin", "ops"];
+      return ["super_admin", "operations_admin"];
     default:
       return [];
   }

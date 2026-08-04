@@ -29,10 +29,18 @@ function test(name: string, fn: () => void) {
   }
 }
 
-const founder = session({ userId: "f1", role: "admin", isFounder: true });
-const superAdmin = session({ userId: "a1", role: "admin", isFounder: false });
-const finance = session({ userId: "fin1", role: "finance" });
-const ops = session({ userId: "ops1", role: "ops" });
+const founder = session({
+  userId: "f1",
+  role: "super_admin",
+  isFounder: true,
+});
+const superAdmin = session({
+  userId: "a1",
+  role: "super_admin",
+  isFounder: false,
+});
+const finance = session({ userId: "fin1", role: "finance_admin" });
+const ops = session({ userId: "ops1", role: "operations_admin" });
 
 test("founder and super admin flags", () => {
   assert.equal(isFounderOrSuperAdmin(founder), true);

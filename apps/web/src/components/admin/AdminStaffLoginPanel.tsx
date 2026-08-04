@@ -257,8 +257,8 @@ export default function AdminStaffLoginPanel() {
             </h1>
 
             <p className="mt-4 max-w-md text-sm leading-6 text-gray-300 md:text-base">
-              Espace réservé au personnel autorisé : admin, ops, support, finance
-              et review.
+              Espace réservé au personnel autorisé : Super Admin, Operations,
+              Support, Finance et Review.
             </p>
 
             <div className="mt-8 space-y-3 text-sm text-gray-300 md:text-base">

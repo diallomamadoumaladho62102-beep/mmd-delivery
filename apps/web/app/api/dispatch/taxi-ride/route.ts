@@ -26,10 +26,16 @@ function assertUserMayDispatchTaxiRide(params: {
 
   if (
     normalizedRole === "admin" ||
+    normalizedRole === "super_admin" ||
     normalizedRole === "ops" ||
+    normalizedRole === "operations_admin" ||
     normalizedRole === "support" ||
+    normalizedRole === "support_admin" ||
     normalizedRole === "finance" ||
-    normalizedRole === "review"
+    normalizedRole === "finance_admin" ||
+    normalizedRole === "review" ||
+    normalizedRole === "review_admin" ||
+    normalizedRole === "founder"
   ) {
     return { ok: true };
   }

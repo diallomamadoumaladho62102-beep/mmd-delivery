@@ -3,6 +3,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@mmd/platform-roles": [
+        "../../shared/platformRoles.ts"
       ]
     },
     "target": "ES2017",

@@ -47,7 +47,7 @@ export async function requireStaffPageAccess(
 
   // Founder is absolute owner — never redirect away from an admin page.
   if (isFounder) {
-    return { userId: user.id, role: role ?? "admin" };
+    return { userId: user.id, role: role ?? "super_admin" };
   }
 
   if (!role || !hasPermission(role, permission ?? "hub.access")) {
@@ -83,7 +83,7 @@ export async function requirePricingPageAccess(): Promise<{
   });
 
   if (isFounder) {
-    return { userId: user.id, role: role ?? "admin", canWrite: true };
+    return { userId: user.id, role: role ?? "super_admin", canWrite: true };
   }
 
   if (!role || !canReadPricing(role)) redirect("/admin");

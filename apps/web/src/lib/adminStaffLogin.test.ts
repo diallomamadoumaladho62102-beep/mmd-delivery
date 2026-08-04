@@ -24,15 +24,28 @@ test("validates staff login email", () => {
 test("maps invalid credentials to French message", () => {
   assert.equal(
     mapSupabaseSignInError("Invalid login credentials"),
-    "Email ou mot de passe incorrect.",
+    "Email ou mot de passe incorrect."
   );
 });
 
-test("allows authorized staff roles", () => {
-  for (const role of ["admin", "ops", "support", "finance", "review"] as const) {
+test("allows authorized staff roles (canonical + legacy aliases)", () => {
+  for (const role of [
+    "super_admin",
+    "operations_admin",
+    "support_admin",
+    "finance_admin",
+    "review_admin",
+    "admin",
+    "ops",
+    "support",
+    "finance",
+    "review",
+  ] as const) {
     const result = evaluateStaffLoginAccess({ role, accountStatus: "active" });
-    assert.equal(result.allowed, true);
-    if (result.allowed) assert.equal(result.role, role);
+    assert.equal(result.allowed, true, role);
+    if (result.allowed) {
+      assert.ok(result.role, role);
+    }
   }
 });
 
@@ -48,7 +61,7 @@ test("rejects client driver and restaurant accounts", () => {
 
 test("rejects suspended staff accounts", () => {
   const result = evaluateStaffLoginAccess({
-    role: "ops",
+    role: "operations_admin",
     accountStatus: "suspended",
   });
   assert.equal(result.allowed, false);
@@ -64,7 +77,7 @@ test("founder demoted to restaurant still gets Super Admin staff login", () => {
     isFounder: true,
   });
   assert.equal(result.allowed, true);
-  if (result.allowed) assert.equal(result.role, "admin");
+  if (result.allowed) assert.equal(result.role, "super_admin");
 });
 
 test("non-founder restaurant still denied staff login", () => {

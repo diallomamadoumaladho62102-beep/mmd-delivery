@@ -279,11 +279,27 @@ type AppRole = "client" | "driver" | "restaurant" | "seller" | "admin" | null;
 function normalizeAppRole(value: unknown): AppRole {
   const role = String(value ?? "").trim().toLowerCase();
 
-  if (role === "client") return "client";
+  if (role === "client" || role === "customer") return "client";
   if (role === "driver" || role === "livreur") return "driver";
-  if (role === "restaurant") return "restaurant";
-  if (role === "seller") return "seller";
-  if (role === "admin") return "admin";
+  if (role === "restaurant" || role === "restaurant_owner") return "restaurant";
+  if (role === "seller" || role === "merchant" || role === "merchant_owner") {
+    return "seller";
+  }
+  if (
+    role === "admin" ||
+    role === "super_admin" ||
+    role === "founder" ||
+    role === "ops" ||
+    role === "operations_admin" ||
+    role === "finance" ||
+    role === "finance_admin" ||
+    role === "support" ||
+    role === "support_admin" ||
+    role === "review" ||
+    role === "review_admin"
+  ) {
+    return "admin";
+  }
 
   return null;
 }
@@ -539,7 +555,7 @@ export function AppNavigator({
       if (!error) {
         const dbRole = normalizeAppRole((data as any)?.role);
         const isFounder = (data as any)?.is_founder === true;
-        // Founder/admin keeps profiles.role='admin' but may operate any public
+        // Founder/admin keeps profiles.role='super_admin' but may operate any public
         // surface via selected role (single auth user, no duplicates).
         if ((isFounder || dbRole === "admin") && selectedRole) {
           return selectedRole;

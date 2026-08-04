@@ -14,11 +14,23 @@ export const ADMIN_AI_DOMAIN_STATUS = "planned" as const;
 export type AdminAiDomainPlan = {
   status: typeof ADMIN_AI_DOMAIN_STATUS;
   route: "/api/ai/admin/chat";
-  requiredRoles: Array<"admin" | "ops" | "support" | "finance" | "review">;
+  requiredRoles: Array<
+    | "super_admin"
+    | "operations_admin"
+    | "support_admin"
+    | "finance_admin"
+    | "review_admin"
+  >;
 };
 
 export const adminAiDomainPlan: AdminAiDomainPlan = {
   status: ADMIN_AI_DOMAIN_STATUS,
   route: "/api/ai/admin/chat",
-  requiredRoles: ["admin", "ops", "support", "finance", "review"],
+  requiredRoles: [
+    "super_admin",
+    "operations_admin",
+    "support_admin",
+    "finance_admin",
+    "review_admin",
+  ],
 };

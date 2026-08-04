@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { hasAnyRole, normalizeUserRole, type UserRole } from "@/lib/roles";
+import { STAFF_ROLES } from "@mmd/platform-roles";
 import {
   getSupabasePublishableKey,
   getSupabaseSecretKey,
   getSupabaseUrl,
 } from "@/lib/supabaseEnv";
-
-const STAFF_ROLES = ["admin", "ops", "support", "finance", "review"] as const;
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
 export function taxiJson(body: Record<string, unknown>, status = 200) {

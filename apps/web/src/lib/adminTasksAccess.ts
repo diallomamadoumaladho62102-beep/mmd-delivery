@@ -18,7 +18,7 @@ export type AdminTaskRow = {
 };
 
 export function isFounderOrSuperAdmin(session: AdminSession): boolean {
-  return session.isFounder === true || session.role === "admin";
+  return session.isFounder === true || session.role === "super_admin";
 }
 
 /** Sanitize free-text fields before persistence (defense in depth vs stored XSS). */

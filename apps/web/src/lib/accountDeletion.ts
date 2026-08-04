@@ -1,14 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash, randomBytes } from "crypto";
 import { normalizeUserRole, type UserRole } from "@/lib/roles";
+import { isStaffRole, normalizeProfileRole } from "@mmd/platform-roles";
 
 export const DELETABLE_ROLES = ["client", "driver", "restaurant"] as const;
 export type DeletableRole = (typeof DELETABLE_ROLES)[number];
 
 export function isDeletableRole(role: UserRole): role is DeletableRole {
+  if (role == null) return false;
+  if (isStaffRole(role)) return false;
+  const canonical = normalizeProfileRole(role);
   return (
-    role != null &&
-    (DELETABLE_ROLES as readonly string[]).includes(role)
+    canonical != null &&
+    (DELETABLE_ROLES as readonly string[]).includes(canonical)
   );
 }
 

@@ -30,7 +30,13 @@ function assertUserMayDispatchDeliveryRequest(params: {
   const { userId, role } = params.access;
   const normalizedRole = normalize(role);
 
-  if (normalizedRole === "admin" || normalizedRole === "ops") {
+  if (
+    normalizedRole === "admin" ||
+    normalizedRole === "super_admin" ||
+    normalizedRole === "ops" ||
+    normalizedRole === "operations_admin" ||
+    normalizedRole === "founder"
+  ) {
     return { ok: true };
   }
 

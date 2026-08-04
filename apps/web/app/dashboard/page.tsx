@@ -70,7 +70,16 @@ export default function DashboardHubPage() {
       setRole(nextRole || null);
       if (nextRole === "driver") router.replace("/orders/driver");
       else if (nextRole === "restaurant") router.replace("/restaurants");
-      else if (nextRole === "admin" || nextRole === "staff")
+      else if (
+        nextRole === "admin" ||
+        nextRole === "super_admin" ||
+        nextRole === "staff" ||
+        nextRole === "operations_admin" ||
+        nextRole === "finance_admin" ||
+        nextRole === "support_admin" ||
+        nextRole === "review_admin" ||
+        nextRole === "founder"
+      )
         router.replace("/admin");
       else if (nextRole === "seller") router.replace("/seller");
       else if (nextRole === "client" || nextRole === "customer")

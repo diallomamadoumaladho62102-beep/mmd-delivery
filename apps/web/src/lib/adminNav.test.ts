@@ -28,7 +28,7 @@ function navHrefs(role: StaffRole, isFounder = false) {
 
 test("finance nav excludes dispatch", () => {
   const groups = filterNavGroups({
-    role: "finance",
+    role: "finance_admin",
     isFounder: false,
     hasPermission: (permission) =>
       permission === "hub.access" ||
@@ -46,7 +46,7 @@ test("finance nav excludes dispatch", () => {
 
 test("founder sees staff administration", () => {
   const groups = filterNavGroups({
-    role: "admin",
+    role: "super_admin",
     isFounder: true,
     hasPermission: () => false,
   });
@@ -56,7 +56,7 @@ test("founder sees staff administration", () => {
 });
 
 test("founder sees Administrators, Advertisements and Live Map", () => {
-  const hrefs = navHrefs("admin", true);
+  const hrefs = navHrefs("super_admin", true);
   assert.equal(hrefs.includes("/admin/staff"), true);
   assert.equal(hrefs.includes("/admin/advertisements"), true);
   assert.equal(hrefs.includes("/admin/live-map"), true);
@@ -67,7 +67,7 @@ test("founder sees Administrators, Advertisements and Live Map", () => {
 });
 
 test("support and finance see Live Map + ads but not Administrators", () => {
-  for (const role of ["support", "finance"] as const) {
+  for (const role of ["support_admin", "finance_admin"] as const) {
     const hrefs = navHrefs(role, false);
     assert.equal(hrefs.includes("/admin/live-map"), true, `${role} live-map`);
     assert.equal(
@@ -84,7 +84,7 @@ test("support and finance see Live Map + ads but not Administrators", () => {
 });
 
 test("ops cannot open Administrators nav", () => {
-  const hrefs = navHrefs("ops", false);
+  const hrefs = navHrefs("operations_admin", false);
   assert.equal(hrefs.includes("/admin/staff"), false);
 });
 

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { STAFF_ROLES } from "@/lib/adminRbac";
+import { SUPER_ADMIN_ROLE, normalizeStaffRole } from "@/lib/adminRbac";
 import { AdminAccessError } from "@/lib/adminServer";
 
 type StaffProfileRow = {
@@ -29,7 +29,7 @@ export async function resolveFounderAdminUserId(
   const { data: oldest } = await supabase
     .from("profiles")
     .select("id")
-    .eq("role", "admin")
+    .in("role", [SUPER_ADMIN_ROLE, "admin", "founder"])
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -84,7 +84,7 @@ export async function assertTargetIsStaffAdmin(
 ): Promise<StaffProfileRow> {
   const profile = await loadStaffProfile(supabase, userId);
 
-  if (!(STAFF_ROLES as readonly string[]).includes(String(profile.role ?? ""))) {
+  if (!normalizeStaffRole(profile.role)) {
     throw new AdminAccessError("Target is not a staff administrator", 400);
   }
 
