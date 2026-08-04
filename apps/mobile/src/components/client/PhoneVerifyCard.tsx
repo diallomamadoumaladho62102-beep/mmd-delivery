@@ -50,7 +50,7 @@ export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
       phone,
     });
     setBusy(false);
-    if (!started.ok) {
+    if (started.ok === false) {
       setError(started.error || "Unable to send code");
       return;
     }
@@ -68,7 +68,7 @@ export function PhoneVerifyCard({ phone, verified, onVerified }: Props) {
       code,
     });
     setBusy(false);
-    if (!checked.ok) {
+    if (checked.ok === false) {
       setError(checked.error || "Invalid code");
       return;
     }

@@ -49,8 +49,8 @@ export default function PhoneVerifyCard({ phone, verified, onVerified }: Props) 
       phone,
     });
     setBusy(false);
-    if (!started.ok) {
-      setError(started.error ?? "Unable to send code");
+    if (started.ok === false) {
+      setError(started.error || "Unable to send code");
       return;
     }
     setNotice("Verification code sent by SMS.");
@@ -67,8 +67,8 @@ export default function PhoneVerifyCard({ phone, verified, onVerified }: Props) 
       code,
     });
     setBusy(false);
-    if (!checked.ok) {
-      setError(checked.error ?? "Invalid code");
+    if (checked.ok === false) {
+      setError(checked.error || "Invalid code");
       return;
     }
     setNotice("Phone verified.");
