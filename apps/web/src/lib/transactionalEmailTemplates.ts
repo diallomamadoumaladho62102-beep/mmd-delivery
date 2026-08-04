@@ -1,3 +1,8 @@
+import {
+  formatSocialLinksPlainText,
+  getActiveSocialLinks,
+} from "@mmd/social-links";
+
 export type TransactionalEmailTemplate = {
   subject: string;
   previewText: string;
@@ -14,6 +19,18 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function socialFooterHtml(): string {
+  const links = getActiveSocialLinks()
+    .map(
+      (link, index) =>
+        `${index > 0 ? "&nbsp;·&nbsp;" : ""}<a href="${escapeHtml(link.url)}" style="color:#ea580c;text-decoration:none;">${escapeHtml(link.label)}</a>`,
+    )
+    .join("");
+  return links
+    ? `<span style="display:inline-block;margin-top:8px;">${links}</span>`
+    : "";
 }
 
 export function renderTransactionalEmailHtml(
@@ -71,7 +88,8 @@ export function renderTransactionalEmailHtml(
             <tr>
               <td style="padding:18px 28px 24px;font-size:12px;line-height:1.5;color:#64748b;background:#f8fafc;">
                 MMD Delivery — livraison, courses et marketplace.<br />
-                Besoin d'aide ? Répondez à cet email ou contactez le support dans l'application.
+                Besoin d'aide ? Répondez à cet email ou contactez le support dans l'application.<br />
+                ${socialFooterHtml()}
               </td>
             </tr>
           </table>
@@ -89,7 +107,7 @@ export function renderTransactionalEmailText(
   if (template.ctaLabel && template.ctaUrl) {
     lines.push("", `${template.ctaLabel}: ${template.ctaUrl}`);
   }
-  lines.push("", "MMD Delivery");
+  lines.push("", "MMD Delivery", formatSocialLinksPlainText());
   return lines.join("\n");
 }
 
@@ -238,18 +256,44 @@ export function staffAdminInvitationEmail(params: {
   invitedBy?: string | null;
   roleLabel: string;
   inviteUrl: string;
+  /** Absolute expiry instant for the invite/recovery link (ISO or Date). */
+  expiresAt?: Date | string | null;
+  /** Fallback relative TTL when expiresAt is omitted (default 24h). */
+  expiresInHours?: number | null;
 }): TransactionalEmailTemplate {
   const invitee = String(params.inviteeName ?? "").trim();
   const invitedBy = String(params.invitedBy ?? "MMD Delivery").trim();
   const roleLabel = String(params.roleLabel ?? "Administrator").trim();
+  const hours = Math.max(1, Number(params.expiresInHours ?? 24) || 24);
+  const expiresAt = params.expiresAt
+    ? new Date(params.expiresAt)
+    : new Date(Date.now() + hours * 60 * 60 * 1000);
+  const expiresLabel = Number.isFinite(expiresAt.getTime())
+    ? expiresAt.toLocaleString("fr-FR", {
+        dateStyle: "long",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }) + " UTC"
+    : `dans ${hours} heures`;
+
   return {
     subject: `Invitation administrateur MMD Delivery — ${roleLabel}`,
-    previewText: "Définissez votre mot de passe pour accéder à l'administration.",
-    headline: "Accès administrateur",
-    bodyHtml: `<p>Bonjour${invitee ? ` ${escapeHtml(invitee)}` : ""},</p>
-      <p>${escapeHtml(invitedBy)} vous a créé un compte <strong>${escapeHtml(roleLabel)}</strong> sur MMD Delivery.</p>
+    previewText: `${invitee || "Administrateur"} · ${roleLabel} · Définissez votre mot de passe.`,
+    headline: "Bienvenue dans l'administration",
+    bodyHtml: `<p>Bonjour${invitee ? ` <strong>${escapeHtml(invitee)}</strong>` : ""},</p>
+      <p>${escapeHtml(invitedBy)} vous invite à rejoindre l'équipe MMD Delivery en tant qu'administrateur.</p>
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin:18px 0;width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;">
+            <div style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#9a3412;font-weight:700;">Votre rôle</div>
+            <div style="margin-top:4px;font-size:18px;font-weight:700;color:#9a3412;">${escapeHtml(roleLabel)}</div>
+          </td>
+        </tr>
+      </table>
       <p>Pour activer votre accès, définissez votre mot de passe via le bouton ci-dessous, puis connectez-vous sur la page d'administration.</p>
-      <p>Ce lien est personnel et à durée limitée. Ne le partagez pas.</p>`,
+      <p style="margin:16px 0 0;padding:12px 14px;background:#f8fafc;border-left:3px solid #f97316;border-radius:0 10px 10px 0;font-size:14px;color:#334155;">
+        <strong>Sécurité :</strong> ce lien est personnel, à usage unique et expire le <strong>${escapeHtml(expiresLabel)}</strong>. Ne le partagez avec personne. Si vous n'attendiez pas cet email, ignorez-le et contactez le Founder MMD Delivery.
+      </p>`,
     ctaLabel: "Définir mon mot de passe",
     ctaUrl: params.inviteUrl,
   };

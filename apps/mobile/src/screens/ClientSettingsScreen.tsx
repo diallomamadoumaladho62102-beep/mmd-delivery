@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useTranslation } from "react-i18next";
 import Constants from "expo-constants";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { SocialLinks } from "../components/shared/SocialLinks";
 import { ClientHomeLanguageSheet } from "../components/client/home/ClientHomeLanguageSheet";
 import { clearSelectedRole } from "../lib/authRole";
 import {
@@ -242,6 +243,12 @@ export function ClientSettingsScreen() {
             value={platformLabel}
             last
           />
+        </Section>
+
+        <Section title={t("client.settings.social", "Follow MMD Delivery")}>
+          <View style={{ padding: 12 }}>
+            <SocialLinks tone="dark" />
+          </View>
         </Section>
       </ScrollView>
 

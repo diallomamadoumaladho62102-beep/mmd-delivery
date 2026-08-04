@@ -23,6 +23,12 @@ import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { AddressAutocomplete } from "../components/location/AddressAutocomplete";
+import { PhoneVerifyCard } from "../components/client/PhoneVerifyCard";
+import {
+  isClientProfileComplete,
+  scoreClientProfileCompleteness,
+} from "../lib/profileCompleteness";
 import { toUserFacingError } from "../lib/userFacingError";
 
 type Nav = NativeStackNavigationProp<RootStackParamList, "ClientProfile">;
@@ -90,6 +96,11 @@ export function ClientProfileScreen() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
 
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -100,28 +111,80 @@ export function ClientProfileScreen() {
   const [avatarLocalUri, setAvatarLocalUri] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
-  const profileComplete = useMemo(() => {
-    return (
-      trimOrEmpty(fullName).length > 1 &&
-      trimOrEmpty(phone).length >= 7 &&
-      trimOrEmpty(address).length > 3 &&
-      trimOrEmpty(city).length > 1 &&
-      trimOrEmpty(state).length >= 2 &&
-      trimOrEmpty(postalCode).length >= 4 &&
-      trimOrEmpty(country).length >= 2 &&
-      !!(avatarUrl || avatarLocalUri)
-    );
-  }, [
-    fullName,
-    phone,
-    address,
-    city,
-    state,
-    postalCode,
-    country,
-    avatarUrl,
-    avatarLocalUri,
-  ]);
+  const requirePhone =
+    String(process.env.EXPO_PUBLIC_PHONE_OTP_ENABLED ?? "")
+      .toLowerCase()
+      .trim() === "true";
+  const requireEmail =
+    String(process.env.EXPO_PUBLIC_REQUIRE_EMAIL_VERIFICATION ?? "")
+      .toLowerCase()
+      .trim() === "true";
+
+  const completeness = useMemo(
+    () =>
+      scoreClientProfileCompleteness({
+        fullName,
+        email,
+        emailVerified,
+        phone,
+        phoneVerified,
+        avatarUrl: avatarLocalUri || avatarUrl,
+        addressLine: address,
+        city,
+        latitude,
+        longitude,
+      }),
+    [
+      fullName,
+      email,
+      emailVerified,
+      phone,
+      phoneVerified,
+      avatarLocalUri,
+      avatarUrl,
+      address,
+      city,
+      latitude,
+      longitude,
+    ],
+  );
+
+  const profileComplete = useMemo(
+    () =>
+      isClientProfileComplete(
+        {
+          fullName,
+          email,
+          emailVerified,
+          phone,
+          phoneVerified,
+          avatarUrl: avatarLocalUri || avatarUrl,
+          addressLine: address,
+          city,
+          latitude,
+          longitude,
+        },
+        {
+          requirePhoneVerified: requirePhone,
+          requireEmailVerified: requireEmail,
+        },
+      ),
+    [
+      fullName,
+      email,
+      emailVerified,
+      phone,
+      phoneVerified,
+      avatarLocalUri,
+      avatarUrl,
+      address,
+      city,
+      latitude,
+      longitude,
+      requirePhone,
+      requireEmail,
+    ],
+  );
 
   useEffect(() => {
     // ✅ utilise i18n.language => re-run si besoin (optionnel), surtout ça force le refresh des textes
@@ -143,35 +206,66 @@ export function ClientProfileScreen() {
         }
 
         const uid = session.user.id;
+        setEmail(session.user.email ?? "");
+        setEmailVerified(Boolean(session.user.email_confirmed_at));
 
-        const { data, error } = await supabase
-          .from("client_profiles")
-          .select("*")
-          .eq("user_id", uid)
-          .maybeSingle();
+        const [{ data, error }, { data: baseProfile }, { data: addrRow }] =
+          await Promise.all([
+            supabase
+              .from("client_profiles")
+              .select("*")
+              .eq("user_id", uid)
+              .maybeSingle(),
+            supabase
+              .from("profiles")
+              .select("full_name, phone, phone_e164, phone_verified_at, email, avatar_url")
+              .eq("id", uid)
+              .maybeSingle(),
+            supabase
+              .from("client_addresses")
+              .select(
+                "address_line1, city, state, postal_code, country, latitude, longitude, lat, lng",
+              )
+              .eq("user_id", uid)
+              .eq("is_default", true)
+              .maybeSingle(),
+          ]);
 
         if (error) {
           console.log("load client_profiles error (ignored):", error);
-          return;
         }
 
+        if (!alive) return;
+
         const row = data as ProfileRow | null;
-        if (!alive || !row) return;
+        setFullName(row?.full_name ?? baseProfile?.full_name ?? "");
+        setPhone(
+          row?.phone ??
+            baseProfile?.phone_e164 ??
+            baseProfile?.phone ??
+            "",
+        );
+        setPhoneVerified(Boolean(baseProfile?.phone_verified_at));
+        if (baseProfile?.email) setEmail(String(baseProfile.email));
 
-        setFullName(row.full_name ?? "");
-        setPhone(row.phone ?? "");
-
-        const addr = row.address ?? row.address_line1 ?? "";
+        const addr =
+          addrRow?.address_line1 ??
+          row?.address ??
+          row?.address_line1 ??
+          "";
         setAddress(addr ?? "");
+        setCity(addrRow?.city ?? row?.city ?? "");
+        setState(addrRow?.state ?? row?.state ?? "");
+        setPostalCode(
+          addrRow?.postal_code ?? row?.postal_code ?? row?.zip ?? "",
+        );
+        setCountry(addrRow?.country ?? row?.country ?? "US");
+        setAvatarUrl(row?.avatar_url ?? baseProfile?.avatar_url ?? null);
 
-        setCity(row.city ?? "");
-        setState(row.state ?? "");
-
-        const zipLike = row.postal_code ?? row.zip ?? "";
-        setPostalCode(zipLike ?? "");
-
-        setCountry(row.country ?? "US");
-        setAvatarUrl(row.avatar_url ?? null);
+        const lat = Number(addrRow?.latitude ?? addrRow?.lat);
+        const lng = Number(addrRow?.longitude ?? addrRow?.lng);
+        setLatitude(Number.isFinite(lat) ? lat : null);
+        setLongitude(Number.isFinite(lng) ? lng : null);
       } catch (e) {
         console.log("load profile failed (ignored):", e);
       } finally {
@@ -243,8 +337,26 @@ export function ClientProfileScreen() {
     state: string;
     postalCode: string;
     country: string;
+    latitude: number | null;
+    longitude: number | null;
   }) {
-    const { uid, addressLine1, city, state, postalCode, country } = params;
+    const {
+      uid,
+      addressLine1,
+      city,
+      state,
+      postalCode,
+      country,
+      latitude: lat,
+      longitude: lng,
+    } = params;
+    const coords =
+      lat != null &&
+      lng != null &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng)
+        ? { latitude: lat, longitude: lng, lat, lng }
+        : {};
 
     const { error: unsetErr } = await supabase
       .from("client_addresses")
@@ -267,6 +379,7 @@ export function ClientProfileScreen() {
         postal_code: postalCode,
         country,
         is_default: true,
+        ...coords,
       },
       { onConflict: "user_id,label" }
     );
@@ -303,6 +416,7 @@ export function ClientProfileScreen() {
           country,
           is_default: true,
           updated_at: new Date().toISOString(),
+          ...coords,
         })
         .eq("id", existing.id);
 
@@ -328,6 +442,7 @@ export function ClientProfileScreen() {
       postal_code: postalCode,
       country,
       is_default: true,
+      ...coords,
     });
 
     if (insErr) {
@@ -406,20 +521,24 @@ export function ClientProfileScreen() {
           t("client.profile.addressTitle", "Adresse"),
           t("client.profile.addressError", "Entre une adresse valide.")
         );
+      if (
+        latitude == null ||
+        longitude == null ||
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude)
+      ) {
+        return Alert.alert(
+          t("client.profile.addressTitle", "Adresse"),
+          t(
+            "client.profile.addressMapboxError",
+            "Sélectionne une adresse Mapbox dans la liste pour la normaliser.",
+          ),
+        );
+      }
       if (trimOrEmpty(city).length < 2)
         return Alert.alert(
           t("client.profile.cityTitle", "Ville"),
           t("client.profile.cityError", "Entre une ville valide.")
-        );
-      if (trimOrEmpty(state).length < 2)
-        return Alert.alert(
-          t("client.profile.stateTitle", "État"),
-          t("client.profile.stateError", "Ex: NY")
-        );
-      if (trimOrEmpty(postalCode).length < 4)
-        return Alert.alert(
-          t("client.profile.zipTitle", "ZIP"),
-          t("client.profile.zipError", "Ex: 11207")
         );
 
       setSaving(true);
@@ -441,6 +560,7 @@ export function ClientProfileScreen() {
         address: addr1,
         address_line1: addr1,
         address_line2: null,
+        default_address: addr1,
 
         city: trimOrEmpty(city),
         state: normState,
@@ -491,6 +611,8 @@ export function ClientProfileScreen() {
         state: normState,
         postalCode: zipVal,
         country: normCountry,
+        latitude,
+        longitude,
       });
 
       setAvatarUrl(finalAvatar ?? null);
@@ -570,6 +692,33 @@ export function ClientProfileScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 40 }}
         >
+        <View
+          style={{
+            marginBottom: 14,
+            backgroundColor: "#431407",
+            borderColor: "#FDBA74",
+            borderWidth: 1,
+            borderRadius: 14,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
+          }}
+        >
+          <Text style={{ color: "#FFEDD5", fontWeight: "800", fontSize: 13 }}>
+            {t("client.profile.completeness", "Complétude du profil")} :{" "}
+            {completeness.percent}%
+          </Text>
+          <Text style={{ color: "#FED7AA", fontSize: 11, marginTop: 4 }}>
+            {completeness.missing.length
+              ? `${t("client.profile.missing", "Manquant")} : ${completeness.missing.join(", ")}`
+              : t("client.profile.complete", "Profil complet.")}
+          </Text>
+          {latitude != null && longitude != null ? (
+            <Text style={{ color: "#86EFAC", fontSize: 11, marginTop: 4 }}>
+              {t("client.profile.addressVerifiedBadge", "Adresse vérifiée")}
+            </Text>
+          ) : null}
+        </View>
+
         <TouchableOpacity
           onPress={() => navigation.navigate("ClientSettings")}
           activeOpacity={0.85}
@@ -676,12 +825,43 @@ export function ClientProfileScreen() {
           placeholder={t("client.profile.placeholders.phone", "Ex: 929xxxxxxx")}
           keyboardType="phone-pad"
         />
+        <PhoneVerifyCard
+          phone={phone}
+          verified={phoneVerified}
+          onVerified={(e164) => {
+            setPhoneVerified(true);
+            setPhone(e164);
+          }}
+        />
 
         <Label t={tt} labelKey="client.profile.fields.address" fallback="Adresse" />
-        <Field
+        <AddressAutocomplete
           value={address}
-          onChangeText={setAddress}
-          placeholder={t("client.profile.placeholders.address", "Ex: 686 Vermont St")}
+          onChangeText={(text) => {
+            setAddress(text);
+            setLatitude(null);
+            setLongitude(null);
+          }}
+          onSelect={(place) => {
+            setAddress(place.fullAddress);
+            setLatitude(place.latitude);
+            setLongitude(place.longitude);
+          }}
+          placeholder={t(
+            "client.profile.placeholders.address",
+            "Rechercher une adresse…",
+          )}
+          country={trimOrEmpty(country).toLowerCase() || undefined}
+          style={{
+            borderWidth: 1,
+            borderColor: "#374151",
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            color: "#E5E7EB",
+            backgroundColor: "#0B1220",
+            marginBottom: 4,
+          }}
         />
 
         <View style={{ flexDirection: "row", gap: 10 }}>

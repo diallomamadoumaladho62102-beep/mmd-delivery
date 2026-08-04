@@ -21,7 +21,10 @@ test("transactional email templates render responsive html", () => {
   assert.ok(html.includes("<!DOCTYPE html>"));
   assert.ok(html.includes("viewport"));
   assert.ok(html.includes("Pizza House"));
+  assert.ok(html.includes("tiktok.com/@mmddelivery"));
+  assert.ok(html.includes("Instagram"));
   assert.ok(text.includes(template.headline));
+  assert.ok(text.includes("TikTok"));
 });
 
 test("account created template includes welcome headline", () => {

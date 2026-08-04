@@ -1,8 +1,10 @@
 import Image from "next/image";
+import { OFFICIAL_WEBSITE_URL } from "@mmd/social-links";
+import SocialLinks from "@/components/site/SocialLinks";
 
-const IOS_URL = "https://www.mmddelivery.com";
-const ANDROID_URL = "https://www.mmddelivery.com";
-const FALLBACK_URL = "https://www.mmddelivery.com";
+const IOS_URL = OFFICIAL_WEBSITE_URL;
+const ANDROID_URL = OFFICIAL_WEBSITE_URL;
+const FALLBACK_URL = OFFICIAL_WEBSITE_URL;
 
 export default function DownloadPage() {
   return (
@@ -149,6 +151,22 @@ export default function DownloadPage() {
             >
               Continue to website →
             </a>
+          </div>
+
+          <div style={{ marginTop: 28 }}>
+            <p
+              style={{
+                margin: "0 0 12px",
+                color: "#94A3B8",
+                fontWeight: 700,
+                fontSize: 14,
+              }}
+            >
+              Follow MMD Delivery
+            </p>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <SocialLinks variant="footer" />
+            </div>
           </div>
         </div>
       </section>

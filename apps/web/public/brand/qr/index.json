@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-08-04T07:19:01.078Z",
+  "source": "shared/socialLinks.ts",
+  "targets": [
+    {
+      "stem": "website",
+      "label": "Website",
+      "url": "https://www.mmddelivery.com",
+      "png": "/brand/qr/website.png",
+      "svg": "/brand/qr/website.svg",
+      "kits": [
+        "business-cards",
+        "referral-cards",
+        "loyalty-cards",
+        "flyers",
+        "posters",
+        "restaurant-materials",
+        "driver-welcome-kit",
+        "merchant-kit",
+        "vehicle-stickers",
+        "roll-up-banners",
+        "presentation-slides",
+        "brochures",
+        "email-signatures",
+        "packaging-inserts"
+      ]
+    },
+    {
+      "stem": "tiktok",
+      "label": "TikTok (Canonical)",
+      "url": "https://www.tiktok.com/@mmddelivery",
+      "png": "/brand/qr/tiktok.png",
+      "svg": "/brand/qr/tiktok.svg",
+      "kits": [
+        "business-cards",
+        "flyers",
+        "posters",
+        "driver-welcome-kit",
+        "merchant-kit",
+        "roll-up-banners",
+        "brochures",
+        "email-signatures"
+      ]
+    },
+    {
+      "stem": "tiktok-share",
+      "label": "TikTok (Share)",
+      "url": "https://www.tiktok.com/@mmddelivery?_r=1&_t=ZP-98awmQSESJ5",
+      "png": "/brand/qr/tiktok-share.png",
+      "svg": "/brand/qr/tiktok-share.svg",
+      "kits": [
+        "referral-cards",
+        "loyalty-cards",
+        "packaging-inserts",
+        "flyers"
+      ]
+    },
+    {
+      "stem": "instagram",
+      "label": "Instagram",
+      "url": "https://www.instagram.com/mmddelivery?igsh=d3o1YXR3M3g1Z3dq&utm_source=ig_contact_invite",
+      "png": "/brand/qr/instagram.png",
+      "svg": "/brand/qr/instagram.svg",
+      "kits": [
+        "business-cards",
+        "flyers",
+        "posters",
+        "restaurant-materials",
+        "merchant-kit",
+        "roll-up-banners",
+        "brochures",
+        "email-signatures"
+      ]
+    },
+    {
+      "stem": "facebook",
+      "label": "Facebook",
+      "url": "https://www.facebook.com/share/1FF11rBXwE/?mibextid=wwXIfr",
+      "png": "/brand/qr/facebook.png",
+      "svg": "/brand/qr/facebook.svg",
+      "kits": [
+        "business-cards",
+        "flyers",
+        "posters",
+        "restaurant-materials",
+        "merchant-kit",
+        "brochures",
+        "email-signatures"
+      ]
+    }
+  ]
+}

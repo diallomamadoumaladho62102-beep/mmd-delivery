@@ -6,6 +6,15 @@
       ],
       "@mmd/platform-roles": [
         "../../shared/platformRoles.ts"
+      ],
+      "@mmd/social-links": [
+        "../../shared/socialLinks.ts"
+      ],
+      "@mmd/profile-completeness": [
+        "../../shared/profileCompleteness.ts"
+      ],
+      "@mmd/phone-verify-api": [
+        "../../shared/phoneVerifyApi.ts"
       ]
     },
     "target": "ES2017",

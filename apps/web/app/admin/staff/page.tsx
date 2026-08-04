@@ -633,14 +633,18 @@ export default function AdminStaffPage() {
                           >
                             Audit
                           </Link>
-                          <button
-                            type="button"
-                            disabled={savingId === row.id}
-                            onClick={() => void resendInvite(row.id)}
-                            className="rounded-lg border border-indigo-300 px-2 py-1 text-xs font-medium text-indigo-800"
-                          >
-                            Resend invite
-                          </button>
+                          {row.account_status === "active" &&
+                          !row.is_founder &&
+                          row.role !== "super_admin" ? (
+                            <button
+                              type="button"
+                              disabled={savingId === row.id}
+                              onClick={() => void resendInvite(row.id)}
+                              className="rounded-lg border border-indigo-300 px-2 py-1 text-xs font-medium text-indigo-800"
+                            >
+                              Resend invite
+                            </button>
+                          ) : null}
                           {row.account_status === "suspended" ? (
                             <button
                               type="button"

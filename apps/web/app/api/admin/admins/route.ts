@@ -283,6 +283,38 @@ export async function PATCH(request: NextRequest) {
         return json({ ok: false, error: "Administrator has no email" }, 400);
       }
 
+      const status = String(before.account_status ?? "active").toLowerCase();
+      if (status === "suspended" || status === "disabled") {
+        return json(
+          {
+            ok: false,
+            error:
+              status === "suspended"
+                ? "Cannot resend invite to a suspended administrator. Unsuspend first."
+                : "Cannot resend invite to a disabled administrator. Reactivate first.",
+          },
+          400
+        );
+      }
+
+      // Abuse protection: one resend per target every 60 seconds.
+      const since = new Date(Date.now() - 60_000).toISOString();
+      const { count: recentResends } = await supabase
+        .from("admin_audit_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("action", "admin_invite_resent")
+        .eq("target_id", userId)
+        .gte("created_at", since);
+      if ((recentResends ?? 0) > 0) {
+        return json(
+          {
+            ok: false,
+            error: "Please wait 60 seconds before resending another invitation.",
+          },
+          429
+        );
+      }
+
       const { data: actorProfile } = await supabase
         .from("profiles")
         .select("full_name, email")

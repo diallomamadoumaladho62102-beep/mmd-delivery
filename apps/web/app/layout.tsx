@@ -6,6 +6,7 @@ import { normalizeWebLocale, webDir, webT } from "../src/i18n/locales";
 import { WebI18nProvider } from "../src/components/WebI18nProvider";
 import WebVitalsReporter from "../src/components/WebVitalsReporter";
 import { CANONICAL_SITE_ORIGIN } from "../src/lib/productionSite";
+import { getActiveSocialLinks } from "@mmd/social-links";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -64,9 +65,28 @@ export default async function RootLayout({
       headerStore.get("accept-language")?.split(",")[0]
   );
 
+  const sameAs = getActiveSocialLinks()
+    .filter((link) => link.id !== "website")
+    .map((link) => link.url);
+
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "MMD Delivery",
+    url: CANONICAL_SITE_ORIGIN,
+    logo: `${CANONICAL_SITE_ORIGIN}/brand/mmd-logo-transparent-v2.png`,
+    sameAs,
+  };
+
   return (
     <html lang={locale} dir={webDir(locale)} className={sora.variable}>
       <body className="bg-gray-50 min-h-screen">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
         <WebI18nProvider locale={locale}>
           <WebVitalsReporter />
           {children}

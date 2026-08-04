@@ -15,6 +15,7 @@ const STATIC_PATHS = [
   "/contact",
   "/blog",
   "/download",
+  "/brand/social",
   "/p/business",
   "/p/restaurants",
 ];

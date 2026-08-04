@@ -158,11 +158,14 @@ export async function ensureStaffAuthUserAndSendInvite(params: {
     };
   }
 
+  // Supabase Auth invite/recovery links default to a short TTL (typically 24h).
+  const expiresInHours = 24;
   const template = staffAdminInvitationEmail({
     inviteeName: params.fullName,
     invitedBy: params.invitedByName,
     roleLabel: roleDisplayName(params.role),
     inviteUrl: actionLink,
+    expiresInHours,
   });
 
   const sent = await sendTransactionalTemplateEmail({
