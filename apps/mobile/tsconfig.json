@@ -9,7 +9,8 @@
     "types": ["react", "react-native"],
     "paths": {
       "@mmd/platform-roles": ["../../shared/platformRoles.ts"],
-      "@mmd/social-links": ["../../shared/socialLinks.ts"]
+      "@mmd/social-links": ["../../shared/socialLinks.ts"],
+      "@mmd/profile-completeness": ["../../shared/profileCompleteness.ts"]
     }
   },
   "include": [
@@ -17,7 +18,8 @@
     "App.tsx",
     "index.js",
     "../../shared/platformRoles.ts",
-    "../../shared/socialLinks.ts"
+    "../../shared/socialLinks.ts",
+    "../../shared/profileCompleteness.ts"
   ],
   "exclude": [
     "node_modules",

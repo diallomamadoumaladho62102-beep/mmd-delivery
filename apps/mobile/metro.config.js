@@ -14,6 +14,10 @@ config.resolver.extraNodeModules = {
   ...(config.resolver.extraNodeModules ?? {}),
   "@mmd/platform-roles": path.resolve(workspaceRoot, "shared/platformRoles.ts"),
   "@mmd/social-links": path.resolve(workspaceRoot, "shared/socialLinks.ts"),
+  "@mmd/profile-completeness": path.resolve(
+    workspaceRoot,
+    "shared/profileCompleteness.ts",
+  ),
 };
 
 config.resolver.blockList = [

@@ -18,6 +18,7 @@ import {
 } from "../lib/accountStatus";
 import { supabase } from "../lib/supabase";
 import { getSelectedRole } from "../lib/authRole";
+import { isClientProfileComplete as scoreClientProfileComplete } from "../lib/profileCompleteness";
 
 import { HomeScreen } from "../screens/HomeScreen";
 import { RoleSelectScreen } from "../screens/RoleSelectScreen";
@@ -750,23 +751,56 @@ export function AppNavigator({
   const isClientProfileComplete = React.useCallback(
     async (uid: string): Promise<boolean> => {
       try {
-        const { data, error } = await supabase
-          .from("client_profiles")
-          .select("phone, address, full_name, avatar_url")
-          .eq("user_id", uid)
-          .maybeSingle();
+        const [{ data, error }, { data: profile }] = await Promise.all([
+          supabase
+            .from("client_profiles")
+            .select(
+              "phone, address, default_address, full_name, avatar_url, city",
+            )
+            .eq("user_id", uid)
+            .maybeSingle(),
+          supabase
+            .from("profiles")
+            .select("email, phone_verified_at, phone, phone_e164")
+            .eq("id", uid)
+            .maybeSingle(),
+        ]);
 
         if (error) {
           console.log("client_profiles check error:", error.message);
           return false;
         }
 
-        const phoneOk = !!(data as any)?.phone?.trim?.();
-        const addrOk = !!(data as any)?.address?.trim?.();
-        const nameOk = !!(data as any)?.full_name?.trim?.();
-        const avatarOk = !!(data as any)?.avatar_url?.trim?.();
+        const requirePhone =
+          String(process.env.EXPO_PUBLIC_PHONE_OTP_ENABLED ?? "")
+            .toLowerCase()
+            .trim() === "true";
+        const requireEmail =
+          String(process.env.EXPO_PUBLIC_REQUIRE_EMAIL_VERIFICATION ?? "")
+            .toLowerCase()
+            .trim() === "true";
 
-        return phoneOk && addrOk && nameOk && avatarOk;
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        return scoreClientProfileComplete(
+          {
+            fullName: (data as any)?.full_name,
+            email: profile?.email ?? user?.email,
+            emailVerified: Boolean(user?.email_confirmed_at),
+            phone: (data as any)?.phone ?? profile?.phone_e164 ?? profile?.phone,
+            phoneVerified: Boolean(profile?.phone_verified_at),
+            avatarUrl: (data as any)?.avatar_url,
+            addressLine:
+              (data as any)?.address || (data as any)?.default_address,
+            city: (data as any)?.city,
+          },
+          {
+            requirePhoneVerified: requirePhone,
+            requireEmailVerified: requireEmail,
+          },
+        );
       } catch (e) {
         console.log("client profile complete check failed:", e);
         return false;

@@ -4,6 +4,9 @@ import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseBrowser";
 import { normalizePhoneE164 } from "@/lib/phoneE164";
+import MapboxAddressField from "@/components/client/MapboxAddressField";
+import PhoneVerifyCard from "@/components/client/PhoneVerifyCard";
+import { scoreClientProfileCompleteness } from "@/lib/clientProfileCompleteness";
 
 type ClientProfileRow = {
   user_id: string;
@@ -31,6 +34,12 @@ export default function ClientProfilePage() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [coords, setCoords] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+  }>({ latitude: null, longitude: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +81,7 @@ export default function ClientProfilePage() {
 
       const { data: profRow, error: profError } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, phone_verified_at")
         .eq("id", uid)
         .maybeSingle();
 
@@ -80,6 +89,12 @@ export default function ClientProfilePage() {
         console.error(profError);
       } else if (profRow) {
         initialAccount.full_name = profRow.full_name ?? null;
+        if (!cancelled) {
+          setPhoneVerified(Boolean(profRow.phone_verified_at));
+        }
+      }
+      if (!cancelled) {
+        setEmailVerified(Boolean(user.email_confirmed_at));
       }
 
       if (!cancelled) {
@@ -210,12 +225,44 @@ export default function ClientProfilePage() {
     if (error) {
       console.error(error);
       setErr(error.message);
-    } else {
-      setOk("Profil client enregistré avec succès ✅");
+      setSaving(false);
+      return;
     }
 
+    if (
+      profile.default_address &&
+      coords.latitude != null &&
+      coords.longitude != null
+    ) {
+      await supabase
+        .from("client_addresses")
+        .update({ is_default: false })
+        .eq("user_id", userId)
+        .eq("is_default", true);
+      await supabase.from("client_addresses").insert({
+        user_id: userId,
+        label: "Main",
+        address_line1: profile.default_address,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        is_default: true,
+      });
+    }
+
+    setOk("Profil client enregistré avec succès.");
     setSaving(false);
   }
+
+  const completeness = scoreClientProfileCompleteness({
+    fullName: account?.full_name,
+    email: account?.email,
+    emailVerified,
+    phone: profile?.phone,
+    phoneVerified,
+    addressLine: profile?.default_address,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+  });
 
   if (loading || !profile) {
     return (
@@ -238,6 +285,17 @@ export default function ClientProfilePage() {
   return (
     <main className="max-w-2xl mx-auto p-4 space-y-6">
       <h1 className="text-2xl font-bold">Mon profil client</h1>
+
+      <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+        Complétude du profil : <strong>{completeness.percent}%</strong>
+        {completeness.missing.length ? (
+          <span className="block text-xs mt-1">
+            Manquant : {completeness.missing.join(", ")}
+          </span>
+        ) : (
+          <span className="block text-xs mt-1">Profil complet.</span>
+        )}
+      </div>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
       {ok && <p className="text-sm text-green-600">{ok}</p>}
@@ -287,17 +345,30 @@ export default function ClientProfilePage() {
             />
           </label>
 
+          <PhoneVerifyCard
+            phone={profile.phone ?? ""}
+            verified={phoneVerified}
+            onVerified={(e164) => {
+              setPhoneVerified(true);
+              onChangeField("phone", e164);
+            }}
+          />
+
           <label className="block text-sm font-medium">
             Adresse principale
-            <input
-              type="text"
-              className="mt-1 w-full border rounded px-3 py-2 text-sm"
-              value={profile.default_address ?? ""}
-              onChange={(e) =>
-                onChangeField("default_address", e.target.value)
-              }
-              placeholder="1112 Flatbush Av, Brooklyn NY"
-            />
+            <div className="mt-1">
+              <MapboxAddressField
+                value={profile.default_address ?? ""}
+                placeholder="Rechercher une adresse…"
+                onChange={(next) => {
+                  onChangeField("default_address", next.label);
+                  setCoords({
+                    latitude: next.latitude,
+                    longitude: next.longitude,
+                  });
+                }}
+              />
+            </div>
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -9,6 +9,9 @@
       ],
       "@mmd/social-links": [
         "../../shared/socialLinks.ts"
+      ],
+      "@mmd/profile-completeness": [
+        "../../shared/profileCompleteness.ts"
       ]
     },
     "target": "ES2017",
