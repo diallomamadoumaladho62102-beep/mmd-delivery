@@ -146,20 +146,46 @@ export async function POST(request: NextRequest) {
       ? Number(res.headers.get("x-hits"))
       : null;
     let sample: string[] = [];
+    let details: Array<Record<string, unknown>> = [];
     if (res.ok) {
       const issues = (await res.json().catch(() => [])) as Array<{
+        id?: string;
         title?: string;
         shortId?: string;
         count?: string | number;
+        userCount?: number;
         lastSeen?: string;
+        firstSeen?: string;
+        culprit?: string;
+        permalink?: string;
+        metadata?: { type?: string; value?: string; filename?: string; function?: string };
+        project?: { slug?: string };
       }>;
       sample = issues.slice(0, limit).map((i) => {
         const count = i.count != null ? ` x${i.count}` : "";
         const seen = i.lastSeen ? ` @${String(i.lastSeen).slice(0, 10)}` : "";
         return `${i.shortId ?? "?"}${count}${seen}: ${String(i.title ?? "").slice(0, 120)}`;
       });
+      details = issues.slice(0, limit).map((i) => ({
+        id: i.id ?? null,
+        shortId: i.shortId ?? null,
+        title: i.title ?? null,
+        count: i.count ?? null,
+        userCount: i.userCount ?? null,
+        firstSeen: i.firstSeen ?? null,
+        lastSeen: i.lastSeen ?? null,
+        culprit: i.culprit ?? null,
+        permalink: i.permalink ?? null,
+        metadata: i.metadata ?? null,
+        project: i.project?.slug ?? projectSlug,
+      }));
     }
-    return { status: res.status, xHits: Number.isFinite(approx as number) ? approx : null, sample };
+    return {
+      status: res.status,
+      xHits: Number.isFinite(approx as number) ? approx : null,
+      sample,
+      details,
+    };
   }
 
   const issuesRes = await listUnresolved(project, 25);
@@ -225,6 +251,7 @@ export async function POST(request: NextRequest) {
           ? unresolvedApprox
           : null,
         sample: unresolvedSample,
+        details: issuesRes.details,
       },
       unresolvedIssuesMobile: mobileIssuesRes,
     },

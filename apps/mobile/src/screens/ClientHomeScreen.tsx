@@ -1320,7 +1320,7 @@ export function ClientHomeScreen() {
       ts("client.home.banner.marketplace.title", "Marketplace"),
       comingSoonLabel
     );
-  }, [comingSoonLabel, navigation, platformFeatures.marketplace_available, ts]);
+  }, [comingSoonLabel, navigation, platformFeatures?.marketplace_available, ts]);
 
   const handleOpenOrderItem = useCallback(
     (item: ClientItem) => {

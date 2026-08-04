@@ -96,5 +96,38 @@ export async function requireMarketplaceClientAuth(req: NextRequest) {
     ? await resolvePlatformScopeFeatures(auth.supabaseAdmin, scopeKey)
     : null;
 
+  if (!features) {
+    return {
+      ok: false as const,
+      response: mmdLocationJson(
+        {
+          ok: false,
+          error: "platform_country_not_configured",
+          title: "Service not available yet",
+          message: "Marketplace is not configured for this area yet.",
+        },
+        404
+      ),
+    };
+  }
+
+  if (!features.marketplace_available) {
+    return {
+      ok: false as const,
+      response: mmdLocationJson(
+        {
+          ok: false,
+          error: "marketplace_unavailable",
+          title: "Marketplace unavailable",
+          message:
+            features.service_messages?.marketplace ??
+            features.message ??
+            "Marketplace is not available in this county yet.",
+        },
+        403
+      ),
+    };
+  }
+
   return { ok: true as const, ...auth, scope: features, startGate };
 }
