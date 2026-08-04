@@ -1,5 +1,4 @@
 import { NextRequest } from "next/server";
-import type Stripe from "stripe";
 import { logTaxiEventServer } from "@/lib/taxiEvents";
 import { releaseEntityCredit } from "@/lib/loyalty/loyaltyCredit";
 import {

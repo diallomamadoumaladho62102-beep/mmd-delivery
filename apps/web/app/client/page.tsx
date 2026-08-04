@@ -67,11 +67,14 @@ export default function ClientHomePage() {
           Accept: "application/json",
         },
       });
-      const body = (await res.json().catch(() => ({}))) as ClientPlatformFeatures & {
-        ok?: boolean;
-      };
-      if (body.ok !== false) {
-        setPlatformFeatures(body);
+      const body = (await res.json().catch(() => null)) as
+        | (ClientPlatformFeatures & { ok?: boolean })
+        | null;
+      if (body && typeof body === "object" && body.ok !== false) {
+        setPlatformFeatures((prev) => ({
+          ...prev,
+          ...body,
+        }));
       }
     } catch {
       // keep defaults — fail open for existing users until API configured

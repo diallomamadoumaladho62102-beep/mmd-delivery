@@ -1050,7 +1050,14 @@ export default function AdminDriversPage() {
     setOk(null);
 
     try {
-      const status = documentStatusDrafts[documentId] ?? "pending";
+      const rawStatus = documentStatusDrafts[documentId] ?? "pending";
+      const status =
+        rawStatus === "pending" ||
+        rawStatus === "approved" ||
+        rawStatus === "rejected" ||
+        rawStatus === "incomplete"
+          ? rawStatus
+          : "pending";
       const reviewNotes = (documentNoteDrafts[documentId] ?? "").trim();
 
       const response = await adminFetch("/api/admin/drivers/update-document", {

@@ -1,4 +1,5 @@
 import { getPricingBusinessDefaults } from "@/lib/pricingEngine/config/businessDefaults";
+import { computeDeliveryFeeV1 } from "@/lib/pricingEngine/engine/compute/deliveryFeeV1";
 
 export type DeliveryPricingResult = {
   deliveryFee: number; // ce que le client paie pour la livraison
@@ -444,12 +445,6 @@ export function computeDeliveryPricing(
   { distanceMiles, durationMinutes }: DeliveryPricingParams,
   config?: DeliveryPricingConfig
 ): DeliveryPricingResult {
-  const { computeDeliveryFeeV1 } = require("./pricingEngine/engine/compute/deliveryFeeV1") as {
-    computeDeliveryFeeV1: (
-      params: DeliveryPricingParams,
-      cfg?: DeliveryPricingConfig
-    ) => DeliveryPricingResult;
-  };
   const normalizedConfig = normalizeDeliveryPricingConfig(config);
   return computeDeliveryFeeV1(
     { distanceMiles, durationMinutes },

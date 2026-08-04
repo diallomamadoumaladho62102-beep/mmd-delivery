@@ -45,11 +45,12 @@ export async function GET(req: NextRequest) {
     const ride = data
       ? (() => {
           const {
-            pickup_verification_code: _hiddenCode,
+            pickup_verification_code: _omitPickupCode,
             ...safeRide
           } = data as Record<string, unknown> & {
             pickup_verification_code?: string | null;
           };
+          void _omitPickupCode;
           return {
             ...safeRide,
             client_preference_lines: formatClientPreferencesForDriver({

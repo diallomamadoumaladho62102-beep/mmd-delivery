@@ -24,7 +24,6 @@ export function isLiveVisibleTrip(row: TripVisibilityFlags | null | undefined): 
  * `is_test=true` + `archived_at`, so those two alone hide archived rows;
  * `hidden_from_user` is enforced client-side via `isLiveVisibleTrip`.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function applyLiveTripFilters<T extends { eq: any; is: any; or: any }>(
   query: T,
 ): T {

@@ -79,7 +79,7 @@ async function assertDriverMarketplaceEnabled(
   const scope = await resolveDriverPlatformScope(supabaseAdmin, driverUserId, {});
   const features = await resolvePlatformScopeFeatures(supabaseAdmin, scope);
 
-  if (!features.marketplace_available) {
+  if (!features?.marketplace_available) {
     return { ok: false, error: "marketplace_unavailable" };
   }
 
