@@ -38,6 +38,14 @@ export async function stopClientAudioCapture(): Promise<{
   const uri = activeRecording.getURI();
   activeRecording = null;
 
+  // Recording flips allowsRecordingIOS; restore playback-friendly session for rings/alerts.
+  try {
+    const { mmdAudio } = require("./mmdAudio") as typeof import("./mmdAudio");
+    await mmdAudio.init();
+  } catch {
+    // never block safety upload on audio restore
+  }
+
   if (!uri) return null;
   return { uri, mimeType: "audio/m4a", extension: "m4a" };
 }
