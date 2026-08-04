@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-08-04T07:02:01.165Z",
+  "targets": [
+    {
+      "stem": "website",
+      "url": "https://www.mmddelivery.com",
+      "png": "/brand/qr/website.png",
+      "svg": "/brand/qr/website.svg"
+    },
+    {
+      "stem": "tiktok",
+      "url": "https://www.tiktok.com/@mmddelivery",
+      "png": "/brand/qr/tiktok.png",
+      "svg": "/brand/qr/tiktok.svg"
+    },
+    {
+      "stem": "tiktok-share",
+      "url": "https://www.tiktok.com/@mmddelivery?_r=1&_t=ZP-98awmQSESJ5",
+      "png": "/brand/qr/tiktok-share.png",
+      "svg": "/brand/qr/tiktok-share.svg"
+    },
+    {
+      "stem": "instagram",
+      "url": "https://www.instagram.com/mmddelivery?igsh=d3o1YXR3M3g1Z3dq&utm_source=ig_contact_invite",
+      "png": "/brand/qr/instagram.png",
+      "svg": "/brand/qr/instagram.svg"
+    },
+    {
+      "stem": "facebook",
+      "url": "https://www.facebook.com/share/1FF11rBXwE/?mibextid=wwXIfr",
+      "png": "/brand/qr/facebook.png",
+      "svg": "/brand/qr/facebook.svg"
+    }
+  ],
+  "kits": [
+    "business-cards",
+    "referral-cards",
+    "loyalty-cards",
+    "flyers",
+    "posters",
+    "restaurant-materials",
+    "driver-welcome-kit",
+    "merchant-kit",
+    "vehicle-stickers",
+    "roll-up-banners",
+    "presentation-slides",
+    "brochures",
+    "email-signatures",
+    "packaging-inserts"
+  ]
+}

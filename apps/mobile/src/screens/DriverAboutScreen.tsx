@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { SocialLinks } from "../components/shared/SocialLinks";
 
 type Props = NativeStackScreenProps<RootStackParamList, "DriverAboutScreen">;
 
@@ -28,6 +29,12 @@ export default function DriverAboutScreen(_props: Props) {
         <View style={{ marginTop: 24 }}>
           <Text style={{ color: "#94A3B8" }}>MMD Delivery</Text>
           <Text style={{ color: "#64748B", fontSize: 12 }}>com.maladho2025.mmddelivery</Text>
+        </View>
+        <View style={{ marginTop: 28 }}>
+          <Text style={{ color: "#E2E8F0", fontWeight: "700", marginBottom: 12 }}>
+            {t("driver.about.social", "Follow us")}
+          </Text>
+          <SocialLinks tone="dark" />
         </View>
       </ScrollView>
     </SafeAreaView>

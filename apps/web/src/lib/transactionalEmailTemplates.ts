@@ -1,3 +1,8 @@
+import {
+  formatSocialLinksPlainText,
+  getActiveSocialLinks,
+} from "@mmd/social-links";
+
 export type TransactionalEmailTemplate = {
   subject: string;
   previewText: string;
@@ -14,6 +19,18 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function socialFooterHtml(): string {
+  const links = getActiveSocialLinks()
+    .map(
+      (link, index) =>
+        `${index > 0 ? "&nbsp;·&nbsp;" : ""}<a href="${escapeHtml(link.url)}" style="color:#ea580c;text-decoration:none;">${escapeHtml(link.label)}</a>`,
+    )
+    .join("");
+  return links
+    ? `<span style="display:inline-block;margin-top:8px;">${links}</span>`
+    : "";
 }
 
 export function renderTransactionalEmailHtml(
@@ -71,7 +88,8 @@ export function renderTransactionalEmailHtml(
             <tr>
               <td style="padding:18px 28px 24px;font-size:12px;line-height:1.5;color:#64748b;background:#f8fafc;">
                 MMD Delivery — livraison, courses et marketplace.<br />
-                Besoin d'aide ? Répondez à cet email ou contactez le support dans l'application.
+                Besoin d'aide ? Répondez à cet email ou contactez le support dans l'application.<br />
+                ${socialFooterHtml()}
               </td>
             </tr>
           </table>
@@ -89,7 +107,7 @@ export function renderTransactionalEmailText(
   if (template.ctaLabel && template.ctaUrl) {
     lines.push("", `${template.ctaLabel}: ${template.ctaUrl}`);
   }
-  lines.push("", "MMD Delivery");
+  lines.push("", "MMD Delivery", formatSocialLinksPlainText());
   return lines.join("\n");
 }
 

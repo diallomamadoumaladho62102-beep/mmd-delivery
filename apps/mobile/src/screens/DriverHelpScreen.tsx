@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
+import { SocialLinks } from "../components/shared/SocialLinks";
 import { APP_COLORS } from "../theme/appTheme";
 
 const BG = "#020617";
@@ -359,6 +360,13 @@ export function DriverHelpScreen() {
               "Prepare your order ID, screenshot, phone number, and a short explanation. This helps MMD solve the issue faster."
             )}
           </Text>
+        </View>
+
+        <View style={{ marginTop: 18, marginBottom: 8 }}>
+          <Text style={styles.sectionTitle}>
+            {t("driver.help.socialSection", "Follow MMD Delivery")}
+          </Text>
+          <SocialLinks tone="dark" />
         </View>
       </ScrollView>
     </SafeAreaView>

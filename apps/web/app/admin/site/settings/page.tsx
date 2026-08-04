@@ -6,6 +6,8 @@ import AdminGate from "@/components/AdminGate";
 import { canManageMarketing } from "@/lib/adminAccess";
 import { adminFetch, resolveBrowserStaffSession } from "@/lib/adminBrowserAuth";
 import type { SiteSettingsPayload } from "@/lib/siteCms";
+import { getActiveSocialLinks } from "@mmd/social-links";
+import SocialLinks from "@/components/site/SocialLinks";
 
 const CARD = "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm";
 const INPUT = "mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm";
@@ -74,7 +76,34 @@ function SettingsInner() {
           ← Corporate Website
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-slate-900">Site settings</h1>
-        <p className="mt-1 text-sm text-slate-600">Locale: en — brand, SEO, store links, socials.</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Locale: en — brand, SEO, store links. Platform socials are centralized in{" "}
+          <code className="rounded bg-slate-100 px-1">shared/socialLinks.ts</code>.
+        </p>
+      </div>
+
+      <div className={`${CARD} space-y-3`}>
+        <h2 className="text-sm font-semibold text-slate-900">Official social accounts</h2>
+        <p className="text-sm text-slate-600">
+          These links power the public footer, emails, download page, and mobile about screens.
+          Edit{" "}
+          <a href="/brand/social" className="font-medium text-orange-700 hover:underline">
+            /brand/social
+          </a>{" "}
+          for the QR marketing kit.
+        </p>
+        <SocialLinks
+          variant="footer"
+          className="[&_a]:border-slate-200 [&_a]:bg-slate-50 [&_a]:text-slate-700 [&_a:hover]:border-orange-300 [&_a:hover]:text-orange-700"
+        />
+        <ul className="space-y-1 text-xs text-slate-500">
+          {getActiveSocialLinks().map((link) => (
+            <li key={link.id}>
+              {link.label}
+              {link.username ? ` (${link.username})` : ""}: {link.url}
+            </li>
+          ))}
+        </ul>
       </div>
 
       {error ? (

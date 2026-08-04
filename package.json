@@ -7,12 +7,13 @@
     "dev": "cd apps/web && pnpm dev",
     "build": "cd apps/web && pnpm build",
     "start": "cd apps/web && pnpm start",
-    "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
+    "test:ci": "node scripts/verify-migration-files.mjs && node scripts/verify-profiles-signup-role-guard.mjs && node scripts/evaluateCronHttpResult.test.mjs && node scripts/secret-scan.mjs && pnpm exec tsx shared/socialLinks.test.ts && pnpm --dir apps/web test:ci && pnpm --dir apps/mobile test:navigation",
     "test:security": "node scripts/secret-scan.mjs && pnpm --dir apps/web test:security",
     "test:performance": "pnpm --dir apps/web test:performance && node scripts/bundle-size-report.mjs",
     "test:ui": "pnpm --dir apps/mobile test:ui && pnpm --dir apps/web test:ui",
     "lighthouse:smoke": "node scripts/lighthouse-smoke.mjs",
     "brand:generate": "node scripts/generate-brand-assets.mjs",
+    "brand:social-qr": "node scripts/generate-social-qr.mjs",
     "audit:deps": "node scripts/dependency-audit.mjs",
     "android": "expo run:android",
     "ios": "expo run:ios"
@@ -62,6 +63,7 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "babel-preset-expo": "~54.0.10",
+    "qrcode": "^1.5.4",
     "typescript": "5"
   },
   "pnpm": {

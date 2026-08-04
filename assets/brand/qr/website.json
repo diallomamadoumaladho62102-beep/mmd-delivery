@@ -1,0 +1,10 @@
+{
+  "stem": "website",
+  "url": "https://www.mmddelivery.com",
+  "widthPx": 2048,
+  "errorCorrectionLevel": "H",
+  "formats": [
+    "png",
+    "svg"
+  ]
+}

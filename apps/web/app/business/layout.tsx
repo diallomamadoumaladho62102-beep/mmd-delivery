@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import SocialLinks from "@/components/site/SocialLinks";
 
 const NAV = [
   { href: "/business", label: "Overview" },
@@ -46,6 +47,12 @@ export default function BusinessLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <div className="mx-auto max-w-5xl px-4 py-8">{children}</div>
+      <footer className="border-t border-slate-800 px-4 py-6">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-slate-500">Follow MMD Delivery</p>
+          <SocialLinks variant="icons" showLabels={false} />
+        </div>
+      </footer>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { SiteMenuItem, SiteSettingsPayload } from "@/lib/siteCms";
 import NewsletterForm from "./NewsletterForm";
 import SiteImage from "./SiteImage";
+import SocialLinks from "./SocialLinks";
 import {
   resolveSiteLogo,
   siteContainerClass,
@@ -91,10 +92,6 @@ export default function SiteShell({
   );
   const popupOverlays = overlays.filter(
     (o) => !dismissed[o.id] && (o.kind === "popup" || o.placement === "modal"),
-  );
-
-  const socials = Object.entries(settings.socials ?? {}).filter(
-    ([, url]) => typeof url === "string" && url.trim().length > 0,
   );
 
   const year = new Date().getFullYear();
@@ -316,22 +313,9 @@ export default function SiteShell({
                 ) : null}
                 {settings.address ? <li>{settings.address}</li> : null}
               </ul>
-              {socials.length > 0 ? (
-                <ul className="mt-5 flex flex-wrap gap-3">
-                  {socials.map(([name, url]) => (
-                    <li key={name}>
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs capitalize text-slate-300 transition-colors hover:border-orange-400/40 hover:text-orange-200"
-                      >
-                        {name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <div className="mt-5">
+                <SocialLinks variant="footer" />
+              </div>
             </div>
 
             <div>

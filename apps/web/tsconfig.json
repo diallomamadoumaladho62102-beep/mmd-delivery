@@ -6,6 +6,9 @@
       ],
       "@mmd/platform-roles": [
         "../../shared/platformRoles.ts"
+      ],
+      "@mmd/social-links": [
+        "../../shared/socialLinks.ts"
       ]
     },
     "target": "ES2017",
