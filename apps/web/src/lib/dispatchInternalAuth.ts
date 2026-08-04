@@ -177,8 +177,25 @@ export function assertUserMayDispatchOrder(params: {
 
   const { userId, role } = params.access;
 
-  if (role === "admin" || role === "ops") {
-    return { ok: true };
+  {
+    const r = String(role ?? "")
+      .trim()
+      .toLowerCase();
+    if (
+      r === "admin" ||
+      r === "super_admin" ||
+      r === "ops" ||
+      r === "operations_admin" ||
+      r === "support" ||
+      r === "support_admin" ||
+      r === "finance" ||
+      r === "finance_admin" ||
+      r === "review" ||
+      r === "review_admin" ||
+      r === "founder"
+    ) {
+      return { ok: true };
+    }
   }
 
   if (role === "restaurant") {

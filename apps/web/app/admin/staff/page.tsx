@@ -4,7 +4,13 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
 import { adminFetch } from "@/lib/adminBrowserAuth";
-import { STAFF_ROLES, roleDisplayName } from "@/lib/adminRbac";
+import {
+  CREATABLE_STAFF_ROLES,
+  STAFF_ROLES,
+  SUPER_ADMIN_ROLE,
+  normalizeStaffRole,
+  roleDisplayName,
+} from "@/lib/adminRbac";
 
 type AdminRow = {
   id: string;
@@ -26,15 +32,13 @@ type AdminRow = {
   last_seen_at?: string | null;
 };
 
-const CREATABLE_ROLES = STAFF_ROLES.filter((role) => role !== "admin");
-
 export default function AdminStaffPage() {
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [createEmail, setCreateEmail] = useState("");
-  const [createRole, setCreateRole] = useState("ops");
+  const [createRole, setCreateRole] = useState<string>("operations_admin");
   const [createName, setCreateName] = useState("");
   const [creating, setCreating] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
@@ -68,7 +72,12 @@ export default function AdminStaffPage() {
 
   const filtered = useMemo(() => {
     return rows.filter((row) => {
-      if (roleFilter !== "all" && row.role !== roleFilter) return false;
+      if (
+        roleFilter !== "all" &&
+        normalizeStaffRole(row.role) !== roleFilter
+      ) {
+        return false;
+      }
       if (statusFilter !== "all" && row.account_status !== statusFilter) return false;
       if (
         countryFilter !== "all" &&
@@ -286,7 +295,8 @@ export default function AdminStaffPage() {
           </button>
         </div>
 
-        {(roleCounts.support ?? 0) === 0 || (roleCounts.finance ?? 0) === 0 ? (
+        {(roleCounts.support_admin ?? 0) === 0 ||
+        (roleCounts.finance_admin ?? 0) === 0 ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             No Support and/or Finance administrators currently exist in the
             database. Use <strong>Add administrator</strong> below to create
@@ -323,7 +333,7 @@ export default function AdminStaffPage() {
               onChange={(e) => setCreateRole(e.target.value)}
               className="rounded-xl border border-[var(--cc-border)] px-3 py-2 text-sm"
             >
-              {CREATABLE_ROLES.map((role) => (
+              {CREATABLE_STAFF_ROLES.map((role) => (
                 <option key={role} value={role}>
                   {roleDisplayName(role)}
                 </option>
@@ -468,7 +478,7 @@ export default function AdminStaffPage() {
                     </td>
                     <td className="px-4 py-3">
                       <select
-                        value={row.role}
+                        value={normalizeStaffRole(row.role) ?? row.role}
                         disabled={savingId === row.id || row.is_founder}
                         onChange={(e) => void changeRole(row.id, e.target.value)}
                         className="rounded-lg border border-[var(--cc-border)] px-2 py-1 text-sm"
@@ -476,7 +486,8 @@ export default function AdminStaffPage() {
                         {STAFF_ROLES.map((role) => (
                           <option key={role} value={role}>
                             {roleDisplayName(role, {
-                              isFounder: row.is_founder && role === "admin",
+                              isFounder:
+                                row.is_founder && role === SUPER_ADMIN_ROLE,
                             })}
                           </option>
                         ))}

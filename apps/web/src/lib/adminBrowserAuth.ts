@@ -125,7 +125,11 @@ export async function resolveBrowserStaffSession(): Promise<ResolvedStaffSession
     // Founder always accesses hub even if role row is temporarily wrong.
     if (!isFounder && (!role || !canAccessAdminDashboard(role))) return null;
     if (isFounder && !role) {
-      return { userId: String(body.userId), role: "admin", isFounder: true };
+      return {
+        userId: String(body.userId),
+        role: "super_admin",
+        isFounder: true,
+      };
     }
     if (!role) return null;
 

@@ -38,7 +38,15 @@ export async function GET(request: NextRequest) {
       .select(
         "id, role, full_name, email, staff_country_code, staff_region_code, staff_city, staff_department, presence_status, last_seen_at, is_founder, account_status"
       )
-      .in("role", [...STAFF_ROLES])
+      .in("role", [
+        ...STAFF_ROLES,
+        "admin",
+        "ops",
+        "finance",
+        "support",
+        "review",
+        "founder",
+      ])
       .order("full_name", { ascending: true });
     if (staffErr) return json({ ok: false, error: staffErr.message }, 500);
 

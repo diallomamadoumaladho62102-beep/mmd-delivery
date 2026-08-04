@@ -35,6 +35,18 @@ export function dashboardPersona(
 ): "founder" | "admin" | "ops" | "finance" | "support" | "review" | "unknown" {
   if (isFounder) return "founder";
   if (!role) return "unknown";
-  if (role === "admin") return "admin";
-  return role;
+  switch (role) {
+    case "super_admin":
+      return "admin";
+    case "operations_admin":
+      return "ops";
+    case "finance_admin":
+      return "finance";
+    case "support_admin":
+      return "support";
+    case "review_admin":
+      return "review";
+    default:
+      return "unknown";
+  }
 }

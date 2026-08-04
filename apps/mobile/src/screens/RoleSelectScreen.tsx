@@ -58,7 +58,21 @@ function normalizeProfileRole(value: unknown): ProfileRole {
     return "driver";
   }
   if (role === "restaurant") return "restaurant";
-  if (role === "admin" || role === "support") return "admin";
+  if (
+    role === "admin" ||
+    role === "super_admin" ||
+    role === "founder" ||
+    role === "support" ||
+    role === "support_admin" ||
+    role === "ops" ||
+    role === "operations_admin" ||
+    role === "finance" ||
+    role === "finance_admin" ||
+    role === "review" ||
+    role === "review_admin"
+  ) {
+    return "admin";
+  }
 
   return null;
 }

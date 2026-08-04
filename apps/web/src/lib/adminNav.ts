@@ -29,7 +29,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         href: "/admin/hr",
         label: "People Ops",
         permission: "users.admins.manage",
-        roles: ["admin"],
+        roles: ["super_admin"],
       },
     ],
   },

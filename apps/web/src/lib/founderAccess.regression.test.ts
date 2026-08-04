@@ -36,7 +36,7 @@ test("demoted founder still maps to admin for RBAC + login + hub", () => {
     role: "restaurant",
     isFounder: true,
   });
-  assert.equal(role, "admin");
+  assert.equal(role, "super_admin");
   assert.equal(isSuperAdmin(role), true);
   assert.equal(hasPermission(role, "hub.access"), true);
   assert.equal(canAccessAdminDashboard(role), true);
@@ -47,7 +47,7 @@ test("demoted founder still maps to admin for RBAC + login + hub", () => {
     isFounder: true,
   });
   assert.equal(login.allowed, true);
-  if (login.allowed) assert.equal(login.role, "admin");
+  if (login.allowed) assert.equal(login.role, "super_admin");
 });
 
 test("non-founder restaurant never gains hub.access", () => {

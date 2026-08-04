@@ -552,7 +552,19 @@ export default function RestaurantSetupScreen({ navigation }: Props) {
         true;
       const isStaffOrFounder =
         isFounder ||
-        ["admin", "ops", "finance", "support", "review"].includes(existingRole);
+        [
+          "admin",
+          "super_admin",
+          "founder",
+          "ops",
+          "operations_admin",
+          "finance",
+          "finance_admin",
+          "support",
+          "support_admin",
+          "review",
+          "review_admin",
+        ].includes(existingRole);
 
       const profileSyncPayload: Record<string, unknown> = {
         id: user.id,

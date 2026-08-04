@@ -10,7 +10,12 @@ import {
   assertTargetIsStaffAdmin,
 } from "@/lib/adminGovernance";
 import { writeAdminAuditServer } from "@/lib/adminAuditServer";
-import { STAFF_ROLES } from "@/lib/adminRbac";
+import {
+  CREATABLE_STAFF_ROLES,
+  STAFF_ROLES,
+  SUPER_ADMIN_ROLE,
+  normalizeStaffRole,
+} from "@/lib/adminRbac";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +35,17 @@ const STATUS_BY_ACTION: Record<string, string> = {
   deactivate: "disabled",
 };
 
+/** Query both canonical and legacy short staff roles until DB is fully migrated. */
+const STAFF_ROLE_QUERY = [
+  ...STAFF_ROLES,
+  "admin",
+  "ops",
+  "finance",
+  "support",
+  "review",
+  "founder",
+] as const;
+
 function json(body: Record<string, unknown>, status = 200) {
   return NextResponse.json(body, { status });
 }
@@ -45,16 +61,20 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from("profiles")
       .select(STAFF_PROFILE_SELECT)
-      .in("role", [...STAFF_ROLES])
+      .in("role", [...STAFF_ROLE_QUERY])
       .order("created_at", { ascending: false });
 
     if (error) return json({ ok: false, error: error.message }, 500);
 
-    const items = data ?? [];
+    const items = (data ?? []).map((row) => ({
+      ...row,
+      role: normalizeStaffRole(row.role) ?? row.role,
+    }));
+
     const role_counts = Object.fromEntries(
       STAFF_ROLES.map((role) => [
         role,
-        items.filter((row) => String(row.role) === role).length,
+        items.filter((row) => normalizeStaffRole(row.role) === role).length,
       ])
     );
 
@@ -89,16 +109,22 @@ export async function POST(request: NextRequest) {
     const email = String(body.email ?? "")
       .trim()
       .toLowerCase();
-    const newRole = String(body.role ?? "").trim().toLowerCase();
+    const newRole = normalizeStaffRole(body.role);
     const fullName = String(body.full_name ?? "").trim() || null;
 
     if (!email) return json({ ok: false, error: "email required" }, 400);
-    if (!(STAFF_ROLES as readonly string[]).includes(newRole)) {
+    if (!newRole) {
       return json({ ok: false, error: "invalid staff role" }, 400);
     }
-    if (newRole === "admin") {
+    if (
+      newRole === SUPER_ADMIN_ROLE ||
+      !(CREATABLE_STAFF_ROLES as readonly string[]).includes(newRole)
+    ) {
       return json(
-        { ok: false, error: "Use role change on an existing Super Admin only" },
+        {
+          ok: false,
+          error: "Use role change on an existing Super Admin only",
+        },
         400
       );
     }
@@ -128,11 +154,11 @@ export async function POST(request: NextRequest) {
       userId = created.user.id;
     }
 
-    if (
-      existingProfile &&
-      (STAFF_ROLES as readonly string[]).includes(String(existingProfile.role ?? ""))
-    ) {
-      return json({ ok: false, error: "User is already a staff administrator" }, 400);
+    if (existingProfile && normalizeStaffRole(existingProfile.role)) {
+      return json(
+        { ok: false, error: "User is already a staff administrator" },
+        400
+      );
     }
 
     const before = existingProfile ?? {
@@ -206,7 +232,7 @@ export async function PATCH(request: NextRequest) {
 
     const userId = String(body.userId ?? "").trim();
     const action = String(body.action ?? "change_role").trim() as AdminAction;
-    const newRole = String(body.role ?? "").trim().toLowerCase();
+    const newRole = body.role != null ? normalizeStaffRole(body.role) : null;
 
     if (!userId) return json({ ok: false, error: "userId required" }, 400);
 
@@ -218,19 +244,26 @@ export async function PATCH(request: NextRequest) {
     await assertFounderProtected(supabase, before, action.replace("_", " "));
 
     const updates: Record<string, unknown> = {};
+    const beforeStaffRole = normalizeStaffRole(before.role);
 
     if (action === "change_role") {
       if (!newRole) return json({ ok: false, error: "role required" }, 400);
       if (!(STAFF_ROLES as readonly string[]).includes(newRole)) {
         return json({ ok: false, error: "invalid staff role" }, 400);
       }
-      if (before.role === "admin" && newRole !== "admin") {
+      if (
+        beforeStaffRole === SUPER_ADMIN_ROLE &&
+        newRole !== SUPER_ADMIN_ROLE
+      ) {
         return json(
           { ok: false, error: "Super Admin role cannot be changed" },
           403
         );
       }
-      if (newRole === "admin" && before.role !== "admin") {
+      if (
+        newRole === SUPER_ADMIN_ROLE &&
+        beforeStaffRole !== SUPER_ADMIN_ROLE
+      ) {
         return json(
           { ok: false, error: "Cannot promote to Super Admin via API" },
           403
