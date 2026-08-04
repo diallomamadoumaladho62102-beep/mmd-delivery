@@ -70,9 +70,7 @@ export default function AdminHrDashboardPage() {
       const session = await resolveBrowserStaffSession();
       if (!alive) return;
       const ok =
-        session?.isFounder === true ||
-        session?.role === "super_admin" ||
-        session?.role === "admin";
+        session?.isFounder === true || session?.role === "super_admin";
       setAllowed(ok);
       if (!ok) return;
 

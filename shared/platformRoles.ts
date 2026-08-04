@@ -8,39 +8,32 @@
  * - Adding a role: append here, then regenerate/extend the SQL migration CHECK.
  */
 
-/** Roles that may be stored in public.profiles.role */
+/**
+ * Roles that may be *stored* in public.profiles.role (canonical only).
+ * Legacy aliases (admin/ops/customer/…) are accepted on input via
+ * normalizeProfileRole() but are never persisted.
+ */
 export const PROFILE_ROLES = [
   // Customer / public
   "client",
-  "customer",
   "driver",
   // Restaurant
   "restaurant",
-  "restaurant_owner",
   "restaurant_manager",
   "restaurant_staff",
   // Marketplace
   "seller",
-  "merchant",
-  "merchant_owner",
   "merchant_manager",
   "merchant_staff",
   // Business / taxi business
   "business_owner",
   "business_manager",
-  // Administration (canonical long form)
-  "founder",
+  // Administration
   "super_admin",
   "operations_admin",
   "finance_admin",
   "support_admin",
   "review_admin",
-  // Legacy short staff names (accepted by DB; normalized to long form on write)
-  "admin",
-  "ops",
-  "finance",
-  "support",
-  "review",
   // Platform
   "developer",
   "system",
@@ -101,8 +94,8 @@ const ROLE_ALIASES: Record<string, ProfileRole> = {
   merchant_staff: "merchant_staff",
   business_owner: "business_owner",
   business_manager: "business_manager",
-  // staff long form
-  founder: "founder",
+  // staff long form (+ founder flag role stored as super_admin)
+  founder: "super_admin",
   super_admin: "super_admin",
   superadmin: "super_admin",
   "super-admin": "super_admin",
@@ -174,7 +167,7 @@ export function normalizeProfileRole(value: unknown): ProfileRole | null {
     supportadmin: "support_admin",
     reviewadmin: "review_admin",
     superadmin: "super_admin",
-    fondateur: "founder",
+    fondateur: "super_admin",
     restaurantowner: "restaurant",
   };
   if (labelMap[compact]) return labelMap[compact];
@@ -185,7 +178,6 @@ export function normalizeProfileRole(value: unknown): ProfileRole | null {
 export function normalizeStaffRole(value: unknown): StaffRole | null {
   const role = normalizeProfileRole(value);
   if (!role) return null;
-  if (role === "founder") return "super_admin";
   return STAFF_ROLE_SET.has(role) ? (role as StaffRole) : null;
 }
 
@@ -196,34 +188,23 @@ export function roleDisplayName(
   if (opts?.isFounder === true) return "Fondateur";
   const canonical = normalizeProfileRole(role) ?? role;
   switch (canonical) {
-    case "founder":
-      return "Fondateur";
     case "super_admin":
-    case "admin":
       return "Super Admin";
     case "operations_admin":
-    case "ops":
       return "Operations Admin";
     case "finance_admin":
-    case "finance":
       return "Finance Admin";
     case "support_admin":
-    case "support":
       return "Support Admin";
     case "review_admin":
-    case "review":
       return "Review Admin";
     case "client":
-    case "customer":
       return "Client";
     case "driver":
       return "Driver";
     case "restaurant":
-    case "restaurant_owner":
       return "Restaurant";
     case "seller":
-    case "merchant":
-    case "merchant_owner":
       return "Seller";
     case "developer":
       return "Developer";

@@ -48,9 +48,7 @@ export async function requireRestaurantWebSession(options?: {
 
   const isRestaurantRole = prof?.role === "restaurant";
   const isFounderAdmin =
-    prof?.is_founder === true ||
-    prof?.role === "super_admin" ||
-    prof?.role === "admin";
+    prof?.is_founder === true || prof?.role === "super_admin";
 
   // Founder keeps profiles.role='super_admin' but may still operate a restaurant
   // profile without creating a duplicate auth user.

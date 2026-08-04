@@ -19,19 +19,16 @@ export {
   type StaffRole,
 } from "@mmd/platform-roles";
 
-import {
-  normalizeProfileRole,
-  type ProfileRole,
-  type PublicRole,
-  type StaffRole,
-} from "@mmd/platform-roles";
+import { normalizeProfileRole, type ProfileRole } from "@mmd/platform-roles";
 
-/** @deprecated Use ProfileRole / normalizeProfileRole */
+/** Stored canonical role (or null). */
 export type NonNullUserRole = ProfileRole;
-/** @deprecated Use ProfileRole | null */
-export type UserRole = ProfileRole | null;
+/**
+ * Inbound role value at API/UI boundaries. May be a legacy alias before
+ * normalizeUserRole(); persisted values are always ProfileRole.
+ */
+export type UserRole = string | null;
 
-/** Legacy list kept for call sites that spread USER_ROLES */
 export const USER_ROLES = [
   "super_admin",
   "operations_admin",
@@ -44,7 +41,7 @@ export const USER_ROLES = [
   "seller",
 ] as const;
 
-export function normalizeUserRole(value: unknown): UserRole {
+export function normalizeUserRole(value: unknown): ProfileRole | null {
   return normalizeProfileRole(value);
 }
 
@@ -59,33 +56,31 @@ export function hasAnyRole(
 }
 
 export function isAdmin(role: UserRole): boolean {
-  const r = normalizeProfileRole(role);
-  return r === "super_admin" || r === "admin" || r === "founder";
+  return normalizeProfileRole(role) === "super_admin";
 }
 
 export function isOps(role: UserRole): boolean {
   const r = normalizeProfileRole(role);
-  return r === "operations_admin" || r === "ops" || isAdmin(role);
+  return r === "operations_admin" || r === "super_admin";
 }
 
 export function isSupport(role: UserRole): boolean {
   const r = normalizeProfileRole(role);
-  return r === "support_admin" || r === "support" || isAdmin(role);
+  return r === "support_admin" || r === "super_admin";
 }
 
 export function isFinance(role: UserRole): boolean {
   const r = normalizeProfileRole(role);
-  return r === "finance_admin" || r === "finance" || isAdmin(role);
+  return r === "finance_admin" || r === "super_admin";
 }
 
 export function isReview(role: UserRole): boolean {
   const r = normalizeProfileRole(role);
-  return r === "review_admin" || r === "review" || isAdmin(role);
+  return r === "review_admin" || r === "super_admin";
 }
 
 export function isRestaurant(role: UserRole): boolean {
-  const r = normalizeProfileRole(role);
-  return r === "restaurant" || r === "restaurant_owner";
+  return normalizeProfileRole(role) === "restaurant";
 }
 
 export function isDriver(role: UserRole): boolean {
@@ -93,40 +88,20 @@ export function isDriver(role: UserRole): boolean {
 }
 
 export function isClient(role: UserRole): boolean {
-  const r = normalizeProfileRole(role);
-  return r === "client" || r === "customer";
+  return normalizeProfileRole(role) === "client";
 }
 
 export function isSeller(role: UserRole): boolean {
-  const r = normalizeProfileRole(role);
-  return r === "seller" || r === "merchant" || r === "merchant_owner";
+  return normalizeProfileRole(role) === "seller";
 }
 
-export const ADMIN_ACCESS_ROLES = ["super_admin", "admin"] as const;
-export const OPS_ACCESS_ROLES = [
-  "super_admin",
-  "admin",
-  "operations_admin",
-  "ops",
-] as const;
-export const SUPPORT_ACCESS_ROLES = [
-  "super_admin",
-  "admin",
-  "support_admin",
-  "support",
-] as const;
-export const FINANCE_ACCESS_ROLES = [
-  "super_admin",
-  "admin",
-  "finance_admin",
-  "finance",
-] as const;
-export const RESTAURANT_ACCESS_ROLES = [
-  "restaurant",
-  "restaurant_owner",
-] as const;
+export const ADMIN_ACCESS_ROLES = ["super_admin"] as const;
+export const OPS_ACCESS_ROLES = ["super_admin", "operations_admin"] as const;
+export const SUPPORT_ACCESS_ROLES = ["super_admin", "support_admin"] as const;
+export const FINANCE_ACCESS_ROLES = ["super_admin", "finance_admin"] as const;
+export const RESTAURANT_ACCESS_ROLES = ["restaurant"] as const;
 export const DRIVER_ACCESS_ROLES = ["driver"] as const;
-export const CLIENT_ACCESS_ROLES = ["client", "customer"] as const;
+export const CLIENT_ACCESS_ROLES = ["client"] as const;
 
 export function canAccessAdmin(role: UserRole): boolean {
   return hasAnyRole(role, ADMIN_ACCESS_ROLES);
