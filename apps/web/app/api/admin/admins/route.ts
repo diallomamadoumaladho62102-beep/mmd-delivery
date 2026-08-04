@@ -16,6 +16,7 @@ import {
   SUPER_ADMIN_ROLE,
   normalizeStaffRole,
 } from "@/lib/adminRbac";
+import { ensureStaffAuthUserAndSendInvite } from "@/lib/staffAdminInvite";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,8 @@ type AdminAction =
   | "unsuspend"
   | "activate"
   | "deactivate"
-  | "update_profile";
+  | "update_profile"
+  | "resend_invite";
 
 const STATUS_BY_ACTION: Record<string, string> = {
   suspend: "suspended",
@@ -135,31 +137,41 @@ export async function POST(request: NextRequest) {
       .eq("email", email)
       .maybeSingle();
 
-    let userId = existingProfile?.id ? String(existingProfile.id) : "";
-
-    if (!userId) {
-      const { data: created, error: createErr } =
-        await supabase.auth.admin.createUser({
-          email,
-          email_confirm: true,
-          user_metadata: fullName ? { full_name: fullName } : undefined,
-        });
-
-      if (createErr || !created.user?.id) {
-        return json(
-          { ok: false, error: createErr?.message ?? "Failed to create user" },
-          500
-        );
-      }
-      userId = created.user.id;
-    }
-
     if (existingProfile && normalizeStaffRole(existingProfile.role)) {
       return json(
         { ok: false, error: "User is already a staff administrator" },
         400
       );
     }
+
+    const { data: actorProfile } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("id", session.userId)
+      .maybeSingle();
+
+    let invite;
+    try {
+      invite = await ensureStaffAuthUserAndSendInvite({
+        supabaseAdmin: supabase,
+        email,
+        fullName,
+        role: newRole,
+        invitedByName:
+          actorProfile?.full_name || actorProfile?.email || "Founder",
+        existingUserId: existingProfile?.id ? String(existingProfile.id) : null,
+      });
+    } catch (err) {
+      return json(
+        {
+          ok: false,
+          error: err instanceof Error ? err.message : "Failed to create auth user",
+        },
+        500
+      );
+    }
+
+    const userId = invite.userId;
 
     const before = existingProfile ?? {
       id: userId,
@@ -197,11 +209,25 @@ export async function POST(request: NextRequest) {
       targetType: "admin",
       targetId: userId,
       oldValues: before as Record<string, unknown>,
-      newValues: updated as Record<string, unknown>,
+      newValues: {
+        ...(updated as Record<string, unknown>),
+        invite_sent: invite.inviteSent,
+        invite_skipped: invite.inviteSkipped,
+        auth_user_created: invite.createdAuthUser,
+      },
       request,
     });
 
-    return json({ ok: true, item: updated });
+    return json({
+      ok: true,
+      item: updated,
+      invite: {
+        sent: invite.inviteSent,
+        skipped: invite.inviteSkipped,
+        auth_user_created: invite.createdAuthUser,
+        error: invite.inviteError ?? null,
+      },
+    });
   } catch (e) {
     const status = e instanceof AdminAccessError ? e.status : 500;
     return json(
@@ -236,12 +262,81 @@ export async function PATCH(request: NextRequest) {
 
     if (!userId) return json({ ok: false, error: "userId required" }, 400);
 
-    if (action !== "update_profile") {
+    if (action !== "update_profile" && action !== "resend_invite") {
       assertNotSelfTarget(session.userId, userId, action.replace("_", " "));
     }
 
     const before = await assertTargetIsStaffAdmin(supabase, userId);
-    await assertFounderProtected(supabase, before, action.replace("_", " "));
+    if (action !== "resend_invite") {
+      await assertFounderProtected(supabase, before, action.replace("_", " "));
+    }
+
+    if (action === "resend_invite") {
+      const staffRole = normalizeStaffRole(before.role);
+      if (!staffRole || staffRole === SUPER_ADMIN_ROLE) {
+        return json(
+          { ok: false, error: "Invite can only be resent for creatable staff roles" },
+          400
+        );
+      }
+      if (!before.email) {
+        return json({ ok: false, error: "Administrator has no email" }, 400);
+      }
+
+      const { data: actorProfile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", session.userId)
+        .maybeSingle();
+
+      let invite;
+      try {
+        invite = await ensureStaffAuthUserAndSendInvite({
+          supabaseAdmin: supabase,
+          email: String(before.email),
+          fullName: before.full_name,
+          role: staffRole,
+          invitedByName:
+            actorProfile?.full_name || actorProfile?.email || "Founder",
+          existingUserId: userId,
+        });
+      } catch (err) {
+        return json(
+          {
+            ok: false,
+            error:
+              err instanceof Error ? err.message : "Failed to resend invite",
+          },
+          500
+        );
+      }
+
+      await writeAdminAuditServer({
+        supabaseAdmin: supabase,
+        adminUserId: session.userId,
+        action: "admin_invite_resent",
+        targetType: "admin",
+        targetId: userId,
+        oldValues: before as Record<string, unknown>,
+        newValues: {
+          invite_sent: invite.inviteSent,
+          invite_skipped: invite.inviteSkipped,
+          invite_error: invite.inviteError ?? null,
+        },
+        request,
+      });
+
+      return json({
+        ok: true,
+        item: before,
+        invite: {
+          sent: invite.inviteSent,
+          skipped: invite.inviteSkipped,
+          auth_user_created: invite.createdAuthUser,
+          error: invite.inviteError ?? null,
+        },
+      });
+    }
 
     const updates: Record<string, unknown> = {};
     const beforeStaffRole = normalizeStaffRole(before.role);

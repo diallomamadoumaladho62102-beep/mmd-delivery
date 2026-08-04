@@ -118,7 +118,19 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    const next =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("next")
+        : null;
+    const safeNext =
+      next && next.startsWith("/") && !next.startsWith("//") ? next : null;
+
     setMessage("Mot de passe mis à jour avec succès ✅");
+    if (safeNext) {
+      window.setTimeout(() => {
+        window.location.assign(safeNext);
+      }, 800);
+    }
   };
 
   return (

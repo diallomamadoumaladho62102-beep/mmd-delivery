@@ -232,3 +232,25 @@ export function teamInvitationEmail(params: {
     ctaUrl: "https://mmddelivery.com/auth/sign-in",
   };
 }
+
+export function staffAdminInvitationEmail(params: {
+  inviteeName?: string | null;
+  invitedBy?: string | null;
+  roleLabel: string;
+  inviteUrl: string;
+}): TransactionalEmailTemplate {
+  const invitee = String(params.inviteeName ?? "").trim();
+  const invitedBy = String(params.invitedBy ?? "MMD Delivery").trim();
+  const roleLabel = String(params.roleLabel ?? "Administrator").trim();
+  return {
+    subject: `Invitation administrateur MMD Delivery — ${roleLabel}`,
+    previewText: "Définissez votre mot de passe pour accéder à l'administration.",
+    headline: "Accès administrateur",
+    bodyHtml: `<p>Bonjour${invitee ? ` ${escapeHtml(invitee)}` : ""},</p>
+      <p>${escapeHtml(invitedBy)} vous a créé un compte <strong>${escapeHtml(roleLabel)}</strong> sur MMD Delivery.</p>
+      <p>Pour activer votre accès, définissez votre mot de passe via le bouton ci-dessous, puis connectez-vous sur la page d'administration.</p>
+      <p>Ce lien est personnel et à durée limitée. Ne le partagez pas.</p>`,
+    ctaLabel: "Définir mon mot de passe",
+    ctaUrl: params.inviteUrl,
+  };
+}
