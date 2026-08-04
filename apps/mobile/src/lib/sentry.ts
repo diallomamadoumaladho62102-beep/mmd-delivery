@@ -24,6 +24,12 @@ const IGNORE_ERRORS = [
   /^MMD Sentry (?:web|mobile) probe\b/i,
   /audio session not activated/i,
   /Play encountered an error:\s*audio session/i,
+  // Old native binaries / OTA ahead of native — guarded in useNetworkStatus; still noise if thrown.
+  /Cannot find native module ['"]ExpoNetwork['"]/i,
+  /Object captured as exception with keys/i,
+  // Historical Postgres enum coalesce bug (fixed in 20261102130000); keep filter until stale clients die.
+  /invalid input value for enum document_status/i,
+  /22P02:.*document_status/i,
 ];
 
 // Transient network / offline failures that are pure client-side noise. Kept in
@@ -41,23 +47,29 @@ const NETWORK_NOISE_PATTERNS: RegExp[] = [
   /\bERR_(?:NETWORK|INTERNET_DISCONNECTED|CONNECTION_(?:RESET|REFUSED|CLOSED|TIMED_OUT)|NAME_NOT_RESOLVED)\b/i,
   /\b(?:connection|socket)\s+(?:was\s+)?(?:reset|refused|closed|timed out)\b/i,
   /\b(?:request|network)\s+timed out\b/i,
+  // Gateway / edge timeouts — infra noise, not app defects.
+  /\bHTTP\s+50[234]\b/i,
+  /\bGateway Time-?out\b/i,
 ];
 
 const recentSignatures = new Map<string, number>();
 const DEDUPE_WINDOW_MS = 15_000;
 
 function shouldDrop(message: string): boolean {
-  if (!message) return false;
-  if (IGNORE_ERRORS.some((p) => (typeof p === "string" ? message.includes(p) : p.test(message)))) {
+  const trimmed = String(message ?? "").trim();
+  if (!trimmed || trimmed === "<unknown>" || trimmed === "Error" || trimmed === "Error:") {
     return true;
   }
-  if (NETWORK_NOISE_PATTERNS.some((re) => re.test(message))) {
+  if (IGNORE_ERRORS.some((p) => (typeof p === "string" ? trimmed.includes(p) : p.test(trimmed)))) {
+    return true;
+  }
+  if (NETWORK_NOISE_PATTERNS.some((re) => re.test(trimmed))) {
     return true;
   }
   const now = Date.now();
-  const last = recentSignatures.get(message);
+  const last = recentSignatures.get(trimmed);
   if (last !== undefined && now - last < DEDUPE_WINDOW_MS) return true;
-  recentSignatures.set(message, now);
+  recentSignatures.set(trimmed, now);
   if (recentSignatures.size > 200) {
     for (const [k, ts] of recentSignatures) {
       if (now - ts >= DEDUPE_WINDOW_MS) recentSignatures.delete(k);
@@ -100,13 +112,12 @@ export function initMobileSentry(): boolean {
             return null;
           }
           const original = hint?.originalException;
+          const exceptionValue = String(event?.exception?.values?.[0]?.value ?? "").trim();
           const message =
             original instanceof Error
               ? `${original.name}: ${original.message}`
-              : String(
-                  event?.exception?.values?.[0]?.value ?? event?.message ?? original ?? "",
-                );
-          if (shouldDrop(message)) return null;
+              : String(exceptionValue || event?.message || original || "");
+          if (shouldDrop(message) || shouldDrop(exceptionValue)) return null;
         } catch {
           // never throw from telemetry filter
         }
