@@ -27,11 +27,12 @@ function readRepo(rel: string) {
   assert.doesNotMatch(route, /TAXI_CATEGORIES\.map\(async/);
 }
 
-// Admin clients batch email lookup
+// Admin clients batch email lookup + safe search helper
 {
   const route = readWeb("app/api/admin/clients/route.ts");
   assert.match(route, /admin_lookup_user_emails/);
-  assert.doesNotMatch(route, /getUserById/);
+  assert.match(route, /buildAdminClientsSearchOr/);
+  assert.doesNotMatch(route, /id\.eq\.\$\{q\}/);
 }
 
 // Next perf config

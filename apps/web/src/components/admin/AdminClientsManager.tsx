@@ -70,6 +70,94 @@ function money(cents: number, currency: string) {
   }
 }
 
+type ClientActionKey =
+  | "suspend"
+  | "unsuspend"
+  | "activate"
+  | "deactivate"
+  | "soft_delete";
+
+function statusActions(status: string): Array<{
+  action: ClientActionKey;
+  label: string;
+  className: string;
+  confirm?: string;
+}> {
+  const s = String(status ?? "").toLowerCase();
+  if (s === "deleted") {
+    return [
+      {
+        action: "activate",
+        label: "Restore",
+        className:
+          "rounded-lg border border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-800",
+      },
+    ];
+  }
+  if (s === "suspended") {
+    return [
+      {
+        action: "unsuspend",
+        label: "Reactivate",
+        className:
+          "rounded-lg border border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-800",
+      },
+      {
+        action: "deactivate",
+        label: "Disable",
+        className:
+          "rounded-lg border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700",
+      },
+      {
+        action: "soft_delete",
+        label: "Soft delete",
+        className:
+          "rounded-lg border border-red-300 px-2 py-1 text-[11px] font-semibold text-red-700",
+        confirm: "Soft-delete this client account?",
+      },
+    ];
+  }
+  if (s === "disabled") {
+    return [
+      {
+        action: "activate",
+        label: "Enable",
+        className:
+          "rounded-lg border border-emerald-300 px-2 py-1 text-[11px] font-semibold text-emerald-800",
+      },
+      {
+        action: "soft_delete",
+        label: "Soft delete",
+        className:
+          "rounded-lg border border-red-300 px-2 py-1 text-[11px] font-semibold text-red-700",
+        confirm: "Soft-delete this client account?",
+      },
+    ];
+  }
+  // active (default)
+  return [
+    {
+      action: "suspend",
+      label: "Suspend",
+      className:
+        "rounded-lg border border-orange-300 px-2 py-1 text-[11px] font-semibold text-orange-800",
+    },
+    {
+      action: "deactivate",
+      label: "Disable",
+      className:
+        "rounded-lg border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700",
+    },
+    {
+      action: "soft_delete",
+      label: "Soft delete",
+      className:
+        "rounded-lg border border-red-300 px-2 py-1 text-[11px] font-semibold text-red-700",
+      confirm: "Soft-delete this client account?",
+    },
+  ];
+}
+
 export default function AdminClientsManager() {
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [query, setQuery] = useState("");
@@ -143,10 +231,14 @@ export default function AdminClientsManager() {
     setHistory(res.ok && body.ok ? body.items ?? [] : []);
   }
 
-  async function runAction(action: string) {
-    if (!selected) return;
+  async function runAction(
+    clientId: string,
+    action: ClientActionKey,
+    confirmMsg?: string,
+  ) {
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
     setSaving(true);
-    const res = await adminFetch(`/api/admin/clients/${selected.id}`, {
+    const res = await adminFetch(`/api/admin/clients/${clientId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action }),
@@ -158,7 +250,7 @@ export default function AdminClientsManager() {
       return;
     }
     await load();
-    setSelected(null);
+    if (selected?.id === clientId) setSelected(null);
   }
 
   async function saveEdits() {
@@ -196,8 +288,9 @@ export default function AdminClientsManager() {
             Clients
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Premium CRM view — real active clients by default. Test / cert /
-            deleted accounts are filtered out unless selected.
+            Premium CRM — search by name, email, phone or UUID. Manage,
+            suspend, reactivate, disable and audit clients. Real active
+            accounts by default.
           </p>
         </div>
         <button
@@ -301,7 +394,7 @@ export default function AdminClientsManager() {
                 <th className="px-4 py-3">Activity</th>
                 <th className="px-4 py-3">Wallet</th>
                 <th className="px-4 py-3">Profile</th>
-                <th className="px-4 py-3" />
+                <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -393,14 +486,38 @@ export default function AdminClientsManager() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void openClient(row)}
-                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        Manage
-                      </button>
+                    <td className="px-4 py-3">
+                      <div className="flex min-w-[11rem] flex-col items-stretch gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => void openClient(row)}
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-50"
+                        >
+                          View / Manage
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void openClient(row)}
+                          className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                        >
+                          History / Audit
+                        </button>
+                        {canManage
+                          ? statusActions(row.account_status).map((a) => (
+                              <button
+                                key={`${row.id}-${a.action}`}
+                                type="button"
+                                disabled={saving}
+                                onClick={() =>
+                                  void runAction(row.id, a.action, a.confirm)
+                                }
+                                className={a.className}
+                              >
+                                {a.label}
+                              </button>
+                            ))
+                          : null}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -489,6 +606,16 @@ export default function AdminClientsManager() {
                   Missing: {selected.missing_fields.join(", ")}
                 </div>
               ) : null}
+              <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Status:{" "}
+                <span className="font-semibold text-slate-900">
+                  {selected.account_status}
+                </span>{" "}
+                · Kind:{" "}
+                <span className="font-semibold text-slate-900">
+                  {selected.account_kind}
+                </span>
+              </div>
               {canManage ? (
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -499,38 +626,22 @@ export default function AdminClientsManager() {
                   >
                     Save profile
                   </button>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void runAction("suspend")}
-                    className="rounded-xl border border-orange-300 px-3 py-2 text-xs text-orange-800"
-                  >
-                    Suspend
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void runAction("unsuspend")}
-                    className="rounded-xl border border-emerald-300 px-3 py-2 text-xs text-emerald-800"
-                  >
-                    Unsuspend
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void runAction("deactivate")}
-                    className="rounded-xl border border-slate-300 px-3 py-2 text-xs"
-                  >
-                    Deactivate
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => void runAction("activate")}
-                    className="rounded-xl border border-emerald-300 px-3 py-2 text-xs text-emerald-800"
-                  >
-                    Activate
-                  </button>
+                  {statusActions(selected.account_status).map((a) => (
+                    <button
+                      key={`drawer-${a.action}`}
+                      type="button"
+                      disabled={saving}
+                      onClick={() =>
+                        void runAction(selected.id, a.action, a.confirm)
+                      }
+                      className={a.className.replace(
+                        "rounded-lg",
+                        "rounded-xl",
+                      )}
+                    >
+                      {a.label}
+                    </button>
+                  ))}
                 </div>
               ) : null}
               <div>

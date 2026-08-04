@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildAdminClientsSearchOr } from "@/lib/adminClientSearch";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
 import { scoreClientProfileCompleteness } from "@/lib/clientProfileCompleteness";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
     const supabase = buildSupabaseAdminClient();
     const sp = request.nextUrl.searchParams;
 
-    const q = String(sp.get("q") ?? "").trim().toLowerCase();
+    const q = String(sp.get("q") ?? "").trim();
     const page = Math.max(Number(sp.get("page") ?? 1), 1);
     const pageSize = Math.min(Math.max(Number(sp.get("pageSize") ?? 25), 1), 100);
     const sort = (String(sp.get("sort") ?? "created_at") as SortKey) || "created_at";
@@ -59,10 +60,9 @@ export async function GET(request: NextRequest) {
       query = query.neq("account_status", "deleted");
     }
 
-    if (q) {
-      query = query.or(
-        `full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,id.eq.${q}`,
-      );
+    const searchOr = buildAdminClientsSearchOr(q);
+    if (searchOr) {
+      query = query.or(searchOr);
     }
 
     const from = (page - 1) * pageSize;

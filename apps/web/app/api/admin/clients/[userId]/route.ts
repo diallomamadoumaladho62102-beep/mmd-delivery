@@ -9,13 +9,20 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
-type ClientAction = "suspend" | "unsuspend" | "activate" | "deactivate" | "update";
+type ClientAction =
+  | "suspend"
+  | "unsuspend"
+  | "activate"
+  | "deactivate"
+  | "soft_delete"
+  | "update";
 
 const STATUS_BY_ACTION: Record<string, string> = {
   suspend: "suspended",
   unsuspend: "active",
   activate: "active",
   deactivate: "disabled",
+  soft_delete: "deleted",
 };
 
 function json(body: Record<string, unknown>, status = 200) {
