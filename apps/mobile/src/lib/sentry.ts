@@ -24,12 +24,11 @@ const IGNORE_ERRORS = [
   /^MMD Sentry (?:web|mobile) probe\b/i,
   /audio session not activated/i,
   /Play encountered an error:\s*audio session/i,
-  // Old native binaries / OTA ahead of native — guarded in useNetworkStatus; still noise if thrown.
+  // Old native binaries / OTA ahead of native — guarded in useNetworkStatus; still noise if thrown
+  // from leftover store builds. New store builds must ship ExpoNetwork natively.
   /Cannot find native module ['"]ExpoNetwork['"]/i,
+  // SDK auto-capture of plain objects (our capture path normalizes via toCapturableError).
   /Object captured as exception with keys/i,
-  // Historical Postgres enum coalesce bug (fixed in 20261102130000); keep filter until stale clients die.
-  /invalid input value for enum document_status/i,
-  /22P02:.*document_status/i,
 ];
 
 // Transient network / offline failures that are pure client-side noise. Kept in
