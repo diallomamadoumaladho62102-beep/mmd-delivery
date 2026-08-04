@@ -17,4 +17,4 @@ export {
   type ProfileRole,
   type PublicRole,
   type StaffRole,
-} from "../../../shared/platformRoles";
+} from "../../../../shared/platformRoles";

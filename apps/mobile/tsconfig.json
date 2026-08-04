@@ -1,6 +1,7 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "baseUrl": ".",
     "module": "esnext",
     "moduleResolution": "bundler",
     "skipLibCheck": true,
