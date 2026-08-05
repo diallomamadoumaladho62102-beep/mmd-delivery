@@ -8,15 +8,24 @@ import { AppState, Platform, type AppStateStatus } from "react-native";
 import { supabase } from "./supabase";
 import { isDriverOnlineEligible } from "./accountStatus";
 import { setDriverOnlineViaApi } from "./driverServicePreferencesApi";
+import { distanceMeters } from "./coordinates";
 import { logTechnicalError } from "./userFacingError";
 
 const DRIVER_LOCATION_TASK = "MMD_DRIVER_BACKGROUND_LOCATION_TASK";
 const KEEP_AWAKE_TAG = "mmd-driver-location-tracking";
+const PRESENCE_UPSERT_MIN_INTERVAL_MS = 3000;
+const PRESENCE_UPSERT_MIN_DISTANCE_METERS = 10;
 
 let isTrackingStarted = false;
 let trackingStartInFlight: Promise<void> | null = null;
 let locationSubscription: Location.LocationSubscription | null = null;
 let appStateSubscription: { remove: () => void } | null = null;
+let lastPresenceUpsert: {
+  driverId: string;
+  at: number;
+  lat: number;
+  lng: number;
+} | null = null;
 
 /** True while presence GPS (Home online) is active — Order Details should not open a second watch. */
 export function isDriverPresenceTrackingActive(): boolean {
@@ -49,6 +58,25 @@ function logError(message: string, ...args: unknown[]) {
 async function sendDriverLocationToSupabase(
   payload: DriverLocationPayload,
 ): Promise<void> {
+  const now = Date.now();
+  const previous = lastPresenceUpsert;
+  if (
+    previous &&
+    previous.driverId === payload.driver_id &&
+    now - previous.at < PRESENCE_UPSERT_MIN_INTERVAL_MS &&
+    distanceMeters(previous.lat, previous.lng, payload.lat, payload.lng) <
+      PRESENCE_UPSERT_MIN_DISTANCE_METERS
+  ) {
+    return;
+  }
+
+  lastPresenceUpsert = {
+    driverId: payload.driver_id,
+    at: now,
+    lat: payload.lat,
+    lng: payload.lng,
+  };
+
   const { error } = await supabase.from("driver_locations").upsert(
     {
       driver_id: payload.driver_id,
@@ -150,7 +178,7 @@ async function startForegroundTracking(
     {
       accuracy: Location.Accuracy.High,
       timeInterval: intervalMs,
-      distanceInterval: 5,
+      distanceInterval: 10,
     },
     async (pos) => {
       try {
