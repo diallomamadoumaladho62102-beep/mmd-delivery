@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useState } from "react";
 import Link from "next/link";
 import {
   formatOrderDateParts,
@@ -15,19 +16,34 @@ import FoodOrderAvatar from "./FoodOrderAvatar";
 import FoodOrderBadge from "./FoodOrderBadge";
 import FoodOrderStatusStepper from "./FoodOrderStatusStepper";
 
-export default function FoodOrderCard({
+function FoodOrderCard({
   order,
   canManageOrders,
 }: {
   order: AdminFoodOrderListItem;
   canManageOrders: boolean;
 }) {
+  const [copied, setCopied] = useState(false);
   const status = orderStatusBadge(order.status);
   const payment = paymentStatusBadge(order.payment_status);
   const { date, time } = formatOrderDateParts(order.created_at);
   const restaurantName = order.restaurant?.name || order.restaurant_name || "Restaurant";
   const clientName = order.client?.full_name || "Client";
   const dropoff = summarizeAddress(order.dropoff_address);
+  const paidParts = order.paid_at ? formatOrderDateParts(order.paid_at) : null;
+  const deliveredParts = order.delivered_confirmed_at
+    ? formatOrderDateParts(order.delivered_confirmed_at)
+    : null;
+
+  async function copyId() {
+    try {
+      await navigator.clipboard.writeText(order.id);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      /* ignore */
+    }
+  }
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md">
@@ -36,10 +52,18 @@ export default function FoodOrderCard({
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/admin/orders/${order.id}`}
-              className="font-semibold tracking-tight text-slate-900 hover:underline"
+              className="min-h-11 inline-flex items-center font-semibold tracking-tight text-slate-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
             >
               #{shortOrderId(order.id)}
             </Link>
+            <button
+              type="button"
+              onClick={() => void copyId()}
+              aria-label="Copy full order ID"
+              className="inline-flex h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 px-2 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
             <FoodOrderBadge label={status.label} tone={status.tone} />
             <FoodOrderBadge label={payment.label} tone={payment.tone} />
             {order.kind ? (
@@ -84,9 +108,15 @@ export default function FoodOrderCard({
           <FoodOrderAvatar name={clientName} src={order.client?.avatar_url} size={40} />
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-slate-900">{clientName}</div>
-            <div className="truncate text-[11px] text-slate-500">
-              {order.client?.email || order.client?.phone || "No contact"}
+            <div
+              className="truncate text-[11px] text-slate-500"
+              title={order.client?.email || undefined}
+            >
+              {order.client?.email || "No email"}
             </div>
+            {order.client?.phone ? (
+              <div className="truncate text-[11px] text-slate-500">{order.client.phone}</div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -114,26 +144,41 @@ export default function FoodOrderCard({
         </div>
       )}
 
+      {(paidParts || deliveredParts) && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+          {paidParts ? (
+            <span>
+              Paid {paidParts.date} · {paidParts.time}
+            </span>
+          ) : null}
+          {deliveredParts ? (
+            <span>
+              Delivered {deliveredParts.date} · {deliveredParts.time}
+            </span>
+          ) : null}
+        </div>
+      )}
+
       <div className="mt-4 border-t border-slate-100 pt-3">
         <FoodOrderStatusStepper status={order.status} />
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
         <Link
           href={`/admin/orders/${order.id}`}
-          className="inline-flex h-9 items-center justify-center rounded-xl bg-slate-900 px-3 text-sm font-medium text-white transition hover:bg-slate-800"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
         >
           Open order
         </Link>
-        {canManageOrders ? (
-          <Link
-            href={`/admin/orders/${order.id}#cancel-refund`}
-            className="text-xs font-medium text-slate-600 underline-offset-2 hover:underline"
-          >
-            Manage on detail
-          </Link>
-        ) : null}
+        <Link
+          href={`/admin/orders/${order.id}#timeline`}
+          className="inline-flex h-11 items-center text-sm font-medium text-slate-600 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+        >
+          Timeline
+        </Link>
       </div>
     </article>
   );
 }
+
+export default memo(FoodOrderCard);

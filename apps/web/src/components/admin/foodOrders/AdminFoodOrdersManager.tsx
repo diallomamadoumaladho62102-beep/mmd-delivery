@@ -61,8 +61,13 @@ export default function AdminFoodOrdersManager() {
     [filters, syncFilters]
   );
 
-  const loadOrders = useCallback(async () => {
-    const res = await adminFetch("/api/admin/orders?limit=100");
+  const loadOrders = useCallback(async (statusFilter: string) => {
+    const url = new URL("/api/admin/orders", window.location.origin);
+    url.searchParams.set("limit", "100");
+    // Keep existing server status filter; remaining filters stay client-side.
+    if (statusFilter) url.searchParams.set("status", statusFilter);
+
+    const res = await adminFetch(url.toString());
     const body = await res.json().catch(() => ({}));
     if (!res.ok || !body.ok) {
       throw new Error(body.error ?? "Failed to load orders");
@@ -77,7 +82,7 @@ export default function AdminFoodOrdersManager() {
         if (mode === "initial") setLoading(true);
         else setRefreshing(true);
         setError(null);
-        const orders = await loadOrders();
+        const orders = await loadOrders(filters.status);
         setItems(orders);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
@@ -87,7 +92,7 @@ export default function AdminFoodOrdersManager() {
         setRefreshing(false);
       }
     },
-    [loadOrders]
+    [loadOrders, filters.status]
   );
 
   useEffect(() => {
@@ -174,7 +179,7 @@ export default function AdminFoodOrdersManager() {
           type="button"
           onClick={() => void loadPage("refresh")}
           disabled={refreshing || loading}
-          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+          className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-60"
         >
           {refreshing ? "Refreshing…" : "Refresh"}
         </button>

@@ -49,6 +49,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
 
     const status = String(searchParams.get("status") ?? "").trim();
+    const paymentStatus = String(searchParams.get("payment_status") ?? "").trim();
+    const restaurantId = String(searchParams.get("restaurant_id") ?? "").trim();
+    const driverId = String(searchParams.get("driver_id") ?? "").trim();
+    const q = String(searchParams.get("q") ?? "").trim();
     const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 100), 1), 200);
 
     let query = supabase
@@ -60,6 +64,26 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (status) query = query.eq("status", status);
+    if (paymentStatus) query = query.eq("payment_status", paymentStatus);
+    if (restaurantId) {
+      query = query.or(
+        `restaurant_id.eq.${restaurantId},restaurant_user_id.eq.${restaurantId}`
+      );
+    }
+    if (driverId) query = query.eq("driver_id", driverId);
+    // Trivial SQL filter only. Client/email/phone stay client-side after enrichment.
+    if (q) {
+      const escaped = q.replace(/[%_,]/g, "");
+      const uuidLike =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          q
+        );
+      if (uuidLike) {
+        query = query.eq("id", q);
+      } else if (escaped) {
+        query = query.ilike("restaurant_name", `%${escaped}%`);
+      }
+    }
 
     query = applyLiveTripFilters(query);
 

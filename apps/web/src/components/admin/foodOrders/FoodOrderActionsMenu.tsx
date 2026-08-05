@@ -16,6 +16,7 @@ export default function FoodOrderActionsMenu({
   canManageOrders: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const menuId = useId();
 
@@ -41,17 +42,31 @@ export default function FoodOrderActionsMenu({
     };
   }, [open]);
 
+  async function copyOrderId() {
+    try {
+      await navigator.clipboard.writeText(order.id);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+    setOpen(false);
+  }
+
+  const itemClass =
+    "block w-full px-3 py-2.5 text-left text-sm text-slate-800 hover:bg-slate-50 focus:bg-slate-50 focus:outline-none";
+
   return (
     <div className="relative" ref={rootRef}>
       <button
         type="button"
+        aria-label="Order actions"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
       >
-        <span className="sr-only">Order actions</span>
         <span aria-hidden className="text-lg leading-none">
           ⋯
         </span>
@@ -61,21 +76,40 @@ export default function FoodOrderActionsMenu({
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-20 mt-1 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
         >
           <Link
             role="menuitem"
             href={`/admin/orders/${order.id}`}
-            className="block px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
+            className={itemClass}
             onClick={() => setOpen(false)}
           >
             View details
           </Link>
+          <Link
+            role="menuitem"
+            href={`/admin/orders/${order.id}#timeline`}
+            className={itemClass}
+            onClick={() => setOpen(false)}
+          >
+            Timeline
+          </Link>
+          <Link
+            role="menuitem"
+            href={`/admin/payouts/${order.id}`}
+            className={itemClass}
+            onClick={() => setOpen(false)}
+          >
+            Receipt / payout
+          </Link>
+          <button type="button" role="menuitem" className={itemClass} onClick={() => void copyOrderId()}>
+            {copied ? "Copied!" : "Copy order ID"}
+          </button>
           {clientId ? (
             <Link
               role="menuitem"
               href={`/admin/clients?q=${encodeURIComponent(clientId)}`}
-              className="block px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
+              className={itemClass}
               onClick={() => setOpen(false)}
             >
               Open client
@@ -84,8 +118,8 @@ export default function FoodOrderActionsMenu({
           {driverId ? (
             <Link
               role="menuitem"
-              href={`/admin/drivers`}
-              className="block px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
+              href="/admin/drivers"
+              className={itemClass}
               onClick={() => setOpen(false)}
             >
               Open drivers
@@ -94,8 +128,8 @@ export default function FoodOrderActionsMenu({
           {restaurantId ? (
             <Link
               role="menuitem"
-              href={`/admin/restaurants`}
-              className="block px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
+              href="/admin/restaurants"
+              className={itemClass}
               onClick={() => setOpen(false)}
             >
               Open restaurants
@@ -105,10 +139,10 @@ export default function FoodOrderActionsMenu({
             <Link
               role="menuitem"
               href={`/admin/orders/${order.id}#cancel-refund`}
-              className="block px-3 py-2 text-sm text-slate-800 hover:bg-slate-50"
+              className={itemClass}
               onClick={() => setOpen(false)}
             >
-              Cancel / refund (detail)
+              Refund (detail)
             </Link>
           ) : null}
         </div>
