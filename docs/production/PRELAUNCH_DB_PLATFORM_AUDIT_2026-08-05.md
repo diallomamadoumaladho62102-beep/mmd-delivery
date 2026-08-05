@@ -1,13 +1,19 @@
 # Audit final plateforme & base — 2026-08-05
 
+**Statut :** RÉFÉRENCE OFFICIELLE pré-lancement — phase d’audit **clôturée** (2026-08-05)  
 Projet prod : `sjmszohmhudayxawfows` · Compute : **Micro** (conservé)  
-Branche / migrations : `20261107120000` (rétention) + `20261107140000` (orphelins + rétention étendue)
+Branche / migrations : `20261107120000` (rétention) + `20261107140000` (orphelins + rétention étendue)  
+PR : https://github.com/diallomamadoumaladho62102-beep/mmd-delivery/pull/79
 
-## 0. Validations déjà acceptées
+## 0. Validations Founder
 
 - Nettoyage `cron.job_run_details`, cron payout dupliqué retiré, rétention active
+- Orphelins QA / debris scripts supprimés ; aucune donnée métier réelle touchée
+- Comptes `+cert-*` et `@mmd.test` **conservés** jusqu’à décision post-launch
 - Taille DB ≠ problème ; upgrade Micro **non justifié** tant que saturation durable absente
-- Dossiers **Disk I/O GPS** et **Sentry MOBILE-A** restent **en observation** (hors clôture)
+- Observations encore ouvertes (hors clôture audit) :
+  1. Disk I/O GPS — comparaison taux vs baseline sous 2–3 jours
+  2. Sentry `MMD-DELIVERY-MOBILE-A` — preuve 0 nouvel event dès accès token
 
 ---
 
@@ -178,13 +184,30 @@ Vérifs post-migration recommandées Founder : login chauffeur réel, 1 lecture 
 
 ---
 
-## 9. Verdict launch readiness (DB/ops)
+## 9. Vérification de clôture (2026-08-05 — dernière passe)
 
-| Critère | Verdict |
-|---------|---------|
-| Propreté journaux techniques | **OK** (rétention) |
-| Orphelins QA évidents | **Nettoyés** |
-| Automatismes documentés | **OK** |
-| Upgrade Micro | **Non** |
-| Clôture Disk I/O GPS / Sentry A | **Non** (observation) |
-| Suppression agressive test e2e | **Reportée** (validation Founder) |
+| Check | Résultat |
+|-------|----------|
+| Tables `public` nommées test/tmp/debug/scratch/experimental | **Aucune** (seul faux positif : `driver_identity_devices` = prod identité) |
+| Fonctions SQL / RPC `*_test*` / debug / experimental | **Aucune** |
+| Triggers expérimentaux isolés | **Aucun signalé** (triggers métier conservés) |
+| Edge Functions abandonnées | **Aucune désactivation** (doute = conservation ; toutes liées paiement/push/connect/safety) |
+| Vercel Cron oubliés | **2 seulement** : `daily-money`, `daily-ops` |
+| pg_cron | 6 jobs actifs documentés §1.1 ; doublon payout déjà retiré |
+| Profils sans `auth.users` | **0** |
+| `mmd_purge_observability_retention` | **Présente** |
+| TODO / FIXME / HACK dans `apps/web/src`, `apps/mobile/src`, `supabase/functions` | **0** |
+| Secrets hardcodés (`sk_live_…`, clés privées) dans le code | **Aucun trouvé** ; refs `process.env.*` + gardes `sk_test_*` / scripts ops = attendu |
+| Index `idx_scan=0` | Signalés en §2.4 — **non droppés** (contraintes / readiness) |
+
+## 10. Confirmation d’état (clôture officielle)
+
+1. La base de données est **propre** pour le niveau de charge actuel.  
+2. Les données de développement inutiles ont été **supprimées lorsqu’elles pouvaient l’être sans risque**.  
+3. Les tâches automatiques ont été **auditées** et documentées.  
+4. Les politiques de rétention sont **en place** (cron quotidien).  
+5. La plateforme est **optimisée pour sa charge actuelle**.  
+6. L’infrastructure **Micro reste adaptée**.  
+7. Seules observations encore ouvertes : **Disk I/O GPS (multi-jours)** et **Sentry MOBILE-A (accès token)**.
+
+Cette phase d’audit est **officiellement clôturée**. Les efforts suivants portent sur les dernières fonctionnalités de lancement public.
