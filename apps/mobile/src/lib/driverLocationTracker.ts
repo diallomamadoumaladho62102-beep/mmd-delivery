@@ -88,17 +88,12 @@ export async function startDriverLocationTracking(opts: StartOptions) {
           distanceInterval,
         },
         async (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const updated_at = new Date().toISOString();
-
-          const { error } = await supabase
-            .from("driver_locations")
-            .upsert({ driver_id: driverId, lat, lng, updated_at });
-
-          if (error) {
-            // Réseau instable — ne pas casser la navigation.
-          }
+          // Shared throttle / distance gate (same as upsertDriverLiveLocation).
+          await upsertDriverLiveLocation(
+            driverId,
+            pos.coords.latitude,
+            pos.coords.longitude,
+          );
         }
       );
 
