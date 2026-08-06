@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   DEFAULT_FOOD_ORDER_FILTERS,
+  buildAdminFoodOrderParty,
   countOrderItems,
   filterFoodOrders,
   filtersToSearchParams,
@@ -9,7 +10,9 @@ import {
   orderAmountNumber,
   orderStatusBadge,
   parseFiltersFromSearchParams,
+  partyDisplayName,
   paymentStatusBadge,
+  sanitizeDisplayPhone,
   shortOrderId,
   sortFoodOrders,
   statusStepperIndex,
@@ -60,6 +63,7 @@ function sample(partial: Partial<AdminFoodOrderListItem> = {}): AdminFoodOrderLi
       email: "awa@example.com",
       phone: "+15551212",
       avatar_url: null,
+      account_kind: "real",
     },
     driver: {
       id: "driver-1",
@@ -67,6 +71,7 @@ function sample(partial: Partial<AdminFoodOrderListItem> = {}): AdminFoodOrderLi
       email: "ib@example.com",
       phone: null,
       avatar_url: null,
+      account_kind: "real",
     },
     restaurant: {
       id: "rest-1",
@@ -124,6 +129,7 @@ test("filterFoodOrders matches query and status", () => {
         email: "omar@example.com",
         phone: null,
         avatar_url: null,
+        account_kind: "real",
       },
       created_at: "2026-07-10T12:00:00.000Z",
       total_cents: 4000,
@@ -175,6 +181,50 @@ test("URL filter round-trip", () => {
   assert.equal(parsed.status, "ready");
   assert.equal(parsed.sort, "amount");
   assert.equal(parsed.dir, "asc");
+});
+
+test("buildAdminFoodOrderParty prefers client_profiles name and avatar", () => {
+  const party = buildAdminFoodOrderParty({
+    profile: {
+      id: "u1",
+      full_name: null,
+      email: "mmddelivery621@gmail.com",
+      phone_e164: "+19297408722",
+      avatar_url: "drivers/u1/avatar.jpg",
+      account_kind: "real",
+    },
+    roleProfile: {
+      user_id: "u1",
+      full_name: "Mamadou Maladho",
+      phone: "9297246222",
+      avatar_url:
+        "https://example.supabase.co/storage/v1/object/public/avatars/clients/u1/avatar.jpg",
+    },
+    preferRoleAvatar: true,
+  });
+  assert.equal(party?.full_name, "Mamadou Maladho");
+  assert.equal(party?.email, "mmddelivery621@gmail.com");
+  assert.equal(party?.phone, "+19297408722");
+  assert.match(String(party?.avatar_url), /clients\/u1\/avatar\.jpg/);
+});
+
+test("sanitizeDisplayPhone drops placeholders", () => {
+  assert.equal(sanitizeDisplayPhone("+1NUMERO_CLIENT"), null);
+  assert.equal(sanitizeDisplayPhone("+19297408722"), "+19297408722");
+});
+
+test("partyDisplayName never returns generic Client when email exists", () => {
+  assert.equal(
+    partyDisplayName({
+      id: "u1",
+      full_name: null,
+      email: "e2e.phase15@mmd.test",
+      phone: null,
+      avatar_url: null,
+      account_kind: "test",
+    }),
+    "e2e.phase15@mmd.test"
+  );
 });
 
 console.log("adminFoodOrderDisplay.test.ts passed");

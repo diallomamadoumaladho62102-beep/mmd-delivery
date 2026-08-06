@@ -6,6 +6,7 @@ import {
   formatOrderDateParts,
   formatOrderMoney,
   orderStatusBadge,
+  partyDisplayName,
   paymentStatusBadge,
   shortOrderId,
   summarizeAddress,
@@ -28,7 +29,9 @@ function FoodOrderCard({
   const payment = paymentStatusBadge(order.payment_status);
   const { date, time } = formatOrderDateParts(order.created_at);
   const restaurantName = order.restaurant?.name || order.restaurant_name || "Restaurant";
-  const clientName = order.client?.full_name || "Client";
+  const clientName = partyDisplayName(order.client, "Unknown client");
+  const driverName = partyDisplayName(order.driver, "Unknown driver");
+  const clientKind = String(order.client?.account_kind ?? "").toLowerCase();
   const dropoff = summarizeAddress(order.dropoff_address);
   const paidParts = order.paid_at ? formatOrderDateParts(order.paid_at) : null;
   const deliveredParts = order.delivered_confirmed_at
@@ -107,13 +110,22 @@ function FoodOrderCard({
         <div className="flex min-w-0 items-center gap-2.5">
           <FoodOrderAvatar name={clientName} src={order.client?.avatar_url} size={40} />
           <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-slate-900">{clientName}</div>
-            <div
-              className="truncate text-[11px] text-slate-500"
-              title={order.client?.email || undefined}
-            >
-              {order.client?.email || "No email"}
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div className="truncate text-sm font-medium text-slate-900">{clientName}</div>
+              {clientKind && clientKind !== "real" ? (
+                <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-200">
+                  {clientKind}
+                </span>
+              ) : null}
             </div>
+            {order.client?.email && order.client.email !== clientName ? (
+              <div
+                className="truncate text-[11px] text-slate-500"
+                title={order.client.email}
+              >
+                {order.client.email}
+              </div>
+            ) : null}
             {order.client?.phone ? (
               <div className="truncate text-[11px] text-slate-500">{order.client.phone}</div>
             ) : null}
@@ -124,13 +136,11 @@ function FoodOrderCard({
       {order.driver ? (
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-600">
           <FoodOrderAvatar
-            name={order.driver.full_name}
+            name={driverName}
             src={order.driver.avatar_url}
             size={24}
           />
-          <span className="truncate">
-            Driver · {order.driver.full_name || shortOrderId(order.driver.id)}
-          </span>
+          <span className="truncate">Driver · {driverName}</span>
         </div>
       ) : (
         <div className="mt-3 text-xs text-slate-500">No driver assigned</div>

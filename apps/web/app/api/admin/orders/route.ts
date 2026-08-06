@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AdminAccessError, assertStaffPermission } from "@/lib/adminServer";
-import { countOrderItems, type AdminFoodOrderListItem } from "@/lib/adminFoodOrderDisplay";
+import {
+  buildAdminFoodOrderParty,
+  countOrderItems,
+  resolvePublicAvatarUrl,
+  type AdminFoodOrderListItem,
+  type PartyProfileSource,
+  type PartyRoleProfileSource,
+} from "@/lib/adminFoodOrderDisplay";
 import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { applyLiveTripFilters } from "@/lib/tripVisibility";
 
@@ -14,14 +21,17 @@ function uniqIds(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((v) => String(v ?? "").trim()).filter(Boolean))];
 }
 
-type ProfileRow = {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  avatar_url: string | null;
-  personal_photo_url: string | null;
-};
+function resolveClientUserId(row: Record<string, unknown>): string {
+  // Prefer auth user ids used elsewhere (client_user_id / user_id / created_by).
+  // client_id is usually the same uuid, but can be stale on older rows.
+  return (
+    String(row.client_user_id ?? "").trim() ||
+    String(row.client_id ?? "").trim() ||
+    String(row.user_id ?? "").trim() ||
+    String(row.created_by ?? "").trim() ||
+    ""
+  );
+}
 
 type RestaurantRow = {
   user_id: string;
@@ -30,17 +40,6 @@ type RestaurantRow = {
   avatar_url: string | null;
   cover_image_url: string | null;
 };
-
-function partyFromProfile(row: ProfileRow | undefined) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    full_name: row.full_name,
-    email: row.email,
-    phone: row.phone,
-    avatar_url: String(row.avatar_url ?? row.personal_photo_url ?? "").trim() || null,
-  };
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,7 +57,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("orders")
       .select(
-        "id, status, kind, payment_status, subtotal, total, total_cents, currency, restaurant_name, restaurant_id, restaurant_user_id, client_id, client_user_id, user_id, driver_id, created_at, paid_at, delivered_confirmed_at, items_json, distance_miles, eta_minutes, delivery_fee, pickup_address, dropoff_address, promo_code_applied"
+        "id, status, kind, payment_status, subtotal, total, total_cents, currency, restaurant_name, restaurant_id, restaurant_user_id, client_id, client_user_id, user_id, created_by, driver_id, created_at, paid_at, delivered_confirmed_at, items_json, distance_miles, eta_minutes, delivery_fee, pickup_address, dropoff_address, promo_code_applied"
       )
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -71,7 +70,6 @@ export async function GET(request: NextRequest) {
       );
     }
     if (driverId) query = query.eq("driver_id", driverId);
-    // Trivial SQL filter only. Client/email/phone stay client-side after enrichment.
     if (q) {
       const escaped = q.replace(/[%_,]/g, "");
       const uuidLike =
@@ -92,13 +90,7 @@ export async function GET(request: NextRequest) {
 
     const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
 
-    const clientIds = uniqIds(
-      rows.flatMap((row) => [
-        row.client_id as string | null,
-        row.client_user_id as string | null,
-        row.user_id as string | null,
-      ])
-    );
+    const clientIds = uniqIds(rows.map((row) => resolveClientUserId(row)));
     const driverIds = uniqIds(rows.map((row) => row.driver_id as string | null));
     const restaurantIds = uniqIds(
       rows.flatMap((row) => [
@@ -108,28 +100,65 @@ export async function GET(request: NextRequest) {
     );
     const profileIds = uniqIds([...clientIds, ...driverIds]);
 
-    const profilesById = new Map<string, ProfileRow>();
+    const profilesById = new Map<string, PartyProfileSource>();
+    const clientProfilesById = new Map<string, PartyRoleProfileSource>();
+    const driverProfilesById = new Map<string, PartyRoleProfileSource>();
     const restaurantsByUserId = new Map<string, RestaurantRow>();
 
-    const [profilesRes, restaurantsRes] = await Promise.all([
-      profileIds.length
-        ? supabase
-            .from("profiles")
-            .select("id, full_name, email, phone, avatar_url, personal_photo_url")
-            .in("id", profileIds)
-        : Promise.resolve({ data: [] as ProfileRow[], error: null }),
-      restaurantIds.length
-        ? supabase
-            .from("restaurant_profiles")
-            .select("user_id, restaurant_name, logo_url, avatar_url, cover_image_url")
-            .in("user_id", restaurantIds)
-        : Promise.resolve({ data: [] as RestaurantRow[], error: null }),
-    ]);
+    const [profilesRes, clientProfilesRes, driverProfilesRes, restaurantsRes] =
+      await Promise.all([
+        profileIds.length
+          ? supabase
+              .from("profiles")
+              .select(
+                "id, full_name, email, phone, phone_e164, avatar_url, personal_photo_url, account_kind"
+              )
+              .in("id", profileIds)
+          : Promise.resolve({ data: [] as PartyProfileSource[], error: null }),
+        clientIds.length
+          ? supabase
+              .from("client_profiles")
+              .select("user_id, full_name, phone, avatar_url")
+              .in("user_id", clientIds)
+          : Promise.resolve({ data: [] as PartyRoleProfileSource[], error: null }),
+        driverIds.length
+          ? supabase
+              .from("driver_profiles")
+              .select("user_id, full_name, phone, photo_url")
+              .in("user_id", driverIds)
+          : Promise.resolve({
+              data: [] as Array<PartyRoleProfileSource & { photo_url?: string | null }>,
+              error: null,
+            }),
+        restaurantIds.length
+          ? supabase
+              .from("restaurant_profiles")
+              .select("user_id, restaurant_name, logo_url, avatar_url, cover_image_url")
+              .in("user_id", restaurantIds)
+          : Promise.resolve({ data: [] as RestaurantRow[], error: null }),
+      ]);
 
     // Enrichment is best-effort: list still returns if party joins fail.
     if (!profilesRes.error && Array.isArray(profilesRes.data)) {
-      for (const row of profilesRes.data as ProfileRow[]) {
+      for (const row of profilesRes.data as PartyProfileSource[]) {
         profilesById.set(String(row.id), row);
+      }
+    }
+    if (!clientProfilesRes.error && Array.isArray(clientProfilesRes.data)) {
+      for (const row of clientProfilesRes.data as PartyRoleProfileSource[]) {
+        clientProfilesById.set(String(row.user_id), row);
+      }
+    }
+    if (!driverProfilesRes.error && Array.isArray(driverProfilesRes.data)) {
+      for (const row of driverProfilesRes.data as Array<
+        PartyRoleProfileSource & { photo_url?: string | null }
+      >) {
+        driverProfilesById.set(String(row.user_id), {
+          user_id: String(row.user_id),
+          full_name: row.full_name ?? null,
+          phone: row.phone ?? null,
+          avatar_url: row.photo_url ?? row.avatar_url ?? null,
+        });
       }
     }
     if (!restaurantsRes.error && Array.isArray(restaurantsRes.data)) {
@@ -138,12 +167,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fill missing emails from auth lookup (same pattern as Admin Clients).
+    const missingEmailIds = [...profilesById.values()]
+      .filter((row) => !String(row.email ?? "").trim())
+      .map((row) => String(row.id));
+    if (missingEmailIds.length > 0) {
+      const { data: emailRows } = await supabase.rpc("admin_lookup_user_emails", {
+        p_ids: missingEmailIds,
+      });
+      if (Array.isArray(emailRows)) {
+        for (const row of emailRows as Array<{ id: string; email: string | null }>) {
+          const existing = profilesById.get(String(row.id));
+          if (existing && !existing.email) {
+            existing.email = row.email ?? null;
+          }
+        }
+      }
+    }
+
     const items: AdminFoodOrderListItem[] = rows.map((row) => {
-      const clientKey =
-        String(row.client_id ?? "").trim() ||
-        String(row.client_user_id ?? "").trim() ||
-        String(row.user_id ?? "").trim() ||
-        "";
+      const clientKey = resolveClientUserId(row);
       const driverKey = String(row.driver_id ?? "").trim();
       const restaurantKey =
         String(row.restaurant_user_id ?? "").trim() ||
@@ -151,8 +194,9 @@ export async function GET(request: NextRequest) {
         "";
       const restaurant = restaurantKey ? restaurantsByUserId.get(restaurantKey) : undefined;
       const logo =
-        String(restaurant?.logo_url ?? restaurant?.avatar_url ?? restaurant?.cover_image_url ?? "")
-          .trim() || null;
+        resolvePublicAvatarUrl(
+          restaurant?.logo_url ?? restaurant?.avatar_url ?? restaurant?.cover_image_url
+        ) || null;
 
       return {
         id: String(row.id),
@@ -181,8 +225,16 @@ export async function GET(request: NextRequest) {
         dropoff_address: (row.dropoff_address as string | null) ?? null,
         promo_code_applied: (row.promo_code_applied as string | null) ?? null,
         item_count: countOrderItems(row.items_json),
-        client: partyFromProfile(clientKey ? profilesById.get(clientKey) : undefined),
-        driver: partyFromProfile(driverKey ? profilesById.get(driverKey) : undefined),
+        client: buildAdminFoodOrderParty({
+          profile: clientKey ? profilesById.get(clientKey) : null,
+          roleProfile: clientKey ? clientProfilesById.get(clientKey) : null,
+          preferRoleAvatar: true,
+        }),
+        driver: buildAdminFoodOrderParty({
+          profile: driverKey ? profilesById.get(driverKey) : null,
+          roleProfile: driverKey ? driverProfilesById.get(driverKey) : null,
+          preferRoleAvatar: true,
+        }),
         restaurant: {
           id: restaurant?.user_id ?? (restaurantKey || null),
           name:
@@ -196,7 +248,6 @@ export async function GET(request: NextRequest) {
     return json({
       ok: true,
       items,
-      // Architecture hooks for future pagination / infinite scroll (not implemented).
       page: {
         limit,
         returned: items.length,
