@@ -293,10 +293,20 @@ function MissionVisionValuesBlock({ payload }: { payload: Record<string, unknown
 function HowItWorksBlock({ payload }: { payload: Record<string, unknown> }) {
   const steps = asArray<Record<string, unknown>>(payload.steps);
   if (!steps.length) return null;
+  const title = str(payload.title);
+  const headingId = "how-it-works-heading";
   return (
-    <SectionWrap>
-      {str(payload.title) ? <h2 className={siteHeadingClass}>{str(payload.title)}</h2> : null}
-      <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <SectionWrap id="how-it-works">
+      {title ? (
+        <h2 id={headingId} className={siteHeadingClass}>
+          {title}
+        </h2>
+      ) : null}
+      <ol
+        className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        aria-labelledby={title ? headingId : undefined}
+        aria-label={title ? undefined : "How it works steps"}
+      >
         {steps.map((step, i) => (
           <li key={`${str(step.title)}-${i}`} className={siteCardClass}>
             <span className="text-xs font-semibold uppercase tracking-wider text-orange-300">
@@ -304,7 +314,7 @@ function HowItWorksBlock({ payload }: { payload: Record<string, unknown> }) {
             </span>
             <h3 className="mt-2 text-lg font-semibold text-white">{str(step.title)}</h3>
             {str(step.body) ? (
-              <p className="mt-2 text-sm text-slate-400">{str(step.body)}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">{str(step.body)}</p>
             ) : null}
           </li>
         ))}
