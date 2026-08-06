@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
         supabase
           .from("driver_vehicles")
           .select(
-            "id, driver_user_id, photo_url, make, model, year, color, license_plate, vehicle_type, is_primary, updated_at"
+            "id, driver_user_id, photo_url, vehicle_make, vehicle_model, vehicle_year, vehicle_color, license_plate, vehicle_type, is_primary, updated_at"
           )
           .in("driver_user_id", userIds),
         supabase
@@ -317,13 +317,19 @@ export async function GET(request: NextRequest) {
                 id: String(veh.id ?? "") || null,
                 photo_url: vehiclePhoto,
                 vehicle_type: (veh.vehicle_type as string | null) ?? null,
-                make: (veh.make as string | null) ?? (d.vehicle_brand as string | null),
-                model: (veh.model as string | null) ?? (d.vehicle_model as string | null),
+                make:
+                  (veh.vehicle_make as string | null) ??
+                  (d.vehicle_brand as string | null),
+                model:
+                  (veh.vehicle_model as string | null) ??
+                  (d.vehicle_model as string | null),
                 year:
-                  veh.year != null
-                    ? Number(veh.year)
+                  veh.vehicle_year != null
+                    ? Number(veh.vehicle_year)
                     : ((d.vehicle_year as number | null) ?? null),
-                color: (veh.color as string | null) ?? (d.vehicle_color as string | null),
+                color:
+                  (veh.vehicle_color as string | null) ??
+                  (d.vehicle_color as string | null),
                 plate:
                   (veh.license_plate as string | null) ??
                   (d.plate_number as string | null),
