@@ -162,18 +162,48 @@ function HeroBlock({ payload }: { payload: Record<string, unknown> }) {
               ))}
             </ul>
           ) : null}
-          <div className="mt-9 space-y-4">
-            <CtaButtons buttons={primary} primary />
-            {secondary.length > 0 ? (
-              <CtaButtons buttons={secondary} primary={false} />
-            ) : null}
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            {primary
+              .map((btn) => ({
+                label: typeof btn.label === "string" ? btn.label.trim() : "",
+                href: typeof btn.href === "string" ? btn.href.trim() : "",
+                event: btn.event,
+              }))
+              .filter((btn) => btn.label && btn.href)
+              .map((btn, i) => (
+                <Link
+                  key={`hero-primary-${btn.href}-${i}`}
+                  href={btn.href}
+                  data-site-event={btn.event || undefined}
+                  className={`${sitePrimaryBtnClass} w-full sm:w-auto`}
+                >
+                  {btn.label}
+                </Link>
+              ))}
+            {secondary
+              .map((btn) => ({
+                label: typeof btn.label === "string" ? btn.label.trim() : "",
+                href: typeof btn.href === "string" ? btn.href.trim() : "",
+                event: btn.event,
+              }))
+              .filter((btn) => btn.label && btn.href)
+              .map((btn, i) => (
+                <Link
+                  key={`hero-secondary-${btn.href}-${i}`}
+                  href={btn.href}
+                  data-site-event={btn.event || undefined}
+                  className={`${siteSecondaryBtnClass} w-full sm:w-auto`}
+                >
+                  {btn.label}
+                </Link>
+              ))}
           </div>
         </div>
         <div className="min-w-0">
           {useShowcase ? (
             <HeroShowcase brand={siteTheme.brandName} />
           ) : (
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/50">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50">
               <SiteImage
                 src={str(payload.image_url, siteTheme.heroImageSrc)}
                 alt={headline}
