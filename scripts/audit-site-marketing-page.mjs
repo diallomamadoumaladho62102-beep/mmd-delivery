@@ -62,9 +62,11 @@ const PAGE_PROFILES = {
     "hero",
     "services",
     "features",
+    "mission_vision_values",
     "how_it_works",
     "cta",
     "faq",
+    "blog_teaser",
   ],
 };
 
@@ -177,12 +179,19 @@ try {
   info.push(`menu links matched: ${menuRows.length}`);
   // Some marketing pages are linked from footer, company pages, or showcase — not header.
   const menuOptional = new Set([
+    "home",
     "marketplace",
     "faq",
     "careers",
     "partners",
     "press",
     "blog",
+    "download",
+    "contact",
+    "company",
+    "privacy",
+    "terms",
+    "support",
   ]);
   if (menuRows.length === 0) {
     if (menuOptional.has(slug)) {
@@ -263,8 +272,11 @@ try {
         }
       }
       if (b.block_type === "hero") {
-        if (payload.headline_style !== "solid") {
+        const driversParitySlugs = new Set(["drivers", "restaurants", "business"]);
+        if (driversParitySlugs.has(slug) && payload.headline_style !== "solid") {
           warnings.push("hero.headline_style is not 'solid' (Drivers/Restaurants parity uses solid orange)");
+        } else if (!driversParitySlugs.has(slug) && payload.headline_style !== "solid") {
+          info.push("hero.headline_style=" + (payload.headline_style ?? "(unset)") + " (parity check skipped for " + slug + ")");
         }
         const imageUrl = payload.image_url;
         if (!imageUrl) {
@@ -294,16 +306,22 @@ try {
       errors.push("placeholder wording found in page.tsx source");
     }
     if (
+      slug !== "home" &&
       !src.includes("HowToJsonLd") &&
       EXPECTED_BLOCK_TYPES.includes("how_it_works")
     ) {
       warnings.push("page.tsx does not reference HowToJsonLd");
+    } else if (slug === "home" && !src.includes("HowToJsonLd")) {
+      info.push("home page uses CMS BlockRenderer (HowToJsonLd optional)");
     }
   }
 
   const contentCandidates = [
     join(ROOT, "apps", "web", "src", "components", "site", `${slug}Content.ts`),
     join(ROOT, "apps", "web", "src", "components", "site", `${slug}Content.tsx`),
+    ...(slug === "home"
+      ? [join(ROOT, "apps", "web", "src", "components", "site", "renderCmsPage.tsx")]
+      : []),
   ];
   const contentFile = contentCandidates.find((p) => existsSync(p));
   if (!contentFile) {
