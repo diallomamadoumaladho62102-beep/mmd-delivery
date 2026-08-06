@@ -88,6 +88,8 @@ export default async function Page() {
   if (hasStructuredSteps) {
     return (
       <>
+        {/* data-site-content-source lets ops verify CMS path vs code fallback */}
+        <div data-site-content-source="cms" hidden aria-hidden="true" />
         {jsonLd}
         {await renderCmsPage("how-it-works")}
       </>
@@ -101,6 +103,7 @@ export default async function Page() {
 
   return (
     <>
+      <div data-site-content-source="fallback" hidden aria-hidden="true" />
       {jsonLd}
       <SiteShell
         settings={settings}

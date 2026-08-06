@@ -1,0 +1,15 @@
+---
+description: Never advance to the next Figma/Website screen until the current page is 100% validated.
+alwaysApply: true
+---
+
+# Website / Figma reproduction — validation gate
+
+When reproducing product screens into the official Figma Design System (or implementing related website routes for that work):
+
+1. **Finish the current page completely** before starting the next one.
+2. **Do not proceed** to the next screen/route until the user has explicitly validated the current page at 100%.
+3. Before asking for validation, resolve real defects on the current page: logo/assets, spacing, typography, colors, DS instances, responsive variants, and working navigation targets.
+4. Prefer fixing small imperfections now over accumulating them across pages.
+5. Code remains the source of truth for visual fidelity unless the user explicitly requests a product change (e.g. temporary Coming Soon routes).
+6. A page is not ready for user validation until **all** of these are done by the agent: code shipped, Supabase migrations applied to the linked project, CMS data verified, functional checks passed, and Preview redeployed. Do not ask the user to run migrations or intermediate technical steps.
