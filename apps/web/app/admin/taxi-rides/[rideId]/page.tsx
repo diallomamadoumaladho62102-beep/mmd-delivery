@@ -236,7 +236,10 @@ export default function AdminTaxiRideDetailPage() {
                 </section>
               ) : null}
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section
+                id="timeline"
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              >
                 <h2 className="text-sm font-semibold text-slate-900">Timeline taxi_events</h2>
                 {events.length === 0 ? (
                   <p className="mt-3 text-sm text-slate-500">Aucun événement.</p>
