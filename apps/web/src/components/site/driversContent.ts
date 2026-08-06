@@ -45,6 +45,7 @@ export function buildDriversFallbackBlocks(): SiteBlockRow[] {
       payload: {
         eyebrow: "Drivers",
         headline: "Drive with MMD",
+        headline_style: "solid",
         subheadline:
           "Earn with flexible missions across taxi, food, and packages — secure payouts, live GPS, and a driver wallet built for production operations.",
         showcase: "image",

@@ -34,6 +34,7 @@ begin
     jsonb_build_object(
       'eyebrow', 'Drivers',
       'headline', 'Drive with MMD',
+      'headline_style', 'solid',
       'subheadline', 'Earn with flexible missions across taxi, food, and packages — secure payouts, live GPS, and a driver wallet built for production operations.',
       'showcase', 'image',
       'image_url', '/brand/services/taxi.webp',

@@ -146,7 +146,15 @@ function HeroBlock({ payload }: { payload: Record<string, unknown> }) {
             </p>
           ) : null}
           <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
-            <span className={siteGradientTextClass}>{headline}</span>
+            <span
+              className={
+                str(payload.headline_style) === "solid"
+                  ? "text-[#fb923c]"
+                  : siteGradientTextClass
+              }
+            >
+              {headline}
+            </span>
           </h1>
           {subheadline ? (
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200">
