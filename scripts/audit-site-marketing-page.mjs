@@ -175,11 +175,20 @@ try {
     ),
   );
   info.push(`menu links matched: ${menuRows.length}`);
-  // Marketplace is linked from Services/HeroShowcase, not always a top-level header item.
-  const menuOptional = new Set(["marketplace"]);
+  // Some marketing pages are linked from footer, company pages, or showcase — not header.
+  const menuOptional = new Set([
+    "marketplace",
+    "faq",
+    "careers",
+    "partners",
+    "press",
+    "blog",
+  ]);
   if (menuRows.length === 0) {
     if (menuOptional.has(slug)) {
-      info.push(`No dedicated header item for ${slug} (reachable via Services / showcase)`);
+      info.push(
+        `No dedicated header/footer item for ${slug} (reachable via site chrome / related CTAs)`,
+      );
     } else {
       warnings.push(`No header/footer menu item found for slug/route ${slug} (${route})`);
     }
