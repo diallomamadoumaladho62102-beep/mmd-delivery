@@ -294,9 +294,10 @@ function HowItWorksBlock({ payload }: { payload: Record<string, unknown> }) {
   const steps = asArray<Record<string, unknown>>(payload.steps);
   if (!steps.length) return null;
   const title = str(payload.title);
-  const headingId = "how-it-works-heading";
+  const sectionId = str(payload.anchor, "how-it-works");
+  const headingId = `${sectionId}-heading`;
   return (
-    <SectionWrap id="how-it-works">
+    <SectionWrap id={sectionId}>
       {title ? (
         <h2 id={headingId} className={siteHeadingClass}>
           {title}

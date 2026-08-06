@@ -1,15 +1,33 @@
 ---
-description: Never advance to the next Figma/Website screen until the current page is 100% validated.
+description: Deliver each marketing page 100% complete; never advance until the user validates.
 alwaysApply: true
 ---
 
-# Website / Figma reproduction — validation gate
+# Website marketing pages — full delivery + validation gate
 
-When reproducing product screens into the official Figma Design System (or implementing related website routes for that work):
+## Delivery bar (agent must finish before asking for validation)
 
-1. **Finish the current page completely** before starting the next one.
-2. **Do not proceed** to the next screen/route until the user has explicitly validated the current page at 100%.
-3. Before asking for validation, resolve real defects on the current page: logo/assets, spacing, typography, colors, DS instances, responsive variants, and working navigation targets.
+For every marketing screen, deliver **all** of the following without asking the user to do technical intermediate steps:
+
+1. **Figma** — faithful Desktop, Tablet, and Mobile reproduction in the official file, using Design System components (add to DS first if a reusable piece is missing).
+2. **Design System** — all needed components/variants exist and screens use instances.
+3. **Code** — complete production-ready page (CMS architecture, SiteShell/BlockRenderer when applicable).
+4. **Supabase** — migration applied by the agent on the linked project; CMS rows inserted and verified in DB.
+5. **Quality** — SEO, accessibility (WCAG), and responsive (Desktop / Tablet / Mobile) finished.
+6. **Preview** — Vercel Preview deployed and functionally checked.
+7. **Visual parity** — final check that there is no meaningful visual gap between Figma and the live Preview.
+
+Do **not** use temporary/placeholder content when a definitive version is planned.
+
+## Validation gate
+
+1. Finish the current page completely before starting the next one.
+2. Do **not** start the next page until the user has **explicitly validated** the current page at 100%.
+3. After the user validates a page, continue **immediately** with the next marketing page in inventory order until the public Website is complete.
 4. Prefer fixing small imperfections now over accumulating them across pages.
-5. Code remains the source of truth for visual fidelity unless the user explicitly requests a product change (e.g. temporary Coming Soon routes).
-6. A page is not ready for user validation until **all** of these are done by the agent: code shipped, Supabase migrations applied to the linked project, CMS data verified, functional checks passed, and Preview redeployed. Do not ask the user to run migrations or intermediate technical steps.
+
+## Inventory order (code-only routes)
+
+Home → Company → How it works → Drivers → Restaurants (`/p/restaurants`) → Business (`/p/business`) → Marketplace → FAQ → Contact → Careers → Partners → Press → Blog → Download → Legal (Privacy, Terms, Support) → Coming Soon placeholders only where already introduced (`/services`, `/food-delivery`, `/taxi`, `/package-delivery`, `/pricing`, `/cookies`).
+
+Do not invent marketing routes that do not exist in the repo (except user-requested Coming Soon placeholders already shipped).
