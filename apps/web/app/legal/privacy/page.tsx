@@ -1,20 +1,87 @@
-export const metadata = {
-  title: "Privacy Policy — MMD Delivery",
-};
+import type { Metadata } from "next";
+import BlockRenderer from "@/components/site/BlockRenderer";
+import SiteAnalytics from "@/components/site/SiteAnalytics";
+import SiteShell from "@/components/site/SiteShell";
+import {
+  PRIVACY_SEO,
+  buildPrivacyFallbackBlocks,
+} from "@/components/site/privacyContent";
+import {
+  cmsPageMetadata,
+  loadSiteChrome,
+  renderCmsPage,
+} from "@/components/site/renderCmsPage";
+import { getPublishedPageBySlug, listPublishedFaq } from "@/lib/siteCms";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
-export default function PrivacyPolicyPage() {
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const meta = await cmsPageMetadata("privacy", "Privacy Policy");
+    return {
+      ...meta,
+      title: meta.title || PRIVACY_SEO.title,
+      description: meta.description || PRIVACY_SEO.description,
+    };
+  } catch {
+    return {
+      title: PRIVACY_SEO.title,
+      description: PRIVACY_SEO.description,
+      robots: PRIVACY_SEO.robots,
+    };
+  }
+}
+
+export default async function PrivacyMarketingPage() {
+  const supabase = buildSupabaseAdminClient();
+  const pageData = await getPublishedPageBySlug(supabase, "privacy");
+  const hasStructuredCms = Boolean(
+    pageData?.blocks.some(
+      (block) =>
+        block.block_type === "hero" ||
+        block.block_type === "features" ||
+        block.block_type === "how_it_works" ||
+        block.block_type === "contact",
+    ),
+  );
+
+  const jsonLd = null;
+
+  if (hasStructuredCms) {
+    return (
+      <>
+        <div data-site-content-source="cms" hidden aria-hidden="true" />
+        {jsonLd}
+        {await renderCmsPage("privacy")}
+      </>
+    );
+  }
+
+  const { settings, headerItems, footerItems, overlays } = await loadSiteChrome();
+  const faqItems = await listPublishedFaq(supabase);
+
   return (
-    <main className="max-w-3xl mx-auto px-4 py-10 prose prose-slate">
-      <h1>Privacy Policy</h1>
-      <p>
-        MMD Delivery collects account information, order and delivery data, location
-        during active deliveries, and photos uploaded as proof. Data is stored on
-        Supabase and processed by Stripe for payments.
-      </p>
-      <p>
-        For data access or deletion requests, contact{" "}
-        <a href="mailto:support@mmddelivery.com">support@mmddelivery.com</a>.
-      </p>
-    </main>
+    <>
+      <div data-site-content-source="fallback" hidden aria-hidden="true" />
+      {jsonLd}
+      <SiteShell
+        settings={settings}
+        headerItems={headerItems}
+        footerItems={footerItems}
+        overlays={overlays as Parameters<typeof SiteShell>[0]["overlays"]}
+      >
+        <BlockRenderer
+          blocks={buildPrivacyFallbackBlocks()}
+          faqItems={faqItems.map((f) => ({
+            id: String(f.id),
+            question: String(f.question),
+            answer_md: String(f.answer_md),
+            category: f.category ? String(f.category) : undefined,
+          }))}
+        />
+      </SiteShell>
+      <SiteAnalytics />
+    </>
   );
 }

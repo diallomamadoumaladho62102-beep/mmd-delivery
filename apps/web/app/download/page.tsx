@@ -1,175 +1,130 @@
-import Image from "next/image";
-import { OFFICIAL_WEBSITE_URL } from "@mmd/social-links";
-import SocialLinks from "@/components/site/SocialLinks";
+import type { Metadata } from "next";
+import BlockRenderer from "@/components/site/BlockRenderer";
+import HowToJsonLd from "@/components/site/HowToJsonLd";
+import SiteAnalytics from "@/components/site/SiteAnalytics";
+import SiteShell from "@/components/site/SiteShell";
+import {
+  DOWNLOAD_SEO,
+  DOWNLOAD_START_STEPS,
+  buildDownloadFallbackBlocks,
+} from "@/components/site/downloadContent";
+import {
+  cmsPageMetadata,
+  loadSiteChrome,
+  renderCmsPage,
+} from "@/components/site/renderCmsPage";
+import { getPublishedPageBySlug, listPublishedFaq } from "@/lib/siteCms";
+import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
-const IOS_URL = OFFICIAL_WEBSITE_URL;
-const ANDROID_URL = OFFICIAL_WEBSITE_URL;
-const FALLBACK_URL = OFFICIAL_WEBSITE_URL;
+export const dynamic = "force-dynamic";
 
-export default function DownloadPage() {
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const meta = await cmsPageMetadata("download", "Download");
+    return {
+      ...meta,
+      title: meta.title || DOWNLOAD_SEO.title,
+      description: meta.description || DOWNLOAD_SEO.description,
+    };
+  } catch {
+    return {
+      title: DOWNLOAD_SEO.title,
+      description: DOWNLOAD_SEO.description,
+      robots: DOWNLOAD_SEO.robots,
+    };
+  }
+}
+
+function readSteps(payload: Record<string, unknown> | undefined) {
+  const steps = Array.isArray(payload?.steps) ? payload.steps : [];
+  const fromCms: { title: string; body?: string }[] = [];
+  for (const step of steps) {
+    if (!step || typeof step !== "object") continue;
+    const row = step as Record<string, unknown>;
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    if (!title) continue;
+    const body =
+      typeof row.body === "string"
+        ? row.body.trim()
+        : typeof row.description === "string"
+          ? row.description.trim()
+          : undefined;
+    fromCms.push({ title, body });
+  }
+  return fromCms.length > 0
+    ? fromCms
+    : DOWNLOAD_START_STEPS.map((step) => ({
+        title: step.title,
+        body: step.body,
+      }));
+}
+
+export default async function DownloadMarketingPage() {
+  const supabase = buildSupabaseAdminClient();
+  const pageData = await getPublishedPageBySlug(supabase, "download");
+  const hasStructuredCms = Boolean(
+    pageData?.blocks.some(
+      (block) =>
+        block.block_type === "hero" ||
+        block.block_type === "features" ||
+        block.block_type === "how_it_works" ||
+        block.block_type === "contact",
+    ),
+  );
+
+  const stepsBlock = pageData?.blocks.find(
+    (block) => block.block_type === "how_it_works",
+  );
+  const payload =
+    stepsBlock?.payload && typeof stepsBlock.payload === "object"
+      ? (stepsBlock.payload as Record<string, unknown>)
+      : undefined;
+  const steps = readSteps(payload);
+
+  const jsonLd = (
+    <HowToJsonLd
+      name="How to get started"
+      description={DOWNLOAD_SEO.description}
+      path="/download"
+      anchor="install"
+      steps={steps}
+    />
+  );
+
+  if (hasStructuredCms) {
+    return (
+      <>
+        <div data-site-content-source="cms" hidden aria-hidden="true" />
+        {jsonLd}
+        {await renderCmsPage("download")}
+      </>
+    );
+  }
+
+  const { settings, headerItems, footerItems, overlays } = await loadSiteChrome();
+  const faqItems = await listPublishedFaq(supabase);
+
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background:
-          "radial-gradient(circle at top left, rgba(249,115,22,0.24), transparent 32%), radial-gradient(circle at top right, rgba(244,63,94,0.18), transparent 34%), linear-gradient(180deg,#020617 0%,#030712 100%)",
-        color: "white",
-        fontFamily:
-          'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        padding: 24,
-      }}
-    >
-      <section style={{ maxWidth: 980, margin: "0 auto", paddingTop: 40 }}>
-        <a
-          href="/"
-          style={{
-            color: "#FDBA74",
-            textDecoration: "none",
-            fontWeight: 800,
-          }}
-        >
-          ← Back to MMD Delivery
-        </a>
-
-        <div
-          style={{
-            marginTop: 34,
-            borderRadius: 36,
-            padding: 28,
-            background: "rgba(15,23,42,0.78)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 30px 90px rgba(0,0,0,0.45)",
-            textAlign: "center",
-          }}
-        >
-          <Image
-            src="/brand/mmd-logo-transparent-v2.png"
-            alt="MMD Delivery"
-            width={240}
-            height={160}
-            priority
-            style={{
-              width: 240,
-              height: 160,
-              objectFit: "contain",
-              filter: "drop-shadow(0 14px 28px rgba(0,0,0,0.5))",
-            }}
-          />
-
-          <h1
-            style={{
-              margin: "26px 0 0",
-              fontSize: "clamp(44px,7vw,76px)",
-              lineHeight: 1,
-              fontWeight: 950,
-              letterSpacing: -2,
-            }}
-          >
-            Download MMD Delivery
-          </h1>
-
-          <p
-            style={{
-              margin: "18px auto 0",
-              maxWidth: 680,
-              color: "#CBD5E1",
-              fontSize: 20,
-              lineHeight: 1.7,
-              fontWeight: 650,
-            }}
-          >
-            Order, track, drive, deliver and manage your restaurant from one
-            powerful platform.
-          </p>
-
-          <div
-            style={{
-              marginTop: 34,
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: 18,
-            }}
-          >
-            <a
-              href={IOS_URL}
-              style={{
-                minWidth: 220,
-                padding: "18px 24px",
-                borderRadius: 22,
-                background: "linear-gradient(135deg,#111827,#020617)",
-                border: "1px solid rgba(255,255,255,0.16)",
-                color: "white",
-                textDecoration: "none",
-                fontSize: 20,
-                fontWeight: 900,
-              }}
-            >
-               App Store
-            </a>
-
-            <a
-              href={ANDROID_URL}
-              style={{
-                minWidth: 220,
-                padding: "18px 24px",
-                borderRadius: 22,
-                background: "linear-gradient(135deg,#F59E0B,#F43F5E)",
-                color: "white",
-                textDecoration: "none",
-                fontSize: 20,
-                fontWeight: 900,
-              }}
-            >
-              ▶ Google Play
-            </a>
-          </div>
-
-          <div
-            style={{
-              marginTop: 34,
-              padding: 22,
-              borderRadius: 28,
-              background: "rgba(2,6,23,0.65)",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <p style={{ margin: 0, color: "#94A3B8", fontWeight: 700 }}>
-              Testing mode: App Store and Google Play links will be updated
-              when the production apps are approved.
-            </p>
-
-            <a
-              href={FALLBACK_URL}
-              style={{
-                display: "inline-block",
-                marginTop: 16,
-                color: "#FDBA74",
-                fontWeight: 900,
-                textDecoration: "none",
-              }}
-            >
-              Continue to website →
-            </a>
-          </div>
-
-          <div style={{ marginTop: 28 }}>
-            <p
-              style={{
-                margin: "0 0 12px",
-                color: "#94A3B8",
-                fontWeight: 700,
-                fontSize: 14,
-              }}
-            >
-              Follow MMD Delivery
-            </p>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <SocialLinks variant="footer" />
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+    <>
+      <div data-site-content-source="fallback" hidden aria-hidden="true" />
+      {jsonLd}
+      <SiteShell
+        settings={settings}
+        headerItems={headerItems}
+        footerItems={footerItems}
+        overlays={overlays as Parameters<typeof SiteShell>[0]["overlays"]}
+      >
+        <BlockRenderer
+          blocks={buildDownloadFallbackBlocks()}
+          faqItems={faqItems.map((f) => ({
+            id: String(f.id),
+            question: String(f.question),
+            answer_md: String(f.answer_md),
+            category: f.category ? String(f.category) : undefined,
+          }))}
+        />
+      </SiteShell>
+      <SiteAnalytics />
+    </>
   );
 }

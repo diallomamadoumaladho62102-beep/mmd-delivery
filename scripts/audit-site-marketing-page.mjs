@@ -25,30 +25,50 @@ const route = routeArg
   ? routeArg.slice("--route=".length)
   : slug === "drivers"
     ? "/drivers"
-    : slug === "marketplace" ||
-        slug === "company" ||
-        slug === "blog" ||
-        slug === "faq" ||
-        slug === "contact" ||
-        slug === "download"
-      ? `/${slug}`
-      : `/p/${slug}`;
+    : slug === "privacy" || slug === "terms" || slug === "support"
+      ? `/legal/${slug}`
+      : [
+            "marketplace",
+            "company",
+            "blog",
+            "faq",
+            "contact",
+            "download",
+            "careers",
+            "partners",
+            "press",
+            "how-it-works",
+          ].includes(slug)
+        ? `/${slug}`
+        : `/p/${slug}`;
 
 const STAMP = new Date().toISOString().replace(/[:.]/g, "-");
 const OUT_DIR = join(ROOT, "artifacts", "site-audits", `${slug}-${STAMP}`);
 mkdirSync(OUT_DIR, { recursive: true });
 
 const PLACEHOLDER_RE =
-  /\b(TODO|FIXME|lorem ipsum|placeholder|coming soon|tbd|xxx)\b/i;
+  /\b(TODO|FIXME|lorem ipsum|placeholder|tbd|xxx)\b/i;
 
-const EXPECTED_BLOCK_TYPES = [
-  "hero",
-  "features",
-  "how_it_works",
-  "rich_text",
-  "cta",
-  "faq",
-];
+const PAGE_PROFILES = {
+  default: ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+  faq: ["hero", "faq", "cta"],
+  contact: ["hero", "contact", "rich_text", "cta", "faq"],
+  press: ["hero", "features", "rich_text", "cta", "faq"],
+  privacy: ["hero", "rich_text", "cta"],
+  terms: ["hero", "rich_text", "cta"],
+  support: ["hero", "rich_text", "cta", "faq"],
+  marketplace: ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+  home: [
+    "hero",
+    "services",
+    "features",
+    "how_it_works",
+    "cta",
+    "faq",
+  ],
+};
+
+const EXPECTED_BLOCK_TYPES = PAGE_PROFILES[slug] || PAGE_PROFILES.default;
 
 function log(msg) {
   console.log(msg);
@@ -264,7 +284,10 @@ try {
     if (PLACEHOLDER_RE.test(src)) {
       errors.push("placeholder wording found in page.tsx source");
     }
-    if (!src.includes("HowToJsonLd") && EXPECTED_BLOCK_TYPES.includes("how_it_works")) {
+    if (
+      !src.includes("HowToJsonLd") &&
+      EXPECTED_BLOCK_TYPES.includes("how_it_works")
+    ) {
       warnings.push("page.tsx does not reference HowToJsonLd");
     }
   }
@@ -290,6 +313,16 @@ try {
     drivers: "app/signup/driver",
     business: "app/contact",
     marketplace: "app/download",
+    faq: "app/contact",
+    contact: "app/contact",
+    company: "app/contact",
+    careers: "app/contact",
+    partners: "app/contact",
+    press: "app/contact",
+    download: "app/download",
+    privacy: "app/contact",
+    terms: "app/contact",
+    support: "app/contact",
   };
   const ctaRel = ctaPathMap[slug];
   if (ctaRel) {

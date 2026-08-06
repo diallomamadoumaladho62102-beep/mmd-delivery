@@ -1,0 +1,366 @@
+{
+  "pages": [
+    {
+      "slug": "faq",
+      "route": "/faq",
+      "profile": ["hero", "faq", "cta"],
+      "title": "FAQ",
+      "seoTitle": "FAQ — MMD Delivery",
+      "seoDescription": "Answers about MMD Delivery orders, payments, drivers, restaurants, business accounts, and support.",
+      "hero": {
+        "eyebrow": "Help Center",
+        "headline": "Frequently asked questions",
+        "subheadline": "Clear answers about payments, delivery, drivers, restaurants, and business accounts — built for production operations.",
+        "image": "/brand/services/taxi.webp",
+        "benefits": ["Pay-then-create clarity", "Multi-service coverage", "Human support"],
+        "primary": { "label": "Contact support", "href": "/contact", "event": "cta_contact" },
+        "secondary": { "label": "How it works", "href": "/how-it-works", "event": "cta_how_it_works" }
+      },
+      "faqTitle": "FAQ",
+      "cta": {
+        "title": "Still need help?",
+        "body": "Reach our support team and we will help you resolve account, order, or payout questions.",
+        "buttons": [
+          { "label": "Contact support", "href": "/contact", "event": "cta_contact" },
+          { "label": "Download the app", "href": "/download", "event": "cta_download" }
+        ]
+      }
+    },
+    {
+      "slug": "contact",
+      "route": "/contact",
+      "profile": ["hero", "contact", "rich_text", "cta", "faq"],
+      "title": "Contact",
+      "seoTitle": "Contact — MMD Delivery",
+      "seoDescription": "Contact MMD Delivery support for orders, partnerships, business accounts, and press inquiries.",
+      "hero": {
+        "eyebrow": "Contact",
+        "headline": "We're here to help",
+        "subheadline": "Message our team for customer support, restaurant or driver onboarding, business accounts, and partnership requests.",
+        "image": "/brand/services/package.webp",
+        "benefits": ["support@mmddelivery.com", "Partnerships & press", "Business onboarding"],
+        "primary": { "label": "Send a message", "href": "/contact#contact-form", "event": "cta_contact_form" },
+        "secondary": { "label": "FAQ", "href": "/faq", "event": "cta_faq" }
+      },
+      "richText": {
+        "title": "How to reach us",
+        "body": "Use the form on this page for the fastest response. You can also email support@mmddelivery.com for account and delivery questions.\n\n[Browse FAQ](/faq)"
+      },
+      "contactTitle": "Send a message",
+      "faqTitle": "Quick answers",
+      "cta": {
+        "title": "Prefer the app?",
+        "body": "Download MMD Delivery for live order tracking and in-app support tools.",
+        "buttons": [
+          { "label": "Download the app", "href": "/download", "event": "cta_download" },
+          { "label": "How it works", "href": "/how-it-works", "event": "cta_how_it_works" }
+        ]
+      }
+    },
+    {
+      "slug": "company",
+      "route": "/company",
+      "profile": ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+      "title": "Company",
+      "seoTitle": "Company — MMD Delivery",
+      "seoDescription": "Learn about MMD Delivery — modern multi-service infrastructure for taxi, food, packages, marketplace, and business logistics.",
+      "hero": {
+        "eyebrow": "Company",
+        "headline": "We Deliver With Heart",
+        "subheadline": "MMD Delivery builds production-grade logistics for customers, drivers, restaurants, sellers, and businesses — with live GPS and Stripe-secured payments.",
+        "image": "/brand/hero/hero-rider.webp",
+        "benefits": ["Multi-service platform", "Live GPS dispatch", "Stripe-secured payments"],
+        "primary": { "label": "Contact us", "href": "/contact", "event": "cta_contact" },
+        "secondary": { "label": "Careers", "href": "/careers", "event": "cta_careers" }
+      },
+      "featuresTitle": "What we stand for",
+      "features": [
+        { "title": "Customer trust", "description": "Pay-then-create integrity and live tracking so every trip and order stays transparent." },
+        { "title": "Partner success", "description": "Tools for drivers, restaurants, and sellers that match real day-to-day operations." },
+        { "title": "Business control", "description": "Corporate wallets, approvals, and reporting for teams that need spend discipline." },
+        { "title": "Production reliability", "description": "Identity, dispatch, and payments designed for scale — not prototypes." }
+      ],
+      "stepsTitle": "How we work with you",
+      "stepsAnchor": "company-path",
+      "steps": [
+        { "title": "Discover the platform", "body": "Explore taxi, food, packages, marketplace, and business services in one product family." },
+        { "title": "Choose your role", "body": "Join as a customer, driver, restaurant, seller, or business team." },
+        { "title": "Operate with clarity", "body": "Track jobs, payouts, and approvals with production-grade status flows." },
+        { "title": "Grow with support", "body": "Use Help Center, FAQ, and human support when you need a hand." }
+      ],
+      "richText": {
+        "title": "About MMD Delivery",
+        "body": "MMD Delivery is a multi-service platform focused on reliable local logistics. We combine live GPS, Stripe payments, and role-based tools so every participant can operate with confidence.\n\n[Contact the team](/contact)"
+      },
+      "faqTitle": "Company FAQ",
+      "cta": {
+        "title": "Build with us",
+        "body": "Whether you are hiring, partnering, or launching a business account — start a conversation.",
+        "buttons": [
+          { "label": "Contact us", "href": "/contact", "event": "cta_contact" },
+          { "label": "View careers", "href": "/careers", "event": "cta_careers" }
+        ]
+      }
+    },
+    {
+      "slug": "careers",
+      "route": "/careers",
+      "profile": ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+      "title": "Careers",
+      "seoTitle": "Careers — MMD Delivery",
+      "seoDescription": "Join MMD Delivery. Explore roles across product, operations, support, and growth for a multi-service logistics platform.",
+      "hero": {
+        "eyebrow": "Careers",
+        "headline": "Build the future of local delivery",
+        "subheadline": "Help us ship reliable taxi, food, package, marketplace, and business logistics used in production every day.",
+        "image": "/brand/services/package.webp",
+        "benefits": ["Product & engineering", "Operations & support", "Growth roles"],
+        "primary": { "label": "Contact talent team", "href": "/contact", "event": "cta_careers_contact" },
+        "secondary": { "label": "About the company", "href": "/company", "event": "cta_company" }
+      },
+      "featuresTitle": "Why work at MMD",
+      "features": [
+        { "title": "Real production systems", "description": "Ship features that move people, food, and packages — with payments and dispatch that must work." },
+        { "title": "Multi-sided platform", "description": "Collaborate across customer, driver, restaurant, seller, and business experiences." },
+        { "title": "Ownership culture", "description": "Small teams, clear accountability, and high bars for reliability." },
+        { "title": "Customer empathy", "description": "We design for the stressful moments — late nights, peak hours, and live support." }
+      ],
+      "stepsTitle": "How to apply",
+      "stepsAnchor": "apply",
+      "steps": [
+        { "title": "Review open themes", "body": "Tell us which domain fits you — product, ops, support, partnerships, or growth." },
+        { "title": "Send your profile", "body": "Contact our talent team with your CV and the problems you want to own." },
+        { "title": "Conversation", "body": "We discuss experience, craft, and how you operate under production constraints." },
+        { "title": "Join the build", "body": "Onboard with clear goals and ship alongside the core platform team." }
+      ],
+      "richText": {
+        "title": "Open conversations",
+        "body": "We hire for impact across engineering, design, operations, and partner success. Even if a role is not listed, send a strong note.\n\n[Contact talent](/contact)"
+      },
+      "faqTitle": "Careers FAQ",
+      "cta": {
+        "title": "Ready to apply?",
+        "body": "Reach out and tell us how you want to strengthen MMD Delivery.",
+        "buttons": [
+          { "label": "Contact talent team", "href": "/contact", "event": "cta_careers_contact" },
+          { "label": "Company overview", "href": "/company", "event": "cta_company" }
+        ]
+      }
+    },
+    {
+      "slug": "partners",
+      "route": "/partners",
+      "profile": ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+      "title": "Partners",
+      "seoTitle": "Partners — MMD Delivery",
+      "seoDescription": "Partner with MMD Delivery as a restaurant, driver network, seller, or business logistics collaborator.",
+      "hero": {
+        "eyebrow": "Partners",
+        "headline": "Grow with MMD Delivery",
+        "subheadline": "Collaborate as a restaurant, driver fleet, marketplace seller, or strategic partner on a production multi-service platform.",
+        "image": "/brand/services/food.webp",
+        "benefits": ["Restaurant partners", "Driver networks", "Marketplace sellers"],
+        "primary": { "label": "Become a partner", "href": "/contact", "event": "cta_partners" },
+        "secondary": { "label": "Restaurant signup", "href": "/signup/restaurant", "event": "cta_restaurant" }
+      },
+      "featuresTitle": "Partnership tracks",
+      "features": [
+        { "title": "Restaurants", "description": "Publish menus, accept delivery orders, and cash out through Stripe Connect when eligible." },
+        { "title": "Drivers", "description": "Multi-service missions with live GPS and transparent wallet tooling." },
+        { "title": "Marketplace sellers", "description": "List products with secure checkout and delivery built into MMD." },
+        { "title": "Strategic partners", "description": "Integrate logistics capacity, promotions, or local distribution programs." }
+      ],
+      "stepsTitle": "How partnering works",
+      "stepsAnchor": "partner-path",
+      "steps": [
+        { "title": "Tell us your model", "body": "Share whether you are a restaurant, fleet, seller, or strategic collaborator." },
+        { "title": "Align on operations", "body": "We map onboarding, SLAs, and the tools your team will use daily." },
+        { "title": "Go live", "body": "Launch with production payments, dispatch, and support coverage." },
+        { "title": "Optimize together", "body": "Review performance and expand services as volume grows." }
+      ],
+      "richText": {
+        "title": "Partner with confidence",
+        "body": "MMD partners operate on the same infrastructure customers already trust for taxi, food, packages, and marketplace delivery.\n\n[Start the conversation](/contact)"
+      },
+      "faqTitle": "Partners FAQ",
+      "cta": {
+        "title": "Let's partner",
+        "body": "Contact our partnerships team to explore the right track for your business.",
+        "buttons": [
+          { "label": "Contact partnerships", "href": "/contact", "event": "cta_partners" },
+          { "label": "Driver signup", "href": "/signup/driver", "event": "cta_driver" }
+        ]
+      }
+    },
+    {
+      "slug": "press",
+      "route": "/press",
+      "profile": ["hero", "features", "rich_text", "cta", "faq"],
+      "title": "Press",
+      "seoTitle": "Press — MMD Delivery",
+      "seoDescription": "Press and media resources for MMD Delivery — brand assets, company facts, and media contact.",
+      "hero": {
+        "eyebrow": "Press",
+        "headline": "Media & brand resources",
+        "subheadline": "Get the facts, brand assets, and the right contact for stories about MMD Delivery.",
+        "image": "/brand/og-transparent-v2.png",
+        "benefits": ["Brand assets", "Company facts", "Media contact"],
+        "primary": { "label": "Contact press", "href": "/contact", "event": "cta_press" },
+        "secondary": { "label": "Company overview", "href": "/company", "event": "cta_company" }
+      },
+      "featuresTitle": "For journalists",
+      "features": [
+        { "title": "Accurate positioning", "description": "MMD Delivery is a multi-service logistics platform spanning taxi, food, packages, marketplace, and business." },
+        { "title": "Production focus", "description": "Our product emphasizes pay-then-create integrity, live GPS, and operational reliability." },
+        { "title": "Brand kit", "description": "Use official logos and brand imagery from our public brand assets." },
+        { "title": "Direct contact", "description": "Reach the team through the contact form for interviews and fact checks." }
+      ],
+      "richText": {
+        "title": "Press contact",
+        "body": "For media inquiries, email support@mmddelivery.com with subject line Press and your deadline.\n\n[Contact form](/contact)"
+      },
+      "faqTitle": "Press FAQ",
+      "cta": {
+        "title": "Need a quote or asset?",
+        "body": "Send your request and timeline — we will respond as quickly as possible.",
+        "buttons": [
+          { "label": "Contact press", "href": "/contact", "event": "cta_press" },
+          { "label": "Download brand logo", "href": "/brand/mmd-logo-transparent-v2.png", "event": "cta_brand" }
+        ]
+      }
+    },
+    {
+      "slug": "download",
+      "route": "/download",
+      "profile": ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+      "title": "Download",
+      "seoTitle": "Download — MMD Delivery",
+      "seoDescription": "Download MMD Delivery for iOS and Android. Access taxi, food, packages, marketplace, and business tools in one app.",
+      "hero": {
+        "eyebrow": "Download",
+        "headline": "Get MMD Delivery",
+        "subheadline": "One app for taxi, food delivery, packages, marketplace shopping, and business logistics — with live tracking and secure payments.",
+        "image": "/brand/mmd-logo-transparent-v2.png",
+        "benefits": ["iOS & Android", "Live GPS tracking", "Secure Stripe checkout"],
+        "primary": { "label": "Download on the App Store", "href": "/download#ios", "event": "cta_ios" },
+        "secondary": { "label": "Get it on Google Play", "href": "/download#android", "event": "cta_android" }
+      },
+      "featuresTitle": "What you get in the app",
+      "features": [
+        { "title": "Taxi", "description": "Quote, pay, ride, and track with production-grade dispatch." },
+        { "title": "Food", "description": "Order from partner restaurants with kitchen-ready status flows." },
+        { "title": "Packages", "description": "Send and receive with pickup codes and live ETAs." },
+        { "title": "Marketplace & Business", "description": "Shop local sellers or run corporate rides with approvals." }
+      ],
+      "stepsTitle": "How to get started",
+      "stepsAnchor": "install",
+      "steps": [
+        { "title": "Download the app", "body": "Install MMD Delivery from the App Store or Google Play when available in your region." },
+        { "title": "Create your account", "body": "Sign up as a customer — or continue partner onboarding for drivers and restaurants on the web." },
+        { "title": "Choose a service", "body": "Book a taxi, order food, send a package, or shop the marketplace." },
+        { "title": "Track live", "body": "Follow status updates from payment through delivery." }
+      ],
+      "richText": {
+        "title": "Store links",
+        "body": "Store buttons on this page use the official configured App Store and Play Store URLs when set, and otherwise keep you on mmddelivery.com/download.\n\n[Contact support](/contact)"
+      },
+      "faqTitle": "Download FAQ",
+      "cta": {
+        "title": "Need the website instead?",
+        "body": "You can still explore services, partner signups, and support from the marketing site.",
+        "buttons": [
+          { "label": "Back to home", "href": "/", "event": "cta_home" },
+          { "label": "Contact support", "href": "/contact", "event": "cta_contact" }
+        ]
+      }
+    },
+    {
+      "slug": "privacy",
+      "route": "/legal/privacy",
+      "profile": ["hero", "rich_text", "cta"],
+      "title": "Privacy Policy",
+      "seoTitle": "Privacy Policy — MMD Delivery",
+      "seoDescription": "How MMD Delivery collects, stores, and processes account, order, location, and payment data.",
+      "hero": {
+        "eyebrow": "Legal",
+        "headline": "Privacy Policy",
+        "subheadline": "How we handle account information, delivery data, location during active jobs, and payment processing.",
+        "image": "/brand/og-transparent-v2.png",
+        "benefits": ["Supabase storage", "Stripe payments", "Access & deletion requests"],
+        "primary": { "label": "Contact privacy", "href": "/contact", "event": "cta_privacy" },
+        "secondary": { "label": "Terms of Service", "href": "/legal/terms", "event": "cta_terms" }
+      },
+      "richText": {
+        "title": "Privacy Policy",
+        "body": "MMD Delivery collects account information, order and delivery data, location during active deliveries, and photos uploaded as proof. Data is stored on Supabase and processed by Stripe for payments.\n\nFor data access or deletion requests, contact support@mmddelivery.com or use the [contact form](/contact).\n\nWe update this policy as the platform evolves. Continued use of MMD Delivery means you acknowledge the latest published version."
+      },
+      "cta": {
+        "title": "Questions about privacy?",
+        "body": "Contact support for access, deletion, or clarification requests.",
+        "buttons": [
+          { "label": "Contact support", "href": "/contact", "event": "cta_contact" },
+          { "label": "Support page", "href": "/legal/support", "event": "cta_support" }
+        ]
+      }
+    },
+    {
+      "slug": "terms",
+      "route": "/legal/terms",
+      "profile": ["hero", "rich_text", "cta"],
+      "title": "Terms of Service",
+      "seoTitle": "Terms of Service — MMD Delivery",
+      "seoDescription": "Terms governing use of MMD Delivery services for customers, drivers, restaurants, sellers, and businesses.",
+      "hero": {
+        "eyebrow": "Legal",
+        "headline": "Terms of Service",
+        "subheadline": "The rules for using MMD Delivery across taxi, food, packages, marketplace, and business services.",
+        "image": "/brand/og-transparent-v2.png",
+        "benefits": ["Service rules", "Payments & refunds", "Acceptable use"],
+        "primary": { "label": "Contact support", "href": "/contact", "event": "cta_contact" },
+        "secondary": { "label": "Privacy Policy", "href": "/legal/privacy", "event": "cta_privacy" }
+      },
+      "richText": {
+        "title": "Terms of Service",
+        "body": "By using MMD Delivery you agree to follow applicable laws, provide accurate account information, and use the platform only for legitimate transportation, delivery, marketplace, and business logistics purposes.\n\nPayments are processed by Stripe. Orders and rides paid by card are created only after payment confirmation. Refunds and disputes follow Stripe and platform policies for the relevant service.\n\nWe may suspend accounts that abuse drivers, restaurants, customers, or platform systems. For questions, contact support@mmddelivery.com or use the [contact form](/contact)."
+      },
+      "cta": {
+        "title": "Need clarification?",
+        "body": "Our support team can help explain how these terms apply to your account.",
+        "buttons": [
+          { "label": "Contact support", "href": "/contact", "event": "cta_contact" },
+          { "label": "FAQ", "href": "/faq", "event": "cta_faq" }
+        ]
+      }
+    },
+    {
+      "slug": "support",
+      "route": "/legal/support",
+      "profile": ["hero", "rich_text", "cta", "faq"],
+      "title": "Support",
+      "seoTitle": "Support — MMD Delivery",
+      "seoDescription": "Get help with MMD Delivery accounts, orders, payouts, and partner onboarding.",
+      "hero": {
+        "eyebrow": "Support",
+        "headline": "Help when you need it",
+        "subheadline": "Find answers fast in the FAQ, or contact the team for account, order, and payout support.",
+        "image": "/brand/services/taxi.webp",
+        "benefits": ["FAQ self-serve", "Email support", "Partner onboarding help"],
+        "primary": { "label": "Contact support", "href": "/contact", "event": "cta_contact" },
+        "secondary": { "label": "Browse FAQ", "href": "/faq", "event": "cta_faq" }
+      },
+      "richText": {
+        "title": "Support channels",
+        "body": "Start with the FAQ for common questions about payments, delivery timing, drivers, and business accounts.\n\nEmail support@mmddelivery.com or use the [contact form](/contact). Include your order or ride reference when possible.\n\nWebsite: https://www.mmddelivery.com"
+      },
+      "faqTitle": "Support FAQ",
+      "cta": {
+        "title": "Talk to a human",
+        "body": "Send a message and our team will help you resolve the issue.",
+        "buttons": [
+          { "label": "Contact support", "href": "/contact", "event": "cta_contact" },
+          { "label": "Download the app", "href": "/download", "event": "cta_download" }
+        ]
+      }
+    }
+  ]
+}

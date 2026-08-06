@@ -33,9 +33,22 @@ const route =
   arg("--route") ||
   (slug === "drivers"
     ? "/drivers"
-    : slug === "marketplace" || slug === "company" || slug === "blog"
-      ? `/${slug}`
-      : `/p/${slug}`);
+    : slug === "privacy" || slug === "terms" || slug === "support"
+      ? `/legal/${slug}`
+      : [
+            "marketplace",
+            "company",
+            "blog",
+            "faq",
+            "contact",
+            "download",
+            "careers",
+            "partners",
+            "press",
+            "how-it-works",
+          ].includes(slug)
+        ? `/${slug}`
+        : `/p/${slug}`);
 const pr = arg("--pr");
 const localUrl = arg("--local-url");
 const figmaOk = process.argv.includes("--figma-ok");
@@ -272,9 +285,15 @@ if (!figmaOk) {
     candidates.push(join(ROOT, "apps", "web", "app", ...parts, "page.tsx"));
     // also allow route groups / dynamic — treat known public marketing files
     if (!candidates.some((p) => existsSync(p))) {
-      // special-case: /download, /how-it-works, /contact etc.
       const alt = join(ROOT, "apps", "web", "app", parts[0], "page.tsx");
-      if (!existsSync(alt)) broken.push(href);
+      const publicFile = join(
+        ROOT,
+        "apps",
+        "web",
+        "public",
+        ...parts,
+      );
+      if (!existsSync(alt) && !existsSync(publicFile)) broken.push(href);
     }
   }
   if (broken.length) {

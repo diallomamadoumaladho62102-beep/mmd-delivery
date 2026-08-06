@@ -217,7 +217,9 @@ export async function cmsPageMetadata(slug: string, fallbackTitle?: string): Pro
         ? "/"
         : slug === "business" || slug === "restaurants"
           ? `/p/${slug}`
-          : `/${slug}`;
+          : slug === "privacy" || slug === "terms" || slug === "support"
+            ? `/legal/${slug}`
+            : `/${slug}`;
     return buildPageMetadata(pageData?.page.seo, settings, fallbackTitle, path);
   } catch {
     return {
