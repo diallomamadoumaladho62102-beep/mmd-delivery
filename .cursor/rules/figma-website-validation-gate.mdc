@@ -19,6 +19,31 @@ For every marketing screen, deliver **all** of the following without asking the 
 
 Do **not** use temporary/placeholder content when a definitive version is planned.
 
+## Mandatory pre-validation checklist (automatic)
+
+Before asking the user for validation, run and pass **all** of the following with **zero errors and zero warnings**:
+
+1. **Figma ↔ code** — Desktop / Tablet / Mobile visually audited; no meaningful gap; agent attests via `--figma-ok` on the gate script.
+2. **CMS** — full published composition (hero → features → how_it_works → rich_text → cta → faq) verified in linked Supabase.
+3. **SEO** — title + description present, no placeholder wording, robots indexable when expected.
+4. **Accessibility** — skip link, image alts, heading structure, FAQ controls; no a11y warnings.
+5. **Responsive** — Desktop, Tablet, and Mobile checked (layout + CTAs usable).
+6. **Assets** — definitive images only; local public assets exist; no placeholders.
+7. **Links** — every CMS/internal CTA href resolves to an existing app route (or known external URL).
+8. **Performance** — no blocking issues (reasonable hero assets, Next image usage, no obvious payload red flags).
+9. **TypeScript / ESLint** — `tsc --noEmit` and targeted lint clean for the page surface.
+10. **CI + Vercel** — PR checks entirely green (verify/CI + Vercel Ready).
+
+Run the gate:
+
+```bash
+node scripts/gate-site-marketing-page.mjs <slug> --route=<path> --pr=<n> --figma-ok --local-url=<url>
+```
+
+Do **not** ask for user validation until this gate exits 0.
+
+Schema note: `site_menu_items` uses `menu_id` (join `site_menus`). Never select a column named `menu`.
+
 ## Validation gate
 
 1. Finish the current page completely before starting the next one.
@@ -28,6 +53,6 @@ Do **not** use temporary/placeholder content when a definitive version is planne
 
 ## Inventory order (code-only routes)
 
-Home → Company → How it works → Drivers → Restaurants (`/p/restaurants`) → Business (`/p/business`) → Marketplace → FAQ → Contact → Careers → Partners → Press → Blog → Download → Legal (Privacy, Terms, Support) → Coming Soon placeholders only where already introduced (`/services`, `/food-delivery`, `/taxi`, `/package-delivery`, `/pricing`, `/cookies`).
+Home → Company → How it works → Drivers → Restaurants (`/p/restaurants`) → Business (`/p/business`) → Marketplace (`/marketplace`) → FAQ → Contact → Careers → Partners → Press → Blog → Download → Legal (Privacy, Terms, Support) → Coming Soon placeholders only where already introduced (`/services`, `/food-delivery`, `/taxi`, `/package-delivery`, `/pricing`, `/cookies`).
 
 Do not invent marketing routes that do not exist in the repo (except user-requested Coming Soon placeholders already shipped).

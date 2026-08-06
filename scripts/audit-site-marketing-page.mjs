@@ -25,7 +25,14 @@ const route = routeArg
   ? routeArg.slice("--route=".length)
   : slug === "drivers"
     ? "/drivers"
-    : `/p/${slug}`;
+    : slug === "marketplace" ||
+        slug === "company" ||
+        slug === "blog" ||
+        slug === "faq" ||
+        slug === "contact" ||
+        slug === "download"
+      ? `/${slug}`
+      : `/p/${slug}`;
 
 const STAMP = new Date().toISOString().replace(/[:.]/g, "-");
 const OUT_DIR = join(ROOT, "artifacts", "site-audits", `${slug}-${STAMP}`);
@@ -148,8 +155,14 @@ try {
     ),
   );
   info.push(`menu links matched: ${menuRows.length}`);
+  // Marketplace is linked from Services/HeroShowcase, not always a top-level header item.
+  const menuOptional = new Set(["marketplace"]);
   if (menuRows.length === 0) {
-    warnings.push(`No header/footer menu item found for slug/route ${slug} (${route})`);
+    if (menuOptional.has(slug)) {
+      info.push(`No dedicated header item for ${slug} (reachable via Services / showcase)`);
+    } else {
+      warnings.push(`No header/footer menu item found for slug/route ${slug} (${route})`);
+    }
   } else {
     const badHref = menuRows.filter(
       (r) =>
@@ -276,6 +289,7 @@ try {
     restaurants: "app/signup/restaurant",
     drivers: "app/signup/driver",
     business: "app/contact",
+    marketplace: "app/download",
   };
   const ctaRel = ctaPathMap[slug];
   if (ctaRel) {
