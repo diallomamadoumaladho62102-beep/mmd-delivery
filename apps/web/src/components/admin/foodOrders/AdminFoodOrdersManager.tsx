@@ -11,6 +11,7 @@ import {
   filterFoodOrders,
   filtersToSearchParams,
   parseFiltersFromSearchParams,
+  partyDisplayName,
   sortFoodOrders,
   type AdminFoodOrderListItem,
   type FoodOrderListFilters,
@@ -21,6 +22,13 @@ import FoodOrdersToolbar from "./FoodOrdersToolbar";
 function optionLabel(name: string | null | undefined, id: string): string {
   const n = String(name ?? "").trim();
   return n || id.slice(0, 8);
+}
+
+function partyOptionLabel(
+  party: AdminFoodOrderListItem["client"] | AdminFoodOrderListItem["driver"],
+  id: string
+): string {
+  return partyDisplayName(party ? { ...party, id: party.id || id } : { id, full_name: null, email: null, phone: null, avatar_url: null, account_kind: null }, id.slice(0, 8));
 }
 
 export default function AdminFoodOrdersManager() {
@@ -141,7 +149,7 @@ export default function AdminFoodOrdersManager() {
       const id =
         order.client?.id || order.client_id || order.client_user_id || order.user_id || "";
       if (!id) continue;
-      map.set(id, optionLabel(order.client?.full_name, id));
+      map.set(id, partyOptionLabel(order.client, id));
     }
     return [...map.entries()]
       .map(([value, label]) => ({ value, label }))
@@ -153,7 +161,7 @@ export default function AdminFoodOrdersManager() {
     for (const order of items) {
       const id = order.driver?.id || order.driver_id || "";
       if (!id) continue;
-      map.set(id, optionLabel(order.driver?.full_name, id));
+      map.set(id, partyOptionLabel(order.driver, id));
     }
     return [...map.entries()]
       .map(([value, label]) => ({ value, label }))

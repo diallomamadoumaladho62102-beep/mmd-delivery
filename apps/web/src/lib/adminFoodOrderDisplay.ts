@@ -9,7 +9,125 @@ export type AdminFoodOrderParty = {
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
+  /** profiles.account_kind when available (real / test / certification). */
+  account_kind: string | null;
 };
+
+export type PartyProfileSource = {
+  id: string;
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  phone_e164?: string | null;
+  avatar_url?: string | null;
+  personal_photo_url?: string | null;
+  account_kind?: string | null;
+};
+
+export type PartyRoleProfileSource = {
+  user_id: string;
+  full_name?: string | null;
+  phone?: string | null;
+  avatar_url?: string | null;
+};
+
+/** Resolve storage object paths to public avatar URLs (server-safe). */
+export function resolvePublicAvatarUrl(value: string | null | undefined): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const base = String(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "")
+    .trim()
+    .replace(/\/$/, "");
+  if (!base) return raw;
+
+  const normalized = raw.replace(/^avatars\//i, "");
+  if (/^(drivers|clients|restaurants)\//i.test(normalized)) {
+    return `${base}/storage/v1/object/public/avatars/${normalized}`;
+  }
+  if (normalized.includes("/")) {
+    const slash = normalized.indexOf("/");
+    const bucket = normalized.slice(0, slash);
+    const objectPath = normalized.slice(slash + 1);
+    if (bucket && objectPath) {
+      return `${base}/storage/v1/object/public/${bucket}/${objectPath}`;
+    }
+  }
+  return `${base}/storage/v1/object/public/avatars/${normalized}`;
+}
+
+function trimOrNull(value: unknown): string | null {
+  const s = String(value ?? "").trim();
+  return s.length > 0 ? s : null;
+}
+
+/** Drop placeholder / non-dialable phone values stored in some QA rows. */
+export function sanitizeDisplayPhone(value: unknown): string | null {
+  const phone = trimOrNull(value);
+  if (!phone) return null;
+  if (/numero|placeholder|example|test/i.test(phone)) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 7) return null;
+  return phone;
+}
+
+/**
+ * Merge profiles + role profile (client_profiles / driver_profiles) the same way
+ * Admin Clients CRM does — role profile fills missing name/phone/avatar.
+ * For clients, prefer client_profiles.avatar_url when both exist (profiles often
+ * holds a multi-role driver path).
+ */
+export function buildAdminFoodOrderParty(params: {
+  profile?: PartyProfileSource | null;
+  roleProfile?: PartyRoleProfileSource | null;
+  preferRoleAvatar?: boolean;
+}): AdminFoodOrderParty | null {
+  const profile = params.profile ?? null;
+  const role = params.roleProfile ?? null;
+  const id = trimOrNull(profile?.id) || trimOrNull(role?.user_id);
+  if (!id) return null;
+
+  const fullName =
+    trimOrNull(role?.full_name) || trimOrNull(profile?.full_name) || null;
+
+  const phone =
+    sanitizeDisplayPhone(profile?.phone_e164) ||
+    sanitizeDisplayPhone(profile?.phone) ||
+    sanitizeDisplayPhone(role?.phone) ||
+    null;
+
+  const roleAvatar = resolvePublicAvatarUrl(role?.avatar_url);
+  const profileAvatar = resolvePublicAvatarUrl(
+    profile?.avatar_url ?? profile?.personal_photo_url
+  );
+  const avatarUrl = params.preferRoleAvatar
+    ? roleAvatar || profileAvatar
+    : profileAvatar || roleAvatar;
+
+  return {
+    id,
+    full_name: fullName,
+    email: trimOrNull(profile?.email),
+    phone,
+    avatar_url: avatarUrl,
+    account_kind: trimOrNull(profile?.account_kind),
+  };
+}
+
+/** Display label: never fall back to generic "Client" when email/id exist. */
+export function partyDisplayName(
+  party: AdminFoodOrderParty | null | undefined,
+  fallback = "Unknown"
+): string {
+  const name = trimOrNull(party?.full_name);
+  if (name) return name;
+  const email = trimOrNull(party?.email);
+  if (email) return email;
+  const id = trimOrNull(party?.id);
+  if (id) return id.slice(0, 8);
+  return fallback;
+}
 
 export type AdminFoodOrderRestaurant = {
   id: string | null;
