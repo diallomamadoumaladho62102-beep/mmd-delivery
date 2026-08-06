@@ -5,6 +5,12 @@ import { buildSupabaseAdminClient } from "@/lib/supabaseAdmin";
 const STATIC_PATHS = [
   "/",
   "/company",
+  "/services",
+  "/food-delivery",
+  "/taxi",
+  "/package-delivery",
+  "/pricing",
+  "/cookies",
   "/drivers",
   "/marketplace",
   "/how-it-works",
@@ -18,6 +24,9 @@ const STATIC_PATHS = [
   "/brand/social",
   "/p/business",
   "/p/restaurants",
+  "/legal/privacy",
+  "/legal/terms",
+  "/legal/support",
 ];
 
 /** App-portal routes that should not be listed as marketing CMS pages. */
