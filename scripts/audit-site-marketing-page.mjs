@@ -271,19 +271,20 @@ try {
     info.push(`content module: ${contentFile.replace(ROOT + "\\", "").replace(ROOT + "/", "")}`);
   }
 
-  // 5) Signup path for partner-style pages
-  const signupMap = {
-    restaurants: "restaurant",
-    drivers: "driver",
-    business: "business",
+  // 5) Primary CTA destination must exist (signup or contact for business)
+  const ctaPathMap = {
+    restaurants: "app/signup/restaurant",
+    drivers: "app/signup/driver",
+    business: "app/contact",
   };
-  const signupDir = signupMap[slug];
-  if (signupDir) {
-    const signupPath = join(ROOT, "apps", "web", "app", "signup", signupDir);
-    if (!existsSync(signupPath)) {
-      errors.push(`signup path missing: apps/web/app/signup/${signupDir}`);
+  const ctaRel = ctaPathMap[slug];
+  if (ctaRel) {
+    const ctaPath = join(ROOT, "apps", "web", ctaRel);
+    const ctaPage = join(ctaPath, "page.tsx");
+    if (!existsSync(ctaPath) && !existsSync(ctaPage)) {
+      errors.push(`primary CTA destination missing: apps/web/${ctaRel}`);
     } else {
-      info.push(`signup path ok: /signup/${signupDir}`);
+      info.push(`primary CTA destination ok: /${ctaRel.replace(/^app\//, "").replace(/\\/g, "/")}`);
     }
   }
 
