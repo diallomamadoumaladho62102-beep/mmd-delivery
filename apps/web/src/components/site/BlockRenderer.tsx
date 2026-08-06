@@ -146,7 +146,15 @@ function HeroBlock({ payload }: { payload: Record<string, unknown> }) {
             </p>
           ) : null}
           <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
-            <span className={siteGradientTextClass}>{headline}</span>
+            <span
+              className={
+                str(payload.headline_style) === "solid"
+                  ? "text-[#fb923c]"
+                  : siteGradientTextClass
+              }
+            >
+              {headline}
+            </span>
           </h1>
           {subheadline ? (
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-200">
@@ -162,18 +170,48 @@ function HeroBlock({ payload }: { payload: Record<string, unknown> }) {
               ))}
             </ul>
           ) : null}
-          <div className="mt-9 space-y-4">
-            <CtaButtons buttons={primary} primary />
-            {secondary.length > 0 ? (
-              <CtaButtons buttons={secondary} primary={false} />
-            ) : null}
+          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            {primary
+              .map((btn) => ({
+                label: typeof btn.label === "string" ? btn.label.trim() : "",
+                href: typeof btn.href === "string" ? btn.href.trim() : "",
+                event: btn.event,
+              }))
+              .filter((btn) => btn.label && btn.href)
+              .map((btn, i) => (
+                <Link
+                  key={`hero-primary-${btn.href}-${i}`}
+                  href={btn.href}
+                  data-site-event={btn.event || undefined}
+                  className={`${sitePrimaryBtnClass} w-full sm:w-auto`}
+                >
+                  {btn.label}
+                </Link>
+              ))}
+            {secondary
+              .map((btn) => ({
+                label: typeof btn.label === "string" ? btn.label.trim() : "",
+                href: typeof btn.href === "string" ? btn.href.trim() : "",
+                event: btn.event,
+              }))
+              .filter((btn) => btn.label && btn.href)
+              .map((btn, i) => (
+                <Link
+                  key={`hero-secondary-${btn.href}-${i}`}
+                  href={btn.href}
+                  data-site-event={btn.event || undefined}
+                  className={`${siteSecondaryBtnClass} w-full sm:w-auto`}
+                >
+                  {btn.label}
+                </Link>
+              ))}
           </div>
         </div>
         <div className="min-w-0">
           {useShowcase ? (
             <HeroShowcase brand={siteTheme.brandName} />
           ) : (
-            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl shadow-2xl shadow-black/50">
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50">
               <SiteImage
                 src={str(payload.image_url, siteTheme.heroImageSrc)}
                 alt={headline}
@@ -294,9 +332,10 @@ function HowItWorksBlock({ payload }: { payload: Record<string, unknown> }) {
   const steps = asArray<Record<string, unknown>>(payload.steps);
   if (!steps.length) return null;
   const title = str(payload.title);
-  const headingId = "how-it-works-heading";
+  const sectionId = str(payload.anchor, "how-it-works");
+  const headingId = `${sectionId}-heading`;
   return (
-    <SectionWrap id="how-it-works">
+    <SectionWrap id={sectionId}>
       {title ? (
         <h2 id={headingId} className={siteHeadingClass}>
           {title}

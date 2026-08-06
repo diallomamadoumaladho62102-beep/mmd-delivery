@@ -6,16 +6,20 @@ export type HowToStep = {
 };
 
 /**
- * Schema.org HowTo JSON-LD for the marketing How it works page.
- * Steps should match the published CMS `how_it_works` block.
+ * Schema.org HowTo JSON-LD for marketing pages with step flows.
+ * Steps should match the published CMS `how_it_works` block when present.
  */
 export default function HowToJsonLd({
   name = "How MMD Delivery works",
   description = "From quote to delivery with secure Stripe payment and live tracking.",
+  path = "/how-it-works",
+  anchor = "how-it-works",
   steps,
 }: {
   name?: string;
   description?: string;
+  path?: string;
+  anchor?: string;
   steps: HowToStep[];
 }) {
   const cleaned = steps
@@ -26,18 +30,21 @@ export default function HowToJsonLd({
     .filter((step) => step.title);
   if (!cleaned.length) return null;
 
+  const pageUrl = `${CANONICAL_SITE_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
+  const stepUrl = `${pageUrl}#${anchor}`;
+
   const data = {
     "@context": "https://schema.org",
     "@type": "HowTo",
     name,
     description,
-    url: `${CANONICAL_SITE_ORIGIN}/how-it-works`,
+    url: pageUrl,
     step: cleaned.map((step, index) => ({
       "@type": "HowToStep",
       position: index + 1,
       name: step.title,
       text: step.body || step.title,
-      url: `${CANONICAL_SITE_ORIGIN}/how-it-works#how-it-works`,
+      url: stepUrl,
     })),
   };
 
