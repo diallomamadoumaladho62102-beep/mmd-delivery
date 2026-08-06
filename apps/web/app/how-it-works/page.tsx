@@ -40,25 +40,27 @@ export async function generateMetadata(): Promise<Metadata> {
 
 function readHowToSteps(payload: Record<string, unknown> | undefined) {
   const steps = Array.isArray(payload?.steps) ? payload.steps : [];
-  const fromCms = steps
-    .map((step) => {
-      if (!step || typeof step !== "object") return null;
-      const row = step as Record<string, unknown>;
-      const title = typeof row.title === "string" ? row.title.trim() : "";
-      const body =
-        typeof row.body === "string"
-          ? row.body.trim()
-          : typeof row.description === "string"
-            ? row.description.trim()
-            : undefined;
-      if (!title) return null;
-      return { title, body };
-    })
-    .filter((step): step is { title: string; body?: string } => Boolean(step));
+  const fromCms: { title: string; body?: string }[] = [];
+  for (const step of steps) {
+    if (!step || typeof step !== "object") continue;
+    const row = step as Record<string, unknown>;
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    if (!title) continue;
+    const body =
+      typeof row.body === "string"
+        ? row.body.trim()
+        : typeof row.description === "string"
+          ? row.description.trim()
+          : undefined;
+    fromCms.push({ title, body });
+  }
 
   return fromCms.length > 0
     ? fromCms
-    : HOW_IT_WORKS_STEPS.map((step) => ({ ...step }));
+    : HOW_IT_WORKS_STEPS.map((step) => ({
+        title: step.title,
+        body: step.body,
+      }));
 }
 
 export default async function Page() {
