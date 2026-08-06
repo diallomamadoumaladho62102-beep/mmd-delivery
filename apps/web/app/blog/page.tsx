@@ -13,6 +13,7 @@ import {
   siteHeadingClass,
   siteSectionClass,
 } from "@/components/site/siteTheme";
+import { BLOG_SEO } from "@/components/site/blogContent";
 
 export const dynamic = "force-dynamic";
 
@@ -20,13 +21,17 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const { settings } = await loadSiteChrome();
     return buildPageMetadata(
-      { title: "Blog — MMD Delivery", description: "News and updates from MMD Delivery." },
+      {
+        title: BLOG_SEO.title,
+        description: BLOG_SEO.description,
+        robots: BLOG_SEO.robots,
+      },
       settings,
       "Blog",
       "/blog",
     );
   } catch {
-    return { title: "Blog — MMD Delivery" };
+    return { title: BLOG_SEO.title, description: BLOG_SEO.description };
   }
 }
 

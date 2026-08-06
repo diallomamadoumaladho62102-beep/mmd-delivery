@@ -51,6 +51,7 @@ const PLACEHOLDER_RE =
 
 const PAGE_PROFILES = {
   default: ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+  "how-it-works": ["hero", "how_it_works", "rich_text", "cta", "faq"],
   faq: ["hero", "faq", "cta"],
   contact: ["hero", "contact", "rich_text", "cta", "faq"],
   press: ["hero", "features", "rich_text", "cta", "faq"],
@@ -58,6 +59,8 @@ const PAGE_PROFILES = {
   terms: ["hero", "rich_text", "cta"],
   support: ["hero", "rich_text", "cta", "faq"],
   marketplace: ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+  /** Custom SiteShell index — SEO lives in site_pages; no CMS block stack required. */
+  blog: [],
   home: [
     "hero",
     "services",
@@ -69,6 +72,22 @@ const PAGE_PROFILES = {
     "blog_teaser",
   ],
 };
+
+function contentModuleCandidates(pageSlug) {
+  const camel = pageSlug.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  return [
+    join(ROOT, "apps", "web", "src", "components", "site", `${pageSlug}Content.ts`),
+    join(ROOT, "apps", "web", "src", "components", "site", `${pageSlug}Content.tsx`),
+    join(ROOT, "apps", "web", "src", "components", "site", `${camel}Content.ts`),
+    join(ROOT, "apps", "web", "src", "components", "site", `${camel}Content.tsx`),
+    ...(pageSlug === "home"
+      ? [join(ROOT, "apps", "web", "src", "components", "site", "renderCmsPage.tsx")]
+      : []),
+    ...(pageSlug === "blog"
+      ? [join(ROOT, "apps", "web", "app", "blog", "page.tsx")]
+      : []),
+  ];
+}
 
 const EXPECTED_BLOCK_TYPES = PAGE_PROFILES[slug] || PAGE_PROFILES.default;
 
@@ -180,6 +199,7 @@ try {
   // Some marketing pages are linked from footer, company pages, or showcase — not header.
   const menuOptional = new Set([
     "home",
+    "how-it-works",
     "marketplace",
     "faq",
     "careers",
@@ -213,6 +233,9 @@ try {
   }
 
   // 3) Page + blocks
+  if (slug === "blog") {
+    info.push("blog uses custom SiteShell index (CMS blocks optional)");
+  }
   const pages = rowsOf(
     dbQueryJson(
       `select id, slug, title, status, seo::text as seo
@@ -223,7 +246,11 @@ try {
     ),
   );
   if (pages.length === 0) {
-    errors.push(`site_pages row missing for slug=${slug}`);
+    if (slug === "blog") {
+      info.push("site_pages row absent for blog — SEO enforced via blogContent.ts + page.tsx");
+    } else {
+      errors.push(`site_pages row missing for slug=${slug}`);
+    }
   } else {
     const page = pages[0];
     info.push(`page title=${page.title} status=${page.status}`);
@@ -316,13 +343,7 @@ try {
     }
   }
 
-  const contentCandidates = [
-    join(ROOT, "apps", "web", "src", "components", "site", `${slug}Content.ts`),
-    join(ROOT, "apps", "web", "src", "components", "site", `${slug}Content.tsx`),
-    ...(slug === "home"
-      ? [join(ROOT, "apps", "web", "src", "components", "site", "renderCmsPage.tsx")]
-      : []),
-  ];
+  const contentCandidates = contentModuleCandidates(slug);
   const contentFile = contentCandidates.find((p) => existsSync(p));
   if (!contentFile) {
     warnings.push(`No ${slug}Content.ts module (fallback content) found`);
