@@ -434,8 +434,9 @@ function RichTextBlock({ payload }: { payload: Record<string, unknown> }) {
 }
 
 function ContactBlock({ payload }: { payload: Record<string, unknown> }) {
+  const sectionId = str(payload.anchor, "contact-form");
   return (
-    <SectionWrap>
+    <SectionWrap id={sectionId}>
       <ContactForm title={str(payload.title, "Send a message")} subtitle={str(payload.subtitle)} />
     </SectionWrap>
   );

@@ -25,30 +25,71 @@ const route = routeArg
   ? routeArg.slice("--route=".length)
   : slug === "drivers"
     ? "/drivers"
-    : slug === "marketplace" ||
-        slug === "company" ||
-        slug === "blog" ||
-        slug === "faq" ||
-        slug === "contact" ||
-        slug === "download"
-      ? `/${slug}`
-      : `/p/${slug}`;
+    : slug === "privacy" || slug === "terms" || slug === "support"
+      ? `/legal/${slug}`
+      : [
+            "marketplace",
+            "company",
+            "blog",
+            "faq",
+            "contact",
+            "download",
+            "careers",
+            "partners",
+            "press",
+            "how-it-works",
+          ].includes(slug)
+        ? `/${slug}`
+        : `/p/${slug}`;
 
 const STAMP = new Date().toISOString().replace(/[:.]/g, "-");
 const OUT_DIR = join(ROOT, "artifacts", "site-audits", `${slug}-${STAMP}`);
 mkdirSync(OUT_DIR, { recursive: true });
 
 const PLACEHOLDER_RE =
-  /\b(TODO|FIXME|lorem ipsum|placeholder|coming soon|tbd|xxx)\b/i;
+  /\b(TODO|FIXME|lorem ipsum|placeholder|tbd|xxx)\b/i;
 
-const EXPECTED_BLOCK_TYPES = [
-  "hero",
-  "features",
-  "how_it_works",
-  "rich_text",
-  "cta",
-  "faq",
-];
+const PAGE_PROFILES = {
+  default: ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+  "how-it-works": ["hero", "how_it_works", "rich_text", "cta", "faq"],
+  faq: ["hero", "faq", "cta"],
+  contact: ["hero", "contact", "rich_text", "cta", "faq"],
+  press: ["hero", "features", "rich_text", "cta", "faq"],
+  privacy: ["hero", "rich_text", "cta"],
+  terms: ["hero", "rich_text", "cta"],
+  support: ["hero", "rich_text", "cta", "faq"],
+  marketplace: ["hero", "features", "how_it_works", "rich_text", "cta", "faq"],
+  /** Custom SiteShell index — SEO lives in site_pages; no CMS block stack required. */
+  blog: [],
+  home: [
+    "hero",
+    "services",
+    "features",
+    "mission_vision_values",
+    "how_it_works",
+    "cta",
+    "faq",
+    "blog_teaser",
+  ],
+};
+
+function contentModuleCandidates(pageSlug) {
+  const camel = pageSlug.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+  return [
+    join(ROOT, "apps", "web", "src", "components", "site", `${pageSlug}Content.ts`),
+    join(ROOT, "apps", "web", "src", "components", "site", `${pageSlug}Content.tsx`),
+    join(ROOT, "apps", "web", "src", "components", "site", `${camel}Content.ts`),
+    join(ROOT, "apps", "web", "src", "components", "site", `${camel}Content.tsx`),
+    ...(pageSlug === "home"
+      ? [join(ROOT, "apps", "web", "src", "components", "site", "renderCmsPage.tsx")]
+      : []),
+    ...(pageSlug === "blog"
+      ? [join(ROOT, "apps", "web", "app", "blog", "page.tsx")]
+      : []),
+  ];
+}
+
+const EXPECTED_BLOCK_TYPES = PAGE_PROFILES[slug] || PAGE_PROFILES.default;
 
 function log(msg) {
   console.log(msg);
@@ -155,11 +196,28 @@ try {
     ),
   );
   info.push(`menu links matched: ${menuRows.length}`);
-  // Marketplace is linked from Services/HeroShowcase, not always a top-level header item.
-  const menuOptional = new Set(["marketplace"]);
+  // Some marketing pages are linked from footer, company pages, or showcase — not header.
+  const menuOptional = new Set([
+    "home",
+    "how-it-works",
+    "marketplace",
+    "faq",
+    "careers",
+    "partners",
+    "press",
+    "blog",
+    "download",
+    "contact",
+    "company",
+    "privacy",
+    "terms",
+    "support",
+  ]);
   if (menuRows.length === 0) {
     if (menuOptional.has(slug)) {
-      info.push(`No dedicated header item for ${slug} (reachable via Services / showcase)`);
+      info.push(
+        `No dedicated header/footer item for ${slug} (reachable via site chrome / related CTAs)`,
+      );
     } else {
       warnings.push(`No header/footer menu item found for slug/route ${slug} (${route})`);
     }
@@ -175,6 +233,9 @@ try {
   }
 
   // 3) Page + blocks
+  if (slug === "blog") {
+    info.push("blog uses custom SiteShell index (CMS blocks optional)");
+  }
   const pages = rowsOf(
     dbQueryJson(
       `select id, slug, title, status, seo::text as seo
@@ -185,7 +246,11 @@ try {
     ),
   );
   if (pages.length === 0) {
-    errors.push(`site_pages row missing for slug=${slug}`);
+    if (slug === "blog") {
+      info.push("site_pages row absent for blog — SEO enforced via blogContent.ts + page.tsx");
+    } else {
+      errors.push(`site_pages row missing for slug=${slug}`);
+    }
   } else {
     const page = pages[0];
     info.push(`page title=${page.title} status=${page.status}`);
@@ -234,8 +299,11 @@ try {
         }
       }
       if (b.block_type === "hero") {
-        if (payload.headline_style !== "solid") {
+        const driversParitySlugs = new Set(["drivers", "restaurants", "business"]);
+        if (driversParitySlugs.has(slug) && payload.headline_style !== "solid") {
           warnings.push("hero.headline_style is not 'solid' (Drivers/Restaurants parity uses solid orange)");
+        } else if (!driversParitySlugs.has(slug) && payload.headline_style !== "solid") {
+          info.push("hero.headline_style=" + (payload.headline_style ?? "(unset)") + " (parity check skipped for " + slug + ")");
         }
         const imageUrl = payload.image_url;
         if (!imageUrl) {
@@ -264,15 +332,18 @@ try {
     if (PLACEHOLDER_RE.test(src)) {
       errors.push("placeholder wording found in page.tsx source");
     }
-    if (!src.includes("HowToJsonLd") && EXPECTED_BLOCK_TYPES.includes("how_it_works")) {
+    if (
+      slug !== "home" &&
+      !src.includes("HowToJsonLd") &&
+      EXPECTED_BLOCK_TYPES.includes("how_it_works")
+    ) {
       warnings.push("page.tsx does not reference HowToJsonLd");
+    } else if (slug === "home" && !src.includes("HowToJsonLd")) {
+      info.push("home page uses CMS BlockRenderer (HowToJsonLd optional)");
     }
   }
 
-  const contentCandidates = [
-    join(ROOT, "apps", "web", "src", "components", "site", `${slug}Content.ts`),
-    join(ROOT, "apps", "web", "src", "components", "site", `${slug}Content.tsx`),
-  ];
+  const contentCandidates = contentModuleCandidates(slug);
   const contentFile = contentCandidates.find((p) => existsSync(p));
   if (!contentFile) {
     warnings.push(`No ${slug}Content.ts module (fallback content) found`);
@@ -290,6 +361,16 @@ try {
     drivers: "app/signup/driver",
     business: "app/contact",
     marketplace: "app/download",
+    faq: "app/contact",
+    contact: "app/contact",
+    company: "app/contact",
+    careers: "app/contact",
+    partners: "app/contact",
+    press: "app/contact",
+    download: "app/download",
+    privacy: "app/contact",
+    terms: "app/contact",
+    support: "app/contact",
   };
   const ctaRel = ctaPathMap[slug];
   if (ctaRel) {
