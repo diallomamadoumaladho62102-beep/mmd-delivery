@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
           "is_online",
           "photo_url",
           "created_at",
+          "updated_at",
           "rating",
           "rating_count",
           "total_deliveries",
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
       await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name, email, avatar_url, personal_photo_url")
+          .select("id, full_name, email, avatar_url, personal_photo_url, last_seen_at")
           .in("id", userIds),
         supabase
           .from("driver_documents")
@@ -295,6 +296,10 @@ export async function GET(request: NextRequest) {
           is_online: Boolean(d.is_online),
           photo_url: photo,
           created_at: (d.created_at as string | null) ?? null,
+          last_activity_at:
+            (profile.last_seen_at as string | null) ??
+            (d.updated_at as string | null) ??
+            null,
           rating:
             d.rating != null
               ? Number(d.rating)

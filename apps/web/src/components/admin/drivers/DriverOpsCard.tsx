@@ -83,6 +83,29 @@ function DriverOpsCard({
         new Date(driver.created_at)
       )
     : null;
+  const lastActivity = driver.last_activity_at
+    ? new Intl.DateTimeFormat("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(driver.last_activity_at))
+    : null;
+
+  const vehicleType =
+    driver.vehicle?.vehicle_type || driver.transport_mode || null;
+  const vehicleMake = driver.vehicle?.make || driver.vehicle_brand;
+  const vehicleModel = driver.vehicle?.model || driver.vehicle_model;
+  const vehicleYear = driver.vehicle?.year || driver.vehicle_year;
+  const vehicleColor = driver.vehicle?.color || driver.vehicle_color;
+  const vehiclePlate = driver.vehicle?.plate || driver.plate_number;
+  const hasVehicleInfo = Boolean(
+    driver.vehicle?.photo_url ||
+      vehicleMake ||
+      vehicleModel ||
+      vehicleYear ||
+      vehicleColor ||
+      vehiclePlate ||
+      vehicleType
+  );
 
   return (
     <article
@@ -100,16 +123,25 @@ function DriverOpsCard({
               {driver.transport_mode}
             </span>
           </div>
-          <p className="mt-1 truncate text-xs text-slate-500" title={driver.email ?? undefined}>
-            {driver.email || "No email"}
-          </p>
+          {driver.email ? (
+            <p className="mt-1 truncate text-xs text-slate-500" title={driver.email}>
+              {driver.email}
+            </p>
+          ) : null}
           {driver.phone ? (
             <p className="truncate text-xs text-slate-500">{driver.phone}</p>
           ) : null}
-          <p className="mt-1 text-xs text-slate-500">
-            {[driver.city, driver.state].filter(Boolean).join(", ") || "No location"}
-            {joined ? ` · Joined ${joined}` : ""}
-          </p>
+          {(driver.city || driver.state || joined || lastActivity) && (
+            <p className="mt-1 text-xs text-slate-500">
+              {[
+                [driver.city, driver.state].filter(Boolean).join(", ") || null,
+                joined ? `Joined ${joined}` : null,
+                lastActivity ? `Active ${lastActivity}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
         </div>
       </div>
 
@@ -134,39 +166,53 @@ function DriverOpsCard({
         ) : null}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[120px_minmax(0,1fr)]">
-        <div className="relative h-20 w-full overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 sm:h-24">
-          {driver.vehicle?.photo_url ? (
-            <Image
-              src={driver.vehicle.photo_url}
-              alt=""
-              fill
-              className="object-cover"
-              unoptimized
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-[11px] text-slate-400">
-              No vehicle photo
+      {hasVehicleInfo ? (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white">
+          <div className="grid grid-cols-1 sm:grid-cols-[132px_minmax(0,1fr)]">
+            <div className="relative h-28 w-full bg-slate-100 sm:h-full sm:min-h-[7.5rem]">
+              {driver.vehicle?.photo_url ? (
+                <Image
+                  src={driver.vehicle.photo_url}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-full min-h-[7.5rem] items-center justify-center px-3 text-center text-[11px] text-slate-400">
+                  Vehicle
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div className="text-xs text-slate-600">
-          <div className="font-medium text-slate-900">
-            {[driver.vehicle?.make || driver.vehicle_brand, driver.vehicle?.model || driver.vehicle_model]
-              .filter(Boolean)
-              .join(" ") || "Vehicle"}
+            <div className="space-y-2 p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Vehicle
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                {(
+                  [
+                    ["Type", vehicleType],
+                    ["Make", vehicleMake],
+                    ["Model", vehicleModel],
+                    ["Year", vehicleYear != null ? String(vehicleYear) : null],
+                    ["Color", vehicleColor],
+                    ["Plate", vehiclePlate],
+                  ] as const
+                )
+                  .filter(([, value]) => Boolean(value))
+                  .map(([label, value]) => (
+                    <div key={label} className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                        {label}
+                      </div>
+                      <div className="truncate font-medium text-slate-900">{value}</div>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
-          <div>
-            {[
-              driver.vehicle?.year || driver.vehicle_year,
-              driver.vehicle?.color || driver.vehicle_color,
-              driver.vehicle?.plate || driver.plate_number,
-            ]
-              .filter(Boolean)
-              .join(" · ") || "—"}
-          </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="mt-3">
         <DriverDocBadges driver={driver} />

@@ -50,6 +50,7 @@ function sample(partial: Partial<AdminDriverListItem> = {}): AdminDriverListItem
     is_online: false,
     photo_url: null,
     created_at: "2026-01-01T00:00:00.000Z",
+    last_activity_at: null,
     rating: null,
     rating_count: null,
     total_deliveries: 3,
@@ -95,27 +96,65 @@ test("computeMissingRequirementsForRow bike does not require motor docs", () => 
   assert.equal(missing.length, 0);
 });
 
-test("ops priority puts pending missing before approved", () => {
-  const pending = sample({ status: "pending", computed_missing_requirements: ["x"] });
+test("ops priority: pending before missing before rejected before suspended", () => {
+  const pending = sample({ status: "pending", computed_missing_requirements: [] });
+  const missing = sample({
+    status: "approved",
+    computed_missing_requirements: ["license front"],
+    is_online: false,
+  });
+  const rejected = sample({
+    status: "rejected",
+    computed_missing_requirements: [],
+  });
+  const suspended = sample({ status: "suspended", computed_missing_requirements: [] });
+  const disabled = sample({ status: "disabled", computed_missing_requirements: [] });
   const approved = sample({
     status: "approved",
     computed_missing_requirements: [],
-    documents: [{ id: "1", user_id: "u1", doc_type: "profile_photo", status: "approved", file_path: "a", created_at: "", reviewed_at: null, review_notes: null }],
+    is_online: false,
   });
-  assert.ok(getOpsPriorityScore(pending) < getOpsPriorityScore(approved));
-  const sorted = sortDriversOps([approved, pending]);
+
+  assert.ok(getOpsPriorityScore(pending) < getOpsPriorityScore(missing));
+  assert.ok(getOpsPriorityScore(missing) < getOpsPriorityScore(rejected));
+  assert.ok(getOpsPriorityScore(rejected) < getOpsPriorityScore(suspended));
+  assert.ok(getOpsPriorityScore(suspended) < getOpsPriorityScore(disabled));
+  assert.ok(getOpsPriorityScore(disabled) < getOpsPriorityScore(approved));
+
+  const sorted = sortDriversOps([approved, suspended, rejected, missing, pending]);
   assert.equal(sorted[0]!.status, "pending");
+  assert.equal(sorted[1]!.user_id, missing.user_id);
 });
 
-test("approved online sorts before approved offline", () => {
-  const online = sample({
+test("approved online sorts before approved offline, then by activity", () => {
+  const onlineOlder = sample({
+    user_id: "online-old",
     status: "approved",
     is_online: true,
     computed_missing_requirements: [],
-    documents: [{ id: "1", user_id: "u1", doc_type: "profile_photo", status: "approved", file_path: "a", created_at: "", reviewed_at: null, review_notes: null }],
+    last_activity_at: "2026-01-01T00:00:00.000Z",
+    created_at: "2025-01-01T00:00:00.000Z",
   });
-  const offline = { ...online, is_online: false, user_id: "u2" };
-  assert.ok(getOpsPriorityScore(online) < getOpsPriorityScore(offline));
+  const onlineNewer = sample({
+    user_id: "online-new",
+    status: "approved",
+    is_online: true,
+    computed_missing_requirements: [],
+    last_activity_at: "2026-06-01T00:00:00.000Z",
+    created_at: "2025-06-01T00:00:00.000Z",
+  });
+  const offline = sample({
+    user_id: "offline",
+    status: "approved",
+    is_online: false,
+    computed_missing_requirements: [],
+    last_activity_at: "2026-07-01T00:00:00.000Z",
+  });
+  assert.ok(getOpsPriorityScore(onlineNewer) < getOpsPriorityScore(offline));
+  const sorted = sortDriversOps([offline, onlineOlder, onlineNewer]);
+  assert.equal(sorted[0]!.user_id, "online-new");
+  assert.equal(sorted[1]!.user_id, "online-old");
+  assert.equal(sorted[2]!.user_id, "offline");
 });
 
 test("status actions hide approve for approved drivers", () => {
@@ -129,6 +168,7 @@ test("status actions hide approve for approved drivers", () => {
     false
   );
   assert.ok(actions.some((a) => a.key === "suspend"));
+  assert.ok(actions.some((a) => a.key === "identity" && a.label === "Audit"));
 });
 
 test("suspended shows reactivate not approve label", () => {
@@ -144,6 +184,22 @@ test("suspended shows reactivate not approve label", () => {
   );
 });
 
+test("rejected never shows approve", () => {
+  const actions = driverStatusActions("rejected", {
+    canManage: true,
+    missingCount: 0,
+    userId: "u1",
+  });
+  assert.equal(
+    actions.some((a) => a.key === "approve"),
+    false
+  );
+  assert.deepEqual(
+    actions.map((a) => a.key),
+    ["view", "history"]
+  );
+});
+
 test("approve disabled when missing docs", () => {
   const actions = driverStatusActions("pending", {
     canManage: true,
@@ -154,25 +210,59 @@ test("approve disabled when missing docs", () => {
   assert.equal(approve?.disabled, true);
 });
 
-test("doc group badge not provided", () => {
+test("doc group badge missing", () => {
   const badge = aggregateDocGroupBadge([], ["insurance"]);
   assert.equal(badge.tone, "slate");
+  assert.equal(badge.label, "Missing");
 });
 
-test("stripe identity badge", () => {
-  assert.equal(stripeIdentityBadge("verified").tone, "green");
-  assert.equal(stripeIdentityBadge(null).tone, "slate");
+test("doc group badge valid", () => {
+  const badge = aggregateDocGroupBadge(
+    [
+      {
+        id: "1",
+        user_id: "u1",
+        doc_type: "insurance",
+        status: "approved",
+        file_path: "x",
+        created_at: "",
+        reviewed_at: null,
+        review_notes: null,
+      },
+    ],
+    ["insurance"]
+  );
+  assert.equal(badge.label, "Valid");
+  assert.equal(badge.tone, "green");
 });
 
-test("filterDrivers combines status and search", () => {
+test("stripe identity badge labels", () => {
+  assert.equal(stripeIdentityBadge("verified").label, "Verified");
+  assert.equal(stripeIdentityBadge(null).label, "Not started");
+  assert.equal(stripeIdentityBadge("rejected").label, "Rejected");
+});
+
+test("filterDrivers combines status, mode, and accent-insensitive search", () => {
   const items = [
-    sample({ user_id: "a", status: "approved", full_name: "Awa", computed_missing_requirements: [], documents: [{ id: "1", user_id: "a", doc_type: "profile_photo", status: "approved", file_path: "x", created_at: "", reviewed_at: null, review_notes: null }] }),
-    sample({ user_id: "b", status: "pending", full_name: "Omar", plate_number: "ABC123" }),
+    sample({
+      user_id: "a",
+      status: "approved",
+      full_name: "Awa",
+      transport_mode: "car",
+      computed_missing_requirements: [],
+    }),
+    sample({
+      user_id: "b",
+      status: "pending",
+      full_name: "José Omar",
+      plate_number: "ABC123",
+      transport_mode: "bike",
+    }),
   ];
   const filtered = filterDrivers(items, {
-    q: "abc",
+    q: "jose",
     status: "pending",
-    mode: "",
+    mode: "bike",
     city: "",
     state: "",
     docsIncomplete: false,

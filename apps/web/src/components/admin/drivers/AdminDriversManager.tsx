@@ -187,12 +187,14 @@ export default function AdminDriversManager() {
       items.filter(pred).length;
     return {
       total: items.length,
-      pending: count((r) => r.status === "pending" || r.status === "incomplete"),
+      pending: count((r) => r.status === "pending"),
       approved: count((r) => r.status === "approved"),
-      rejected: count((r) => r.status === "rejected"),
       suspended: count((r) => r.status === "suspended"),
       disabled: count((r) => r.status === "disabled"),
-      incompleteDocs: count((r) => r.computed_missing_requirements.length > 0),
+      incompleteDocs: count(
+        (r) =>
+          r.status === "incomplete" || r.computed_missing_requirements.length > 0
+      ),
       online: count((r) => r.is_online),
     };
   }, [items]);
@@ -459,25 +461,29 @@ export default function AdminDriversManager() {
         </button>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+      <section
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7"
+        aria-label="Driver operations KPIs"
+      >
         {(
           [
-            ["Total", kpis.total],
-            ["Pending", kpis.pending],
+            ["Total Drivers", kpis.total],
+            ["Pending Review", kpis.pending],
             ["Approved", kpis.approved],
-            ["Rejected", kpis.rejected],
+            ["Online", kpis.online],
             ["Suspended", kpis.suspended],
             ["Disabled", kpis.disabled],
             ["Incomplete", kpis.incompleteDocs],
-            ["Online", kpis.online],
           ] as const
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3.5 shadow-sm"
           >
-            <div className="text-[11px] font-medium text-slate-500">{label}</div>
-            <div className="mt-1 text-xl font-semibold text-slate-900">{value}</div>
+            <div className="text-[11px] font-medium leading-snug text-slate-500">{label}</div>
+            <div className="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900">
+              {value}
+            </div>
           </div>
         ))}
       </section>

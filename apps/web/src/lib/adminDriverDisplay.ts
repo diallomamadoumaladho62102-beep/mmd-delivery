@@ -81,6 +81,8 @@ export type AdminDriverListItem = {
   is_online: boolean;
   photo_url: string | null;
   created_at: string | null;
+  /** Persisted activity signal only (profiles.last_seen_at or driver_profiles.updated_at). */
+  last_activity_at: string | null;
   rating: number | null;
   rating_count: number | null;
   total_deliveries: number | null;
@@ -235,21 +237,31 @@ export function completenessPercent(missingCount: number, transportMode: Vehicle
   return Math.round((filled / total) * 100);
 }
 
-/** Ops Center priority: lower = more urgent. */
+/**
+ * Ops Center priority: lower = more urgent.
+ * 0 pending review → 1 missing docs → 2 admin action (rejected)
+ * → 3 suspended → 4 disabled → 5 approved online → 6 approved offline
+ */
 export function getOpsPriorityScore(row: Pick<
   AdminDriverListItem,
-  "status" | "computed_missing_requirements" | "is_online" | "documents"
+  "status" | "computed_missing_requirements" | "is_online"
 >): number {
   const missing = row.computed_missing_requirements.length > 0;
-  if (row.status === "pending" || row.status === "incomplete") {
-    return missing ? 0 : 1;
-  }
-  if (missing || row.documents.length === 0) return 2;
-  if (row.status === "rejected") return 3;
-  if (row.status === "suspended") return 4;
-  if (row.status === "disabled") return 5;
-  if (row.status === "approved") return row.is_online ? 6 : 7;
-  return 8;
+  // Terminal / admin statuses keep their bucket even when docs are incomplete.
+  if (row.status === "pending") return 0;
+  if (row.status === "rejected") return 2;
+  if (row.status === "suspended") return 3;
+  if (row.status === "disabled") return 4;
+  if (row.status === "incomplete" || missing) return 1;
+  if (row.status === "approved") return row.is_online ? 5 : 6;
+  return 7;
+}
+
+function activityMs(row: Pick<AdminDriverListItem, "last_activity_at" | "created_at">): number {
+  const raw = row.last_activity_at || row.created_at;
+  if (!raw) return 0;
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : 0;
 }
 
 export function sortDriversOps(items: AdminDriverListItem[]): AdminDriverListItem[] {
@@ -257,6 +269,16 @@ export function sortDriversOps(items: AdminDriverListItem[]): AdminDriverListIte
     const pa = getOpsPriorityScore(a);
     const pb = getOpsPriorityScore(b);
     if (pa !== pb) return pa - pb;
+
+    // Within approved (and same online bucket): recent activity, then signup date.
+    if (a.status === "approved" && b.status === "approved") {
+      const act = activityMs(b) - activityMs(a);
+      if (act !== 0) return act;
+      const createdA = a.created_at ? Date.parse(a.created_at) : 0;
+      const createdB = b.created_at ? Date.parse(b.created_at) : 0;
+      if (createdA !== createdB) return createdB - createdA;
+    }
+
     return String(a.full_name ?? "").localeCompare(String(b.full_name ?? ""));
   });
 }
@@ -305,7 +327,7 @@ export function aggregateDocGroupBadge(
 ): { label: string; tone: DocBadgeTone; detail: string } {
   const matched = documents.filter((d) => docTypes.includes(String(d.doc_type)));
   if (matched.length === 0) {
-    return { label: "Not provided", tone: "slate", detail: "missing" };
+    return { label: "Missing", tone: "slate", detail: "missing" };
   }
 
   if (opts?.licenseExpiry) {
@@ -313,16 +335,16 @@ export function aggregateDocGroupBadge(
     if (Number.isFinite(exp)) {
       const days = (exp - Date.now()) / (1000 * 60 * 60 * 24);
       if (days < 0) return { label: "Expired", tone: "red", detail: "expired" };
-      if (days <= 30) return { label: "Expiring soon", tone: "orange", detail: "expiring" };
+      if (days <= 30) return { label: "Expiring Soon", tone: "orange", detail: "expiring" };
     }
   }
 
   const tone = worstDocTone(matched.map((d) => String(d.status)));
-  if (tone === "green") return { label: "Validated", tone, detail: "approved" };
+  if (tone === "green") return { label: "Valid", tone, detail: "approved" };
   if (tone === "yellow") return { label: "Pending", tone, detail: "pending" };
-  if (tone === "orange") return { label: "Incomplete", tone, detail: "incomplete" };
+  if (tone === "orange") return { label: "Pending", tone, detail: "incomplete" };
   if (tone === "red") return { label: "Rejected", tone, detail: "rejected" };
-  return { label: "Not provided", tone: "slate", detail: "unknown" };
+  return { label: "Missing", tone: "slate", detail: "unknown" };
 }
 
 export function stripeIdentityBadge(status: string | null | undefined): {
@@ -330,12 +352,12 @@ export function stripeIdentityBadge(status: string | null | undefined): {
   tone: DocBadgeTone;
 } {
   const s = String(status ?? "").toLowerCase();
-  if (!s || s === "not_started") return { label: "Not provided", tone: "slate" };
-  if (s === "verified") return { label: "Validated", tone: "green" };
+  if (!s || s === "not_started") return { label: "Not started", tone: "slate" };
+  if (s === "verified") return { label: "Verified", tone: "green" };
   if (s === "pending" || s === "processing" || s === "requires_input") {
     return { label: "Pending", tone: "yellow" };
   }
-  if (s === "failed" || s === "canceled" || s === "cancelled") {
+  if (s === "failed" || s === "canceled" || s === "cancelled" || s === "rejected") {
     return { label: "Rejected", tone: "red" };
   }
   return { label: s, tone: "slate" };
@@ -347,10 +369,10 @@ export function driverStatusActions(
 ): DriverUiAction[] {
   if (!opts.canManage) {
     return [
-      { key: "view", label: "View details" },
+      { key: "view", label: "View Details" },
       {
-        key: "identity",
-        label: "Identity",
+        key: "history",
+        label: "History",
         href: `/admin/driver-identity?q=${encodeURIComponent(opts.userId)}`,
       },
     ];
@@ -374,11 +396,11 @@ export function driverStatusActions(
           title: approveTitle,
         },
         { key: "reject", label: "Reject", status: "rejected" },
-        { key: "view", label: "View details" },
+        { key: "view", label: "View Details" },
       ];
     case "approved":
       return [
-        { key: "view", label: "View profile" },
+        { key: "view", label: "View Profile" },
         { key: "suspend", label: "Suspend", status: "suspended" },
         { key: "disable", label: "Disable", status: "disabled" },
         {
@@ -388,7 +410,7 @@ export function driverStatusActions(
         },
         {
           key: "identity",
-          label: "Audit / Identity",
+          label: "Audit",
           href: `/admin/identity?q=${encodeURIComponent(opts.userId)}`,
         },
       ];
@@ -401,7 +423,7 @@ export function driverStatusActions(
           disabled: approveDisabled,
           title: approveTitle,
         },
-        { key: "view", label: "View details" },
+        { key: "view", label: "View Details" },
         {
           key: "history",
           label: "History",
@@ -417,7 +439,7 @@ export function driverStatusActions(
           disabled: approveDisabled,
           title: approveTitle,
         },
-        { key: "view", label: "View details" },
+        { key: "view", label: "View Details" },
         {
           key: "history",
           label: "History",
@@ -425,17 +447,9 @@ export function driverStatusActions(
         },
       ];
     case "rejected":
+      // No Approve — rejected drivers stay review-only until ops reopen via dossier.
       return [
-        ...(missing
-          ? []
-          : [
-              {
-                key: "approve" as const,
-                label: "Approve",
-                status: "approved" as const,
-              },
-            ]),
-        { key: "view", label: "View details" },
+        { key: "view", label: "View Details" },
         {
           key: "history",
           label: "History",
@@ -443,7 +457,7 @@ export function driverStatusActions(
         },
       ];
     default:
-      return [{ key: "view", label: "View details" }];
+      return [{ key: "view", label: "View Details" }];
   }
 }
 
@@ -508,8 +522,11 @@ export function filterDrivers(
       row.city,
       row.state,
       row.license_number,
+      row.transport_mode,
       row.stripe_identity_status,
       row.vehicle?.plate,
+      row.vehicle?.make,
+      row.vehicle?.model,
     ]
       .map((v) => normalizeSearchText(String(v ?? "")))
       .join(" ");

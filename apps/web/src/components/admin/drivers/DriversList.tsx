@@ -30,6 +30,7 @@ export default function DriversList({
   hasMore = false,
   onLoadMore,
   selectedIds,
+  onToggleSelect,
 }: {
   items: AdminDriverListItem[];
   loading: boolean;
@@ -50,11 +51,15 @@ export default function DriversList({
   onDocumentNoteChange: (docId: string, note: string) => void;
   onSaveDocument: (userId: string, docId: string) => void;
   onDeleteDocument: (userId: string, docId: string) => void;
+  /** Future: server pagination / infinite scroll (not wired). */
   hasMore?: boolean;
   onLoadMore?: () => void;
+  /** Future: bulk selection (not wired). */
   selectedIds?: Set<string>;
+  onToggleSelect?: (userId: string) => void;
 }) {
   void selectedIds;
+  void onToggleSelect;
 
   if (loading) {
     return (
