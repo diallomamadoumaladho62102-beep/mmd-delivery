@@ -61,7 +61,10 @@ export default function AdminCancelRefundPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-red-200 bg-white p-5 shadow-sm">
+    <section
+      id="cancel-refund"
+      className="scroll-mt-24 rounded-2xl border border-red-200 bg-white p-5 shadow-sm"
+    >
       <div className="mb-4">
         <h2 className="text-base font-semibold text-slate-900">
           🛠️ Admin — Annuler & rembourser

@@ -748,9 +748,11 @@ export default function AdminOrderPage() {
           </p>
         </SectionCard>
 
-        <SectionCard title="Timeline de commande">
-          <OrderTimeline orderId={order.id} />
-        </SectionCard>
+        <div id="timeline" className="scroll-mt-24">
+          <SectionCard title="Timeline de commande">
+            <OrderTimeline orderId={order.id} />
+          </SectionCard>
+        </div>
 
         <div className="pt-1">
           <Link
