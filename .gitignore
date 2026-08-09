@@ -3,6 +3,11 @@ node_modules
 .next
 out
 
+# Local Cursor / Figma design-session / QA artifacts (never commit)
+.cursor/
+.figma/
+artifacts/
+
 # pnpm is the only package manager for this monorepo (EAS/Expo use the root lockfile).
 # Do not recreate npm lockfiles under apps/mobile or apps/web.
 apps/mobile/package-lock.json

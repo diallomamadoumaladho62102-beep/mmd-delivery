@@ -1,5 +1,11 @@
 -- Point header Services to dedicated /services Coming Soon route,
 -- and add Cookies to footer legal navigation.
+--
+-- History note (2026-08-09 reconciliation):
+-- Originally filed as 20261106120000_site_menu_placeholder_routes.sql, colliding with
+-- 20261106120000_skip_noop_driver_location_updates.sql (the version recorded on remote).
+-- Effects already present on linked prod; renamed to a unique version after the tip.
+-- Idempotent: safe if re-run; do not re-apply once marked applied in schema_migrations.
 
 begin;
 
