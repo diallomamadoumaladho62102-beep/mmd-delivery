@@ -114,3 +114,8 @@ scripts/stripe-prod-*.cjs
 # Local official branding backup archive (do not commit binaries)
 docs/branding-archive/
 
+
+# Android debug keystore (never commit)
+android/app/debug.keystore
+apps/mobile/android/app/debug.keystore
+

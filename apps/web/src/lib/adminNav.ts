@@ -45,6 +45,11 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
         permission: "driver_offers.read",
       },
       {
+        href: "/admin/driver-opportunities",
+        label: "Driver Opportunities",
+        permission: "users.drivers.manage",
+      },
+      {
         href: "/admin/delivery-requests",
         label: "Delivery Requests",
         permission: "delivery_requests.read",

@@ -469,6 +469,29 @@ async function writeAndroidMipmaps(foreground1024, monochrome1024) {
   }
 }
 
+
+async function writeAndroidSplashDrawables(splash1024) {
+  const resRoot = path.join(root, "android/app/src/main/res");
+  const densities = [
+    { name: "mdpi", size: 288 },
+    { name: "hdpi", size: 432 },
+    { name: "xhdpi", size: 576 },
+    { name: "xxhdpi", size: 864 },
+    { name: "xxxhdpi", size: 1152 },
+  ];
+  for (const density of densities) {
+    const dir = path.join(resRoot, `drawable-${density.name}`);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "splashscreen_logo.png"),
+      await sharp(splash1024)
+        .resize(density.size, density.size)
+        .png({ compressionLevel: 9 })
+        .toBuffer(),
+    );
+  }
+}
+
 const webLogoPng = await sharp(croppedMaster)
   .resize({ width: 960, withoutEnlargement: false })
   .png({ compressionLevel: 9 })
@@ -548,7 +571,9 @@ await writeAdaptiveBackground(
   "apps/mobile/assets/adaptive-icon-background.png",
   1024,
 );
-await writeTransparentSquare("apps/mobile/assets/splash-logo.png", 1024, 0.82);
+const splashLogo1024 = await transparentSquare(1024, 0.82);
+fs.writeFileSync(path.join(mobileAssets, "splash-logo.png"), splashLogo1024);
+await writeAndroidSplashDrawables(splashLogo1024);
 const monochrome1024 = await transparentMonochromeIcon(1024, 0.72);
 fs.writeFileSync(path.join(mobileAssets, "monochrome-icon.png"), monochrome1024);
 fs.writeFileSync(

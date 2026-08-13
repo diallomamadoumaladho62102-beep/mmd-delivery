@@ -171,7 +171,25 @@ export default ({ config }) => {
         },
       ],
       "@rnmapbox/maps",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          photosPermission:
+            "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
+          cameraPermission:
+            "MMD Delivery uses the camera for in-app safety recording and optional delivery proof photos, without leaving the app.",
+        },
+      ],
+      [
+        "expo-camera",
+        {
+          cameraPermission:
+            "MMD Delivery records in-app safety videos during taxi rides without opening the system Camera app.",
+          microphonePermission:
+            "MMD Delivery may record audio with in-app safety video for incident protection.",
+          recordAudioAndroid: true,
+        },
+      ],
       [
         "expo-location",
         {
@@ -185,6 +203,7 @@ export default ({ config }) => {
       ],
       "expo-task-manager",
       "expo-web-browser",
+      "expo-font",
       [
         "@sentry/react-native/expo",
         {
@@ -219,19 +238,19 @@ export default ({ config }) => {
         ...existingInfoPlist,
         ITSAppUsesNonExemptEncryption: false,
         NSCameraUsageDescription:
-          "MMD Delivery utilise la caméra pour les preuves de pickup et de livraison.",
+          "MMD Delivery uses the camera for in-app safety video recording and optional delivery proof photos, without opening the system Camera app.",
         NSPhotoLibraryUsageDescription:
-          "MMD Delivery accède à vos photos pour joindre des preuves ou images au chat.",
+          "MMD Delivery accesses your photo library so you can upload profile photos, delivery proof images, and location reference photos.",
         NSPhotoLibraryAddUsageDescription:
-          "MMD Delivery peut enregistrer des photos de preuve dans votre galerie.",
+          "MMD Delivery may save delivery proof photos to your photo library when you choose to keep a copy.",
         NSMicrophoneUsageDescription:
-          "MMD Delivery utilise le micro pour les enregistrements de sécurité optionnels pendant une course.",
+          "MMD Delivery uses the microphone during optional in-ride safety recordings when you choose to start an audio or video safety recording.",
         NSLocationWhenInUseUsageDescription:
-          "MMD Delivery utilise votre position pour localiser le chauffeur et afficher les livraisons proches.",
+          "MMD Delivery uses your location to show nearby restaurants, set pickup and drop-off points, and help drivers navigate during active deliveries and taxi rides.",
         NSLocationAlwaysAndWhenInUseUsageDescription:
-          "MMD Delivery utilise votre position pour les livraisons en temps réel.",
+          "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
         NSLocationAlwaysUsageDescription:
-          "MMD Delivery utilise votre position pour suivre les livraisons en temps réel lorsque vous êtes en ligne.",
+          "MMD Delivery uses background location during active driver shifts and live trips so clients can track their order or ride until it is completed.",
         // `audio` keeps the in-app driver long-ring alive when the app is backgrounded.
         UIBackgroundModes: ["location", "remote-notification", "audio"],
         LSApplicationQueriesSchemes: ["waze", "comgooglemaps", "googlemaps"],
@@ -274,6 +293,7 @@ export default ({ config }) => {
       ],
       adaptiveIcon: {
         foregroundImage: "./apps/mobile/assets/adaptive-icon.png",
+        backgroundImage: "./apps/mobile/assets/adaptive-icon-background.png",
         monochromeImage: "./apps/mobile/assets/monochrome-icon.png",
         backgroundColor: "#050816",
       },
