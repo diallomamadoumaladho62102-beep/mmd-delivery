@@ -4,6 +4,14 @@ const { getSentryExpoConfig } = require("@sentry/react-native/metro");
 const projectRoot = __dirname;
 const config = getSentryExpoConfig(projectRoot);
 
+// SDK 54's nested metro-config@0.83.3 still emits watcher.unstable_workerThreads,
+// but current Metro only accepts that flag on transformer (moved in later metro-config).
+// Keep transformer.unstable_workerThreads; drop the obsolete watcher key to silence
+// EAS/expo-doctor "Unknown option" warnings. Fixed upstream for SDK 55 (#44591).
+if (config.watcher && "unstable_workerThreads" in config.watcher) {
+  delete config.watcher.unstable_workerThreads;
+}
+
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(projectRoot, "apps/mobile/node_modules"),
