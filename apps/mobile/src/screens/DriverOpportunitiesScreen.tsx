@@ -17,6 +17,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
+import {
+  fetchDriverOpportunities,
+  joinDriverOpportunity,
+  saveDriverOpportunity,
+  type DriverOpportunityFeedItem,
+} from "../lib/driverOpportunitiesApi";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import ScreenHeader from "../components/navigation/ScreenHeader";
@@ -130,7 +136,74 @@ type Opportunity = {
   tag?: string;
   ctaLabel?: string;
   emoji?: string;
+  startsAt?: string | null;
 };
+
+function formatTimeRange(startsAt: string | null, endsAt: string | null): string {
+  if (!startsAt) return "All day";
+  const start = new Date(startsAt);
+  if (Number.isNaN(start.getTime())) return "All day";
+  const fmt = (d: Date) =>
+    new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .format(d)
+      .replace(":", " h ");
+  if (!endsAt) return fmt(start);
+  const end = new Date(endsAt);
+  if (Number.isNaN(end.getTime())) return fmt(start);
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+function computeDayOffset(startsAt: string | null, today: Date): number {
+  if (!startsAt) return 0;
+  const startDay = startOfDay(new Date(startsAt));
+  const diff = Math.round((startDay.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  return Math.max(0, diff);
+}
+
+function categoryEmoji(category: string): string {
+  switch (category) {
+    case "airports":
+      return "✈️";
+    case "promotions":
+      return "🎁";
+    case "reservations":
+      return "📅";
+    case "events":
+      return "🎉";
+    default:
+      return "⭐";
+  }
+}
+
+function mapFeedItemToOpportunity(item: DriverOpportunityFeedItem, today: Date): Opportunity {
+  const bonusLabel =
+    item.bonus_cents > 0
+      ? `+$${(item.bonus_cents / 100).toFixed(0)} bonus`
+      : undefined;
+  const distanceText =
+    item.distance_miles != null
+      ? `${item.distance_miles.toFixed(1)} mi`
+      : item.lat != null && item.lng != null
+      ? "Nearby"
+      : "—";
+
+  return {
+    id: item.id,
+    category: item.category,
+    dayOffset: computeDayOffset(item.starts_at, today),
+    title: item.title,
+    subtitle: item.subtitle ?? "",
+    timeRange: formatTimeRange(item.starts_at, item.ends_at),
+    distanceText,
+    tag: bonusLabel,
+    emoji: categoryEmoji(item.category),
+    startsAt: item.starts_at,
+  };
+}
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -267,6 +340,7 @@ export function DriverOpportunitiesScreen() {
 
   const [savedIds, setSavedIds] = useState<Record<string, boolean>>({});
   const [joinedIds, setJoinedIds] = useState<Record<string, boolean>>({});
+  const [feedOpps, setFeedOpps] = useState<Opportunity[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
 
   const [hydratedOnce, setHydratedOnce] = useState(false);
@@ -386,8 +460,9 @@ export function DriverOpportunitiesScreen() {
       if (!notifReadyRef.current) return notifMap;
       if (notifMap[opp.id]) return notifMap;
 
-      const startMin = parseStartMinutes(opp.timeRange);
-      const startDate = toLocalDateForOpp(today, opp.dayOffset, startMin);
+      const startDate = opp.startsAt
+        ? new Date(opp.startsAt)
+        : toLocalDateForOpp(today, opp.dayOffset, parseStartMinutes(opp.timeRange));
       const fireDate = new Date(startDate.getTime() - 30 * 60 * 1000);
       if (fireDate.getTime() <= Date.now() + 10_000) return notifMap;
 
@@ -433,88 +508,55 @@ export function DriverOpportunitiesScreen() {
     [persistNotifMap]
   );
 
-  const fetchSavedFromServer = useCallback(async (uid: string) => {
-    const { data, error } = await supabase
-      .from("driver_saved_opportunities")
-      .select("opportunity_id")
-      .eq("driver_id", uid);
+  const syncSavedJoinedFromFeed = useCallback(
+    async (items: DriverOpportunityFeedItem[], uid: string | null) => {
+      const nextSaved: Record<string, boolean> = {};
+      const nextJoined: Record<string, boolean> = {};
+      for (const item of items) {
+        if (item.is_saved) nextSaved[item.id] = true;
+        if (item.is_joined) nextJoined[item.id] = true;
+      }
+      setSavedIds(nextSaved);
+      setJoinedIds(nextJoined);
+      if (uid) {
+        await persistMap(SAVED_KEY_PREFIX, uid, nextSaved);
+        await persistMap(JOINED_KEY_PREFIX, uid, nextJoined);
+      }
+    },
+    [persistMap]
+  );
 
-    if (error) {
-      console.log("fetchSavedFromServer error", error);
-      return null as Record<string, boolean> | null;
-    }
-
-    const map: Record<string, boolean> = {};
-    for (const row of data ?? []) {
-      const oppId = (row as any)?.opportunity_id;
-      if (oppId) map[String(oppId)] = true;
-    }
-    return map;
-  }, []);
-
-  const setSavedOnServer = useCallback(async (uid: string, oppId: string, saved: boolean) => {
-    if (saved) {
-      const { error } = await supabase
-        .from("driver_saved_opportunities")
-        .upsert({ driver_id: uid, opportunity_id: oppId }, { onConflict: "driver_id,opportunity_id" });
-      if (error) console.log("setSavedOnServer upsert error", error);
-    } else {
-      const { error } = await supabase
-        .from("driver_saved_opportunities")
-        .delete()
-        .eq("driver_id", uid)
-        .eq("opportunity_id", oppId);
-      if (error) console.log("setSavedOnServer delete error", error);
-    }
-  }, []);
-
-  const fetchJoinedFromServer = useCallback(async (uid: string) => {
-    const { data, error } = await supabase
-      .from("driver_opportunity_signups")
-      .select("opportunity_id")
-      .eq("driver_id", uid);
-
-    if (error) {
-      console.log("fetchJoinedFromServer error", error);
-      return null as Record<string, boolean> | null;
-    }
-
-    const map: Record<string, boolean> = {};
-    for (const row of data ?? []) {
-      const oppId = (row as any)?.opportunity_id;
-      if (oppId) map[String(oppId)] = true;
-    }
-    return map;
-  }, []);
-
-  const setJoinedOnServer = useCallback(async (uid: string, oppId: string) => {
-    const { error } = await supabase
-      .from("driver_opportunity_signups")
-      .upsert({ driver_id: uid, opportunity_id: oppId }, { onConflict: "driver_id,opportunity_id" });
-
-    if (error) console.log("setJoinedOnServer upsert error", error);
-  }, []);
-
-  // Production: no hardcoded demo opportunities. Empty until a real feed exists.
-  const allOpps: Opportunity[] = useMemo(() => [], []);
+  const fetchOpportunitiesFromApi = useCallback(async () => {
+    const selectedDate = addDays(today, selectedDayOffset);
+    const items = await fetchDriverOpportunities({
+      day: category === "saved" ? undefined : selectedDate,
+      category,
+    });
+    const mapped = items.map((item) => mapFeedItemToOpportunity(item, today));
+    setFeedOpps(mapped);
+    return items;
+  }, [category, selectedDayOffset, today]);
 
   const savedCount = useMemo(() => Object.values(savedIds).filter(Boolean).length, [savedIds]);
 
   const filteredOpps = useMemo(() => {
     if (category === "saved") {
-      const savedList = allOpps.filter((o) => !!savedIds[o.id]);
-      return savedList.sort((a, b) => {
+      return [...feedOpps].sort((a, b) => {
         const aMin = parseStartMinutes(a.timeRange);
         const bMin = parseStartMinutes(b.timeRange);
         if (a.dayOffset !== b.dayOffset) return a.dayOffset - b.dayOffset;
         return aMin - bMin;
       });
     }
-    return allOpps.filter((o) => o.category === category && o.dayOffset === selectedDayOffset);
-  }, [allOpps, category, selectedDayOffset, savedIds]);
+    return feedOpps;
+  }, [feedOpps, category]);
 
   const loadRating = useCallback(async (uid: string) => {
-    const { data, error } = await supabase.from("driver_reviews").select("stars").eq("driver_id", uid).limit(500);
+    const { data, error } = await supabase
+      .from("driver_reviews")
+      .select("stars")
+      .eq("driver_user_id", uid)
+      .limit(500);
 
     if (error) {
       console.log("driver_reviews error", error);
@@ -551,37 +593,44 @@ export function DriverOpportunitiesScreen() {
       const uid = user?.id ?? null;
       setUserId(uid);
 
-      const localSaved = await restoreMap(SAVED_KEY_PREFIX, uid);
-      const localJoined = await restoreMap(JOINED_KEY_PREFIX, uid);
-      setSavedIds(localSaved);
-      setJoinedIds(localJoined);
-
-      if (uid) {
-        const serverSaved = await fetchSavedFromServer(uid);
-        if (serverSaved) {
-          setSavedIds(serverSaved);
-          await persistMap(SAVED_KEY_PREFIX, uid, serverSaved);
-        }
-
-        const serverJoined = await fetchJoinedFromServer(uid);
-        if (serverJoined) {
-          setJoinedIds(serverJoined);
-          await persistMap(JOINED_KEY_PREFIX, uid, serverJoined);
-        }
-      }
-
-      if (!user) {
+      if (!uid) {
+        setFeedOpps([]);
+        setSavedIds({});
+        setJoinedIds({});
         setAvgRating(null);
         setRatingCount(0);
         return;
       }
 
-      await loadRating(user.id);
+      await loadRating(uid);
     } finally {
       setLoading(false);
       setHydratedOnce(true);
     }
-  }, [ensureNotifPermissions, fetchJoinedFromServer, fetchSavedFromServer, loadRating, persistMap, restoreMap]);
+  }, [ensureNotifPermissions, loadRating]);
+
+  const refreshFeed = useCallback(async () => {
+    if (!userId) return;
+    try {
+      setLoading(true);
+      const items = await fetchOpportunitiesFromApi();
+      await syncSavedJoinedFromFeed(items, userId);
+    } catch (e) {
+      console.log("fetchOpportunitiesFromApi error", e);
+      setFeedOpps([]);
+      const localSaved = await restoreMap(SAVED_KEY_PREFIX, userId);
+      const localJoined = await restoreMap(JOINED_KEY_PREFIX, userId);
+      setSavedIds(localSaved);
+      setJoinedIds(localJoined);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    userId,
+    fetchOpportunitiesFromApi,
+    syncSavedJoinedFromFeed,
+    restoreMap,
+  ]);
 
   useEffect(() => {
     loadAll();
@@ -591,9 +640,15 @@ export function DriverOpportunitiesScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!hydratedOnce) return;
-      loadAll();
-    }, [hydratedOnce, loadAll])
+      void loadAll();
+      void refreshFeed();
+    }, [hydratedOnce, loadAll, refreshFeed])
   );
+
+  useEffect(() => {
+    if (!userId) return;
+    void refreshFeed();
+  }, [category, selectedDayOffset, userId, refreshFeed]);
 
   const scoreLabel = useMemo(() => formatRating(avgRating, ratingCount, ts), [avgRating, ratingCount, ts]);
 
@@ -610,7 +665,13 @@ export function DriverOpportunitiesScreen() {
 
       await persistMap(SAVED_KEY_PREFIX, uid, nextMap);
 
-      if (uid) await setSavedOnServer(uid, opp.id, nextSaved);
+      if (uid) {
+        try {
+          await saveDriverOpportunity(opp.id, nextSaved);
+        } catch (e) {
+          console.log("saveDriverOpportunity error", e);
+        }
+      }
 
       if (uid) {
         if (nextSaved) await scheduleReminder(uid, opp, notifMap);
@@ -624,7 +685,7 @@ export function DriverOpportunitiesScreen() {
           : t("driver.opps.alerts.removedBody", "Retiré: {{title}}", { title: opp.title })
       );
     },
-    [cancelReminder, persistMap, restoreNotifMap, savedIds, scheduleReminder, setSavedOnServer, t, userId]
+    [cancelReminder, persistMap, restoreNotifMap, savedIds, scheduleReminder, t, userId]
   );
 
   const joinOpp = useCallback(
@@ -645,14 +706,26 @@ export function DriverOpportunitiesScreen() {
       setJoinedIds(next);
       await persistMap(JOINED_KEY_PREFIX, uid, next);
 
-      await setJoinedOnServer(uid, opp.id);
+      try {
+        await joinDriverOpportunity(opp.id);
+      } catch (e) {
+        const nextRollback = { ...joinedIds };
+        delete nextRollback[opp.id];
+        setJoinedIds(nextRollback);
+        await persistMap(JOINED_KEY_PREFIX, uid, nextRollback);
+        Alert.alert(
+          t("common.error", "Error"),
+          e instanceof Error ? e.message : t("driver.opps.alerts.joinFailed", "Unable to join.")
+        );
+        return;
+      }
 
       Alert.alert(
         t("common.ok", "OK ✅"),
         t("driver.opps.alerts.joinedBody", "Inscription confirmée • {{title}}", { title: opp.title })
       );
     },
-    [joinedIds, persistMap, setJoinedOnServer, t, userId]
+    [joinedIds, persistMap, t, userId]
   );
 
   return (

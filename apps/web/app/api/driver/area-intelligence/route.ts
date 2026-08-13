@@ -10,6 +10,18 @@ function json(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+const VALID_HORIZONS = new Set([0, 60, 120]);
+
+function parseHorizonMinutes(req: NextRequest): 0 | 60 | 120 | null {
+  const raw =
+    req.nextUrl.searchParams.get("horizon_minutes") ??
+    req.nextUrl.searchParams.get("horizon");
+  if (raw == null || raw.trim() === "") return 0;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || !VALID_HORIZONS.has(n)) return null;
+  return n as 0 | 60 | 120;
+}
+
 export async function GET(req: NextRequest) {
   const auth = await requireDriver(req);
   if (!auth.ok) return auth.response;
@@ -26,6 +38,18 @@ export async function GET(req: NextRequest) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return json(
       { ok: false, error: "lat_lng_required", message: "GPS coordinates are required." },
+      400
+    );
+  }
+
+  const horizonMinutes = parseHorizonMinutes(req);
+  if (horizonMinutes == null) {
+    return json(
+      {
+        ok: false,
+        error: "invalid_horizon",
+        message: "horizon must be 0, 60, or 120 minutes.",
+      },
       400
     );
   }
@@ -48,9 +72,10 @@ export async function GET(req: NextRequest) {
       radiusMiles,
       driverId: auth.userId,
       isOnline: online,
+      horizonMinutes,
     });
 
-    return json({ ok: true, ...intelligence });
+    return json({ ok: true, horizon_minutes: horizonMinutes, ...intelligence });
   } catch (e) {
     logTechnicalError("driver.area-intelligence", e, { userId: auth.userId });
     return json(

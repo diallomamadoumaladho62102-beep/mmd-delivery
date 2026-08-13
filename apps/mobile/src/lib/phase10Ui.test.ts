@@ -41,7 +41,7 @@ function readWeb(rel: string) {
   assert.match(header, /useTranslation/);
   assert.match(header, /accessibilityLabel/);
   assert.doesNotMatch(header, /accessibilityLabel="Retour"/);
-  assert.match(header, /mmd-logo-ui|variant=\"mmd\"|MMD_/);
+  assert.match(header, /mmd-logo-ui|variant="mmd"|MMD_/);
 }
 
 // Seller/marketplace/driver Figma tokens (spot-check)

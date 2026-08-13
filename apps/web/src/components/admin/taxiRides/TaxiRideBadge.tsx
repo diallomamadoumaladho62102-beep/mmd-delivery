@@ -1,25 +1,25 @@
 "use client";
 
+import { ccBadgeClass, type CcBadgeTone } from "@/components/admin/adminUi";
 import type { TaxiBadgeTone } from "@/lib/adminTaxiRideDisplay";
 
-const TONE: Record<TaxiBadgeTone, string> = {
-  green: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  yellow: "border-amber-200 bg-amber-50 text-amber-900",
-  blue: "border-sky-200 bg-sky-50 text-sky-800",
-  purple: "border-violet-200 bg-violet-50 text-violet-800",
-  orange: "border-orange-200 bg-orange-50 text-orange-900",
-  red: "border-red-200 bg-red-50 text-red-800",
-  slate: "border-slate-200 bg-slate-100 text-slate-700",
+const TONE_MAP: Record<TaxiBadgeTone, CcBadgeTone> = {
+  green: "success",
+  yellow: "warn",
+  blue: "info",
+  purple: "ai",
+  orange: "warn",
+  red: "critical",
+  slate: "neutral",
 };
 
-const DOT: Record<TaxiBadgeTone, string> = {
-  green: "bg-emerald-500",
-  yellow: "bg-amber-500",
-  blue: "bg-sky-500",
-  purple: "bg-violet-500",
-  orange: "bg-orange-500",
-  red: "bg-red-500",
-  slate: "bg-slate-400",
+const DOT_CLASS: Record<CcBadgeTone, string> = {
+  success: "bg-[var(--cc-success)]",
+  warn: "bg-[var(--cc-warn)]",
+  info: "bg-[var(--cc-info)]",
+  critical: "bg-[var(--cc-critical)]",
+  neutral: "bg-[var(--cc-disabled)]",
+  ai: "bg-[var(--cc-ai)]",
 };
 
 export default function TaxiRideBadge({
@@ -29,14 +29,13 @@ export default function TaxiRideBadge({
   label: string;
   tone: TaxiBadgeTone;
 }) {
+  const mapped = TONE_MAP[tone];
   return (
-    <span
-      className={[
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold",
-        TONE[tone],
-      ].join(" ")}
-    >
-      <span className={["h-1.5 w-1.5 shrink-0 rounded-full", DOT[tone]].join(" ")} aria-hidden />
+    <span className={ccBadgeClass(mapped)}>
+      <span
+        className={["h-1.5 w-1.5 shrink-0 rounded-full", DOT_CLASS[mapped]].join(" ")}
+        aria-hidden
+      />
       {label}
     </span>
   );

@@ -22,7 +22,7 @@ import {
 } from "@/lib/adminRbac";
 import { sessionHasPermission } from "@/lib/adminSessionAccess";
 import { supabase } from "@/lib/supabaseBrowser";
-import { ADMIN_LOGO, navIcon } from "@/components/admin/adminUi";
+import { ADMIN_LOGO, CC_BTN_SECONDARY, CC_INPUT, CC_ROLE_BADGE, CC_SIDEBAR_LINK, CC_SIDEBAR_LINK_ACTIVE, navIcon } from "@/components/admin/adminUi";
 
 type ShellProps = {
   title?: string;
@@ -196,11 +196,8 @@ export default function AdminShell({
                           href={item.href}
                           title={item.label}
                           className={[
-                            "flex items-center rounded-[14px] px-3.5 py-2.5 text-[15px] transition-colors",
                             railCollapsed ? "justify-center" : "gap-3",
-                            active
-                              ? "rounded-full border border-white/12 bg-white/10 font-semibold text-white"
-                              : "font-normal text-white/90 hover:bg-white/8",
+                            active ? CC_SIDEBAR_LINK_ACTIVE : CC_SIDEBAR_LINK,
                           ].join(" ")}
                           aria-current={active ? "page" : undefined}
                         >
@@ -258,7 +255,7 @@ export default function AdminShell({
             <div className="flex h-[72px] items-center gap-3 px-4 sm:h-[88px] lg:px-10">
               <button
                 type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white md:hidden"
+                className={`inline-flex h-10 w-10 items-center justify-center md:hidden ${CC_BTN_SECONDARY}`}
                 onClick={() => setSidebarOpen(true)}
                 aria-label="Open menu"
               >
@@ -287,22 +284,22 @@ export default function AdminShell({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search modules…"
-                  className="h-10 w-full rounded-2xl border border-white/20 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-white/45 focus:ring-2 focus:ring-[#2563eb]"
+                  className={`${CC_INPUT} max-w-xl`}
                 />
               </form>
 
               <div className="ml-auto flex items-center gap-2">
                 {actions}
-                <div className="hidden items-center gap-2 rounded-full border border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.1)] px-3.5 py-2 sm:flex">
+                <div className={`hidden sm:flex ${CC_ROLE_BADGE}`}>
                   <span aria-hidden>🛡️</span>
-                  <span className="max-w-[140px] truncate text-sm font-bold text-[var(--cc-gold)]">
+                  <span className="max-w-[140px] truncate">
                     {displayRole}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => void signOut()}
-                  className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs font-semibold text-white hover:bg-white/15"
+                  className={`h-10 px-3 text-xs ${CC_BTN_SECONDARY}`}
                 >
                   Sign out
                 </button>
@@ -314,12 +311,10 @@ export default function AdminShell({
             {(title || subtitle) && (
               <div className="mb-6 space-y-1">
                 {title ? (
-                  <h1 className="text-3xl font-bold tracking-tight text-white sm:text-[36px]">
-                    {title}
-                  </h1>
+                  <h1 className="cc-page-title">{title}</h1>
                 ) : null}
                 {subtitle ? (
-                  <p className="text-sm text-white/70">{subtitle}</p>
+                  <p className="cc-page-subtitle">{subtitle}</p>
                 ) : null}
               </div>
             )}

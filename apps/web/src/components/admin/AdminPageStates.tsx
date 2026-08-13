@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { ADMIN_LOGO } from "@/components/admin/adminUi";
+import { ADMIN_LOGO, CC_BTN_SECONDARY } from "@/components/admin/adminUi";
 
 export function AdminLoadingState({
   title = "Loading…",
@@ -80,7 +80,7 @@ export function AdminErrorState({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white"
+          className={`mt-3 ${CC_BTN_SECONDARY}`}
         >
           Retry
         </button>

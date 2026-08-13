@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import AdminGate from "@/components/AdminGate";
+import {
+  CC_BTN_PRIMARY,
+  CC_BTN_SECONDARY,
+  CC_INPUT,
+  CC_PAGE_SUBTITLE,
+  CC_PAGE_TITLE,
+  CC_TABLE,
+  CC_TABLE_WRAP,
+} from "@/components/admin/adminUi";
 import { adminFetch } from "@/lib/adminBrowserAuth";
 
 type IdentityRow = {
@@ -93,152 +102,153 @@ export default function AdminIdentityPage() {
   };
 
   return (
-    <AdminShell
-      title="Identity Verification"
-      subtitle="Stripe Identity — sessions, statuses, and re-verification (no document storage)."
-    >
-      <div className="mb-4 flex flex-wrap gap-2">
-        <select
-          className="rounded border px-2 py-1 text-sm"
-          value={subjectType}
-          onChange={(e) => setSubjectType(e.target.value)}
-        >
-          <option value="">All roles</option>
-          <option value="driver">Driver</option>
-          <option value="restaurant">Restaurant</option>
-          <option value="seller">Seller</option>
-          <option value="business">Business</option>
-          <option value="client">Client</option>
-        </select>
-        <select
-          className="rounded border px-2 py-1 text-sm"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">All statuses</option>
-          <option value="not_started">not_started</option>
-          <option value="pending">pending</option>
-          <option value="processing">processing</option>
-          <option value="verified">verified</option>
-          <option value="requires_input">requires_input</option>
-          <option value="failed">failed</option>
-          <option value="canceled">canceled</option>
-        </select>
-        <input
-          className="rounded border px-2 py-1 text-sm"
-          placeholder="User id / session id"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <button
-          type="button"
-          className="rounded bg-slate-900 px-3 py-1 text-sm text-white"
-          onClick={() => void load()}
-        >
-          Refresh
-        </button>
-      </div>
+    <AdminGate requiredPermission="drivers.identity.read">
+      <div className="space-y-6">
+        <header className="space-y-1">
+          <h1 className={CC_PAGE_TITLE}>Identity Verification</h1>
+          <p className={CC_PAGE_SUBTITLE}>
+            Stripe Identity — sessions, statuses, and re-verification (no document
+            storage).
+          </p>
+        </header>
 
-      {error ? (
-        <p className="mb-3 text-sm text-red-600">{error}</p>
-      ) : null}
-      {loading ? <p className="text-sm text-slate-500">Loading…</p> : null}
+        <div className="flex flex-wrap gap-2">
+          <select
+            className={`${CC_INPUT} w-auto min-w-[140px]`}
+            value={subjectType}
+            onChange={(e) => setSubjectType(e.target.value)}
+          >
+            <option value="">All roles</option>
+            <option value="driver">Driver</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="seller">Seller</option>
+            <option value="business">Business</option>
+            <option value="client">Client</option>
+          </select>
+          <select
+            className={`${CC_INPUT} w-auto min-w-[140px]`}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">All statuses</option>
+            <option value="not_started">not_started</option>
+            <option value="pending">pending</option>
+            <option value="processing">processing</option>
+            <option value="verified">verified</option>
+            <option value="requires_input">requires_input</option>
+            <option value="failed">failed</option>
+            <option value="canceled">canceled</option>
+          </select>
+          <input
+            className={`${CC_INPUT} max-w-xs`}
+            placeholder="User id / session id"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <button type="button" className={CC_BTN_PRIMARY} onClick={() => void load()}>
+            Refresh
+          </button>
+        </div>
 
-      <div className="overflow-x-auto rounded border bg-white">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-3 py-2">User</th>
-              <th className="px-3 py-2">Role</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Provider</th>
-              <th className="px-3 py-2">Attempts</th>
-              <th className="px-3 py-2">Session</th>
-              <th className="px-3 py-2">Failure</th>
-              <th className="px-3 py-2">Updated</th>
-              <th className="px-3 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((row) => (
-              <tr key={row.id} className="border-t">
-                <td className="px-3 py-2 font-mono text-xs">{row.subject_user_id}</td>
-                <td className="px-3 py-2">{row.subject_type}</td>
-                <td className="px-3 py-2">{row.verification_status}</td>
-                <td className="px-3 py-2">{row.provider}</td>
-                <td className="px-3 py-2">{row.verification_attempts}</td>
-                <td className="px-3 py-2 font-mono text-xs">
-                  {row.active_session_id ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-xs text-red-700">
-                  {row.verification_failed_reason ?? "—"}
-                </td>
-                <td className="px-3 py-2 text-xs">
-                  {row.updated_at ? new Date(row.updated_at).toLocaleString() : "—"}
-                </td>
-                <td className="px-3 py-2">
-                  <button
-                    type="button"
-                    disabled={busyId === row.id}
-                    className="rounded border px-2 py-1 text-xs"
-                    onClick={() => void requestReverify(row)}
-                  >
-                    {busyId === row.id ? "…" : "Request re-verify"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {!loading && items.length === 0 ? (
+        {error ? <p className="text-sm text-red-700">{error}</p> : null}
+        {loading ? <p className="text-sm text-[var(--cc-muted)]">Loading…</p> : null}
+
+        <div className={CC_TABLE_WRAP}>
+          <table className={CC_TABLE}>
+            <thead>
               <tr>
-                <td className="px-3 py-6 text-slate-500" colSpan={9}>
-                  No identity verifications found.
-                </td>
+                <th>User</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Provider</th>
+                <th>Attempts</th>
+                <th>Session</th>
+                <th>Failure</th>
+                <th>Updated</th>
+                <th>Actions</th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {items.map((row) => (
+                <tr key={row.id}>
+                  <td className="font-mono text-xs">{row.subject_user_id}</td>
+                  <td>{row.subject_type}</td>
+                  <td>{row.verification_status}</td>
+                  <td>{row.provider}</td>
+                  <td>{row.verification_attempts}</td>
+                  <td className="font-mono text-xs">
+                    {row.active_session_id ?? "—"}
+                  </td>
+                  <td className="text-xs text-red-700">
+                    {row.verification_failed_reason ?? "—"}
+                  </td>
+                  <td className="text-xs">
+                    {row.updated_at ? new Date(row.updated_at).toLocaleString() : "—"}
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      disabled={busyId === row.id}
+                      className={CC_BTN_SECONDARY}
+                      onClick={() => void requestReverify(row)}
+                    >
+                      {busyId === row.id ? "…" : "Request re-verify"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!loading && items.length === 0 ? (
+                <tr>
+                  <td className="text-[var(--cc-muted)]" colSpan={9}>
+                    No identity verifications found.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
 
-      <h2 className="mb-2 mt-8 text-sm font-semibold text-slate-800">Audit log</h2>
-      <div className="overflow-x-auto rounded border bg-white">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-3 py-2">When</th>
-              <th className="px-3 py-2">Source</th>
-              <th className="px-3 py-2">Event</th>
-              <th className="px-3 py-2">User</th>
-              <th className="px-3 py-2">Stripe event</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr key={event.id} className="border-t">
-                <td className="px-3 py-2 text-xs">
-                  {event.created_at
-                    ? new Date(event.created_at).toLocaleString()
-                    : "—"}
-                </td>
-                <td className="px-3 py-2">{event.event_source}</td>
-                <td className="px-3 py-2 font-mono text-xs">{event.event_type}</td>
-                <td className="px-3 py-2 font-mono text-xs">
-                  {event.subject_user_id ?? "—"}
-                </td>
-                <td className="px-3 py-2 font-mono text-xs">
-                  {event.provider_event_id ?? "—"}
-                </td>
-              </tr>
-            ))}
-            {!loading && events.length === 0 ? (
+        <h2 className="text-sm font-semibold text-white">Audit log</h2>
+        <div className={CC_TABLE_WRAP}>
+          <table className={CC_TABLE}>
+            <thead>
               <tr>
-                <td className="px-3 py-6 text-slate-500" colSpan={5}>
-                  No identity audit events yet.
-                </td>
+                <th>When</th>
+                <th>Source</th>
+                <th>Event</th>
+                <th>User</th>
+                <th>Stripe event</th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id}>
+                  <td className="text-xs">
+                    {event.created_at
+                      ? new Date(event.created_at).toLocaleString()
+                      : "—"}
+                  </td>
+                  <td>{event.event_source}</td>
+                  <td className="font-mono text-xs">{event.event_type}</td>
+                  <td className="font-mono text-xs">
+                    {event.subject_user_id ?? "—"}
+                  </td>
+                  <td className="font-mono text-xs">
+                    {event.provider_event_id ?? "—"}
+                  </td>
+                </tr>
+              ))}
+              {!loading && events.length === 0 ? (
+                <tr>
+                  <td className="text-[var(--cc-muted)]" colSpan={5}>
+                    No identity audit events yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </AdminShell>
+    </AdminGate>
   );
 }

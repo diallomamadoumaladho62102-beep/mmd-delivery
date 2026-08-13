@@ -100,19 +100,34 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const e2eGate = assertMarketplaceLiveMoneyAllowed();
-  const envEnabled =
-    e2eGate.ok && isMarketplaceCheckoutLiveEnvEnabled();
+  const envEnabled = e2eGate.ok && isMarketplaceCheckoutLiveEnvEnabled();
+
+  const auth = await requireMarketplaceClientAuth(req);
+  if (auth.ok === false) return auth.response;
+
+  const regionalLiveEnabled = auth.scope.marketplace_checkout_live_enabled;
+  const platformCheckoutEnabled = auth.scope.checkout_enabled;
+  const liveEnabled = envEnabled && regionalLiveEnabled && platformCheckoutEnabled;
+
+  let message: string | null = null;
+  if (!envEnabled) {
+    message =
+      e2eGate.ok === false ? e2eGate.message : MARKETPLACE_CHECKOUT_LIVE_COMING_SOON;
+  } else if (!regionalLiveEnabled) {
+    message = "Marketplace live checkout is disabled in your region";
+  } else if (!platformCheckoutEnabled) {
+    message = "Checkout is disabled in your region";
+  }
+
   return mmdLocationJson({
     ok: true,
     live_checkout_env_enabled: envEnabled,
-    live_checkout_enabled: envEnabled,
+    live_checkout_enabled: liveEnabled,
+    marketplace_checkout_live_enabled: regionalLiveEnabled,
+    checkout_enabled: platformCheckoutEnabled,
     seller_payouts_e2e_ready: e2eGate.ok,
-    message: envEnabled
-      ? null
-      : e2eGate.ok === false
-        ? e2eGate.message
-        : MARKETPLACE_CHECKOUT_LIVE_COMING_SOON,
+    message,
   });
 }

@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { adminFetch } from "@/lib/adminBrowserAuth";
+import {
+  CC_BTN_PRIMARY,
+  CC_BTN_SECONDARY,
+  CC_INPUT,
+  CC_TABLE,
+  CC_TABLE_WRAP,
+} from "@/components/admin/adminUi";
 
 type Column<T> = {
   key: string;
@@ -68,44 +75,36 @@ export default function AdminApiTable<T extends Record<string, unknown>>({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={searchPlaceholder}
-          className="h-10 w-full max-w-md rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+          className={`${CC_INPUT} max-w-md`}
         />
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="h-10 rounded-xl border border-slate-900 bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800"
-        >
+        <button type="button" onClick={() => void load()} className={CC_BTN_PRIMARY}>
           Actualiser
         </button>
       </div>
 
       {loading ? (
-        <div className="text-sm text-slate-500">Chargement…</div>
+        <div className="text-sm text-[var(--cc-muted)]">Chargement…</div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-          {emptyLabel}
-        </div>
+        <div className="cc-card p-6 text-sm text-[var(--cc-muted)]">{emptyLabel}</div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+        <div className={CC_TABLE_WRAP}>
+          <table className={CC_TABLE}>
+            <thead>
               <tr>
                 {columns.map((col) => (
-                  <th key={col.key} className="px-4 py-3 font-semibold">
-                    {col.label}
-                  </th>
+                  <th key={col.key}>{col.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((row, idx) => (
-                <tr key={String(row.id ?? idx)} className="border-b border-slate-100">
+                <tr key={String(row.id ?? idx)}>
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3 text-slate-700">
+                    <td key={col.key}>
                       {col.render
                         ? col.render(row)
                         : cellValue(row[col.key as keyof T])}

@@ -13,6 +13,7 @@ import { isMarketplaceCheckoutLiveEnvEnabled } from "@/lib/marketplaceLiveChecko
 import { loadMarketplaceServiceFeeConfig } from "@/lib/serviceFeeConfigLoader";
 import { buildStripeCheckoutReturnUrls } from "@/lib/productionSite";
 import { quoteMarketplaceSot } from "@/lib/pricingEngine";
+import { assertStripeCheckoutAllowed } from "@/lib/paymentProviderRouting";
 
 type ApprovedSellerRow = {
   id: string;
@@ -152,6 +153,14 @@ export async function prepareMarketplaceLiveCheckoutOrder(
   }
 
   const seller = await assertApprovedSeller(supabaseAdmin, order.seller_id);
+
+  const stripeGate = assertStripeCheckoutAllowed(
+    seller.country_code ?? order.country_code ?? "US"
+  );
+  if (stripeGate.ok === false) {
+    throw new Error(stripeGate.message);
+  }
+
   const totalsBase = await assertActiveOrderProducts(supabaseAdmin, order);
 
   const totals: MarketplaceCheckoutShadow = {

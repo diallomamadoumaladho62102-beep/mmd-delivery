@@ -17,6 +17,7 @@ import type { RootStackParamList } from "../../navigation/AppNavigator";
 import {
   fetchDriverAreaIntelligence,
   type DemandHotspot,
+  type DriverAreaHorizonMinutes,
   type DriverAreaIntelligence,
 } from "../../lib/driverAreaIntelligenceApi";
 import { ensureMapboxTokenApplied } from "../../lib/mapboxConfig";
@@ -33,6 +34,35 @@ import {
 type Nav = NativeStackNavigationProp<RootStackParamList, "DriverHotspots">;
 type R = RouteProp<RootStackParamList, "DriverHotspots">;
 
+const HORIZON_OPTIONS: { label: string; minutes: DriverAreaHorizonMinutes }[] = [
+  { label: "Now", minutes: 0 },
+  { label: "In 1h", minutes: 60 },
+  { label: "In 2h", minutes: 120 },
+];
+
+function HorizonChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={[styles.horizonChip, active && styles.horizonChipActive]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+    >
+      <Text style={[styles.horizonChipLabel, active && styles.horizonChipLabelActive]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 function levelColor(level: string): string {
   if (level === "very_busy") return "#EF4444";
   if (level === "busy") return "#F97316";
@@ -47,6 +77,7 @@ export default function DriverHotspotsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DriverAreaIntelligence | null>(null);
+  const [horizonMinutes, setHorizonMinutes] = useState<DriverAreaHorizonMinutes>(0);
 
   const lat = Number(route.params?.lat);
   const lng = Number(route.params?.lng);
@@ -67,6 +98,7 @@ export default function DriverHotspotsScreen() {
         lng,
         radiusMiles: 5,
         isOnline,
+        horizonMinutes,
       });
       setData(next);
       const best = next.best_hotspot;
@@ -83,7 +115,7 @@ export default function DriverHotspotsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [isOnline, lat, lng]);
+  }, [horizonMinutes, isOnline, lat, lng]);
 
   useEffect(() => {
     void load();
@@ -128,7 +160,14 @@ export default function DriverHotspotsScreen() {
 
   const panelTitle = data
     ? `${data.requests_nearby} open · ${data.drivers_nearby} drivers · ${data.earnings_multiplier.toFixed(1)}x`
-    : "Live demand";
+    : horizonMinutes === 0
+      ? "Live demand"
+      : `Forecast · ${horizonMinutes / 60}h`;
+
+  const horizonSubtitle =
+    horizonMinutes === 0
+      ? "Live open requests and current time-of-day demand."
+      : "Same live open requests — wait estimates adjust for the forecast time of day.";
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -200,6 +239,18 @@ export default function DriverHotspotsScreen() {
       </View>
 
       <View style={styles.panel}>
+        <View style={styles.horizonRow}>
+          {HORIZON_OPTIONS.map((opt) => (
+            <HorizonChip
+              key={opt.minutes}
+              label={opt.label}
+              active={horizonMinutes === opt.minutes}
+              onPress={() => setHorizonMinutes(opt.minutes)}
+            />
+          ))}
+        </View>
+        <Text style={styles.horizonSubtitle}>{horizonSubtitle}</Text>
+
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>{panelTitle}</Text>
           <TouchableOpacity
@@ -221,10 +272,13 @@ export default function DriverHotspotsScreen() {
           </View>
         ) : hotspots.length === 0 ? (
           <View style={styles.emptyBlock}>
-            <Text style={styles.emptyTitle}>No demand clusters</Text>
+            <Text style={styles.emptyTitle}>
+              {horizonMinutes === 0 ? "No demand clusters" : "No clusters in range"}
+            </Text>
             <Text style={styles.emptyBody}>
-              No demand clusters in range right now. Stay online for the next
-              wave.
+              {horizonMinutes === 0
+                ? "No demand clusters in range right now. Stay online for the next wave."
+                : "No live open requests in range. Forecast timing may still improve wait estimates when demand picks up."}
             </Text>
           </View>
         ) : (
@@ -306,6 +360,40 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     padding: 14,
     gap: 4,
+  },
+  horizonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 6,
+  },
+  horizonChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  horizonChipActive: {
+    backgroundColor: MMD_WHITE,
+    borderColor: MMD_WHITE,
+  },
+  horizonChipLabel: {
+    color: MMD_WHITE,
+    fontSize: 13,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  horizonChipLabelActive: {
+    color: MMD_BLUE,
+  },
+  horizonSubtitle: {
+    color: MMD_MUTED,
+    fontSize: 12,
+    fontFamily: MMD_FONT.regular,
+    lineHeight: 17,
+    marginBottom: 8,
   },
   panelHeader: {
     flexDirection: "row",

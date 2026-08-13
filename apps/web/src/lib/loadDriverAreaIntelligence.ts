@@ -36,6 +36,8 @@ function isOpenTaxiRide(row: Record<string, unknown>): boolean {
   return ["requested", "searching", "pending", "dispatching"].includes(status);
 }
 
+export type DriverAreaHorizonMinutes = 0 | 60 | 120;
+
 export async function loadDriverAreaIntelligence(
   supabase: SupabaseClient,
   params: {
@@ -44,6 +46,7 @@ export async function loadDriverAreaIntelligence(
     radiusMiles?: number;
     driverId: string;
     isOnline: boolean;
+    horizonMinutes?: DriverAreaHorizonMinutes;
   }
 ): Promise<AreaIntelligenceResult> {
   const radiusMiles = Math.min(Math.max(params.radiusMiles ?? 5, 1), 15);
@@ -150,7 +153,9 @@ export async function loadDriverAreaIntelligence(
     // Table may not exist in all environments
   }
 
-  const hour = new Date().getHours();
+  const horizonMinutes = params.horizonMinutes ?? 0;
+  const forecastAt = new Date(Date.now() + horizonMinutes * 60_000);
+  const hour = forecastAt.getHours() % 24;
 
   return computeAreaIntelligence({
     lat,

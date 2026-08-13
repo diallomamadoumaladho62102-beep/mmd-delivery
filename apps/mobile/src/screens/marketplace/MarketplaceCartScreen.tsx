@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Linking,
   StatusBar,
   StyleSheet,
 } from "react-native";
+import * as WebBrowser from "expo-web-browser";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -22,6 +22,7 @@ import {
   formatMarketplaceMoney,
   runMarketplaceCheckout,
   runMarketplaceLiveCheckout,
+  confirmMarketplaceCheckoutPaid,
   saveMarketplaceDraft,
   type MarketplaceOrderDraft,
 } from "../../lib/marketplaceApi";
@@ -71,6 +72,7 @@ export default function MarketplaceCartScreen({ route }: Props) {
   const [dropoffLocationId, setDropoffLocationId] = useState<string | null>(null);
   const [dropoffAddress, setDropoffAddress] = useState("");
   const [liveCheckoutEnabled, setLiveCheckoutEnabled] = useState(false);
+  const [paidOrder, setPaidOrder] = useState<MarketplaceOrderDraft | null>(null);
 
   const marketplaceScope = useMemo<MarketplaceScopeInput>(
     () => ({
@@ -112,10 +114,10 @@ export default function MarketplaceCartScreen({ route }: Props) {
   }, [load]);
 
   useEffect(() => {
-    void fetchMarketplaceLiveCheckoutCapabilities().then((caps) => {
+    void fetchMarketplaceLiveCheckoutCapabilities(marketplaceScope).then((caps) => {
       setLiveCheckoutEnabled(caps.live_checkout_enabled);
     });
-  }, []);
+  }, [marketplaceScope]);
 
   useMmdLocationPickerResult(route, navigation, {
     marketplace_dropoff: (location) => {
@@ -235,7 +237,56 @@ export default function MarketplaceCartScreen({ route }: Props) {
       if (!body.checkout_url) {
         throw new Error("Missing checkout URL");
       }
-      await Linking.openURL(body.checkout_url);
+
+      await WebBrowser.openBrowserAsync(body.checkout_url);
+
+      let confirmResult: {
+        ok?: boolean;
+        already_paid?: boolean;
+        stripe_paid?: boolean;
+        payment_status?: string | null;
+        order?: MarketplaceOrderDraft;
+        error?: string;
+      } | null = null;
+      let confirmThrew = false;
+      try {
+        confirmResult = await confirmMarketplaceCheckoutPaid(
+          refreshed?.id ?? draft.id,
+          body.stripe_checkout_session_id ?? body.order?.stripe_checkout_session_id ?? null,
+          marketplaceScope
+        );
+      } catch {
+        confirmThrew = true;
+      }
+
+      const paidOk =
+        !confirmThrew &&
+        (confirmResult?.ok === true ||
+          confirmResult?.already_paid === true ||
+          confirmResult?.stripe_paid === true ||
+          String(confirmResult?.payment_status ?? "").toLowerCase() === "paid");
+
+      if (!paidOk) {
+        Alert.alert(
+          t("marketplace.cart.paymentCancelledTitle", "Payment not completed"),
+          t(
+            "marketplace.cart.paymentCancelledBody",
+            "Stripe checkout was cancelled or not finished. Your draft cart is still saved."
+          )
+        );
+        return;
+      }
+
+      if (confirmResult?.order) {
+        setPaidOrder(confirmResult.order);
+      }
+      Alert.alert(
+        t("marketplace.cart.paymentSuccessTitle", "Payment confirmed"),
+        t(
+          "marketplace.cart.paymentSuccessBody",
+          "Your marketplace order is paid. The seller will update fulfillment status."
+        )
+      );
     } catch (e) {
       Alert.alert(
         t("marketplace.cart.errorTitle", "Cart error"),
@@ -247,6 +298,12 @@ export default function MarketplaceCartScreen({ route }: Props) {
   }
 
   const checkoutEnabled = Boolean(draft?.checkout_shadow?.checkout_enabled);
+  const orderIsPaid =
+    paidOrder?.payment_status === "paid" ||
+    paidOrder?.status === "paid" ||
+    draft?.payment_status === "paid" ||
+    draft?.status === "paid";
+  const statusOrder = paidOrder ?? draft;
 
   return (
     <SafeAreaView style={styles.safe} edges={["bottom", "left", "right"]}>
@@ -380,50 +437,99 @@ export default function MarketplaceCartScreen({ route }: Props) {
                   </Text>
                 ) : null}
                 <Text style={styles.shadowNote}>
-                  {t(
-                    "marketplace.cart.deliveryShadowNote",
-                    "Shadow only — checkout and driver dispatch are not live yet."
-                  )}
+                  {liveCheckoutEnabled
+                    ? t(
+                        "marketplace.cart.deliveryShadowNoteLive",
+                        "Estimate only — live checkout is enabled; driver dispatch depends on seller and region."
+                      )
+                    : t(
+                        "marketplace.cart.deliveryShadowNote",
+                        "Shadow only — checkout and driver dispatch are not live yet."
+                      )}
                 </Text>
               </View>
             ) : null}
 
-            <Text style={styles.comingSoonNote}>
-              {t(
-                "marketplace.cart.checkoutStillComingSoon",
-                "Checkout still coming soon — no live marketplace payment."
-              )}
-            </Text>
+            {orderIsPaid && statusOrder ? (
+              <View style={styles.paidCard}>
+                <Text style={styles.paidTitle}>
+                  {t("marketplace.cart.orderPaidTitle", "Order paid")}
+                </Text>
+                <Text style={styles.paidMeta}>
+                  {t("marketplace.cart.orderStatus", "Status")}: {statusOrder.status}
+                  {statusOrder.payment_status
+                    ? ` · ${t("marketplace.cart.paymentStatus", "Payment")}: ${statusOrder.payment_status}`
+                    : ""}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("MarketplaceHome")}
+                  style={styles.paidHomeBtn}
+                >
+                  <Text style={styles.checkoutBtnText}>
+                    {t("marketplace.cart.backToMarketplace", "Back to marketplace")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
 
-            <TouchableOpacity
-              disabled={checkingOut}
-              onPress={() => void handleCheckoutShadow()}
-              style={[
-                styles.checkoutBtn,
-                {
-                  backgroundColor: checkoutEnabled ? MMD_GREEN : "#475569",
-                  opacity: checkingOut ? 0.7 : 1,
-                },
-              ]}
-            >
-              <Text style={styles.checkoutBtnText}>
-                {checkingOut
-                  ? t("marketplace.cart.processing", "Processing…")
-                  : checkoutEnabled
-                    ? t("marketplace.cart.checkout", "Prepare checkout")
-                    : t("marketplace.cart.comingSoonCta", "Marketplace checkout coming soon")}
+            {liveCheckoutEnabled !== true ? (
+              <Text style={styles.comingSoonNote}>
+                {t(
+                  "marketplace.cart.checkoutStillComingSoon",
+                  "Checkout still coming soon — no live marketplace payment."
+                )}
               </Text>
-            </TouchableOpacity>
+            ) : null}
 
-            {/* Live Pay only when server reports liveCheckoutEnabled===true — never call live checkout otherwise */}
-            {liveCheckoutEnabled === true ? (
+            {liveCheckoutEnabled === true && !orderIsPaid ? (
               <TouchableOpacity
                 disabled={checkingOut}
                 onPress={() => void handleLiveCheckout()}
-                style={[styles.liveBtn, { opacity: checkingOut ? 0.7 : 1 }]}
+                style={[
+                  styles.checkoutBtn,
+                  {
+                    backgroundColor: MMD_LINK_BLUE,
+                    opacity: checkingOut ? 0.7 : 1,
+                  },
+                ]}
               >
                 <Text style={styles.checkoutBtnText}>
-                  {t("marketplace.cart.payLive", "Pay Marketplace Order")}
+                  {checkingOut
+                    ? t("marketplace.cart.processing", "Processing…")
+                    : t("marketplace.cart.payLive", "Pay Marketplace Order")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {!orderIsPaid ? (
+              <TouchableOpacity
+                disabled={checkingOut}
+                onPress={() => void handleCheckoutShadow()}
+                style={[
+                  liveCheckoutEnabled ? styles.prepareBtn : styles.checkoutBtn,
+                  {
+                    backgroundColor: liveCheckoutEnabled
+                      ? "transparent"
+                      : checkoutEnabled
+                        ? MMD_GREEN
+                        : "#475569",
+                    opacity: checkingOut ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.checkoutBtnText,
+                    liveCheckoutEnabled ? styles.prepareBtnText : null,
+                  ]}
+                >
+                  {checkingOut
+                    ? t("marketplace.cart.processing", "Processing…")
+                    : liveCheckoutEnabled
+                      ? t("marketplace.cart.prepareTotals", "Refresh checkout totals")
+                      : checkoutEnabled
+                        ? t("marketplace.cart.checkout", "Prepare checkout")
+                        : t("marketplace.cart.comingSoonCta", "Marketplace checkout coming soon")}
                 </Text>
               </TouchableOpacity>
             ) : null}
@@ -559,6 +665,30 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: MMD_FONT.regular,
   },
+  paidCard: {
+    borderWidth: 1,
+    borderColor: MMD_STROKE,
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: "rgba(34,197,94,0.12)",
+    gap: 8,
+  },
+  paidTitle: {
+    color: MMD_GREEN,
+    fontFamily: MMD_FONT.bold,
+    fontWeight: "700",
+  },
+  paidMeta: {
+    color: MMD_TEXT_MUTED_BLUE,
+    fontFamily: MMD_FONT.regular,
+    fontSize: 13,
+  },
+  paidHomeBtn: {
+    backgroundColor: MMD_GREEN,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
   checkoutBtn: {
     borderWidth: 1.5,
     borderColor: MMD_STROKE,
@@ -573,10 +703,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  liveBtn: {
-    backgroundColor: MMD_LINK_BLUE,
-    padding: 14,
+  prepareBtn: {
+    borderWidth: 1.5,
+    borderColor: MMD_STROKE,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 12,
     alignItems: "center",
+  },
+  prepareBtnText: {
+    color: MMD_LINK_BLUE,
   },
 });

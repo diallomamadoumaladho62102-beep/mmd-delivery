@@ -226,15 +226,19 @@ export async function saveMarketplaceDraft(
   return body.order;
 }
 
-export async function fetchMarketplaceLiveCheckoutCapabilities(): Promise<{
+export async function fetchMarketplaceLiveCheckoutCapabilities(
+  scope?: MarketplaceScopeInput
+): Promise<{
   live_checkout_enabled: boolean;
+  live_checkout_env_enabled?: boolean;
   message?: string | null;
 }> {
   try {
-    const path = await buildMarketplacePath("/api/marketplace/checkout/live", {});
-    const body = await marketplaceFetch(path);
+    const path = await buildMarketplacePath("/api/marketplace/checkout/live", {}, scope);
+    const body = await marketplaceFetch(path, undefined, scope);
     return {
       live_checkout_enabled: body.live_checkout_enabled === true,
+      live_checkout_env_enabled: body.live_checkout_env_enabled === true,
       message: body.message ?? null,
     };
   } catch {
@@ -256,6 +260,36 @@ export async function runMarketplaceLiveCheckout(
     {
       method: "POST",
       body: JSON.stringify({ order_id: orderId }),
+    },
+    scope
+  );
+}
+
+export async function confirmMarketplaceCheckoutPaid(
+  orderId: string,
+  sessionId?: string | null,
+  scope?: MarketplaceScopeInput
+): Promise<{
+  ok?: boolean;
+  already_paid?: boolean;
+  stripe_paid?: boolean;
+  payment_status?: string | null;
+  order?: MarketplaceOrderDraft;
+  error?: string;
+}> {
+  const path = await buildMarketplacePath(
+    "/api/marketplace/checkout/confirm-paid",
+    {},
+    scope
+  );
+  return marketplaceFetch(
+    path,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        order_id: orderId,
+        session_id: sessionId ?? null,
+      }),
     },
     scope
   );

@@ -271,6 +271,25 @@ export async function getClientDraftOrder(
   return attachOrderItems(supabaseAdmin, res.data as MarketplaceOrderRow);
 }
 
+export async function getClientMarketplaceOrder(
+  supabaseAdmin: SupabaseClient,
+  params: {
+    clientUserId: string;
+    orderId: string;
+  }
+): Promise<MarketplaceOrderRow | null> {
+  const res = await supabaseAdmin
+    .from("seller_orders")
+    .select(ORDER_SELECT)
+    .eq("id", params.orderId)
+    .eq("client_user_id", params.clientUserId)
+    .maybeSingle();
+
+  if (res.error) throw new Error(res.error.message);
+  if (!res.data) return null;
+  return attachOrderItems(supabaseAdmin, res.data as MarketplaceOrderRow);
+}
+
 async function attachOrderItems(
   supabaseAdmin: SupabaseClient,
   order: MarketplaceOrderRow

@@ -12,8 +12,11 @@ export type DemandHotspot = {
   label: string;
 };
 
+export type DriverAreaHorizonMinutes = 0 | 60 | 120;
+
 export type DriverAreaIntelligence = {
   ok: true;
+  horizon_minutes: DriverAreaHorizonMinutes;
   area: { lat: number; lng: number; radius_miles: number };
   drivers_nearby: number;
   requests_nearby: number;
@@ -100,11 +103,13 @@ export async function fetchDriverAreaIntelligence(params: {
   lng: number;
   radiusMiles?: number;
   isOnline?: boolean;
+  horizonMinutes?: DriverAreaHorizonMinutes;
 }): Promise<DriverAreaIntelligence> {
   const qs = new URLSearchParams({
     lat: String(params.lat),
     lng: String(params.lng),
     radius_miles: String(params.radiusMiles ?? 5),
+    horizon_minutes: String(params.horizonMinutes ?? 0),
   });
   if (params.isOnline != null) {
     qs.set("is_online", params.isOnline ? "true" : "false");

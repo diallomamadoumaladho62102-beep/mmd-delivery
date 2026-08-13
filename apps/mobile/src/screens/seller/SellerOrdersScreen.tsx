@@ -48,8 +48,12 @@ function statusTone(status: string): { bg: string; color: string; label: string 
   if (s === "refused") {
     return { bg: "rgba(239,68,68,0.13)", color: "#EF4444", label: "Refused" };
   }
-  if (s === "accepted" || s === "preparing" || s === "ready") {
-    return { bg: "rgba(34,197,94,0.13)", color: MMD_TAXI_GREEN, label: "Accepted" };
+  if (s === "accepted" || s === "preparing" || s === "ready" || s === "out_for_delivery") {
+    return {
+      bg: "rgba(34,197,94,0.13)",
+      color: MMD_TAXI_GREEN,
+      label: s === "out_for_delivery" ? "Out for delivery" : "Accepted",
+    };
   }
   if (s === "paid" || s === "confirmed" || s === "pending") {
     return { bg: "rgba(245,158,11,0.13)", color: "#F59E0B", label: "Pending" };
@@ -127,7 +131,9 @@ export default function SellerOrdersScreen({ navigation }: Props) {
     }
     if (filter === "accepted") {
       return orders.filter((o) =>
-        ["accepted", "preparing", "ready"].includes(o.status.toLowerCase())
+        ["accepted", "preparing", "ready", "out_for_delivery"].includes(
+          o.status.toLowerCase()
+        )
       );
     }
     return orders.filter((o) => o.status.toLowerCase() === "refused");
@@ -135,10 +141,13 @@ export default function SellerOrdersScreen({ navigation }: Props) {
 
   const actionsFor = useMemo(
     () =>
-      (status: string): Array<"accepted" | "refused" | "preparing" | "ready"> => {
+      (
+        status: string
+      ): Array<"accepted" | "refused" | "preparing" | "ready" | "out_for_delivery"> => {
         if (status === "paid" || status === "confirmed") return ["accepted", "refused"];
         if (status === "accepted") return ["preparing"];
         if (status === "preparing") return ["ready"];
+        if (status === "ready") return ["out_for_delivery"];
         return [];
       },
     []
@@ -146,7 +155,7 @@ export default function SellerOrdersScreen({ navigation }: Props) {
 
   async function applyStatus(
     order: SellerOrderRow,
-    status: "accepted" | "refused" | "preparing" | "ready"
+    status: "accepted" | "refused" | "preparing" | "ready" | "out_for_delivery"
   ) {
     try {
       setBusyId(order.id);
@@ -299,7 +308,9 @@ export default function SellerOrdersScreen({ navigation }: Props) {
                                 ? t("seller.orders.refuse", "Refuse")
                                 : action === "preparing"
                                   ? t("seller.orders.preparing", "Preparing")
-                                  : t("seller.orders.ready", "Ready")}
+                                  : action === "ready"
+                                    ? t("seller.orders.ready", "Ready")
+                                    : t("seller.orders.outForDelivery", "Out for delivery")}
                           </Text>
                         </TouchableOpacity>
                       ))}

@@ -3,6 +3,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
+  CC_BTN_PRIMARY,
+  CC_BTN_SECONDARY,
+} from "@/components/admin/adminUi";
+import {
   resolveBrowserStaffSession,
   waitForBrowserSession,
 } from "@/lib/adminBrowserAuth";
@@ -88,7 +92,7 @@ export default function AdminGate({ children, requiredPermission }: Props) {
 
   if (state === "loading") {
     return (
-      <div className="p-6 text-sm text-[var(--cc-muted)]">
+      <div className="admin-figma min-h-screen p-6 text-sm text-[var(--cc-muted)]">
         Chargement Control Center…
       </div>
     );
@@ -96,29 +100,50 @@ export default function AdminGate({ children, requiredPermission }: Props) {
 
   if (state === "error") {
     return (
-      <div className="mx-auto max-w-xl p-6">
-        <div className="cc-card p-6">
-          <div className="text-lg font-semibold text-slate-900">
-            Control Center indisponible
+      <div className="admin-figma min-h-screen">
+        <div className="mx-auto max-w-xl p-6">
+          <div className="cc-card p-6">
+            <div className="text-lg font-semibold text-white">
+              Control Center indisponible
+            </div>
+            <p className="mt-2 text-sm text-[var(--cc-muted)]">
+              {errorMessage ??
+                "La session admin n'a pas pu être vérifiée. Réessaie ou reconnecte-toi."}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setState("loading");
+                  setErrorMessage(null);
+                }}
+                className={CC_BTN_SECONDARY}
+              >
+                Réessayer
+              </button>
+              <Link href="/admin/login" className={CC_BTN_PRIMARY}>
+                Se connecter
+              </Link>
+            </div>
           </div>
-          <p className="mt-2 text-sm text-[var(--cc-muted)]">
-            {errorMessage ??
-              "La session admin n'a pas pu être vérifiée. Réessaie ou reconnecte-toi."}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setState("loading");
-                setErrorMessage(null);
-              }}
-              className="rounded-xl border border-[var(--cc-border)] bg-white px-4 py-2 text-sm font-semibold text-slate-700"
-            >
-              Réessayer
-            </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "no-session") {
+    return (
+      <div className="admin-figma min-h-screen">
+        <div className="mx-auto max-w-xl p-6">
+          <div className="cc-card p-6">
+            <div className="text-lg font-semibold text-white">Connexion requise</div>
+            <p className="mt-2 text-sm text-[var(--cc-muted)]">
+              Connecte-toi avec ton compte staff MMD Delivery pour accéder au
+              Control Center.
+            </p>
             <Link
               href="/admin/login"
-              className="rounded-xl bg-[var(--cc-info)] px-4 py-2 text-sm font-semibold text-white"
+              className={`mt-4 inline-flex ${CC_BTN_PRIMARY}`}
             >
               Se connecter
             </Link>
@@ -128,42 +153,22 @@ export default function AdminGate({ children, requiredPermission }: Props) {
     );
   }
 
-  if (state === "no-session") {
-    return (
-      <div className="mx-auto max-w-xl p-6">
-        <div className="cc-card p-6">
-          <div className="text-lg font-semibold text-slate-900">
-            Connexion requise
-          </div>
-          <p className="mt-2 text-sm text-[var(--cc-muted)]">
-            Connecte-toi avec ton compte staff MMD Delivery pour accéder au
-            Control Center.
-          </p>
-          <Link
-            href="/admin/login"
-            className="mt-4 inline-block text-sm font-medium text-[var(--cc-info)] underline"
-          >
-            Se connecter
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
   if (state === "forbidden") {
     return (
-      <div className="mx-auto max-w-xl p-6">
-        <div className="cc-card p-6">
-          <div className="text-lg font-semibold text-slate-900">Accès refusé</div>
-          <p className="mt-2 text-sm text-[var(--cc-muted)]">
-            {STAFF_LOGIN_DENIED_MESSAGE}
-          </p>
-          <Link
-            href="/admin"
-            className="mt-4 inline-block text-sm font-medium text-[var(--cc-info)] underline"
-          >
-            Retour au Dashboard
-          </Link>
+      <div className="admin-figma min-h-screen">
+        <div className="mx-auto max-w-xl p-6">
+          <div className="cc-card p-6">
+            <div className="text-lg font-semibold text-white">Accès refusé</div>
+            <p className="mt-2 text-sm text-[var(--cc-muted)]">
+              {STAFF_LOGIN_DENIED_MESSAGE}
+            </p>
+            <Link
+              href="/admin"
+              className="mt-4 inline-block text-sm font-medium text-[var(--cc-gold)] underline"
+            >
+              Retour au Dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );
