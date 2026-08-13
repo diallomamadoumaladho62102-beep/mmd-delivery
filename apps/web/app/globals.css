@@ -66,6 +66,21 @@
   background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
+.admin-figma .bg-white\/70,
+.admin-figma .bg-white\/50 {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.admin-figma .from-slate-50,
+.admin-figma .from-slate-100,
+.admin-figma .via-white,
+.admin-figma .to-slate-100,
+.admin-figma .to-white {
+  --tw-gradient-from: transparent !important;
+  --tw-gradient-to: transparent !important;
+  --tw-gradient-stops: transparent, transparent !important;
+}
+
 .admin-figma .text-slate-900,
 .admin-figma .text-gray-900,
 .admin-figma .text-slate-800,

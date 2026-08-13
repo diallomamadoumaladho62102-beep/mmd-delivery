@@ -78,7 +78,9 @@ export async function promptStripeIdentityIfRequired(
   subjectType: IdentitySubjectType
 ): Promise<boolean> {
   const status = await fetchIdentityStatus(subjectType);
-  if (!status.ok) return false;
+  // API failure must not invent a Stripe requirement — server assertDriverCanGoOnline
+  // / is_identity_verified remain authoritative when the policy is actually required.
+  if (!status.ok) return true;
   if (!status.required || status.verified || status.canProceed) return true;
 
   return await new Promise((resolve) => {

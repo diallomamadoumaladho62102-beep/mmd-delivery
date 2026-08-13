@@ -95,7 +95,22 @@ export function evaluateIdentityTriggers(input: {
     push("country_change", `New country detected (${context.country}).`, 70, true);
   }
 
-  const inactiveDays = daysBetween(state?.last_online_at);
+  // Use the freshest engagement signal. Verification must reset inactivity —
+  // otherwise admin approval is immediately undone on the next Go Online
+  // (last_online_at only updates after a successful online transition).
+  const activityAnchor = (() => {
+    const onlineMs = state?.last_online_at
+      ? new Date(state.last_online_at).getTime()
+      : NaN;
+    const verifiedMs = state?.last_verified_at
+      ? new Date(state.last_verified_at).getTime()
+      : NaN;
+    if (Number.isNaN(onlineMs) && Number.isNaN(verifiedMs)) return null;
+    if (Number.isNaN(onlineMs)) return state!.last_verified_at;
+    if (Number.isNaN(verifiedMs)) return state!.last_online_at;
+    return onlineMs >= verifiedMs ? state!.last_online_at : state!.last_verified_at;
+  })();
+  const inactiveDays = daysBetween(activityAnchor);
   if (
     settings.require_after_inactivity_days > 0 &&
     inactiveDays != null &&

@@ -281,6 +281,13 @@ async function createIdentityCheck(
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + 24);
 
+  // Prevent duplicate open checks (re-evaluate loops used to stack "required" rows).
+  await admin
+    .from("driver_identity_checks")
+    .update({ status: "expired" })
+    .eq("driver_id", driverId)
+    .in("status", ["required", "pending", "submitted", "manual_review"]);
+
   const { data, error } = await admin
     .from("driver_identity_checks")
     .insert({
@@ -355,6 +362,50 @@ export async function evaluateDriverIdentity(
   ) {
     await syncStateGate(admin, context.driverId, "expired", null);
     state.gate_status = "expired";
+  }
+
+  // Heal stale "required" gates opened after a still-valid verification
+  // (inactivity used last_online_at only, so approve → Go Online re-opened checks).
+  if (
+    activeCheck &&
+    ACTIVE_CHECK_STATUSES.has(activeCheck.status) &&
+    state.last_verified_at &&
+    !verificationExpired(settings, state)
+  ) {
+    const flags = await loadDriverProfileFlags(admin, context.driverId);
+    const knownDevice = await isKnownDevice(admin, context.driverId, deviceHash);
+    const openReport = await hasOpenReport(admin, context.driverId);
+    const healDecision = evaluateIdentityTriggers({
+      settings,
+      state: { ...state, gate_status: "verified", active_check_id: null },
+      context: {
+        ...context,
+        city: context.city ?? flags.profileCity,
+        country: context.country ?? flags.profileCountry,
+        ipHash: context.ipHash ?? hashIp(null),
+      },
+      hasOpenReport: openReport,
+      isKnownDevice: knownDevice,
+      profileWasSuspended: flags.profileWasSuspended,
+      profilePhotoChangedRecently: flags.profilePhotoChangedRecently,
+      phoneChangedRecently: flags.phoneChangedRecently,
+      pendingPostSuspensionCheck: Boolean(state.pending_post_suspension_check),
+    });
+
+    if (!healDecision) {
+      await admin
+        .from("driver_identity_checks")
+        .update({ status: "expired" })
+        .eq("driver_id", context.driverId)
+        .in("status", ["required", "pending", "submitted", "manual_review"]);
+      await syncStateGate(admin, context.driverId, "verified", null);
+      await logEvent(admin, context.driverId, activeCheck.id, "check_expired", {
+        reason: "healed_stale_post_verification_gate",
+      });
+      activeCheck = null;
+      state.gate_status = "verified";
+      state.active_check_id = null;
+    }
   }
 
   const blockingStatuses = new Set([

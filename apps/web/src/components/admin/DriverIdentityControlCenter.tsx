@@ -578,8 +578,8 @@ export default function DriverIdentityControlCenter(props: Props) {
   }, [busy, canManage, check, handleSuspend, onNavigateCheck, onReview]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+    <div className="min-h-0">
+      <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-blue-700 dark:text-blue-400">

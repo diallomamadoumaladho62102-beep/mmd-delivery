@@ -155,6 +155,41 @@ test("inactivity triggers verification", () => {
   assert.equal(decision.triggerType, "inactivity");
 });
 
+test("recent verification resets inactivity clock", () => {
+  const oldOnline = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
+  const recentVerify = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
+  const decision = evaluateIdentityTriggers({
+    settings: baseSettings,
+    state: {
+      driver_id: "driver-1",
+      gate_status: "verified",
+      active_check_id: null,
+      last_verified_at: recentVerify,
+      last_device_id_hash: "dev_abc",
+      last_city: "Paris",
+      last_country: "FR",
+      rides_since_verification: 0,
+      last_online_at: oldOnline,
+      next_random_ride_threshold: 15,
+    },
+    context: {
+      driverId: "driver-1",
+      intent: "go_online",
+      deviceIdHash: "dev_abc",
+      city: "Paris",
+      country: "FR",
+    },
+    hasOpenReport: false,
+    isKnownDevice: true,
+    profileWasSuspended: false,
+    profilePhotoChangedRecently: false,
+    phoneChangedRecently: false,
+    pendingPostSuspensionCheck: false,
+  });
+
+  assert.equal(decision, null);
+});
+
 test("client report triggers verification", () => {
   const decision = evaluateIdentityTriggers({
     settings: baseSettings,
