@@ -7,7 +7,7 @@ import sharp from "sharp";
 const root = process.cwd();
 const masterPath = path.join(root, "assets/brand/mmd-logo-master.png");
 const expectedMasterSha256 =
-  "78db52050f1ea56a510197d366a9cff2562927584fbdc4bcb8be09ef462a31e1";
+  "a0f259778b61ec3d6c69f4d321b4a4cc4cc229d85ced2e6f72de47a1bb07dec8";
 const master = fs.readFileSync(masterPath);
 const webBrand = path.join(root, "apps/web/public/brand");
 const webIcons = path.join(webBrand, "icons");
@@ -142,7 +142,28 @@ async function detectArtworkBounds(transparentSource, padding = 24) {
   };
 }
 
-const transparentMaster = await removeConnectedWhiteBackground();
+async function masterAlreadyHasTransparency() {
+  const { data, info } = await sharp(master)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let transparentEdge = 0;
+  const sample = (x, y) => {
+    const offset = (y * info.width + x) * info.channels;
+    return data[offset + 3] <= 2;
+  };
+  for (let x = 0; x < info.width; x += Math.max(1, Math.floor(info.width / 64))) {
+    if (sample(x, 0) || sample(x, info.height - 1)) transparentEdge += 1;
+  }
+  for (let y = 0; y < info.height; y += Math.max(1, Math.floor(info.height / 64))) {
+    if (sample(0, y) || sample(info.width - 1, y)) transparentEdge += 1;
+  }
+  return transparentEdge >= 8;
+}
+
+const transparentMaster = (await masterAlreadyHasTransparency())
+  ? await sharp(master).ensureAlpha().png({ compressionLevel: 9 }).toBuffer()
+  : await removeConnectedWhiteBackground();
 const artworkBounds = await detectArtworkBounds(transparentMaster, 8);
 const croppedMaster = await sharp(transparentMaster)
   .extract(artworkBounds)
@@ -456,6 +477,7 @@ fs.writeFileSync(
   path.join(webBrand, "mmd-logo-transparent-v2.png"),
   webLogoPng,
 );
+fs.writeFileSync(path.join(webBrand, "mmd-logo-ui.png"), webLogoPng);
 fs.writeFileSync(path.join(mobileBrand, "mmd-logo-ui.png"), webLogoPng);
 fs.writeFileSync(
   path.join(webBrand, "mmd-logo-transparent-v2.webp"),
@@ -594,6 +616,7 @@ for (const relativePath of [
   "assets/brand/mmd-logo.png",
   "assets/icon.png",
   "apps/web/public/brand/mmd-logo-transparent-v2.png",
+  "apps/web/public/brand/mmd-logo-ui.png",
   "apps/web/public/brand/mmd-logo-transparent-v2.webp",
   "apps/web/public/brand/email-logo-transparent-v2.png",
   "apps/web/public/brand/og-transparent-v2.png",
