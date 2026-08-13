@@ -72,7 +72,7 @@ async function loadLogoPngBytes(): Promise<Uint8Array | null> {
 
   for (const filePath of candidates) {
     try {
-      const buf = await fs.readFile(filePath);
+      const buf = await fs.readFile(/* turbopackIgnore: true */ filePath);
       if (buf?.byteLength) {
         return new Uint8Array(buf);
       }

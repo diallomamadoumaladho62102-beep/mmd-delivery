@@ -506,7 +506,8 @@ export async function GET(req: NextRequest) {
       await auditLog({ supabaseAdmin, req, driverId, action: "w9.get", ok: false, httpStatus: 500, errorCode: "ROLE_CHECK_FAILED", errorMessage: roleResp.error.message, metadata: { reqId } });
       return NextResponse.json({ routeVersion: ROUTE_VERSION, reqId, error: "Unable to verify role" }, { status: 500 });
     }
-    if ((roleResp.data?.role ?? null) !== "driver") {
+    const getRole = roleResp.data == null ? null : String((roleResp.data as { role?: unknown }).role ?? "");
+    if (getRole !== "driver") {
       await auditLog({ supabaseAdmin, req, driverId, action: "w9.get", ok: false, httpStatus: 403, errorCode: "FORBIDDEN", errorMessage: "driver role required", metadata: { reqId } });
       return NextResponse.json({ routeVersion: ROUTE_VERSION, reqId, error: "Forbidden: driver role required" }, { status: 403 });
     }
@@ -655,7 +656,8 @@ export async function POST(req: NextRequest) {
       await auditLog({ supabaseAdmin, req, driverId, action: "w9.submit", ok: false, httpStatus: 500, errorCode: "ROLE_CHECK_FAILED", errorMessage: roleResp.error.message, metadata: { reqId } });
       return NextResponse.json({ routeVersion: ROUTE_VERSION, reqId, error: "Unable to verify role" }, { status: 500 });
     }
-    if ((roleResp.data?.role ?? null) !== "driver") {
+    const submitRole = roleResp.data == null ? null : String((roleResp.data as { role?: unknown }).role ?? "");
+    if (submitRole !== "driver") {
       await auditLog({ supabaseAdmin, req, driverId, action: "w9.submit", ok: false, httpStatus: 403, errorCode: "FORBIDDEN", errorMessage: "driver role required", metadata: { reqId } });
       return NextResponse.json({ routeVersion: ROUTE_VERSION, reqId, error: "Forbidden: driver role required" }, { status: 403 });
     }
@@ -766,7 +768,10 @@ export async function POST(req: NextRequest) {
       row.tin_last4 = finalTinLast4;
     }
 
-    const upsertResp = await supabaseAdmin.from("tax_profiles").upsert([row], { onConflict: "driver_id" });
+    // tax_profiles may be absent from generated Database typings → Insert resolves to never.
+    const upsertResp = await (supabaseAdmin.from("tax_profiles") as any).upsert(row, {
+      onConflict: "driver_id",
+    });
     if (upsertResp.error) {
       await auditLog({ supabaseAdmin, req, driverId, action: "w9.submit", ok: false, httpStatus: 500, errorCode: "DB_UPSERT", errorMessage: upsertResp.error.message, bucket: usedBucket, w9Path: storagePath, metadata: { reqId } });
       return NextResponse.json({ routeVersion: ROUTE_VERSION, reqId, error: upsertResp.error.message ?? "DB upsert failed" }, { status: 500 });
